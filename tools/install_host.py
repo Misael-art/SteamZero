@@ -71,6 +71,9 @@ class Layout:
     command: Path = Path("/usr/local/bin/steamzero")
     gamemode_command: Path = Path("/usr/local/bin/steamzero-gamemode-session")
     session_selector_command: Path = Path("/usr/local/bin/steamos-session-select")
+    # O AURA Launcher ia junto no wheel desde o porte, mas sem ponto publicado:
+    # existia dentro do venv da release e nenhum caminho do host o alcançava.
+    launcher_command: Path = Path("/usr/local/bin/steamzero-launcher")
     gamemode_boot_command: Path = Path("/usr/local/libexec/steamzero-gamemode-boot")
     host_prepare_command: Path = Path("/usr/local/libexec/steamzero-host-prepare")
     admin_command: Path = Path("/usr/local/libexec/steamzero-admin")
@@ -823,6 +826,33 @@ def _sync_session_selector_command(layout: Layout, release_path: Path) -> None:
         layout.session_selector_command.unlink()
 
 
+def _managed_launcher_command(layout: Layout) -> bool:
+    path = layout.launcher_command
+    if not path.exists() and not path.is_symlink():
+        return True
+    return path.is_symlink() and _readlink(path) == str(
+        layout.current / "venv" / "bin" / "steamzero-launcher"
+    )
+
+
+def _sync_launcher_command(layout: Layout, release_path: Path) -> None:
+    if not _managed_launcher_command(layout):
+        raise RuntimeError(
+            f"recusando substituir launcher não gerenciado: {layout.launcher_command}"
+        )
+    executable = release_path / "venv" / "bin" / "steamzero-launcher"
+    if executable.is_file() and not executable.is_symlink() and os.access(executable, os.X_OK):
+        _atomic_symlink(
+            layout.launcher_command,
+            str(layout.current / "venv" / "bin" / "steamzero-launcher"),
+        )
+        return
+    # Release sem o binário não deve deixar link apontando para o vazio: a
+    # ausência degrada para "launcher indisponível", nunca para link quebrado.
+    with contextlib.suppress(FileNotFoundError):
+        layout.launcher_command.unlink()
+
+
 def _managed_gamemode_boot_command(layout: Layout) -> bool:
     path = layout.gamemode_boot_command
     if not path.exists() and not path.is_symlink():
@@ -1163,6 +1193,10 @@ def require_managed_activation_targets(layout: Layout) -> None:
             "recusando substituir seletor de sessão não gerenciado: "
             f"{layout.session_selector_command}"
         )
+    if not _managed_launcher_command(layout):
+        raise RuntimeError(
+            f"recusando substituir launcher não gerenciado: {layout.launcher_command}"
+        )
     if not _managed_gamemode_boot_command(layout):
         raise RuntimeError(
             f"recusando substituir comando de boot não gerenciado: {layout.gamemode_boot_command}"
@@ -1186,6 +1220,7 @@ def _activate(layout: Layout, release: str) -> None:
     previous_command = _readlink(layout.command)
     previous_gamemode_command = _readlink(layout.gamemode_command)
     previous_session_selector_command = _readlink(layout.session_selector_command)
+    previous_launcher_command = _readlink(layout.launcher_command)
     previous_gamemode_boot_command = _readlink(layout.gamemode_boot_command)
     previous_host_prepare_command = _readlink(layout.host_prepare_command)
     previous_admin_command = _readlink(layout.admin_command)
@@ -1206,6 +1241,7 @@ def _activate(layout: Layout, release: str) -> None:
         _sync_gamemode_session(layout, target)
         _sync_gamemode_command(layout, target)
         _sync_session_selector_command(layout, target)
+        _sync_launcher_command(layout, target)
         _sync_gamemode_boot_command(layout, target)
         _sync_host_prepare_command(layout, target)
         _sync_admin(layout, target)
@@ -1218,6 +1254,7 @@ def _activate(layout: Layout, release: str) -> None:
         _restore_link(layout.command, previous_command)
         _restore_link(layout.gamemode_command, previous_gamemode_command)
         _restore_link(layout.session_selector_command, previous_session_selector_command)
+        _restore_link(layout.launcher_command, previous_launcher_command)
         _restore_link(layout.gamemode_boot_command, previous_gamemode_boot_command)
         _restore_link(layout.host_prepare_command, previous_host_prepare_command)
         _restore_link(layout.admin_command, previous_admin_command)
