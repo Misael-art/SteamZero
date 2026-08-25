@@ -63,6 +63,7 @@ def _layout(tmp_path: Path) -> install_host.Layout:
         / "steamzero-gamemode-boot.service",
         gamemode_command=tmp_path / "usr" / "local" / "bin" / "steamzero-gamemode-session",
         session_selector_command=tmp_path / "usr" / "local" / "bin" / "steamos-session-select",
+        launcher_command=tmp_path / "usr" / "local" / "bin" / "steamzero-launcher",
         gamemode_boot_command=tmp_path / "usr" / "local" / "libexec" / "steamzero-gamemode-boot",
         host_prepare_command=tmp_path / "usr" / "local" / "libexec" / "steamzero-host-prepare",
         admin_command=tmp_path / "usr" / "local" / "libexec" / "steamzero-admin",
@@ -728,6 +729,39 @@ def test_activation_publishes_session_in_effective_sddm_location(tmp_path: Path)
     assert layout.session_selector_command.readlink() == (
         layout.current / "venv" / "bin" / "steamos-session-select"
     )
+
+
+def test_activation_publishes_launcher_command(tmp_path: Path) -> None:
+    """O AURA Launcher precisa ser alcançável pelo PATH depois da ativação.
+
+    Defeito que este teste tranca: o binário viajava dentro do venv da release
+    desde o porte, mas a Layout não o publicava. Sem symlink, sem .desktop e sem
+    sessão, nenhum caminho do host chegava nele — a capacidade estava instalada
+    e inalcançável.
+    """
+    layout = _layout(tmp_path)
+    release = _release(layout, "release-a")
+    executable = release / "venv" / "bin" / "steamzero-launcher"
+    executable.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
+    executable.chmod(0o755)
+
+    install_host._activate(layout, "release-a")
+
+    assert layout.launcher_command.readlink() == (
+        layout.current / "venv" / "bin" / "steamzero-launcher"
+    )
+
+
+def test_activation_refuses_unmanaged_launcher_command(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    _release(layout, "release-a")
+    layout.launcher_command.parent.mkdir(parents=True, exist_ok=True)
+    layout.launcher_command.write_text("do not replace", encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="launcher não gerenciado"):
+        install_host._activate(layout, "release-a")
+
+    assert layout.launcher_command.read_text(encoding="utf-8") == "do not replace"
 
 
 def test_activation_refuses_unmanaged_session_selector_without_switching(tmp_path: Path) -> None:

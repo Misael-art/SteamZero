@@ -25,7 +25,7 @@
     "tools/audit_port_losses.py",
     "tools/release_host.py"
   ],
-  "scopeDigest": "cd933ccc5c5ac1f06960408ec2e7b753dd4ee9df23b87e8ceae7729821eed9fb",
+  "scopeDigest": "8eb5119452693fbba2973c115b418b41fb5d762ad764cb53efc4aaaa0bd5efb3",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -93,6 +93,12 @@
       "kind": "diagnostic",
       "reference": ".github/workflows/ci.yml",
       "command": "verificacao no produto: o job 'Wheel limpo, smoke e supply chain' do run 32847002061 passou e construiu o artifact com o ci.yml corrigido. O SHA256SUMS baixado tem SEIS entradas, incluindo e778cde3c1877bf35487b7d705a11e44781dd8affd6786edc30384be1d3a1d38 build/pip-audit.json. O buraco de integridade esta fechado no artifact publicado, nao apenas no teste que le o workflow.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_host_installer.py",
+      "command": ".venv/bin/python -m pytest tests/integration/test_host_installer.py -q (39 passed). Defeito fisico observado na 2.0.0rc1-2a1b0fb90105 instalada: steamzero-launcher existia em /opt/steamzero/current/venv/bin e rodava, mas a Layout do instalador nao o publicava — sem symlink em /usr/local, sem .desktop e sem sessao wayland, nenhum caminho do host o alcancava. Corrigido publicando launcher_command com o mesmo padrao de ownership dos demais comandos: recusa substituir alvo nao gerenciado, restaura link anterior em falha e remove o link quando a release nao traz o binario, para nunca deixar link quebrado. Prova negativa: sem a chamada de _sync_launcher_command o teste falha com FileNotFoundError no readlink do symlink ausente.",
       "result": "passed"
     }
   ],

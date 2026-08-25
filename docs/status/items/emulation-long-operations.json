@@ -31,7 +31,7 @@
     "tests/integration/test_host_installer.py",
     "tests/unit/test_desktop_dashboard.py"
   ],
-  "scopeDigest": "44f65bfc359230d1eaa07212eb71c7dff748b7d3263966424d02f2fff257a52a",
+  "scopeDigest": "fd88324560b7d8387b079f623c00f36660ad8281a3ef20f0123d3cf1e1e7c30e",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -114,6 +114,6 @@
   "activeWorkstreams": [
     "WS-2026-08-EMULATION-LONG-OPERATIONS"
   ],
-  "updatedAt": "2026-08-24",
+  "updatedAt": "2026-08-25",
   "notes": "A release 0.1.0a46-73dd7f5ad3c1 confirmou limite explícito de 1 900 s, execução persistida e rollback sem deployment parcial. A validação do Cemu revelou primeiro AF_NETLINK bloqueado pela unit; a release 0.1.0a46-2bfa55f05007 corrigiu essa allowlist e expôs a segunda fronteira: submontagens protegidas em /proc impedem Bubblewrap de montar a procfs do Flatpak. A release 0.1.0a46-54f2fc4da9b7 executa somente argv Flatpak validados num serviço transitório do user manager, mantendo o daemon endurecido: Cemu e RPCS3 chegaram a committed com rollback disponível. Flycast não aceita --version, mas a release 0.1.0a46-bd598c516bce substituiu esse smoke por leitura do commit Flatpak fixado e o instalou com sucesso. melonDS revelou o mesmo contrato inválido; a transação foi revertida sem deployment parcial. Reconciliacao 2026-08-24: o porte v2 alterou flatpak.py, lifecycle.py, cli/main.py e install_host.py dentro deste escopo, e a re-execucao das evidencias mostrou UMA reprovacao real (contrato do plano v3). O digest foi renovado com esse resultado registrado como 'failed', nao para silenciar o gate. 2026-08-24: matriz local fechada nos 33. Seis causas reais removidas e DUAS retificacoes minhas: o update de core era defeito de produto e nao de fixture, e o sunshine nao era anomalia e sim componente de streaming cobrado por capacidades que declara nao ter."
 }
