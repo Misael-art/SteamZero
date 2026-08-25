@@ -35,8 +35,8 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-FRONTEND-RETROFE | 5 | 2 | 1 | dev |  |
 | SZ-FRONTEND-SRM | 3 | 1 | 1 | unit |  |
 | SZ-FRONTEND-STEAM-SHORTCUTS | 2 | 1 | 1 | unit |  |
-| SZ-GOVERNANCE-STATUS | 20 | 4 | 2 | dev |  |
-| SZ-HOST-UPDATE-TRANSACTIONAL | 14 | 5 | 4 | dev |  |
+| SZ-GOVERNANCE-STATUS | 20 | 5 | 3 | dev |  |
+| SZ-HOST-UPDATE-TRANSACTIONAL | 14 | 7 | 5 | dev |  |
 | SZ-LIBRARY-CANONICAL | 7 | 3 | 2 | unit |  |
 | SZ-MEDIA-SCRAPING | 19 | 5 | 5 | unit |  |
 | SZ-ONLINE-P2P | 37 | 2 | 1 | none |  |
