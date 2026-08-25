@@ -14,7 +14,7 @@
     "tests/integration/test_vm_harness.py",
     "tools/vm_harness"
   ],
-  "scopeDigest": "6df1f9704c1a83992e7ddba02cfcdb39924871277d20d7bb94be5143c2ed6a10",
+  "scopeDigest": "018f1681eae0a7cee581a706b53cc7fa74ab7f9f0eeef73837726eb6865cc5ad",
   "dependsOn": [],
   "knownGaps": [
     "DEBT-A7",
@@ -49,6 +49,6 @@
   "activeWorkstreams": [
     "WS-2026-08-M10"
   ],
-  "updatedAt": "2026-08-24",
+  "updatedAt": "2026-08-25",
   "notes": "ATENCAO ao ler o eixo vm: o ciclo r25 foi executado ANTES das mudancas de src/steamzero/adapters/flatpak.py trazidas pelo porte v2 (roteamento por servico transitorio, cancelamento e diagnostico de rede). O harness M10 nao roda nesta maquina, entao a re-prova possivel hoje foi a suite de flatpak/executor/harness (80 passed, 2026-08-24), que mostra ausencia de regressao de contrato mas NAO substitui um ciclo de VM. Re-executar r25 continua sendo pre-requisito para manter a alegacao vm. A certificacao M10 nao e declarada ate tres ciclos de cada emulador e restore Btrfs confirmado. Certificacao VM COMPLETA no commit 586ed7c: RetroArch, PCSX2 e PPSSPP com minimal + 3 ciclos full e restore btrfs SIM em todas (indice docs/diagnostics/INDEX-M10.md); DEBT-A7 encerrada. Operacao 'degraded' e nao 'blocked' porque o ciclo esta provado em VM e o codigo esta na 0.1.0a44-07802589e985 instalada; o que falta e a convergencia do daemon e a certificacao fisica, ambas do operador. Distribuicao 'installed': o codigo deste item esta na release 0.1.0a44-07802589e985, instalada no host em 2026-08-11 (RELEASE-LEDGER, ancestralidade do commit 07802589e985 conferida). NAO e 'certified': a certificacao fisica segue adiada e a tag v0.1.0a44 nao foi publicada — tag e a afirmacao de que os gates fisicos passaram. A convergencia do daemon ainda depende de acao do operador (steamzero-host converge)."
 }

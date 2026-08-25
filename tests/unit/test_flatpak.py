@@ -162,3 +162,46 @@ def test_flatpak_state_rejects_ambiguous_or_inconsistent_snapshots(
 ) -> None:
     with pytest.raises(ValueError):
         FlatpakState.from_dict(data)
+
+
+class _StubSource:
+    def __init__(self, version: str) -> None:
+        self.version = version
+        self.end_of_life = False
+        self.ref = "org.DolphinEmu.dolphin-emu"
+
+
+class _StubManifest:
+    kind = "emulator"
+
+
+def test_degraded_status_explains_which_commits_diverged() -> None:
+    """Degradação precisa dizer POR QUÊ, não só que existe.
+
+    Defeito observado no host com a 2.0.0rc1 instalada: dolphin e retroarch
+    apareciam como ``degraded`` com ``detail: None``, enquanto duckstation (no
+    executor engine) explicava a divergência. Não faltava regra — faltava um
+    executor cumprir a que o outro já cumpria, e o usuário ficava sem saber se
+    devia atualizar para a fonte fixada ou investigar o commit instalado.
+    """
+    executor = flatpak_module.FlatpakExecutor.__new__(flatpak_module.FlatpakExecutor)
+    executor._flatpak_source = lambda adapter_id, allow_eol=True: (  # type: ignore[method-assign]
+        _StubManifest(),
+        _StubSource("377c3e63506e" + "0" * 52),
+    )
+    executor._flatpak = type(  # type: ignore[assignment]
+        "_Stub",
+        (),
+        {
+            "status": staticmethod(
+                lambda ref: FlatpakState(
+                    installed=True, ref=ref, origin="flathub", commit="1b150924d321" + "0" * 52
+                )
+            )
+        },
+    )()
+
+    status = executor.status("dolphin")
+
+    assert status["state"] == "degraded"
+    assert status["detail"] == ("commit instalado 1b150924d321 difere da fonte fixada 377c3e63506e")
