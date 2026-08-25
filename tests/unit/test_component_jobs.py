@@ -207,14 +207,19 @@ def test_start_returns_immediately_and_deduplicates_repeated_confirmation(job_en
     lifecycle = BlockingLifecycle()
     service = ComponentJobService(lifecycle_factory=lifecycle.bind)
 
-    started_at = time.monotonic()
     first = service.start("01M000000000000000000000AA", "confirm-token")
-    elapsed = time.monotonic() - started_at
 
-    assert elapsed < 0.2
     assert first["jobId"]
     assert first["state"] in {"queued", "running"}
-    assert lifecycle.started.wait(timeout=1)
+
+    # Prova de não-bloqueio por causalidade, sem relógio de parede. `apply`
+    # sinaliza `started` ao entrar e só retorna quando `release` for sinalizado,
+    # o que este teste ainda não fez: se `start` tivesse esperado o lifecycle,
+    # não teria retornado acima. O limiar anterior era `elapsed < 0.2` contra um
+    # bloqueio de 5 s — 25x de folga — e mesmo assim reprovou o CI com 0,206 s,
+    # porque media o agendamento do runner, não o comportamento do produto.
+    assert lifecycle.started.wait(timeout=5)
+    assert not lifecycle.release.is_set()
 
     with state.open_state() as store:
         persisted = JobManager(store).get(str(first["jobId"]))
