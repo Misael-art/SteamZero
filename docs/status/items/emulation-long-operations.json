@@ -29,9 +29,10 @@
     "tests/integration/test_emulator_conformance.py",
     "tests/integration/test_flatpak_executor.py",
     "tests/integration/test_host_installer.py",
-    "tests/unit/test_desktop_dashboard.py"
+    "tests/unit/test_desktop_dashboard.py",
+    "docs/09-operations/evidence/2026-08-25-degraded-detail"
   ],
-  "scopeDigest": "2da58526b7616297fe286244bc9cd261b35f653fa501af0b33cbe4fbc76de3db",
+  "scopeDigest": "bc91a39a40b6992001509e5036184c7ee3bcacf79d9325632f797ca1f037c0ef",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
