@@ -31,7 +31,7 @@
     "tests/integration/test_host_installer.py",
     "tests/unit/test_desktop_dashboard.py"
   ],
-  "scopeDigest": "293157a2e1d809d395fbe7236d4a15a527ae2bc4c48b27f45d98718db38de7bc",
+  "scopeDigest": "7f9890082d7377f0585fbb4dc5bee281bdcfc772bbfa353e72023e24a8bd4b62",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -83,9 +83,15 @@
       "reference": "tests/integration/test_emulator_conformance.py",
       "command": "raiz de cores isolada: 111 -> 60 falhas. Sem libretro_core_root explicito, _default_core_root() aponta para ~/.var/app/org.libretro.RetroArch/.../cores — o RetroArch REAL de quem roda a suite, fora de XDG_DATA_HOME e fora do alcance do guard de estado. Conferido no host: diretorio vazio, nenhum arquivo recente, entao nenhuma execucao desta sessao o poluiu. As 60 restantes sao SEMANTICAS, nao de encanamento: dimensoes que nao se aplicam a kind=core (core nao lanca sozinho) e a kind=tool.",
       "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tests/integration/test_emulator_conformance.py",
+      "command": "progressao 213 -> 145 -> 111 -> 60 -> 43 com CINCO causas reais removidas: dependencia ausente, payload nao-arquivo, segundo digest do core, raiz de cores no RetroArch real, e fixture de drift assumindo layout do engine. Restam 43: 17 de launch (unica dimensao genuinamente inaplicavel a kind=core, o proprio produto diz que core e carregado pelo RetroArch), 17 de update com E-CONTENT-INCOMPLETE — que o operador confirmou ser caso REAL, entao nao e dimensao inaplicavel e precisa de investigacao — e 9 do sunshine (kind=tool).",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Declarar, para cada uma das 12 dimensoes, a quais `kind` ela se aplica e POR QUE — exclusao por dimensao com motivo escrito, nunca exclusao do componente, que reproduziria o filtro por kind que criou o problema. Isso fecha as 60 restantes e abre o filtro para os 33. So entao a matriz fisica no host.",
+  "nextAction": "Investigar o update de core antes de declarar qualquer dimensao: _owned_target compara o arquivo instalado com o digest NOVO e o instalado carrega o antigo, entao ou a fixture nao serve o artefato novo ou o guard impede update de core no produto — sao consequencias muito diferentes. Depois decidir se sunshine (kind=tool) pertence a esta matriz ou a uma propria. Launch para kind=core ja pode ser declarada inaplicavel com o motivo do produto.",
   "activeWorkstreams": [
     "WS-2026-08-EMULATION-LONG-OPERATIONS"
   ],

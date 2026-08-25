@@ -210,12 +210,38 @@ def _lifecycle(
             # operador, fora de XDG_DATA_HOME e fora do alcance do guard de
             # estado. Nao e so vazamento entre casos parametrizados: e teste
             # escrevendo na instalacao de quem roda a suite.
-            libretro_core_root=Path(store.path).parent / "libretro-cores",
-            libretro_archive_reader=lambda _artifact, _member: PAYLOAD,
+            libretro_core_root=core_root_for(store),
+            # Devolve o PROPRIO artefato como core extraido. Um payload fixo
+            # fazia o core sempre bater com o digest inicial, entao qualquer
+            # update era recusado com "core existente nao e gerenciado" — o
+            # ownership compara o arquivo instalado com o digest NOVO.
+            libretro_archive_reader=lambda artifact, _member: artifact,
             **extra,
         ),
         None,
     )
+
+
+def core_root_for(store: state.StateStore) -> Path:
+    """Raiz de cores isolada por teste. Ver a nota em `_lifecycle`."""
+    return Path(store.path).parent / "libretro-cores"
+
+
+def _deployed_payload(adapter_id: str, store: state.StateStore) -> Path:
+    """O arquivo que o deployment realmente publicou, por tipo de componente.
+
+    Adulterar "o payload" nao e um caminho so: o engine publica em
+    `components/<id>/releases/**/payload`, e um core libretro publica um
+    `<core>_libretro.so` na raiz de cores. A fixture assumia o layout do engine,
+    entao para core ela nem achava o arquivo — `StopIteration`, nao drift.
+    """
+    manifest = AdapterRegistry.bundled().get(adapter_id)
+    if manifest.kind == "core" and manifest.core is not None:
+        return core_root_for(store) / f"{manifest.core.id}_libretro.so"
+    from steamzero.core import paths as core_paths
+
+    releases = core_paths.data_home() / "components" / adapter_id / "releases"
+    return next(releases.rglob("payload"))
 
 
 def _is_flatpak(adapter_id: str) -> bool:
@@ -343,10 +369,7 @@ class TestEmulatorLifecycleConformance:
         if fake is not None:
             fake.current = FlatpakState(True, fake.ref, "flathub", "d" * 64)
         else:
-            from steamzero.core import paths as core_paths
-
-            payload = core_paths.data_home() / "components" / adapter_id / "releases"
-            alvo = next(payload.rglob("payload"))
+            alvo = _deployed_payload(adapter_id, store)
             alvo.write_bytes(b"adulterado")
 
         estado = lifecycle.status(adapter_id)
