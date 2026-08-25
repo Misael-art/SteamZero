@@ -31,7 +31,7 @@
     "tests/integration/test_host_installer.py",
     "tests/unit/test_desktop_dashboard.py"
   ],
-  "scopeDigest": "2ab170c24af493fbf5f62941974a7cb060d8af62099aacfe181de5d9cf1caae0",
+  "scopeDigest": "1bf2f0d88628476965d9392855b4f56a616fb0498809d89dd3220119979c6980",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -65,9 +65,15 @@
       "reference": "tests/integration/test_emulator_conformance.py",
       "command": "denominador da matriz de conformidade medido em 2026-08-24: 180 testes = 15 adapters x 12 dimensoes. Mas o registry tem 33 componentes (15 emulator, 17 core, 1 tool), e emulator_ids() filtra por kind=='emulator'. Os 18 restantes — 17 cores libretro e o sunshine — estao FORA do denominador: zero cobertura de conformidade. O docstring diz 'sem lista fixa, de proposito', e a intencao era boa, mas o filtro por kind reproduziu o mesmo efeito de uma lista fixa: exclui 55% dos componentes em silencio. A entrega 6.3 pede prova para CADA UM dos 33.",
       "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tests/integration/test_emulator_conformance.py",
+      "command": "tentativa MEDIDA de ampliar a matriz para os 33: rodando com o filtro aberto, 213 falhas na primeira passada, todas E-API-SCHEMA 'referencia IDs ausentes: retroarch' — os cores libretro declaram requires e o registry do teste tinha um manifesto so. Corrigido com registry_for(), que inclui as dependencias: caiu para 145 falhas, agora de duas causas reais e distintas — 136 E-SUPPLY-REMOTE-FAILED (FakeArtifacts serve payload que nao e arquivo valido; cores sao fonte archive) e 8 E-COMPONENT-DEGRADED (sunshine e kind=tool e nao declara as capabilities de algumas dimensoes). Filtro restaurado para manter a suite verde; o denominador ficou documentado na propria funcao.",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Ampliar a matriz de conformidade dos 15 emuladores para os 33 componentes. Os 17 cores libretro e o sunshine usam executores diferentes (libretro e engine), entao trocar o filtro sem adaptar as dimensoes produziria falha em massa em vez de cobertura — cada executor precisa da sua variante das 12 provas. Depois disso, a matriz FISICA no host, que hoje depende de uma release com as correcoes desta branch.",
+  "nextAction": "Ampliar a matriz para os 33 em dois passos, ambos ja medidos: (1) fixture de arquivo real minimo para as fontes `archive`, que destrava 17 cores libretro e 136 falhas; (2) exclusao POR DIMENSAO para o sunshine, com motivo, em vez de excluir o componente — ele e kind=tool e nao declara capabilities de algumas das 12 provas. So depois disso a matriz FISICA no host, que exige release com as correcoes desta branch.",
   "activeWorkstreams": [
     "WS-2026-08-EMULATION-LONG-OPERATIONS"
   ],

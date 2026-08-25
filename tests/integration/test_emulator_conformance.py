@@ -40,8 +40,39 @@ URL = "https://fixtures.invalid/conformidade.AppImage"
 
 
 def emulator_ids() -> list[str]:
-    """Todos os `kind=emulator` do registry. Sem lista fixa, de propósito."""
+    """Os `kind=emulator` do registry. Sem lista fixa, de propósito.
+
+    DENOMINADOR MEDIDO em 2026-08-24: isto cobre 15 dos 33 componentes. Os
+    outros 18 — 17 cores libretro e o `sunshine` — ficam de fora, e os 180
+    testes coletados parecem cobertura completa sem ser.
+
+    Ampliar exige duas coisas que ainda não existem, ambas medidas rodando o
+    filtro aberto:
+
+    - os cores libretro sao fonte `archive`, e `FakeArtifacts` serve um payload
+      que nao e arquivo valido: 136 falhas com
+      `E-SUPPLY-REMOTE-FAILED: libarchive: Unrecognized archive`. Falta uma
+      fixture de arquivo minimo e real;
+    - o `sunshine` e `kind=tool` e nao declara as capabilities que algumas das
+      12 dimensoes exigem: 8 falhas com `E-COMPONENT-DEGRADED`. Precisa de
+      exclusao por dimensao, com motivo, nao de exclusao do componente.
+    """
     return [m.id for m in AdapterRegistry.bundled().list() if m.kind == "emulator"]
+
+
+def registry_for(raw: dict[str, Any]) -> AdapterRegistry:
+    """Registry com o adapter sob teste E aquilo de que ele depende.
+
+    Os cores libretro declaram `requires: ["retroarch"]`, e um registry com um
+    manifesto só reprova com `E-API-SCHEMA: referencia IDs ausentes`. Remover o
+    `requires` faria os testes passarem apagando um contrato real; incluir a
+    dependência mantém o contrato e testa o core como ele é.
+    """
+    manifests = [load_manifest(raw)]
+    bundled = AdapterRegistry.bundled()
+    for required in manifests[0].requires:
+        manifests.append(load_manifest(dict(bundled.get(required).raw)))
+    return AdapterRegistry(manifests)
 
 
 def derived(
@@ -146,7 +177,7 @@ def _lifecycle(
     artifacts: dict[str, bytes] | None = None,
     spawn: Any = None,
 ) -> tuple[ComponentLifecycle, FakeFlatpak | None]:
-    registry = AdapterRegistry([load_manifest(raw)])
+    registry = registry_for(raw)
     source = raw["sources"][0]
     extra: dict[str, Any] = {}
     if spawn is not None:
@@ -244,7 +275,7 @@ class TestEmulatorLifecycleConformance:
         # dois deixaria metade dos adapters com manifesto idêntico e o teste
         # passaria sem exercitar nada.
         mudado = derived(adapter_id, version="9.9.9", sha=UPDATED_SHA, commit="b" * 64)
-        lifecycle._registry = AdapterRegistry([load_manifest(mudado)])
+        lifecycle._registry = registry_for(mudado)
 
         with pytest.raises(SteamZeroError) as error:
             lifecycle.apply(envelope.plan_id, envelope.confirm_token)
@@ -257,7 +288,7 @@ class TestEmulatorLifecycleConformance:
         _install(lifecycle, adapter_id)
 
         novo = derived(adapter_id, version="2.0.0", sha=UPDATED_SHA, commit="c" * 64)
-        registry = AdapterRegistry([load_manifest(novo)])
+        registry = registry_for(novo)
         lifecycle._registry = registry
         if fake is None:
             lifecycle._artifacts = FakeArtifacts({URL: UPDATED})
