@@ -561,6 +561,14 @@ class FlatpakExecutor:
         }
         if state.installed and state.commit != source.version:
             data["state"] = "degraded"
+            # Degradação sem causa registrada obriga o usuário a adivinhar. O
+            # detalhe nomeia a divergência exata e os dois commits, que é o que
+            # permite decidir entre atualizar para a fonte fixada ou investigar
+            # de onde veio o commit instalado.
+            data["detail"] = (
+                f"commit instalado {(state.commit or '?')[:12]} difere da fonte fixada "
+                f"{(source.version or '?')[:12]}"
+            )
         return data
 
     def plan_install(self, adapter_id: str, *, ttl_s: int = _DEFAULT_TTL_S) -> FlatpakPlan:

@@ -31,7 +31,7 @@
     "tests/integration/test_host_installer.py",
     "tests/unit/test_desktop_dashboard.py"
   ],
-  "scopeDigest": "fd88324560b7d8387b079f623c00f36660ad8281a3ef20f0123d3cf1e1e7c30e",
+  "scopeDigest": "2da58526b7616297fe286244bc9cd261b35f653fa501af0b33cbe4fbc76de3db",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -107,6 +107,12 @@
       "kind": "test",
       "reference": "tests/integration/test_emulator_conformance.py",
       "command": "matriz nos 33 DE 33 componentes: 340 passed, 44 skipped, ZERO falhas. Retificacao: eu tratava o sunshine como anomalia que talvez precisasse de matriz propria. Ele e o HOST DE STREAMING (servidor do Moonlight), vive em adapters/game_stream.py, e declara capabilities {status, detect}. As 9 falhas eram a matriz cobrando install/verify/update/uninstall de quem nunca prometeu — o proprio produto ja dizia isso em E-COMPONENT-DEGRADED. Cada dimensao passou a ser gated pela capability declarada no manifesto.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_flatpak.py",
+      "command": ".venv/bin/python -m pytest tests/unit/test_flatpak.py tests/unit/test_lifecycle_routing.py tests/integration/test_component_lifecycle.py -q (102 passed). Defeito observado no host com a 2.0.0rc1-2a1b0fb90105 instalada: dolphin e retroarch apareciam degraded com detail None, enquanto duckstation (executor engine) explicava a divergencia. Nao faltava regra: faltava o executor Flatpak cumprir a que o engine ja cumpria. flatpak.status passa a nomear os dois commits. Verificado no componente real da arvore corrigida: dolphin devolve 'commit instalado 1b150924d321 difere da fonte fixada 377c3e63506e', antes None. Prova negativa: sem a atribuicao de detail o teste novo falha com KeyError: 'detail'.",
       "result": "passed"
     }
   ],
