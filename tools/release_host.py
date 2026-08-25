@@ -53,6 +53,19 @@ COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 RELEASE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]*-[0-9a-f]{12}$")
 TAG_RE = re.compile(r"^v[A-Za-z0-9][A-Za-z0-9._+-]*$")
 CHECKSUM_RE = re.compile(r"^(?P<digest>[0-9a-f]{64})  (?P<path>[^\r\n]+)$")
+# Documentos de cadeia de suprimentos com caminho fixo que o bundle precisa ter
+# sob checksum. O wheel e o manifesto do wheelhouse entram à parte porque o nome
+# depende da versão. Constante de módulo, e não literal enterrado em
+# ``load_bundle``, para que o gate consiga comparar esta exigência com o que o
+# workflow do CI realmente hasheia.
+SUPPLY_CHAIN_DOCUMENTS = frozenset(
+    {
+        "build/provenance.json",
+        "build/sbom.cdx.json",
+        "build/pip-audit.json",
+        "dist/runtime-wheelhouse.tar.zst",
+    }
+)
 REQUIRED_CERTIFICATION_GATES = (
     "machineCycle",
     "physicalUi",
@@ -607,10 +620,7 @@ def load_bundle(root: Path, *, expected_ref: str = "refs/heads/main") -> Bundle:
     required_supply_chain = {
         str(wheel.relative_to(root)),
         str(manifest_path.relative_to(root)),
-        "build/provenance.json",
-        "build/sbom.cdx.json",
-        "build/pip-audit.json",
-        "dist/runtime-wheelhouse.tar.zst",
+        *SUPPLY_CHAIN_DOCUMENTS,
     }
     missing_supply_chain = sorted(required_supply_chain - checksummed)
     if missing_supply_chain:
