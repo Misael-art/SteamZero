@@ -244,6 +244,51 @@ def _deployed_payload(adapter_id: str, store: state.StateStore) -> Path:
     return next(releases.rglob("payload"))
 
 
+#: Capacidade que cada dimensao exercita. A matriz nao inventa exclusao: ela LE
+#: o que o manifesto declara. Um componente que nao declara `install` nao pode
+#: ser cobrado por instalar — e o proprio produto ja recusa com
+#: `E-COMPONENT-DEGRADED: adapter X nao declara capability`.
+#:
+#: `launch` nao esta no vocabulario de capabilities; e gated por `install`,
+#: porque nao ha o que lancar naquilo que nao se instala.
+_DIMENSION_CAPABILITY: dict[str, str] = {
+    "test_clean_install_reaches_installed": "install",
+    "test_second_install_is_idempotent": "install",
+    "test_checksum_mismatch_refuses_without_deploying": "install",
+    "test_launch_builds_an_atomic_argv_without_shell": "install",
+    "test_verify_confirms_an_intact_deployment": "verify",
+    "test_drift_is_detected_and_never_reported_as_missing": "verify",
+    "test_uninstall_is_planned_and_declared": "uninstall",
+    "test_update_moves_the_deployment_to_the_new_pin": "update",
+    "test_open_config_refuses_when_the_adapter_does_not_declare_it": "configure",
+}
+
+
+@pytest.fixture(autouse=True)
+def skip_dimensions_the_component_does_not_declare(request: pytest.FixtureRequest) -> None:
+    """Pula a dimensao que o componente declara nao ter, com o motivo dele.
+
+    O `sunshine` e o host de streaming — quem serve o Moonlight — e declara
+    `capabilities: {status, detect}`. Cobrar dele install, verify, update ou
+    uninstall e cobrar o que ele nunca prometeu, e foi o que manteve 9 falhas
+    sem causa real. Nao e "matriz propria" nem "componente fora": e respeitar o
+    manifesto.
+    """
+    adapter_id = (
+        request.node.callspec.params.get("adapter_id")
+        if hasattr(request.node, "callspec")
+        else None
+    )
+    if adapter_id is None:
+        return
+    needed = _DIMENSION_CAPABILITY.get(request.node.originalname or request.node.name)
+    if needed is None:
+        return
+    declared = AdapterRegistry.bundled().get(adapter_id).capabilities or frozenset()
+    if needed not in declared:
+        pytest.skip(f"{adapter_id} nao declara capability `{needed}`")
+
+
 def _is_flatpak(adapter_id: str) -> bool:
     return AdapterRegistry.bundled().get(adapter_id).raw["sources"][0]["type"] == "flatpak"
 

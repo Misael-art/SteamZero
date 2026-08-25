@@ -31,7 +31,7 @@
     "tests/integration/test_host_installer.py",
     "tests/unit/test_desktop_dashboard.py"
   ],
-  "scopeDigest": "0a058097962319a51153dcfcb04f3f3964408f9d6c65f4d75c9db7478642943b",
+  "scopeDigest": "44f65bfc359230d1eaa07212eb71c7dff748b7d3263966424d02f2fff257a52a",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -39,7 +39,8 @@
     "A desconexão do cliente não interrompe a execução no daemon nem produz traceback.",
     "O planId externo identifica a operação Flatpak persistida e seus eventos applying e terminais podem ser seguidos.",
     "Mutação com resultado ambíguo nunca é repetida localmente.",
-    "Teste determinístico reproduz uma operação acima de dois segundos e prova a conclusão observável."
+    "Teste determinístico reproduz uma operação acima de dois segundos e prova a conclusão observável.",
+    "Cada dimensao da matriz e cobrada apenas de quem declara a capability correspondente no manifesto."
   ],
   "evidence": [
     {
@@ -101,12 +102,18 @@
       "reference": "tests/unit/test_libretro_cores.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_libretro_cores.py -q (6 passed). Defeito de PRODUTO encontrado pela ampliacao: _owned_target perguntava se o core instalado batia com o digest NOVO, entao um core nosso no pin anterior era indistinguivel de core de terceiro e QUALQUER update era recusado com E-CONTENT-INCOMPLETE. Corrigido para comparar com o digest que nos mesmos registramos ao instalar. A protecao continua provada: core sem metadado, metadado divergente e symlink seguem recusados.",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_emulator_conformance.py",
+      "command": "matriz nos 33 DE 33 componentes: 340 passed, 44 skipped, ZERO falhas. Retificacao: eu tratava o sunshine como anomalia que talvez precisasse de matriz propria. Ele e o HOST DE STREAMING (servidor do Moonlight), vive em adapters/game_stream.py, e declara capabilities {status, detect}. As 9 falhas eram a matriz cobrando install/verify/update/uninstall de quem nunca prometeu — o proprio produto ja dizia isso em E-COMPONENT-DEGRADED. Cada dimensao passou a ser gated pela capability declarada no manifesto.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Decidir se o sunshine (kind=tool) pertence a esta matriz ou a uma propria — ele falha ate em clean_install, entao nao e questao de dimensao e sim de o caminho da matriz assumir componente lancavel. Depois, a matriz FISICA no host, que exige release com as correcoes desta branch.",
+  "nextAction": "A matriz LOCAL cobre os 33. Falta a matriz FISICA no host, que exige uma release com as correcoes desta branch — a instalada e anterior a elas, inclusive ao operation_id e ao ownership de core.",
   "activeWorkstreams": [
     "WS-2026-08-EMULATION-LONG-OPERATIONS"
   ],
   "updatedAt": "2026-08-24",
-  "notes": "A release 0.1.0a46-73dd7f5ad3c1 confirmou limite explícito de 1 900 s, execução persistida e rollback sem deployment parcial. A validação do Cemu revelou primeiro AF_NETLINK bloqueado pela unit; a release 0.1.0a46-2bfa55f05007 corrigiu essa allowlist e expôs a segunda fronteira: submontagens protegidas em /proc impedem Bubblewrap de montar a procfs do Flatpak. A release 0.1.0a46-54f2fc4da9b7 executa somente argv Flatpak validados num serviço transitório do user manager, mantendo o daemon endurecido: Cemu e RPCS3 chegaram a committed com rollback disponível. Flycast não aceita --version, mas a release 0.1.0a46-bd598c516bce substituiu esse smoke por leitura do commit Flatpak fixado e o instalou com sucesso. melonDS revelou o mesmo contrato inválido; a transação foi revertida sem deployment parcial. Reconciliacao 2026-08-24: o porte v2 alterou flatpak.py, lifecycle.py, cli/main.py e install_host.py dentro deste escopo, e a re-execucao das evidencias mostrou UMA reprovacao real (contrato do plano v3). O digest foi renovado com esse resultado registrado como 'failed', nao para silenciar o gate."
+  "notes": "A release 0.1.0a46-73dd7f5ad3c1 confirmou limite explícito de 1 900 s, execução persistida e rollback sem deployment parcial. A validação do Cemu revelou primeiro AF_NETLINK bloqueado pela unit; a release 0.1.0a46-2bfa55f05007 corrigiu essa allowlist e expôs a segunda fronteira: submontagens protegidas em /proc impedem Bubblewrap de montar a procfs do Flatpak. A release 0.1.0a46-54f2fc4da9b7 executa somente argv Flatpak validados num serviço transitório do user manager, mantendo o daemon endurecido: Cemu e RPCS3 chegaram a committed com rollback disponível. Flycast não aceita --version, mas a release 0.1.0a46-bd598c516bce substituiu esse smoke por leitura do commit Flatpak fixado e o instalou com sucesso. melonDS revelou o mesmo contrato inválido; a transação foi revertida sem deployment parcial. Reconciliacao 2026-08-24: o porte v2 alterou flatpak.py, lifecycle.py, cli/main.py e install_host.py dentro deste escopo, e a re-execucao das evidencias mostrou UMA reprovacao real (contrato do plano v3). O digest foi renovado com esse resultado registrado como 'failed', nao para silenciar o gate. 2026-08-24: matriz local fechada nos 33. Seis causas reais removidas e DUAS retificacoes minhas: o update de core era defeito de produto e nao de fixture, e o sunshine nao era anomalia e sim componente de streaming cobrado por capacidades que declara nao ter."
 }
