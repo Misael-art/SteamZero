@@ -15,7 +15,6 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
-import yaml
 
 import release_host
 
@@ -203,26 +202,25 @@ def _ci_checksummed_paths() -> set[str]:
     Lê o workflow em vez de redeclarar a lista: um teste que repete o que o CI
     deveria fazer concorda consigo mesmo e nada diz sobre o artifact publicado.
     """
-    workflow = yaml.safe_load(
-        (release_host.ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    )
+    workflow = (release_host.ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    # Sem PyYAML de propósito: o que interessa são as linhas de shell, não a
+    # estrutura do YAML, e o gate do workflow em test_g22_contract.py também
+    # analisa o arquivo sem dependência extra.
     paths: set[str] = set()
-    for job in workflow["jobs"].values():
-        for step in job.get("steps", []):
-            script = step.get("run")
-            if not isinstance(script, str) or "sha256sum" not in script:
-                continue
-            # Continuações de linha viram uma linha lógica antes de separar.
-            for command in " ".join(script.split("\\\n")).splitlines():
-                tokens = command.split()
-                if "sha256sum" not in tokens:
-                    continue
-                for token in tokens[tokens.index("sha256sum") + 1 :]:
-                    # Redirecionamento e pipe encerram a lista de entradas; o
-                    # destino do SHA256SUMS não é coberto por si mesmo.
-                    if token in {">", ">>", "|"}:
-                        break
-                    paths.add(token)
+    # Continuações de linha viram uma linha lógica antes de separar argumentos.
+    for command in " ".join(workflow.split("\\\n")).splitlines():
+        stripped = command.strip()
+        if stripped.startswith("#"):
+            continue
+        tokens = stripped.split()
+        if "sha256sum" not in tokens:
+            continue
+        for token in tokens[tokens.index("sha256sum") + 1 :]:
+            # Redirecionamento e pipe encerram a lista de entradas; o destino
+            # do SHA256SUMS não é coberto por si mesmo.
+            if token in {">", ">>", "|"}:
+                break
+            paths.add(token)
     return paths
 
 

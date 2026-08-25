@@ -25,7 +25,7 @@
     "tools/audit_port_losses.py",
     "tools/release_host.py"
   ],
-  "scopeDigest": "12fda5cfc1839ef7ede4ff615b6b5cf46a8b49dc05beb4f4cfcf4fc1d73948f7",
+  "scopeDigest": "cd933ccc5c5ac1f06960408ec2e7b753dd4ee9df23b87e8ceae7729821eed9fb",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -81,6 +81,18 @@
       "kind": "test",
       "reference": "tests/unit/test_release_host.py",
       "command": ".venv/bin/python -m pytest tests/unit/test_release_host.py -q (69 passed). Correcao: ci.yml passa a hashear build/pip-audit.json e a exigencia virou a constante SUPPLY_CHAIN_DOCUMENTS, lida pelo novo test_ci_hashes_every_supply_chain_document, que compara a constante com o que o workflow entrega ao sha256sum. Prova negativa: revertendo so a linha do ci.yml o teste acusa exatamente ['build/pip-audit.json'] e os outros tres documentos continuam encontrados, entao nao passa por vacuidade.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tests/unit/test_release_host.py",
+      "command": "run 32847002061: os quatro jobs de teste (3.11, 3.12, 3.14 e gate visual) reprovaram com ModuleNotFoundError: No module named 'yaml' na coleta. A primeira versao do gate importava PyYAML, presente no venv local e ausente nas dependencias de teste. Corrigido sem acrescentar dependencia: o parser passou a ler as linhas de shell do workflow, como ja faz test_g22_contract.py. Prova negativa refeita com o parser novo e, com sys.modules['yaml'] sabotado, o modulo importa e o parser devolve os caminhos — a dependencia sumiu de fato.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": ".github/workflows/ci.yml",
+      "command": "verificacao no produto: o job 'Wheel limpo, smoke e supply chain' do run 32847002061 passou e construiu o artifact com o ci.yml corrigido. O SHA256SUMS baixado tem SEIS entradas, incluindo e778cde3c1877bf35487b7d705a11e44781dd8affd6786edc30384be1d3a1d38 build/pip-audit.json. O buraco de integridade esta fechado no artifact publicado, nao apenas no teste que le o workflow.",
       "result": "passed"
     }
   ],
