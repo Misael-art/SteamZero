@@ -20,9 +20,10 @@ import zipfile
 from collections.abc import Callable, Sequence
 from contextlib import suppress
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from steamzero.adapters.cast_orchestrator import CastOrchestrator
+from steamzero.adapters.component_jobs import ComponentJobService
 from steamzero.adapters.desktop_contracts import handheld_ui_contracts
 from steamzero.adapters.desktop_kde import (
     high_contrast_enabled,
@@ -441,6 +442,7 @@ class DesktopDashboard:
         cast_orchestrator: CastOrchestrator | None = None,
         theme_editor: ThemeEditorManager | None = None,
         resources: ResourceProbe | None = None,
+        component_jobs: ComponentJobService | None = None,
     ) -> None:
         self._store_factory = store_factory
         self._registry_factory = registry_factory
@@ -485,6 +487,16 @@ class DesktopDashboard:
             daemon_pid=_daemon_pid_provider(),
             emulator_processes=_session_emulator_provider(store_factory),
             media_job_processes=lambda: [],
+        )
+        self._component_jobs = component_jobs or ComponentJobService(
+            store_factory=store_factory,
+            lifecycle_factory=lambda store: ComponentLifecycle(
+                store,
+                registry_factory(),
+                flatpak_factory=flatpak_factory,
+                which=which,
+                spawn=spawn,
+            ),
         )
 
     def close_request_context(self) -> None:
@@ -870,15 +882,39 @@ class DesktopDashboard:
         return self._emulation.scan_library()
 
     def get_emulation_job_status(self, job_id: str) -> dict[str, Any] | None:
+        component_jobs = cast(ComponentJobService | None, getattr(self, "_component_jobs", None))
+        if component_jobs is not None:
+            component = component_jobs.get(job_id)
+            if component is not None:
+                return component
         return self._emulation.get_job_status(job_id)
 
     def list_emulation_jobs(self) -> list[dict[str, Any]]:
-        return self._emulation.list_jobs()
+        emulation_jobs = self._emulation.list_jobs()
+        component_jobs = cast(ComponentJobService | None, getattr(self, "_component_jobs", None))
+        if component_jobs is None:
+            return emulation_jobs
+        combined: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for job in [*component_jobs.list(), *emulation_jobs]:
+            job_id = str(job.get("jobId", ""))
+            if job_id and job_id in seen:
+                continue
+            if job_id:
+                seen.add(job_id)
+            combined.append(job)
+        return combined
 
     def cancel_emulation_job(self, job_id: str) -> dict[str, Any]:
+        component_jobs = cast(ComponentJobService | None, getattr(self, "_component_jobs", None))
+        if component_jobs is not None and component_jobs.get(job_id) is not None:
+            return component_jobs.cancel(job_id)
         return self._emulation.cancel_job(job_id)
 
     def retry_emulation_job(self, job_id: str) -> dict[str, Any]:
+        component_jobs = cast(ComponentJobService | None, getattr(self, "_component_jobs", None))
+        if component_jobs is not None and component_jobs.get(job_id) is not None:
+            return component_jobs.retry(job_id)
         return self._emulation.retry_job(job_id)
 
     def credential_status(self) -> dict[str, Any]:
@@ -1249,17 +1285,7 @@ class DesktopDashboard:
             return lifecycle.plan(adapter_id, action).to_dict()
 
     def apply_component(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
-        with self._store_factory() as store:
-            store.migrate()
-            registry = self._registry_factory()
-            lifecycle = ComponentLifecycle(
-                store,
-                registry,
-                flatpak_factory=self._flatpak_factory,
-                which=self._which,
-                spawn=self._spawn,
-            )
-            return lifecycle.apply(plan_id, confirm_token)
+        return self._component_jobs.start(plan_id, confirm_token)
 
     def launch_component(self, adapter_id: str) -> dict[str, Any]:
         with self._store_factory() as store:

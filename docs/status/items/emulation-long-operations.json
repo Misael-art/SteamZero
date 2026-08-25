@@ -31,7 +31,7 @@
     "tests/integration/test_host_installer.py",
     "tests/unit/test_desktop_dashboard.py"
   ],
-  "scopeDigest": "31769981c88a8ba59400be00d2ae5e1ec6a1d61732e9d4bbc3bc9585d48e76e3",
+  "scopeDigest": "44f65bfc359230d1eaa07212eb71c7dff748b7d3263966424d02f2fff257a52a",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -39,7 +39,8 @@
     "A desconexão do cliente não interrompe a execução no daemon nem produz traceback.",
     "O planId externo identifica a operação Flatpak persistida e seus eventos applying e terminais podem ser seguidos.",
     "Mutação com resultado ambíguo nunca é repetida localmente.",
-    "Teste determinístico reproduz uma operação acima de dois segundos e prova a conclusão observável."
+    "Teste determinístico reproduz uma operação acima de dois segundos e prova a conclusão observável.",
+    "Cada dimensao da matriz e cobrada apenas de quem declara a capability correspondente no manifesto."
   ],
   "evidence": [
     {
@@ -52,19 +53,67 @@
       "kind": "test",
       "reference": "tests",
       "command": "run_tests_isolated.py tests -q; ruff check src tools tests; ruff format --check src tools tests; mypy src; make independence boundaries; make status-check",
-      "result": "passed"
+      "result": "partial"
     },
     {
       "kind": "test",
       "reference": "tests/integration/test_component_lifecycle.py",
-      "command": "run_tests_isolated.py tests/integration/test_component_lifecycle.py tests/integration/test_core_service.py -q",
+      "command": "run_tests_isolated.py tests/integration/test_component_lifecycle.py tests/integration/test_core_service.py -q (2026-08-24: 126 passed com jobs)",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tests/integration/test_emulator_conformance.py",
+      "command": "denominador da matriz de conformidade medido em 2026-08-24: 180 testes = 15 adapters x 12 dimensoes. Mas o registry tem 33 componentes (15 emulator, 17 core, 1 tool), e emulator_ids() filtra por kind=='emulator'. Os 18 restantes — 17 cores libretro e o sunshine — estao FORA do denominador: zero cobertura de conformidade. O docstring diz 'sem lista fixa, de proposito', e a intencao era boa, mas o filtro por kind reproduziu o mesmo efeito de uma lista fixa: exclui 55% dos componentes em silencio. A entrega 6.3 pede prova para CADA UM dos 33.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tests/integration/test_emulator_conformance.py",
+      "command": "tentativa MEDIDA de ampliar a matriz para os 33: rodando com o filtro aberto, 213 falhas na primeira passada, todas E-API-SCHEMA 'referencia IDs ausentes: retroarch' — os cores libretro declaram requires e o registry do teste tinha um manifesto so. Corrigido com registry_for(), que inclui as dependencias: caiu para 145 falhas, agora de duas causas reais e distintas — 136 E-SUPPLY-REMOTE-FAILED (FakeArtifacts serve payload que nao e arquivo valido; cores sao fonte archive) e 8 E-COMPONENT-DEGRADED (sunshine e kind=tool e nao declara as capabilities de algumas dimensoes). Filtro restaurado para manter a suite verde; o denominador ficou documentado na propria funcao.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tests/integration/test_emulator_conformance.py",
+      "command": "ampliacao para os 33 avancou de 213 para 111 falhas, com tres causas reais removidas: dependencia ausente no registry (registry_for), payload que nao era 7z (libretro_archive_reader injetado) e o SEGUNDO digest dos cores, o do .so extraido em core.sha256, que derived() nao trocava. Restam 34 casos de estado de core vazando entre casos parametrizados e 25 do sunshine, que e kind=tool. Filtro restaurado em kind==emulator para a suite ficar verde; as tres correcoes de fixture ficam, porque sao pre-requisito da ampliacao.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tests/integration/test_emulator_conformance.py",
+      "command": "raiz de cores isolada: 111 -> 60 falhas. Sem libretro_core_root explicito, _default_core_root() aponta para ~/.var/app/org.libretro.RetroArch/.../cores — o RetroArch REAL de quem roda a suite, fora de XDG_DATA_HOME e fora do alcance do guard de estado. Conferido no host: diretorio vazio, nenhum arquivo recente, entao nenhuma execucao desta sessao o poluiu. As 60 restantes sao SEMANTICAS, nao de encanamento: dimensoes que nao se aplicam a kind=core (core nao lanca sozinho) e a kind=tool.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tests/integration/test_emulator_conformance.py",
+      "command": "progressao 213 -> 145 -> 111 -> 60 -> 43 com CINCO causas reais removidas: dependencia ausente, payload nao-arquivo, segundo digest do core, raiz de cores no RetroArch real, e fixture de drift assumindo layout do engine. Restam 43: 17 de launch (unica dimensao genuinamente inaplicavel a kind=core, o proprio produto diz que core e carregado pelo RetroArch), 17 de update com E-CONTENT-INCOMPLETE — que o operador confirmou ser caso REAL, entao nao e dimensao inaplicavel e precisa de investigacao — e 9 do sunshine (kind=tool).",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_emulator_conformance.py",
+      "command": "matriz de conformidade ampliada de 15 para 32 dos 33 componentes: 357 passed, 27 skipped, ZERO falhas. Progressao completa 213 -> 145 -> 111 -> 60 -> 43 -> 26 -> 0, com SEIS causas reais removidas e uma exclusao por dimensao declarada com motivo. Fora: apenas o sunshine (kind=tool), pendente de decisao sobre matriz propria.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_libretro_cores.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_libretro_cores.py -q (6 passed). Defeito de PRODUTO encontrado pela ampliacao: _owned_target perguntava se o core instalado batia com o digest NOVO, entao um core nosso no pin anterior era indistinguivel de core de terceiro e QUALQUER update era recusado com E-CONTENT-INCOMPLETE. Corrigido para comparar com o digest que nos mesmos registramos ao instalar. A protecao continua provada: core sem metadado, metadado divergente e symlink seguem recusados.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_emulator_conformance.py",
+      "command": "matriz nos 33 DE 33 componentes: 340 passed, 44 skipped, ZERO falhas. Retificacao: eu tratava o sunshine como anomalia que talvez precisasse de matriz propria. Ele e o HOST DE STREAMING (servidor do Moonlight), vive em adapters/game_stream.py, e declara capabilities {status, detect}. As 9 falhas eram a matriz cobrando install/verify/update/uninstall de quem nunca prometeu — o proprio produto ja dizia isso em E-COMPONENT-DEGRADED. Cada dimensao passou a ser gated pela capability declarada no manifesto.",
       "result": "passed"
     }
   ],
-  "nextAction": "Promover o smoke de metadados do melonDS, que também não aceita --version, repetir seu install físico e só então avançar na matriz restante; Cemu, RPCS3 e Flycast já foram concluídos pelo runner transitório sem afrouxar o daemon.",
+  "nextAction": "A matriz LOCAL cobre os 33. Falta a matriz FISICA no host, que exige uma release com as correcoes desta branch — a instalada e anterior a elas, inclusive ao operation_id e ao ownership de core.",
   "activeWorkstreams": [
     "WS-2026-08-EMULATION-LONG-OPERATIONS"
   ],
-  "updatedAt": "2026-08-22",
-  "notes": "A release 0.1.0a46-73dd7f5ad3c1 confirmou limite explícito de 1 900 s, execução persistida e rollback sem deployment parcial. A validação do Cemu revelou primeiro AF_NETLINK bloqueado pela unit; a release 0.1.0a46-2bfa55f05007 corrigiu essa allowlist e expôs a segunda fronteira: submontagens protegidas em /proc impedem Bubblewrap de montar a procfs do Flatpak. A release 0.1.0a46-54f2fc4da9b7 executa somente argv Flatpak validados num serviço transitório do user manager, mantendo o daemon endurecido: Cemu e RPCS3 chegaram a committed com rollback disponível. Flycast não aceita --version, mas a release 0.1.0a46-bd598c516bce substituiu esse smoke por leitura do commit Flatpak fixado e o instalou com sucesso. melonDS revelou o mesmo contrato inválido; a transação foi revertida sem deployment parcial."
+  "updatedAt": "2026-08-24",
+  "notes": "A release 0.1.0a46-73dd7f5ad3c1 confirmou limite explícito de 1 900 s, execução persistida e rollback sem deployment parcial. A validação do Cemu revelou primeiro AF_NETLINK bloqueado pela unit; a release 0.1.0a46-2bfa55f05007 corrigiu essa allowlist e expôs a segunda fronteira: submontagens protegidas em /proc impedem Bubblewrap de montar a procfs do Flatpak. A release 0.1.0a46-54f2fc4da9b7 executa somente argv Flatpak validados num serviço transitório do user manager, mantendo o daemon endurecido: Cemu e RPCS3 chegaram a committed com rollback disponível. Flycast não aceita --version, mas a release 0.1.0a46-bd598c516bce substituiu esse smoke por leitura do commit Flatpak fixado e o instalou com sucesso. melonDS revelou o mesmo contrato inválido; a transação foi revertida sem deployment parcial. Reconciliacao 2026-08-24: o porte v2 alterou flatpak.py, lifecycle.py, cli/main.py e install_host.py dentro deste escopo, e a re-execucao das evidencias mostrou UMA reprovacao real (contrato do plano v3). O digest foi renovado com esse resultado registrado como 'failed', nao para silenciar o gate. 2026-08-24: matriz local fechada nos 33. Seis causas reais removidas e DUAS retificacoes minhas: o update de core era defeito de produto e nao de fixture, e o sunshine nao era anomalia e sim componente de streaming cobrado por capacidades que declara nao ter."
 }

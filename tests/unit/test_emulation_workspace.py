@@ -6,6 +6,7 @@ from pathlib import Path
 from steamzero.api import contracts
 from steamzero.domain.emulation_workspace import build_global_management, build_switch_workspace
 from steamzero.domain.keys_firmware import RequirementCheck
+from steamzero.domain.platforms import PlatformRegistry
 
 
 def test_switch_workspace_matches_versioned_contract() -> None:
@@ -92,7 +93,11 @@ def test_global_management_keeps_technical_and_editorial_counts_distinct() -> No
     assert global_management["editorialExperienceCount"] == 155
     assert global_management["editorialSource"]["id"] == "steam"
     assert global_management["platformCards"][0]["gameCount"] == 1
-    assert global_management["platformCards"][0]["action"]["id"] == "platform.open"
+    # Sem facts de lifecycle nenhuma linha declara `installable`, então o card
+    # não promete instalação que o backend recusaria: só abre a plataforma. O
+    # alvo vai no próprio id para a ação ser despachável.
+    assert global_management["platformCards"][0]["action"]["id"] == "platform.open:switch"
+    assert global_management["platformCards"][0]["secondaryAction"] is None
     payload["globalManagement"] = global_management
     contracts.validate(payload, "emulation-workspace-v1.schema.json")
 
@@ -163,3 +168,169 @@ def test_requirement_kind_is_normalized_and_unwired_actions_are_disabled() -> No
         card["action"] for card in platform["areaData"]["keysFirmware"]["cards"] if "action" in card
     ]
     assert actions and all(not action["enabled"] and action["reason"] for action in actions)
+
+
+def _card_for(emulator_rows: list[dict[str, object]]) -> dict[str, object]:
+    """Monta um card de gestão geral para uma plataforma com as linhas dadas."""
+    platform = {
+        "id": "gamecube",
+        "name": "Nintendo GameCube",
+        "kind": "emulated",
+        "state": "attention",
+        "readiness": {"percent": 0, "blockers": ["o emulador desta plataforma não está instalado"]},
+        "requirements": {},
+        "emulators": emulator_rows,
+    }
+    management = build_global_management(
+        platforms=[platform],
+        editorial_platforms=[],
+        canonical_experiences=[],
+        truth_state="attention",
+        emulators=[],
+        directories=[],
+        media_providers=[],
+    )
+    return management["platformCards"][0]
+
+
+def test_platform_card_offers_installing_the_missing_emulator() -> None:
+    """Abrir a plataforma não instala nada.
+
+    A auditoria de 2026-08-11 (P0-5) mostrou o card anunciando "o emulador desta
+    plataforma não está instalado" e oferecendo só "Abrir plataforma" — o único
+    caminho de instalação ficava abaixo da dobra, em outro painel.
+    """
+    card = _card_for(
+        [{"id": "dolphin", "name": "Dolphin", "installable": True, "installState": "not-installed"}]
+    )
+
+    assert card["action"]["id"] == "emulator.install:dolphin"
+    assert card["action"]["label"] == "Instalar Dolphin"
+    assert card["action"]["requiresConfirmation"] is True
+    assert card["secondaryAction"]["id"] == "platform.open:gamecube"
+
+
+def test_platform_card_does_not_offer_installing_what_is_already_installed() -> None:
+    card = _card_for(
+        [{"id": "dolphin", "name": "Dolphin", "installable": True, "installState": "installed"}]
+    )
+
+    assert card["action"]["id"] == "platform.open:gamecube"
+    assert card["secondaryAction"] is None
+
+
+def test_platform_card_does_not_promise_an_install_the_backend_refuses() -> None:
+    """`installable=false` é resposta do lifecycle, não convite para inventar CTA."""
+    card = _card_for(
+        [
+            {
+                "id": "retroarch",
+                "name": "RetroArch",
+                "installable": False,
+                "installState": "unverified",
+                "reason": "componente sem executor declarado",
+            }
+        ]
+    )
+
+    assert card["action"]["id"] == "platform.open:gamecube"
+    assert card["secondaryAction"] is None
+
+
+def test_platform_card_repairs_a_degraded_emulator_instead_of_reinstalling() -> None:
+    """Degradado não é ausente: reinstalar não corrige drift (G27).
+
+    A gestão já anuncia "Reparar" para a linha degradada; o card da plataforma
+    precisa do mesmo verbo, e não "Instalar" — arquivos existem e a causa do
+    drift veio preservada.
+    """
+    card = _card_for(
+        [{"id": "dolphin", "name": "Dolphin", "installable": True, "installState": "degraded"}]
+    )
+
+    assert card["action"]["id"] == "emulator.repair:dolphin"
+    assert card["action"]["label"] == "Reparar Dolphin"
+    assert card["action"]["requiresConfirmation"] is True
+    assert card["secondaryAction"]["id"] == "platform.open:gamecube"
+
+
+def test_cloud_platform_card_offers_only_open_and_never_an_install() -> None:
+    """Plataforma de streaming não usa emulador local: nenhum CTA de instalação."""
+    platform = {
+        "id": "amazon-luna",
+        "name": "Amazon Luna",
+        "kind": "cloud",
+        "state": "ready",
+        "readiness": {"percent": 100, "blockers": []},
+        "requirements": {},
+        "emulators": [],
+    }
+    management = build_global_management(
+        platforms=[platform],
+        editorial_platforms=[],
+        canonical_experiences=[],
+        truth_state="ready",
+        emulators=[],
+        directories=[],
+        media_providers=[],
+    )
+    card = management["platformCards"][0]
+
+    assert card["identity"] == "cloud"
+    assert card["action"]["id"] == "platform.open:amazon-luna"
+    assert card["action"]["label"] == "Abrir plataforma"
+    assert card["secondaryAction"] is None
+
+
+def test_platform_card_actions_stay_within_the_platform_registry() -> None:
+    """Compatibilidade emulador↔plataforma: o card só oferece o que a plataforma declara.
+
+    A fonte das linhas é o registro de plataformas; um emulador de outra
+    plataforma nunca pode virar CTA do card, e o alvo de abrir é sempre a
+    própria plataforma do card.
+    """
+    registry = PlatformRegistry.bundled()
+    platforms = []
+    for manifest in list(registry.list())[:8]:
+        platforms.append(
+            {
+                "id": manifest.id,
+                "name": manifest.name,
+                "kind": manifest.kind,
+                "state": "attention",
+                "readiness": {"percent": 0, "blockers": []},
+                "requirements": {},
+                "emulators": [
+                    {
+                        "id": emulator_id,
+                        "name": emulator_id,
+                        "installable": True,
+                        "installState": "not-installed",
+                    }
+                    for emulator_id in registry.emulator_ids_for(manifest.id)
+                ],
+            }
+        )
+    management = build_global_management(
+        platforms=platforms,
+        editorial_platforms=[],
+        canonical_experiences=[],
+        truth_state="attention",
+        emulators=[],
+        directories=[],
+        media_providers=[],
+    )
+    declared = {
+        str(manifest.id): set(registry.emulator_ids_for(manifest.id))
+        for manifest in registry.list()
+    }
+
+    for card in management["platformCards"]:
+        action = card["action"]
+        if action["id"].startswith(("emulator.install:", "emulator.repair:")):
+            emulator_id = action["id"].split(":", 1)[1]
+            assert emulator_id in declared[card["id"]], (
+                f"card de {card['id']} oferece emulador fora do registro: {emulator_id}"
+            )
+        if card["secondaryAction"]:
+            assert card["secondaryAction"]["id"] == f"platform.open:{card['id']}"

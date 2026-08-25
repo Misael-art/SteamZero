@@ -120,12 +120,12 @@ def test_rt08_broken_link_rolls_back_without_touching_central_bios(
         "scph5501.bin", consumer_root=consumer, consumer_relpath="firmware/scph5501.bin"
     )
     target = consumer / "firmware" / "scph5501.bin"
-    real_symlink = fs.symlink_atomic
+    real_tmp = fs.make_symlink_tmp
 
-    def create_broken_link(_source: Path, destination: Path) -> None:
-        real_symlink(tmp_path / "missing.bin", destination)
+    def create_broken_link(parent, name, source):  # type: ignore[no-untyped-def]
+        return real_tmp(parent, name, tmp_path / "missing.bin")
 
-    monkeypatch.setattr(fs, "symlink_atomic", create_broken_link)
+    monkeypatch.setattr(fs, "make_symlink_tmp", create_broken_link)
     with pytest.raises(SteamZeroError) as error:
         bios.apply_link(plan.plan_id, plan.confirm_token)
     assert error.value.code == "E-TX-VERIFY-FAILED"

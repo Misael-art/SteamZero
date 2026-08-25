@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE",
+  "title": "Release funcional 2.0 harmonizada",
+  "domain": "distribution",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "none",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "docs/09-operations/evidence/2026-08-23-v2-harmonization-baseline",
+    "src/steamzero/domain/library.py"
+  ],
+  "dependsOn": [
+    "SZ-COMPONENT-LIFECYCLE",
+    "SZ-HOST-UPDATE-TRANSACTIONAL",
+    "SZ-UI-DESKTOP-AUDIT",
+    "SZ-AURA-LAUNCHER",
+    "SZ-FRONTEND-ESDE",
+    "SZ-FRONTEND-RETROFE",
+    "SZ-MEDIA-SCRAPING"
+  ],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "Uma unica fonte canonica alimenta Home, Biblioteca, Emulacao, busca, launcher e scraping.",
+    "A varredura real e somente leitura em relacao as ROMs do usuario.",
+    "Os 33 componentes provam status, plan, confirmacao, job, verify, repair, rollback e recuperacao.",
+    "O AURA Launcher existe como artefato empacotado e alcancavel, nao apenas como tela administrativa.",
+    "Tema de terceiro nunca executa QML, JavaScript, Python, shell, binario, biblioteca ou shader arbitrario.",
+    "Nenhum head historico proibido das PRs 78 a 82 e 92 e ancestral do commit publicado.",
+    "A release 2.0.0 e construida do commit final integralmente verde e instalada pelo fluxo governado."
+  ],
+  "evidence": [
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-08-23-v2-harmonization-baseline/README.md",
+      "command": "baseline do host em 2026-08-23: release ativa 0.1.0a46-5b41f2edbf78, rollback 0.1.0a46-bd598c516bce, 8 componentes instalados, dolphin e retroarch degradados, 23 ausentes",
+      "result": "recorded"
+    }
+  ],
+  "nextAction": "Fechar o contrato do plano Flatpak v3 em SZ-COMPONENT-LIFECYCLE; depois biblioteca canonica, midias, matriz dos 33 componentes, AURA Launcher, ES-DE/RetroFE, auditoria de UI e updater, cada um com prova propria antes da release 2.0.0.",
+  "activeWorkstreams": [
+    "WS-2026-08-V2-HARMONIZED"
+  ],
+  "updatedAt": "2026-08-24",
+  "notes": "Item criado em 2026-08-24. Ele nao existia e por isso o status-check reprovava com 'WS-2026-08-V2-HARMONIZED: item inexistente'. A verificacao e deliberadamente 'none' e a operacao 'unknown': esta frente ainda nao provou nada por si — o que ja esta provado pertence aos itens dependentes, e promover este item a partir deles seria exatamente a promocao por historico que o AGENTS.md proibe. Base: origin/main c2a1ff1abc98fbffd04175c81010009872476893; branch 65 commits a frente, zero atras; sem branch remota nem PR no momento da criacao. Proibido mesclar as PRs 78, 79, 80, 81, 82 e 92; heads vetados 2235ce9 (PR 79) e 66d7ac1 (PR 80) devem permanecer nao-ancestrais."
+}

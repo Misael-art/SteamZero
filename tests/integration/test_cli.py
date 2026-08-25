@@ -886,11 +886,24 @@ def test_component_lifecycle_builder_imports_adapter_registry_at_runtime(
     store.close()
 
 
-def test_component_apply_requires_and_forwards_confirmation(
+def test_component_apply_starts_a_durable_job_without_waiting_for_the_download(
     capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    fake = _FakeComponentLifecycle()
-    monkeypatch.setattr(cli, "_component_lifecycle", lambda _store: fake)
+    class FakeComponentJobs:
+        def __init__(self) -> None:
+            self.started: tuple[str, str] | None = None
+
+        def start(self, plan_id: str, confirm_token: str) -> dict[str, object]:
+            self.started = (plan_id, confirm_token)
+            return {
+                "jobId": "01J000000000000000000000AB",
+                "state": "queued",
+                "rawState": "queued",
+                "planId": plan_id,
+            }
+
+    jobs = FakeComponentJobs()
+    monkeypatch.setattr(cli, "_component_job_service", lambda: jobs)
 
     code = cli.main(
         [
@@ -905,8 +918,10 @@ def test_component_apply_requires_and_forwards_confirmation(
     )
     env = json.loads(capsys.readouterr().out)
     assert code == cli.EXIT_OK
-    assert fake.applied == ("01J000000000000000000000AA", "confirm")
-    assert env["operationId"] == "01J000000000000000000000AB"
+    assert jobs.started == ("01J000000000000000000000AA", "confirm")
+    assert env["jobId"] == "01J000000000000000000000AB"
+    assert env["operationId"] is None
+    assert env["data"]["state"] == "queued"
 
 
 def test_state_audit_reports_clean(capsys: pytest.CaptureFixture[str]) -> None:

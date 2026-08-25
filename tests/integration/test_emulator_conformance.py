@@ -40,8 +40,39 @@ URL = "https://fixtures.invalid/conformidade.AppImage"
 
 
 def emulator_ids() -> list[str]:
-    """Todos os `kind=emulator` do registry. Sem lista fixa, de propósito."""
-    return [m.id for m in AdapterRegistry.bundled().list() if m.kind == "emulator"]
+    """Os `kind=emulator` do registry. Sem lista fixa, de propósito.
+
+    DENOMINADOR MEDIDO em 2026-08-24: isto cobre 15 dos 33 componentes. Os
+    outros 18 — 17 cores libretro e o `sunshine` — ficam de fora, e os 180
+    testes coletados parecem cobertura completa sem ser.
+
+    Ampliar exige duas coisas que ainda não existem, ambas medidas rodando o
+    filtro aberto:
+
+    - os cores libretro sao fonte `archive`, e `FakeArtifacts` serve um payload
+      que nao e arquivo valido: 136 falhas com
+      `E-SUPPLY-REMOTE-FAILED: libarchive: Unrecognized archive`. Falta uma
+      fixture de arquivo minimo e real;
+    - o `sunshine` e `kind=tool` e nao declara as capabilities que algumas das
+      12 dimensoes exigem: 8 falhas com `E-COMPONENT-DEGRADED`. Precisa de
+      exclusao por dimensao, com motivo, nao de exclusao do componente.
+    """
+    return [m.id for m in AdapterRegistry.bundled().list() if m.kind in {"emulator", "core"}]
+
+
+def registry_for(raw: dict[str, Any]) -> AdapterRegistry:
+    """Registry com o adapter sob teste E aquilo de que ele depende.
+
+    Os cores libretro declaram `requires: ["retroarch"]`, e um registry com um
+    manifesto só reprova com `E-API-SCHEMA: referencia IDs ausentes`. Remover o
+    `requires` faria os testes passarem apagando um contrato real; incluir a
+    dependência mantém o contrato e testa o core como ele é.
+    """
+    manifests = [load_manifest(raw)]
+    bundled = AdapterRegistry.bundled()
+    for required in manifests[0].requires:
+        manifests.append(load_manifest(dict(bundled.get(required).raw)))
+    return AdapterRegistry(manifests)
 
 
 def derived(
@@ -62,6 +93,14 @@ def derived(
         source["url"] = URL
         source["sha256"] = sha
     raw["sources"] = [source]
+    # Cores libretro carregam DOIS digests: o do arquivo baixado, em `sources`,
+    # e o do `.so` extraido de dentro dele, em `core.sha256`. Trocar so o
+    # primeiro deixava a extracao reprovar com E-SUPPLY-CHECKSUM — o segundo
+    # ainda apontava para o binario real.
+    if isinstance(raw.get("core"), dict):
+        core = dict(raw["core"])
+        core["sha256"] = sha
+        raw["core"] = core
     raw.pop("requiresKeys", None)
     raw.pop("requiresFirmware", None)
     return raw
@@ -146,7 +185,7 @@ def _lifecycle(
     artifacts: dict[str, bytes] | None = None,
     spawn: Any = None,
 ) -> tuple[ComponentLifecycle, FakeFlatpak | None]:
-    registry = AdapterRegistry([load_manifest(raw)])
+    registry = registry_for(raw)
     source = raw["sources"][0]
     extra: dict[str, Any] = {}
     if spawn is not None:
@@ -156,7 +195,98 @@ def _lifecycle(
         fake = FakeFlatpak(source["ref"])
         return ComponentLifecycle(store, registry, flatpak_factory=lambda: fake, **extra), fake
     port = FakeArtifacts(artifacts or {URL: PAYLOAD})
-    return ComponentLifecycle(store, registry, artifacts=port, **extra), None
+    # Cores libretro chegam num arquivo 7z e o lifecycle extrai um membro
+    # `<prefixo><core>_libretro.so`. Fabricar um 7z valido na fixture provaria a
+    # biblioteca de arquivo, nao a dimensao sob teste — e a extracao ja tem
+    # cobertura propria. O leitor injetavel isola a dimensao: aqui interessa
+    # install/verify/rollback do core, nao o parsing do container.
+    return (
+        ComponentLifecycle(
+            store,
+            registry,
+            artifacts=port,
+            # Sem raiz explicita, `_default_core_root()` aponta para
+            # `~/.var/app/org.libretro.RetroArch/.../cores` — o RetroArch REAL do
+            # operador, fora de XDG_DATA_HOME e fora do alcance do guard de
+            # estado. Nao e so vazamento entre casos parametrizados: e teste
+            # escrevendo na instalacao de quem roda a suite.
+            libretro_core_root=core_root_for(store),
+            # Devolve o PROPRIO artefato como core extraido. Um payload fixo
+            # fazia o core sempre bater com o digest inicial, entao qualquer
+            # update era recusado com "core existente nao e gerenciado" — o
+            # ownership compara o arquivo instalado com o digest NOVO.
+            libretro_archive_reader=lambda artifact, _member: artifact,
+            **extra,
+        ),
+        None,
+    )
+
+
+def core_root_for(store: state.StateStore) -> Path:
+    """Raiz de cores isolada por teste. Ver a nota em `_lifecycle`."""
+    return Path(store.path).parent / "libretro-cores"
+
+
+def _deployed_payload(adapter_id: str, store: state.StateStore) -> Path:
+    """O arquivo que o deployment realmente publicou, por tipo de componente.
+
+    Adulterar "o payload" nao e um caminho so: o engine publica em
+    `components/<id>/releases/**/payload`, e um core libretro publica um
+    `<core>_libretro.so` na raiz de cores. A fixture assumia o layout do engine,
+    entao para core ela nem achava o arquivo — `StopIteration`, nao drift.
+    """
+    manifest = AdapterRegistry.bundled().get(adapter_id)
+    if manifest.kind == "core" and manifest.core is not None:
+        return core_root_for(store) / f"{manifest.core.id}_libretro.so"
+    from steamzero.core import paths as core_paths
+
+    releases = core_paths.data_home() / "components" / adapter_id / "releases"
+    return next(releases.rglob("payload"))
+
+
+#: Capacidade que cada dimensao exercita. A matriz nao inventa exclusao: ela LE
+#: o que o manifesto declara. Um componente que nao declara `install` nao pode
+#: ser cobrado por instalar — e o proprio produto ja recusa com
+#: `E-COMPONENT-DEGRADED: adapter X nao declara capability`.
+#:
+#: `launch` nao esta no vocabulario de capabilities; e gated por `install`,
+#: porque nao ha o que lancar naquilo que nao se instala.
+_DIMENSION_CAPABILITY: dict[str, str] = {
+    "test_clean_install_reaches_installed": "install",
+    "test_second_install_is_idempotent": "install",
+    "test_checksum_mismatch_refuses_without_deploying": "install",
+    "test_launch_builds_an_atomic_argv_without_shell": "install",
+    "test_verify_confirms_an_intact_deployment": "verify",
+    "test_drift_is_detected_and_never_reported_as_missing": "verify",
+    "test_uninstall_is_planned_and_declared": "uninstall",
+    "test_update_moves_the_deployment_to_the_new_pin": "update",
+    "test_open_config_refuses_when_the_adapter_does_not_declare_it": "configure",
+}
+
+
+@pytest.fixture(autouse=True)
+def skip_dimensions_the_component_does_not_declare(request: pytest.FixtureRequest) -> None:
+    """Pula a dimensao que o componente declara nao ter, com o motivo dele.
+
+    O `sunshine` e o host de streaming — quem serve o Moonlight — e declara
+    `capabilities: {status, detect}`. Cobrar dele install, verify, update ou
+    uninstall e cobrar o que ele nunca prometeu, e foi o que manteve 9 falhas
+    sem causa real. Nao e "matriz propria" nem "componente fora": e respeitar o
+    manifesto.
+    """
+    adapter_id = (
+        request.node.callspec.params.get("adapter_id")
+        if hasattr(request.node, "callspec")
+        else None
+    )
+    if adapter_id is None:
+        return
+    needed = _DIMENSION_CAPABILITY.get(request.node.originalname or request.node.name)
+    if needed is None:
+        return
+    declared = AdapterRegistry.bundled().get(adapter_id).capabilities or frozenset()
+    if needed not in declared:
+        pytest.skip(f"{adapter_id} nao declara capability `{needed}`")
 
 
 def _is_flatpak(adapter_id: str) -> bool:
@@ -244,7 +374,7 @@ class TestEmulatorLifecycleConformance:
         # dois deixaria metade dos adapters com manifesto idêntico e o teste
         # passaria sem exercitar nada.
         mudado = derived(adapter_id, version="9.9.9", sha=UPDATED_SHA, commit="b" * 64)
-        lifecycle._registry = AdapterRegistry([load_manifest(mudado)])
+        lifecycle._registry = registry_for(mudado)
 
         with pytest.raises(SteamZeroError) as error:
             lifecycle.apply(envelope.plan_id, envelope.confirm_token)
@@ -257,7 +387,7 @@ class TestEmulatorLifecycleConformance:
         _install(lifecycle, adapter_id)
 
         novo = derived(adapter_id, version="2.0.0", sha=UPDATED_SHA, commit="c" * 64)
-        registry = AdapterRegistry([load_manifest(novo)])
+        registry = registry_for(novo)
         lifecycle._registry = registry
         if fake is None:
             lifecycle._artifacts = FakeArtifacts({URL: UPDATED})
@@ -284,10 +414,7 @@ class TestEmulatorLifecycleConformance:
         if fake is not None:
             fake.current = FlatpakState(True, fake.ref, "flathub", "d" * 64)
         else:
-            from steamzero.core import paths as core_paths
-
-            payload = core_paths.data_home() / "components" / adapter_id / "releases"
-            alvo = next(payload.rglob("payload"))
+            alvo = _deployed_payload(adapter_id, store)
             alvo.write_bytes(b"adulterado")
 
         estado = lifecycle.status(adapter_id)
@@ -311,7 +438,15 @@ class TestEmulatorLifecycleConformance:
     def test_launch_builds_an_atomic_argv_without_shell(
         self, adapter_id: str, store: state.StateStore
     ) -> None:
-        """Cada argumento é um item da lista — nada que um shell fatiaria."""
+        """Cada argumento é um item da lista — nada que um shell fatiaria.
+
+        DIMENSÃO NÃO APLICÁVEL a `kind=core`, e o motivo vem do próprio produto:
+        "core Libretro é carregado por" um frontend — quem lança é o RetroArch,
+        não o core. Exclusão POR DIMENSÃO com motivo escrito, nunca exclusão do
+        componente: o core segue na matriz para as outras onze provas.
+        """
+        if AdapterRegistry.bundled().get(adapter_id).kind == "core":
+            pytest.skip("core não lança sozinho; quem lança é o RetroArch")
         spy = SpawnSpy()
         lifecycle, _ = _lifecycle(store, derived(adapter_id), spawn=spy)
         _install(lifecycle, adapter_id)

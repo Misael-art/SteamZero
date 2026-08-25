@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any, ClassVar
 from urllib.parse import unquote, urlsplit
 
-from steamzero.adapters import lifecycle
+from steamzero.adapters import input_devices, lifecycle
 from steamzero.adapters.cheats.cheat_installer import FsCheatInstaller
 from steamzero.adapters.cheats.nsecm_source import NsecmSource
 from steamzero.adapters.cheats.state_store_cheats import StateStoreCheatsAdapter
@@ -458,6 +458,7 @@ class EmulationController:
         mod_catalog: ModCatalogPort | None = None,
         cheat_catalog: CheatCatalogPort | None = None,
         input_profiles: InputProfileManager | None = None,
+        retroarch_controls: input_devices.RetroArchControls | None = None,
         cloud_platforms: CloudPlatformService | None = None,
         flatpak_factory: Callable[[], FlatpakCLI] = FlatpakCLI,
     ) -> None:
@@ -495,6 +496,11 @@ class EmulationController:
         self._input_profiles = input_profiles or InputProfileManager(
             paths.config_home() / "input-profiles"
         )
+        # Preguiçoso de propósito: montar a integração varre o catálogo de
+        # autoconfigs do RetroArch, e construir um controller não pode custar
+        # isso nem tocar o host de quem só quer outra parte da fachada.
+        self._retroarch_controls_override = retroarch_controls
+        self._retroarch_controls_cache: input_devices.RetroArchControls | None = None
         self._cloud = cloud_platforms or CloudPlatformService(
             self._shortcuts,
             which=which,
@@ -1047,7 +1053,11 @@ class EmulationController:
                 raise SteamZeroError(
                     "E-API-SCHEMA", detail=f"perfil Flatpak sem ref: {profile.adapter_id}"
                 )
-            return ["flatpak", "run", "--user", flatpak_ref, *args]
+            # Mesmo ponto de composição que o lifecycle usa. Sem isto, "Abrir
+            # emulador" e "Jogar" subiriam o RetroArch sem o perfil de controle
+            # — que é o caminho que o usuário realmente percorre.
+            overlay = input_devices.retroarch_launch_arguments(flatpak_ref)
+            return ["flatpak", "run", "--user", flatpak_ref, *overlay, *args]
         if payload is None:
             raise SteamZeroError(
                 "E-API-SCHEMA", detail=f"fonte portátil sem payload: {profile.adapter_id}"
@@ -1628,6 +1638,39 @@ class EmulationController:
     def plan_library_health(self) -> dict[str, Any]:
         return self.plan_action({"actionId": "library.health.scan"})
 
+    _ARCHIVE_SUFFIXES = frozenset({".7z", ".rar", ".zip"})
+
+    def _count_unclaimed(
+        self,
+        root: Path,
+        counts: dict[str, int],
+        discovered: dict[str, dict[str, Any]],
+        errors: list[str],
+    ) -> None:
+        """Contabiliza o que nenhuma varredura reivindicou nesta raiz.
+
+        Roda para TODA raiz, com ou sem Switch. Antes só rodava no caminho do
+        Switch, e por isso uma raiz sem Switch devolvia ``scanned, 0 jogos, 0
+        erros`` mesmo tendo arquivos dentro: o conteúdo sumia sem diagnóstico.
+
+        Symlink conta como erro (não seguimos link para dentro do acervo) e
+        arquivo comprimido conta como incompatível. Um arquivo que não é nem
+        jogo reconhecido, nem symlink, nem comprimido é registrado como
+        ignorado, para que o relatório da varredura tenha denominador.
+        """
+        try:
+            for candidate in root.rglob("*"):
+                if candidate.is_symlink():
+                    counts["errors"] += 1
+                elif candidate.is_file():
+                    if candidate.suffix.casefold() in self._ARCHIVE_SUFFIXES:
+                        counts["incompatible"] += 1
+                    elif str(candidate) not in discovered:
+                        counts["ignored"] = counts.get("ignored", 0) + 1
+        except OSError as exc:
+            errors.append(f"{root}: {exc}")
+            counts["errors"] += 1
+
     def _scan_library_now(self, ctx: JobContext | None = None) -> dict[str, Any]:
         scanner = SwitchLibraryScanner()
         registry = PlatformRegistry.bundled()
@@ -1664,75 +1707,94 @@ class EmulationController:
                 counts["errors"] += 1
                 root_stats[root_id(root)] = {"counts": counts, "lastScan": scanned_at}
                 continue
-            switch_base_count = sum(1 for m in matches if m.content_kind == "base")
-            if switch_base_count == 0:
-                plat_matches = platform_scanner.inventory(root)
-                if not any(match.content_kind == "base" for match in plat_matches):
-                    directory_rows = directory_inventory.inventory(root)
-                    directory_report.extend(
-                        {
-                            "root": str(row.path),
-                            "disposition": row.disposition,
-                            "platformId": row.platform_id,
-                            "gameCount": row.game_count,
-                            "selectedCount": len(row.selected_games),
-                            "skippedSymlinks": row.skipped_symlinks,
-                        }
-                        for row in directory_rows
-                    )
-                    plat_matches = [
-                        game
-                        for row in directory_rows
-                        if row.disposition == "matched"
-                        for game in row.selected_games
-                    ]
-                for pm in plat_matches:
-                    if pm.content_kind != "base":
-                        continue
-                    counts["base"] += 1
-                    try:
-                        stat = pm.path.stat()
-                    except OSError as exc:
-                        errors.append(f"{pm.path}: {exc}")
-                        counts["errors"] += 1
-                        continue
-                    fingerprint = hashlib.sha256(
-                        f"{pm.path}\0{stat.st_size}\0{stat.st_mtime_ns}".encode()
-                    ).hexdigest()
-                    stable_id = hashlib.sha256(str(pm.path).encode()).hexdigest()[:24]
-                    game_identity, identity_diag = read_game_identity(pm.path, platform=pm.platform)
-                    discovered[str(pm.path)] = {
-                        "id": stable_id,
-                        "titleId": game_identity.value if game_identity is not None else None,
-                        "identityScheme": (
-                            game_identity.scheme.value if game_identity is not None else None
-                        ),
-                        "identityDiagnosis": identity_diag,
-                        "name": pm.path.stem,
-                        "state": "ready" if game_identity is not None else "unverified",
-                        "statusLabel": (
-                            f"{pm.format.upper()} · Platform: {pm.platform}"
-                            if pm.platform
-                            else pm.format.upper()
-                        ),
-                        "emulatorId": None,
-                        "path": str(pm.path),
-                        "fingerprint": fingerprint,
-                        "size": stat.st_size,
-                        "format": pm.format,
-                        "identityVerified": game_identity is not None,
-                        "contentKind": "base",
-                        "metadataSource": None,
-                        "version": None,
-                        "updateCount": 0,
-                        "updateVersion": None,
-                        "dlcCount": 0,
-                        "bannerAsset": None,
-                        "coverUrl": None,
-                        "mediaSource": None,
-                        "platform": pm.platform,
-                        "evidence": pm.evidence,
+            # A varredura de plataformas roda SEMPRE, não só quando o Switch não
+            # achou nada. Antes a decisão era pela raiz inteira: bastava um base
+            # do Switch para todos os demais diretórios de plataforma ficarem
+            # invisíveis para a fonte canônica — era assim que um jogo aparecia
+            # em Switch e não aparecia na Biblioteca. O acervo real do operador
+            # tem 198 diretórios sob UMA raiz, e só um deles é Switch.
+            # O passe do Switch é dono de TUDO que reconheceu — base, update e
+            # DLC. Deduplicar só pelos base faria um `[v131072].nsp` de update
+            # entrar de novo como se fosse jogo pelo scanner genérico.
+            switch_claimed_paths = {str(match.path) for match in matches}
+            switch_base_count = sum(1 for match in matches if match.content_kind == "base")
+            plat_matches = platform_scanner.inventory(root)
+            if not any(match.content_kind == "base" for match in plat_matches):
+                directory_rows = directory_inventory.inventory(root)
+                directory_report.extend(
+                    {
+                        "root": str(row.path),
+                        "disposition": row.disposition,
+                        "platformId": row.platform_id,
+                        "gameCount": row.game_count,
+                        "selectedCount": len(row.selected_games),
+                        "skippedSymlinks": row.skipped_symlinks,
                     }
+                    for row in directory_rows
+                )
+                plat_matches = [
+                    game
+                    for row in directory_rows
+                    if row.disposition == "matched"
+                    for game in row.selected_games
+                ]
+            for pm in plat_matches:
+                if pm.content_kind != "base":
+                    continue
+                if str(pm.path) in switch_claimed_paths:
+                    continue
+                counts["base"] += 1
+                try:
+                    stat = pm.path.stat()
+                except OSError as exc:
+                    errors.append(f"{pm.path}: {exc}")
+                    counts["errors"] += 1
+                    continue
+                fingerprint = hashlib.sha256(
+                    f"{pm.path}\0{stat.st_size}\0{stat.st_mtime_ns}".encode()
+                ).hexdigest()
+                stable_id = hashlib.sha256(str(pm.path).encode()).hexdigest()[:24]
+                game_identity, identity_diag = read_game_identity(pm.path, platform=pm.platform)
+                discovered[str(pm.path)] = {
+                    "id": stable_id,
+                    "titleId": game_identity.value if game_identity is not None else None,
+                    "identityScheme": (
+                        game_identity.scheme.value if game_identity is not None else None
+                    ),
+                    "identityDiagnosis": identity_diag,
+                    "name": pm.path.stem,
+                    "state": "ready" if game_identity is not None else "unverified",
+                    "statusLabel": (
+                        f"{pm.format.upper()} · Platform: {pm.platform}"
+                        if pm.platform
+                        else pm.format.upper()
+                    ),
+                    "emulatorId": None,
+                    "path": str(pm.path),
+                    "fingerprint": fingerprint,
+                    "size": stat.st_size,
+                    "format": pm.format,
+                    "identityVerified": game_identity is not None,
+                    "contentKind": "base",
+                    "metadataSource": None,
+                    "version": None,
+                    "updateCount": 0,
+                    "updateVersion": None,
+                    "dlcCount": 0,
+                    "bannerAsset": None,
+                    "coverUrl": None,
+                    "mediaSource": None,
+                    "platform": pm.platform,
+                    "evidence": pm.evidence,
+                }
+            if switch_base_count == 0:
+                # A contabilidade de arquivos que NENHUM scanner reivindicou
+                # rodava só no caminho do Switch. Numa raiz sem Switch — o caso
+                # dos 138 diretórios do acervo real que não têm manifesto de
+                # plataforma — a varredura devolvia "scanned, 0 jogos, 0 erros":
+                # o arquivo sumia sem nenhum diagnóstico. Falha degrada, nunca
+                # some calada (AGENTS.md secão 8).
+                self._count_unclaimed(root, counts, discovered, errors)
                 root_stats[root_id(root)] = {"counts": counts, "lastScan": scanned_at}
                 continue
             for match in matches:
@@ -1789,19 +1851,13 @@ class EmulationController:
                     "bannerAsset": banner_asset,
                     "coverUrl": banner_asset,
                     "mediaSource": media_source,
+                    # A entrada canônica declara plataforma venha ela de onde
+                    # vier. Sem isto, Home, Biblioteca, busca e launcher não
+                    # conseguiam agrupar por plataforma justamente os jogos que
+                    # o scanner do Switch já sabia serem de Switch.
+                    "platform": "switch",
                 }
-            try:
-                for candidate in root.rglob("*"):
-                    if candidate.is_symlink():
-                        counts["errors"] += 1
-                    elif candidate.is_file() and candidate.suffix.casefold() in {
-                        ".7z",
-                        ".rar",
-                        ".zip",
-                    }:
-                        counts["incompatible"] += 1
-            except OSError:
-                counts["errors"] += 1
+            self._count_unclaimed(root, counts, discovered, errors)
             root_stats[root_id(root)] = {"counts": counts, "lastScan": scanned_at}
             if ctx is not None:
                 ctx.set_progress(
@@ -1863,12 +1919,23 @@ class EmulationController:
         )
         if ctx is not None:
             ctx.set_progress("done", current=len(roots), total=len(roots), unit="roots")
+        # O resultado da varredura publica o denominador, não só o numerador.
+        # Sem isto, uma raiz cujo conteúdo nenhum scanner reivindicou devolvia
+        # "scanned, 0 jogos, 0 erros" e o usuário não tinha como distinguir
+        # "não há jogos aqui" de "seus jogos não foram reconhecidos".
+        incompatible = sum(
+            int(stat["counts"].get("incompatible", 0)) for stat in root_stats.values()
+        )
+        ignored = sum(int(stat["counts"].get("ignored", 0)) for stat in root_stats.values())
         return {
             "status": "scanned",
             "games": len(game_rows),
             "unidentified": unidentified,
             "errors": errors[:20],
             "ignoredAuxiliary": len(auxiliary),
+            "incompatible": incompatible,
+            "ignored": ignored,
+            "roots": len(roots),
         }
 
     def plan_action(self, payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -2166,6 +2233,22 @@ class EmulationController:
                 )
             plan_extra["profileId"] = profile_id
             plan_extra["orientation"] = orientation or "landscape"
+        elif action == "controls.autoconfig.apply":
+            # Rota de produção do writer. Sem ela o perfil chegava a
+            # `pending-write` e ninguém materializava o arquivo.
+            #
+            # O plano carrega o CONTEÚDO, então ele fica amarrado ao perfil, à
+            # revisão, à orientação e ao dispositivo exatos que o usuário viu ao
+            # confirmar. A precondição guarda o fingerprint do destino e `apply`
+            # a revalida: trocar de perfil depois de confirmar, ou um arquivo
+            # estrangeiro aparecer na janela, reprova como plano obsoleto em vez
+            # de gravar a coisa errada por cima.
+            arguments = self._autoconfig_arguments()
+            if arguments is None:
+                raise SteamZeroError(
+                    "E-TX-STALE-PLAN", detail="nenhum perfil de controle ativo para aplicar"
+                )
+            plan = self._retroarch_controls().plan(**arguments)
         elif action.startswith("controls.profile.clear:"):
             game_id = action.split(":", 1)[1]
             game = self._current_game(game_id)
@@ -2624,6 +2707,10 @@ class EmulationController:
             result = self._content.apply_recovery(plan_id, confirm_token)
         elif plan.kind == "switch-shader.invalidate":
             result = self._content.apply_shader_invalidation(plan_id, confirm_token)
+        elif plan.kind == "controls.autoconfig.apply":
+            # O efeito É a transação: commit só acontece depois de o arquivo ter
+            # sido gravado e verificado, e falha reverte com backup.
+            result = self._retroarch_controls().apply(plan_id, confirm_token)
         elif plan.kind.startswith("input-profile."):
             result = self._input_profiles.apply(plan_id, confirm_token)
         elif plan.kind.startswith("preservation."):
@@ -7343,6 +7430,10 @@ class EmulationController:
         não interdita (falha degrada, nunca trava)."""
         platform_status = self._input_profiles.status("switch")
         controllers = self._controller_count()
+        # O autoconfig é observado UMA vez por snapshot: o catálogo empacotado e
+        # o pad conectado não mudam entre jogos, e reabri-los por jogo colocaria
+        # centenas de leituras no caminho da dashboard.
+        autoconfig_by_profile: dict[str, dict[str, Any]] = {}
         for game in games:
             game_id = str(game.get("id", ""))
             game_status = self._input_profiles.status("switch", scope="game", scope_id=game_id)
@@ -7391,20 +7482,153 @@ class EmulationController:
                 "activateActions": activate_actions,
                 "clearAction": clear_action,
             }
+            autoconfig = self._autoconfig_view(active, autoconfig_by_profile, source)
+            autoconfig_state = str(autoconfig.get("state") or "") if autoconfig else ""
+            game["controlsProfile"] = game["controlsProfile"] | {
+                "autoconfig": autoconfig,
+                "applyAutoconfigAction": (
+                    self._action(
+                        "controls.autoconfig.apply",
+                        "Aplicar perfil no RetroArch",
+                        confirmation=True,
+                    )
+                    if autoconfig_state == "pending-write"
+                    else None
+                ),
+            }
             profile_configured = isinstance(active, Mapping)
             reasons: list[str] = []
             if not profile_configured:
                 reasons.append("Nenhum perfil de input ativo; o jogo usará os padrões do emulador.")
             if controllers == 0:
                 reasons.append("Nenhum controle detectado no host.")
-            ready = profile_configured and controllers > 0
+            # A prontidão passa a olhar o efeito, não a intenção. Perfil salvo
+            # com controle plugado NÃO é perfil valendo: enquanto o autoconfig
+            # não estiver aplicado, o emulador roda nos padrões dele, e dizer
+            # `ready` aqui era o falso verde que a G45 existe para não repetir.
+            if autoconfig is not None and autoconfig_state != "applied":
+                reasons.append(str(autoconfig.get("statusLabel") or ""))
+            ready = (
+                profile_configured
+                and controllers > 0
+                and autoconfig is not None
+                and autoconfig_state == "applied"
+            )
             game["controlsReadiness"] = {
                 "state": "ready" if ready else "attention",
-                "reason": None if ready else " ".join(reasons),
+                "reason": None if ready else " ".join(reason for reason in reasons if reason),
                 "profileConfigured": profile_configured,
                 "controllers": controllers,
+                "autoconfigState": autoconfig_state or "not-configured",
             }
         return games
+
+    def _effective_input_activation(self) -> Mapping[str, Any] | None:
+        """Perfil de PLATAFORMA — o único que um autoconfig pode materializar.
+
+        O autoconfig do RetroArch é por DISPOSITIVO: um arquivo por pad, lido
+        quando o pad é reconhecido, sem noção de qual jogo está rodando. Um
+        perfil por jogo não tem como valer por esse mecanismo — dois jogos com
+        perfis diferentes disputariam o mesmo arquivo. Perfil por jogo exigiria
+        remap por jogo do RetroArch, que é outro mecanismo e não está
+        implementado.
+
+        Por isso esta função lê deliberadamente só o escopo de plataforma, e
+        `_autoconfig_view` marca o jogo cujo perfil efetivo vem do escopo de
+        jogo como `unsupported-scope` em vez de oferecer uma gravação que
+        aplicaria silenciosamente OUTRO perfil.
+        """
+        status = self._input_profiles.status("switch")
+        active = status.get("active")
+        return active if isinstance(active, Mapping) else None
+
+    def _autoconfig_arguments(self) -> dict[str, Any] | None:
+        """Argumentos do perfil de PLATAFORMA para resolver/gravar o autoconfig."""
+        active = self._effective_input_activation()
+        if active is None:
+            return None
+        bindings = active.get("resolvedBindings")
+        if not isinstance(bindings, list) or not bindings:
+            return None
+        return {
+            "bindings": bindings,
+            "profile_id": str(active.get("id") or ""),
+            "profile_revision": int(active.get("revision") or 0),
+            "orientation": str(active.get("orientation") or ""),
+        }
+
+    def _retroarch_controls(self) -> input_devices.RetroArchControls:
+        if self._retroarch_controls_override is not None:
+            return self._retroarch_controls_override
+        if self._retroarch_controls_cache is None:
+            self._retroarch_controls_cache = input_devices.host_controls()
+        return self._retroarch_controls_cache
+
+    def _autoconfig_view(
+        self, active: Any, cache: dict[str, dict[str, Any]], source: str = "platform"
+    ) -> dict[str, Any] | None:
+        """Estado do autoconfig efetivo para o perfil ativo — só OBSERVAÇÃO.
+
+        Nunca grava: a materialização é ação explícita. Enquanto o arquivo não
+        existir de fato, o estado publicado não diz "aplicado", que é o ponto da
+        G45 — a tela precisa distinguir perfil salvo, perfil traduzido e perfil
+        efetivamente valendo.
+        """
+        if not isinstance(active, Mapping):
+            return None
+        bindings = active.get("resolvedBindings")
+        if not isinstance(bindings, list) or not bindings:
+            return None
+        if source != "platform":
+            # O perfil efetivo deste jogo vem do escopo de JOGO, e o autoconfig
+            # do RetroArch é por DISPOSITIVO. Materializá-lo gravaria o perfil da
+            # PLATAFORMA — outro perfil, silenciosamente. Melhor dizer que o
+            # mecanismo não alcança esse caso do que aplicar a coisa errada.
+            return {
+                "state": "unsupported-scope",
+                "statusLabel": input_devices.STATE_LABELS["unsupported-scope"],
+                "detail": (
+                    "o autoconfig do RetroArch vale por dispositivo, não por jogo; "
+                    "perfil por jogo exigiria remap por jogo, ainda não implementado"
+                ),
+                "device": None,
+                "deviceReason": "no-device",
+                "autoconfigCandidates": [],
+                "path": None,
+                "directoryDeclared": False,
+                "resolvedBindings": [],
+                "unresolvedBindings": [],
+                "withoutRetropadEquivalent": [],
+            }
+        profile_id = str(active.get("id") or "")
+        orientation = str(active.get("orientation") or "")
+        key = f"{profile_id}\0{active.get('revision')}\0{orientation}"
+        if key not in cache:
+            try:
+                outcome = self._retroarch_controls().status(
+                    bindings=bindings,
+                    profile_id=profile_id,
+                    profile_revision=int(active.get("revision") or 0),
+                    orientation=orientation,
+                )
+                cache[key] = outcome.to_dict()
+            except (OSError, SteamZeroError) as exc:
+                # Observar o host não pode derrubar a dashboard inteira; o
+                # perfil segue visível e a linha diz por que não sabemos (§8).
+                cache[key] = {
+                    "state": "awaiting-device",
+                    "statusLabel": input_devices.STATE_LABELS["awaiting-device"],
+                    "detail": str(exc),
+                    "device": None,
+                    "deviceReason": "no-device",
+                    "autoconfigCandidates": [],
+                    "path": None,
+                    "directoryDeclared": False,
+                    "resolvedBindings": [],
+                    "unresolvedBindings": [],
+                    "withoutRetropadEquivalent": [],
+                }
+        return cache[key]
 
     def _current_game(self, game_id: str) -> dict[str, Any]:
         games, _unidentified = self._load_library_cache()

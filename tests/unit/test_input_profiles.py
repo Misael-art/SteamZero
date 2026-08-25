@@ -153,6 +153,26 @@ def test_activation_is_confirmed_verified_noop_and_rollback_safe(
             "input_r_btn": "button.shoulder-right",
         },
         "withoutRetropadEquivalent": [],
+        # Cresceu de novo em 2026-08-12 (G45, segundo incremento): a tradução
+        # acima é abstrata e o sufixo dela é PROVISÓRIO — medindo os 420
+        # autoconfigs empacotados, 296 declaram o direcional como `_btn` contra
+        # 134 como `_axis`, então `input_up_axis` acima erra a maioria dos pads
+        # reais. Quem resolve o índice físico precisa dos bindings crus, e eles
+        # deixam de existir só dentro do arquivo de ativação.
+        "resolvedBindings": [
+            {"action": "game.up", "input": "hat.right", "required": True},
+            {"action": "game.right", "input": "hat.down", "required": True},
+            {"action": "game.down", "input": "hat.left", "required": True},
+            {"action": "game.left", "input": "hat.up", "required": True},
+            {"action": "game.primary", "input": "button.south", "required": True},
+            {"action": "game.secondary", "input": "button.east", "required": True},
+            {"action": "game.tertiary", "input": "button.west", "required": False},
+            {"action": "game.quaternary", "input": "button.north", "required": False},
+            {"action": "game.start", "input": "button.start", "required": True},
+            {"action": "game.select", "input": "button.select", "required": False},
+            {"action": "game.shoulder-left", "input": "button.shoulder-left", "required": False},
+            {"action": "game.shoulder-right", "input": "button.shoulder-right", "required": False},
+        ],
     }
 
     second = manager.plan_activate(platform_id="switch", profile_id="joycon-pair")

@@ -342,6 +342,8 @@ Item {
                     Item { Layout.fillHeight: true }
                     EditorialButton {
                         text: qsTr("Ver biblioteca")
+                        objectName: "overview.open-library"
+                        Accessible.name: text
                         Layout.minimumHeight: root.minimumTarget
                         onClicked: root.libraryRequested("all")
                     }
@@ -412,6 +414,8 @@ Item {
                     Item { Layout.fillHeight: true }
                     EditorialButton {
                         text: qsTr("Abrir sistema")
+                        objectName: "overview.open-system"
+                        Accessible.name: text
                         Layout.minimumHeight: root.minimumTarget
                         onClicked: root.systemRequested()
                     }
@@ -444,6 +448,8 @@ Item {
                     Item { Layout.fillHeight: true }
                     EditorialButton {
                         text: qsTr("Abrir recentes")
+                        objectName: "overview.open-recent"
+                        Accessible.name: text
                         Layout.minimumHeight: root.minimumTarget
                         onClicked: root.libraryRequested("all")
                     }
@@ -456,6 +462,8 @@ Item {
             Label { text: qsTr("Sistemas"); color: root.textColor; font.pixelSize: root.typeSize("heading", 0.92); font.weight: Font.DemiBold; Layout.fillWidth: true }
             EditorialButton {
                 text: qsTr("Todos os sistemas")
+                objectName: "overview.all-systems"
+                Accessible.name: text
                 Layout.minimumHeight: root.minimumTarget
                 onClicked: root.libraryRequested("all")
             }

@@ -146,6 +146,36 @@ _MEDIA_KIND_MAP: dict[str, str] = {
 _SUPPORTED_KINDS = frozenset(_MEDIA_KIND_MAP)
 
 
+#: Marcadores de problema de CREDENCIAL no texto que o servidor devolve.
+#:
+#: O ScreenScraper responde 403 tanto para cota estourada quanto para login
+#: recusado, com o mesmo codigo. Classificar 403 sempre como cota mandava o
+#: usuario investigar quota quando o problema era credencial ou parametro —
+#: medido contra a API real em 2026-08-12, que respondeu "Erreur de login" com
+#: 403 (G40).
+#:
+#: A varredura e pelo TEXTO porque a chave da mensagem no payload nao esta
+#: documentada no repositorio e nao deve ser adivinhada: se o servidor mandou a
+#: razao em algum campo, ela aparece aqui. Sem marcador, o comportamento
+#: anterior permanece — reclassifica so com evidencia positiva.
+_CREDENTIAL_MARKERS = (
+    "login",
+    "identifiant",
+    "mot de passe",
+    "password",
+    "credential",
+    "connexion",
+)
+
+
+def _forbidden_code(*texts: object) -> str:
+    """Classifica um 403 do ScreenScraper por aquilo que ele mesmo disse."""
+    haystack = " ".join(str(item) for item in texts if item).casefold()
+    if any(marker in haystack for marker in _CREDENTIAL_MARKERS):
+        return "E-SCRAPE-CREDENTIAL-REJECTED"
+    return "E-SCRAPE-QUOTA-EXCEEDED"
+
+
 class ScreenScraperAdapter(BaseMediaProvider):
     """Adapter para ScreenScraper.fr API v2."""
 
@@ -198,7 +228,11 @@ class ScreenScraperAdapter(BaseMediaProvider):
             if code == "429":
                 raise SteamZeroError("E-SCRAPE-RATE-LIMITED")
             if code == "403":
-                raise SteamZeroError("E-SCRAPE-QUOTA-EXCEEDED")
+                message = " ".join(error.itertext())
+                raise SteamZeroError(
+                    _forbidden_code(message),
+                    detail=f"ScreenScraper: {message.strip()[:200] or code}",
+                )
             raise SteamZeroError(
                 "E-SCRAPE-CREDENTIAL-REJECTED",
                 detail="ScreenScraper recusou as credenciais informadas",
@@ -242,7 +276,10 @@ class ScreenScraperAdapter(BaseMediaProvider):
                 if code in ("429", "rate limit"):
                     raise SteamZeroError("E-SCRAPE-RATE-LIMITED", detail=f"ScreenScraper: {code}")
                 if code in ("403", "quota"):
-                    raise SteamZeroError("E-SCRAPE-QUOTA-EXCEEDED", detail=f"ScreenScraper: {code}")
+                    raise SteamZeroError(
+                        _forbidden_code(code, *err.values()),
+                        detail=f"ScreenScraper: {code}",
+                    )
                 if code == "401":
                     raise SteamZeroError(
                         "E-SCRAPE-CREDENTIAL-REJECTED",
@@ -331,7 +368,11 @@ class ScreenScraperAdapter(BaseMediaProvider):
                 if code in ("429", "rate limit"):
                     raise SteamZeroError("E-SCRAPE-RATE-LIMITED", detail=f"ScreenScraper: {code}")
                 if code in ("403", "quota"):
-                    raise SteamZeroError("E-SCRAPE-QUOTA-EXCEEDED", detail=f"ScreenScraper: {code}")
+                    # `err` aqui e Element XML, nao dict: texto vem de itertext().
+                    raise SteamZeroError(
+                        _forbidden_code(code, " ".join(err.itertext())),
+                        detail=f"ScreenScraper: {code}",
+                    )
                 if code == "401":
                     raise SteamZeroError(
                         "E-SCRAPE-CREDENTIAL-REJECTED",

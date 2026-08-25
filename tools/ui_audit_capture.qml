@@ -274,20 +274,57 @@ Main {
         }
     }
 
+    // Contexto que o manifesto precisa registrar por captura. Sem isto o PNG não
+    // diz em que resolução, tema ou origem de dados foi tirado, e duas auditorias
+    // ficam incomparáveis.
+    function captureMetadata(item) {
+        return JSON.stringify({
+            "name": item.name,
+            "section": item.section,
+            "kind": item.kind,
+            "viewport": item.width + "x" + item.height,
+            "scaleFactor": Screen.devicePixelRatio,
+            "themeId": _themeBridge.themeId,
+            "themeVersion": _themeBridge.themeVersion,
+            "highContrast": highContrast,
+            "reducedMotion": reducedMotion,
+            "dataOrigin": (apiUrl !== "" && apiToken !== "") ? "bridge-live" : "fallback-qml"
+        })
+    }
+
+    property int pendingExitCode: 0
+
+    // Sair de dentro do callback de grabToImage derruba o processo por sinal —
+    // foi a causa do qmlReturncode=-11 registrado na auditoria de 2026-08-11.
+    // O pedido de saída passa a atravessar o event loop.
+    function requestExit(code) {
+        pendingExitCode = code
+        exitTimer.restart()
+    }
+
+    Timer {
+        id: exitTimer
+        interval: 0
+        repeat: false
+        onTriggered: Qt.exit(window.pendingExitCode)
+    }
+
     function grabCurrent() {
         const item = queue[captureIndex]
         const target = responsiveShell ? responsiveShell : window.contentItem
+        const metadata = captureMetadata(item)
         target.grabToImage(function(result) {
             const path = pathFor(item.name)
             if (!result.saveToFile(path)) {
                 console.error("AUDIT-FAIL save " + path)
-                Qt.exit(1)
+                requestExit(1)
                 return
             }
             console.log("AUDIT-OK " + path)
+            console.log("AUDIT-META " + metadata)
             captureIndex += 1
             busy = false
-            nextCapture()
+            Qt.callLater(nextCapture)
         })
     }
 
@@ -296,7 +333,7 @@ Main {
             return
         if (captureIndex >= queue.length) {
             console.log("AUDIT-DONE count=" + queue.length + " outDir=" + outDir)
-            Qt.exit(0)
+            requestExit(0)
             return
         }
         busy = true

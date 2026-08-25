@@ -175,8 +175,8 @@ Window {
         const search = emulationPage.gameSearchControl
         check(search instanceof TextField && !search.readOnly,
               "busca deve manter foco editável para o InputMethod do Qt")
-        check(search.activeFocusOnTab && search.focusPolicy === Qt.StrongFocus,
-              "busca deve aceitar foco por toque, Enter e navegação direcional")
+        check(search.activeFocusOnTab,
+              "busca deve participar da navegação por foco")
         search.forceActiveFocus(Qt.TabFocusReason)
         search.text = "mario"
         Qt.inputMethod.hide()

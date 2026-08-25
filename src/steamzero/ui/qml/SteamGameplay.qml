@@ -22,6 +22,36 @@ Item {
     required property color amberColor
     required property color redColor
 
+    // Rotulo sobre o fundo do item SELECIONADO.
+    //
+    // O delegate trocava o fundo para `cyanDarkColor` quando checked e deixava
+    // o rotulo em `textColor`. No tema claro isso da 1,95:1 contra 4,5 exigido
+    // — da para adivinhar "Global", nao para ler. Medido na captura e conferido
+    // a olho.
+    //
+    // Nenhuma cor FIXA resolve, e por isso a escolha e calculada: no tema claro
+    // `textColor` e escuro (1,95) e `backgroundColor` e claro (7,02); no escuro
+    // e o inverso (4,53 contra 3,53). A regra pega a que contrasta mais com o
+    // fundo selecionado, e passa nos dois.
+    function _channelLuminance(value) {
+        return value <= 0.03928 ? value / 12.92
+                                : Math.pow((value + 0.055) / 1.055, 2.4)
+    }
+    function _relativeLuminance(color) {
+        return 0.2126 * _channelLuminance(color.r)
+             + 0.7152 * _channelLuminance(color.g)
+             + 0.0722 * _channelLuminance(color.b)
+    }
+    function contrastRatio(first, second) {
+        const a = _relativeLuminance(first)
+        const b = _relativeLuminance(second)
+        return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
+    }
+    readonly property color selectedLabelColor:
+        contrastRatio(textColor, cyanDarkColor)
+            >= contrastRatio(backgroundColor, cyanDarkColor)
+        ? textColor : backgroundColor
+
     signal planRequested(var payload)
     signal applyRequested(string planId, string confirmToken)
     signal profileRollbackRequested(string operationId)
@@ -810,6 +840,10 @@ Item {
                     textRole: "name"
                     currentIndex: page.gameIndex
                     enabled: page.games.length > 0
+                    Accessible.description: enabled ? ""
+                        : qsTr("Nenhum jogo Steam inventariado para escolher.")
+                    ToolTip.visible: hovered && !enabled
+                    ToolTip.text: Accessible.description
                     visible: page.workspaceIndex !== 3
                     Layout.preferredWidth: page.compactLayout ? 280
                         : Math.min(360, page.width * 0.3)
@@ -864,6 +898,7 @@ Item {
                         Layout.minimumHeight: page.minimumTouchTarget
                         Accessible.name: text
                         onClicked: page.scopeIndex = index
+                        palette.buttonText: checked ? page.selectedLabelColor : page.textColor
                         background: Rectangle {
                             color: parent.checked ? page.cyanDarkColor : page.surfaceColor
                             border.color: parent.checked || parent.activeFocus ? page.cyanColor : page.borderColor
@@ -902,6 +937,7 @@ Item {
                         Layout.minimumHeight: page.minimumTouchTarget
                         Accessible.name: qsTr("Abrir área %1").arg(text)
                         onClicked: page.workspaceIndex = index
+                        palette.buttonText: checked ? page.selectedLabelColor : page.textColor
                         background: Rectangle {
                             color: parent.checked ? page.cyanDarkColor : page.surfaceColor
                             border.color: parent.checked || parent.activeFocus
@@ -1151,7 +1187,10 @@ Item {
                                             visible: modelData.id === "gamemode" && modelData.state !== "ready"
                                             text: qsTr("Ver instruções")
                                             font.pixelSize: 10
-                                            Layout.preferredHeight: 32
+                                            // 32px nao alcanca o polegar no Deck;
+                                            // o minimo do produto e 48.
+                                            Layout.preferredHeight: page.minimumTouchTarget
+                                            Layout.minimumHeight: page.minimumTouchTarget
                                             Accessible.name: text
                                             onClicked: {
                                                 page.gamemodeGuidance = modelData
@@ -1224,6 +1263,7 @@ Item {
                                     Layout.minimumHeight: page.compactLayout ? 56 : 68
                                     Accessible.name: text.replace("\n", " ")
                                     onClicked: page.choosePerformance(index)
+                                    palette.buttonText: checked ? page.selectedLabelColor : page.textColor
                                     background: Rectangle { color: parent.checked ? page.cyanDarkColor : page.raisedColor; border.color: parent.checked || parent.activeFocus ? page.cyanColor : page.borderColor; border.width: parent.checked || parent.activeFocus ? 2 : 1; radius: 6 }
                                 }
                             }
@@ -1245,6 +1285,7 @@ Item {
                                     Layout.minimumHeight: 48
                                     Accessible.name: qsTr("%1 FPS").arg(text)
                                     onClicked: page.fpsIndex = index
+                                    palette.buttonText: checked ? page.selectedLabelColor : page.textColor
                                     background: Rectangle { color: parent.checked ? page.cyanDarkColor : page.raisedColor; border.color: parent.checked || parent.activeFocus ? page.cyanColor : page.borderColor; border.width: parent.checked || parent.activeFocus ? 2 : 1; radius: 5 }
                                 }
                             }
@@ -1282,7 +1323,13 @@ Item {
                                     Layout.minimumHeight: 48
                                     Accessible.name: text
                                     enabled: index === 0 || Boolean(page.hardware.gpuMax)
+                                    Accessible.description: enabled ? ""
+                                        : qsTr("O host não publicou o clock máximo da GPU; "
+                                            + "só o modo automático é possível.")
+                                    ToolTip.visible: hovered && !enabled
+                                    ToolTip.text: Accessible.description
                                     onClicked: page.gpuModeIndex = index
+                                    palette.buttonText: checked ? page.selectedLabelColor : page.textColor
                                     background: Rectangle { color: parent.checked ? page.cyanDarkColor : page.raisedColor; border.color: parent.checked || parent.activeFocus ? page.cyanColor : page.borderColor; border.width: parent.checked || parent.activeFocus ? 2 : 1; radius: 5 }
                                 }
                             }
@@ -1295,6 +1342,11 @@ Item {
                             Switch {
                                 checked: page.gamescopeEnabled
                                 enabled: page.environmentById("gamescope").state === "ready"
+                                Accessible.description: enabled ? ""
+                                    : qsTr("Gamescope não está pronto neste host; "
+                                        + "resolva em Sistema.")
+                                ToolTip.visible: hovered && !enabled
+                                ToolTip.text: Accessible.description
                                 Layout.minimumWidth: page.minimumTouchTarget
                                 Layout.minimumHeight: page.minimumTouchTarget
                                 Accessible.name: qsTr("Ativar Gamescope")
@@ -1309,6 +1361,11 @@ Item {
                             Switch {
                                 checked: page.gameModeEnabled
                                 enabled: page.environmentById("gamemode").state === "ready"
+                                Accessible.description: enabled ? ""
+                                    : qsTr("Feral GameMode não está pronto neste host; "
+                                        + "resolva em Sistema.")
+                                ToolTip.visible: hovered && !enabled
+                                ToolTip.text: Accessible.description
                                 Layout.minimumWidth: page.minimumTouchTarget
                                 Layout.minimumHeight: page.minimumTouchTarget
                                 Accessible.name: qsTr("Ativar Feral GameMode")
@@ -1327,10 +1384,16 @@ Item {
                                     checked: page.mangoIndex === index
                                     checkable: true
                                     enabled: index === 0 || page.environmentById("mangohud").state === "ready"
+                                    Accessible.description: enabled ? ""
+                                        : qsTr("MangoHud não está pronto neste host; "
+                                            + "resolva em Sistema.")
+                                    ToolTip.visible: hovered && !enabled
+                                    ToolTip.text: Accessible.description
                                     Layout.fillWidth: true
                                     Layout.minimumHeight: 48
                                     Accessible.name: text
                                     onClicked: page.mangoIndex = index
+                                    palette.buttonText: checked ? page.selectedLabelColor : page.textColor
                                     background: Rectangle { color: parent.checked ? page.cyanDarkColor : page.raisedColor; border.color: parent.checked || parent.activeFocus ? page.cyanColor : page.borderColor; border.width: parent.checked || parent.activeFocus ? 2 : 1; radius: 5 }
                                 }
                             }
@@ -1435,13 +1498,30 @@ Item {
                                 font.bold: true
                             }
                         }
+                        // Nasceu sem `onClicked`: habilitado, com chevron, e
+                        // clicar nunca fez nada. Não existe superfície avançada
+                        // de LSFG para revelar, então a saída honesta é a mesma
+                        // que o domínio já usa para capacidade não construída
+                        // (`feature.planned`): desabilitado, com o motivo à
+                        // vista, em vez de uma promessa que não se cumpre.
                         Button {
                             text: qsTr("Configurações avançadas")
                             icon.name: "go-down"
                             flat: true
+                            enabled: false
                             Layout.fillWidth: true
                             Layout.minimumHeight: 48
                             Accessible.name: text
+                            Accessible.description: qsTr("Em desenvolvimento: os ajustes avançados de LSFG ainda não são expostos pelo backend.")
+                            ToolTip.visible: hovered
+                            ToolTip.text: Accessible.description
+                        }
+                        Label {
+                            text: qsTr("Ajustes avançados de LSFG ainda não disponíveis.")
+                            color: page.mutedColor
+                            font.pixelSize: 11
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
                         }
                     }
                 }
@@ -1565,6 +1645,12 @@ Item {
                             Layout.fillWidth: true
                             Layout.minimumHeight: 48
                             Accessible.name: qsTr("Escolher layout de controles para o jogo")
+                            // Bloqueado tem de dizer por quê. Sem isto, com a
+                            // biblioteca vazia o controle ficava cinza e mudo, e
+                            // o usuário não sabia se era falta de jogo ou defeito.
+                            Accessible.description: page.games.length > 0
+                                ? qsTr("Layout aplicado ao jogo selecionado")
+                                : qsTr("Nenhum jogo na biblioteca; adicione um jogo para escolher o layout")
                             onActivated: page.controllerLayoutIndex = currentIndex
                         }
                         Label {
@@ -1757,6 +1843,12 @@ Item {
                             Layout.fillWidth: true
                             Layout.minimumHeight: 48
                             Accessible.name: qsTr("Selecionar conta Steam para a mídia")
+                            // Bloqueado tem de dizer por quê: sem conta detectada
+                            // o controle ficava cinza e mudo, indistinguível de
+                            // defeito para quem usa leitor de tela.
+                            Accessible.description: count > 0
+                                ? qsTr("Conta usada para localizar a mídia do Steam")
+                                : qsTr("Nenhuma conta Steam detectada neste host")
                         }
                         Label { text: qsTr("Pasta do pacote"); color: page.mutedColor }
                         RowLayout {
@@ -1886,6 +1978,10 @@ Item {
                 Layout.fillWidth: true
                 Layout.minimumHeight: page.compactLayout ? page.minimumTouchTarget : 54
                 Accessible.name: text
+                Accessible.description: enabled ? ""
+                    : qsTr("Nenhum jogo na biblioteca Steam para aplicar o perfil.")
+                ToolTip.visible: hovered && !enabled
+                ToolTip.text: Accessible.description
                 onClicked: page.planRequested(page.payload())
                 background: Rectangle {
                     color: parent.enabled ? "#069bd7" : page.raisedColor

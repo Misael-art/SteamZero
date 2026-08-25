@@ -3,7 +3,7 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, "codex/*release-candidate*"]
     tags: ["v*"]
   pull_request:
   workflow_dispatch:

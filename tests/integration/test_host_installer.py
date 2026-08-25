@@ -306,6 +306,15 @@ def test_verify_release_smoke_fails_when_doctor_produces_no_json(tmp_path: Path)
         install_host._verify_release(release)
 
 
+def test_release_verification_can_require_root_safe_ownership(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    release = _release(layout, "release-a")
+    release.chmod(0o777)
+
+    with pytest.raises(RuntimeError, match="permissões inseguras"):
+        install_host._verify_release(release, require_root_ownership=True)
+
+
 def test_activation_and_rollback_switch_current_atomically(tmp_path: Path) -> None:
     layout = _layout(tmp_path)
     _release(layout, "release-a")
@@ -320,6 +329,17 @@ def test_activation_and_rollback_switch_current_atomically(tmp_path: Path) -> No
     assert result["release"] == "release-b"
     assert layout.current.readlink() == Path("releases/release-b")
     assert install_host.status(layout)["release"] == "release-b"
+
+
+def test_host_mutation_lock_rejects_a_second_writer(tmp_path: Path) -> None:
+    lock = tmp_path / "steamzero-release.lock"
+
+    with (
+        install_host._host_mutation_lock(lock),
+        pytest.raises(RuntimeError, match="outra mutação"),
+        install_host._host_mutation_lock(lock),
+    ):
+        pytest.fail("a segunda mutação não deveria adquirir o lock global")
 
 
 def test_stable_host_gate_accepts_legacy_daemon_by_version_and_process_path(
@@ -863,6 +883,12 @@ def test_activation_publishes_and_removes_user_units_by_release_capability(
     assert not layout.gamemode_command.exists()
     assert not layout.admin_command.exists()
     assert not layout.polkit_policy.exists()
+
+
+def test_core_service_allows_only_local_and_internet_socket_families(tmp_path: Path) -> None:
+    unit = install_host._service_unit(_layout(tmp_path))
+
+    assert "RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6" in unit
 
 
 def test_activation_refuses_unmanaged_gamemode_command(tmp_path: Path) -> None:

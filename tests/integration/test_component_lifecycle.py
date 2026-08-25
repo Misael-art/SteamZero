@@ -12,13 +12,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 from collections.abc import Iterator, Sequence
 from pathlib import Path
 
 import pytest
 
 from fixtures.eol_adapter import EOL_ID, EOL_REF, eol_registry
-from steamzero.adapters.flatpak import FlatpakState
+from steamzero.adapters import input_devices
+from steamzero.adapters.flatpak import FlatpakExecutor, FlatpakPlan, FlatpakState
 from steamzero.adapters.lifecycle import ComponentLifecycle, route_for
 from steamzero.adapters.registry import (
     AdapterRegistry,
@@ -112,6 +114,7 @@ def portable_manifest(
     payload: bytes,
     *,
     capabilities: list[str] | None = None,
+    source_type: str = "appimage",
 ) -> dict:
     return {
         "schemaVersion": 1,
@@ -122,7 +125,7 @@ def portable_manifest(
         or ["detect", "status", "install", "update", "verify", "uninstall"],
         "sources": [
             {
-                "type": "appimage",
+                "type": source_type,
                 "version": version,
                 "priority": 1,
                 "url": f"https://fixtures.invalid/demo-{version}.AppImage",
@@ -174,6 +177,26 @@ def bundled_with_fake(flatpak: FakeFlatpak, store: state.StateStore) -> Componen
         store,
         registry,
         flatpak_factory=lambda: flatpak,  # type: ignore[arg-type]
+    )
+
+
+def _retroarch_lifecycle(
+    store: state.StateStore,
+    spawned: list[tuple[object, ...]],
+    managed: input_devices.ManagedRetroArchConfig,
+) -> ComponentLifecycle:
+    """Lifecycle com o RetroArch reportado como instalado."""
+    registry = AdapterRegistry.bundled()
+    source = registry.get("retroarch").preferred_source("flatpak", allow_eol=True)
+    assert source.ref is not None
+    fake = FakeFlatpak(FlatpakState(True, source.ref, source.remote, source.version))
+    return ComponentLifecycle(
+        store,
+        registry,
+        flatpak_factory=lambda: fake,  # type: ignore[arg-type]
+        which=lambda _name: "/usr/bin/flatpak",
+        spawn=lambda argv: spawned.append(tuple(argv)) or 0,  # type: ignore[return-value]
+        retroarch_config=managed,
     )
 
 
@@ -400,8 +423,185 @@ class TestFailureAggregation:
         assert "boom" in (status["detail"] or "")
 
 
+class TestMetadataOnlyPlanning:
+    """Planejar congela intenção e metadados; aquisição começa só no apply."""
+
+    @pytest.mark.parametrize("source_type", ["appimage", "native"])
+    def test_portable_plan_never_fetches_remote_payload(
+        self, store: state.StateStore, source_type: str
+    ) -> None:
+        payload = executable_payload()
+        artifacts = FakeArtifacts({})
+        registry = AdapterRegistry(
+            [load_manifest(portable_manifest("1.0.0", payload, source_type=source_type))]
+        )
+        lifecycle = ComponentLifecycle(store, registry, artifacts=artifacts)
+
+        plan = lifecycle.plan("demo-emulator", "install")
+
+        assert plan.status == "pending"
+        assert plan.executor == "engine"
+        assert artifacts.requests == []
+
+    def test_flatpak_plan_never_resolves_remote_commit(self, store: state.StateStore) -> None:
+        flatpak = FakeFlatpak()
+        lifecycle = bundled_with_fake(flatpak, store)
+
+        plan = lifecycle.plan("retroarch", "install")
+
+        assert plan.status == "pending"
+        assert not [call for call in flatpak.calls if call[0] == "resolve"]
+
+    def test_flatpak_commit_crash_rolls_outer_plan_and_job_fact_forward(
+        self,
+        store: state.StateStore,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        flatpak = FakeFlatpak()
+        lifecycle = bundled_with_fake(flatpak, store)
+        envelope = lifecycle.plan("retroarch", "install")
+        save_plan = FlatpakExecutor._save_plan
+
+        def lose_power_before_plan(self: FlatpakExecutor, candidate: FlatpakPlan) -> None:
+            if candidate.status == "applied":
+                raise SimulatedKill()
+            save_plan(self, candidate)
+
+        monkeypatch.setattr(FlatpakExecutor, "_save_plan", lose_power_before_plan)
+        with pytest.raises(SimulatedKill):
+            lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        monkeypatch.setattr(FlatpakExecutor, "_save_plan", save_plan)
+
+        outer_before = json.loads(paths.plan_path(envelope.plan_id).read_text(encoding="utf-8"))
+        delegated_id = outer_before["delegated"]["flatpakPlanId"]
+        assert outer_before["status"] == "pending"
+        assert (
+            json.loads(paths.plan_path(delegated_id).read_text(encoding="utf-8"))["status"]
+            == "pending"
+        )
+
+        recovered = lifecycle.recover()
+
+        assert any(item.get("planId") == envelope.plan_id for item in recovered)
+        assert lifecycle._apply_status(envelope.plan_id) == "applied"
+        assert (
+            json.loads(paths.plan_path(delegated_id).read_text(encoding="utf-8"))["status"]
+            == "applied"
+        )
+
+    def test_libretro_plan_never_downloads_archive(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        artifacts = FakeArtifacts({})
+        lifecycle = ComponentLifecycle(
+            store,
+            AdapterRegistry.bundled(),
+            artifacts=artifacts,
+            libretro_core_root=tmp_path / "cores",
+        )
+
+        plan = lifecycle.plan("libretro-genesis-plus-gx", "install")
+
+        assert plan.status == "pending"
+        assert plan.executor == "libretro"
+        assert artifacts.requests == []
+
+    def test_all_33_bundled_components_plan_below_two_seconds_without_remote_io(
+        self, store: state.StateStore
+    ) -> None:
+        registry = AdapterRegistry.bundled()
+        manifests = registry.list()
+        assert len(manifests) == 33
+        artifacts = FakeArtifacts({})
+        flatpak = FakeFlatpak()
+        lifecycle = ComponentLifecycle(
+            store,
+            registry,
+            artifacts=artifacts,
+            flatpak_factory=lambda: flatpak,  # type: ignore[arg-type]
+        )
+
+        durations: dict[str, float] = {}
+        for manifest in manifests:
+            started = time.monotonic()
+            plan = lifecycle.plan(manifest.id, "install")
+            durations[manifest.id] = time.monotonic() - started
+            assert plan.status == "pending"
+
+        assert max(durations.values()) < 2.0, durations
+        assert artifacts.requests == []
+        assert flatpak.calls == []
+
+    def test_apply_validation_is_read_only_and_rejects_wrong_token(
+        self, store: state.StateStore
+    ) -> None:
+        flatpak = FakeFlatpak()
+        lifecycle = bundled_with_fake(flatpak, store)
+        plan = lifecycle.plan("retroarch", "install")
+
+        metadata = lifecycle.validate_apply(plan.plan_id, plan.confirm_token)
+
+        assert metadata == {
+            "adapterId": "retroarch",
+            "action": "install",
+            "executor": "flatpak",
+        }
+        assert flatpak.calls == []
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.validate_apply(plan.plan_id, "token-incorreto")
+        assert error.value.code == "E-TX-CONFIRM-REQUIRED"
+
+    def test_expired_confirmation_aborts_plan_without_effect(self, store: state.StateStore) -> None:
+        from dataclasses import replace as dataclass_replace
+
+        payload = executable_payload()
+        lifecycle = ComponentLifecycle(
+            store,
+            portable_registry("1.0.0", payload),
+            artifacts=FakeArtifacts({}),
+        )
+        plan = lifecycle.plan("demo-emulator", "install")
+        lifecycle._save_plan(dataclass_replace(plan, expires_at="2020-01-01T00:00:00+00:00"))
+
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.validate_apply(plan.plan_id, plan.confirm_token)
+
+        assert error.value.code == "E-TX-CONFIRM-REQUIRED"
+        saved = json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))
+        assert saved["status"] == "aborted"
+        assert lifecycle.status("demo-emulator")["state"] == "missing"
+
+    def test_recovery_aborts_expired_outer_plan_without_delegated_effect(
+        self, store: state.StateStore
+    ) -> None:
+        lifecycle = bundled_with_fake(FakeFlatpak(), store)
+        plan = lifecycle.plan("azahar", "install")
+        raw = json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))
+        raw["expiresAt"] = "2000-01-01T00:00:00+00:00"
+        fs.write_atomic_text(paths.plan_path(plan.plan_id), json.dumps(raw, sort_keys=True))
+
+        recovered = lifecycle.recover()
+
+        assert any(
+            item.get("planId") == plan.plan_id
+            and item.get("executor") == "component-plan"
+            and item.get("state") == "aborted"
+            for item in recovered
+        )
+        assert lifecycle._apply_status(plan.plan_id) == "aborted"
+
+    def test_recovery_preserves_fresh_outer_plan_without_effect(
+        self, store: state.StateStore
+    ) -> None:
+        lifecycle = bundled_with_fake(FakeFlatpak(), store)
+        plan = lifecycle.plan("azahar", "install")
+
+        assert lifecycle.recover() == []
+        assert lifecycle._apply_status(plan.plan_id) == "pending"
+
+
 class TestPlanSurvivesProcess:
-    """Envelope v2 persistido: plan e apply em instâncias/processos diferentes."""
+    """Envelope persistido: plan e apply em instâncias/processos diferentes."""
 
     def _install(self, store: state.StateStore, payload: bytes, version: str = "1.0.0"):
         url = f"https://fixtures.invalid/demo-{version}.AppImage"
@@ -416,7 +616,8 @@ class TestPlanSurvivesProcess:
         payload = executable_payload()
         _first, envelope = self._install(store, payload)
         assert envelope.executor == "engine"
-        assert envelope.delegated["transactionPlanId"]
+        assert envelope.schema_version == 3
+        assert envelope.delegated == {}
 
         second = ComponentLifecycle(
             store,
@@ -427,19 +628,63 @@ class TestPlanSurvivesProcess:
         assert result["status"] == "ok"
         assert second.status("demo-emulator")["state"] == "installed"
 
+    def test_validated_worker_reloads_confirmation_from_protected_plan(
+        self, store: state.StateStore
+    ) -> None:
+        payload = executable_payload()
+        _first, envelope = self._install(store, payload)
+        worker = ComponentLifecycle(
+            store,
+            portable_registry("1.0.0", payload),
+            artifacts=FakeArtifacts({"https://fixtures.invalid/demo-1.0.0.AppImage": payload}),
+        )
+
+        result = worker._apply_validated(envelope.plan_id)
+
+        assert result["status"] == "ok"
+        assert worker.status("demo-emulator")["state"] == "installed"
+
     def test_flatpak_plan_applies_from_a_new_instance(self, store: state.StateStore) -> None:
+        """Contrato v3: planejar é metadata-only; o delegado nasce no apply.
+
+        A versão anterior deste teste exigia ``delegated["flatpakPlanId"]`` já em
+        ``plan()``, que é o contrato v2. No v3 ``plan()`` congela apenas intenção
+        e metadados confiáveis do manifesto, e ``delegated`` num envelope pendente
+        significa outra coisa: tentativa interrompida esperando recovery.
+
+        O ``planId`` externo continua sendo a identidade observável da operação —
+        é por ele que UI e CLI seguem o job. Se o apply publicasse a operação sob
+        o id do plano Flatpak delegado, o acompanhamento ficaria órfão.
+        """
         fake = FakeFlatpak()
         first = bundled_with_fake(fake, store)
         envelope = first.plan("retroarch", "install")
         assert envelope.executor == "flatpak"
-        assert envelope.delegated["flatpakPlanId"]
-        assert envelope.plan_id != envelope.delegated["flatpakPlanId"]
+        assert envelope.schema_version == 3
+        assert envelope.delegated == {}, "v3 não delega nada antes da confirmação"
+
+        # Metadata-only vale também no que foi PERSISTIDO, não só no objeto.
+        persisted = json.loads(paths.plan_path(envelope.plan_id).read_text(encoding="utf-8"))
+        assert persisted["schemaVersion"] == 3
+        assert persisted["delegated"] == {}
+        assert persisted["status"] == "pending"
+
+        # Nenhuma resolução, instalação ou deploy antes da confirmação.
+        assert fake.calls == [], f"plan() tocou a porta Flatpak: {fake.calls}"
 
         second = bundled_with_fake(fake, store)
         result = second.apply(envelope.plan_id, envelope.confirm_token)
         assert result["status"] == "ok"
         assert result["executor"] == "flatpak"
+        assert result["planVersion"] == 3
         assert result["operationId"] == envelope.plan_id
+
+        # O plano Flatpak delegado só existe depois da confirmação, e é outro id.
+        applied = json.loads(paths.plan_path(envelope.plan_id).read_text(encoding="utf-8"))
+        delegated_id = applied["delegated"]["flatpakPlanId"]
+        assert delegated_id
+        assert delegated_id != envelope.plan_id
+
         assert store.get_operation(envelope.plan_id)["state"] == "committed"  # type: ignore[index]
         events, _more = store.events_page(
             after_seq=0,
@@ -453,6 +698,78 @@ class TestPlanSurvivesProcess:
         ]
         assert second.status("retroarch")["state"] == "installed"
 
+    def test_repeated_confirmation_yields_one_operation(self, store: state.StateStore) -> None:
+        """Uma requisição, uma operação: reconfirmar o mesmo envelope não repete efeito."""
+        fake = FakeFlatpak()
+        lifecycle = bundled_with_fake(fake, store)
+        envelope = lifecycle.plan("retroarch", "install")
+
+        first = lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        assert first["operationId"] == envelope.plan_id
+        installs_after_first = [call for call in fake.calls if call[0] in {"install", "deploy"}]
+
+        with pytest.raises(SteamZeroError) as raised:
+            lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        assert raised.value.code in {"E-TX-STALE-PLAN", "E-API-SCHEMA", "E-STATE-INTEGRITY"}
+
+        # Nem efeito repetido no executor, nem segunda operação publicada.
+        assert [call for call in fake.calls if call[0] in {"install", "deploy"}] == (
+            installs_after_first
+        )
+        events, _more = store.events_page(
+            after_seq=0,
+            limit=20,
+            kinds=["operation.state"],
+            entities=[f"operation:{envelope.plan_id}"],
+        )
+        assert [json.loads(event["payload_json"]) for event in events] == [
+            {"state": "applying"},
+            {"state": "committed"},
+        ]
+
+    def test_confirmed_job_publishes_the_operation_under_the_external_plan_id(
+        self, store: state.StateStore
+    ) -> None:
+        """Cadeia plano -> job -> operação fecha pelo mesmo id.
+
+        Este é o caminho que o usuário percorre: a UI confirma um envelope e
+        acompanha o job. O job guarda ``params["planId"]`` e adota como
+        ``operationId`` o que o lifecycle devolve. Se o apply publicasse a
+        operação sob o id do plano Flatpak delegado, o job apontaria para uma
+        operação que a UI não sabe procurar.
+        """
+        from steamzero.adapters.component_jobs import ComponentJobService
+        from steamzero.jobs.manager import JobManager
+
+        fake = FakeFlatpak()
+        envelope = bundled_with_fake(fake, store).plan("retroarch", "install")
+        service = ComponentJobService(
+            lifecycle_factory=lambda opened: ComponentLifecycle(
+                opened,
+                AdapterRegistry.bundled(),
+                flatpak_factory=lambda: fake,  # type: ignore[arg-type]
+            )
+        )
+
+        started = service.start(envelope.plan_id, envelope.confirm_token)
+        deadline = time.monotonic() + 15
+        observed: dict[str, object] | None = None
+        while time.monotonic() < deadline:
+            observed = service.get(str(started["jobId"]))
+            assert observed is not None
+            if observed["rawState"] in {"completed", "cancelled", "rolled-back", "rollback-failed"}:
+                break
+            time.sleep(0.01)
+        assert observed is not None
+        assert observed["rawState"] == "completed", observed
+        assert observed["result"]["operationId"] == envelope.plan_id  # type: ignore[index]
+
+        persisted = JobManager(store).get(str(started["jobId"]))
+        assert persisted is not None
+        assert persisted.params["planId"] == envelope.plan_id
+        assert persisted.operation_id == envelope.plan_id
+        assert store.get_operation(envelope.plan_id)["state"] == "committed"  # type: ignore[index]
+
     def test_legacy_flatpak_v1_plan_still_applies(self, store: state.StateStore) -> None:
         fake = FakeFlatpak()
         lifecycle = bundled_with_fake(fake, store)
@@ -460,6 +777,28 @@ class TestPlanSurvivesProcess:
         result = lifecycle.apply(v1.plan_id, v1.confirm_token)
         assert result["status"] == "ok"
         assert result["planVersion"] == 1
+
+    def test_legacy_component_v2_plan_still_applies(self, store: state.StateStore) -> None:
+        payload = executable_payload()
+        url = "https://fixtures.invalid/demo-1.0.0.AppImage"
+        lifecycle = ComponentLifecycle(
+            store,
+            portable_registry("1.0.0", payload),
+            artifacts=FakeArtifacts({url: payload}),
+        )
+        envelope = lifecycle.plan("demo-emulator", "install")
+        prepared = lifecycle._engine().plan_install("demo-emulator")  # type: ignore[attr-defined]
+        plan_path = paths.plan_path(envelope.plan_id)
+        raw = json.loads(plan_path.read_text(encoding="utf-8"))
+        raw["schemaVersion"] = 2
+        raw["confirmToken"] = prepared.plan.confirm_token
+        raw["delegated"] = {"transactionPlanId": prepared.plan.plan_id}
+        plan_path.write_text(json.dumps(raw), encoding="utf-8")
+
+        result = lifecycle.apply(envelope.plan_id, prepared.plan.confirm_token)
+
+        assert result["status"] == "ok"
+        assert result["planVersion"] == 2
 
     def test_manifest_change_yields_stale_plan(self, store: state.StateStore) -> None:
         payload = executable_payload()
@@ -482,6 +821,8 @@ class TestPlanSurvivesProcess:
         assert second.status("demo-emulator")["state"] == "missing", (
             "plano stale não pode ter efeito"
         )
+        saved = json.loads(paths.plan_path(envelope.plan_id).read_text(encoding="utf-8"))
+        assert saved["status"] == "aborted"
 
     def test_corrupt_v2_plan_is_rejected_before_deserialization(
         self, store: state.StateStore, tmp_path: Path
@@ -619,6 +960,43 @@ class TestLaunchRouting:
         result = lifecycle.launch(EOL_ID)
         assert result["status"] == "started"
         assert spawned == [("/usr/bin/flatpak", "run", "--user", source.ref)]
+
+    def test_retroarch_launch_injects_the_managed_appendconfig(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        """A ponte entre o perfil gravado e o emulador que vai le-lo.
+
+        O RetroArch procura perfis de controle em `/app/share/libretro/
+        autoconfig`, interno ao sandbox Flatpak e inalcancavel do host.
+        `--appendconfig` aponta o emulador para a arvore gerenciada do SteamZero
+        sem tocar no `retroarch.cfg` do usuario.
+        """
+        managed = input_devices.ManagedRetroArchConfig(root=tmp_path / "gerenciado")
+        managed.overlay_path.parent.mkdir(parents=True)
+        managed.overlay_path.write_text(managed.overlay_content(), encoding="utf-8")
+        spawned: list[tuple[object, ...]] = []
+        lifecycle = _retroarch_lifecycle(store, spawned, managed)
+
+        lifecycle.launch("retroarch")
+
+        assert spawned[0][-2:] == ("--appendconfig", str(managed.overlay_path))
+
+    def test_retroarch_launch_is_unchanged_while_no_profile_was_applied(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        """Sem overlay, o lancamento continua exatamente como era.
+
+        Injetar `--appendconfig` apontando para arquivo inexistente faria o
+        RetroArch reclamar de config ausente sem que o usuario tivesse pedido
+        nada.
+        """
+        managed = input_devices.ManagedRetroArchConfig(root=tmp_path / "vazio")
+        spawned: list[tuple[object, ...]] = []
+        lifecycle = _retroarch_lifecycle(store, spawned, managed)
+
+        lifecycle.launch("retroarch")
+
+        assert "--appendconfig" not in spawned[0]
 
     def test_stop_flatpak_eol_is_not_supported(self, store: state.StateStore) -> None:
         source = eol_registry().get(EOL_ID).preferred_source("flatpak", allow_eol=True)
@@ -811,6 +1189,74 @@ class TestVerifyAndRepair:
         assert lifecycle.status("demo-emulator")["state"] == "installed"
 
 
+class TestExecutablePayloadInvariant:
+    """Payload engine commitado precisa ser executável; checksum certo não basta.
+
+    Incidente físico 2026-08-17: o deployment do Citron no host terminou com
+    payload ``0o600`` (replay de recovery re-copia o artefato sem o smoke que
+    aplicaria o bit de execução). ``verify`` reportava ``verified=true`` e o
+    ``launch`` morria com ``PermissionError`` cru — falso verde na verificação,
+    erro indizível no uso.
+    """
+
+    URL = "https://fixtures.invalid/demo-1.0.0.AppImage"
+
+    @staticmethod
+    def _payload_path() -> Path:
+        return paths.data_home() / "components" / "demo-emulator" / "releases" / "1.0.0" / "payload"
+
+    def _installed(self, store: state.StateStore) -> ComponentLifecycle:
+        payload = executable_payload()
+        lifecycle = ComponentLifecycle(
+            store,
+            portable_registry("1.0.0", payload),
+            artifacts=FakeArtifacts({self.URL: payload}),
+        )
+        envelope = lifecycle.plan("demo-emulator", "install")
+        lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        return lifecycle
+
+    def test_non_executable_payload_is_degraded_and_repairable(
+        self, store: state.StateStore
+    ) -> None:
+        lifecycle = self._installed(store)
+        payload = self._payload_path()
+        payload.chmod(0o600)
+
+        status = lifecycle.status("demo-emulator")
+        assert status["state"] == "degraded"
+        assert "execução" in str(status["detail"])
+        assert status["version"] == "1.0.0"
+
+        verified = lifecycle.verify("demo-emulator")
+        assert verified["verified"] is False
+        assert verified["repairable"] is True
+
+    def test_launch_refuses_non_executable_payload_with_structured_error(
+        self, store: state.StateStore
+    ) -> None:
+        lifecycle = self._installed(store)
+        self._payload_path().chmod(0o600)
+
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.launch("demo-emulator")
+        assert error.value.code == "E-COMPONENT-DEGRADED"
+        assert "execução" in str(error.value.detail)
+
+    def test_repair_restores_executable_payload(self, store: state.StateStore) -> None:
+        lifecycle = self._installed(store)
+        payload = self._payload_path()
+        payload.chmod(0o600)
+        assert lifecycle.status("demo-emulator")["state"] == "degraded"
+
+        envelope = lifecycle.plan("demo-emulator", "repair")
+        assert envelope.action == "repair"
+        lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+
+        assert lifecycle.status("demo-emulator")["state"] == "installed"
+        assert payload.stat().st_mode & 0o111, "payload reparado precisa ser executável"
+
+
 class TestRepairTransactionality:
     """Commit 1: `repairing` durável, reversível e recuperável após crash.
 
@@ -909,7 +1355,7 @@ class TestRepairTransactionality:
         assert row["operation_id"] is None
         assert lifecycle.status("demo-emulator")["state"] == "degraded"
 
-    def test_interruption_after_effect_is_committed_and_idempotent(
+    def test_interruption_before_commit_is_rolled_back_and_idempotent(
         self, store: state.StateStore, tmp_path: Path
     ) -> None:
         lifecycle = self._corrupted(store, tmp_path)
@@ -924,12 +1370,35 @@ class TestRepairTransactionality:
         assert lifecycle.status("demo-emulator")["state"] == "repairing"
         recovered = lifecycle.recover()
         repair = next(item for item in recovered if item["executor"] == "repair")
+        assert repair["state"] == "rolled-back"
+        assert repair["observedState"] == "degraded"
+        assert lifecycle.status("demo-emulator")["state"] == "degraded"
+        saved = json.loads(paths.plan_path(envelope.plan_id).read_text(encoding="utf-8"))
+        assert saved["status"] == "aborted"
+        assert lifecycle.recover() == [], "recovery é idempotente"
+
+    def test_interruption_after_durable_commit_is_kept_and_idempotent(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        lifecycle = self._corrupted(store, tmp_path)
+        envelope = self._repair_plan(lifecycle)
+        self._crash_at("apply.after-commit")
+        try:
+            with pytest.raises(SimulatedKill):
+                lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        finally:
+            set_crash_hook(None)
+
+        recovered = lifecycle.recover()
+        repair = next(item for item in recovered if item["executor"] == "repair")
         assert repair["state"] == "committed"
         assert repair["observedState"] == "installed"
         assert lifecycle.status("demo-emulator")["state"] == "installed"
-        assert lifecycle.recover() == [], "recovery é idempotente"
+        saved = json.loads(paths.plan_path(envelope.plan_id).read_text(encoding="utf-8"))
+        assert saved["status"] == "applied"
+        assert lifecycle.recover() == []
 
-    def test_restart_reuses_existing_repair_operation(
+    def test_restart_requires_recovery_and_retry_uses_new_plan(
         self, store: state.StateStore, tmp_path: Path
     ) -> None:
         lifecycle = self._corrupted(store, tmp_path)
@@ -943,15 +1412,25 @@ class TestRepairTransactionality:
 
         first_id = str(store.get_component("demo-emulator")["operation_id"])  # type: ignore[index]
 
-        # Reaplicar o mesmo plano (ainda pendente) reusa a operação em curso.
-        result = lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        with pytest.raises(SteamZeroError) as interrupted:
+            lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        assert interrupted.value.code == "E-TX-STALE-PLAN"
+
+        recovered = lifecycle.recover()
+        assert any(item["executor"] == "transaction" for item in recovered)
+        assert any(item["executor"] == "repair" for item in recovered)
+        saved = json.loads(paths.plan_path(envelope.plan_id).read_text(encoding="utf-8"))
+        assert saved["status"] == "aborted"
+
+        replacement = lifecycle._retry_apply(envelope.plan_id)
+        assert replacement["planId"] != envelope.plan_id
+        result = lifecycle._apply_validated(replacement["planId"])
         assert result["status"] == "ok"
 
         operation_files = sorted(paths.component_operations_dir().glob("*.json"))
-        assert [p.stem for p in operation_files] == [first_id], (
-            "restart não pode criar operação nova"
-        )
-        assert json.loads(operation_files[0].read_text(encoding="utf-8"))["state"] == "committed"
+        assert first_id in {path.stem for path in operation_files}
+        states = {json.loads(path.read_text(encoding="utf-8"))["state"] for path in operation_files}
+        assert states == {"rolled-back", "committed"}
         row = store.get_component("demo-emulator")
         assert row is not None and row["state"] == "installed"
         assert row["operation_id"] is None
@@ -1044,6 +1523,12 @@ class TestRepairTransactionality:
         )
         assert row["operation_id"] is None
         assert lifecycle.status("retroarch")["state"] == "degraded"
+        statuses = {
+            path.name: json.loads(path.read_text(encoding="utf-8"))["status"]
+            for path in paths.plans_dir().glob("*.json")
+        }
+        assert statuses[paths.plan_path(envelope.plan_id).name] == "aborted"
+        assert set(statuses.values()) == {"aborted"}
 
 
 class TestAdversarialLifecycleClosure:
@@ -1163,5 +1648,5 @@ class TestAdversarialLifecycleClosure:
         assert config.read_bytes() == before_config
         assert (
             json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))["status"]
-            == "pending"
+            == "aborted"
         )
