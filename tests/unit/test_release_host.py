@@ -15,6 +15,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+import yaml
 
 import release_host
 
@@ -194,6 +195,50 @@ def test_checksum_cannot_escape_bundle(tmp_path: Path) -> None:
 
     with pytest.raises(release_host.AutomationError, match="sair do bundle"):
         release_host.load_bundle(root)
+
+
+def _ci_checksummed_paths() -> set[str]:
+    """Caminhos que o workflow do CI realmente entrega ao ``sha256sum``.
+
+    Lê o workflow em vez de redeclarar a lista: um teste que repete o que o CI
+    deveria fazer concorda consigo mesmo e nada diz sobre o artifact publicado.
+    """
+    workflow = yaml.safe_load(
+        (release_host.ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    )
+    paths: set[str] = set()
+    for job in workflow["jobs"].values():
+        for step in job.get("steps", []):
+            script = step.get("run")
+            if not isinstance(script, str) or "sha256sum" not in script:
+                continue
+            # Continuações de linha viram uma linha lógica antes de separar.
+            for command in " ".join(script.split("\\\n")).splitlines():
+                tokens = command.split()
+                if "sha256sum" not in tokens:
+                    continue
+                for token in tokens[tokens.index("sha256sum") + 1 :]:
+                    # Redirecionamento e pipe encerram a lista de entradas; o
+                    # destino do SHA256SUMS não é coberto por si mesmo.
+                    if token in {">", ">>", "|"}:
+                        break
+                    paths.add(token)
+    return paths
+
+
+def test_ci_hashes_every_supply_chain_document() -> None:
+    """O CI precisa hashear tudo que ``load_bundle`` exige sob checksum.
+
+    Defeito que este teste tranca: o workflow publicava ``build/pip-audit.json``
+    no artifact sem incluí-lo no ``SHA256SUMS``, entregando o relatório de
+    vulnerabilidades sem cobertura de integridade. Passou despercebido porque o
+    bundle sintético de ``_bundle`` hasheia o arquivo — o fake era mais correto
+    que a produção, e só a release real reprovou.
+    """
+    hashed = _ci_checksummed_paths()
+    missing = sorted(release_host.SUPPLY_CHAIN_DOCUMENTS - hashed)
+
+    assert not missing, f"o CI não hasheia documentos exigidos pelo bundle: {missing}"
 
 
 def test_bundle_rejects_symlink_even_when_target_exists(tmp_path: Path) -> None:
