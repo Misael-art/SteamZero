@@ -306,3 +306,58 @@ Nenhuma delas é medição — todas mudam contrato. Por isso o item continua
 `~/.config/steamzero/input-profiles/active/snes/platform-default.json`, criado
 pelo caminho governado com rollback G-FULL. O `retroarch.cfg` do usuário segue
 `sha256 a9945f5a…9393`, idêntico ao baseline.
+
+---
+
+## 7. Medição do pad do Deck para o autoconfig-base (2026-08-26)
+
+Decisão tomada pelo operador: opção 1 da seção 6 — o SteamZero passa a trazer
+autoconfig-base próprio para o Deck. Esta seção registra a medição que essa
+opção exige.
+
+Lido por ioctl do joydev em `/dev/input/js0` (`JSIOCGNAME`, `JSIOCGAXES`,
+`JSIOCGBUTTONS`, `JSIOCGBTNMAP`, `JSIOCGAXMAP`) — leitura direta do kernel,
+nenhuma inferência:
+
+```
+nome    Steam Deck            eixos 10        botões 24
+```
+
+| índice joydev | código evdev | botão |
+|---|---|---|
+| 0–2 | `0x121`, `0x122`, `0x126` | códigos de joystick genérico |
+| 3 | `0x130` | `BTN_SOUTH` |
+| 4 | `0x131` | `BTN_EAST` |
+| 5 | `0x133` | `BTN_NORTH` |
+| 6 | `0x134` | `BTN_WEST` |
+| 7 / 8 | `0x136` / `0x137` | `BTN_TL` / `BTN_TR` |
+| 9 / 10 | `0x138` / `0x139` | `BTN_TL2` / `BTN_TR2` |
+| 11 / 12 | `0x13a` / `0x13b` | `BTN_SELECT` / `BTN_START` |
+| 13 | `0x13c` | `BTN_MODE` |
+| 14 / 15 | `0x13d` / `0x13e` | `BTN_THUMBL` / `BTN_THUMBR` |
+| 16–19 | `0x220`–`0x223` | D-Pad up/down/left/right |
+| 20–23 | `0x224`–`0x227` | extras da Valve |
+
+| eixo | código | |
+|---|---|---|
+| 0 / 1 | `ABS_X` / `ABS_Y` | analógico esquerdo |
+| 2 / 3 | `ABS_RX` / `ABS_RY` | analógico direito |
+| 4 / 5 | `ABS_HAT0X` / `ABS_HAT0Y` | D-Pad como hat |
+| 6–9 | 18–21 | extras da Valve |
+
+### O que AINDA não está medido, e por que não vou supor
+
+O formato-alvo está claro: `Steam_Controller.cfg` do pacote usa índices do
+driver **udev**, não do joydev. Nesse arquivo `input_b_btn = "0"` tem label
+`"A"`, ou seja, índice udev 0 = `BTN_SOUTH`. No Deck, `BTN_SOUTH` é o índice
+joydev **3**, porque os códigos `0x121`, `0x122` e `0x126` ocupam 0–2.
+
+A hipótese razoável é que o driver udev do RetroArch enumere os mesmos códigos
+evdev na mesma ordem crescente e portanto coincida com o joydev — mas isso é
+hipótese, não medição. Escrever o autoconfig-base com índices supostos
+produziria exatamente o arquivo com bindings inventados que a seção 6 diz não
+gravar: o RetroArch o leria e mapearia os botões errados.
+
+**Confirmar exige o próprio RetroArch reportando o pad** (execução com
+`--verbose`, lendo a linha `[Autoconf]` e os índices que ele atribui). Enquanto
+essa confirmação não existir, o autoconfig-base não é escrito.

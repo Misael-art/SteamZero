@@ -21,7 +21,7 @@
     "tests/qml/check_controls_profile_card.qml",
     "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig"
   ],
-  "scopeDigest": "cafd44dbb33366fdd28706517442a6d47a12b00078385a34d0ad7bd77c9e76db",
+  "scopeDigest": "058efb60d6a718d10b48623179c74c67b96e48604de4c49c29e58251ca0e3cf1",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -55,9 +55,15 @@
       "reference": "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig",
       "command": "2026-08-26, secao 6. CAUSA RAIZ do bloqueio no host, medida no pacote real. Com perfil ATIVO aplicado pelo caminho governado (controls plan -> controls apply, plano 01M0Z9YDZ9XN3RZV8QBPM2BB00), RetroArchControls.status() publica awaiting-device, nao pending-write. O catalogo empacotado do RetroArch 1.22.2 e legivel (420 perfis em udev) e traz Steam_Controller.cfg (10462/1142) e Wireless Steam Controller.cfg (10462/4418), mas grep exaustivo por input_product_id=4613 nao devolve NADA: o pacote nao empacota autoconfig para o controle interno do Steam Deck (10462/4613). Vendor casa, produto nao existe. Parar e correto: sem perfil-base nao ha como traduzir RetroPad para os eixos reais, e gravar produziria bindings inventados que o RetroArch leria. AGENTS.md secao 8 funcionando. CONSEQUENCIA: o bloqueio nao e o harness nem falta de controle fisico — e lacuna do pacote, e fechar o item exige DECISAO DE PRODUTO (autoconfig-base proprio para o Deck, ou casamento nao-exato de product_id com risco registrado, ou declarar nao-suportado com a UI dizendo isso), nao mais medicao. ROTA: a materializacao so e alcancavel pela GUI — o cartao ControlsProfileCard e por jogo (Emulation.qml:3908) e o sinal esta conectado (3914); nao ha MethodSpec nem comando CLI que exponha controls.autoconfig.apply. Nada gravado: ~/.config/steamzero/retroarch/ inexistente, retroarch.cfg do usuario com sha256 a9945f5a...9393 identico ao baseline.",
       "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig",
+      "command": "2026-08-26, secao 7. Operador escolheu a opcao 1 (autoconfig-base proprio para o Deck). Pad medido por ioctl do joydev em /dev/input/js0 (JSIOCGNAME/AXES/BUTTONS/BTNMAP/AXMAP), leitura direta do kernel: 'Steam Deck', 24 botoes, 10 eixos, com BTN_SOUTH=3, BTN_EAST=4, BTN_NORTH=5, BTN_WEST=6, TL/TR=7/8, TL2/TR2=9/10, SELECT/START=11/12, MODE=13, THUMBL/THUMBR=14/15, D-Pad 16-19, extras Valve 20-23; eixos ABS_X/Y=0/1, ABS_RX/RY=2/3, HAT0X/Y=4/5. NAO ESCRITO ainda, de proposito: o formato-alvo (Steam_Controller.cfg do pacote) usa indices do driver UDEV, nao do joydev — nele input_b_btn=0 tem label 'A', logo udev 0 = BTN_SOUTH, enquanto no Deck BTN_SOUTH e joydev 3. A hipotese de que udev enumere na mesma ordem crescente e plausivel mas NAO medida, e escrever com indice suposto produziria o arquivo de bindings inventados que a secao 6 diz nao gravar. Confirmar exige o RetroArch reportando o pad com --verbose. BLOQUEIO DE GOVERNANCA separado: a implementacao exige src/steamzero/adapters/input_devices.py (reservado por WS-2026-08-V2-HARMONIZED) e o ADR exige docs/adr (reservado por WS-2026-08-HARMONIZE-A45); AGENTS.md regra 2 proibe duas frentes ativas com o mesmo caminho exclusivo.",
+      "result": "partial"
     }
   ],
-  "nextAction": "DECISAO DE PRODUTO, nao medicao: o RetroArch 1.22.2 nao empacota autoconfig para o controle interno do Steam Deck (10462/4613), entao o writer para em awaiting-device com razao. Escolher entre (a) autoconfig-base proprio do SteamZero para o Deck, (b) resolucao sem casamento exato de product_id com risco registrado, ou (c) declarar nao-suportado com a UI dizendo isso. Registrar a escolha em ADR antes de codigo. Lacuna de superficie a decidir junto: controls.autoconfig.apply so e alcancavel pela GUI por jogo; nao ha rota CLI nem MethodSpec.",
+  "nextAction": "Opcao 1 escolhida (autoconfig-base proprio para o Deck). Pad ja medido (evidencia secao 7). Faltam DUAS liberacoes do coordenador antes de codigo: (1) liberar src/steamzero/adapters/input_devices.py de WS-2026-08-V2-HARMONIZED e docs/adr de WS-2026-08-HARMONIZE-A45, ou transferir o escopo; (2) autorizar uma execucao do RetroArch com --verbose para MEDIR os indices do driver udev — sem isso o autoconfig-base sai com indices supostos.",
   "activeWorkstreams": [
     "WS-2026-08-CONTROLS-INPUT-PROFILES"
   ],
