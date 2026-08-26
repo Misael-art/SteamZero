@@ -7542,3 +7542,48 @@ testes focados de `test_core_service.py` passaram 20/20 em ambiente menos
 carregado, e a suíte integral está verde (5254 passed) no mesmo código desde
 `92d91d6`. Daemon parado durante as tentativas para atribuição limpa. O merge ff
 em `main` fica condicionado à suíte integral verde em host tranquilo.
+
+## 2026-08-26 — Evidência órfã do autoconfig do RetroArch, restaurada e estendida
+
+Branch `codex/controls-autoconfig-prova-fisica`, sobre `65cdc16`. Item
+`SZ-CONTROLS-INPUT-PROFILES`. Sessão documental: nenhuma linha de `src/`
+alterada, nada gravado no host.
+
+**Achado de governança.** `src/steamzero/adapters/input_devices.py:392` cita
+`docs/09-operations/evidence/2026-08-13-retroarch-autoconfig/` como prova de
+medição no host. O diretório NÃO estava na `main`: o commit que o criou
+(`e0fd8dd`) ficou numa branch nunca mergeada, e `git merge-base --is-ancestor
+e0fd8dd main` responde não. Código instalado apontava para evidência
+inalcançável. As seções 1–4 foram restauradas verbatim; nada foi reescrito.
+
+**Reconferido, e não envelheceu.** Com RetroArch 1.22.2 no host, as três
+afirmações da seção 1 reproduzem exatamente: `joypad_autoconfig_dir` interno ao
+sandbox, `input_joypad_driver = "udev"`, `config_save_on_exit = "true"`.
+
+**Fechado o limite que a própria evidência nomeava.** Ela terminava dizendo que
+provar a descoberta ponta a ponta exigia um controle físico real, porque o pad
+virtual do `uinput` não gera symlink `-event-joystick`. O host é um Steam Deck:
+`SysfsInputDevices().identities()` devolve `DeviceIdentity(name='Steam Deck',
+vendor_id=10462, product_id=4613)` sem injeção, corroborado por
+`/dev/input/by-id` e por `/sys/class/input/js0/device/id` = `28de/1205`. O
+número de série do controle foi redigido na página.
+
+**O que NÃO foi provado, e está escrito como tal.** Gravação do autoconfig,
+marcador de ownership, recusa de arquivo de terceiro e chegada do perfil ao
+lançamento seguem em aberto. `retroarch_launch_arguments` devolve tupla vazia
+hoje — e isso é correto, não defeito: o código recusa passar `--appendconfig`
+para arquivo inexistente. A gravação exige `controls apply` com token, e o
+classificador do harness bloqueou a chamada. O item ficou `partial`, não
+promovido.
+
+**Três reprovações do `status-check`, todas minhas e todas corretas.** (1)
+Reservei `input_devices.py` como exclusivo sendo que `WS-2026-08-V2-HARMONIZED`
+já o reserva — removi, e mudança de código ali exige coordenar com aquela
+frente. (2) O diretório de evidência ficou sem item responsável — entrou em
+`scopePaths`. (3) O `scopeDigest` ficou obsoleto pela mudança de escopo —
+renovado com a evidência nova registrada como `partial`, não para silenciar.
+
+**Gates**: ruff check, `ruff format --check` (525), mypy (243), independence,
+boundaries e status-check verdes. Suíte integral não reexecutada: o diff não
+toca `src/` nem `tests/`, e a suíte fechou verde (5254 passed, 44 skipped) neste
+mesmo código hoje, em `65cdc16`.

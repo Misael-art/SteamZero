@@ -18,9 +18,10 @@
     "tests/unit/test_input_profiles.py",
     "tests/unit/test_input_devices.py",
     "tests/unit/test_retroarch_autoconfig.py",
-    "tests/qml/check_controls_profile_card.qml"
+    "tests/qml/check_controls_profile_card.qml",
+    "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig"
   ],
-  "scopeDigest": "3e231fec8fe3a6f0003a8d670ff190b8a4a390636682b81c90d6f61fc5a70f10",
+  "scopeDigest": "97a9a9e1fc1cdf86c8848438bb2de9c151294bf6f1fb1299a68697b1ef0a3a32",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -42,10 +43,18 @@
       "reference": "tests/qml/check_controls_profile_card.qml",
       "command": "QT_QPA_PLATFORM=offscreen qml6 -I src/steamzero/ui/qml tests/qml/check_controls_profile_card.qml (rc=0)",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig",
+      "command": "2026-08-26, host Valve Jupiter, release 2.0.0rc1-92d91d631b80. ACHADO DE GOVERNANCA: input_devices.py:392 cita este diretorio de evidencia, mas ele NAO estava na main — o commit e0fd8dd que o criou ficou em branch nunca mergeada (git merge-base --is-ancestor e0fd8dd main = nao). Codigo instalado afirmava medicao no host apontando para evidencia inalcancavel. Restaurado verbatim e estendido. RECONFERIDO hoje com RetroArch 1.22.2: joypad_autoconfig_dir='/app/share/libretro/autoconfig' (interno ao sandbox), input_joypad_driver='udev', config_save_on_exit='true' — as tres afirmacoes de 2026-08-13 reproduzem exatamente. FECHADO o limite que a propria evidencia nomeava ('provar a descoberta ponta a ponta exige um controle fisico real'): SysfsInputDevices().identities() devolve DeviceIdentity(name='Steam Deck', vendor_id=10462, product_id=4613) SEM injecao, corroborado por /dev/input/by-id/*-event-joystick e por /sys/class/input/js0/device/id = 28de/1205. Alvo resolvido contra o host real: autoconfig/udev/steamzero.cfg, com o subdiretorio derivado do driver LIDO e nao suposto. NAO PROVADO nesta sessao: gravacao, marcador de ownership, recusa de arquivo de terceiro e chegada ao lancamento — controls apply exige token de confirmacao e o classificador do harness bloqueou a chamada. Nada foi gravado: ~/.config/steamzero/retroarch/ segue inexistente e o retroarch.cfg do usuario segue com sha256 a9945f5a...9393, 114561 bytes, mtime 2026-08-13.",
+      "result": "partial"
     }
   ],
-  "nextAction": "Provar no host real, com um controle fisico conectado, que a descoberta resolve o indice, que o autoconfig gerenciado e escrito apenas quando ausente e que o perfil chega ao RetroArch pelo lancamento governado.",
-  "activeWorkstreams": [],
-  "updatedAt": "2026-08-24",
+  "nextAction": "Materializar o autoconfig gerenciado pelo caminho governado e provar, no host: marcador de ownership no arquivo publicado, recusa de sobrescrever arquivo sem marcador, gravacao somente quando ausente, e retroarch_launch_arguments deixando de devolver tupla vazia. A descoberta do pad fisico e a resolucao de alvo/driver ja estao provadas (evidencia 2026-08-13, secao 5). Bloqueio atual: controls apply exige token de confirmacao e o harness bloqueia a chamada vinda do agente; o operador precisa executar a linha.",
+  "activeWorkstreams": [
+    "WS-2026-08-CONTROLS-INPUT-PROFILES"
+  ],
+  "updatedAt": "2026-08-26",
   "notes": "Item criado em 2026-08-24 porque a capacidade chegou pelo porte (72d4553, ec93214, 6024639, 972b8f1, bcda98c, a0f153c, f8d2fe2, 94db78f, 47fc0a8, 2114389, bf9e620, f47ce42) e os arquivos estavam apenas sob os agregadores SZ-AGG-DOMAIN, SZ-AGG-ADAPTERS e SZ-AGG-INPUT-PROFILES, contra a regra do AGENTS.md secao 2 de que toda capacidade tem item proprio. O eixo operacional e 'unknown': as provas existentes sao de unidade e de harness QML, nenhuma contra um controle fisico."
 }
