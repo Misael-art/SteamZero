@@ -236,3 +236,73 @@ Nada foi gravado. `~/.config/steamzero/retroarch/` continua **inexistente** e o
 sha256  a9945f5a4e6176ff5e2d9bc88b113355e1547f0650ba1104d74bbdf15e879393
 114561 bytes   mtime 2026-08-13 05:24:22
 ```
+
+---
+
+## 6. Por que o Steam Deck para em `awaiting-device` (2026-08-26)
+
+Com um perfil de controle ATIVO (`standard-gamepad` para `snes`, aplicado pelo
+caminho governado `controls plan` → `controls apply`), o writer publica:
+
+```
+state   awaiting-device
+label   Perfil traduzido; aguardando controle reconhecido
+target  ~/.config/steamzero/retroarch/autoconfig/udev/steamzero.cfg
+```
+
+Isso NÃO é defeito nosso. É o produto degradando com verdade.
+
+### A causa, medida no pacote real
+
+`RetroArchControls.status()` só resolve quando o catálogo empacotado do
+RetroArch casa com o dispositivo. O catálogo é legível — 420 perfis em
+`.../org.libretro.RetroArch/x86_64/stable/active/files/share/libretro/
+autoconfig/udev` — e contém dois perfis da Valve:
+
+| arquivo | `input_vendor_id` | `input_product_id` | dispositivo |
+|---|---|---|---|
+| `Steam_Controller.cfg` | 10462 | 1142 | Steam Controller |
+| `Wireless Steam Controller.cfg` | 10462 | 4418 | Wireless Steam Controller |
+
+O controle embutido deste host é **10462 / 4613** (`0x28DE` / `0x1205`). Busca
+exaustiva no catálogo:
+
+```
+$ grep -rl 'input_product_id = "4613"' <catalogo>/udev/
+(nenhum resultado)
+```
+
+**O RetroArch 1.22.2 não empacota autoconfig para o controle interno do Steam
+Deck.** O vendor casa; o produto não existe no catálogo.
+
+### Por que parar é o comportamento certo
+
+Sem perfil-base do catálogo não há como traduzir o RetroPad para os eixos e
+botões REAIS deste pad. Gravar assim mesmo produziria
+`autoconfig/udev/steamzero.cfg` com bindings inventados — um arquivo que o
+RetroArch leria e que mapearia o controle errado. `awaiting-device` diz a
+verdade e não grava nada, que é a AGENTS.md §8.
+
+### Consequência para o item
+
+O bloqueio de `SZ-CONTROLS-INPUT-PROFILES` neste host **não** é o harness nem
+falta de controle físico. É uma lacuna do pacote do RetroArch. Fechar o item
+exige uma decisão de produto, não mais medição:
+
+1. o SteamZero passa a trazer um autoconfig-base próprio para o Steam Deck
+   (`10462/4613`), derivado do pad real; ou
+2. a resolução deixa de exigir casamento exato de `product_id` e cai para um
+   perfil genérico compatível, com o risco explícito registrado; ou
+3. o item declara o Steam Deck como não-suportado para autoconfig gerenciado e
+   a UI diz isso ao usuário.
+
+Nenhuma delas é medição — todas mudam contrato. Por isso o item continua
+`partial`, e a próxima ação é a decisão, não mais um teste.
+
+### Estado do host
+
+`~/.config/steamzero/retroarch/` **continua inexistente** — nada foi gravado. O
+único efeito desta sessão é o perfil ativo em
+`~/.config/steamzero/input-profiles/active/snes/platform-default.json`, criado
+pelo caminho governado com rollback G-FULL. O `retroarch.cfg` do usuário segue
+`sha256 a9945f5a…9393`, idêntico ao baseline.

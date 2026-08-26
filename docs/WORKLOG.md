@@ -7587,3 +7587,35 @@ renovado com a evidência nova registrada como `partial`, não para silenciar.
 boundaries e status-check verdes. Suíte integral não reexecutada: o diff não
 toca `src/` nem `tests/`, e a suíte fechou verde (5254 passed, 44 skipped) neste
 mesmo código hoje, em `65cdc16`.
+
+### Continuação 2026-08-26 — a causa raiz não era o harness
+
+Com o `controls apply` executado pelo operador (plano
+`01M0Z9YDZ9XN3RZV8QBPM2BB00`), o perfil ficou ativo e o writer pôde ser
+observado. Ele publica `awaiting-device`, não `pending-write`.
+
+Medido no pacote real: o catálogo do RetroArch 1.22.2 é legível (420 perfis em
+`udev`) e traz `Steam_Controller.cfg` (10462/1142) e `Wireless Steam
+Controller.cfg` (10462/4418). O controle interno deste host é **10462/4613**, e
+`grep -rl 'input_product_id = "4613"'` no catálogo inteiro não devolve nada.
+
+**O RetroArch não empacota autoconfig para o controle interno do Steam Deck.**
+Vendor casa, produto não existe. Sem perfil-base não há como traduzir o RetroPad
+para os eixos reais, e gravar mesmo assim produziria bindings inventados que o
+RetroArch leria. Parar é o comportamento correto — §8 funcionando.
+
+Isso reclassifica o item. O bloqueio não é o classificador do harness nem falta
+de controle físico: é lacuna do pacote, e fechar exige DECISÃO DE PRODUTO
+(autoconfig-base próprio para o Deck, casamento não-exato de `product_id` com
+risco registrado, ou declarar não-suportado com a UI dizendo isso). Nenhuma é
+medição; todas mudam contrato. Registrei como próxima ação a decisão, não outro
+teste.
+
+Lacuna de superfície encontrada no caminho: `controls.autoconfig.apply` só é
+alcançável pela GUI, pelo cartão por jogo (`Emulation.qml:3908`, sinal conectado
+em 3914). Não há `MethodSpec` nem comando CLI que o exponha. O botão NÃO está
+morto — foi verificado — mas quem usa só CLI não tem rota.
+
+Host ao fim: `~/.config/steamzero/retroarch/` continua inexistente, nada gravado
+pelo writer. O `retroarch.cfg` do usuário segue `sha256 a9945f5a…9393`, idêntico
+ao baseline de antes do `controls apply`.

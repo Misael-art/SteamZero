@@ -21,7 +21,7 @@
     "tests/qml/check_controls_profile_card.qml",
     "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig"
   ],
-  "scopeDigest": "97a9a9e1fc1cdf86c8848438bb2de9c151294bf6f1fb1299a68697b1ef0a3a32",
+  "scopeDigest": "cafd44dbb33366fdd28706517442a6d47a12b00078385a34d0ad7bd77c9e76db",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -49,9 +49,15 @@
       "reference": "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig",
       "command": "2026-08-26, host Valve Jupiter, release 2.0.0rc1-92d91d631b80. ACHADO DE GOVERNANCA: input_devices.py:392 cita este diretorio de evidencia, mas ele NAO estava na main — o commit e0fd8dd que o criou ficou em branch nunca mergeada (git merge-base --is-ancestor e0fd8dd main = nao). Codigo instalado afirmava medicao no host apontando para evidencia inalcancavel. Restaurado verbatim e estendido. RECONFERIDO hoje com RetroArch 1.22.2: joypad_autoconfig_dir='/app/share/libretro/autoconfig' (interno ao sandbox), input_joypad_driver='udev', config_save_on_exit='true' — as tres afirmacoes de 2026-08-13 reproduzem exatamente. FECHADO o limite que a propria evidencia nomeava ('provar a descoberta ponta a ponta exige um controle fisico real'): SysfsInputDevices().identities() devolve DeviceIdentity(name='Steam Deck', vendor_id=10462, product_id=4613) SEM injecao, corroborado por /dev/input/by-id/*-event-joystick e por /sys/class/input/js0/device/id = 28de/1205. Alvo resolvido contra o host real: autoconfig/udev/steamzero.cfg, com o subdiretorio derivado do driver LIDO e nao suposto. NAO PROVADO nesta sessao: gravacao, marcador de ownership, recusa de arquivo de terceiro e chegada ao lancamento — controls apply exige token de confirmacao e o classificador do harness bloqueou a chamada. Nada foi gravado: ~/.config/steamzero/retroarch/ segue inexistente e o retroarch.cfg do usuario segue com sha256 a9945f5a...9393, 114561 bytes, mtime 2026-08-13.",
       "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig",
+      "command": "2026-08-26, secao 6. CAUSA RAIZ do bloqueio no host, medida no pacote real. Com perfil ATIVO aplicado pelo caminho governado (controls plan -> controls apply, plano 01M0Z9YDZ9XN3RZV8QBPM2BB00), RetroArchControls.status() publica awaiting-device, nao pending-write. O catalogo empacotado do RetroArch 1.22.2 e legivel (420 perfis em udev) e traz Steam_Controller.cfg (10462/1142) e Wireless Steam Controller.cfg (10462/4418), mas grep exaustivo por input_product_id=4613 nao devolve NADA: o pacote nao empacota autoconfig para o controle interno do Steam Deck (10462/4613). Vendor casa, produto nao existe. Parar e correto: sem perfil-base nao ha como traduzir RetroPad para os eixos reais, e gravar produziria bindings inventados que o RetroArch leria. AGENTS.md secao 8 funcionando. CONSEQUENCIA: o bloqueio nao e o harness nem falta de controle fisico — e lacuna do pacote, e fechar o item exige DECISAO DE PRODUTO (autoconfig-base proprio para o Deck, ou casamento nao-exato de product_id com risco registrado, ou declarar nao-suportado com a UI dizendo isso), nao mais medicao. ROTA: a materializacao so e alcancavel pela GUI — o cartao ControlsProfileCard e por jogo (Emulation.qml:3908) e o sinal esta conectado (3914); nao ha MethodSpec nem comando CLI que exponha controls.autoconfig.apply. Nada gravado: ~/.config/steamzero/retroarch/ inexistente, retroarch.cfg do usuario com sha256 a9945f5a...9393 identico ao baseline.",
+      "result": "partial"
     }
   ],
-  "nextAction": "Materializar o autoconfig gerenciado pelo caminho governado e provar, no host: marcador de ownership no arquivo publicado, recusa de sobrescrever arquivo sem marcador, gravacao somente quando ausente, e retroarch_launch_arguments deixando de devolver tupla vazia. A descoberta do pad fisico e a resolucao de alvo/driver ja estao provadas (evidencia 2026-08-13, secao 5). Bloqueio atual: controls apply exige token de confirmacao e o harness bloqueia a chamada vinda do agente; o operador precisa executar a linha.",
+  "nextAction": "DECISAO DE PRODUTO, nao medicao: o RetroArch 1.22.2 nao empacota autoconfig para o controle interno do Steam Deck (10462/4613), entao o writer para em awaiting-device com razao. Escolher entre (a) autoconfig-base proprio do SteamZero para o Deck, (b) resolucao sem casamento exato de product_id com risco registrado, ou (c) declarar nao-suportado com a UI dizendo isso. Registrar a escolha em ADR antes de codigo. Lacuna de superficie a decidir junto: controls.autoconfig.apply so e alcancavel pela GUI por jogo; nao ha rota CLI nem MethodSpec.",
   "activeWorkstreams": [
     "WS-2026-08-CONTROLS-INPUT-PROFILES"
   ],
