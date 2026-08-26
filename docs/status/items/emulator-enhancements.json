@@ -94,7 +94,7 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Teste real no host (2026-08-21) achou dois defeitos: (1) sessao orfa com PID morto travava TODO lancamento seguinte com E-TX-LOCKED, sem recuperacao no CLI — corrigido com colheita antes de criar sessao; (2) o fluxo governado de install NUNCA baixa, porque component apply roda no daemon e a unit fixa RestrictAddressFamilies=AF_UNIX (provado por E-API-GENERATION-MISMATCH). Pendente: corrigir (2) em tools/install_host.py, publicar release e instalar no host para retomar o teste de producao dos demais emuladores.",
+  "nextAction": "Defeito (2) do teste de 2026-08-21 RESOLVIDO: b34213d allowlist de rede na unit do daemon, presente na release instalada 2.0.0rc1-92d91d631b80 e PROVADO no host em 2026-08-25 pelo install fisico do melonDS com download dentro do daemon (evidencia docs/09-operations/evidence/2026-08-25-melonds-smoke-install-fisico). Proximo: retomar o teste de producao dos demais emuladores pelo fluxo governado, começando pelos flatpak 'missing' (ppsspp, xemu, azahar), e seguir a Onda 1 do workstream (identidade de titulo tipada por plataforma).",
   "activeWorkstreams": [
     "WS-2026-08-EMULATOR-ENHANCEMENT"
   ],

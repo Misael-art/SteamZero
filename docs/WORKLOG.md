@@ -7499,3 +7499,46 @@ boundaries e status-check verdes. Ressalva honesta do próprio guard: o daemon
 estava ativo durante a suíte, então a atribuição de escrita ao state home real
 ficou degradada — o gate não reprova por isso, mas rigor total exigiria o daemon
 parado.
+
+## 2026-08-25 — Install governado baixa no daemon e smoke flatpak-info do melonDS provados no host
+
+Branch `codex/melonds-smoke-install-fisico`, sobre `450e823`. Itens
+`SZ-EMULATION-LONG-OPERATIONS` e pendência registrada em
+`SZ-EMULATION-ENHANCEMENTS`. **Nenhuma alteração de código**: a allowlist de rede
+da unit (`b34213d`) e o smoke flatpak-info do melonDS (`c2a1ff1` #100) já estavam
+na release instalada `2.0.0rc1-92d91d631b80`; o que faltava era o install físico.
+
+**Entrega física observada.** `component plan` → `apply` → job
+`01M0XKTKY900HTWDZX9T9NBSQA` executado NO daemon (unit
+`RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK`, daemon ativo desde
+20:12:25, antes de todas as chamadas) completou estágio `verified` em ~48 s: o
+fluxo governado voltou a baixar. `component verify --id melonds` devolveu
+`verified: true` com commit implantado igual ao fixado
+`66752a190012b…`, corroborado por `flatpak info --show-commit` fora do
+SteamZero. Idempotência e erros controlados capturados: replay da confirmação
+devolve O MESMO jobId; plano quando já no alvo sai `noop`; token errado recusado
+(`E-TX-CONFIRM-REQUIRED`) sem mutação. Evidência em
+`docs/09-operations/evidence/2026-08-25-melonds-smoke-install-fisico/` — PNGs são
+renderizações fiéis de stdout real; sem superfície QML para esta entrega, e o
+README diz isso.
+
+**Incidente de ambiente registrado (não é defeito de produto).** O shell do
+agente recebe `XDG_STATE_HOME=/home/misael/.config/ai.opencode.desktop` do
+harness: o primeiro `apply` gravou o plano nesse state home contaminado e o
+daemon (ambiente limpo do systemd) recusou com `E-TX-STALE-PLAN` sem efeito
+colateral. Todas as chamadas de agente precisam `env -u XDG_STATE_HOME`. Isso
+explica falsos "plano não encontrado" em sessões anteriores.
+
+**Estado dos gates neste fechamento — honesto.** Verdes com exit code conferido:
+`ruff check`, `ruff format --check` (525 arquivos), `mypy src` (243 arquivos),
+`make independence boundaries`, `make status-check`. A suíte integral NÃO foi
+concluída nesta sessão: o host está sob contenção extrema medida (load average
+48–57 em hardware de 8 threads, build cruzado do GCC do projeto SNEOFORGE com 8×
+cc1plus + 17 makes, e processos opencode de outras sessões há 7 h), o que já
+produziu falhas de setup com timeout de 3 s (`test_desktop_ui_bridge`,
+`dashboard_bridge`) e um travamento em teste de socket na primeira tentativa —
+artefatos de contenção, não regressão: o diff desta branch é só documentação, os
+testes focados de `test_core_service.py` passaram 20/20 em ambiente menos
+carregado, e a suíte integral está verde (5254 passed) no mesmo código desde
+`92d91d6`. Daemon parado durante as tentativas para atribuição limpa. O merge ff
+em `main` fica condicionado à suíte integral verde em host tranquilo.

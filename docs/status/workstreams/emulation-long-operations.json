@@ -3,8 +3,8 @@
   "kind": "workstream",
   "id": "WS-2026-08-EMULATION-LONG-OPERATIONS",
   "item": "SZ-EMULATION-LONG-OPERATIONS",
-  "branch": "codex/melonds-metadata-smoke",
-  "baseRef": "bd598c516bce2e326da02740539f03897f1434a4",
+  "branch": "codex/melonds-smoke-install-fisico",
+  "baseRef": "450e823581f0d0d3680bc5ac4aaddc7a6308810c",
   "owner": "codex-melonds-metadata-smoke",
   "state": "active",
   "exclusivePaths": [
@@ -37,6 +37,6 @@
     "docs/status/items/emulation-long-operations.json",
     "docs/status/workstreams/emulation-long-operations.json"
   ],
-  "nextAction": "Promover o smoke flatpak-info do melonDS e repetir seu install físico; Cemu, RPCS3 e Flycast já foram validados no host pelo runner transitório. A integração documental final permanece coordenada com WS-2026-08-HARMONIZE-A45.",
-  "updatedAt": "2026-08-22"
+  "nextAction": "Executar o install físico do melonDS na release 2.0.0rc1-92d91d631b80 provando o download no daemon (unit com AF_INET/AF_INET6/AF_NETLINK) e o smoke flatpak-info; atualizar item conforme resultado.",
+  "updatedAt": "2026-08-25"
 }
