@@ -24,7 +24,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
 | SZ-COMPONENT-LIFECYCLE | 11 | 5 | 5 | dev |  |
-| SZ-CONTROLS-INPUT-PROFILES | 10 | 5 | 2 | unit |  |
+| SZ-CONTROLS-INPUT-PROFILES | 12 | 6 | 3 | hw |  |
 | SZ-EMULATION-ENHANCEMENTS | 24 | 9 | 9 | unit |  |
 | SZ-EMULATION-LONG-OPERATIONS | 28 | 14 | 8 | hw |  |
 | SZ-EMULATION-M10 | 6 | 3 | 2 | vm |  |
@@ -46,4 +46,4 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-UI-DESKTOP-AUDIT | 253 | 25 | 18 | dev |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 
-Arquivos em `src/`: **493**. Sob agregador apenas, sem item de capacidade: **278** (56%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
+Arquivos em `src/`: **494**. Sob agregador apenas, sem item de capacidade: **278** (56%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.

@@ -20,7 +20,6 @@
     "src/steamzero/adapters/library_scan.py",
     "src/steamzero/domain/scraping.py",
     "src/steamzero/adapters/component_jobs.py",
-    "src/steamzero/adapters/input_devices.py",
     "docs/09-operations/evidence/2026-08-23-v2-harmonization-baseline"
   ],
   "sharedPaths": [
@@ -34,5 +33,5 @@
     "tools/install_host.py"
   ],
   "nextAction": "Fechar o contrato do plano flatpak v3 no ciclo assincrono portado; depois biblioteca canonica, midias, matriz dos 33 componentes, AURA Launcher, ES-DE/RetroFE, auditoria de UI e updater, e so entao a release 2.0.0. Sem merge das PRs antigas 78, 79, 80, 81, 82 e 92. src/steamzero/ui/qml/ deixou de ser escopo exclusivo desta frente: WS-2026-08-THEME-ASSET-RECIPES reserva nove QML nesse diretorio e a posse nao foi transferida.",
-  "updatedAt": "2026-08-24"
+  "updatedAt": "2026-08-26"
 }

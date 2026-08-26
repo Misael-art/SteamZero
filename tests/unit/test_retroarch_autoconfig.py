@@ -374,3 +374,74 @@ class TestRendering:
                 profile_revision=1,
                 orientation="landscape",
             )
+
+
+class TestSteamZeroBundledAutoconfig:
+    """ADR-0027: o autoconfig-base que o SteamZero empacota para o Steam Deck.
+
+    O RetroArch 1.22.2 nao traz perfil para `10462/4613` — medido no host e
+    confirmado pelo proprio emulador com `[Autoconf] Steam Deck (10462/4613)
+    nao configurado.`. Sem base, a traducao parava em `awaiting-device`.
+    """
+
+    def _deck(self) -> Autoconfig:
+        from steamzero.adapters.input_devices import steamzero_autoconfig_directory
+        from steamzero.domain.retroarch_autoconfig import parse_autoconfig
+
+        directory = steamzero_autoconfig_directory()
+        assert directory is not None, "o diretorio empacotado tem de viajar no wheel"
+        return parse_autoconfig((directory / "steam-deck.cfg").read_text())
+
+    def test_the_bundled_profile_declares_the_deck_ids(self) -> None:
+        parsed = self._deck()
+        assert parsed.vendor_id == 10462
+        assert parsed.product_id == 4613
+
+    def test_the_deck_identity_matches_the_bundled_profile(self) -> None:
+        parsed = self._deck()
+        identity = DeviceIdentity(name="Steam Deck", vendor_id=10462, product_id=4613)
+        assert identity.matches(parsed)
+
+    def test_the_bundled_profile_is_not_managed(self) -> None:
+        """Dado de origem, nao artefato gerenciado.
+
+        `AutoconfigCatalog.match` descarta o que e `managed` — e o descarte
+        existe para nao casar com o proprio arquivo ja gravado no host. Um
+        marcador aqui tornaria a base invisivel para o catalogo.
+        """
+        assert not self._deck().managed
+
+    def test_the_indices_are_the_ones_measured_on_the_device(self) -> None:
+        """Medidos por JSIOCGBTNMAP e pela varredura do bitmap de teclas.
+
+        As duas fontes devolveram listas identicas de 24 codigos; `BTN_SOUTH`
+        cai no indice 3 porque `0x121`, `0x122` e `0x126` ocupam 0-2 neste pad.
+        Copiar do `Steam_Controller.cfg`, onde `BTN_SOUTH` e 0, mapearia os
+        botoes errados.
+        """
+        bindings = self._deck().entries
+        assert bindings["input_b_btn"] == "3"
+        assert bindings["input_a_btn"] == "4"
+        assert bindings["input_x_btn"] == "5"
+        assert bindings["input_y_btn"] == "6"
+        assert bindings["input_up_btn"] == "16"
+        assert bindings["input_down_btn"] == "17"
+        assert bindings["input_left_btn"] == "18"
+        assert bindings["input_right_btn"] == "19"
+
+    def test_our_directory_comes_after_the_retroarch_catalog(self) -> None:
+        """Nunca sobrepor perfil de terceiro em silencio.
+
+        Se os dois descreverem o mesmo pad de formas diferentes, o catalogo
+        devolve `ambiguous-autoconfig` e nada e gravado — mas a ordem deixa
+        explicito que o nosso e complemento, nao precedencia.
+        """
+        from steamzero.adapters.input_devices import (
+            bundled_autoconfig_directories,
+            steamzero_autoconfig_directory,
+        )
+
+        directories = bundled_autoconfig_directories()
+        own = steamzero_autoconfig_directory()
+        assert own is not None
+        assert directories[-1] == own

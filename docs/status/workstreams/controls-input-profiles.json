@@ -8,7 +8,12 @@
   "owner": "codex-controls-autoconfig",
   "state": "active",
   "exclusivePaths": [
-    "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig"
+    "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig",
+    "docs/adr/0027-autoconfig-base-do-steam-deck.md",
+    "src/steamzero/adapters/input_devices.py",
+    "src/steamzero/autoconfig",
+    "src/steamzero/domain/retroarch_autoconfig.py",
+    "tests/unit/test_retroarch_autoconfig.py"
   ],
   "sharedPaths": [
     "docs/WORKLOG.md"

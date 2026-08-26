@@ -361,3 +361,89 @@ gravar: o RetroArch o leria e mapearia os botões errados.
 **Confirmar exige o próprio RetroArch reportando o pad** (execução com
 `--verbose`, lendo a linha `[Autoconf]` e os índices que ele atribui). Enquanto
 essa confirmação não existir, o autoconfig-base não é escrito.
+
+---
+
+## 8. Autoconfig-base entregue: `awaiting-device` → `pending-write` (2026-08-26)
+
+O operador liberou os dois caminhos reservados e autorizou a execução do
+RetroArch. As duas medições que faltavam foram feitas.
+
+### O RetroArch confirma a lacuna, com as próprias palavras
+
+Executado com `--config <cópia> --verbose --menu` (o `retroarch.cfg` do usuário
+não foi usado nem tocado):
+
+```
+[INFO] [udev] Pad #0 (/dev/input/event7) supports force feedback.
+[INFO] [Input] Found joypad driver: "udev".
+[INFO] [Autoconf] Steam Deck (10462/4613) não configurado.
+```
+
+A hipótese da seção 6 deixa de ser hipótese: o emulador enxerga o pad, carrega o
+driver `udev` e declara que não tem perfil para ele.
+
+### Os índices, medidos por duas fontes independentes
+
+A seção 7 parou porque o formato-alvo usa índices do driver `udev` e eu só tinha
+os do joydev. O cruzamento resolve isso sem interação:
+
+| fonte | resultado |
+|---|---|
+| `ioctl JSIOCGBTNMAP` em `/dev/input/js0` | 24 códigos |
+| varredura ascendente de `/sys/class/input/event7/device/capabilities/key` a partir de `BTN_MISC` | 24 códigos |
+| **idênticas?** | **sim** |
+
+Como a segunda fonte é o bitmap do próprio dispositivo, a numeração é
+propriedade do pad, não de um driver. Qualquer driver que enumere ascendentemente
+a partir de `BTN_MISC` — convenção do joydev e do `udev` do RetroArch — obtém os
+mesmos índices. `BTN_SOUTH` cai em **3**, e não em 0, porque `0x121`, `0x122` e
+`0x126` ocupam 0–2 neste pad.
+
+### O arquivo empacotado
+
+`src/steamzero/autoconfig/udev/steam-deck.cfg`, decidido no ADR-0027. Entra no
+catálogo **depois** do RetroArch, nunca no lugar dele, e não carrega
+`MANAGED_MARKER` — é dado de origem, não artefato gravado.
+
+### Efeito medido
+
+```
+catálogo: .../org.libretro.RetroArch/.../autoconfig/udev   420 perfis
+          src/steamzero/autoconfig/udev                      1 perfil
+
+state    pending-write        (antes: awaiting-device)
+label    Perfil resolvido; ainda não gravado
+target   ~/.config/steamzero/retroarch/autoconfig/udev/steamzero.cfg
+resolved 12 bindings          unresolved 0
+```
+
+Os valores resolvidos são os medidos, não os copiados:
+
+```
+game.up       hat.up         input_up_btn    16
+game.right    hat.right      input_right_btn 19
+game.down     hat.down       input_down_btn  17
+game.left     hat.left       input_left_btn  18
+game.primary  button.south   input_b_btn      3
+game.secondary button.east   input_a_btn      4
+```
+
+### Prova negativa
+
+Trocando `input_b_btn` de `"3"` para `"0"` — o valor que o `Steam_Controller.cfg`
+usa — o teste `test_the_indices_are_the_ones_measured_on_the_device` reprova.
+Copiar do perfil do vendor vizinho mapearia os botões errados, que é exatamente o
+que a seção 6 recusava fazer.
+
+### O que continua em aberto
+
+A gravação em si (`pending-write` ainda não é `applied`) e a confirmação botão a
+botão com o emulador em execução. A materialização só é alcançável pela GUI, no
+cartão por jogo, e a confirmação exige alguém pressionando os controles.
+
+### Estado do host
+
+A cópia usada na sonda foi removida. O `retroarch.cfg` do usuário permanece
+`sha256 a9945f5a…9393`, idêntico ao baseline, e
+`~/.config/steamzero/retroarch/` continua inexistente — nada foi gravado.

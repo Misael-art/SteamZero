@@ -6,7 +6,7 @@
   "domain": "emulation",
   "implementation": "partial",
   "integration": "feature-branch",
-  "verification": "unit",
+  "verification": "hw",
   "operation": "unknown",
   "distribution": "not-packaged",
   "scopePaths": [
@@ -19,9 +19,11 @@
     "tests/unit/test_input_devices.py",
     "tests/unit/test_retroarch_autoconfig.py",
     "tests/qml/check_controls_profile_card.qml",
-    "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig"
+    "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig",
+    "src/steamzero/autoconfig/udev/steam-deck.cfg",
+    "docs/adr/0027-autoconfig-base-do-steam-deck.md"
   ],
-  "scopeDigest": "058efb60d6a718d10b48623179c74c67b96e48604de4c49c29e58251ca0e3cf1",
+  "scopeDigest": "fc7b212094982aa6a81c9e808baea24fde04e4415fea2a614fb64cec739d386d",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -61,9 +63,15 @@
       "reference": "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig",
       "command": "2026-08-26, secao 7. Operador escolheu a opcao 1 (autoconfig-base proprio para o Deck). Pad medido por ioctl do joydev em /dev/input/js0 (JSIOCGNAME/AXES/BUTTONS/BTNMAP/AXMAP), leitura direta do kernel: 'Steam Deck', 24 botoes, 10 eixos, com BTN_SOUTH=3, BTN_EAST=4, BTN_NORTH=5, BTN_WEST=6, TL/TR=7/8, TL2/TR2=9/10, SELECT/START=11/12, MODE=13, THUMBL/THUMBR=14/15, D-Pad 16-19, extras Valve 20-23; eixos ABS_X/Y=0/1, ABS_RX/RY=2/3, HAT0X/Y=4/5. NAO ESCRITO ainda, de proposito: o formato-alvo (Steam_Controller.cfg do pacote) usa indices do driver UDEV, nao do joydev — nele input_b_btn=0 tem label 'A', logo udev 0 = BTN_SOUTH, enquanto no Deck BTN_SOUTH e joydev 3. A hipotese de que udev enumere na mesma ordem crescente e plausivel mas NAO medida, e escrever com indice suposto produziria o arquivo de bindings inventados que a secao 6 diz nao gravar. Confirmar exige o RetroArch reportando o pad com --verbose. BLOQUEIO DE GOVERNANCA separado: a implementacao exige src/steamzero/adapters/input_devices.py (reservado por WS-2026-08-V2-HARMONIZED) e o ADR exige docs/adr (reservado por WS-2026-08-HARMONIZE-A45); AGENTS.md regra 2 proibe duas frentes ativas com o mesmo caminho exclusivo.",
       "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig",
+      "command": "2026-08-26, secao 8. ADR-0027 aceito e autoconfig-base entregue. O RetroArch confirmou a lacuna com as proprias palavras, executado com --config <copia> --verbose --menu: '[Autoconf] Steam Deck (10462/4613) nao configurado.', com '[Input] Found joypad driver: udev' e o pad em /dev/input/event7. Indices medidos por DUAS fontes independentes que devolveram listas IDENTICAS de 24 codigos: ioctl JSIOCGBTNMAP em /dev/input/js0 e varredura ascendente do bitmap do proprio dispositivo em /sys/class/input/event7/device/capabilities/key a partir de BTN_MISC — logo a numeracao e propriedade do pad, nao de um driver, e BTN_SOUTH cai em 3 (nao 0) porque 0x121/0x122/0x126 ocupam 0-2. Empacotado src/steamzero/autoconfig/udev/steam-deck.cfg, que entra no catalogo DEPOIS do RetroArch e sem MANAGED_MARKER (dado de origem, nao artefato gravado). EFEITO MEDIDO: state passou de awaiting-device para pending-write, com 12 bindings resolvidos e 0 nao resolvidos, valores medidos e nao copiados (input_up_btn=16, input_right_btn=19, input_down_btn=17, input_left_btn=18, input_b_btn=3, input_a_btn=4). PROVA NEGATIVA: trocando input_b_btn de 3 para 0 — o valor do Steam_Controller.cfg do mesmo vendor — o teste test_the_indices_are_the_ones_measured_on_the_device reprova. EM ABERTO: a gravacao (pending-write ainda nao e applied) e a confirmacao botao a botao com o emulador rodando, que exige interacao humana. Host: copia da sonda removida, retroarch.cfg do usuario com sha256 a9945f5a...9393 identico ao baseline, ~/.config/steamzero/retroarch/ inexistente.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Opcao 1 escolhida (autoconfig-base proprio para o Deck). Pad ja medido (evidencia secao 7). Faltam DUAS liberacoes do coordenador antes de codigo: (1) liberar src/steamzero/adapters/input_devices.py de WS-2026-08-V2-HARMONIZED e docs/adr de WS-2026-08-HARMONIZE-A45, ou transferir o escopo; (2) autorizar uma execucao do RetroArch com --verbose para MEDIR os indices do driver udev — sem isso o autoconfig-base sai com indices supostos.",
+  "nextAction": "Materializar o autoconfig (pending-write -> applied) e provar marcador de ownership, recusa de arquivo sem marcador e gravacao somente quando ausente. A rota e a GUI: controls.autoconfig.apply so aparece no cartao por jogo (Emulation.qml:3908); nao ha MethodSpec nem comando CLI. Depois, confirmacao botao a botao com o RetroArch rodando, que exige interacao humana. Base ja resolvida pelo ADR-0027.",
   "activeWorkstreams": [
     "WS-2026-08-CONTROLS-INPUT-PROFILES"
   ],

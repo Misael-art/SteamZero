@@ -359,12 +359,26 @@ _FLATPAK_ROOTS = (
 )
 
 
+#: Autoconfigs que o SteamZero empacota para pads que o RetroArch não cobre.
+#: Entram DEPOIS do catálogo do RetroArch, nunca no lugar dele: se os dois
+#: descreverem o mesmo pad de formas diferentes, `AutoconfigCatalog.match`
+#: devolve `ambiguous-autoconfig` e nada é gravado. Por isso só entra aqui pad
+#: comprovadamente ausente do catálogo de terceiro — ver ADR-0027.
+_STEAMZERO_BUNDLED = Path(__file__).resolve().parent.parent / "autoconfig" / "udev"
+
+
+def steamzero_autoconfig_directory() -> Path | None:
+    """Diretório de autoconfigs empacotados pelo próprio SteamZero."""
+    return _STEAMZERO_BUNDLED if _STEAMZERO_BUNDLED.is_dir() else None
+
+
 def bundled_autoconfig_directories(home: Path | None = None) -> list[Path]:
-    """Diretórios de autoconfig empacotados pelo RetroArch instalado.
+    """Diretórios de autoconfig empacotados pelo RetroArch e pelo SteamZero.
 
     Cobre instalação por usuário e por sistema. Nenhum caminho é criado: o que
     não existir simplesmente não entra, e um host sem RetroArch resulta em
-    catálogo vazio — que vira `awaiting-device`, não erro.
+    catálogo só com o nosso — que continua virando `awaiting-device` para
+    qualquer pad que não seja o coberto, nunca erro.
     """
     base = home or Path.home()
     found: list[Path] = []
@@ -375,6 +389,9 @@ def bundled_autoconfig_directories(home: Path | None = None) -> list[Path]:
         except OSError:
             continue
         found.extend(path for path in candidates if path.is_dir())
+    own = steamzero_autoconfig_directory()
+    if own is not None:
+        found.append(own)
     return found
 
 

@@ -7619,3 +7619,46 @@ morto — foi verificado — mas quem usa só CLI não tem rota.
 Host ao fim: `~/.config/steamzero/retroarch/` continua inexistente, nada gravado
 pelo writer. O `retroarch.cfg` do usuário segue `sha256 a9945f5a…9393`, idêntico
 ao baseline de antes do `controls apply`.
+
+### Continuação 2026-08-26 — ADR-0027 e o autoconfig-base do Deck
+
+Operador liberou `input_devices.py` (de `WS-2026-08-V2-HARMONIZED`) e `docs/adr`
+(de `WS-2026-08-HARMONIZE-A45`), e autorizou executar o RetroArch. Os
+`exclusivePaths` foram transferidos nos três workstreams, não duplicados.
+
+**O emulador confirmou a lacuna com as próprias palavras.** Executado com
+`--config <cópia> --verbose --menu`: `[Autoconf] Steam Deck (10462/4613) não
+configurado.`, com `[Input] Found joypad driver: "udev"` e o pad em `event7`.
+
+**Os índices deixaram de ser suposição.** A seção 7 tinha parado porque o
+formato-alvo usa índices do driver `udev` e eu só tinha os do joydev. Duas fontes
+independentes — `ioctl JSIOCGBTNMAP` e a varredura ascendente do bitmap de teclas
+do próprio dispositivo a partir de `BTN_MISC` — devolveram listas **idênticas** de
+24 códigos. A numeração é propriedade do pad, não do driver. `BTN_SOUTH` cai em 3,
+não em 0, porque `0x121`/`0x122`/`0x126` ocupam 0–2.
+
+**Entregue**: ADR-0027 e `src/steamzero/autoconfig/udev/steam-deck.cfg`, que entra
+no catálogo DEPOIS do RetroArch e sem `MANAGED_MARKER` — dado de origem, não
+artefato gravado. Se um dia colidir com perfil de terceiro, o caminho
+`ambiguous-autoconfig` recusa gravar em vez de escolher.
+
+**Efeito medido**: `awaiting-device` → `pending-write`, 12 bindings resolvidos, 0
+não resolvidos, com os valores medidos (`input_b_btn = 3`, D-Pad 16–19).
+
+**Prova negativa**: trocando `input_b_btn` de `"3"` para `"0"` — o valor do
+`Steam_Controller.cfg` do mesmo vendor — o teste novo reprova. Copiar do vizinho
+mapearia os botões errados.
+
+**A suíte integral reprovou primeiro, e a notificação mentiu.** O job de fundo
+reportou exit 0 porque meu comando terminava com `echo EXIT=$?`; o log dizia
+`EXIT=1`, com `2 failed, 5257 passed`. As duas falhas eram reais e minhas:
+`test_committed_catalog_and_generated_views_are_consistent` e
+`test_every_tracked_file_has_a_custodian_item`, porque os arquivos novos ainda não
+tinham item custodiante. Corrigido com `scopePaths` e digest renovado.
+
+**Em aberto**: a gravação (`pending-write` ainda não é `applied`) e a confirmação
+botão a botão com o emulador rodando, que exige interação humana. A rota da
+materialização é a GUI: `controls.autoconfig.apply` só aparece no cartão por jogo.
+
+**Host**: cópia da sonda removida; `retroarch.cfg` do usuário `sha256 a9945f5a…9393`
+idêntico ao baseline; `~/.config/steamzero/retroarch/` inexistente.
