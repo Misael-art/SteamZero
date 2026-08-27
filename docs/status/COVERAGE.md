@@ -9,7 +9,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 |---|---|---|---|---|---|
 | SZ-AGG-ADAPTERS | 108 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-ASSETS | 10 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-CORE | 37 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-CORE | 38 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-DOMAIN | 92 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-INPUT-PROFILES | 19 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-JOBS | 3 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
@@ -23,10 +23,10 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AURA-UI | 14 | 3 | 3 | unit |  |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
-| SZ-COMPONENT-LIFECYCLE | 20 | 10 | 8 | hw |  |
+| SZ-COMPONENT-LIFECYCLE | 20 | 11 | 9 | hw |  |
 | SZ-CONTROLS-INPUT-PROFILES | 12 | 7 | 3 | hw |  |
 | SZ-EMULATION-ENHANCEMENTS | 24 | 9 | 9 | unit |  |
-| SZ-EMULATION-LONG-OPERATIONS | 28 | 15 | 9 | hw |  |
+| SZ-EMULATION-LONG-OPERATIONS | 28 | 16 | 10 | hw |  |
 | SZ-EMULATION-M10 | 6 | 3 | 2 | vm |  |
 | SZ-FRONTEND-ESDE | 2 | 5 | 2 | unit |  |
 | SZ-FRONTEND-ESDE-SYSTEMS | 3 | 1 | 1 | unit |  |

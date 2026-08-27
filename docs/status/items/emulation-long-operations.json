@@ -33,7 +33,7 @@
     "docs/09-operations/evidence/2026-08-25-degraded-detail",
     "docs/09-operations/evidence/2026-08-25-melonds-smoke-install-fisico"
   ],
-  "scopeDigest": "4e86e4ce0befc1671937c7cae67b25d07b6e708b20a9051af231ab3099803ad0",
+  "scopeDigest": "50f8ae7cde057bea5fdea9ea5c0f80ec404f3d0b091f02f9bd505accc586f8c9",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -133,6 +133,12 @@
       "kind": "test",
       "reference": "src/steamzero/adapters/flatpak.py",
       "command": "_deployment_state — Defeito adicional exposto pela correcao: status() e _persist() duplicavam o mapeamento de estado. Corrigir so status() fez a store gravar `degraded` para um deployment que a observacao ja chamava de `outdated`; test_scenario_14_rollback_is_auditable_and_preserves_configuration[flatpak] reprovou exatamente nessa divergencia. Extraido _deployment_state como fonte unica dos dois lados.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_service_core.py",
+      "command": "test_oversized_response_is_not_reported_as_contract_mismatch — `emulation workspace` num acervo real produz 1.513.479 bytes contra o limite de 1 MiB do transporte local, e o comando saia como E-API-CONTRACT ('Versao de contrato incompativel. Atualize o cliente ou o servidor') para um problema que atualizacao nenhuma resolve: cliente e servidor concordavam sobre o formato, a carga e que nao cabia. Introduzido CoreResponseTooLarge, mapeado para E-API-RESPONSE-TOO-LARGE, que orienta paginar ou reduzir escopo e nomeia tamanho e limite. Separadas tambem duas causas fundidas numa mensagem so (grande demais vs incompleta). NAO OBSERVADO no host: reproduzir exige o caminho do socket, e o daemon instalado e da release antiga; rodando da arvore o CLI diverge de geracao e cai no caminho local, que nao exercita o cap.",
       "result": "passed"
     }
   ],

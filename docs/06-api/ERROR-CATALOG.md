@@ -39,6 +39,7 @@ Todo erro carrega: `code, title (humano), what (o que aconteceu), impact, probab
 ### COMPONENT
 - `E-COMPONENT-UPDATE-ROLLEDBACK` "A atualização falhou. A versão anterior foi restaurada."
 - `E-COMPONENT-DEGRADED` verify encontrou drift (com diff).
+- `E-COMPONENT-NO-LAUNCH` componente sadio sem execução própria (core Libretro).
 - `E-COMPONENT-UNSUPPORTED-DISTRO` sem source compatível com a distro detectada.
 
 ### SAVES
@@ -76,6 +77,7 @@ Todo erro carrega: `code, title (humano), what (o que aconteceu), impact, probab
 - `E-API-UNKNOWN-ACTION` método fora da allowlist. Não reaproveite `E-API-SCHEMA`
   aqui: rota inexistente e campo inválido são falhas diferentes para o usuário.
 - `E-API-CONTRACT` versão de contrato incompatível.
+- `E-API-RESPONSE-TOO-LARGE` resposta acima do limite do transporte local.
 
 ### JOBS
 - `E-JOBS-BLOCKED-GAMEPLAY` job proibido durante jogo ativo.

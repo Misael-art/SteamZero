@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopeDigest": "dbf072039e69c26b6c583e08200ed543000555ab2641c179e29b8142344212e2",
+  "scopeDigest": "8b5a29263629d378850753e2d15a7bca8b737fa9cdce8b0bd2b287f49ee45e1f",
   "scopePaths": [
     "src/steamzero/cli/main.py",
     "src/steamzero/service/methods.py",

@@ -22,7 +22,7 @@
     "docs/09-operations/evidence/2026-08-27-matriz-componentes-fisica",
     "docs/09-operations/evidence/2026-08-27-launch-gate-drift"
   ],
-  "scopeDigest": "38d7ac4e47bda76df2bd641104778f96a46958a473b916fd4746e6335da172a7",
+  "scopeDigest": "60446c35f94fe56d45dda5396c1d57d8cc6bcc4ef31393d4a3ca464925f968b1",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -94,6 +94,12 @@
       "reference": "docs/09-operations/evidence/2026-08-27-launch-gate-drift",
       "command": "2026-08-27, host Valve Jupiter, release ativa 2.0.0rc1-3b296a949316. DEFEITO OBSERVADO NO HOST, relatado pelo operador como 'retroarch esta como reparar e varios outros emuladores tambem nao executaram'. Medido: `component list` devolve 33 componentes, 11 installed, 20 missing e 2 DEGRADED (retroarch, dolphin), ambos com detail 'commit instalado X difere da fonte fixada Y'. Commits conferidos contra o host: retroarch instalado 1f766799d9ff vs fixado d8644a97df3d; dolphin instalado 1b150924d321 vs fixado 377c3e63506e. O host rodou flatpak update e os manifestos fixam commits mais antigos. O RetroArch 1.22.2 esta INTEGRO e executavel (flatpak info confirma ref e versao). CAUSA RAIZ: FlatpakExecutor.status mapeava qualquer divergencia de commit para `degraded`, e lifecycle.launch recusa todo estado fora de {installed, outdated} com E-COMPONENT-DEGRADED. Uma divergencia de contabilidade tornava inutilizavel um emulador sao, e a unica saida oferecida na tela era 'reparar', que na pratica e downgrade para o commit fixado. A taxonomia em lifecycle.py ja reservava `degraded` para 'artefato ou metadados nao conferem' e `outdated` para 'integro, porem a fonte fixada avancou' — o mapeamento e que contrariava a propria taxonomia. NAO CORRIGIDO NO HOST NESTA SESSAO: a release instalada segue com o mapeamento antigo, entao retroarch e dolphin continuam degraded e sem launch ate uma release nova ser publicada e instalada, o que exige autorizacao explicita nao concedida. A correcao esta provada por teste, nao por observacao no artefato instalado.",
       "result": "partial"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_component_lifecycle.py",
+      "command": "test_healthy_libretro_core_is_not_reported_as_degraded — core Libretro sadio recusava launch com E-COMPONENT-DEGRADED, e a tela anunciava 'componente degradado / execute reparo' para uma instalacao perfeita, convidando o usuario a reparar o que nao estava quebrado. Core Libretro nao tem execucao propria por DESIGN: quem o carrega e o frontend. Passa a levantar E-COMPONENT-NO-LAUNCH, codigo novo com copia propria. Observado no host em 2026-08-27 com libretro-snes9x instalado e verificado. NAO OBSERVADO no artefato instalado: a release ativa segue com o codigo antigo.",
+      "result": "passed"
     }
   ],
   "nextAction": "Executor libretro provado no host: install, verify, rollback com custodia conferida por hash, e noop inerte (mtime e sha256 intactos, nenhum journal novo). Falta o update REAL de versao, que exige uma versao alvo diferente da instalada — o unico caminho do executor ainda sem exercicio. Depois, instrumentar progresso por bytes e cancelamento cooperativo, e os 16 cores restantes.",
