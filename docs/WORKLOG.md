@@ -7692,3 +7692,41 @@ diante, só `spectacle -a`, restrito à janela ativa.
 **Host**: writer não gravou, `~/.config/steamzero/retroarch/` inexistente,
 `retroarch.cfg` do usuário `sha256 a9945f5a…9393` idêntico ao baseline, rollback
 `2.0.0rc1-92d91d631b80` preservado.
+
+## 2026-08-26 — AURA Launcher: a primeira captura física achou um defeito
+
+Branch `codex/aura-launcher-evidencia-fisica`, sobre `835a057`. Item
+`SZ-AURA-LAUNCHER`.
+
+O `nextAction` pedia a primeira evidência FÍSICA do Launcher, home com acervo
+real. A captura foi feita na release `2.0.0rc1-720928250e1a` e mostrou os cartões
+da Biblioteca exibindo **identificadores em hash no lugar dos títulos**
+(`ae18c7e53583298461a0edea`).
+
+**Isolamento**: a central desktop, no mesmo host e mesma release, exibia
+`Demon Slayer Kimetsu no Yaiba…` sem dificuldade. O dado tinha título; o Launcher
+é que não o encontrava. Isso descartou biblioteca vazia e problema de dado.
+
+**Causa raiz**: a biblioteca canônica publica o rótulo em `name`, e não existe
+chave `title` no acervo real — conferi as 23 chaves de um jogo. `build_titles`
+lia `game.get("title") or identifier`, então o fallback para o id disparava em
+TODO o acervo, não num caso de borda. O comentário da função já dizia que o
+título viajava à parte "para a home não acabar mostrando `celeste` onde o usuário
+espera `Celeste`": a intenção estava certa, a leitura errada.
+
+**Correção**: lê `name`, com `title` mantido como alias porque outras fontes o
+usam. Validado contra o acervo real do host: 80 jogos, 80 títulos resolvidos,
+zero caindo no id. Prova negativa: revertendo, 2 dos 4 testes novos reprovam.
+
+**Não provado, e escrito como tal**: a captura com títulos corretos exige uma
+release com esta correção — a instalada carrega o defeito, e recapturar hoje
+mostraria os mesmos hashes. Navegação por controle, lançamento, sessão e retorno
+seguem pendentes de interação humana.
+
+**Privacidade**: capturas restritas a `spectacle -a` (janela ativa). A única
+tentativa de tela cheia pegou conteúdo pessoal do operador alheio ao projeto e
+foi apagada imediatamente, sem chegar ao repositório.
+
+**Gates**: suíte isolada integral 5263 passed, 44 skipped, exit 0 (28m23s), lida
+do log e não da notificação de background; ruff check, format (525), mypy (243),
+independence, boundaries e status-check verdes.

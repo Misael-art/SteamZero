@@ -118,3 +118,37 @@ def test_a_single_item_row_has_no_horizontal_wrap_to_itself() -> None:
     assert node.left is None
     assert node.right is None
     assert node.up == "header:home"
+
+
+class TestBuildTitlesReadsTheCanonicalLabel:
+    """A home mostrava o hash do id no lugar do titulo.
+
+    Observado FISICAMENTE na release 2.0.0rc1-720928250e1a, com os 80 jogos do
+    acervo real do host: os cartoes exibiam `ae18c7e53583298461a0edea` em vez de
+    `1969 (Homebrew) (SMS)`. A biblioteca canonica publica o rotulo em `name`;
+    `build_titles` lia so `title`, entao o fallback para o id disparava em TODO
+    o acervo — nao num caso de borda.
+    """
+
+    def test_the_canonical_name_becomes_the_title(self) -> None:
+        from steamzero.launcher.app import build_titles
+
+        games = [{"id": "ae18c7e53583298461a0edea", "name": "1969 (Homebrew) (SMS)"}]
+        assert build_titles(games) == {"ae18c7e53583298461a0edea": "1969 (Homebrew) (SMS)"}
+
+    def test_title_still_works_as_an_alias(self) -> None:
+        """Outras fontes usam `title`; aceitar as duas nao quebra ninguem."""
+        from steamzero.launcher.app import build_titles
+
+        assert build_titles([{"id": "celeste", "title": "Celeste"}]) == {"celeste": "Celeste"}
+
+    def test_name_wins_when_both_exist(self) -> None:
+        from steamzero.launcher.app import build_titles
+
+        games = [{"id": "x", "name": "Nome canonico", "title": "Outro"}]
+        assert build_titles(games) == {"x": "Nome canonico"}
+
+    def test_the_id_is_the_last_resort_not_the_default(self) -> None:
+        from steamzero.launcher.app import build_titles
+
+        assert build_titles([{"id": "sem-rotulo"}]) == {"sem-rotulo": "sem-rotulo"}

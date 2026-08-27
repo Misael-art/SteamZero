@@ -36,12 +36,19 @@ def build_titles(games: Sequence[Mapping[str, Any]]) -> dict[str, str]:
 
     O domínio de foco trabalha só com ids; o título viaja à parte para a home
     não acabar mostrando `celeste` onde o usuário espera `Celeste`.
+
+    A biblioteca canônica publica o rótulo em ``name``; ``title`` é aceito como
+    alias porque outras fontes o usam. Ler só ``title`` fazia o fallback para o
+    id disparar em TODO o acervo real, e a home do Launcher exibia
+    ``ae18c7e53583298461a0edea`` no lugar de ``1969 (Homebrew) (SMS)`` —
+    observado na release 2.0.0rc1-720928250e1a com os 80 jogos do host.
     """
     titles: dict[str, str] = {}
     for game in games:
         identifier = str(game.get("id", ""))
         if identifier:
-            titles[identifier] = str(game.get("title") or identifier)
+            label = game.get("name") or game.get("title")
+            titles[identifier] = str(label or identifier)
     return titles
 
 
