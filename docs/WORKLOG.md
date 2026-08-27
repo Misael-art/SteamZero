@@ -7730,3 +7730,44 @@ foi apagada imediatamente, sem chegar ao repositório.
 **Gates**: suíte isolada integral 5263 passed, 44 skipped, exit 0 (28m23s), lida
 do log e não da notificação de background; ruff check, format (525), mypy (243),
 independence, boundaries e status-check verdes.
+
+## 2026-08-26 — Preflight de release sob injeção de falha
+
+Branch `codex/host-update-prova-fisica`, sobre `00459c7`. Item
+`SZ-HOST-UPDATE-TRANSACTIONAL`. Nenhuma linha de `src/` alterada; host não
+tocado (`verify-bundle` e `inspect` são read-only).
+
+O `nextAction` pedia exercitar o update contra o host. `update` muta e exige
+autorização explícita da §1, que não foi dada. Mas os critérios de RECUSA são
+prováveis sem mutar nada — um preflight que recusa não muta. Ataquei o critério
+"o preflight recusa release sem procedência, hash, CI verde ou espaço livre",
+sobre cópias do bundle `2.0.0rc1-720928250e1a`.
+
+**FI-1** — wheel adulterado, manifesto intacto: recusado, `sha256 diverge do
+manifesto`, exit 1.
+
+**FI-2, o teste que importa** — injetei `steamzero/INTRUSO.txt` dentro do wheel,
+recalculei o sha256 e reescrevi a entrada correspondente no
+`WHEELHOUSE-MANIFEST`, deixando wheel e manifesto coerentes entre si. **Recusado
+mesmo assim**, por caminho diferente: `hash diverge: dist/steamzero-…whl`. O
+bundle carrega DUAS âncoras independentes, e `build/SHA256SUMS` não fora tocado.
+
+**Erro meu, registrado**: a primeira tentativa de FI-2 reescreveu todos os
+`sha256` do manifesto, inclusive das dependências. O gate recusou — pelo motivo
+errado (`attrs`, `jsonschema`, `pillow`). Refiz cirurgicamente. Teste que passa
+pelo motivo errado não prova nada.
+
+**FI-3 e FI-4** — `AUTOMATION-MANIFEST` removido, e depois com `sourceCommit`
+zerado e `runId=1`: os dois passam com `ok: true`. **Não é defeito**:
+`verify-bundle` responde por integridade de artefato; a procedência é checada em
+`_validate_cached_bundle_ci` (cache do `update`), em `_release_assets`
+(`publish`) e no `prepare`. Fica registrada a fronteira — `verify-bundle`
+sozinho não é atestado de procedência —, com o efeito prático restrito a
+metadado, já que o conteúdo instalável segue ancorado em duas somas.
+
+**Não provado**: preservação de banco, quarentena de candidata inválida e
+rollback antes da ativação. Todos exigem `update` contra o host.
+
+**Gates**: ruff check, format (525), mypy (243), independence, boundaries e
+status-check verdes. Suíte integral não reexecutada: o diff não toca `src/` nem
+`tests/`, e ela fechou verde (5263 passed) neste mesmo código em `00459c7`.

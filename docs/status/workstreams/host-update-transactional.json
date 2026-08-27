@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "item": "SZ-HOST-UPDATE-TRANSACTIONAL",
+  "id": "WS-2026-08-HOST-UPDATE",
+  "branch": "codex/host-update-prova-fisica",
+  "baseRef": "00459c7",
+  "owner": "codex-host-update",
+  "state": "active",
+  "exclusivePaths": [
+    "docs/09-operations/evidence/2026-08-26-host-update-preflight"
+  ],
+  "sharedPaths": [
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Executar update contra o host quando houver autorizacao explicita, para provar preservacao de banco, quarentena de candidata invalida e rollback disponivel antes da ativacao.",
+  "updatedAt": "2026-08-26"
+}

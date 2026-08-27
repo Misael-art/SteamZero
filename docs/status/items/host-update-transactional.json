@@ -23,9 +23,10 @@
     "tests/integration/test_transaction.py",
     "tests/unit/test_release_host.py",
     "tools/audit_port_losses.py",
-    "tools/release_host.py"
+    "tools/release_host.py",
+    "docs/09-operations/evidence/2026-08-26-host-update-preflight"
   ],
-  "scopeDigest": "8eb5119452693fbba2973c115b418b41fb5d762ad764cb53efc4aaaa0bd5efb3",
+  "scopeDigest": "5d2cf0e5b844d9e99edd44f7cebd6a3a718e30d93155d89c28438a162632f5d8",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -100,10 +101,18 @@
       "reference": "tests/integration/test_host_installer.py",
       "command": ".venv/bin/python -m pytest tests/integration/test_host_installer.py -q (39 passed). Defeito fisico observado na 2.0.0rc1-2a1b0fb90105 instalada: steamzero-launcher existia em /opt/steamzero/current/venv/bin e rodava, mas a Layout do instalador nao o publicava — sem symlink em /usr/local, sem .desktop e sem sessao wayland, nenhum caminho do host o alcancava. Corrigido publicando launcher_command com o mesmo padrao de ownership dos demais comandos: recusa substituir alvo nao gerenciado, restaura link anterior em falha e remove o link quando a release nao traz o binario, para nunca deixar link quebrado. Prova negativa: sem a chamada de _sync_launcher_command o teste falha com FileNotFoundError no readlink do symlink ausente.",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-26-host-update-preflight",
+      "command": "2026-08-26, injecao de falha no preflight de release, sobre copias do bundle 2.0.0rc1-720928250e1a; host NAO tocado (verify-bundle e inspect sao read-only). FI-1 wheel adulterado com manifesto intacto: RECUSADO, 'wheelhouse reprovado: steamzero-...whl: sha256 diverge do manifesto', exit 1. FI-2, o teste que importa: injetei steamzero/INTRUSO.txt dentro do wheel, recalculei o sha256 e reescrevi a entrada correspondente no WHEELHOUSE-MANIFEST, deixando wheel e manifesto coerentes — RECUSADO MESMO ASSIM por caminho diferente, 'hash diverge: dist/steamzero-2.0.0rc1-py3-none-any.whl', exit 1, porque o bundle carrega DUAS ancoras independentes e build/SHA256SUMS nao havia sido tocado. Registro de erro meu: a primeira tentativa de FI-2 reescreveu todos os sha256 do manifesto, inclusive das dependencias, e o gate recusou pelo motivo ERRADO (attrs, jsonschema, pillow divergentes); refiz cirurgicamente. FI-3 (AUTOMATION-MANIFEST removido) e FI-4 (sourceCommit=40 zeros, runId=1) passam com ok:true — NAO e defeito: verify-bundle responde por integridade de artefato e a procedencia e checada em _validate_cached_bundle_ci (caminho de cache do update), em _release_assets (publish) e no prepare (run push verde do commit exato). Fronteira registrada: verify-bundle sozinho nao e atestado de procedencia, mas o conteudo instalavel segue ancorado em duas somas independentes, entao o efeito e sobre metadado e nao sobre codigo. NAO PROVADO: preservacao de banco, quarentena de candidata invalida e rollback antes da ativacao, todos dependentes de executar update contra o host, que exige autorizacao explicita da secao 1.",
+      "result": "partial"
     }
   ],
-  "nextAction": "Exercitar o update transacional contra o host real pelo fluxo governado e registrar preservacao de banco, quarentena de candidata invalida e rollback disponivel antes da ativacao. As perdas do porte estao fechadas; falta a prova fisica.",
-  "activeWorkstreams": [],
-  "updatedAt": "2026-08-25",
+  "nextAction": "Preflight de recusa provado por injecao de falha (evidencia 2026-08-26). Falta o caminho de SUCESSO: executar release_host.py update contra o host com autorizacao explicita do operador, registrando preservacao de banco atraves do update e do rollback, quarentena de candidata invalida e rollback disponivel antes da ativacao. Sem autorizacao o item nao avanca alem disto.",
+  "activeWorkstreams": [
+    "WS-2026-08-HOST-UPDATE"
+  ],
+  "updatedAt": "2026-08-26",
   "notes": "Item recriado em 2026-08-24. A capacidade veio no porte (d681f34 update transacional recuperavel, 1df693e candidata falha segura, d1f8048 publicacao/rollback por identidade do alvo, 7b02e39/9291d43/b75db77/98215d8 custodia durave da FI-06, f876f27 identidade do daemon na convergencia, e65bd66 HTTPS do daemon, 63341ae observacoes volateis, a9116da falhas de preservacao de estado, fef3678 restauracao da ConvergenceError perdida no auto-merge). O item normativo se perdeu na integracao interrompida e os arquivos ficaram apenas sob SZ-AGG-CORE e SZ-AGG-TOOLS. O eixo operacional e 'unknown' de proposito: nada aqui foi exercido contra o host nesta frente ainda, e o commit d67ae16 existe justamente porque o auto-merge do porte havia removido smokes do doctor e a exigencia de ownership seguro. 2026-08-24: a auditoria de perdas do auto-merge que o item 6.7 pede foi FEITA, por comparacao de AST contra a origem do porte. Achou tres perdas reais, todas em release_host.py e todas no caminho de falha — que e o caminho que menos se exercita e mais importa. Os outros dez arquivos de updater/lifecycle estao integros. 2026-08-24: as TRES perdas do auto-merge foram recuperadas e a auditoria por AST fecha em zero. Cada uma entrou isolada, com prova negativa sobre estado observavel, e ligada aos pontos de chamada — definir sem chamar nao corrigiria nada."
 }
