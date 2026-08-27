@@ -1,0 +1,33 @@
+=== POS-INSTALL  2026-08-27T12:39:34-03:00 ===
+component status: ok
+{
+  "id": "libretro-snes9x",
+  "state": "installed",
+  "installed": true,
+  "installable": true,
+  "executor": "libretro",
+  "sourceType": "archive",
+  "version": "1.22.2",
+  "targetVersion": "1.22.2",
+  "origin": "archive",
+  "detail": null,
+  "endOfLife": false
+}
+--- verify (read-only) ---
+component verify: ok
+{
+  "id": "libretro-snes9x",
+  "state": "installed",
+  "installed": true,
+  "installable": true,
+  "executor": "libretro",
+  "sourceType": "archive",
+  "version": "1.22.2",
+  "targetVersion": "1.22.2",
+  "origin": "archive",
+  "detail": null,
+  "endOfLife": false,
+  "verified": true,
+  "repairable": false
+}
+EXIT_verify=0

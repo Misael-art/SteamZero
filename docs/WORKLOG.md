@@ -7806,3 +7806,35 @@ autorização explícita e bloqueada pelo classificador nesta sessão.
 status-check verdes. Suíte integral não reexecutada: o diff não toca `src/` nem
 `tests/`, e ela fechou verde (5263 passed, exit 0) neste mesmo código em
 `edef46a`, em ambiente limpo.
+
+### Continuação 2026-08-27 — primeiro core libretro instalado no host
+
+Autorizado explicitamente. `libretro-snes9x` pelo fluxo governado (`component
+plan` → `component apply`, plano `01M11XYJ33WCB1G266MK69Z63F`, rollback G-FULL).
+É a **primeira** instalação do executor `libretro` neste host: a tabela por
+executor saiu de `libretro 17 / 0 / não provado`.
+
+`missing` → `installed`, `version 1.22.2`, `origin archive`, e `component
+verify` devolve `verified: true`.
+
+**O digest que já causou defeito, conferido no artefato real.** O plano declarou
+`coreSha256 f7eb4003…` — o do `.so` extraído, não o do pacote, o mesmo cuja
+comparação errada em `_owned_target` recusava todo update com
+`E-CONTENT-INCOMPLETE`. O `sha256sum` do `snes9x_libretro.so` instalado devolve
+exatamente esse valor. O que foi planejado é o que está no disco.
+
+**Ownership** cumprido: marcador em `cores/.steamzero-managed/`, com
+`archiveSha256`, `coreSha256` e `manifestHash`.
+
+**Contraste que vale registrar**: o core foi para
+`~/.var/app/org.libretro.RetroArch/config/retroarch/cores/`, gravável a partir do
+host — enquanto o `joypad_autoconfig_dir` do MESMO Flatpak aponta para `/app`,
+interno ao sandbox. Duas integrações com o mesmo pacote têm superfícies de
+escrita diferentes; supor uma pela outra levaria a erro.
+
+**Não provado**: rollback do core não foi executado — a operação está disponível
+no journal e não foi acionada, porque reverter uma instalação recém-provada
+destruiria a evidência sem pedido do operador. `update` de core não exercido.
+Progresso por bytes e cancelamento seguem sem instrumentação. Os outros **16
+cores continuam `missing`**: um core instalado prova o executor, não os
+emuladores que dependem dos cores ausentes.

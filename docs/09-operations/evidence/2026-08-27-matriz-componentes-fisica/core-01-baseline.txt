@@ -1,0 +1,18 @@
+=== BASELINE libretro  2026-08-27T12:38:32-03:00 ===
+release: 2.0.0rc1-3b296a949316
+component status: ok
+{
+  "id": "libretro-snes9x",
+  "state": "missing",
+  "installed": false,
+  "installable": true,
+  "executor": "libretro",
+  "sourceType": "archive",
+  "version": null,
+  "targetVersion": "1.22.2",
+  "origin": null,
+  "detail": null,
+  "endOfLife": false
+}
+--- diretorio de cores gerenciado ---
+(sem arvore de cores do steamzero)

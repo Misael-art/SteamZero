@@ -64,3 +64,82 @@ classificador do harness.
 ## Estado do host
 
 Inalterado. `component list` é read-only.
+
+---
+
+## Primeira instalação física de um core libretro (2026-08-27)
+
+Autorizada explicitamente pelo operador. `libretro-snes9x`, pelo fluxo governado
+`component plan` → `component apply`, plano `01M11XYJ33WCB1G266MK69Z63F` com
+`rollbackGuarantee: G-FULL`.
+
+Esta é a **primeira** instalação do executor `libretro` neste host. Antes dela a
+tabela acima registrava `libretro 17 / 0 instalados / não provado`.
+
+### Antes e depois
+
+| | antes | depois |
+|---|---|---|
+| `state` | `missing` | **`installed`** |
+| `version` | `null` | `1.22.2` |
+| `origin` | `null` | `archive` |
+| `verified` | — | **`true`** |
+| árvore de cores | inexistente | criada |
+
+### O digest que já causou defeito neste repo
+
+O plano declarou duas âncoras distintas:
+
+```
+archiveSha256  4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307
+coreSha256     f7eb400380a18e94b996acfae5a22fa4261c8ff90fa24c213336548925036442
+```
+
+O `coreSha256` é o **segundo** digest — o do `.so` extraído, não o do pacote — e
+já foi origem de defeito de produto: `_owned_target` comparava com o digest
+errado e recusava todo update com `E-CONTENT-INCOMPLETE`.
+
+Conferido no artefato real:
+
+```
+$ sha256sum ~/.var/app/org.libretro.RetroArch/config/retroarch/cores/snes9x_libretro.so
+f7eb400380a18e94b996acfae5a22fa4261c8ff90fa24c213336548925036442
+                                                    2 161 408 bytes
+```
+
+**Idêntico ao declarado.** O que foi planejado é o que está no disco.
+
+### Ownership
+
+```json
+{"adapterId":"libretro-snes9x","archiveSha256":"4b7ed8dc…","coreId":"snes9x",
+ "coreSha256":"f7eb4003…","manifestHash":"5361ac9c…","schemaVersion":1,
+ "version":"1.22.2"}
+```
+
+Marcador em `cores/.steamzero-managed/libretro-snes9x.json`, com as três âncoras
+registradas — o que permite distinguir core nosso de core de terceiro numa
+remoção ou update futuro, exigência da §5.
+
+### Onde o core foi parar, e por que isso importa
+
+`~/.var/app/org.libretro.RetroArch/config/retroarch/cores/` — o diretório de
+configuração do Flatpak, **gravável a partir do host**.
+
+Contraste que vale registrar: no caso do autoconfig, o
+`joypad_autoconfig_dir` declarado apontava para `/app/share/…`, interno ao
+sandbox e inalcançável. Para cores, o caminho é alcançável. As duas
+integrações com o mesmo Flatpak têm superfícies de escrita diferentes, e supor
+uma pela outra levaria a erro.
+
+### O que continua não provado
+
+`rollback` do core **não foi executado** — a operação está disponível no journal
+e não foi acionada, porque reverter uma instalação recém-provada destruiria a
+evidência sem pedido do operador. `update` de core também não foi exercido.
+
+Progresso por bytes e cancelamento cooperativo seguem sem instrumentação.
+
+Os outros **16 cores libretro continuam `missing`**. Um core instalado prova que
+o executor funciona; não prova os sete emuladores que dependem de cores ainda
+ausentes.

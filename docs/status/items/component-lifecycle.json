@@ -21,7 +21,7 @@
     "docs/09-operations/evidence/2026-08-16-component-plan-terminalization",
     "docs/09-operations/evidence/2026-08-27-matriz-componentes-fisica"
   ],
-  "scopeDigest": "2d7691698612b5f8cb688788f3669cdf8406dd087b452ec84fd1081f198fa305",
+  "scopeDigest": "8522c5671fb04bed9e4b22472bf62a54d39c9e55825235d8992f24c415be151e",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -69,9 +69,15 @@
       "reference": "docs/09-operations/evidence/2026-08-27-matriz-componentes-fisica",
       "command": "2026-08-27, matriz FISICA dos 33 componentes na release instalada 2.0.0rc1-3b296a949316, medida com component list (read-only, zero mutacao). Resultado: 22 missing, 9 installed, 2 degraded, e ZERO degradados sem detail — a exigencia da secao 8 esta cumprida em 2 de 2. Os degradados sao dolphin e retroarch, ambos por divergencia de commit Flatpak com causa nomeada. Instalados: cemu, citron, duckstation, eden, flycast, melonds, pcsx2, rpcs3, ryubing, todos com detail null. ACHADO ESTRUTURAL: os 17 cores libretro estao TODOS missing — 52% da matriz nunca teve instalacao fisica neste host, logo o executor libretro nao tem NENHUMA prova de install/verify/rollback. Por executor: flatpak 10 total / 6 instalados / provado; engine 6 / 4 / provado; libretro 17 / 0 / NAO PROVADO. A conformidade local cobre os 33 (357 passed), mas cobertura de teste nao e instalacao: para o libretro, matriz local verde e matriz fisica vazia coexistem. NAO PROVADO tambem: progresso por bytes e cancelamento cooperativo, ambos sem instrumentacao. Instalar um core exigiria component apply, que e mutacao dependente de autorizacao explicita e foi bloqueada pelo classificador nesta sessao.",
       "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-27-matriz-componentes-fisica",
+      "command": "2026-08-27, PRIMEIRA instalacao fisica do executor libretro neste host, autorizada explicitamente. libretro-snes9x pelo fluxo governado component plan -> component apply, plano 01M11XYJ33WCB1G266MK69Z63F com rollbackGuarantee G-FULL. Antes: state missing, version null, sem arvore de cores. Depois: state installed, version 1.22.2, origin archive, e component verify devolve verified true. O DIGEST QUE JA CAUSOU DEFEITO conferido no artefato real: o plano declarou coreSha256 f7eb400380a18e94b996acfae5a22fa4261c8ff90fa24c213336548925036442 (o do .so extraido, nao o do pacote — o mesmo digest cuja comparacao errada em _owned_target recusava todo update com E-CONTENT-INCOMPLETE), e sha256sum do snes9x_libretro.so instalado devolve exatamente esse valor, 2161408 bytes. O que foi planejado e o que esta no disco. OWNERSHIP: marcador em cores/.steamzero-managed/libretro-snes9x.json com adapterId, archiveSha256, coreSha256 e manifestHash, cumprindo a secao 5. CONTRASTE registrado: o core foi para ~/.var/app/org.libretro.RetroArch/config/retroarch/cores, GRAVAVEL a partir do host, enquanto o joypad_autoconfig_dir do mesmo Flatpak aponta para /app interno ao sandbox — duas integracoes com o mesmo pacote tem superficies de escrita diferentes. NAO PROVADO: rollback do core nao foi executado (operacao disponivel no journal, nao acionada, para nao destruir a evidencia recem-produzida), update de core nao exercido, progresso por bytes e cancelamento sem instrumentacao, e os outros 16 cores libretro seguem missing.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Matriz fisica medida: 33 componentes, 2 degradados ambos com causa registrada, zero sem detail. O gargalo agora tem nome: os 17 cores libretro estao todos missing e o executor libretro nao tem nenhuma prova fisica de install/verify/rollback. Instalar ao menos um core pelo fluxo governado (exige autorizacao explicita) e so depois instrumentar progresso por bytes e cancelamento cooperativo na aquisicao.",
+  "nextAction": "Executor libretro provado fisicamente pela primeira vez: libretro-snes9x installed e verified, com coreSha256 conferido no .so e marcador de ownership. Falta exercitar rollback e update de core (o rollback esta disponivel no journal e nao foi acionado), instrumentar progresso por bytes e cancelamento cooperativo, e instalar os 16 cores libretro restantes, todos ainda missing.",
   "activeWorkstreams": [
     "WS-2026-08-COMPONENT-MATRIZ"
   ],

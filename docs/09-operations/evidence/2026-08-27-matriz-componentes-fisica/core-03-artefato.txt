@@ -1,0 +1,9 @@
+=== sha256 do core instalado ===
+f7eb400380a18e94b996acfae5a22fa4261c8ff90fa24c213336548925036442
+esperado do plano ....... f7eb400380a18e94b996acfae5a22fa4261c8ff90fa24c213336548925036442
+bytes: 2161408
+
+=== marcador de ownership ===
+{"adapterId":"libretro-snes9x","archiveSha256":"4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307","coreId":"snes9x","coreSha256":"f7eb400380a18e94b996acfae5a22fa4261c8ff90fa24c213336548925036442","manifestHash":"5361ac9c7c76f92c8bdd9acf7a641facbd6bd1dee9a525ffd02bfece3314ea7d","schemaVersion":1,"version":"1.22.2"}
+=== o diretorio de cores tem so o nosso? ===
+snes9x_libretro.so
