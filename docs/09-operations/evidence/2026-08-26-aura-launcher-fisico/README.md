@@ -97,3 +97,61 @@ Todas as capturas desta página usam `spectacle -a`, restrito à janela ativa. U
 tentativa inicial com `spectacle -f` (tela inteira) capturou conteúdo pessoal do
 operador alheio ao projeto; o arquivo foi apagado imediatamente e não chegou ao
 repositório.
+
+---
+
+## 6. Correção confirmada na release instalada — e o que ela revelou (2026-08-27)
+
+A release `2.0.0rc1-3b296a949316`, instalada pelo `update` governado, carrega a
+correção de `build_titles`.
+
+### Um falso negativo que quase entrou aqui
+
+A primeira recaptura mostrou **os mesmos hashes** — e eu quase reabri o item por
+isso. O ID da janela era idêntico ao da captura anterior. Conferindo os
+processos:
+
+```
+pid 1857729  release 2.0.0rc1-720928250e1a   elapsed 06:36:02   ← dono da janela
+pid 2838588  release 2.0.0rc1-3b296a949316   elapsed 00:39      ← o novo
+```
+
+O Launcher da release ANTIGA continuava rodando havia mais de seis horas e ainda
+era dono daquela janela. Eu estava capturando o processo errado. Duas janelas
+`SteamZero` coexistiam; ativei a correta pelo id e recapturei.
+
+**Lição registrada**: identidade de janela não é identidade de release. Toda
+recaptura pós-update precisa confirmar de qual processo a janela é.
+
+### `02-titulos-resolvidos-com-transbordo.png`
+
+Os títulos aparecem — `1969 (Homebrew) (SMS)`, `Alex Kidd in Shinobi World
+(Hack) (Graphics Restoration) (SMS)` — confirmando a correção **na release
+instalada**.
+
+E expõem um segundo defeito, que os hashes escondiam: o texto **transborda o
+cartão e se sobrepõe aos vizinhos**. Uma linha atravessa três cartões, e nenhum
+título fica legível.
+
+O defeito sempre existiu; hash de 24 caracteres cabia nos 180 px do cartão, e
+título real não. Corrigir o primeiro tornou o segundo visível — o tipo de coisa
+que só aparece com dado real na tela.
+
+### Causa e correção
+
+`LauncherHome.qml` usava `anchors.centerIn: parent` sem largura, sem `wrapMode` e
+sem `elide`. Sem restrição, o `Text` renderiza na largura natural do conteúdo.
+
+Passa a usar `anchors.fill` com margem, `wrapMode: Text.Wrap`,
+`maximumLineCount: 4` e `elide: Text.ElideRight`, preservando a centralização.
+
+### `03-layout-corrigido.png`
+
+Títulos quebram dentro do próprio cartão, sem sobreposição, com os vizinhos
+legíveis. Capturado do Launcher rodando da árvore corrigida.
+
+### Fronteira honesta
+
+`02` é da **release instalada**; `03` é da **árvore de trabalho**. A confirmação
+do layout na release exige mais um ciclo de publicação. Não é a mesma classe de
+prova, e está marcado como tal.

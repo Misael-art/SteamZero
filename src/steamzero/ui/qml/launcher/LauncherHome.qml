@@ -126,10 +126,23 @@ Item {
                             border.width: home.currentFocus === nodeId ? 3 : 1
                             border.color: home.currentFocus === nodeId ? "#22d3ee" : "#243044"
                             Text {
-                                anchors.centerIn: parent
+                                // `centerIn` sem largura deixava o texto crescer
+                                // na largura natural e vazar do cartão de 180px,
+                                // sobrepondo os vizinhos. O defeito ficou escondido
+                                // enquanto a home mostrava o id em hash: hash curto
+                                // cabia. Com o título real — "Alex Kidd in Shinobi
+                                // World (Hack) (Graphics Restoration) (SMS)" — a
+                                // linha atravessava três cartões.
+                                anchors.fill: parent
+                                anchors.margins: 10
                                 text: modelData.title
                                 color: "#f2f6fb"
                                 font.pixelSize: 14
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                wrapMode: Text.Wrap
+                                maximumLineCount: 4
+                                elide: Text.ElideRight
                             }
                         }
                     }
