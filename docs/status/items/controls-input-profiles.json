@@ -23,7 +23,7 @@
     "src/steamzero/autoconfig/udev/steam-deck.cfg",
     "docs/adr/0027-autoconfig-base-do-steam-deck.md"
   ],
-  "scopeDigest": "fc7b212094982aa6a81c9e808baea24fde04e4415fea2a614fb64cec739d386d",
+  "scopeDigest": "03e98bfec8553ffa7cd45bf29b488cb9790131ca8dc42ecfedb4b7f72ba24e4e",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -69,9 +69,15 @@
       "reference": "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig",
       "command": "2026-08-26, secao 8. ADR-0027 aceito e autoconfig-base entregue. O RetroArch confirmou a lacuna com as proprias palavras, executado com --config <copia> --verbose --menu: '[Autoconf] Steam Deck (10462/4613) nao configurado.', com '[Input] Found joypad driver: udev' e o pad em /dev/input/event7. Indices medidos por DUAS fontes independentes que devolveram listas IDENTICAS de 24 codigos: ioctl JSIOCGBTNMAP em /dev/input/js0 e varredura ascendente do bitmap do proprio dispositivo em /sys/class/input/event7/device/capabilities/key a partir de BTN_MISC — logo a numeracao e propriedade do pad, nao de um driver, e BTN_SOUTH cai em 3 (nao 0) porque 0x121/0x122/0x126 ocupam 0-2. Empacotado src/steamzero/autoconfig/udev/steam-deck.cfg, que entra no catalogo DEPOIS do RetroArch e sem MANAGED_MARKER (dado de origem, nao artefato gravado). EFEITO MEDIDO: state passou de awaiting-device para pending-write, com 12 bindings resolvidos e 0 nao resolvidos, valores medidos e nao copiados (input_up_btn=16, input_right_btn=19, input_down_btn=17, input_left_btn=18, input_b_btn=3, input_a_btn=4). PROVA NEGATIVA: trocando input_b_btn de 3 para 0 — o valor do Steam_Controller.cfg do mesmo vendor — o teste test_the_indices_are_the_ones_measured_on_the_device reprova. EM ABERTO: a gravacao (pending-write ainda nao e applied) e a confirmacao botao a botao com o emulador rodando, que exige interacao humana. Host: copia da sonda removida, retroarch.cfg do usuario com sha256 a9945f5a...9393 identico ao baseline, ~/.config/steamzero/retroarch/ inexistente.",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig",
+      "command": "2026-08-26, secao 9. Release 2.0.0rc1-720928250e1a publicada (CI verde nos 8 jobs no commit 7209282) e instalada. Preflight do wheel antes da instalacao: steamzero/autoconfig/udev/steam-deck.cfg presente com input_b_btn='3'. NA RELEASE INSTALADA: service.generation confirma o daemon na release ativada, o catalogo passa a ter 420 perfis do RetroArch + 1 nosso vindo de /opt/steamzero/releases/.../site-packages/steamzero/autoconfig/udev, e o writer responde pending-write com 12 bindings resolvidos e 0 nao resolvidos. A entrega do ADR-0027 esta confirmada no artefato instalado, nao so na arvore. MATERIALIZACAO NAO CONCLUIDA, pendente de interacao humana: controls.autoconfig.apply so e alcancavel pela GUI no cartao por jogo; a central abre e funciona (steamzero desktop ui -> Main.qml, janela capturada), mas computer-use da timeout de 300s, xdotool nao enxerga janela Wayland nativa e ydotool exige ydotoold que nao roda — subir daemon de injecao de input via uinput no host nao e acao de agente. CORRECAO DE RUMO: steamzero-launcher era superficie errada (abre LauncherMain.qml, do AURA Launcher); o cartao vive em Emulation.qml, da central desktop. Host: writer nao gravou, ~/.config/steamzero/retroarch/ inexistente, retroarch.cfg do usuario sha256 a9945f5a...9393 identico ao baseline.",
+      "result": "partial"
     }
   ],
-  "nextAction": "Materializar o autoconfig (pending-write -> applied) e provar marcador de ownership, recusa de arquivo sem marcador e gravacao somente quando ausente. A rota e a GUI: controls.autoconfig.apply so aparece no cartao por jogo (Emulation.qml:3908); nao ha MethodSpec nem comando CLI. Depois, confirmacao botao a botao com o RetroArch rodando, que exige interacao humana. Base ja resolvida pelo ADR-0027.",
+  "nextAction": "PENDENTE DE INTERACAO HUMANA, nao de investigacao. Tudo o que era mensuravel esta provado na release instalada: base empacotada, catalogo com o nosso perfil, writer em pending-write com 12/0. Falta um clique: central > Emulacao > selecionar jogo > cartao de controles > aplicar. Depois disso, verificar arquivo gravado no destino, marcador de ownership, recusa de arquivo sem marcador, retroarch.cfg intocado e retroarch_launch_arguments deixando de devolver tupla vazia. Nenhum caminho de automacao de clique existe neste host (computer-use com timeout, janela Wayland nativa fora do xdotool, ydotoold ausente).",
   "activeWorkstreams": [
     "WS-2026-08-CONTROLS-INPUT-PROFILES"
   ],

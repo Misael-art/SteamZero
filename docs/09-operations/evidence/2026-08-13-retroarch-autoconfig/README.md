@@ -447,3 +447,56 @@ cartão por jogo, e a confirmação exige alguém pressionando os controles.
 A cópia usada na sonda foi removida. O `retroarch.cfg` do usuário permanece
 `sha256 a9945f5a…9393`, idêntico ao baseline, e
 `~/.config/steamzero/retroarch/` continua inexistente — nada foi gravado.
+
+---
+
+## 9. Confirmado na release instalada; materialização pendente de interação (2026-08-26)
+
+A release `2.0.0rc1-720928250e1a` foi publicada (CI verde nos 8 jobs no commit
+`7209282`) e instalada pelo operador. Preflight do wheel antes da instalação:
+`steamzero/autoconfig/udev/steam-deck.cfg` presente, com `input_b_btn = "3"`.
+
+### O que a release instalada prova
+
+```
+release ativa        2.0.0rc1-720928250e1a
+service.generation   daemon na release ativada  (sem isto a resposta viria do código antigo)
+catálogo             420 perfis do RetroArch + 1 nosso, em
+                     /opt/steamzero/releases/.../site-packages/steamzero/autoconfig/udev
+state                pending-write        (antes do ADR-0027: awaiting-device)
+resolved / unresolved   12 / 0
+```
+
+A entrega do ADR-0027 está confirmada **no artefato instalado**, não só na
+árvore de trabalho.
+
+### Por que a materialização não foi concluída
+
+O `controls.autoconfig.apply` só é alcançável pela GUI, no cartão por jogo. A
+central abre e funciona (`steamzero desktop ui` → `Main.qml`; a janela
+`SteamZero — Central de jogos` foi capturada), mas nenhum caminho de automação
+de clique está disponível neste host:
+
+- `computer-use`: timeout de 300 s no screenshot;
+- `xdotool`: não enxerga a janela, que é Wayland nativa;
+- `ydotool`: exige `ydotoold`, que não está rodando — e subir um daemon de
+  injeção de input via `uinput` no host do operador não é ação de agente.
+
+Registrado como **pendente de interação humana**, não como falha do produto.
+
+### Correções de rumo desta sessão
+
+`steamzero-launcher` era a superfície errada: abre `LauncherMain.qml`, do AURA
+Launcher. O cartão de controles vive em `Emulation.qml`, da central desktop
+(§10 — provar numa capacidade não promove a outra).
+
+Uma captura de tela cheia inicial continha dados pessoais do operador (portal
+escolar aberto, com identificador e campo de senha). O arquivo foi apagado
+imediatamente e nada disso chegou ao repositório. A partir daí, só
+`spectacle -a`, que captura exclusivamente a janela ativa.
+
+### Estado do host
+
+`~/.config/steamzero/retroarch/` continua inexistente — o writer não gravou. O
+`retroarch.cfg` do usuário segue `sha256 a9945f5a…9393`, idêntico ao baseline.
+Rollback de release `2.0.0rc1-92d91d631b80` preservado.

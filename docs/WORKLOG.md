@@ -7662,3 +7662,33 @@ materialização é a GUI: `controls.autoconfig.apply` só aparece no cartão po
 
 **Host**: cópia da sonda removida; `retroarch.cfg` do usuário `sha256 a9945f5a…9393`
 idêntico ao baseline; `~/.config/steamzero/retroarch/` inexistente.
+
+### Continuação 2026-08-26 — release publicada e materialização pendente de interação
+
+Release `2.0.0rc1-720928250e1a` publicada (CI verde nos 8 jobs em `7209282`) e
+instalada. Preflight do wheel antes da instalação confirmou
+`steamzero/autoconfig/udev/steam-deck.cfg` com `input_b_btn = "3"`.
+
+**Na release instalada**: `service.generation` confirma o daemon na geração nova,
+o catálogo passa a ter 420 perfis do RetroArch + 1 nosso, e o writer responde
+`pending-write` com 12/0. O ADR-0027 está provado no artefato instalado.
+
+**Não concluído, e não por falta de investigação.** O `controls.autoconfig.apply`
+só é alcançável pela GUI no cartão por jogo. A central abre e funciona, mas
+nenhuma automação de clique existe neste host: `computer-use` dá timeout de 300 s,
+`xdotool` não enxerga janela Wayland nativa, e `ydotool` exigiria subir o
+`ydotoold` — daemon de injeção de input via `uinput` — no host do operador, o que
+não é ação de agente. Fica pendente de interação humana.
+
+**Correção de rumo**: `steamzero-launcher` era a superfície errada, abre
+`LauncherMain.qml` do AURA Launcher; o cartão vive em `Emulation.qml`, da central
+desktop. Provar numa capacidade não promove a outra (§10).
+
+**Incidente de dado pessoal**: a primeira captura foi de tela cheia e pegou o
+navegador do operador com um portal escolar aberto, identificador visível e campo
+de senha preenchido. Apagada imediatamente; nada chegou ao repositório. Daí em
+diante, só `spectacle -a`, restrito à janela ativa.
+
+**Host**: writer não gravou, `~/.config/steamzero/retroarch/` inexistente,
+`retroarch.cfg` do usuário `sha256 a9945f5a…9393` idêntico ao baseline, rollback
+`2.0.0rc1-92d91d631b80` preservado.
