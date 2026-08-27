@@ -175,8 +175,8 @@ class _StubManifest:
     kind = "emulator"
 
 
-def test_degraded_status_explains_which_commits_diverged() -> None:
-    """Degradação precisa dizer POR QUÊ, não só que existe.
+def test_drift_status_explains_which_commits_diverged() -> None:
+    """Divergência precisa dizer POR QUÊ, não só que existe.
 
     Defeito observado no host com a 2.0.0rc1 instalada: dolphin e retroarch
     apareciam como ``degraded`` com ``detail: None``, enquanto duckstation (no
@@ -203,5 +203,5 @@ def test_degraded_status_explains_which_commits_diverged() -> None:
 
     status = executor.status("dolphin")
 
-    assert status["state"] == "degraded"
+    assert status["state"] == "outdated"
     assert status["detail"] == ("commit instalado 1b150924d321 difere da fonte fixada 377c3e63506e")

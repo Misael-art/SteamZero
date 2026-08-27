@@ -551,7 +551,9 @@ class FlatpakExecutor:
         data: dict[str, object | None] = {
             "id": adapter_id,
             "kind": manifest.kind,
-            "state": "installed" if state.installed else "missing",
+            "state": _deployment_state(
+                installed=state.installed, commit=state.commit, target=source.version
+            ),
             "origin": "flatpak" if state.installed else None,
             "remote": state.origin,
             "commit": state.commit,
@@ -560,8 +562,18 @@ class FlatpakExecutor:
             "endOfLife": source.end_of_life,
         }
         if state.installed and state.commit != source.version:
-            data["state"] = "degraded"
-            # Degradação sem causa registrada obriga o usuário a adivinhar. O
+            # Incidente 2026-08-27: um `flatpak update` no host levou retroarch
+            # e dolphin a commits mais novos que os fixados. Ambos funcionavam
+            # (RetroArch 1.22.2 abria pela linha de comando), mas a central os
+            # marcava "reparar" e o launch morria com E-COMPONENT-DEGRADED,
+            # porque o drift era publicado como `degraded` e o gate só aceita
+            # {installed, outdated}. Uma divergência de contabilidade tornava
+            # inutilizável um emulador são, e o único caminho oferecido era o
+            # downgrade para o commit fixado. O estado agora vem de
+            # `_deployment_state`; `outdated` segue em _REPAIRABLE_STATES, então
+            # reparar continua disponível para quem quiser convergir ao pin.
+            #
+            # Divergência sem causa registrada obriga o usuário a adivinhar. O
             # detalhe nomeia a divergência exata e os dois commits, que é o que
             # permite decidir entre atualizar para a fonte fixada ou investigar
             # de onde veio o commit instalado.
@@ -1028,12 +1040,8 @@ class FlatpakExecutor:
 
     def _persist(self, manifest: AdapterManifest, state: FlatpakState) -> None:
         source = manifest.preferred_source("flatpak", allow_eol=True)
-        lifecycle_state = (
-            "missing"
-            if not state.installed
-            else "installed"
-            if state.commit == source.version
-            else "degraded"
+        lifecycle_state = _deployment_state(
+            installed=state.installed, commit=state.commit, target=source.version
         )
         self._store.save_component(
             {
@@ -1182,6 +1190,23 @@ def _require_remote(remote: str) -> None:
 def _require_commit(commit: str) -> None:
     if not _COMMIT_RE.fullmatch(commit):
         raise SteamZeroError("E-SUPPLY-NO-CHECKSUM", detail="commit Flatpak não pinado")
+
+
+def _deployment_state(*, installed: bool, commit: str | None, target: str | None) -> str:
+    """Estado de lifecycle do deployment Flatpak observado.
+
+    Fonte única: `status()` publica o read model e `_persist()` grava a linha da
+    store. Enquanto os dois derivavam o estado por conta própria, uma correção
+    em um lado deixava o outro para trás — foi assim que a store passou a
+    guardar `degraded` para um deployment que a observação já chamava de
+    `outdated`.
+
+    Drift de commit é `outdated`, não `degraded`: o deployment está íntegro e
+    executável, só não está no commit fixado.
+    """
+    if not installed:
+        return "missing"
+    return "installed" if commit == target else "outdated"
 
 
 def _detail(result: CommandResult) -> str:

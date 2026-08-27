@@ -369,13 +369,41 @@ class TestRetiredAdapters:
         assert status["endOfLife"] is True
         assert status["installable"] is False
 
-    def test_flatpak_degraded_preserves_commit(self, store: state.StateStore) -> None:
+    def test_flatpak_commit_drift_is_outdated_and_preserves_commit(
+        self, store: state.StateStore
+    ) -> None:
         fake = FakeFlatpak(FlatpakState(True, "org.libretro.RetroArch", "flathub", "b" * 64))
         lifecycle = bundled_with_fake(fake, store)
         status = lifecycle.status("retroarch")
-        assert status["state"] == "degraded"
-        assert status["installed"] is False
+        assert status["state"] == "outdated", (
+            "drift de commit é deployment íntegro fora do pin, não artefato corrompido"
+        )
         assert status["version"] == "b" * 64, "commit do drift precisa ser preservado"
+        assert status["detail"], "a divergência precisa continuar nomeada"
+
+    def test_commit_drift_stays_launchable(self, store: state.StateStore) -> None:
+        """Drift de pin não pode tornar inexecutável um emulador que funciona.
+
+        Incidente 2026-08-27: um `flatpak update` no host deixou retroarch e
+        dolphin em commits mais novos que os fixados. O RetroArch 1.22.2 abria
+        normalmente pela linha de comando, mas `launch` recusava com
+        E-COMPONENT-DEGRADED porque o gate só aceita {installed, outdated} e o
+        drift era publicado como `degraded`. O usuário ficava sem os dois
+        emuladores, e a única saída oferecida era downgrade para o pin.
+        """
+        spawned: list[tuple[object, ...]] = []
+        fake = FakeFlatpak(FlatpakState(True, "org.libretro.RetroArch", "flathub", "b" * 64))
+        lifecycle = bundled_with_fake(fake, store)
+        lifecycle._which = lambda name: "/usr/bin/flatpak"  # type: ignore[method-assign]
+        lifecycle._spawn = lambda argv: (spawned.append(argv), 4242)[1]  # type: ignore[method-assign]
+
+        assert lifecycle.status("retroarch")["state"] == "outdated"
+
+        result = lifecycle.launch("retroarch")
+
+        assert result["pid"] == 4242
+        assert spawned, "o componente com drift precisa de fato ser lançado"
+        assert "org.libretro.RetroArch" in spawned[0]
 
     def test_eol_source_not_installed_is_missing_with_reason(self, store: state.StateStore) -> None:
         lifecycle = eol_with_fake(FakeFlatpak(), store)
@@ -1493,7 +1521,7 @@ class TestRepairTransactionality:
         expected = AdapterRegistry.bundled().get("retroarch").preferred_source("flatpak").version
         fake = FakeFlatpak(FlatpakState(True, "org.libretro.RetroArch", "flathub", "b" * 64))
         lifecycle = bundled_with_fake(fake, store)
-        assert lifecycle.status("retroarch")["state"] == "degraded"
+        assert lifecycle.status("retroarch")["state"] == "outdated"
 
         envelope = lifecycle.plan("retroarch", "repair")
         assert envelope.action == "repair"
@@ -1518,11 +1546,11 @@ class TestRepairTransactionality:
         assert error.value.code == "E-COMPONENT-UPDATE-ROLLEDBACK"
 
         row = store.get_component("retroarch")
-        assert row is not None and row["state"] == "degraded", (
+        assert row is not None and row["state"] == "outdated", (
             "falha do reparo restaura o estado observado antes da mutação"
         )
         assert row["operation_id"] is None
-        assert lifecycle.status("retroarch")["state"] == "degraded"
+        assert lifecycle.status("retroarch")["state"] == "outdated"
         statuses = {
             path.name: json.loads(path.read_text(encoding="utf-8"))["status"]
             for path in paths.plans_dir().glob("*.json")
@@ -1603,7 +1631,7 @@ class TestAdversarialLifecycleClosure:
         assert rolled["status"] == "rolled-back"
         assert rolled["operationId"] == operation_id
         assert config.read_bytes() == before_config
-        assert lifecycle.status(adapter_id)["state"] in {"degraded", "missing"}
+        assert lifecycle.status(adapter_id)["state"] in {"degraded", "outdated", "missing"}
         row = store.get_component(adapter_id)
         assert row is not None and row["state"] == lifecycle.status(adapter_id)["state"]
         # A mesma operação tem semântica explícita e estável, nunca best-effort.
