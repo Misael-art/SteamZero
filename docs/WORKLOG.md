@@ -7771,3 +7771,38 @@ rollback antes da ativação. Todos exigem `update` contra o host.
 **Gates**: ruff check, format (525), mypy (243), independence, boundaries e
 status-check verdes. Suíte integral não reexecutada: o diff não toca `src/` nem
 `tests/`, e ela fechou verde (5263 passed) neste mesmo código em `00459c7`.
+
+## 2026-08-27 — Matriz física dos 33 componentes
+
+Branch `codex/component-matriz-fisica`, sobre `edef46a`. Item
+`SZ-COMPONENT-LIFECYCLE`. Nenhuma linha de `src/`; `component list` é read-only.
+
+Medido na release `2.0.0rc1-3b296a949316`: **33 componentes, 22 `missing`, 9
+`installed`, 2 `degraded`, e zero degradados sem `detail`**. Os dois degradados
+(`dolphin`, `retroarch`) são divergência de commit Flatpak com causa nomeada — a
+§8 cumprida em 2 de 2.
+
+**Achado estrutural**: os **17 cores libretro estão todos `missing`**. É 52% da
+matriz sem nenhuma instalação física neste host, o que significa que o executor
+`libretro` não tem prova alguma de install/verify/rollback.
+
+| executor | total | instalados | provado fisicamente |
+|---|---|---|---|
+| `flatpak` | 10 | 6 | sim |
+| `engine` | 6 | 4 | sim |
+| `libretro` | 17 | **0** | **não** |
+
+O número "33 componentes" escondia isso. A conformidade local cobre os 33 (357
+passed), mas cobertura de teste não é instalação: para o `libretro`, matriz local
+verde e matriz física vazia coexistem — exatamente o tipo de falso conforto que a
+prova física existe para desfazer.
+
+**Não provado**: progresso por bytes e cancelamento cooperativo, sem
+instrumentação; e o ciclo `libretro`, porque sem core instalado não há o que
+verificar ou reverter. Instalar exigiria `component apply`, mutação dependente de
+autorização explícita e bloqueada pelo classificador nesta sessão.
+
+**Gates**: ruff check, format (525), mypy (243), independence, boundaries e
+status-check verdes. Suíte integral não reexecutada: o diff não toca `src/` nem
+`tests/`, e ela fechou verde (5263 passed, exit 0) neste mesmo código em
+`edef46a`, em ambiente limpo.

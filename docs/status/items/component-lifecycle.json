@@ -6,9 +6,9 @@
   "domain": "platform",
   "implementation": "partial",
   "integration": "feature-branch",
-  "verification": "dev",
+  "verification": "hw",
   "operation": "ready",
-  "distribution": "not-packaged",
+  "distribution": "installed",
   "scopePaths": [
     "src/steamzero/adapters/component_jobs.py",
     "src/steamzero/jobs",
@@ -18,9 +18,10 @@
     "tests/integration/test_component_lifecycle.py",
     "docs/09-operations/evidence/2026-08-16-component-plan-metadata",
     "docs/09-operations/evidence/2026-08-16-component-apply-async",
-    "docs/09-operations/evidence/2026-08-16-component-plan-terminalization"
+    "docs/09-operations/evidence/2026-08-16-component-plan-terminalization",
+    "docs/09-operations/evidence/2026-08-27-matriz-componentes-fisica"
   ],
-  "scopeDigest": "f73c1ecbe50ad17be4f3e7bfb17452bb9de7bb14088140fdacbbb9948eb0dbfb",
+  "scopeDigest": "2d7691698612b5f8cb688788f3669cdf8406dd087b452ec84fd1081f198fa305",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -62,10 +63,18 @@
       "reference": "docs/09-operations/evidence/2026-08-25-melonds-smoke-install-fisico",
       "command": "install governado do melonDS no host (release 2.0.0rc1-92d91d631b80): confirmacao repetida da mesma requisicao devolveu O MESMO jobId sem segunda operacao (dedupe provado no host), job component.apply completou estagio verified em ~48 s com download dentro do daemon endurecido, plano noop quando ja no alvo e recusa E-TX-CONFIRM-REQUIRED com token errado sem mutacao.",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-27-matriz-componentes-fisica",
+      "command": "2026-08-27, matriz FISICA dos 33 componentes na release instalada 2.0.0rc1-3b296a949316, medida com component list (read-only, zero mutacao). Resultado: 22 missing, 9 installed, 2 degraded, e ZERO degradados sem detail — a exigencia da secao 8 esta cumprida em 2 de 2. Os degradados sao dolphin e retroarch, ambos por divergencia de commit Flatpak com causa nomeada. Instalados: cemu, citron, duckstation, eden, flycast, melonds, pcsx2, rpcs3, ryubing, todos com detail null. ACHADO ESTRUTURAL: os 17 cores libretro estao TODOS missing — 52% da matriz nunca teve instalacao fisica neste host, logo o executor libretro nao tem NENHUMA prova de install/verify/rollback. Por executor: flatpak 10 total / 6 instalados / provado; engine 6 / 4 / provado; libretro 17 / 0 / NAO PROVADO. A conformidade local cobre os 33 (357 passed), mas cobertura de teste nao e instalacao: para o libretro, matriz local verde e matriz fisica vazia coexistem. NAO PROVADO tambem: progresso por bytes e cancelamento cooperativo, ambos sem instrumentacao. Instalar um core exigiria component apply, que e mutacao dependente de autorizacao explicita e foi bloqueada pelo classificador nesta sessao.",
+      "result": "partial"
     }
   ],
-  "nextAction": "Matriz dos 33 contra o host em andamento: melonDS instalado e verificado (2026-08-25); dolphin e retroarch aguardam update governado para zerar drift; instrumentar progresso por bytes e cancelamento cooperativo na aquisicao.",
-  "activeWorkstreams": [],
-  "updatedAt": "2026-08-25",
+  "nextAction": "Matriz fisica medida: 33 componentes, 2 degradados ambos com causa registrada, zero sem detail. O gargalo agora tem nome: os 17 cores libretro estao todos missing e o executor libretro nao tem nenhuma prova fisica de install/verify/rollback. Instalar ao menos um core pelo fluxo governado (exige autorizacao explicita) e so depois instrumentar progresso por bytes e cancelamento cooperativo na aquisicao.",
+  "activeWorkstreams": [
+    "WS-2026-08-COMPONENT-MATRIZ"
+  ],
+  "updatedAt": "2026-08-27",
   "notes": "Item recriado em 2026-08-24: a capacidade veio no porte de codex/physical-functional-closure (commits f6b6e93, 5241d0f, 2f6d7d3, 20bcddf, 17d80df, e57aadf, d538201, ddf2e6d), mas o item normativo se perdeu na integracao interrompida e os arquivos ficaram apenas sob os agregadores SZ-AGG-ADAPTERS e SZ-AGG-JOBS — ou seja, com custodia declarada e nenhuma capacidade provada. O eixo operacional e 'degraded' e nao 'ready' porque existe uma contradicao de contrato REPRODUZIDA na suite focada, registrada acima como evidencia 'failed'. Nenhuma alegacao de estado aqui foi promovida a partir do historico dos 65 commits: as duas evidencias foram re-executadas nesta arvore. 2026-08-24, item fechado em dev: o defeito tinha DUAS causas. (1) o teste ainda exigia envelope.delegated['flatpakPlanId'] em plan(), que e o contrato v2; no v3 delegated num envelope pendente significa tentativa interrompida esperando recovery. (2) causa de codigo, que corrigir so o teste teria escondido: o ramo flatpak de _apply_deferred nao passava operation_id=envelope.plan_id ao executor, enquanto o caminho v2 passa. A operacao nascia sob o id do plano delegado e a cadeia plano->job->operacao ficava orfa, porque o job adota como operationId o que o lifecycle devolve. Corrigido restaurando a paridade com o v2."
 }

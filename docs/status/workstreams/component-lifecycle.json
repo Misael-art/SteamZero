@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-COMPONENT-MATRIZ",
+  "item": "SZ-COMPONENT-LIFECYCLE",
+  "branch": "codex/component-matriz-fisica",
+  "baseRef": "edef46a",
+  "owner": "codex-component-matriz",
+  "state": "active",
+  "exclusivePaths": [
+    "docs/09-operations/evidence/2026-08-27-matriz-componentes-fisica"
+  ],
+  "sharedPaths": [
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Instalar ao menos um core libretro pelo fluxo governado para provar install/verify/rollback do executor libretro, hoje com zero instalacoes fisicas; depois instrumentar progresso por bytes e cancelamento cooperativo.",
+  "updatedAt": "2026-08-27"
+}

@@ -1,0 +1,42 @@
+MATRIZ FISICA DOS COMPONENTES — release 2.0.0rc1-3b296a949316
+total ......... 33
+estados ....... {'missing': 22, 'installed': 9, 'degraded': 2}
+executores .... {'flatpak': 10, 'engine': 6, 'libretro': 17}
+degradados sem detail ... NENHUM
+
+--- degraded (2) ---
+  dolphin                flatpak  flatpak   detail=commit instalado 1b150924d321 difere da fonte fixada 377c3e63506e
+  retroarch              flatpak  flatpak   detail=commit instalado 1f766799d9ff difere da fonte fixada d8644a97df3d
+--- installed (9) ---
+  cemu                   flatpak  flatpak 
+  citron                 engine   appimage
+  duckstation            engine   appimage
+  eden                   engine   appimage
+  flycast                flatpak  flatpak 
+  melonds                flatpak  flatpak 
+  pcsx2                  flatpak  flatpak 
+  rpcs3                  flatpak  flatpak 
+  ryubing                engine   appimage
+--- missing (22) ---
+  azahar                 flatpak  flatpak 
+  libretro-bluemsx       libretro archive 
+  libretro-fbneo         libretro archive 
+  libretro-freeintv      libretro archive 
+  libretro-fuse          libretro archive 
+  libretro-genesis-plus-gx libretro archive 
+  libretro-mednafen-ngp  libretro archive 
+  libretro-mednafen-pce  libretro archive 
+  libretro-mednafen-vb   libretro archive 
+  libretro-mednafen-wswan libretro archive 
+  libretro-mesen         libretro archive 
+  libretro-mgba          libretro archive 
+  libretro-mupen64plus-next libretro archive 
+  libretro-opera         libretro archive 
+  libretro-puae          libretro archive 
+  libretro-snes9x        libretro archive 
+  libretro-stella        libretro archive 
+  libretro-vice-x64      libretro archive 
+  ppsspp                 flatpak  flatpak 
+  sunshine               engine   native  
+  xemu                   flatpak  flatpak 
+  xenia-canary           engine   appimage
