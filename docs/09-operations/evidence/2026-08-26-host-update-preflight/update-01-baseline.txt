@@ -1,0 +1,12 @@
+=== BASELINE PRE-UPDATE  2026-08-27T05:25:18-03:00 ===
+release ativa : 2.0.0rc1-720928250e1a
+releases      :
+  2.0.0rc1-2a1b0fb90105
+  2.0.0rc1-720928250e1a
+  2.0.0rc1-92d91d631b80
+
+state.db sha256 : 03a52f5e488b7d5b861d42dad046ea748aa9ba640878e64013e2305b349c8d5c
+state.db bytes  : 2494464
+tabelas         : 37
+linhas totais   : 9639
+integrity_check : ok

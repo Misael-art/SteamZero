@@ -6,9 +6,9 @@
   "domain": "distribution",
   "implementation": "partial",
   "integration": "feature-branch",
-  "verification": "dev",
-  "operation": "unknown",
-  "distribution": "not-packaged",
+  "verification": "hw",
+  "operation": "ready",
+  "distribution": "installed",
   "scopePaths": [
     "docs/09-operations/RELEASE-HOST-AUTOMATION.md",
     "docs/09-operations/UPDATE-AND-ROLLBACK.md",
@@ -26,7 +26,7 @@
     "tools/release_host.py",
     "docs/09-operations/evidence/2026-08-26-host-update-preflight"
   ],
-  "scopeDigest": "5d2cf0e5b844d9e99edd44f7cebd6a3a718e30d93155d89c28438a162632f5d8",
+  "scopeDigest": "eb7c2578b0e2bbe50bca4375ff2c1a7fb76aaff3f33c2dd643ff5946f678b84f",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -107,12 +107,18 @@
       "reference": "docs/09-operations/evidence/2026-08-26-host-update-preflight",
       "command": "2026-08-26, injecao de falha no preflight de release, sobre copias do bundle 2.0.0rc1-720928250e1a; host NAO tocado (verify-bundle e inspect sao read-only). FI-1 wheel adulterado com manifesto intacto: RECUSADO, 'wheelhouse reprovado: steamzero-...whl: sha256 diverge do manifesto', exit 1. FI-2, o teste que importa: injetei steamzero/INTRUSO.txt dentro do wheel, recalculei o sha256 e reescrevi a entrada correspondente no WHEELHOUSE-MANIFEST, deixando wheel e manifesto coerentes — RECUSADO MESMO ASSIM por caminho diferente, 'hash diverge: dist/steamzero-2.0.0rc1-py3-none-any.whl', exit 1, porque o bundle carrega DUAS ancoras independentes e build/SHA256SUMS nao havia sido tocado. Registro de erro meu: a primeira tentativa de FI-2 reescreveu todos os sha256 do manifesto, inclusive das dependencias, e o gate recusou pelo motivo ERRADO (attrs, jsonschema, pillow divergentes); refiz cirurgicamente. FI-3 (AUTOMATION-MANIFEST removido) e FI-4 (sourceCommit=40 zeros, runId=1) passam com ok:true — NAO e defeito: verify-bundle responde por integridade de artefato e a procedencia e checada em _validate_cached_bundle_ci (caminho de cache do update), em _release_assets (publish) e no prepare (run push verde do commit exato). Fronteira registrada: verify-bundle sozinho nao e atestado de procedencia, mas o conteudo instalavel segue ancorado em duas somas independentes, entao o efeito e sobre metadado e nao sobre codigo. NAO PROVADO: preservacao de banco, quarentena de candidata invalida e rollback antes da ativacao, todos dependentes de executar update contra o host, que exige autorizacao explicita da secao 1.",
       "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-26-host-update-preflight",
+      "command": "2026-08-27, secao 6. CAMINHO DE SUCESSO com autorizacao explicita do operador: release_host.py update --to origin/main no commit 3b296a949316 (CI verde, 8 jobs, run 33053047178). PRESERVACAO DE BANCO PROVADA NA FORMA FORTE: state.db sha256 03a52f5e488b7d5b861d42dad046ea748aa9ba640878e64013e2305b349c8d5c IDENTICO antes e depois, 2494464 bytes, 37 tabelas, 9639 linhas, integrity_check ok — enquanto a release ativa mudou de 2.0.0rc1-720928250e1a para 2.0.0rc1-3b296a949316. JOURNAL em phase=committed com deploymentHealthy=True; doctor confirma recovery.pending 0 nao-terminais e service.generation na release ativada. ROLLBACK DISPONIVEL DEPOIS da ativacao: as quatro releases coexistem em /opt/steamzero/releases, incluindo a anterior. Verificado no codigo antes de prosseguir que deploymentHealthy=false e physicalCertification=false no --plan NAO sao avisos (o primeiro so vira true apos commit, release_host.py:2044). NAO PROVADO: quarentena de candidata invalida durante a ativacao, que exigiria fabricar uma release deliberadamente quebrada.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Preflight de recusa provado por injecao de falha (evidencia 2026-08-26). Falta o caminho de SUCESSO: executar release_host.py update contra o host com autorizacao explicita do operador, registrando preservacao de banco atraves do update e do rollback, quarentena de candidata invalida e rollback disponivel antes da ativacao. Sem autorizacao o item nao avanca alem disto.",
+  "nextAction": "Preflight de recusa e caminho de sucesso do update provados fisicamente (evidencia 2026-08-26, secoes 1-6). Falta so a quarentena de candidata invalida DURANTE a ativacao, que exige uma release deliberadamente quebrada — nao fabricada sem pedido explicito do operador.",
   "activeWorkstreams": [
     "WS-2026-08-HOST-UPDATE"
   ],
-  "updatedAt": "2026-08-26",
+  "updatedAt": "2026-08-27",
   "notes": "Item recriado em 2026-08-24. A capacidade veio no porte (d681f34 update transacional recuperavel, 1df693e candidata falha segura, d1f8048 publicacao/rollback por identidade do alvo, 7b02e39/9291d43/b75db77/98215d8 custodia durave da FI-06, f876f27 identidade do daemon na convergencia, e65bd66 HTTPS do daemon, 63341ae observacoes volateis, a9116da falhas de preservacao de estado, fef3678 restauracao da ConvergenceError perdida no auto-merge). O item normativo se perdeu na integracao interrompida e os arquivos ficaram apenas sob SZ-AGG-CORE e SZ-AGG-TOOLS. O eixo operacional e 'unknown' de proposito: nada aqui foi exercido contra o host nesta frente ainda, e o commit d67ae16 existe justamente porque o auto-merge do porte havia removido smokes do doctor e a exigencia de ownership seguro. 2026-08-24: a auditoria de perdas do auto-merge que o item 6.7 pede foi FEITA, por comparacao de AST contra a origem do porte. Achou tres perdas reais, todas em release_host.py e todas no caminho de falha — que e o caminho que menos se exercita e mais importa. Os outros dez arquivos de updater/lifecycle estao integros. 2026-08-24: as TRES perdas do auto-merge foram recuperadas e a auditoria por AST fecha em zero. Cada uma entrou isolada, com prova negativa sobre estado observavel, e ligada aos pontos de chamada — definir sem chamar nao corrigiria nada."
 }

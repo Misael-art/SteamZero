@@ -1,0 +1,13 @@
+=== journal do update ===
+arquivo: 3b296a949316-1787819460310083143.json
+phase           : committed
+deploymentHealthy: True
+eventos         : [None, None, None, None, None, None, None, None, None]
+
+=== doctor ===
+doctor run: degraded
+  [pass] runtime.provenance: 2.0.0rc1-3b296a949316
+  [pass] service.generation: daemon na release ativada 2.0.0rc1-3b296a949316
+  [pass] state.db.integrity: integrity_check ok
+  [pass] recovery.pending: 0 operação(ões) não-terminal(is) no journal
+EXIT=0

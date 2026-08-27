@@ -105,3 +105,65 @@ operador. O item segue `partial`.
 Inalterado. Nenhum comando desta página muta o host; `verify-bundle` e `inspect`
 são read-only. Release ativa segue `2.0.0rc1-720928250e1a`, com rollback
 `2.0.0rc1-92d91d631b80` preservado.
+
+---
+
+## 6. Caminho de SUCESSO: `update` executado contra o host (2026-08-27)
+
+Autorizado explicitamente pelo operador nesta thread. Alvo `origin/main` no
+commit `3b296a949316`, com CI verde nos 8 jobs (run `33053047178`), executado
+pelo fluxo governado `release_host.py update`.
+
+O `--plan` (read-only) devolveu, antes de qualquer mutação:
+
+```
+ci                green          bundle    verified
+userData          preserved      boot      unchanged
+currentRelease    2.0.0rc1-720928250e1a
+targetRelease     2.0.0rc1-3b296a949316
+rollbackRelease   2.0.0rc1-720928250e1a
+confirmationToken ATUALIZAR-…-PARA-2.0.0rc1-3b296a949316
+```
+
+`deploymentHealthy: false` e `physicalCertification: false` no plano **não são
+avisos**: o primeiro só vira `true` depois do commit bem-sucedido
+(`release_host.py:2044`), e o segundo depende de um fluxo de certificação
+separado. Conferido no código antes de prosseguir, não presumido.
+
+### Preservação de banco — a prova forte
+
+`update-01-baseline.txt` e `update-02-pos.txt`, capturados antes e depois:
+
+| | antes | depois |
+|---|---|---|
+| release ativa | `2.0.0rc1-720928250e1a` | **`2.0.0rc1-3b296a949316`** |
+| `state.db` sha256 | `03a52f5e488b7d5b…9c8d5c` | **idêntico** |
+| bytes | 2 494 464 | 2 494 464 |
+| tabelas | 37 | 37 |
+| linhas totais | 9 639 | 9 639 |
+| `integrity_check` | ok | ok |
+
+A release mudou e o banco saiu **byte a byte idêntico**. Não é "parece
+preservado": é o mesmo sha256.
+
+### Journal e rollback
+
+```
+journal  3b296a949316-…json
+phase              committed
+deploymentHealthy  True
+doctor             recovery.pending: 0 operação(ões) não-terminal(is)
+                   service.generation: daemon na release ativada 2.0.0rc1-3b296a949316
+```
+
+As quatro releases coexistem em `/opt/steamzero/releases/`, incluindo a anterior
+`2.0.0rc1-720928250e1a` — o rollback governado continua disponível depois da
+ativação, não só antes.
+
+### O que ainda falta
+
+**Quarentena de candidata inválida** permanece não provada no caminho físico. As
+recusas das seções 1–5 provam o preflight rejeitando bundle adulterado, mas não
+exercitam a quarentena de uma candidata que falha *durante* a ativação — isso
+exigiria uma release deliberadamente quebrada, e não vou fabricar uma sem pedido
+explícito.
