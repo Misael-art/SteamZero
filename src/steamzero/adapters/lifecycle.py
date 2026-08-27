@@ -1317,8 +1317,13 @@ class ComponentLifecycle:
         manifest = self._registry.get(adapter_id)
         route = route_for(manifest)
         if route.executor == "libretro":
+            # Core Libretro sadio não tem execução própria: quem o carrega é o
+            # frontend. Isso é design, não avaria — reusar E-COMPONENT-DEGRADED
+            # fazia a tela anunciar "componente degradado / execute reparo" para
+            # uma instalação perfeita, convidando o usuário a reparar o que não
+            # está quebrado.
             raise SteamZeroError(
-                "E-COMPONENT-DEGRADED",
+                "E-COMPONENT-NO-LAUNCH",
                 detail="core Libretro é carregado pelo RetroArch e não possui launch próprio",
             )
         current = self.status(adapter_id)

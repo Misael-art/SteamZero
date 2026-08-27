@@ -405,6 +405,26 @@ class TestRetiredAdapters:
         assert spawned, "o componente com drift precisa de fato ser lançado"
         assert "org.libretro.RetroArch" in spawned[0]
 
+    def test_healthy_libretro_core_is_not_reported_as_degraded(
+        self, store: state.StateStore
+    ) -> None:
+        """Core sadio sem launch próprio não é avaria.
+
+        Core Libretro é carregado pelo frontend, por design. Enquanto a recusa
+        reusava E-COMPONENT-DEGRADED, a tela anunciava "componente degradado /
+        execute reparo do componente" para uma instalação perfeita — convidando
+        o usuário a reparar o que não estava quebrado. Observado no host em
+        2026-08-27 com libretro-snes9x instalado e verificado.
+        """
+        lifecycle = bundled_with_fake(FakeFlatpak(), store)
+
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.launch("libretro-snes9x")
+
+        assert error.value.code == "E-COMPONENT-NO-LAUNCH"
+        assert error.value.code != "E-COMPONENT-DEGRADED"
+        assert "RetroArch" in str(error.value.detail)
+
     def test_eol_source_not_installed_is_missing_with_reason(self, store: state.StateStore) -> None:
         lifecycle = eol_with_fake(FakeFlatpak(), store)
         status = lifecycle.status(EOL_ID)

@@ -7,6 +7,7 @@ import json
 import os
 import socket
 import threading
+from contextlib import suppress
 from pathlib import Path
 
 import pytest
@@ -17,6 +18,7 @@ from steamzero.service import core
 from steamzero.service.client import (
     CoreAmbiguousResult,
     CoreProtocolError,
+    CoreResponseTooLarge,
     CoreUnavailable,
     invoke,
     subscribe_events,
@@ -298,6 +300,50 @@ def test_client_rejects_each_invalid_response_shape(
     finally:
         thread.join(timeout=5)
         server.close()
+
+
+def test_oversized_response_is_not_reported_as_contract_mismatch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Resposta grande demais tem causa própria, não "atualize o cliente".
+
+    Observado no host em 2026-08-27: `emulation workspace` num acervo real
+    produz 1.513.479 bytes contra o limite de 1 MiB. O comando saía como
+    E-API-CONTRACT — "Versão de contrato incompatível. Atualize o cliente ou o
+    servidor" — para um problema que atualização nenhuma resolve. Cliente e
+    servidor concordavam sobre o formato; a carga é que não cabia.
+    """
+    runtime = tmp_path / "run"
+    runtime.mkdir(mode=0o700)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
+    socket_path = safe_socket_path()
+    server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    server.bind(str(socket_path))
+    socket_path.chmod(0o600)
+    server.listen(1)
+    oversized = b'{"jsonrpc":"2.0","id":1,"result":{"x":"' + b"a" * (1 << 20) + b'"}}\n'
+
+    def respond() -> None:
+        connection, _address = server.accept()
+        connection.recv(65536)
+        with suppress(OSError):
+            connection.sendall(oversized)
+        connection.close()
+
+    thread = threading.Thread(target=respond)
+    thread.start()
+    try:
+        with pytest.raises(CoreResponseTooLarge) as error:
+            invoke("doctor.run", {})
+    finally:
+        thread.join(timeout=5)
+        server.close()
+
+    assert "excede o limite" in str(error.value)
+    assert str(1 << 20) in str(error.value), "a mensagem precisa nomear o limite"
+    assert isinstance(error.value, CoreProtocolError), (
+        "continua sendo erro de protocolo para quem trata a família toda"
+    )
 
 
 def test_client_falls_back_only_when_connect_never_happened(

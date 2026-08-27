@@ -2256,6 +2256,7 @@ def _try_daemon(
         CoreAmbiguousResult,
         CoreGenerationMismatch,
         CoreProtocolError,
+        CoreResponseTooLarge,
         CoreSecurityRefusal,
         CoreUnavailable,
         invoke,
@@ -2356,6 +2357,21 @@ def _try_daemon(
                     detail="resultado da chamada é ambíguo" + tracking,
                     operation_id=operation_id,
                 ),
+                correlation_id=correlation_id,
+            ),
+            EXIT_FAILURE,
+        )
+    except CoreResponseTooLarge as exc:
+        # Precede CoreProtocolError de propósito: é subclasse dele, e colapsar
+        # os dois mandava o usuário "atualizar o cliente ou o servidor" para uma
+        # carga que simplesmente não cabe no transporte.
+        return (
+            build_envelope(
+                domain,
+                action or "",
+                status="failed",
+                ok=False,
+                error=build_error("E-API-RESPONSE-TOO-LARGE", detail=str(exc)),
                 correlation_id=correlation_id,
             ),
             EXIT_FAILURE,

@@ -35,6 +35,20 @@ class CoreAmbiguousResult(CoreProtocolError):
     """
 
 
+class CoreResponseTooLarge(CoreProtocolError):
+    """A resposta do daemon passou do limite que o transporte aceita.
+
+    Não é incompatibilidade de contrato: cliente e servidor concordam sobre o
+    formato, e a carga é que não cabe. A distinção existe porque colapsar isto
+    em ``E-API-CONTRACT`` mandava o usuário "atualizar o cliente ou o servidor"
+    para um problema que atualização nenhuma resolve.
+
+    Observado em 2026-08-27: `emulation workspace` num acervo real produz
+    1.513.479 bytes contra o limite de 1 MiB, e o comando ficou inutilizável no
+    host anunciando divergência de versão.
+    """
+
+
 class CoreSecurityRefusal(CoreProtocolError):
     """Socket local com ownership ou permissões inseguras.
 
@@ -321,8 +335,12 @@ def _read_json_line(reader: IO[bytes], *, disconnected: bool = False) -> dict[st
         if disconnected:
             raise _StreamDisconnected("conexão encerrada")
         raise CoreProtocolError("resposta incompleta")
-    if len(payload) > _MAX_RESPONSE or not payload.endswith(b"\n"):
-        raise CoreProtocolError("resposta excede o limite ou está incompleta")
+    if len(payload) > _MAX_RESPONSE:
+        raise CoreResponseTooLarge(
+            f"resposta de {len(payload)} bytes excede o limite de {_MAX_RESPONSE}"
+        )
+    if not payload.endswith(b"\n"):
+        raise CoreProtocolError("resposta incompleta")
     try:
         response = json.loads(payload)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -367,7 +385,9 @@ def _read_line(client: socket.socket) -> str:
         if b"\n" in chunk:
             break
     if len(data) > _MAX_RESPONSE:
-        raise CoreProtocolError("resposta excede o limite")
+        raise CoreResponseTooLarge(
+            f"resposta de {len(data)} bytes excede o limite de {_MAX_RESPONSE}"
+        )
     line, separator, _rest = bytes(data).partition(b"\n")
     if not separator:
         raise CoreProtocolError("resposta incompleta")
