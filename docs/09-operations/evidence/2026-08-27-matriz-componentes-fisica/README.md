@@ -143,3 +143,92 @@ Progresso por bytes e cancelamento cooperativo seguem sem instrumentação.
 Os outros **16 cores libretro continuam `missing`**. Um core instalado prova que
 o executor funciona; não prova os sete emuladores que dependem de cores ainda
 ausentes.
+
+---
+
+## Rollback, custódia e idempotência do `noop` (2026-08-27)
+
+Autorizados explicitamente pelo operador.
+
+### Um erro meu de leitura, desfeito pelo journal
+
+Ao ver o core sumido depois do que eu achava ser só o `update`, quase reportei
+defeito grave: "plano `noop` destruiu a instalação". O journal desmentiu:
+
+```
+15:39:34  operation.commit            ← o install
+15:53:01  operation.rollback  reason: component-manual
+```
+
+O operador rodou **as duas** linhas. A remoção foi o rollback funcionando. Fui
+ao journal antes de acusar; se tivesse confiado na minha leitura, teria aberto
+um defeito inexistente.
+
+### O rollback removeu só o que é nosso
+
+| verificação | resultado |
+|---|---|
+| `state` | volta a `missing`, `installed: false`, `version: null` |
+| `snes9x_libretro.so` | removido |
+| marcador de ownership | removido |
+| `retroarch.cfg` do usuário | `a9945f5a…9393` — idêntico ao baseline do dia |
+| `recovery.pending` | 0 operações não-terminais |
+
+### Custódia: remoção conferida por hash
+
+O journal revela um mecanismo que não é `rm`:
+
+```
+custody.intent    expected: feabc441ed0d67…      (hash esperado do alvo)
+custody.taken     → quarantine/<operationId>/custody.<actionId>.<seq>
+custody.released  reason: done, returned: false
+```
+
+Cada arquivo teve a identidade **conferida antes de sair**. Um arquivo que não
+fosse o esperado não seria tomado.
+
+**Mas a quarentena é transitória, não backup recuperável.** Verificado:
+`quarantine/01M11Y0S3P23JN2NNTXMEP1E97/` existe e está **vazio**. O
+`returned: false` com `reason: done` finaliza a custódia e descarta. Chamar isso
+de "arquivos em quarentena, recuperáveis" seria falso — e era o que o nome
+sugeria antes de eu olhar.
+
+### Resíduo: diretório gerenciado vazio
+
+Depois do rollback, `cores/.steamzero-managed/` continua existindo com zero
+arquivos. Antes do install ele não existia, então o estado não retorna ao
+original. Inofensivo, mas registrado.
+
+A reinstalação seguinte **recriou o marcador dentro do diretório residual sem
+tropeçar** — o resíduo é cosmético, não funcional.
+
+### Determinismo da fonte, de graça
+
+A reinstalação produziu `coreSha256 f7eb4003…6442`, idêntico ao da primeira
+instalação uma hora antes. Duas aquisições independentes, mesmo artefato byte a
+byte.
+
+### Idempotência do `noop` — provada
+
+Plano `01M11ZFP0JBMAVVK0C0TBGC43X`, `action: noop`, aplicado isoladamente e sem
+rollback depois, para preservar o rastro.
+
+| | antes | depois |
+|---|---|---|
+| `.so` mtime | 1787846681 | **1787846681** |
+| `.so` sha256 / bytes | `f7eb4003…6442` / 2 161 408 | **idênticos** |
+| marcador mtime | 1787846681 | **1787846681** |
+| marcador sha256 | `1c777e40…0306` | **idêntico** |
+| journals | 2 | 2 — nenhum novo |
+
+O `mtime` é o que separa "não tocou" de "regravou conteúdo igual": um `noop` que
+reescrevesse o arquivo passaria no hash e falharia aqui. Não tocou, e sequer
+abriu operação no journal.
+
+### O que continua não provado
+
+**Update real de versão.** O alvo era a mesma versão, então nunca houve troca de
+artefato. O caminho `install → versão nova → verify` do executor `libretro`
+segue sem exercício.
+
+Os outros **16 cores libretro continuam `missing`**.

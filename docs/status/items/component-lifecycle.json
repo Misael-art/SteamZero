@@ -21,7 +21,7 @@
     "docs/09-operations/evidence/2026-08-16-component-plan-terminalization",
     "docs/09-operations/evidence/2026-08-27-matriz-componentes-fisica"
   ],
-  "scopeDigest": "8522c5671fb04bed9e4b22472bf62a54d39c9e55825235d8992f24c415be151e",
+  "scopeDigest": "9dde647e2cbb91f94d23f7d48b3cd3cee2d02776d662982bf97012b1461a5261",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -75,9 +75,15 @@
       "reference": "docs/09-operations/evidence/2026-08-27-matriz-componentes-fisica",
       "command": "2026-08-27, PRIMEIRA instalacao fisica do executor libretro neste host, autorizada explicitamente. libretro-snes9x pelo fluxo governado component plan -> component apply, plano 01M11XYJ33WCB1G266MK69Z63F com rollbackGuarantee G-FULL. Antes: state missing, version null, sem arvore de cores. Depois: state installed, version 1.22.2, origin archive, e component verify devolve verified true. O DIGEST QUE JA CAUSOU DEFEITO conferido no artefato real: o plano declarou coreSha256 f7eb400380a18e94b996acfae5a22fa4261c8ff90fa24c213336548925036442 (o do .so extraido, nao o do pacote — o mesmo digest cuja comparacao errada em _owned_target recusava todo update com E-CONTENT-INCOMPLETE), e sha256sum do snes9x_libretro.so instalado devolve exatamente esse valor, 2161408 bytes. O que foi planejado e o que esta no disco. OWNERSHIP: marcador em cores/.steamzero-managed/libretro-snes9x.json com adapterId, archiveSha256, coreSha256 e manifestHash, cumprindo a secao 5. CONTRASTE registrado: o core foi para ~/.var/app/org.libretro.RetroArch/config/retroarch/cores, GRAVAVEL a partir do host, enquanto o joypad_autoconfig_dir do mesmo Flatpak aponta para /app interno ao sandbox — duas integracoes com o mesmo pacote tem superficies de escrita diferentes. NAO PROVADO: rollback do core nao foi executado (operacao disponivel no journal, nao acionada, para nao destruir a evidencia recem-produzida), update de core nao exercido, progresso por bytes e cancelamento sem instrumentacao, e os outros 16 cores libretro seguem missing.",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-27-matriz-componentes-fisica",
+      "command": "2026-08-27, rollback e idempotencia do executor libretro, autorizados explicitamente. ERRO MEU DESFEITO PELO JOURNAL: vi o core sumido e quase reportei 'plano noop destruiu a instalacao'; o journal mostrou operation.commit as 15:39:34 e operation.rollback reason=component-manual as 15:53:01 — o operador rodou as duas linhas e a remocao foi o rollback funcionando. ROLLBACK: state volta a missing, .so e marcador removidos, retroarch.cfg do usuario segue a9945f5a...9393 identico ao baseline do dia, recovery.pending 0. CUSTODIA descoberta no journal: cada arquivo teve identidade conferida por hash ANTES de sair (custody.intent com expected, custody.taken movendo para quarantine/<op>/, custody.released) — nao e rm. MAS a quarentena e TRANSITORIA: quarantine/01M11Y0S3P23JN2NNTXMEP1E97/ existe e esta VAZIO, porque returned=false com reason=done finaliza e descarta; chamar de backup recuperavel seria falso. RESIDUO: cores/.steamzero-managed/ fica existindo vazio apos o rollback, entao o estado nao retorna ao original — inofensivo, e a reinstalacao recriou o marcador dentro dele sem tropecar, logo e cosmetico. DETERMINISMO: a reinstalacao produziu coreSha256 f7eb4003...6442 identico ao da primeira instalacao uma hora antes, duas aquisicoes independentes com o mesmo artefato. IDEMPOTENCIA DO NOOP PROVADA: plano 01M11ZFP0JBMAVVK0C0TBGC43X action=noop aplicado isoladamente; .so e marcador mantiveram mtime 1787846681, bytes e sha256 identicos, e nenhum journal novo foi aberto. O mtime e o que separa 'nao tocou' de 'regravou igual' — um noop que reescrevesse passaria no hash e falharia no mtime. NAO PROVADO: update real de versao, porque o alvo era a mesma versao e nunca houve troca de artefato; e os outros 16 cores seguem missing.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Executor libretro provado fisicamente pela primeira vez: libretro-snes9x installed e verified, com coreSha256 conferido no .so e marcador de ownership. Falta exercitar rollback e update de core (o rollback esta disponivel no journal e nao foi acionado), instrumentar progresso por bytes e cancelamento cooperativo, e instalar os 16 cores libretro restantes, todos ainda missing.",
+  "nextAction": "Executor libretro provado no host: install, verify, rollback com custodia conferida por hash, e noop inerte (mtime e sha256 intactos, nenhum journal novo). Falta o update REAL de versao, que exige uma versao alvo diferente da instalada — o unico caminho do executor ainda sem exercicio. Depois, instrumentar progresso por bytes e cancelamento cooperativo, e os 16 cores restantes.",
   "activeWorkstreams": [
     "WS-2026-08-COMPONENT-MATRIZ"
   ],

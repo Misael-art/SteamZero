@@ -7838,3 +7838,45 @@ destruiria a evidência sem pedido do operador. `update` de core não exercido.
 Progresso por bytes e cancelamento seguem sem instrumentação. Os outros **16
 cores continuam `missing`**: um core instalado prova o executor, não os
 emuladores que dependem dos cores ausentes.
+
+### Continuação 2026-08-27 — rollback, custódia e idempotência do executor libretro
+
+Autorizados explicitamente. Ciclo completo exercitado no host.
+
+**Erro meu, desfeito pelo journal.** Vi o core sumido e quase reportei "plano
+`noop` destruiu a instalação". O journal mostrou `operation.commit` às 15:39:34 e
+`operation.rollback` (`reason: component-manual`) às 15:53:01 — o operador rodou
+as duas linhas, e a remoção foi o rollback funcionando. Fui ao journal antes de
+acusar.
+
+**Rollback**: `state` volta a `missing`, `.so` e marcador removidos,
+`retroarch.cfg` do usuário segue `a9945f5a…9393` idêntico ao baseline do dia,
+zero operações não-terminais.
+
+**Custódia**, descoberta no journal: cada arquivo tem a identidade conferida por
+hash ANTES de sair (`custody.intent` com `expected`, `custody.taken`,
+`custody.released`). Não é `rm`. **Mas a quarentena é transitória**:
+`quarantine/<op>/` existe e está vazio, porque `returned: false` finaliza e
+descarta. Chamar de backup recuperável seria falso — e era o que o nome sugeria
+antes de eu olhar.
+
+**Resíduo**: `cores/.steamzero-managed/` fica existindo vazio após o rollback, e
+antes do install não existia. A reinstalação recriou o marcador dentro dele sem
+tropeçar, então é cosmético.
+
+**Determinismo**: a reinstalação produziu `coreSha256 f7eb4003…6442`, idêntico ao
+da primeira instalação uma hora antes.
+
+**Idempotência do `noop` provada**: plano aplicado isoladamente, sem rollback
+depois para preservar o rastro. `.so` e marcador mantiveram `mtime 1787846681`,
+bytes e sha256 idênticos, e nenhum journal novo. O `mtime` é o que separa "não
+tocou" de "regravou igual" — um `noop` que reescrevesse passaria no hash e
+falharia aqui.
+
+**Não provado**: update REAL de versão, porque o alvo era a mesma versão e nunca
+houve troca de artefato. É o único caminho do executor ainda sem exercício. E os
+16 cores restantes seguem `missing`.
+
+**Gates**: ruff, format (525), mypy (243), independence, boundaries e
+status-check verdes. Suíte integral não reexecutada: o diff é só docs, e ela
+fechou verde (5263, exit 0) em `edef46a`, base deste código.

@@ -1,0 +1,11 @@
+=== POS-UPDATE (noop)  2026-08-27T12:53:19-03:00 ===
+sha256 do .so : 
+esperado ......: f7eb400380a18e94b996acfae5a22fa4261c8ff90fa24c213336548925036442
+bytes .........:   (antes: 2161408)
+marcador ......: AUSENTE
+arquivos em cores/: 0
+--- status ---
+  "state": "missing",
+  "version": null,
+  "origin": null,
+  "detail": null,

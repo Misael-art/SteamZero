@@ -1,0 +1,7 @@
+=== ANTES DO NOOP  2026-08-27T13:05:10-03:00 ===
+so    mtime=1787846681  bytes=2161408
+so    sha256=f7eb400380a18e94b996acfae5a22fa4261c8ff90fa24c213336548925036442
+marca mtime=1787846681  bytes=331
+marca sha256=1c777e40c2bd64f6c6eaca7a3647dcc357b1e8a5a044d175214b89fe650f0306
+eventos no journal da op nova: 12
+journal atual: 01M11ZERQHMDC8Y1EMN13PYH0E.jsonl
