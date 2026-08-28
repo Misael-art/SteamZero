@@ -1481,11 +1481,13 @@ def test_library_scan_indexes_known_platform_directories_without_scanning_bios(
     result = controller.scan_library()
     cached = json.loads(controller._library_cache_path.read_text(encoding="utf-8"))  # type: ignore[attr-defined]
 
-    assert result["games"] == 10
+    # A fonte canônica não amostra: os 12 jogos únicos entram, o bios segue
+    # excluído e o diretório reporta o mesmo número nos dois campos.
+    assert result["games"] == 12
     assert {game["platform"] for game in cached["games"]} == {"playstation"}
     report = {item["root"]: item for item in cached["directoryInventory"]}
     assert report[str(psx)]["gameCount"] == 12
-    assert report[str(psx)]["selectedCount"] == 10
+    assert report[str(psx)]["selectedCount"] == 12
     assert report[str(bios)]["disposition"] == "excluded"
 
 

@@ -296,9 +296,7 @@ class TestPlatformRomScanner:
 
 
 class TestPlatformDirectoryInventory:
-    def test_maps_manifest_aliases_excludes_auxiliary_and_limits_unique_games(
-        self, tmp_path: Path
-    ) -> None:
+    def test_maps_manifest_aliases_and_selects_every_unique_game(self, tmp_path: Path) -> None:
         psx = tmp_path / "PSX"
         psx.mkdir()
         (psx / "Racing (Disc 1).cue").write_bytes(b"")
@@ -318,10 +316,47 @@ class TestPlatformDirectoryInventory:
         assert rows["PSX"].disposition == "matched"
         assert rows["PSX"].platform_id == "playstation"
         assert rows["PSX"].game_count == 13
-        assert len(rows["PSX"].selected_games) == 10
+        # Fonte canônica não amostra: os 13 únicos (12 títulos + o grupo
+        # multidisco) estão todos selecionados.
+        assert len(rows["PSX"].selected_games) == 13
         assert all("not-a-game" not in item.path.name for item in rows["PSX"].selected_games)
         assert rows["bios"].disposition == "excluded"
         assert rows["mystery-console"].disposition == "unmatched"
+
+    def test_maps_esde_names_of_already_supported_platforms(self, tmp_path: Path) -> None:
+        """Nomes ES-DE da MESMA plataforma de um manifesto existente casam.
+
+        Variações regionais e de grafia do próprio console — nunca plataforma
+        diferente. O que não tem manifesto continua ``unmatched`` para o
+        humano decidir, porque extensão não adivinha plataforma.
+        """
+        esperados = {
+            "gc": "nintendo-console",
+            "megadrivejp": "mega-drive",
+            "megacd": "sega-cd-32x",
+            "megacdjp": "sega-cd-32x",
+            "sega32xjp": "sega-cd-32x",
+            "sega32xna": "sega-cd-32x",
+            "msx1": "msx",
+        }
+        for name in esperados:
+            (tmp_path / name).mkdir()
+        # Serviços não-jogo ficam excluídos, não matched nem unmatched.
+        for name in ("emulators", "generic-applications", "kodi"):
+            (tmp_path / name).mkdir()
+
+        inventory = PlatformDirectoryInventory.from_registry(PlatformRegistry.bundled())
+        rows = {row.path.name: row for row in inventory.inventory(tmp_path)}
+
+        for name, platform_id in esperados.items():
+            assert rows[name].disposition == "matched", name
+            assert rows[name].platform_id == platform_id, name
+        for name in ("emulators", "generic-applications", "kodi"):
+            assert rows[name].disposition == "excluded", name
+        # Ainda sem manifesto: decisão pendente de produto, não casamento.
+        (tmp_path / "saturn").mkdir()
+        rows = {row.path.name: row for row in inventory.inventory(tmp_path)}
+        assert rows["saturn"].disposition == "unmatched"
 
     def test_does_not_follow_symlinked_content(self, tmp_path: Path) -> None:
         platform_root = tmp_path / "n64"

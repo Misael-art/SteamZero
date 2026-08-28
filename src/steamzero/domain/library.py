@@ -261,9 +261,12 @@ _NON_GAME_DIRECTORY_NAMES = frozenset(
         "cheats",
         "dlc",
         "dlcs",
+        "emulators",
         "firmware",
+        "generic-applications",
         "key",
         "keys",
+        "kodi",
         "media",
         "medias",
         "mod",
@@ -312,7 +315,12 @@ _DIRECTORY_PLATFORM_ALIASES = {
     "gb": "nintendo-handheld",
     "gba": "nintendo-handheld",
     "gbc": "nintendo-handheld",
+    "gc": "nintendo-console",
     "megadrive": "mega-drive",
+    "megadrivejp": "mega-drive",
+    "megacd": "sega-cd-32x",
+    "megacdjp": "sega-cd-32x",
+    "msx1": "msx",
     "n3ds": "nintendo-3ds",
     "n64": "nintendo-64",
     "nds": "nintendo-ds",
@@ -324,6 +332,8 @@ _DIRECTORY_PLATFORM_ALIASES = {
     "psp": "playstation-portable",
     "psx": "playstation",
     "sega32x": "sega-cd-32x",
+    "sega32xjp": "sega-cd-32x",
+    "sega32xna": "sega-cd-32x",
     "segacd": "sega-cd-32x",
     "sfc": "snes",
     "sms": "master-system",
@@ -380,10 +390,13 @@ class PlatformDirectoryInventory:
                 aliases[_directory_key(alias)] = platform_id
         return cls(PlatformRomScanner.from_manifests(manifest_dicts), aliases)
 
-    def inventory(self, root: Path, *, max_games_per_platform: int = 10) -> list[PlatformDirectory]:
-        """Lista filhas de ``root`` em ordem estável, sem seguir symlinks."""
-        if max_games_per_platform < 1:
-            raise ValueError("max_games_per_platform precisa ser positivo")
+    def inventory(self, root: Path) -> list[PlatformDirectory]:
+        """Lista filhas de ``root`` em ordem estável, sem seguir symlinks.
+
+        ``selected_games`` carrega TODOS os jogos únicos do diretório: a fonte
+        canônica não amostra — uma biblioteca que publica 10 jogos de uma
+        plataforma com 178 esconde 168 sem diagnóstico (AGENTS.md §8).
+        """
         try:
             children = sorted(root.iterdir(), key=lambda item: item.name.casefold())
         except OSError:
@@ -401,7 +414,7 @@ class PlatformDirectoryInventory:
                 results.append(PlatformDirectory(child, "unmatched", None, 0, (), 0))
                 continue
             candidates, skipped = self._inventory_tree(child, platform_id)
-            selected = self._select_unique_games(candidates, child, max_games_per_platform)
+            selected = tuple(self._unique_games(candidates, child))
             results.append(
                 PlatformDirectory(
                     child,
@@ -484,12 +497,6 @@ class PlatformDirectoryInventory:
     @classmethod
     def _unique_game_count(cls, candidates: list[RomCandidate], root: Path) -> int:
         return len(cls._unique_games(candidates, root))
-
-    @classmethod
-    def _select_unique_games(
-        cls, candidates: list[RomCandidate], root: Path, limit: int
-    ) -> tuple[RomCandidate, ...]:
-        return tuple(cls._unique_games(candidates, root)[:limit])
 
 
 def disc_group(title: str) -> tuple[str, int | None]:
