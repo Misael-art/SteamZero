@@ -4,6 +4,9 @@
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 import pytest
 
 from steamzero import i18n
@@ -49,7 +52,7 @@ def test_code_area_matches_prefix() -> None:
 def test_build_error_shape() -> None:
     obj = errors.build_error("E-TX-STALE-PLAN", detail="arquivo X mudou", operation_id="OP")
     assert obj["code"] == "E-TX-STALE-PLAN"
-    assert obj["title"] == "Plano desatualizado"
+    assert obj["title"] == "Plano recusado"
     assert obj["detail"] == "arquivo X mudou"
     assert obj["operationId"] == "OP"
     # manualAction e action (alias de compat com envelope) coincidem
@@ -84,3 +87,24 @@ def test_steamzero_error_roundtrip() -> None:
 def test_steamzero_error_rejects_unregistered() -> None:
     with pytest.raises(ValueError):
         errors.SteamZeroError("E-FAKE")
+
+
+def test_every_code_literal_in_src_is_registered() -> None:
+    """Governança do catálogo: 'CI falha se código emitido não consta no catálogo'.
+
+    Varre ``src/`` por literais ``E-<ÁREA>-<NOME>`` e exige registro. Um código
+    emitido fora do catálogo faz ``SteamZeroError``/``build_error`` recusarem a
+    construção (ValueError) no lugar do erro de domínio — o usuário recebe um
+    erro interno em vez da causa real. Já houve quatro códigos vivos nessa
+    condição (auditoria 2026-08-27).
+    """
+    pattern = re.compile(r"[\"'](E-[A-Z]+-[A-Z0-9-]+)[\"']")
+    src_root = Path(errors.__file__).resolve().parent.parent.parent
+    unknown: dict[str, list[str]] = {}
+    for py in sorted(src_root.rglob("*.py")):
+        for i, line in enumerate(py.read_text(encoding="utf-8").splitlines(), 1):
+            for match in pattern.finditer(line):
+                code = match.group(1)
+                if code not in errors.ERROR_CATALOG:
+                    unknown.setdefault(code, []).append(f"{py.relative_to(src_root)}:{i}")
+    assert not unknown, f"códigos emitidos fora do catálogo: {unknown}"

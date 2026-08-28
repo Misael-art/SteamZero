@@ -2230,6 +2230,67 @@ def test_cheat_import_toggle_and_remove_use_build_id(monkeypatch, tmp_path: Path
     assert controller.snapshot({"context": {}})["platforms"][0]["games"][0]["cheats"] == []
 
 
+def test_cheat_and_mod_refusals_emit_registered_catalog_codes(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    """Auditoria do catálogo (2026-08-27): os códigos de recusa do import de
+    cheat/mod eram emitidos sem registro no ERROR_CATALOG — SteamZeroError
+    recusava a própria construção e o usuário recebia ValueError interno, nunca
+    o erro de domínio com causa e ação.
+    """
+    from steamzero.core import errors as errors_mod
+
+    controller = _controller(monkeypatch, tmp_path)
+    game_id, _title_id = _configured_game(controller, tmp_path)
+
+    def _import(payload: dict) -> None:
+        controller.plan_action(payload)
+
+    # A ordem de validação do planner é: nome do arquivo (Build ID) primeiro,
+    # conteúdo depois.
+    nome_sem_build_id = tmp_path / "nao-e-build-id.txt"
+    nome_sem_build_id.write_text("04000000 12345678 00000001\n", encoding="utf-8")
+    with pytest.raises(SteamZeroError) as recusa:
+        _import(
+            {
+                "actionId": "cheat.import",
+                "gameId": game_id,
+                "emulatorId": "eden",
+                "path": str(nome_sem_build_id),
+            }
+        )
+    assert recusa.value.code == "E-CHEAT-BUILD-ID-MISMATCH"
+    assert recusa.value.to_error_object()["probableCause"]
+
+    sem_codigos = tmp_path / "0123456789ABCDEF.txt"
+    sem_codigos.write_text("apenas comentários\n", encoding="utf-8")
+    with pytest.raises(SteamZeroError) as recusa:
+        _import(
+            {
+                "actionId": "cheat.import",
+                "gameId": game_id,
+                "emulatorId": "eden",
+                "path": str(sem_codigos),
+            }
+        )
+    assert recusa.value.code == "E-CHEAT-CODE-INVALID"
+    assert errors_mod.is_registered(recusa.value.code)
+    assert recusa.value.to_error_object()["manualAction"]
+
+    roms = tmp_path / "owned-roms"
+    (roms / "Sem Title ID.nsp").write_bytes(b"owned-game")
+    controller.scan_library()
+    snapshot = controller.snapshot({"context": {}})
+    sem_title_id = next(
+        game
+        for platform in snapshot["platforms"]
+        for game in platform["games"]
+        if not game.get("titleId")
+    )
+    with pytest.raises(SteamZeroError) as recusa:
+        _import({"actionId": "mod.import", "gameId": sem_title_id["id"]})
+    assert recusa.value.code == "E-MOD-TITLE-ID-NOT-FOUND"
+    assert recusa.value.to_error_object()["manualAction"]
+
+
 def test_media_search_job_created_in_plan(monkeypatch, tmp_path: Path) -> None:
     from steamzero.jobs.manager import JobManager
 

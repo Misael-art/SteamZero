@@ -23,7 +23,7 @@ def test_has_key_with_missing_locale_falls_back_to_empty() -> None:
 def test_t_returns_template_without_params() -> None:
     result = i18n.t("error.E-TX-STALE-PLAN.title")
     assert isinstance(result, str)
-    assert result == "Plano desatualizado"
+    assert result == "Plano recusado"
 
 
 def test_t_raises_key_error_for_missing_key() -> None:
@@ -34,13 +34,13 @@ def test_t_raises_key_error_for_missing_key() -> None:
 def test_t_with_params_still_returns_template() -> None:
     result = i18n.t("error.E-TX-STALE-PLAN.title", _ignored="unused")
     assert isinstance(result, str)
-    assert result == "Plano desatualizado"
+    assert result == "Plano recusado"
 
 
 def test_t_with_missing_locale_uses_default() -> None:
     result = i18n.t("error.E-TX-STALE-PLAN.title", locale="en-US")
     assert isinstance(result, str)
-    assert result == "Plano desatualizado"
+    assert result == "Plano recusado"
 
 
 def test_all_keys_includes_error_keys() -> None:
