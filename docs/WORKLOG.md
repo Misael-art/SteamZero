@@ -8022,3 +8022,42 @@ jogo e ver o pad vivo no RetroArch com `--appendconfig`.
 **Gates:** status-check OK após render (item `SZ-CONTROLS-INPUT-PROFILES`
 com a evidência nova e digest recalculado). Commit pendente do operador
 (gate Mimosa segue bloqueando `git commit` do agente).
+
+## 2026-08-28 — Biblioteca canônica: varredura completa (375 jogos, não 75)
+
+Branch `codex/library-full-scan`, base `23b13b6`. Item `SZ-LIBRARY-CANONICAL`.
+
+**A amostragem era o defeito.** `PlatformDirectoryInventory.inventory()` tinha
+`max_games_per_platform=10`: no acervo real, 375 jogos únicos viravam **75**
+entradas na fonte canônica — 300 jogos existentes invisíveis para Biblioteca e
+Emulação, sem diagnóstico nenhum. Parâmetro removido: `selected_games` carrega
+todos os únicos. Contrato de teste atualizado na mesma medida (12 jogos no
+cenário do scan, `selectedCount == gameCount`) — teste fortalecido, não
+enfraquecido.
+
+**Fundação da frente dos 138 unmatched** (com cruzamento dos `systems` dos 37
+manifestos, não de memória): 7 aliases ES-DE de plataforma JÁ suportada (`gc`,
+`megadrivejp`, `megacd`, `megacdjp`, `sega32xjp`, `sega32xna`, `msx1`) e 3
+diretórios de serviço classificados não-jogo (`emulators`,
+`generic-applications`, `kodi` — mesma natureza do `bios` já excluído). Re-
+medição somente leitura do acervo real: matched 59→66, unmatched 138→128,
+excluded 1→4, **375/375 jogos na fonte**. Os 128 restantes têm decisão
+explícita registrada e particionada por script: 110 exigem manifesto novo
+(produto), 12 são variantes ambíguas de plataformas suportadas, 6 são
+serviços de atalho.
+
+**Erro meu registrado:** na primeira redação da evidência, coleitei a lista
+antiga dos 138 e citei `sega32xjp` e `windows9x` em grupos errados; a
+partição correta (110+12+6) foi verificada por script e a seção reescrita.
+
+**Limitação honesta:** o cap de 1 MiB do transporte CLI/daemon JÁ estourava
+com 75 jogos (1.513.479 bytes, 2026-08-27) — a varredura completa não o cria,
+e paginar o workspace é o próximo passo do item (a central in-process não
+passa pelo cap). A variante paginada prometida na `manualAction` do
+`E-API-RESPONSE-TOO-LARGE` não existe ainda.
+
+**Prova negativa:** remover o alias `gc` derruba o teste novo dos aliases
+(mutação executada e revertida).
+
+**Gates:** ruff check/format, mypy, independence, boundaries, status-check e
+suíte integral rodando no fechamento; resultado lido no log antes do commit.
