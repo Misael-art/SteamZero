@@ -23,10 +23,10 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AURA-UI | 14 | 3 | 3 | unit |  |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
-| SZ-COMPONENT-LIFECYCLE | 19 | 8 | 7 | hw |  |
+| SZ-COMPONENT-LIFECYCLE | 20 | 11 | 9 | hw |  |
 | SZ-CONTROLS-INPUT-PROFILES | 12 | 7 | 3 | hw |  |
 | SZ-EMULATION-ENHANCEMENTS | 24 | 9 | 9 | unit |  |
-| SZ-EMULATION-LONG-OPERATIONS | 28 | 14 | 8 | hw |  |
+| SZ-EMULATION-LONG-OPERATIONS | 28 | 16 | 10 | hw |  |
 | SZ-EMULATION-M10 | 6 | 3 | 2 | vm |  |
 | SZ-FRONTEND-ESDE | 2 | 5 | 2 | unit |  |
 | SZ-FRONTEND-ESDE-SYSTEMS | 3 | 1 | 1 | unit |  |
@@ -35,7 +35,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-FRONTEND-RETROFE | 5 | 2 | 1 | dev |  |
 | SZ-FRONTEND-SRM | 3 | 1 | 1 | unit |  |
 | SZ-FRONTEND-STEAM-SHORTCUTS | 2 | 1 | 1 | unit |  |
-| SZ-GOVERNANCE-STATUS | 21 | 5 | 3 | dev |  |
+| SZ-GOVERNANCE-STATUS | 22 | 6 | 4 | dev |  |
 | SZ-HOST-UPDATE-TRANSACTIONAL | 18 | 12 | 9 | hw |  |
 | SZ-LIBRARY-CANONICAL | 7 | 3 | 2 | unit |  |
 | SZ-MEDIA-SCRAPING | 19 | 5 | 5 | unit |  |
