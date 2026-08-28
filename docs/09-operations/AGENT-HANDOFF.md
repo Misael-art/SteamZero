@@ -27,6 +27,10 @@ anterior errou exatamente nisso.
    ANTES de criar branch ou tocar arquivo compartilhado.
 4. `docs/01-product/AURA-SURFACES.md` e `docs/01-product/THEME-ENGINE-AND-STUDIO.md`
    — obrigatórios antes de mexer em tema, UI, launcher, scene graph ou efeito.
+5. `docs/09-operations/HANDOFF-2026-08-27.md` — handoff de sessão mais recente:
+   fila com o bloqueio exato de cada item, inventário físico do host medido,
+   lacunas por domínio, maturidade real de tema e as armadilhas que já custaram
+   tempo. É o ponto de partida mais atualizado; o bloco §2 abaixo é anterior.
 
 **AURA UI, AURA Launcher, Theme Engine e Theme Studio são quatro capacidades
 independentes.** Provar uma NUNCA promove outra. Este erro já foi cometido.

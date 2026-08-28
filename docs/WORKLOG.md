@@ -7880,3 +7880,59 @@ houve troca de artefato. É o único caminho do executor ainda sem exercício. E
 **Gates**: ruff, format (525), mypy (243), independence, boundaries e
 status-check verdes. Suíte integral não reexecutada: o diff é só docs, e ela
 fechou verde (5263, exit 0) em `edef46a`, base deste código.
+
+## 2026-08-27 — Drift de commit tornava emulador são inexecutável
+
+O operador relatou "retroarch está como reparar e vários outros emuladores também
+não executaram". Não era o RetroArch: era a contabilidade.
+
+**Causa raiz.** `FlatpakExecutor.status` mapeava qualquer divergência de commit
+para `degraded`, e `ComponentLifecycle.launch` recusa todo estado fora de
+`{installed, outdated}`. Um `flatpak update` no host levou retroarch e dolphin a
+commits mais novos que os fixados — `1f766799d9ff` contra `d8644a97df3d` e
+`1b150924d321` contra `377c3e63506e`. Ambos íntegros: o RetroArch 1.22.2 abria
+pela linha de comando. A taxonomia em `lifecycle.py` já separava os casos
+(`outdated` = íntegro fora do pin; `degraded` = artefato ou metadados não
+conferem); o mapeamento é que contrariava a própria taxonomia. O gate estava
+certo e não foi tocado.
+
+**Defeito exposto pela correção.** `status()` e `_persist()` duplicavam o
+mapeamento. Corrigir só `status()` fez a store gravar `degraded` para um
+deployment que a observação já chamava de `outdated`, e o cenário 14 de rollback
+reprovou nessa divergência. Extraído `_deployment_state` como fonte única — a
+duplicação ERA a causa de os dois lados poderem discordar. Não peguei isso
+sozinho; um teste existente pegou.
+
+**Mais dois erros que anunciavam a causa errada.** Core libretro sadio recusava
+launch reusando `E-COMPONENT-DEGRADED`, convidando a reparar uma instalação
+perfeita — agora `E-COMPONENT-NO-LAUNCH`. E resposta acima de 1 MiB saía como
+"Versão de contrato incompatível. Atualize o cliente ou o servidor", para um
+problema que atualização nenhuma resolve: `emulation workspace` num acervo real
+produz 1.513.479 bytes contra o cap de 1.048.576. Agora
+`E-API-RESPONSE-TOO-LARGE`, nomeando tamanho e limite.
+
+**P0 dos controles: o clique do operador não gravou nada, e é correto.** Destino
+inexistente, `retroarch.cfg` em `a9945f5a…9393` idêntico ao baseline, nenhuma
+operação registrada. O plano recusa com "aguardando controle reconhecido" porque
+o pad do Deck está em lizard mode: o kernel expõe só `event-kbd` e `mouse`, e
+`/dev/input/js*` não existe. Sem interface de gamepad, gravar produziria
+bindings inventados. §8 funcionando.
+
+**Meus erros.** Contaminei a suíte com um `release_host.py inspect` rodando em
+paralelo — armadilha que eu já tinha registrada e citei duas vezes antes de cair
+nela; 31 minutos. Acusei o botão de aplicar de ser no-op por um grep
+case-sensitive que não pegava `onApplyAutoconfigRequested`; era falso positivo, o
+quarto dessa família. E a notificação de background reportou "exit 0" com a suíte
+vermelha três vezes — só não commitei quebrado porque li o log.
+
+**Não entregue no host.** Nada foi mergeado, publicado ou instalado; os quatro
+commits seguem em `codex/launch-gate-drift-outdated`. As correções estão provadas
+por teste, não observadas no artefato instalado, e é só isso que afirmo. Sem
+captura: nenhuma delas tem superfície gráfica entregue.
+
+**Gates**: suíte 5266 passed / 44 skipped / 0 failed (5263 do baseline mais três
+testes novos), ruff, format (525), mypy (243), independence, boundaries e
+status-check verdes.
+
+**Handoff**: `docs/09-operations/HANDOFF-2026-08-27.md`, ligado a partir do
+`AGENT-HANDOFF.md` como leitura obrigatória 5.
