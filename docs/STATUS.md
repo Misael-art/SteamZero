@@ -8,7 +8,7 @@ Esta e a visao atual do projeto. A fonte de verdade sao os arquivos em `docs/sta
 |---|---|---|---|---|---|---|---|---|
 | SZ-AGG-ADAPTERS | Adapters: integracoes externas sem item proprio | partial | partial | integrated | none | unknown | installed | Promover a itens proprios os adapters com ciclo transacional e evidencia dedicada. |
 | SZ-AGG-ASSETS | Conteudo empacotado: experiencias, i18n e catalogos | partial | partial | integrated | none | unknown | installed | Amarrar cada catalogo empacotado ao item da capacidade que o consome. |
-| SZ-AGG-CORE | Nucleo: paths, erros, transacao e migracoes | partial | partial | integrated | none | unknown | installed | Separar migracoes de estado em item proprio, com prova de round-trip por versao. |
+| SZ-AGG-CORE | Nucleo: paths, erros, transacao e migracoes | partial | partial | integrated | none | unknown | installed | Continuar a auditoria de verdade dos textos na cauda longa; separar migracoes de estado em item proprio, com prova de round-trip por versao. |
 | SZ-AGG-DOMAIN | Dominio: regras de negocio sem item proprio | partial | partial | integrated | none | unknown | installed | Promover a itens proprios os recortes de dominio com contrato e teste dedicados. |
 | SZ-AGG-INPUT-PROFILES | Perfis de controle empacotados | partial | partial | integrated | none | unknown | installed | Provar que um perfil aplicado tem efeito observavel antes de declarar a capacidade. |
 | SZ-AGG-JOBS | Jobs em segundo plano e recovery | partial | partial | integrated | none | unknown | installed | Cobrir recovery de job interrompido por teste dedicado. |

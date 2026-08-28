@@ -1,0 +1,25 @@
+Varredura de literais E-* em src/ contra o registro do commit e93e8da (antes do registro).
+Mecanismo do defeito: SteamZeroError recusa codigo nao registrado com ValueError;
+o usuario recebia erro interno, nunca o erro de dominio com causa e acao.
+Reexecutavel: git show e93e8da:src/steamzero/core/errors.py + varredura sobre src/.
+(Linhas de core/errors.py abaixo sao as entradas de comentário/seção do próprio
+registro antigo — os sítios de emissão reais estão em adapters/emulation.py.)
+
+E-CHEAT-BUILD-ID-MISMATCH:
+  steamzero/adapters/emulation.py:4510
+  steamzero/adapters/emulation.py:4731
+E-CHEAT-CODE-INVALID:
+  steamzero/adapters/emulation.py:4504
+  steamzero/adapters/emulation.py:4506
+  steamzero/adapters/emulation.py:4516
+  steamzero/adapters/emulation.py:4522
+  steamzero/adapters/emulation.py:4736
+E-MOD-TITLE-ID-NOT-FOUND:
+  steamzero/adapters/emulation.py:4562
+  steamzero/adapters/emulation.py:4855
+E-SESSION-ORPHANED:
+  steamzero/adapters/emulation.py:1498
+
+Prova do mecanismo (reexecutavel):
+  .venv/bin/python -c "from steamzero.core.errors import SteamZeroError; SteamZeroError('E-UI-ACTION')"
+  -> ValueError: código de erro não registrado no catálogo: 'E-UI-ACTION'

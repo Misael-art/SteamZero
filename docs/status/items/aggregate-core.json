@@ -11,17 +11,32 @@
   "distribution": "installed",
   "scopePaths": [
     "src/steamzero/core",
-    "docs/06-api/ERROR-CATALOG.md"
+    "docs/06-api/ERROR-CATALOG.md",
+    "docs/09-operations/evidence/2026-08-27-error-catalog-audit"
   ],
   "dependsOn": [],
-  "knownGaps": [],
+  "knownGaps": [
+    "GAP-ERR-CATALOG-TAIL-AUDIT",
+    "GAP-ERR-STALE-PRECONDITION-CODE",
+    "GAP-ERR-DEGRADED-DRIFT-HOST-PENDING",
+    "GAP-ERR-QML-UI-ACTION-TAG"
+  ],
   "acceptanceCriteria": [
     "Todo arquivo do escopo tem custodia declarada e aparece no catalogo.",
     "Nenhuma alegacao de verificacao e feita por este item."
   ],
-  "evidence": [],
-  "nextAction": "Separar migracoes de estado em item proprio, com prova de round-trip por versao.",
-  "activeWorkstreams": [],
-  "updatedAt": "2026-08-27",
-  "notes": "Item AGREGADOR: existe para que nenhum arquivo de codigo fique sem custodia declarada, nao para alegar capacidade verificada. Onde um item de capacidade especifico cobre o mesmo caminho, ELE prevalece — o agregador responde apenas pelo resto do diretorio. Promover um recorte deste escopo a item proprio, com aceitacao e evidencia, e o caminho normal; o agregador encolhe quando isso acontece."
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-08-27-error-catalog-audit",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_errors.py tests/unit/test_i18n.py tests/unit/test_emulation_controller.py -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Continuar a auditoria de verdade dos textos na cauda longa; separar migracoes de estado em item proprio, com prova de round-trip por versao.",
+  "activeWorkstreams": [
+    "WS-2026-08-ERROR-CATALOG-AUDIT"
+  ],
+  "updatedAt": "2026-08-28",
+  "notes": "Item AGREGADOR: existe para que nenhum arquivo de codigo fique sem custodia declarada, nao para alegar capacidade verificada. Onde um item de capacidade especifico cobre o mesmo caminho, ELE prevalece — o agregador responde apenas pelo resto do diretorio. Promover um recorte deste escopo a item proprio, com aceitacao e evidencia, e o caminho normal; o agregador encolhe quando isso acontece. Auditoria 2026-08-27: 4 codigos emitidos sem registro (ValueError no lugar do erro de dominio) registrados; 5 familias de texto com causa/acao falsas corrigidas (STALE-PLAN, STATE-INTEGRITY, CONTENT-INCOMPLETE, SESSION-LAUNCH-FAILED, SUPPLY-OFFLINE); gate de emissao implementado em test_errors.py. GAP-ERR-CATALOG-TAIL-AUDIT: verificacao profunda sitio a sitio da cauda longa (VERIFY-FAILED, ROLLBACK-FAILED, SCRAPE/THEME/DESKTOP) pendente. GAP-ERR-STALE-PRECONDITION-CODE: E-TX-STALE-PLAN acumula recusa de plano invalido e precondicao de prontidao; codigo proprio exigiria tocar sitios em arquivos reservados. GAP-ERR-DEGRADED-DRIFT-HOST-PENDING: correcao do drift->reparar ja mergeada em main (d97d325); falta apenas a release instalada no host. GAP-ERR-QML-UI-ACTION-TAG: E-UI-ACTION no Main.qml e marcador interno de tarefa de UI, fora do catalogo, sem defeito de usuario provado."
 }

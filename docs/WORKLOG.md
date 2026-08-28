@@ -7936,3 +7936,57 @@ status-check verdes.
 
 **Handoff**: `docs/09-operations/HANDOFF-2026-08-27.md`, ligado a partir do
 `AGENT-HANDOFF.md` como leitura obrigatória 5.
+
+## 2026-08-28 — Auditoria do catálogo de erros: 4 códigos vivos fora do registro e 5 famílias de texto falso
+
+Branch `codex/error-catalog-audit`, sobre `e93e8da`. Item `SZ-AGG-CORE`
+(dono de `docs/06-api/ERROR-CATALOG.md`). Sem entrega física no host; a
+correção não tem superfície gráfica — sem captura, como manda a regra.
+
+**A promessa sem execução.** O catálogo dizia "CI falha se código emitido não
+consta no catálogo"; nenhum teste varria os sítios de emissão. Achado:
+`E-CHEAT-CODE-INVALID`, `E-CHEAT-BUILD-ID-MISMATCH`, `E-MOD-TITLE-ID-NOT-FOUND`
+e `E-SESSION-ORPHANED` eram emitidos sem registro. `SteamZeroError` recusa
+código não registrado com ValueError — as recusas de import de cheat/mod e o
+reaproveitador de sessões órfãs devolviam erro interno, nunca o erro de domínio.
+Os testes de `cheat.import` cobriam só o caminho feliz; por isso 5263 verdes
+não viram. Os quatro foram registrados com textos honestos e o gate agora
+existe: `test_every_code_literal_in_src_is_registered`.
+
+**O mesmo defeito da sessão anterior, em escala.** Texto fixo que anuncia a
+causa errada: `E-STATE-INTEGRITY` (131 sítios) acusava corrupção do SQLite com
+escritas suspensas, mas é dado persistido inválido (plano Flatpak corrompido,
+`es_systems.xml` inválido) recusando a própria operação; `E-TX-STALE-PLAN`
+(~205) dizia "precondições mudaram entre plan e apply" para planos inválidos na
+construção (ciclo, symlink, duplicidade), onde regerar o plano não resolve —
+título agora é "Plano recusado" e a ação aponta para o detalhe;
+`E-CONTENT-INCOMPLETE` mandava refazer dump de mídia para backups de preservação
+e downloads; `E-SESSION-LAUNCH-FAILED` afirmava "Game Mode foi encerrado" em
+lançamento de emulador pelo desktop; `E-SUPPLY-OFFLINE` prometia fila que não
+existe. Todos corrigidos em `messages_pt_br.py`; `docs/06-api/ERROR-CATALOG.md`
+ganhou as entradas faltantes (registro ↔ doc agora cobrem os mesmos códigos).
+
+**Erro meu registrado:** no teste novo das recusas, assumi a ordem das
+validações do `_plan_cheat_import` sem ler — o arquivo sem códigos cai na
+checagem de Build ID do nome antes do conteúdo. O teste pegou; reordenei o
+cenário após ler o planner.
+
+**Gate Mimosa (ambiente, não meu diff):** o gate de segurança do harness
+passou a bloquear qualquer `git commit` enquanto houver achados high na árvore:
+5 "SSRF" em `game_stream.py` (chamadas HTTP ao receptor Sunshine pareado na LAN
+— a própria função do cast, ADR-0022; revisão de endurecimento merece item
+próprio) e path traversal em `reference/linuxtoys` e `reference/EmuDeck`
+(árvores de pesquisa de terceiros, ADR-0019 — não são produto). Selo normal
+(79) e deep (90) obtidos; o bloqueio persiste. Nada contornado. Os commits
+ficaram prontos para o operador (mensagens em `/tmp/sz-commit1-msg.txt` e
+`/tmp/sz-commit2-msg.txt`); dois achados de segurança genuínos vão para a fila
+do operador.
+
+**Não provado:** efeito dos textos novos em usuário real (exige release
+instalada); verificação sítio a sítio da cauda longa (VERIFY-FAILED,
+ROLLBACK-FAILED, SCRAPE/THEME/DESKTOP) — registrado no item como
+`GAP-ERR-CATALOG-TAIL-AUDIT`.
+
+**Gates:** ruff check e format (525) limpos; mypy 243 sem issues; independence,
+boundaries e status-check OK; suíte integral **5265 passed / 44 skipped /
+exit 0** confirmada no log (baseline de `main` 5263 + dois testes novos).

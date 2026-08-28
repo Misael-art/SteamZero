@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-ERROR-CATALOG-AUDIT",
+  "item": "SZ-AGG-CORE",
+  "branch": "codex/error-catalog-audit",
+  "baseRef": "e93e8da",
+  "owner": "codex-error-catalog-audit",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/i18n/messages_pt_br.py",
+    "docs/06-api/ERROR-CATALOG.md",
+    "tests/unit/test_errors.py",
+    "tests/unit/test_i18n.py",
+    "tests/unit/test_emulation_controller.py",
+    "docs/09-operations/evidence/2026-08-27-error-catalog-audit"
+  ],
+  "sharedPaths": [
+    "docs/WORKLOG.md",
+    "docs/status/items/aggregate-core.json"
+  ],
+  "nextAction": "Auditar cada codigo do catalogo contra os sitios de emissao reais: a probableCause e a causa verdadeira e a manualAction resolve? Corrigir textos mentirosos com teste que prova.",
+  "updatedAt": "2026-08-27"
+}
