@@ -7990,3 +7990,35 @@ ROLLBACK-FAILED, SCRAPE/THEME/DESKTOP) — registrado no item como
 **Gates:** ruff check e format (525) limpos; mypy 243 sem issues; independence,
 boundaries e status-check OK; suíte integral **5265 passed / 44 skipped /
 exit 0** confirmada no log (baseline de `main` 5263 + dois testes novos).
+
+## 2026-08-28 — P0 materializado: autoconfig do Deck gravado na release instalada
+
+Continuação da sessão. `main` avançou para `9562e44` (commit do operador +
+merge ff da auditoria); **CI 8/8 verde** no push, incluindo os três jobs
+Python com a suíte completa. Prova negativa do operador no meu gate de
+emissão: remover `E-COMPONENT-NO-LAUNCH` do catálogo o faz reprovar — o gate
+não é vago (padrão novo: rebase + suíte combinada antes de merge, sempre).
+
+**O clique que faltava.** Com `/dev/input/js0` presente e `matched` na release
+instalada, o apply saiu pelas duas chamadas exatas por trás dos dois cliques
+do cartão (`plan_emulation_action` + `apply_emulation_action` do bridge), em
+processo, com o python da `2.0.0rc1-3b296a949316`, contra o estado real:
+plano `01M142BPD7XVNCER4A39A1SJGF`, `status: ok`, operação
+`01M142BPHEG4EANPKX2SMZ4G6W`, cartão `pending-write` → **`applied`**.
+
+**Sete provas no disco**: arquivo criado (16 bindings, Steam Deck 10462),
+`# SteamZero-Managed: true` na primeira linha, recusa `no-marker` medida,
+`retroarch.cfg` byte a byte `a9945f5a…9393`, `--appendconfig` no
+`launch_arguments()`, replan recusado com "Perfil aplicado", rollback
+disponível e não acionado. Evidência em
+`docs/09-operations/evidence/2026-08-28-controls-p0-aplicado/`.
+
+**Limitação honesta**: a navegação gráfica sintética chegou à biblioteca
+Switch (capturas anexadas) mas não à página do jogo — clique absoluto não
+atravessa a aceleração do KWin e o foco da grade é inconsistente. O clique
+literal é do operador, que também fará a última verificação física: abrir um
+jogo e ver o pad vivo no RetroArch com `--appendconfig`.
+
+**Gates:** status-check OK após render (item `SZ-CONTROLS-INPUT-PROFILES`
+com a evidência nova e digest recalculado). Commit pendente do operador
+(gate Mimosa segue bloqueando `git commit` do agente).

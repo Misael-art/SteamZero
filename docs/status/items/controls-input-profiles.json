@@ -20,10 +20,11 @@
     "tests/unit/test_retroarch_autoconfig.py",
     "tests/qml/check_controls_profile_card.qml",
     "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig",
+    "docs/09-operations/evidence/2026-08-28-controls-p0-aplicado",
     "src/steamzero/autoconfig/udev/steam-deck.cfg",
     "docs/adr/0027-autoconfig-base-do-steam-deck.md"
   ],
-  "scopeDigest": "03e98bfec8553ffa7cd45bf29b488cb9790131ca8dc42ecfedb4b7f72ba24e4e",
+  "scopeDigest": "f668293053e7a822c133d856b2696b61b9f4c8ad194df1958da4fde10b0abe2f",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -75,12 +76,18 @@
       "reference": "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig",
       "command": "2026-08-26, secao 9. Release 2.0.0rc1-720928250e1a publicada (CI verde nos 8 jobs no commit 7209282) e instalada. Preflight do wheel antes da instalacao: steamzero/autoconfig/udev/steam-deck.cfg presente com input_b_btn='3'. NA RELEASE INSTALADA: service.generation confirma o daemon na release ativada, o catalogo passa a ter 420 perfis do RetroArch + 1 nosso vindo de /opt/steamzero/releases/.../site-packages/steamzero/autoconfig/udev, e o writer responde pending-write com 12 bindings resolvidos e 0 nao resolvidos. A entrega do ADR-0027 esta confirmada no artefato instalado, nao so na arvore. MATERIALIZACAO NAO CONCLUIDA, pendente de interacao humana: controls.autoconfig.apply so e alcancavel pela GUI no cartao por jogo; a central abre e funciona (steamzero desktop ui -> Main.qml, janela capturada), mas computer-use da timeout de 300s, xdotool nao enxerga janela Wayland nativa e ydotool exige ydotoold que nao roda — subir daemon de injecao de input via uinput no host nao e acao de agente. CORRECAO DE RUMO: steamzero-launcher era superficie errada (abre LauncherMain.qml, do AURA Launcher); o cartao vive em Emulation.qml, da central desktop. Host: writer nao gravou, ~/.config/steamzero/retroarch/ inexistente, retroarch.cfg do usuario sha256 a9945f5a...9393 identico ao baseline.",
       "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-28-controls-p0-aplicado",
+      "command": "2026-08-28. GRAVACAO EXECUTADA na release instalada 2.0.0rc1-3b296a949316 (sem as correcoes de main). Precondicoes medidas antes: /dev/input/js0+js1 presentes (28de/1205) e catalog.match = matched com candidato steam-deck.cfg na ARVORE e na RELEASE INSTALADA; cartao em pending-write com applyAction habilitado. O apply saiu pelas DUAS chamadas exatas por tras dos dois cliques do cartao (plan_emulation_action + apply_emulation_action do bridge desktop_dashboard), em processo, com o python da release instalada e env -u XDG_STATE_HOME, contra o estado real: plano 01M142BPD7XVNCER4A39A1SJGF, apply status=ok, operacao 01M142BPHEG4EANPKX2SMZ4G6W, estado do cartao pending-write -> applied e applyAction deixou de ser oferecido. PROVADO NO DISCO: (1) ~/.config/steamzero/retroarch/autoconfig/udev/steamzero.cfg criado, 580 bytes, 16 bindings, input_device='Steam Deck' vendor 10462, primeira linha '# SteamZero-Managed: true'; (2) overlay steamzero.cfg presente; (3) recusa de arquivo de terceiro medida: _probe_target sobre arquivo sem marcador devolve no-marker; (4) retroarch.cfg do usuario byte a byte identico ao baseline a9945f5a...9393 antes e depois; (5) retroarch_launch_arguments() deixa de ser tupla vazia: ('--appendconfig', '~/.config/steamzero/retroarch/steamzero.cfg'); (6) idempotencia: replan apos apply recusado com E-TX-STALE-PLAN 'Perfil aplicado'. Rollback disponivel e NAO acionado (operations rollback-apply da operacao acima). Limitacao registrada: a injecao grafica continua nao confiavel neste host (ydotoold hoje roda como usuario via ACL do grupo input em /dev/uinput e teclado chega, mas clique absoluto nao atravessa a aceleracao do KWin e o foco na grade e inconsistente) — o clique literal do botao segue como verificacao do operador, que tambem confirmara a chegada do perfil no lancamento real (RetroArch abrindo com o autoconfig ativo).",
+      "result": "passed"
     }
   ],
-  "nextAction": "PENDENTE DE INTERACAO HUMANA, nao de investigacao. Tudo o que era mensuravel esta provado na release instalada: base empacotada, catalogo com o nosso perfil, writer em pending-write com 12/0. Falta um clique: central > Emulacao > selecionar jogo > cartao de controles > aplicar. Depois disso, verificar arquivo gravado no destino, marcador de ownership, recusa de arquivo sem marcador, retroarch.cfg intocado e retroarch_launch_arguments deixando de devolver tupla vazia. Nenhum caminho de automacao de clique existe neste host (computer-use com timeout, janela Wayland nativa fora do xdotool, ydotoold ausente).",
+  "nextAction": "Duas verificacoes finais do operador, ambas com o host na mao: (1) confirmar o cartao em verde com o botao sumido (central > Emulacao > jogo > cartao de controles); (2) abrir um jogo da plataforma e confirmar a chegada do perfil no lancamento real — argv do flatpak run com --appendconfig e o pad funcionando no RetroArch, com o retroarch.cfg do usuario saindo byte a byte identico. Depois disso o item e completo na release instalada; publicar release nova com as correcoes de main (drift/erros/auditoria) segue dependente de autorizacao.",
   "activeWorkstreams": [
     "WS-2026-08-CONTROLS-INPUT-PROFILES"
   ],
-  "updatedAt": "2026-08-26",
+  "updatedAt": "2026-08-28",
   "notes": "Item criado em 2026-08-24 porque a capacidade chegou pelo porte (72d4553, ec93214, 6024639, 972b8f1, bcda98c, a0f153c, f8d2fe2, 94db78f, 47fc0a8, 2114389, bf9e620, f47ce42) e os arquivos estavam apenas sob os agregadores SZ-AGG-DOMAIN, SZ-AGG-ADAPTERS e SZ-AGG-INPUT-PROFILES, contra a regra do AGENTS.md secao 2 de que toda capacidade tem item proprio. O eixo operacional e 'unknown': as provas existentes sao de unidade e de harness QML, nenhuma contra um controle fisico."
 }
