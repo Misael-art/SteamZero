@@ -17,7 +17,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-PRIVILEGED | 7 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SCHEMAS | 49 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SERVICE-API | 11 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-TESTS | 363 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-TESTS | 364 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TOOLS | 39 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AURA-LAUNCHER | 32 | 10 | 8 | hw |  |
 | SZ-AURA-UI | 14 | 3 | 3 | unit |  |
@@ -26,7 +26,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-COMPONENT-LIFECYCLE | 20 | 11 | 9 | hw |  |
 | SZ-CONTROLS-INPUT-PROFILES | 16 | 8 | 4 | hw |  |
 | SZ-EMULATION-ENHANCEMENTS | 24 | 9 | 9 | unit |  |
-| SZ-EMULATION-LONG-OPERATIONS | 28 | 16 | 10 | hw |  |
+| SZ-EMULATION-LONG-OPERATIONS | 28 | 17 | 11 | hw |  |
 | SZ-EMULATION-M10 | 6 | 3 | 2 | vm |  |
 | SZ-FRONTEND-ESDE | 2 | 5 | 2 | unit |  |
 | SZ-FRONTEND-ESDE-SYSTEMS | 3 | 1 | 1 | unit |  |
@@ -37,7 +37,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-FRONTEND-STEAM-SHORTCUTS | 2 | 1 | 1 | unit |  |
 | SZ-GOVERNANCE-STATUS | 22 | 6 | 4 | dev |  |
 | SZ-HOST-UPDATE-TRANSACTIONAL | 18 | 12 | 9 | hw |  |
-| SZ-LIBRARY-CANONICAL | 8 | 5 | 3 | unit |  |
+| SZ-LIBRARY-CANONICAL | 9 | 6 | 4 | unit |  |
 | SZ-MEDIA-SCRAPING | 19 | 5 | 5 | unit |  |
 | SZ-ONLINE-P2P | 37 | 2 | 1 | none |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |

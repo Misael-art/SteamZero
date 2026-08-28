@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import base64
+import gzip
 import json
 import os
 import socket
@@ -16,6 +18,11 @@ from steamzero.api.events import parse_event_cursor
 from steamzero.service.socket_path import safe_socket_path
 
 _MAX_RESPONSE = 1 << 20
+#: Teto lógico pós-descompressão: o frame na rede continua limitado a
+#: ``_MAX_RESPONSE``; isto impede que um payload descomprimido desborde a
+#: memória do cliente (defesa contra resposta truncada ou maliciosa).
+_MAX_DECODED = 16 << 20
+_PAYLOAD_ENCODING = "gzip+base64"
 
 
 class CoreUnavailable(ConnectionError):
@@ -148,13 +155,55 @@ def verify_generation(*, timeout: float = 2.0) -> dict[str, Any]:
     raise CoreGenerationMismatch(mine.to_dict(), theirs)
 
 
+def _unwrap_result(result: dict[str, Any]) -> dict[str, Any]:
+    """Desembrulha resultado comprimido; sem o marcador, devolve como veio."""
+    if result.get("__payload") != _PAYLOAD_ENCODING:
+        return result
+    data = result.get("data")
+    decoded_size = result.get("decodedSize")
+    if not isinstance(data, str) or not isinstance(decoded_size, int):
+        raise CoreProtocolError("resultado comprimido malformado")
+    try:
+        raw = gzip.decompress(base64.b64decode(data, validate=True))
+    except (ValueError, OSError) as exc:
+        raise CoreProtocolError(f"resultado comprimido ilegível: {exc}") from exc
+    if len(raw) != decoded_size:
+        raise CoreProtocolError(
+            f"tamanho declarado {decoded_size} difere do descomprimido {len(raw)}"
+        )
+    if len(raw) > _MAX_DECODED:
+        raise CoreResponseTooLarge(
+            f"resposta descomprimida de {len(raw)} bytes excede o limite de {_MAX_DECODED}"
+        )
+    try:
+        decoded: dict[str, Any] = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise CoreProtocolError("resultado descomprimido não é JSON") from exc
+    # O payload comprimido é a RESPOSTA inteira; o chamador quer o result dela.
+    inner = decoded.get("result")
+    if not isinstance(inner, dict):
+        raise CoreProtocolError("resultado descomprimido não carrega um result")
+    return inner
+
+
 def _call(
     request_id: int, method: str, params: dict[str, Any], *, timeout: float
 ) -> dict[str, Any]:
-    """Um round-trip JSON-RPC, com o envelope já validado."""
+    """Um round-trip JSON-RPC, com o envelope já validado.
+
+    Anuncia ``acceptGzip``: respostas grandes chegam comprimidas e são
+    desembrulhadas aqui, transparente para o chamador. Servidor antigo ignora
+    o campo e responde sem comprimir.
+    """
     request = (
         json.dumps(
-            {"jsonrpc": "2.0", "id": request_id, "method": method, "params": params},
+            {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "method": method,
+                "params": params,
+                "acceptGzip": True,
+            },
             ensure_ascii=False,
             separators=(",", ":"),
         ).encode("utf-8")
@@ -184,7 +233,7 @@ def _call(
     result = response.get("result")
     if not isinstance(result, dict):
         raise CoreAmbiguousResult("resultado ausente")
-    return result
+    return _unwrap_result(result)
 
 
 def invoke(method: str, params: dict[str, str], *, timeout: float = 2.0) -> Invocation:

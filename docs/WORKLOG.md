@@ -8061,3 +8061,48 @@ passa pelo cap). A variante paginada prometida na `manualAction` do
 
 **Gates:** ruff check/format, mypy, independence, boundaries, status-check e
 suíte integral rodando no fechamento; resultado lido no log antes do commit.
+
+## 2026-08-28 — Transporte comprimido: `emulation workspace` volta a funcionar no acervo real
+
+Continuação na mesma branch. Missão: a paginação/projeção que destravasse o
+`emulation workspace` (o cap de 1 MiB do socket já estava estourado no acervo
+real desde 2026-08-27 e a fonte canônica agora carrega 375 jogos).
+
+**Diagnóstico antes do desenho.** Dissecação do workspace real: `platforms`
+793 KB (80 jogos, todos de switch — o read model real está stale de scan
+antigo), `editorialPlatforms` 522 KB duplicando as mesmas linhas, 35 seções
+VAZIAS custando 191 KB, e uma linha de jogo de **6,4 KB** — 3,7 KB disso é
+`controlsProfile` replicado por jogo sendo que o perfil é POR DISPOSITIVO.
+A projeção enxuta foi descartada como caminho: enxugar linhas quebra o
+contrato que a central QML consome, e os QML são reservados pela
+WS-2026-08-V2-HARMONIZED.
+
+**O desenho: compressão negociada no transporte.** Campo de extensão
+`acceptGzip` no request (servidor antigo ignora, cliente antigo nunca envia —
+compatível nos dois sentidos); servidor comprime a resposta inteira só quando
+negociada, só sucesso, só acima de 256 KiB; acima de 8 MiB lógicos recusa com
+causa; cliente desembrulha com validação de `decodedSize` e teto de 16 MiB.
+Nenhuma forma de documento muda; chamadores não mudam.
+
+**Prova contra o estado REAL copiado para scratch (host não mutado — 5 MB
+essenciais, sem os 1,2 GB de quarentena/backups):** sem compressão o frame é
+**1.048.578 bytes > 1 MiB** (a falha de 2026-08-27 reproduzida); com
+compressão o `invoke` devolve `ok/ready` (36 plataformas, 80 jogos) em 3,9 s
+com frame na rede de **99.620 bytes** (`decodedSize` 1.388.211, razão ~14×).
+
+**Erros meus registrados:** o `pkill -f` da armadilha registrada matou o
+próprio shell durante a limpeza do harness; o primeiro harness leu até EOF
+(conexão fica aberta — timeout) e usou socket em diretório world-writable,
+que a checagem de segurança do próprio cliente recusou — três iterações de
+harness até a prova rodar.
+
+**Arbitragem de posse proposta e registrada no workstream:** posse pertence ao
+ITEM, não à frente; arquivos de infraestrutura transversal (transporte do
+serviço, registro de erros, i18n) devem ser compartilhados por design com
+edição solo; conflito de claim deve reprovar no REGISTRO do workstream, não
+só no status-check do commit. Disputas abertas: service/client.py+core.py
+(esta frente × WS-2026-08-EMULATION-LONG-OPERATIONS) e domain/library.py
+(esta frente × WS-2026-08-V2-HARMONIZED).
+
+**Gates:** ruff check/format, mypy, independence, boundaries, status-check e
+suíte integral no fechamento; resultado lido no log antes do commit.

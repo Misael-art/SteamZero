@@ -8,6 +8,8 @@ listener TCP, dispatch reflexivo, comando de shell ou dependência do PhaseZero.
 from __future__ import annotations
 
 import argparse
+import base64
+import gzip
 import json
 import math
 import os
@@ -45,6 +47,11 @@ _MAX_REQUESTS_PER_CONNECTION = 128
 _MAX_MUTATIONS_PER_CONNECTION = 16
 _MAX_SUBSCRIPTION_FILTERS = 64
 _MAX_SUBSCRIPTION_IDLE = 86_400.0
+#: Compressão negociada: só respostas grandes pagam o custo, e o teto lógico
+#: falha fechado antes de compor algo que nem comprimido caberia no frame.
+_COMPRESS_THRESHOLD = 256 * 1024
+_MAX_LOGICAL_RESPONSE = 8 * 1024 * 1024
+_PAYLOAD_ENCODING = "gzip+base64"
 
 
 @dataclass(frozen=True)
@@ -90,11 +97,17 @@ class CoreRequestHandler(socketserver.StreamRequestHandler):
                 if mutations > _MAX_MUTATIONS_PER_CONNECTION:
                     self._write(_rpc_error(_request_id(raw), -32029, "limite de mutações excedido"))
                     return
-            self._write(response)
+            self._write(response, accept_gzip=_request_accepts_gzip(raw))
 
-    def _write(self, response: dict[str, Any]) -> bool:
-        """Escreve uma resposta sem deixar cliente desconectado derrubar a thread."""
-        payload = json.dumps(response, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    def _write(self, response: dict[str, Any], *, accept_gzip: bool = False) -> bool:
+        """Escreve uma resposta sem deixar cliente desconectado derrubar a thread.
+
+        Com `accept_gzip`, respostas grandes saem comprimidas (negociado por
+        campo de extensão no request; servidores antigos ignoram o campo e
+        clientes antigos nunca o enviam). O frame na rede continua limitado
+        pelo cliente; o teto lógico evita compor além do que cabe.
+        """
+        payload = _encode_response(response, accept_gzip=accept_gzip)
         try:
             self.wfile.write(payload + b"\n")
             self.wfile.flush()
@@ -171,6 +184,51 @@ class CoreServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
     def shutdown(self) -> None:
         self.shutdown_requested.set()
         super().shutdown()
+
+
+def _request_accepts_gzip(raw: bytes) -> bool:
+    """Campo de extensão do request; cliente antigo nunca envia, servidor
+    antigo ignora — a negociação é compatível nos dois sentidos."""
+    try:
+        request = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return False
+    return isinstance(request, dict) and request.get("acceptGzip") is True
+
+
+def _encode_response(response: dict[str, Any], *, accept_gzip: bool) -> bytes:
+    """Serializa a resposta, comprimindo quando negociado e grande.
+
+    Só sucesso e acima do limiar: erro é pequeno por contrato, e notificação
+    de eventos não passa por aqui. Acima do teto lógico, falha fechada com
+    causa — compondo além disso o frame comprimido não caberia no cliente.
+    """
+    payload = json.dumps(response, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    if (
+        not accept_gzip
+        or "error" in response
+        or not isinstance(response.get("result"), dict)
+        or len(payload) <= _COMPRESS_THRESHOLD
+    ):
+        return payload
+    if len(payload) > _MAX_LOGICAL_RESPONSE:
+        refusal = _rpc_error(
+            response.get("id"),
+            -32003,
+            f"resposta de {len(payload)} bytes excede o limite de {_MAX_LOGICAL_RESPONSE}",
+        )
+        return json.dumps(refusal, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    compressed = gzip.compress(payload, compresslevel=6)
+    wrapped = {
+        "jsonrpc": response.get("jsonrpc", "2.0"),
+        "id": response.get("id"),
+        "result": {
+            "__payload": _PAYLOAD_ENCODING,
+            "decodedSize": len(payload),
+            "data": base64.b64encode(compressed).decode("ascii"),
+        },
+    }
+    return json.dumps(wrapped, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
 
 
 def _request_id(raw: bytes) -> str | int | None:

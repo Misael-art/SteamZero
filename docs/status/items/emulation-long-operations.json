@@ -33,7 +33,7 @@
     "docs/09-operations/evidence/2026-08-25-degraded-detail",
     "docs/09-operations/evidence/2026-08-25-melonds-smoke-install-fisico"
   ],
-  "scopeDigest": "50f8ae7cde057bea5fdea9ea5c0f80ec404f3d0b091f02f9bd505accc586f8c9",
+  "scopeDigest": "cb4ab66e069b68b262f4872cbed643aaaab57c7047230c8f7bb083499a4637b5",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -140,12 +140,18 @@
       "reference": "tests/unit/test_service_core.py",
       "command": "test_oversized_response_is_not_reported_as_contract_mismatch — `emulation workspace` num acervo real produz 1.513.479 bytes contra o limite de 1 MiB do transporte local, e o comando saia como E-API-CONTRACT ('Versao de contrato incompativel. Atualize o cliente ou o servidor') para um problema que atualizacao nenhuma resolve: cliente e servidor concordavam sobre o formato, a carga e que nao cabia. Introduzido CoreResponseTooLarge, mapeado para E-API-RESPONSE-TOO-LARGE, que orienta paginar ou reduzir escopo e nomeia tamanho e limite. Separadas tambem duas causas fundidas numa mensagem so (grande demais vs incompleta). NAO OBSERVADO no host: reproduzir exige o caminho do socket, e o daemon instalado e da release antiga; rodando da arvore o CLI diverge de geracao e cai no caminho local, que nao exercita o cap.",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_service_core.py",
+      "command": "Revalidacao de digest apos compressao negociada do transporte (frente WS-2026-08-LIBRARY-CANONICAL-FULLSCAN editou service/client.py e service/core.py com sobreposicao registrada): run_tests_isolated.py tests/unit/test_service_core.py tests/unit/test_service_methods.py -q (51 passed) e tests/integration/test_component_lifecycle.py tests/integration/test_core_service.py -q (97 passed) no conteudo novo",
+      "result": "passed"
     }
   ],
   "nextAction": "Item fechado em ready: matriz LOCAL (33), causa registrada em degradados e smoke flatpak-info do melonDS provados no host. Pendente fora deste item, elegivel como proximo trabalho do dominio: alinhar dolphin e retroarch ao alvo fixado pelo update governado (hoje 'degraded' com causa registrada) para zerar drift da matriz.",
   "activeWorkstreams": [
     "WS-2026-08-EMULATION-LONG-OPERATIONS"
   ],
-  "updatedAt": "2026-08-27",
+  "updatedAt": "2026-08-28",
   "notes": "A release 0.1.0a46-73dd7f5ad3c1 confirmou limite explícito de 1 900 s, execução persistida e rollback sem deployment parcial. A validação do Cemu revelou primeiro AF_NETLINK bloqueado pela unit; a release 0.1.0a46-2bfa55f05007 corrigiu essa allowlist e expôs a segunda fronteira: submontagens protegidas em /proc impedem Bubblewrap de montar a procfs do Flatpak. A release 0.1.0a46-54f2fc4da9b7 executa somente argv Flatpak validados num serviço transitório do user manager, mantendo o daemon endurecido: Cemu e RPCS3 chegaram a committed com rollback disponível. Flycast não aceita --version, mas a release 0.1.0a46-bd598c516bce substituiu esse smoke por leitura do commit Flatpak fixado e o instalou com sucesso. melonDS revelou o mesmo contrato inválido; a transação foi revertida sem deployment parcial. Reconciliacao 2026-08-24: o porte v2 alterou flatpak.py, lifecycle.py, cli/main.py e install_host.py dentro deste escopo, e a re-execucao das evidencias mostrou UMA reprovacao real (contrato do plano v3). O digest foi renovado com esse resultado registrado como 'failed', nao para silenciar o gate. 2026-08-24: matriz local fechada nos 33. Seis causas reais removidas e DUAS retificacoes minhas: o update de core era defeito de produto e nao de fixture, e o sunshine nao era anomalia e sim componente de streaming cobrado por capacidades que declara nao ter. 2026-08-25: matriz FISICA fechada na release 2.0.0rc1-92d91d631b80, o que promoveu verification de dev para hw e operation de blocked para degraded. Degradado e nao pronto porque o smoke flatpak-info do melonDS continua pendente de install fisico; a promocao cobre a causa registrada em componente degradado, nao o item inteiro. Nao ha captura de GUI: o campo detail nao e renderizado em superficie QML alguma, entao a unica superficie observavel desta correcao e o CLI, e os PNGs sao renderizacoes de stdout real, nao capturas de tela. 2026-08-25: install fisico do melonDS na release instalada fechou a ultima pendencia que mantinha operation=degraded; job rodou no daemon com allowlist de rede (b34213d) e o verify flatpak-info conferiu o commit fixado. Promocao de degraded para ready cobre este item; dolphin/retroarch continuam 'degraded' COM causa registrada e sao trabalho proprio de update, nao reabertura deste."
 }
