@@ -8171,3 +8171,36 @@ pegos pelos testes.
 
 **Gates:** ruff check/format (526), mypy 243, independence, boundaries,
 status-check, capability-matrix OK; suíte integral no fechamento.
+
+## 2026-08-29 — Release instalada, artwork observado e masters por plataforma
+
+**Entrega física.** A release `2.0.0rc1-a897f8ffcfed` foi preparada do commit
+`a897f8ffcfed3f8c244395b0781f690f42d95f04`, com CI run `33254799774` verde,
+e ativada pelo fluxo governado. O daemon convergiu no commit correto; a release
+anterior `2.0.0rc1-3b296a949316` permanece como rollback. `steamzero-core.service`
+e socket ficaram ativos, a sessão Game Mode gerenciada foi encontrada e o doctor
+não apontou falha terminal.
+
+**Observação real.** O workspace comprimido abriu com 212 jogos canônicos em
+61 plataformas (não 375: o número maior inclui conteúdo auxiliar). A busca
+`media.global.search-missing` processou 211 jogos e pulou um; ScreenScraper
+atingiu quota e nenhum master foi aplicado. A captura da central instalada
+mostra capa e hero artwork reais, mas a investigação achou uma separação de
+fontes: `media/switch` tinha 15 artefatos legados, `media_masters` estava vazio
+e `masters/` tinha um arquivo órfão sem registry.
+
+**Correção.** `0ce9009` substitui os caminhos fixos `masters/switch` e
+`optimized/switch` por layout por plataforma. O registry passa a persistir
+`platformId`; registros v1 mantêm `switch` sem inferência. A migração move cada
+master registrado e reescreve seu registry no mesmo plano `G-FULL`, com hashes,
+precondições e rollback. No acervo real o plano foi no-op: o master órfão ficou
+intacto porque não havia prova de sua plataforma.
+
+**Erros meus.** A primeira sonda de busca tinha erro de sintaxe e não criou job
+nem plano. Uma segunda captura pegou a janela do Codex, não a central; foi
+removida imediatamente e não ficou em evidência.
+
+**Gates:** suíte integral 5290 passed / 44 skipped em 32m28s; ruff check,
+format, mypy, independence e boundaries verdes. O daemon legítimo atualizou
+seu próprio state home durante a suíte; o harness identificou o PID e não
+atribuiu a alteração aos testes.

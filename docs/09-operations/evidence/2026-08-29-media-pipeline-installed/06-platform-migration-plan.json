@@ -1,0 +1,1 @@
+{"actions": 0, "kind": "media.platform-layout-migration", "mastersAfter": 1, "mastersBefore": 1, "outcome": "noop-unregistered-master-preserved", "releaseObserved": "2.0.0rc1-a897f8ffcfed", "rollbackGuarantee": "G-FULL"}

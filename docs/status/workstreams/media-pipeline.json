@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-MEDIA-PIPELINE",
+  "item": "SZ-MEDIA-SCRAPING",
+  "branch": "codex/platform-media-pipeline",
+  "baseRef": "a897f8ffcfed3f8c244395b0781f690f42d95f04",
+  "owner": "codex-platform-media-pipeline",
+  "state": "closed",
+  "exclusivePaths": [
+    "src/steamzero/domain/media_pipeline.py",
+    "src/steamzero/domain/media_registry.py",
+    "tests/unit/test_expansion_baseline_media.py",
+    "docs/09-operations/evidence/2026-08-29-media-pipeline-installed"
+  ],
+  "sharedPaths": [
+    "docs/status/items/media-scraping.json",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Integrado em commit funcional 0ce9009; aguardar merge/empacotamento e repetir a migração somente quando o registry puder provar a plataforma do master órfão.",
+  "updatedAt": "2026-08-29"
+}

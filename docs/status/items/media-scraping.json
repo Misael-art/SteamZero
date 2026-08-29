@@ -9,11 +9,15 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "373f9039084caf790bec34f1411e64f8a550ed4d62ce77bd2abfd78e2bdef1fe",
+  "scopeDigest": "2b30cd4ea802e20a1c9fbdbbe4267febffb4db60915819db6314a892d78d249a",
   "scopePaths": [
     "src/steamzero/adapters/scraping",
+    "docs/09-operations/evidence/2026-08-29-media-pipeline-installed",
+    "src/steamzero/domain/media_pipeline.py",
+    "src/steamzero/domain/media_registry.py",
     "src/steamzero/domain/scraping_providers.py",
     "tests/fixtures/scraping",
+    "tests/unit/test_expansion_baseline_media.py",
     "tests/unit/scraping",
     "tests/unit/test_scraping_provider_catalog.py"
   ],
@@ -59,10 +63,16 @@
       "reference": "tests/unit/test_screenscraper_forbidden.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/scraping tests/unit/test_screenscraper_forbidden.py -q (150 passed). Classificacao do 403 passou a ler o texto do servidor: 'Erreur de login' vira E-SCRAPE-CREDENTIAL-REJECTED; sem marcador de credencial permanece E-SCRAPE-QUOTA-EXCEEDED.",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-29-media-pipeline-installed",
+      "command": "2026-08-29, Valve Jupiter, release 2.0.0rc1-a897f8ffcfed: workspace comprimido abriu 212 jogos canônicos/61 plataformas; media.global.search-missing processou 211 e pulou 1, sem aplicar artwork porque ScreenScraper entrou em quota. A central instalada exibiu artwork real, mas a fonte era media/switch legada; media_masters estava vazio e masters/ tinha 1 arquivo órfão sem registry. O plano de migração novo foi no-op seguro (1 master antes/depois, G-FULL).",
+      "result": "passed"
     }
   ],
-  "nextAction": "Validar a G40 ponta a ponta contra a API real quando houver credencial persistente: a tabela systemeid e a classificacao do 403 estao fechadas em teste, mas o provedor so pode ser declarado funcional com busca real. Bloqueio atual: GAP-G44, chaveiro efemero.",
+  "nextAction": "Integrar e empacotar a separação masters/<plataforma>; na próxima release, repetir a busca contra providers com quota disponível. A migração real permanece no-op até haver registry e plataforma comprováveis para o master órfão; ele nunca deve ser movido por inferência.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-08-24",
-  "notes": "Endurecimento integrado (commit 30d1247, origem 5adb3db): transporte, cache e classificacao de falhas dos adapters; credenciais nunca persistem no cache; circuito de quota e fallback testados; 144 testes unitarios passed. Qualidade e licenciamento da midia externa ainda exigem validacao operacional. Distribuicao 'installed': o codigo deste item esta na release 0.1.0a44-07802589e985, instalada no host em 2026-08-11 (RELEASE-LEDGER, ancestralidade do commit 07802589e985 conferida). NAO e 'certified': a certificacao fisica segue adiada e a tag v0.1.0a44 nao foi publicada — tag e a afirmacao de que os gates fisicos passaram. A convergencia do daemon ainda depende de acao do operador (steamzero-host converge). Verificado contra a API real em 2026-08-12 com credenciais do operador: a resolucao de id no SteamGridDB usava /games/autocomplete?term=, que responde HTTP 405 — o endpoint nao existe na v2. Corrigido para /search/autocomplete/{termo}; busca real devolve 149 candidatos para Breath of the Wild e 85 para Sonic. ScreenScraper segue quebrado por outra causa: jeuInfos.php responde HTTP 400 'Champ systemeid obligatoire si aucun CRC' porque o cliente nao mapeia platform_slug para systemeid nem envia hash — ver G40. G44 parcialmente fechada em 2026-08-12: notConfigured, stored e vaultVolatile agora sao distinguiveis por marcador persistente sem segredo. 2026-08-24: vaultVolatile corrigido na UI. O dominio ja distinguia 'o cofre perdeu o valor' de 'campo em branco' desde a queixa do operador em 2026-08-12, mas stateLabel() do CredentialProviderCard nao tinha a entrada e caia no fallback, mostrando 'Nao configurado' — ou seja, mandava reconfigurar o que a pessoa ja tinha configurado. O dominio acertava e a UI jogava fora no ultimo passo. Cor passou a amber: e atencao, nao erro. 2026-08-24: as DUAS metades da G40 estao fechadas em teste. A tabela systemeid ja existia (_PLATFORM_MAP) e o KNOWN-GAPS.md estava desatualizado; a classificacao do 403 foi corrigida agora. A chave da mensagem no payload nao esta documentada, entao a classificacao varre o TEXTO devolvido em vez de adivinhar o campo, e so reclassifica com evidencia positiva de credencial — sem marcador, o comportamento anterior permanece."
+  "updatedAt": "2026-08-29",
+  "notes": "Endurecimento integrado (commit 30d1247, origem 5adb3db): transporte, cache e classificacao de falhas dos adapters; credenciais nunca persistem no cache; circuito de quota e fallback testados; 144 testes unitarios passed. Qualidade e licenciamento da midia externa ainda exigem validacao operacional. Distribuicao 'installed': o codigo deste item esta na release 0.1.0a44-07802589e985, instalada no host em 2026-08-11 (RELEASE-LEDGER, ancestralidade do commit 07802589e985 conferida). NAO e 'certified': a certificacao fisica segue adiada e a tag v0.1.0a44 nao foi publicada — tag e a afirmacao de que os gates fisicos passaram. A convergencia do daemon ainda depende de acao do operador (steamzero-host converge). Verificado contra a API real em 2026-08-12 com credenciais do operador: a resolucao de id no SteamGridDB usava /games/autocomplete?term=, que responde HTTP 405 — o endpoint nao existe na v2. Corrigido para /search/autocomplete/{termo}; busca real devolve 149 candidatos para Breath of the Wild e 85 para Sonic. ScreenScraper segue quebrado por outra causa: jeuInfos.php responde HTTP 400 'Champ systemeid obligatoire si aucun CRC' porque o cliente nao mapeia platform_slug para systemeid nem envia hash — ver G40. G44 parcialmente fechada em 2026-08-12: notConfigured, stored e vaultVolatile agora sao distinguiveis por marcador persistente sem segredo. 2026-08-24: vaultVolatile corrigido na UI. O dominio ja distinguia 'o cofre perdeu o valor' de 'campo em branco' desde a queixa do operador em 2026-08-12, mas stateLabel() do CredentialProviderCard nao tinha a entrada e caia no fallback, mostrando 'Nao configurado' — ou seja, mandava reconfigurar o que a pessoa ja tinha configurado. O dominio acertava e a UI jogava fora no ultimo passo. Cor passou a amber: e atencao, nao erro. 2026-08-24: as DUAS metades da G40 estao fechadas em teste. A tabela systemeid ja existia (_PLATFORM_MAP) e o KNOWN-GAPS.md estava desatualizado; a classificacao do 403 foi corrigida agora. A chave da mensagem no payload nao esta documentada, entao a classificacao varre o TEXTO devolvido em vez de adivinhar o campo, e so reclassifica com evidencia positiva de credencial — sem marcador, o comportamento anterior permanece. 2026-08-29: a release 2.0.0rc1-a897f8ffcfed foi instalada e convergiu; a busca real confirmou quota no ScreenScraper e nenhuma master nova. A central exibiu artwork da fonte legada media/switch, enquanto masters/ continha um arquivo órfão sem registry. O novo layout por plataforma só migra masters registrados por plano G-FULL, preservando casos ambíguos."
 }
