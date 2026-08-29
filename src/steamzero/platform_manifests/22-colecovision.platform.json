@@ -114,7 +114,27 @@
     "providers": [
       "screenscraper",
       "steamgriddb"
-    ]
+    ],
+    "nature": "cartridge",
+    "formats": {
+      "col": [
+        "col",
+        "cv",
+        "myv"
+      ],
+      "rom": [
+        "rom",
+        "bin"
+      ],
+      "cas": [
+        "cas"
+      ],
+      "dsk": [
+        "dsk"
+      ]
+    },
+    "containerPolicy": "native",
+    "auxiliaryContent": "none"
   },
   "controls": {
     "profiles": [

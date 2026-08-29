@@ -110,7 +110,23 @@
     "providers": [
       "screenscraper",
       "steamgriddb"
-    ]
+    ],
+    "nature": "cartridge",
+    "formats": {
+      "z64": [
+        "z64",
+        "n64",
+        "v64"
+      ],
+      "ndd": [
+        "ndd"
+      ],
+      "d64": [
+        "d64"
+      ]
+    },
+    "containerPolicy": "native",
+    "auxiliaryContent": "none"
   },
   "controls": {
     "profiles": [

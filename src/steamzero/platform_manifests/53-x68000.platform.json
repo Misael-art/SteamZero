@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "id": "x68000",
+  "kind": "emulated",
+  "name": "Sharp X68000",
+  "shortName": "X68000",
+  "iconKey": "input-gaming",
+  "artworkAsset": "../assets/retroarch.svg",
+  "systems": [
+    "x68000"
+  ],
+  "capabilities": [
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "state": "planned",
+      "detail": "Biblioteca Sharp X68000 composta pelo scanner declarativo.",
+      "action": null
+    },
+    {
+      "id": "graphics",
+      "label": "Vídeo e timing",
+      "state": "planned",
+      "detail": "Resolução, região e shaders permanecem configuráveis no emulador.",
+      "action": null
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "state": "ready",
+      "detail": "Perfil base reversível; ajustes finos ficam no emulador.",
+      "action": {
+        "id": "controls.profile.activate",
+        "label": "Selecionar perfil",
+        "requiresConfirmation": true
+      }
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "state": "planned",
+      "detail": "Artwork será composto pelos provedores declarados.",
+      "action": null
+    }
+  ],
+  "areas": [
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "iconKey": "dashboard",
+      "capabilityId": "overview"
+    },
+    {
+      "id": "graphicsPerformance",
+      "label": "Vídeo e timing",
+      "iconKey": "video-display",
+      "capabilityId": "graphics"
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "iconKey": "gamepad",
+      "capabilityId": "controls"
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "iconKey": "image",
+      "capabilityId": "media"
+    }
+  ],
+  "emulators": [
+    {
+      "id": "retroarch",
+      "name": "RetroArch",
+      "adapterId": "retroarch",
+      "precedence": 1,
+      "role": "multi-system",
+      "launch": {
+        "core": "px68k",
+        "openArgs": [],
+        "gameArgs": [
+          "-L",
+          "{core}",
+          "{rom}"
+        ]
+      }
+    }
+  ],
+  "media": {
+    "extensions": [
+      "dim",
+      "img",
+      "d88",
+      "hdm",
+      "m3u",
+      "zip"
+    ],
+    "artworkKinds": [
+      "cover",
+      "background",
+      "logo",
+      "icon"
+    ],
+    "providers": [
+      "screenscraper",
+      "steamgriddb"
+    ]
+  },
+  "controls": {
+    "profiles": [
+      "retroarch-classic-gamepad"
+    ],
+    "maxPlayers": 2,
+    "specialized": []
+  },
+  "timing": {
+    "standards": [
+      "ntsc"
+    ],
+    "defaultStandard": "ntsc",
+    "unknownFallback": "unknown-explicit"
+  },
+  "presets": [
+    {
+      "id": "como-era",
+      "label": "Como era",
+      "state": "planned",
+      "detail": "Saída histórica por região."
+    },
+    {
+      "id": "equilibrado",
+      "label": "Equilibrado",
+      "state": "planned",
+      "detail": "Nitidez sem alterar timing."
+    },
+    {
+      "id": "melhorado",
+      "label": "Melhorado",
+      "state": "planned",
+      "detail": "Aprimoramentos opt-in."
+    }
+  ],
+  "cloud": null
+}

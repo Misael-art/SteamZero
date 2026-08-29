@@ -18,6 +18,7 @@ from fixtures.scraping.synthetic import (
 from steamzero.adapters.scraping.screenscraper import (
     _MEDIA_KIND_MAP,
     _PLATFORM_MAP,
+    _PLATFORMS_WITHOUT_SYSTEMEID,
     ScreenScraperAdapter,
     _accepted_media_types,
 )
@@ -130,11 +131,13 @@ def test_supported_kinds(adapter: ScreenScraperAdapter) -> None:
 
 
 def test_supported_platforms(adapter: ScreenScraperAdapter) -> None:
+    """As plataformas cobertas são IDS DE MANIFESTO — é o que a produção
+    consulta (`identity.platform_slug` = `game["platform"]`)."""
     platforms = adapter.supported_platforms()
     assert "switch" in platforms
-    assert "nes" in platforms
+    assert "nes-famicom" not in platforms  # multi-sistema: sem ID sancionado
     assert "snes" in platforms
-    assert "megadrive" in platforms
+    assert "mega-drive" in platforms
     assert "playstation" in platforms
     assert all(p in _PLATFORM_MAP for p in platforms)
 
@@ -280,17 +283,47 @@ def test_accepted_media_types_known() -> None:
     assert "wheel-hd" in wheel_types
 
 
-def test_platform_map_covers_supported_platforms(adapter: ScreenScraperAdapter) -> None:
-    for slug in adapter.supported_platforms():
-        assert slug in _PLATFORM_MAP, f"slug {slug} not in _PLATFORM_MAP"
+def test_platform_map_keys_are_registry_ids() -> None:
+    """Todo ID de sistema no mapa é um id real de manifesto de plataforma.
+
+    A chave do mapa é o que `identity.platform_slug` carrega em produção — o
+    id do manifesto. O vocabulário anterior usava slugs do provider que a
+    produção nunca consulta (61 órfãos no cruzamento de 2026-08-28).
+    """
+    from steamzero.domain.platforms import PlatformRegistry
+
+    registry_ids = {manifest.id for manifest in PlatformRegistry.bundled().list()}
+    orphan_keys = sorted(set(_PLATFORM_MAP) - registry_ids)
+    assert not orphan_keys, f"chaves do mapa sem manifesto: {orphan_keys}"
+
+
+def test_platforms_without_systemeid_are_exactly_the_declared_set() -> None:
+    """A cobertura é declarada: plataforma fora do mapa tem que estar na
+    lista de sem-`systemeid`, e plataforma na lista tem que estar fora do
+    mapa. Nada entra ou sai silenciosamente."""
+    from steamzero.domain.platforms import PlatformRegistry
+
+    registry_ids = {manifest.id for manifest in PlatformRegistry.bundled().list()}
+    mapped = set(_PLATFORM_MAP)
+    uncovered = registry_ids - mapped
+
+    fantasmas = mapped - registry_ids
+    assert not fantasmas, f"mapeados sem manifesto: {sorted(fantasmas)}"
+    missing_declaration = sorted(uncovered - set(_PLATFORMS_WITHOUT_SYSTEMEID))
+    nonexistent_declaration = sorted(set(_PLATFORMS_WITHOUT_SYSTEMEID) - uncovered)
+    assert uncovered == set(_PLATFORMS_WITHOUT_SYSTEMEID), (
+        "diferença registry x sem-systemeid: "
+        f"faltam declarar {missing_declaration}, "
+        f"declarados sem existir {nonexistent_declaration}"
+    )
 
 
 def test_platform_map_switch_is_225() -> None:
     assert _PLATFORM_MAP["switch"] == "225"
 
 
-def test_platform_map_wii_is_16() -> None:
-    assert _PLATFORM_MAP["wii"] == "16"
+def test_platform_map_wiiu_is_18() -> None:
+    assert _PLATFORM_MAP["wii-u"] == "18"
 
 
 def test_platform_map_playstation_is_57() -> None:
@@ -298,27 +331,31 @@ def test_platform_map_playstation_is_57() -> None:
 
 
 def test_platform_map_saturn_is_22() -> None:
-    assert _PLATFORM_MAP["saturn"] == "22"
+    assert _PLATFORM_MAP["sega-saturn"] == "22"
 
 
 def test_platform_map_3do_is_29() -> None:
-    assert _PLATFORM_MAP["3do"] == "29"
+    assert _PLATFORM_MAP["three-do"] == "29"
 
 
-def test_platform_map_playstationvita_is_62() -> None:
-    assert _PLATFORM_MAP["playstationvita"] == "62"
+def test_multi_system_manifests_declared_without_systemeid() -> None:
+    """GameCube e Wii são sistemas ScreenScraper DIFERENTES sob um manifesto:
+    escolher um enviesaria o outro — ficam sem `systemeid`, por declaração."""
+    assert "nintendo-console" not in _PLATFORM_MAP
+    assert "nintendo-console" in _PLATFORMS_WITHOUT_SYSTEMEID
 
 
-def test_platform_map_gamecube_exists() -> None:
-    assert _PLATFORM_MAP["gamecube"] == "13"
+def test_playstation2_is_58() -> None:
+    assert _PLATFORM_MAP["playstation-2"] == "58"
 
 
-def test_platform_map_playstation2_is_58() -> None:
-    assert _PLATFORM_MAP["playstation2"] == "58"
+def test_neogeo_arcade_is_142() -> None:
+    assert _PLATFORM_MAP["arcade"] == "75"
 
 
-def test_platform_map_neogeo_is_142() -> None:
-    assert _PLATFORM_MAP["neogeo"] == "142"
+def test_playstationvita_has_no_declared_id() -> None:
+    """PS Vita não tem manifesto de plataforma — sem cobertura declarada."""
+    assert "playstationvita" not in _PLATFORM_MAP
 
 
 # -- classificação de erro no corpo ----------------------------------------

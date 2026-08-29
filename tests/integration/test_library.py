@@ -36,8 +36,11 @@ def env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[tuple[state
 
 
 def test_detect_format() -> None:
-    assert detect_format("game.chd") == "chd"
-    assert detect_format("game.SFC") == "snes"
+    formats = {"optical": ["chd"], "cartridge": ["sfc"]}
+    assert detect_format("game.chd", formats) == "optical"
+    assert detect_format("game.SFC", formats) == "cartridge"
+    # Sem plataforma classificada não existe mais tabela global de extensões.
+    assert detect_format("game.chd") == "unknown"
     assert detect_format("x.qqq") == "unknown"
 
 
@@ -61,7 +64,9 @@ def test_scan_is_read_only(env: tuple[state.StateStore, Path]) -> None:
     before = {p: fs.hash_file(p) for p in fs.iter_files(src)}
     scanned = LibraryScanner(store).scan(src)
     assert {s.relpath for s in scanned} == {"a.nes", "sub/b.sfc"}
-    assert {s.format for s in scanned} == {"nes", "snes"}
+    # O scanner genérico não pode adivinhar a plataforma pela extensão; a
+    # classificação declarativa acontece no PlatformRomScanner.
+    assert {s.format for s in scanned} == {"unknown"}
     # AC-LB-01: scan não escreve nada (nem roms, nem altera a origem)
     assert not paths.roms_dir().exists()
     assert {p: fs.hash_file(p) for p in fs.iter_files(src)} == before

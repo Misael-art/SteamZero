@@ -17,9 +17,9 @@ host, que vive nos relatórios de certificação.
 |---|---|
 | adapters declarados | 33 |
 | adapters instaláveis pelo lifecycle | 33 de 33 |
-| plataformas declaradas | 36 |
-| plataformas com bloqueio | 0 de 36 |
-| cores libretro exigidos | 17 |
+| plataformas declaradas | 61 |
+| plataformas com bloqueio | 24 de 61 |
+| cores libretro exigidos | 41 |
 | cores libretro com instalador | 17 |
 | ações de UI publicadas | 120 |
 | ações declaradas indisponíveis | 6 |
@@ -133,12 +133,37 @@ obrigatória, fica sem executor ou mantém fonte EOL.
 | playstation-3 | rpcs3 | flatpak | — | — | nenhum |
 | xbox | xemu | flatpak | — | — | nenhum |
 | xbox-360 | xenia-canary | engine | — | — | nenhum |
+| sega-saturn | retroarch | flatpak | mednafen_saturn | — | core `mednafen_saturn` sem instalador |
+| sg-1000 | retroarch | flatpak | genesis_plus_gx | — | nenhum |
+| neo-geo-cd | retroarch | flatpak | neocd | — | core `neocd` sem instalador |
+| vectrex | retroarch | flatpak | vecx | — | core `vecx` sem instalador |
+| odyssey2 | retroarch | flatpak | o2em | — | core `o2em` sem instalador |
+| channelf | retroarch | flatpak | freechaf | — | core `freechaf` sem instalador |
+| pc-engine-supergrafx | retroarch | flatpak | beetle_sgx | — | core `beetle_sgx` sem instalador |
+| atari-st | retroarch | flatpak | hatari | — | core `hatari` sem instalador |
+| apple2 | retroarch | flatpak | applewin | — | core `applewin` sem instalador |
+| bbc-micro | retroarch | flatpak | beebem | — | core `beebem` sem instalador |
+| coco | retroarch | flatpak | xroar | — | core `xroar` sem instalador |
+| ti99 | retroarch | flatpak | ti99 | — | core `ti99` sem instalador |
+| zx81 | retroarch | flatpak | 81 | — | core `81` sem instalador |
+| thomson | retroarch | flatpak | theodore | — | core `theodore` sem instalador |
+| x68000 | retroarch | flatpak | px68k | — | core `px68k` sem instalador |
+| pc88 | retroarch | flatpak | quasi88 | — | core `quasi88` sem instalador |
+| pc98 | retroarch | flatpak | np2kai | — | core `np2kai` sem instalador |
+| gameandwatch | retroarch | flatpak | gw | — | core `gw` sem instalador |
+| supervision | retroarch | flatpak | potator | — | core `potator` sem instalador |
+| megaduck | retroarch | flatpak | sameduck | — | core `sameduck` sem instalador |
+| doom | retroarch | flatpak | prboom | — | core `prboom` sem instalador |
+| quake | retroarch | flatpak | tyrquake | — | core `tyrquake` sem instalador |
+| pico8 | retroarch | flatpak | fake08 | — | core `fake08` sem instalador |
+| tic80 | retroarch | flatpak | tic80 | — | core `tic80` sem instalador |
+| wasm4 | retroarch | flatpak | wasm4 | — | core `wasm4` sem instalador |
 
 ## Cores libretro exigidos
 
-17 cores são exigidos pelos perfis de lançamento e 17 têm adapter, hash de conteúdo e executor.
+41 cores são exigidos pelos perfis de lançamento e 17 têm adapter, hash de conteúdo e executor.
 
-`bluemsx`, `fbneo`, `freeintv`, `fuse`, `genesis_plus_gx`, `mednafen_ngp`, `mednafen_pce`, `mednafen_vb`, `mednafen_wswan`, `mesen`, `mgba`, `mupen64plus_next`, `opera`, `puae`, `snes9x`, `stella`, `vice_x64`
+`81`, `applewin`, `beebem`, `beetle_sgx`, `bluemsx`, `fake08`, `fbneo`, `freechaf`, `freeintv`, `fuse`, `genesis_plus_gx`, `gw`, `hatari`, `mednafen_ngp`, `mednafen_pce`, `mednafen_saturn`, `mednafen_vb`, `mednafen_wswan`, `mesen`, `mgba`, `mupen64plus_next`, `neocd`, `np2kai`, `o2em`, `opera`, `potator`, `prboom`, `puae`, `px68k`, `quasi88`, `sameduck`, `snes9x`, `stella`, `theodore`, `ti99`, `tic80`, `tyrquake`, `vecx`, `vice_x64`, `wasm4`, `xroar`
 
 ## Ações de UI declaradas indisponíveis
 

@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "5f21d4b97532388c31e445f985e2557bd2cbaff98d3c00caddfbe1519408a5db",
+  "scopeDigest": "373f9039084caf790bec34f1411e64f8a550ed4d62ce77bd2abfd78e2bdef1fe",
   "scopePaths": [
     "src/steamzero/adapters/scraping",
     "src/steamzero/domain/scraping_providers.py",

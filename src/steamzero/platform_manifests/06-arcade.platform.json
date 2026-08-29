@@ -119,7 +119,18 @@
     "providers": [
       "screenscraper",
       "steamgriddb"
-    ]
+    ],
+    "nature": "digital",
+    "formats": {
+      "zip": [
+        "zip"
+      ],
+      "chd": [
+        "chd"
+      ]
+    },
+    "containerPolicy": "native",
+    "auxiliaryContent": "none"
   },
   "controls": {
     "profiles": [

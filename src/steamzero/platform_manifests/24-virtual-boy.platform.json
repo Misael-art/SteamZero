@@ -105,7 +105,17 @@
     "providers": [
       "screenscraper",
       "steamgriddb"
-    ]
+    ],
+    "nature": "cartridge",
+    "formats": {
+      "vb": [
+        "vb",
+        "vboy",
+        "bin"
+      ]
+    },
+    "containerPolicy": "native",
+    "auxiliaryContent": "none"
   },
   "controls": {
     "profiles": [

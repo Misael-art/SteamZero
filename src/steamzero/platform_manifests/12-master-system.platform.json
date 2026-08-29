@@ -108,7 +108,25 @@
     "providers": [
       "screenscraper",
       "steamgriddb"
-    ]
+    ],
+    "nature": "cartridge",
+    "formats": {
+      "sms": [
+        "sms"
+      ],
+      "sg": [
+        "sg"
+      ],
+      "sc": [
+        "sc"
+      ],
+      "rom": [
+        "rom",
+        "bin"
+      ]
+    },
+    "containerPolicy": "native",
+    "auxiliaryContent": "none"
   },
   "controls": {
     "profiles": [

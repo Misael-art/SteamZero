@@ -104,7 +104,21 @@
     "providers": [
       "screenscraper",
       "steamgriddb"
-    ]
+    ],
+    "nature": "cartridge",
+    "formats": {
+      "nes": [
+        "nes"
+      ],
+      "fds": [
+        "fds"
+      ],
+      "unf": [
+        "unf"
+      ]
+    },
+    "containerPolicy": "native",
+    "auxiliaryContent": "none"
   },
   "controls": {
     "profiles": [

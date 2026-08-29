@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "id": "odyssey2",
+  "kind": "emulated",
+  "name": "Magnavox Odyssey²",
+  "shortName": "Odyssey²",
+  "iconKey": "input-gaming",
+  "artworkAsset": "../assets/retroarch.svg",
+  "systems": [
+    "odyssey2",
+    "videopac"
+  ],
+  "capabilities": [
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "state": "planned",
+      "detail": "Biblioteca Magnavox Odyssey² composta pelo scanner declarativo.",
+      "action": null
+    },
+    {
+      "id": "graphics",
+      "label": "Vídeo e timing",
+      "state": "planned",
+      "detail": "Resolução, região e shaders permanecem configuráveis no emulador.",
+      "action": null
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "state": "ready",
+      "detail": "Perfil base reversível; ajustes finos ficam no emulador.",
+      "action": {
+        "id": "controls.profile.activate",
+        "label": "Selecionar perfil",
+        "requiresConfirmation": true
+      }
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "state": "planned",
+      "detail": "Artwork será composto pelos provedores declarados.",
+      "action": null
+    }
+  ],
+  "areas": [
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "iconKey": "dashboard",
+      "capabilityId": "overview"
+    },
+    {
+      "id": "graphicsPerformance",
+      "label": "Vídeo e timing",
+      "iconKey": "video-display",
+      "capabilityId": "graphics"
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "iconKey": "gamepad",
+      "capabilityId": "controls"
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "iconKey": "image",
+      "capabilityId": "media"
+    }
+  ],
+  "emulators": [
+    {
+      "id": "retroarch",
+      "name": "RetroArch",
+      "adapterId": "retroarch",
+      "precedence": 1,
+      "role": "multi-system",
+      "launch": {
+        "core": "o2em",
+        "openArgs": [],
+        "gameArgs": [
+          "-L",
+          "{core}",
+          "{rom}"
+        ]
+      }
+    }
+  ],
+  "media": {
+    "extensions": [
+      "bin",
+      "o2",
+      "zip"
+    ],
+    "artworkKinds": [
+      "cover",
+      "background",
+      "logo",
+      "icon"
+    ],
+    "providers": [
+      "screenscraper",
+      "steamgriddb"
+    ]
+  },
+  "controls": {
+    "profiles": [
+      "retroarch-classic-gamepad"
+    ],
+    "maxPlayers": 2,
+    "specialized": []
+  },
+  "timing": {
+    "standards": [
+      "ntsc",
+      "pal"
+    ],
+    "defaultStandard": null,
+    "unknownFallback": "unknown-explicit"
+  },
+  "presets": [
+    {
+      "id": "como-era",
+      "label": "Como era",
+      "state": "planned",
+      "detail": "Saída histórica por região."
+    },
+    {
+      "id": "equilibrado",
+      "label": "Equilibrado",
+      "state": "planned",
+      "detail": "Nitidez sem alterar timing."
+    },
+    {
+      "id": "melhorado",
+      "label": "Melhorado",
+      "state": "planned",
+      "detail": "Aprimoramentos opt-in."
+    }
+  ],
+  "cloud": null
+}

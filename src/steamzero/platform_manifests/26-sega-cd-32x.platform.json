@@ -125,7 +125,40 @@
     "providers": [
       "screenscraper",
       "steamgriddb"
-    ]
+    ],
+    "nature": "optical",
+    "formats": {
+      "iso": [
+        "iso"
+      ],
+      "cue-bin": [
+        "cue",
+        "bin"
+      ],
+      "chd": [
+        "chd"
+      ],
+      "32x": [
+        "32x",
+        "68k"
+      ],
+      "md": [
+        "md",
+        "gen",
+        "smd",
+        "bms",
+        "mdx"
+      ],
+      "m3u": [
+        "m3u"
+      ]
+    },
+    "preferredFormat": "chd",
+    "conversionTargets": [
+      "chd"
+    ],
+    "containerPolicy": "extract",
+    "auxiliaryContent": "none"
   },
   "controls": {
     "profiles": [

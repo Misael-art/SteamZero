@@ -145,7 +145,32 @@
     "providers": [
       "screenscraper",
       "steamgriddb"
-    ]
+    ],
+    "nature": "optical",
+    "formats": {
+      "iso": [
+        "iso",
+        "gcm"
+      ],
+      "rvz": [
+        "rvz"
+      ],
+      "wbfs": [
+        "wbfs"
+      ],
+      "ciso": [
+        "ciso"
+      ],
+      "gcz": [
+        "gcz"
+      ]
+    },
+    "preferredFormat": "rvz",
+    "conversionTargets": [
+      "rvz"
+    ],
+    "containerPolicy": "extract",
+    "auxiliaryContent": "none"
   },
   "controls": {
     "profiles": [

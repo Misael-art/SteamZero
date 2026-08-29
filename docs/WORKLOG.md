@@ -8106,3 +8106,68 @@ só no status-check do commit. Disputas abertas: service/client.py+core.py
 
 **Gates:** ruff check/format, mypy, independence, boundaries, status-check e
 suíte integral no fechamento; resultado lido no log antes do commit.
+
+## 2026-08-28 — Rescan real: 212 jogos verdadeiros, editorial por plataforma OK, correção da minha medição
+
+Continuação. Push saiu (`d9674b8`, CI em andamento na escrita). Com a fonte
+sem amostragem em `main`, rodei o rescan do acervo real pela árvore
+(1,3 s; caches reescritos — dado derivado; baseline dos 3 arquivos em
+`/var/tmp/sz-readmodel-baseline`).
+
+**Correção da minha própria medição anterior.** Eu aleguei "375/375 jogos na
+fonte" — a alegação contava como jogos 178 arquivos de update/DLC/
+não-reconhecidos do diretório `switch/` que o inventário por diretório não
+distingue. A dedup por caminho com o scanner do Switch (autoridade em
+conteúdo switch) os elimina: **212 jogos verdadeiros** no read model — 197
+multi-plataforma + 15 bases switch. O critério de aceitação "update/DLC do
+Switch não vira jogo" está cumprido; o número honesto da biblioteca é 212.
+
+**Superfícies medidas depois do rescan:** a superfície editorial
+(`editorialPlatforms`) distribui os 212 corretamente por 11 plataformas
+(master-system 51, playstation 49, nes-famicom 33, nintendo-handheld 30,
+nintendo-3ds 19, switch 15, playstation-2 6, dreamcast 5, wii-u 2,
+playstation-3 1, nintendo-console 1) — o consumidor por plataforma já enxerga
+a fonte única. O workspace inteiro: 3.251.981 bytes brutos → **140.113
+bytes comprimidos** — o transporte carrega o estado atual num frame. A seção
+switch do workspace técnico segue legada (todos os jogos sob "switch"); a
+migração é a etapa de consumidores, com QML reservado.
+
+**Gates:** quick gates + status-check OK (mudança documental; sem toque em
+`src/`/`tests/` nesta etapa — a suíte 5278/44/exit 0 do ciclo da compressão
+cobre o código corrente).
+
+## 2026-08-28 — Lote 1 de manifestos: 31 diretorios do acervo deixam de ser unmatched
+
+Mesma branch. Etapa "os 110 diretorios que exigem manifesto", primeiro
+lote: **25 manifestos novos** de plataformas com caminho real de emulação
+declarável (adapter `retroarch` + core libretro upstream), alias `atarixe`
+na `atari-classics`, e as 25 sanções de core em `PLATFORM_CORES`
+(`launch_profile.py`), seguindo o precedente de `swanstation`/`dolphin`/
+`pcsx2` — sanção é contrato da plataforma; instalabilidade é camada
+separada com recusa honesta de "Jogar" enquanto o core não chegar ao lock.
+
+**O gate que prova a sanção não é decoração:** `make
+update-capability-matrix` RECUSOU o lote sem sanção
+(`mednafen_saturn não é sancionado para sega-saturn`) — foi a sancão
+faltando que fez o gate falar, e não o contrário.
+
+**Cobertura medida no acervo real:** matched 66→97, unmatched 128→97,
+excluded 4; **+19 arquivos antes invisíveis** agora identificados como
+jogos nos diretórios recém-casados (375→394 selecionados; o read model
+mantém os jogos verdadeiros pós-dedup com o scanner do Switch).
+
+**Escopo honesto:** ficam 97 unmatched com decisão explícita registrada na
+evidência — a maioria exige MAME standalone ou cores sem certeza de
+contrato (não invento core), 10 são variantes ambíguas mantidas por
+decisão, 10 são serviços de atalho, e `pc`/`ps4`/`psvita`/`scummvm`
+exigem adapter próprio renderizável. Lote 2 planejado com a mesma barra
+de certeza.
+
+**Erros meus registrados:** dois no teste do lote — usei o alias ES-DE
+onde devia estar a extensão de referência (CUE sem par BIN é recusado como
+`cue-orphan`, então as referências passaram a extensões solitárias) e
+dedentei um método a nível de módulo (`self` virou "fixture"). Os dois
+pegos pelos testes.
+
+**Gates:** ruff check/format (526), mypy 243, independence, boundaries,
+status-check, capability-matrix OK; suíte integral no fechamento.

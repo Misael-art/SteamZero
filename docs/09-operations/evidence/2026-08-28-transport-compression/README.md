@@ -59,3 +59,29 @@ extensão. Serviço existente (`test_service_core.py`, `test_envelope.py`)
 - `E-API-RESPONSE-TOO-LARGE` segue existindo para os casos legítimos
   (gerações mistas até atualização completa; teto lógico). `manualAction` e
   `cause` atualizadas para a verdade nova.
+
+## Rescan real pós-compressão (mesma sessão) — e correção da minha medição
+
+Com a fonte sem amostragem em `main`, rodei o rescan do acervo real
+(`scan_library()` pela árvore, 1,3 s; caches de leitura reescritos — dado
+derivado, o produto é esse o trabalho; baseline dos 3 arquivos copiado para
+scratch). Resultado **corrigido em relação à minha medição anterior**:
+
+- O inventário canônico seleciona 375 "jogos únicos", mas **178 deles são
+  arquivos de update/DLC/não-reconhecidos do diretório `switch/`** que o
+  inventário por diretório não distingue. A dedup por caminho com o scanner
+  do Switch (a autoridade em conteúdo switch) os elimina: 375 − 178 + 15
+  bases reais do switch = **212 jogos verdadeiros** no read model
+  (197 multi-plataforma + 15 switch). O critério "update/DLC do Switch não
+  vira jogo" está cumprido no read model; o número honesto da biblioteca é
+  **212, não 375** — a alegação anterior de "375/375 na fonte" minha contava
+  auxiliares como jogos.
+- Superfície por plataforma (`editorialPlatforms`) distribui os 212
+  corretamente: master-system 51, playstation 49, nes-famicom 33,
+  nintendo-handheld 30, nintendo-3ds 19, switch 15, playstation-2 6,
+  dreamcast 5, wii-u 2, playstation-3 1, nintendo-console 1.
+- Workspace inteiro: 3.251.981 bytes brutos → **140.113 bytes comprimidos**
+  (≤ 1 MiB: o transporte carrega o estado atual num frame).
+- Seção switch do workspace técnico segue como visão legada (todos os jogos
+  sob a plataforma switch) — a migração dela é a etapa de consumidores, com
+  QML reservado pela WS-2026-08-V2-HARMONIZED.

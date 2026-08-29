@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import os
 import re
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -29,25 +29,20 @@ from steamzero.core.state import StateStore
 
 _DISC_RE = re.compile(r"\s*\((?:disc|disk)\s*(\d+)\)", re.IGNORECASE)
 
-_FORMAT_BY_EXT = {
-    ".chd": "chd",
-    ".rvz": "rvz",
-    ".iso": "iso",
-    ".cue": "cue",
-    ".bin": "bin",
-    ".m3u": "m3u",
-    ".zip": "zip",
-    ".7z": "7z",
-    ".nes": "nes",
-    ".sfc": "snes",
-    ".smc": "snes",
-    ".gba": "gba",
-    ".nds": "nds",
-}
 
+def detect_format(name: str, formats: Mapping[str, Sequence[str]] | None = None) -> str:
+    """Formato lógico do arquivo a partir da DECLARAÇÃO da plataforma.
 
-def detect_format(name: str) -> str:
-    return _FORMAT_BY_EXT.get(Path(name).suffix.lower(), "unknown")
+    Sem `formats` declarado o formato é honestamente ``unknown`` — nunca mais
+    um mapa hardcoded de 14 extensões aplicando hipótese de mídia óptica a
+    cartucho, fita e disco igualmente.
+    """
+    ext = Path(name).suffix.lower().lstrip(".")
+    if formats:
+        for fmt, exts in formats.items():
+            if ext in exts:
+                return fmt
+    return "unknown"
 
 
 _ARCHIVE_EXTS = frozenset({".zip", ".7z"})
@@ -94,6 +89,18 @@ def platform_from_magic(read_at: MagicReader) -> str | None:
     return None
 
 
+def _declares_format(
+    platform_formats: Mapping[str, Any] | None, platform_id: str, ext: str
+) -> bool:
+    """True se a plataforma DECLARA um formato realizado por `ext` (sem ponto).
+
+    Declarar a extensão não basta: o formato precisa existir no mapa
+    `media.formats` do manifesto — é ele que nomeia o conteúdo.
+    """
+    formats = (platform_formats or {}).get(platform_id) or {}
+    return any(ext in exts for exts in formats.values())
+
+
 def classify_rom(
     name: str,
     siblings: set[str],
@@ -101,6 +108,7 @@ def classify_rom(
     *,
     root_platform: str | None = None,
     header_platform: str | None = None,
+    platform_formats: Mapping[str, Any] | None = None,
 ) -> tuple[str | None, str, str]:
     ext = Path(name).suffix.lower()
 
@@ -116,13 +124,26 @@ def classify_rom(
     )
 
     if ext == ".cue":
-        if has_bin:
-            return "playstation", "base", "cue-pair"
-        return None, "unknown", "cue-orphan"
+        if not has_bin:
+            return None, "unknown", "cue-orphan"
+        candidates = ext_map.get(".cue", [])
+        if root_platform is not None and root_platform in candidates:
+            return root_platform, "base", "cue-pair"
+        declaring = [p for p in candidates if _declares_format(platform_formats, p, "cue")]
+        if len(declaring) == 1:
+            return declaring[0], "base", "cue-pair"
+        # Vários declaram (ou nenhum): chute seria mentir a plataforma.
+        return None, "unknown", "ambiguous-cue"
 
     if ext == ".bin":
         if has_cue:
-            return "playstation", "base", "cue-pair"
+            candidates = ext_map.get(".bin", [])
+            if root_platform is not None and root_platform in candidates:
+                return root_platform, "base", "cue-pair"
+            declaring = [p for p in candidates if _declares_format(platform_formats, p, "bin")]
+            if len(declaring) == 1:
+                return declaring[0], "base", "cue-pair"
+            return None, "unknown", "ambiguous-cue-bin"
         if root_platform is not None:
             return root_platform, "base", "root-wins"
         return None, "unknown", "bin-orphan"
@@ -156,12 +177,26 @@ class RomCandidate:
 
 
 class PlatformRomScanner:
-    def __init__(self, ext_map: dict[str, list[str]]) -> None:
+    def __init__(
+        self,
+        ext_map: dict[str, list[str]],
+        platform_formats: dict[str, dict[str, list[str]]] | None = None,
+    ) -> None:
         self._ext_map = ext_map
+        self._platform_formats = platform_formats or {}
 
     @classmethod
     def from_manifests(cls, manifests: list[dict[str, Any]]) -> PlatformRomScanner:
-        return cls(build_ext_map(manifests))
+        formats_by_platform = {
+            str(m["id"]): dict(m.get("media", {}).get("formats") or {}) for m in manifests
+        }
+        return cls(build_ext_map(manifests), formats_by_platform)
+
+    def formats_for(self, platform_id: str | None) -> dict[str, list[str]]:
+        """Mapa formato->extensões declarado pela plataforma (vazio se não declarado)."""
+        if platform_id is None:
+            return {}
+        return self._platform_formats.get(platform_id, {})
 
     def inventory(self, root: Path, *, root_platform: str | None = None) -> list[RomCandidate]:
         results: list[RomCandidate] = []
@@ -173,7 +208,9 @@ class PlatformRomScanner:
                 root_platform=root_platform,
                 path=path,
             )
-            fmt = _FORMAT_BY_EXT.get(path.suffix.lower(), "unknown")
+            # O formato vem da DECLARAÇÃO da plataforma classificada (ou da
+            # raiz, enquanto não classificado) — não de um mapa hardcoded.
+            fmt = detect_format(path.name, self.formats_for(plat or root_platform) or None)
             results.append(
                 RomCandidate(
                     path=path,

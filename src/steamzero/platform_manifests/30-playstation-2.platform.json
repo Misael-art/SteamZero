@@ -6,34 +6,216 @@
   "shortName": "PlayStation 2",
   "iconKey": "media-optical",
   "artworkAsset": "../assets/playstation-2.svg",
-  "systems": ["ps2"],
+  "systems": [
+    "ps2"
+  ],
   "capabilities": [
-    {"id": "overview", "label": "Visão geral", "state": "planned", "detail": "Biblioteca PlayStation 2 será composta a partir do scanner declarativo.", "action": null},
-    {"id": "requirements", "label": "BIOS", "state": "planned", "detail": "BIOS fornecida pelo usuário será verificada sem expor seu conteúdo.", "action": null},
-    {"id": "graphics", "label": "Vídeo e desempenho", "state": "planned", "detail": "Resolução interna e correções por jogo permanecem opt-in.", "action": null},
-    {"id": "controls", "label": "Controles", "state": "ready", "detail": "Perfil DualShock 2 declarativo e reversível.", "action": {"id": "controls.profile.activate", "label": "Selecionar perfil", "requiresConfirmation": true}},
-    {"id": "media", "label": "Mídia", "state": "planned", "detail": "Artwork e jogos multidisco serão compostos pelo catálogo.", "action": null}
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "state": "planned",
+      "detail": "Biblioteca PlayStation 2 será composta a partir do scanner declarativo.",
+      "action": null
+    },
+    {
+      "id": "requirements",
+      "label": "BIOS",
+      "state": "planned",
+      "detail": "BIOS fornecida pelo usuário será verificada sem expor seu conteúdo.",
+      "action": null
+    },
+    {
+      "id": "graphics",
+      "label": "Vídeo e desempenho",
+      "state": "planned",
+      "detail": "Resolução interna e correções por jogo permanecem opt-in.",
+      "action": null
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "state": "ready",
+      "detail": "Perfil DualShock 2 declarativo e reversível.",
+      "action": {
+        "id": "controls.profile.activate",
+        "label": "Selecionar perfil",
+        "requiresConfirmation": true
+      }
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "state": "planned",
+      "detail": "Artwork e jogos multidisco serão compostos pelo catálogo.",
+      "action": null
+    }
   ],
   "areas": [
-    {"id": "overview", "label": "Visão geral", "iconKey": "dashboard", "capabilityId": "overview"},
-    {"id": "keysFirmware", "label": "BIOS", "iconKey": "key", "capabilityId": "requirements"},
-    {"id": "graphicsPerformance", "label": "Vídeo e desempenho", "iconKey": "video-display", "capabilityId": "graphics"},
-    {"id": "controls", "label": "Controles", "iconKey": "gamepad", "capabilityId": "controls"},
-    {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "iconKey": "dashboard",
+      "capabilityId": "overview"
+    },
+    {
+      "id": "keysFirmware",
+      "label": "BIOS",
+      "iconKey": "key",
+      "capabilityId": "requirements"
+    },
+    {
+      "id": "graphicsPerformance",
+      "label": "Vídeo e desempenho",
+      "iconKey": "video-display",
+      "capabilityId": "graphics"
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "iconKey": "gamepad",
+      "capabilityId": "controls"
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "iconKey": "image",
+      "capabilityId": "media"
+    }
   ],
   "emulators": [
-    {"id": "pcsx2", "name": "PCSX2", "adapterId": "pcsx2", "precedence": 1, "role": "primary",
-     "launch": {"gameArgs": ["--fullscreen", "{rom}"]}},
-    {"id": "retroarch", "name": "RetroArch", "adapterId": "retroarch", "precedence": 2, "role": "fallback",
-     "launch": {"core": "pcsx2", "gameArgs": ["-L", "{core}", "{rom}"]}}
+    {
+      "id": "pcsx2",
+      "name": "PCSX2",
+      "adapterId": "pcsx2",
+      "precedence": 1,
+      "role": "primary",
+      "launch": {
+        "gameArgs": [
+          "--fullscreen",
+          "{rom}"
+        ]
+      }
+    },
+    {
+      "id": "retroarch",
+      "name": "RetroArch",
+      "adapterId": "retroarch",
+      "precedence": 2,
+      "role": "fallback",
+      "launch": {
+        "core": "pcsx2",
+        "gameArgs": [
+          "-L",
+          "{core}",
+          "{rom}"
+        ]
+      }
+    }
   ],
-  "media": {"extensions": ["bin", "chd", "ciso", "cso", "dump", "elf", "gz", "m3u", "mdf", "img", "iso", "isz", "nrg", "zso"], "artworkKinds": ["cover", "background", "logo", "icon", "video"], "providers": ["screenscraper", "steamgriddb"]},
-  "controls": {"profiles": ["dualshock-2"], "maxPlayers": 8, "specialized": ["multitap", "light-gun", "wheel"]},
-  "timing": {"standards": ["ntsc-u", "ntsc-j", "pal"], "defaultStandard": null, "unknownFallback": "unknown-explicit"},
+  "media": {
+    "extensions": [
+      "bin",
+      "chd",
+      "ciso",
+      "cso",
+      "dump",
+      "elf",
+      "gz",
+      "m3u",
+      "mdf",
+      "img",
+      "iso",
+      "isz",
+      "nrg",
+      "zso"
+    ],
+    "artworkKinds": [
+      "cover",
+      "background",
+      "logo",
+      "icon",
+      "video"
+    ],
+    "providers": [
+      "screenscraper",
+      "steamgriddb"
+    ],
+    "nature": "optical",
+    "formats": {
+      "iso": [
+        "iso"
+      ],
+      "chd": [
+        "chd"
+      ],
+      "cue-bin": [
+        "bin"
+      ],
+      "cso": [
+        "cso",
+        "zso",
+        "ciso"
+      ],
+      "gz": [
+        "gz"
+      ],
+      "m3u": [
+        "m3u"
+      ],
+      "nrg": [
+        "nrg",
+        "mdf",
+        "img",
+        "isz",
+        "dump"
+      ]
+    },
+    "preferredFormat": "chd",
+    "conversionTargets": [
+      "chd"
+    ],
+    "containerPolicy": "extract",
+    "auxiliaryContent": "none"
+  },
+  "controls": {
+    "profiles": [
+      "dualshock-2"
+    ],
+    "maxPlayers": 8,
+    "specialized": [
+      "multitap",
+      "light-gun",
+      "wheel"
+    ]
+  },
+  "timing": {
+    "standards": [
+      "ntsc-u",
+      "ntsc-j",
+      "pal"
+    ],
+    "defaultStandard": null,
+    "unknownFallback": "unknown-explicit"
+  },
   "presets": [
-    {"id": "como-era", "label": "Como era", "state": "planned", "detail": "Resolução e proporção históricas por região."},
-    {"id": "equilibrado", "label": "Equilibrado", "state": "planned", "detail": "Escala conservadora com compatibilidade prioritária."},
-    {"id": "melhorado", "label": "Melhorado", "state": "planned", "detail": "Resolução interna elevada e correções identificadas."}
+    {
+      "id": "como-era",
+      "label": "Como era",
+      "state": "planned",
+      "detail": "Resolução e proporção históricas por região."
+    },
+    {
+      "id": "equilibrado",
+      "label": "Equilibrado",
+      "state": "planned",
+      "detail": "Escala conservadora com compatibilidade prioritária."
+    },
+    {
+      "id": "melhorado",
+      "label": "Melhorado",
+      "state": "planned",
+      "detail": "Resolução interna elevada e correções identificadas."
+    }
   ],
   "cloud": null
 }

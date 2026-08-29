@@ -1,27 +1,181 @@
 {
-  "schemaVersion": 1, "id": "wii-u", "kind": "emulated", "name": "Nintendo Wii U", "shortName": "Wii U",
-  "iconKey": "gamepad", "artworkAsset": "../assets/wii-u.svg", "systems": ["wiiu"],
+  "schemaVersion": 1,
+  "id": "wii-u",
+  "kind": "emulated",
+  "name": "Nintendo Wii U",
+  "shortName": "Wii U",
+  "iconKey": "gamepad",
+  "artworkAsset": "../assets/wii-u.svg",
+  "systems": [
+    "wiiu"
+  ],
   "capabilities": [
-    {"id": "overview", "label": "Visão geral", "state": "planned", "detail": "Biblioteca Wii U será composta pelo scanner declarativo.", "action": null},
-    {"id": "requirements", "label": "Sistema e chaves", "state": "planned", "detail": "Materiais fornecidos pelo usuário serão verificados localmente.", "action": null},
-    {"id": "graphics", "label": "Vídeo e desempenho", "state": "planned", "detail": "Graphic packs e escala permanecem opt-in.", "action": null},
-    {"id": "controls", "label": "Controles", "state": "ready", "detail": "Perfil Wii U GamePad declarativo e reversível.", "action": {"id": "controls.profile.activate", "label": "Selecionar perfil", "requiresConfirmation": true}},
-    {"id": "media", "label": "Mídia", "state": "planned", "detail": "Artwork, atualizações e DLC serão compostos pelo catálogo.", "action": null}
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "state": "planned",
+      "detail": "Biblioteca Wii U será composta pelo scanner declarativo.",
+      "action": null
+    },
+    {
+      "id": "requirements",
+      "label": "Sistema e chaves",
+      "state": "planned",
+      "detail": "Materiais fornecidos pelo usuário serão verificados localmente.",
+      "action": null
+    },
+    {
+      "id": "graphics",
+      "label": "Vídeo e desempenho",
+      "state": "planned",
+      "detail": "Graphic packs e escala permanecem opt-in.",
+      "action": null
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "state": "ready",
+      "detail": "Perfil Wii U GamePad declarativo e reversível.",
+      "action": {
+        "id": "controls.profile.activate",
+        "label": "Selecionar perfil",
+        "requiresConfirmation": true
+      }
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "state": "planned",
+      "detail": "Artwork, atualizações e DLC serão compostos pelo catálogo.",
+      "action": null
+    }
   ],
   "areas": [
-    {"id": "overview", "label": "Visão geral", "iconKey": "dashboard", "capabilityId": "overview"},
-    {"id": "keysFirmware", "label": "Sistema e chaves", "iconKey": "key", "capabilityId": "requirements"},
-    {"id": "graphicsPerformance", "label": "Vídeo e desempenho", "iconKey": "video-display", "capabilityId": "graphics"},
-    {"id": "controls", "label": "Controles", "iconKey": "gamepad", "capabilityId": "controls"},
-    {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "iconKey": "dashboard",
+      "capabilityId": "overview"
+    },
+    {
+      "id": "keysFirmware",
+      "label": "Sistema e chaves",
+      "iconKey": "key",
+      "capabilityId": "requirements"
+    },
+    {
+      "id": "graphicsPerformance",
+      "label": "Vídeo e desempenho",
+      "iconKey": "video-display",
+      "capabilityId": "graphics"
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "iconKey": "gamepad",
+      "capabilityId": "controls"
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "iconKey": "image",
+      "capabilityId": "media"
+    }
   ],
-  "emulators": [{"id": "cemu", "name": "Cemu", "adapterId": "cemu", "precedence": 1, "role": "primary", "launch": {"gameArgs": ["-g", "{rom}"]}}],
-  "media": {"extensions": ["elf", "rpx", "tmd", "wua", "wud", "wuhb", "wux"], "artworkKinds": ["cover", "background", "logo", "icon", "video"], "providers": ["screenscraper", "steamgriddb"]},
-  "controls": {"profiles": ["wii-u-gamepad"], "maxPlayers": 8, "specialized": ["touchscreen", "motion", "microphone"]},
-  "timing": {"standards": ["ntsc-progressive", "pal-progressive"], "defaultStandard": null, "unknownFallback": "unknown-explicit"},
+  "emulators": [
+    {
+      "id": "cemu",
+      "name": "Cemu",
+      "adapterId": "cemu",
+      "precedence": 1,
+      "role": "primary",
+      "launch": {
+        "gameArgs": [
+          "-g",
+          "{rom}"
+        ]
+      }
+    }
+  ],
+  "media": {
+    "extensions": [
+      "elf",
+      "rpx",
+      "tmd",
+      "wua",
+      "wud",
+      "wuhb",
+      "wux"
+    ],
+    "artworkKinds": [
+      "cover",
+      "background",
+      "logo",
+      "icon",
+      "video"
+    ],
+    "providers": [
+      "screenscraper",
+      "steamgriddb"
+    ],
+    "nature": "optical",
+    "formats": {
+      "wud": [
+        "wud",
+        "wux"
+      ],
+      "wua": [
+        "wua"
+      ],
+      "rpx": [
+        "rpx"
+      ],
+      "wuhb": [
+        "wuhb"
+      ]
+    },
+    "containerPolicy": "extract",
+    "auxiliaryContent": "both",
+    "auxiliaryBinding": "titleid"
+  },
+  "controls": {
+    "profiles": [
+      "wii-u-gamepad"
+    ],
+    "maxPlayers": 8,
+    "specialized": [
+      "touchscreen",
+      "motion",
+      "microphone"
+    ]
+  },
+  "timing": {
+    "standards": [
+      "ntsc-progressive",
+      "pal-progressive"
+    ],
+    "defaultStandard": null,
+    "unknownFallback": "unknown-explicit"
+  },
   "presets": [
-    {"id": "como-era", "label": "Como era", "state": "planned", "detail": "Saída original sem graphic packs."},
-    {"id": "equilibrado", "label": "Equilibrado", "state": "planned", "detail": "Escala conservadora com compatibilidade prioritária."},
-    {"id": "melhorado", "label": "Melhorado", "state": "planned", "detail": "Graphic packs identificados e opt-in."}
-  ], "cloud": null
+    {
+      "id": "como-era",
+      "label": "Como era",
+      "state": "planned",
+      "detail": "Saída original sem graphic packs."
+    },
+    {
+      "id": "equilibrado",
+      "label": "Equilibrado",
+      "state": "planned",
+      "detail": "Escala conservadora com compatibilidade prioritária."
+    },
+    {
+      "id": "melhorado",
+      "label": "Melhorado",
+      "state": "planned",
+      "detail": "Graphic packs identificados e opt-in."
+    }
+  ],
+  "cloud": null
 }

@@ -6,21 +6,104 @@
   "shortName": "Luna",
   "iconKey": "network-server",
   "artworkAsset": "../assets/amazon-luna.svg",
-  "systems": ["cloud-amazon-luna"],
+  "systems": [
+    "cloud-amazon-luna"
+  ],
   "capabilities": [
-    {"id": "overview", "label": "Visão geral", "state": "planned", "detail": "Disponibilidade varia por região, assinatura, catálogo e rede.", "action": null},
-    {"id": "cloud-launch", "label": "Abrir serviço oficial", "state": "planned", "detail": "Atalho reversível e URL allowlisted pertencem ao A5.", "action": {"id": "cloud.launch", "label": "Abrir Amazon Luna", "requiresConfirmation": false}},
-    {"id": "controls", "label": "Controles", "state": "ready", "detail": "Perfil local base disponível; compatibilidade do serviço será verificada por dispositivo.", "action": {"id": "controls.profile.activate", "label": "Selecionar perfil", "requiresConfirmation": true}}
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "state": "planned",
+      "detail": "Disponibilidade varia por região, assinatura, catálogo e rede.",
+      "action": null
+    },
+    {
+      "id": "cloud-launch",
+      "label": "Abrir serviço oficial",
+      "state": "planned",
+      "detail": "Atalho reversível e URL allowlisted pertencem ao A5.",
+      "action": {
+        "id": "cloud.launch",
+        "label": "Abrir Amazon Luna",
+        "requiresConfirmation": false
+      }
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "state": "ready",
+      "detail": "Perfil local base disponível; compatibilidade do serviço será verificada por dispositivo.",
+      "action": {
+        "id": "controls.profile.activate",
+        "label": "Selecionar perfil",
+        "requiresConfirmation": true
+      }
+    }
   ],
   "areas": [
-    {"id": "overview", "label": "Visão geral", "iconKey": "dashboard", "capabilityId": "overview"},
-    {"id": "advanced", "label": "Serviço cloud", "iconKey": "network-server", "capabilityId": "cloud-launch"},
-    {"id": "controls", "label": "Controles", "iconKey": "gamepad", "capabilityId": "controls"}
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "iconKey": "dashboard",
+      "capabilityId": "overview"
+    },
+    {
+      "id": "advanced",
+      "label": "Serviço cloud",
+      "iconKey": "network-server",
+      "capabilityId": "cloud-launch"
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "iconKey": "gamepad",
+      "capabilityId": "controls"
+    }
   ],
   "emulators": [],
-  "media": {"extensions": [], "artworkKinds": ["cover", "background", "logo", "icon"], "providers": []},
-  "controls": {"profiles": ["cloud-standard-gamepad"], "maxPlayers": 1, "specialized": ["luna-controller"]},
-  "timing": {"standards": ["network-stream"], "defaultStandard": null, "unknownFallback": "unknown-explicit"},
-  "presets": [{"id": "servico", "label": "Definido pelo serviço", "state": "unavailable", "detail": "SteamZero não inventa preset de streaming sem medição."}],
-  "cloud": {"launchUrl": "https://luna.amazon.com/", "allowedHosts": ["luna.amazon.com"], "requiresSubscription": true}
+  "media": {
+    "extensions": [],
+    "artworkKinds": [
+      "cover",
+      "background",
+      "logo",
+      "icon"
+    ],
+    "providers": [],
+    "nature": "digital",
+    "formats": {},
+    "containerPolicy": "native",
+    "auxiliaryContent": "none"
+  },
+  "controls": {
+    "profiles": [
+      "cloud-standard-gamepad"
+    ],
+    "maxPlayers": 1,
+    "specialized": [
+      "luna-controller"
+    ]
+  },
+  "timing": {
+    "standards": [
+      "network-stream"
+    ],
+    "defaultStandard": null,
+    "unknownFallback": "unknown-explicit"
+  },
+  "presets": [
+    {
+      "id": "servico",
+      "label": "Definido pelo serviço",
+      "state": "unavailable",
+      "detail": "SteamZero não inventa preset de streaming sem medição."
+    }
+  ],
+  "cloud": {
+    "launchUrl": "https://luna.amazon.com/",
+    "allowedHosts": [
+      "luna.amazon.com"
+    ],
+    "requiresSubscription": true
+  }
 }

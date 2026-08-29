@@ -49,12 +49,21 @@ class TestZip7zAlwaysUnknown:
 
 
 class TestCueBinPairing:
-    def test_cue_with_bin_sibling_is_playstation(self, ext_map: dict[str, list[str]]) -> None:
+    def test_cue_with_bin_sibling_is_ambiguous_without_declaration(
+        self, ext_map: dict[str, list[str]]
+    ) -> None:
         siblings = _mksiblings("game.cue", "game.bin", "track02.bin")
         plat, kind, ev = classify_rom("game.cue", siblings, ext_map)
-        assert plat == "playstation"
-        assert kind == "base"
-        assert ev == "cue-pair"
+        assert plat is None
+        assert kind == "unknown"
+        assert ev == "ambiguous-cue"
+
+    def test_declared_unique_cue_pair_identifies_platform(self) -> None:
+        ext_map = {".cue": ["test-cd"], ".bin": ["test-cd"]}
+        formats = {"test-cd": {"cue-bin": ["cue", "bin"]}}
+        siblings = _mksiblings("game.cue", "game.bin")
+        plat, kind, ev = classify_rom("game.cue", siblings, ext_map, platform_formats=formats)
+        assert (plat, kind, ev) == ("test-cd", "base", "cue-pair")
 
     def test_cue_without_bin_is_orphan(self, ext_map: dict[str, list[str]]) -> None:
         siblings = _mksiblings("game.cue")
@@ -63,12 +72,14 @@ class TestCueBinPairing:
         assert kind == "unknown"
         assert ev == "cue-orphan"
 
-    def test_bin_with_cue_sibling_is_playstation(self, ext_map: dict[str, list[str]]) -> None:
+    def test_bin_with_cue_sibling_is_ambiguous_without_declaration(
+        self, ext_map: dict[str, list[str]]
+    ) -> None:
         siblings = _mksiblings("game.cue", "game.bin")
         plat, kind, ev = classify_rom("game.bin", siblings, ext_map)
-        assert plat == "playstation"
-        assert kind == "base"
-        assert ev == "cue-pair"
+        assert plat is None
+        assert kind == "unknown"
+        assert ev == "ambiguous-cue-bin"
 
     def test_bin_without_cue_is_orphan(self, ext_map: dict[str, list[str]]) -> None:
         siblings = _mksiblings("game.bin", "other.txt")
@@ -201,9 +212,10 @@ class TestCaseInsensitivity:
 
     def test_mixed_case_cue_bin(self, ext_map: dict[str, list[str]]) -> None:
         siblings = _mksiblings("Game.CUE", "Game.BIN")
-        plat, _kind, ev = classify_rom("Game.CUE", siblings, ext_map)
-        assert plat == "playstation"
-        assert ev == "cue-pair"
+        plat, kind, ev = classify_rom("Game.CUE", siblings, ext_map)
+        assert plat is None
+        assert kind == "unknown"
+        assert ev == "ambiguous-cue"
 
 
 # ── build_ext_map ───────────────────────────────────────────────────────────
@@ -256,8 +268,10 @@ class TestPlatformRomScanner:
         (tmp_path / "track02.bin").write_text("")
         scanner = PlatformRomScanner(ext_map)
         results = {r.path.name: r for r in scanner.inventory(tmp_path)}
-        assert results["game.cue"].platform == "playstation"
-        assert results["game.bin"].platform == "playstation"
+        assert results["game.cue"].platform is None
+        assert results["game.cue"].evidence == "ambiguous-cue"
+        assert results["game.bin"].platform is None
+        assert results["game.bin"].evidence == "ambiguous-cue-bin"
         assert results["track02.bin"].platform is None
         assert results["track02.bin"].evidence == "bin-orphan"
 
@@ -353,10 +367,12 @@ class TestPlatformDirectoryInventory:
             assert rows[name].platform_id == platform_id, name
         for name in ("emulators", "generic-applications", "kodi"):
             assert rows[name].disposition == "excluded", name
-        # Ainda sem manifesto: decisão pendente de produto, não casamento.
-        (tmp_path / "saturn").mkdir()
+        # Ainda sem manifesto e sem caminho de emulação declarável: decisão
+        # pendente de produto, não casamento. (Saturn se formou no lote 1;
+        # amstradcpc segue sem manifesto.)
+        (tmp_path / "amstradcpc").mkdir()
         rows = {row.path.name: row for row in inventory.inventory(tmp_path)}
-        assert rows["saturn"].disposition == "unmatched"
+        assert rows["amstradcpc"].disposition == "unmatched"
 
     def test_does_not_follow_symlinked_content(self, tmp_path: Path) -> None:
         platform_root = tmp_path / "n64"

@@ -89,7 +89,11 @@
       "adapterId": "duckstation",
       "precedence": 1,
       "role": "primary",
-      "launch": {"gameArgs": ["{rom}"]}
+      "launch": {
+        "gameArgs": [
+          "{rom}"
+        ]
+      }
     },
     {
       "id": "retroarch",
@@ -131,7 +135,31 @@
     "providers": [
       "screenscraper",
       "steamgriddb"
-    ]
+    ],
+    "nature": "optical",
+    "formats": {
+      "cue-bin": [
+        "cue"
+      ],
+      "bin": [
+        "bin"
+      ],
+      "chd": [
+        "chd"
+      ],
+      "m3u": [
+        "m3u"
+      ],
+      "pbp": [
+        "pbp"
+      ]
+    },
+    "preferredFormat": "chd",
+    "conversionTargets": [
+      "chd"
+    ],
+    "containerPolicy": "extract",
+    "auxiliaryContent": "none"
   },
   "controls": {
     "profiles": [

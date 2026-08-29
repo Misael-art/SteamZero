@@ -30,71 +30,60 @@ _API_BASE = "https://www.screenscraper.fr/api2"
 _API_PATH = "jeuInfos.php"
 _API_TEST_PATH = "ssuserInfos.php"
 
+#: Mapeia ID DE MANIFESTO DE PLATAFORMA -> systemeid sancionado.
+#:
+#: A chave é o id do manifesto porque é ele que o `identity.platform_slug`
+#: carrega em produção (vem de `game["platform"]` — ver `emulation.py` no
+#: disparo de `media.search`). O vocabulário anterior usava slugs do
+#: ScreenScraper ("nes", "atari2600", "wiiu"...) que a produção nunca
+#: consulta: só os ids que coincidiam por acaso funcionavam — 61 slugs
+#: órfãos e plataformas de verdade sem `systemeid` (cruzamento de
+#: 2026-08-28, teste `test_platform_map_targets_exist_in_registry`).
+#:
+#: Manifestos que ABRANGEM vários sistemas ScreenScraper (um manifesto,
+#: vários IDs — ex.: nintendo-console = GameCube 13 + Wii 16) ficam SEM
+#: `systemeid`: escolher um enviesaria a busca contra os demais, e não há
+#: fonte para valores múltiplos. Nesses, a busca roda em todos os sistemas
+#: por hash/nome (comportamento degradado, declarado em
+#: `_PLATFORMS_WITHOUT_SYSTEMEID`). IDs NÃO são inventados: plataforma sem
+#: ID conferido contra payload real também fica na lista (incidente
+#: cps1/cps2/cps3 — ver histórico abaixo).
 _PLATFORM_MAP: dict[str, int | str] = {
     # --- Nintendo ---
     "switch": "225",
-    "nes": "3",
     "snes": "4",
-    "n64": "14",
-    "gamecube": "13",
-    "wii": "16",
-    "wiiu": "18",
-    "n3ds": "17",
-    "nds": "15",
-    "fds": "106",
-    "gameboy": "9",
-    "gameboycolor": "10",
-    "gameboyadvance": "12",
-    "virtualboy": "11",
-    "gameandwatch": "52",
-    "pokemonmini": "211",
+    "nintendo-64": "14",
+    "nintendo-3ds": "17",
+    "nintendo-ds": "15",
+    "wii-u": "18",
+    "virtual-boy": "11",
     # --- Sega ---
-    "megadrive": "1",
-    "mastersystem": "2",
-    "saturn": "22",
+    "mega-drive": "1",
+    "master-system": "2",
+    "sega-saturn": "22",
     "dreamcast": "23",
-    "gamegear": "21",
-    "sega32x": "19",
-    "megacd": "20",
-    "segacd": "20",
-    "sg1000": "109",
+    "game-gear": "21",
+    "sg-1000": "109",
     # --- Sony ---
     "playstation": "57",
-    "playstation2": "58",
-    "playstation3": "59",
-    "playstation4": "60",
-    "playstation5": "502",
-    "playstationportable": "61",
-    "playstationvita": "62",
+    "playstation-2": "58",
+    "playstation-3": "59",
+    "playstation-portable": "61",
     # --- SNK ---
-    "neogeo": "142",
-    "neogeocd": "70",
-    "ngp": "25",
-    "ngpc": "82",
+    "neo-geo-cd": "70",
     # --- NEC ---
-    "pcengine": "31",
-    "pcenginecd": "114",
-    "pcfx": "72",
-    "supergrafx": "105",
+    "pc-engine-supergrafx": "105",
     # --- Atari ---
-    "atari2600": "26",
-    "atari5200": "40",
-    "atari7800": "41",
-    "atarijaguar": "27",
-    "atarilynx": "28",
-    "atarist": "42",
-    "atari800": "43",
+    "atari-st": "42",
     # --- Microsoft ---
     "xbox": "32",
-    "xbox360": "33",
-    "xboxone": "300",
-    "xboxseries": "499",
+    "xbox-360": "33",
     # --- Other consoles ---
-    "3do": "29",
-    "coleco": "48",
+    "three-do": "29",
+    "colecovision": "48",
     "intellivision": "115",
     "vectrex": "102",
-    "videopac": "104",
+    "odyssey2": "104",
     # --- Arcade ---
     # cps1/cps2/cps3 saíram: os IDs que ocupavam (76/77/78) pertencem ao ZX
     # Spectrum e ao ZX81 na referência, e não há fonte para os IDs corretos do
@@ -102,30 +91,55 @@ _PLATFORM_MAP: dict[str, int | str] = {
     # nome em todos os sistemas; slug com ID errado devolve o jogo de outro
     # sistema. Reinserir só com ID conferido contra payload real.
     "arcade": "75",
-    # --- Bandai ---
-    "wonderswan": "45",
-    "wonderswancolor": "46",
     # --- Computer ---
-    "amiga": "134",
-    "amstradcpc": "65",
     "apple2": "86",
-    "bbc": "37",
-    "c64": "66",
-    "cd32": "130",
-    "desktop": "135",
-    "steam": "135",
-    "windows": "135",
-    "dos": "135",
-    "macintosh": "146",
+    "bbc-micro": "37",
     "msx": "113",
     "pico8": "234",
-    "scummvm": "123",
+    "commodore-64": "66",
+    "zx-spectrum": "76",
     "zx81": "77",
-    "zxspectrum": "76",
     # --- Handhelds & other ---
-    "openbor": "214",
-    "android": "310",
+    "gameandwatch": "52",
 }
+
+#: Plataformas do registry SEM `systemeid` sancionado — declaração explícita
+#: de cobertura, não omissão. Duas razões, ambas documentadas:
+#: 1. manifesto multi-sistema (um id, vários sistemas ScreenScraper): sem
+#:    fonte para escolher um único ID sem enviesar os demais;
+#: 2. sem ID conferido contra payload real.
+_PLATFORMS_WITHOUT_SYSTEMEID = frozenset(
+    {
+        # multi-sistema:
+        "nes-famicom",  # 3 (NES) / 106 (FDS)
+        "nintendo-handheld",  # 9 (GB) / 10 (GBC) / 12 (GBA)
+        "nintendo-console",  # 13 (GameCube) / 16 (Wii)
+        "sega-cd-32x",  # 19/20 (32X e Mega CD) / Mega Drive
+        "pc-engine-turbografx",  # 31 (PCE) / 114 (PCE-CD)
+        "atari-classics",  # 26/40/41/27/28 (2600..Lynx/Jaguar)
+        "wonderswan",  # 45 / 46
+        "neo-geo-pocket",  # 25 / 82
+        "amiga",  # 134 (Amiga) / 130 (CD32)
+        # sem ID conferido:
+        "channelf",
+        "coco",
+        "doom",
+        "megaduck",
+        "pc88",
+        "pc98",
+        "quake",
+        "supervision",
+        "thomson",
+        "tic80",
+        "ti99",
+        "wasm4",
+        "x68000",
+        # cloud e plataformas digitais sem sistema emulador:
+        "geforce-now",
+        "xbox-cloud-gaming",
+        "amazon-luna",
+    }
+)
 _MEDIA_KIND_MAP: dict[str, str] = {
     "boxart": "box-2D",
     "boxart3d": "box-3D",

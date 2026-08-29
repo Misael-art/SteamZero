@@ -115,7 +115,39 @@
     "providers": [
       "screenscraper",
       "steamgriddb"
-    ]
+    ],
+    "nature": "optical",
+    "formats": {
+      "pce": [
+        "pce"
+      ],
+      "sgx": [
+        "sgx"
+      ],
+      "cue-bin": [
+        "cue"
+      ],
+      "ccd": [
+        "ccd",
+        "img",
+        "toc"
+      ],
+      "iso": [
+        "iso"
+      ],
+      "chd": [
+        "chd"
+      ],
+      "m3u": [
+        "m3u"
+      ]
+    },
+    "preferredFormat": "chd",
+    "conversionTargets": [
+      "chd"
+    ],
+    "containerPolicy": "extract",
+    "auxiliaryContent": "none"
   },
   "controls": {
     "profiles": [

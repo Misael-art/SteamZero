@@ -68,6 +68,36 @@ PLATFORM_CORES: dict[str, frozenset[str]] = {
     "playstation-portable": frozenset({"ppsspp"}),
     "nintendo-ds": frozenset({"melonds"}),
     "dreamcast": frozenset({"flycast"}),
+    # Lote 1 da cobertura dos 110 diretorios sem manifesto
+    # (SZ-LIBRARY-CANONICAL, 2026-08-28). Sancao = contrato da plataforma
+    # (o core libretro upstream existe); instalabilidade pelo lock e camada
+    # separada e segue com recusa honesta de "Jogar" enquanto o core nao
+    # estiver no lock.
+    "sega-saturn": frozenset({"mednafen_saturn"}),
+    "sg-1000": frozenset({"genesis_plus_gx"}),
+    "neo-geo-cd": frozenset({"neocd"}),
+    "vectrex": frozenset({"vecx"}),
+    "odyssey2": frozenset({"o2em"}),
+    "channelf": frozenset({"freechaf"}),
+    "pc-engine-supergrafx": frozenset({"beetle_sgx"}),
+    "atari-st": frozenset({"hatari"}),
+    "apple2": frozenset({"applewin"}),
+    "bbc-micro": frozenset({"beebem"}),
+    "coco": frozenset({"xroar"}),
+    "ti99": frozenset({"ti99"}),
+    "zx81": frozenset({"81"}),
+    "thomson": frozenset({"theodore"}),
+    "x68000": frozenset({"px68k"}),
+    "pc88": frozenset({"quasi88"}),
+    "pc98": frozenset({"np2kai"}),
+    "gameandwatch": frozenset({"gw"}),
+    "supervision": frozenset({"potator"}),
+    "megaduck": frozenset({"sameduck"}),
+    "doom": frozenset({"prboom"}),
+    "quake": frozenset({"tyrquake"}),
+    "pico8": frozenset({"fake08"}),
+    "tic80": frozenset({"tic80"}),
+    "wasm4": frozenset({"wasm4"}),
 }
 
 

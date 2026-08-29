@@ -6100,9 +6100,11 @@ class EmulationController:
                 title = str(game.get("name") or title_id or game_id)
                 existing = manager._store.load(game_id)
                 local_url = str(game.get("coverUrl") or "")
-                if mode == "search-missing" and (
-                    (existing is not None and bool(existing.media_path)) or bool(local_url)
-                ):
+                # "Falta mídia" = não há MASTER RASPADO. O `coverUrl` do read
+                # model carrega o ícone extraído da ROM como fallback VISUAL —
+                # considerá-lo aqui fazia todo jogo com ícone ser "pulado" e a
+                # busca de faltantes nunca buscar nada (2026-08-28).
+                if mode == "search-missing" and existing is not None and bool(existing.media_path):
                     skipped += 1
                 elif mode == "optimize":
                     if existing is None or existing.master_state == "none":

@@ -74,6 +74,34 @@ def test_bundled_registry_covers_required_platforms_with_unique_artwork() -> Non
         "playstation-3",
         "xbox",
         "xbox-360",
+        # Lote 1 da cobertura dos 110 diretorios sem manifesto
+        # (SZ-LIBRARY-CANONICAL, 2026-08-28): plataformas com caminho real de
+        # emulacao declarado (libretro core existente). Ordem = nome de arquivo.
+        "sega-saturn",
+        "sg-1000",
+        "neo-geo-cd",
+        "vectrex",
+        "odyssey2",
+        "channelf",
+        "pc-engine-supergrafx",
+        "atari-st",
+        "apple2",
+        "bbc-micro",
+        "coco",
+        "ti99",
+        "zx81",
+        "thomson",
+        "x68000",
+        "pc88",
+        "pc98",
+        "gameandwatch",
+        "supervision",
+        "megaduck",
+        "doom",
+        "quake",
+        "pico8",
+        "tic80",
+        "wasm4",
     ]
     artwork = [manifest.artwork_asset for manifest in manifests]
     shared_artwork = {asset for asset in artwork if artwork.count(asset) > 1}
@@ -389,3 +417,70 @@ class TestEachPlatformDeclaresItsOwnEmulators:
 
         presented = list(_emulator_presentation(AdapterRegistry.bundled()))
         assert presented[: len(_EMULATOR_ROWS_ORDER)] == list(_EMULATOR_ROWS_ORDER)
+
+
+LOTES_SEM_MANIFESTO = {
+    # diretório ES-DE → (plataforma declarada, extensão de referência).
+    "sega-saturn": ("sega-saturn", "iso"),
+    "saturnjp": ("sega-saturn", "iso"),
+    "sg-1000": ("sg-1000", "sg"),
+    "neogeocd": ("neo-geo-cd", "iso"),
+    "neogeocdjp": ("neo-geo-cd", "iso"),
+    "vectrex": ("vectrex", "vec"),
+    "odyssey2": ("odyssey2", "bin"),
+    "videopac": ("odyssey2", "bin"),
+    "channelf": ("channelf", "bin"),
+    "supergrafx": ("pc-engine-supergrafx", "sgx"),
+    "atarist": ("atari-st", "msa"),
+    "apple2": ("apple2", "dsk"),
+    "bbcmicro": ("bbc-micro", "ssd"),
+    "coco": ("coco", "cas"),
+    "dragon32": ("coco", "cas"),
+    "ti99": ("ti99", "ctg"),
+    "zx81": ("zx81", "p"),
+    "to8": ("thomson", "k7"),
+    "moto": ("thomson", "k7"),
+    "x68000": ("x68000", "dim"),
+    "pc88": ("pc88", "d88"),
+    "pc98": ("pc98", "hdi"),
+    "gameandwatch": ("gameandwatch", "gw"),
+    "supervision": ("supervision", "sv"),
+    "megaduck": ("megaduck", "md1"),
+    "doom": ("doom", "wad"),
+    "quake": ("quake", "pak"),
+    "pico8": ("pico8", "p8"),
+    "tic80": ("tic80", "tic"),
+    "wasm4": ("wasm4", "wasm"),
+    # Variante Atari 8-bit já suportada pelo core atari800.
+    "atarixe": ("atari-classics", "xex"),
+}
+
+
+class TestLote1CoberturaDosSemManifesto:
+    """O lote 1 dos 110 diretórios sem manifesto (SZ-LIBRARY-CANONICAL).
+
+    Cada diretório da tabela passa a casar com a plataforma declarada, e a
+    extensão de referência classifica um arquivo como jogo daquela plataforma.
+    """
+
+    def test_directory_names_match_their_declared_platform(self) -> None:
+        from steamzero.domain.library import PlatformDirectoryInventory, _directory_key
+
+        inventory = PlatformDirectoryInventory.from_registry(PlatformRegistry.bundled())
+        for directory, (platform_id, _ext) in LOTES_SEM_MANIFESTO.items():
+            assert inventory._aliases.get(_directory_key(directory)) == platform_id, directory
+
+    def test_reference_extension_classifies_as_the_platform(self) -> None:
+        from steamzero.domain.library import PlatformRomScanner
+
+        registry = PlatformRegistry.bundled()
+        manifests = [{"id": m.id, "media": dict(m.media)} for m in registry.list()]
+        scanner = PlatformRomScanner.from_manifests(manifests)
+        for _directory, (platform_id, ext) in LOTES_SEM_MANIFESTO.items():
+            platform, kind, evidence = scanner.classify(
+                f"Jogo de Teste.{ext}",
+                siblings=set(),
+                root_platform=platform_id,
+            )
+            assert platform == platform_id, (platform_id, ext, evidence)
+            assert kind == "base", (platform_id, evidence)

@@ -19,27 +19,107 @@
     "virtual-boy",
     "three-do",
     "sega-cd-32x",
-    "nintendo-64"
+    "nintendo-64",
+    "sega-saturn",
+    "sg-1000",
+    "neo-geo-cd",
+    "vectrex",
+    "odyssey2",
+    "channelf",
+    "pc-engine-supergrafx",
+    "atari-st",
+    "apple2",
+    "bbc-micro",
+    "coco",
+    "ti99",
+    "zx81",
+    "thomson",
+    "x68000",
+    "pc88",
+    "pc98",
+    "gameandwatch",
+    "supervision",
+    "megaduck",
+    "doom",
+    "quake",
+    "pico8",
+    "tic80",
+    "wasm4"
   ],
-  "source": {"kind": "builtin", "license": "GPL-3.0-or-later"},
+  "source": {
+    "kind": "builtin",
+    "license": "GPL-3.0-or-later"
+  },
   "layout": "standard-gamepad",
   "maxPlayers": 1,
   "bindings": [
-    {"action": "game.up", "input": "hat.up", "required": true},
-    {"action": "game.right", "input": "hat.right", "required": true},
-    {"action": "game.down", "input": "hat.down", "required": true},
-    {"action": "game.left", "input": "hat.left", "required": true},
-    {"action": "game.primary", "input": "button.south", "required": true},
-    {"action": "game.secondary", "input": "button.east", "required": true},
-    {"action": "game.tertiary", "input": "button.west", "required": false},
-    {"action": "game.quaternary", "input": "button.north", "required": false},
-    {"action": "game.start", "input": "button.start", "required": true},
-    {"action": "game.select", "input": "button.select", "required": false},
-    {"action": "game.shoulder-left", "input": "button.shoulder-left", "required": false},
-    {"action": "game.shoulder-right", "input": "button.shoulder-right", "required": false}
+    {
+      "action": "game.up",
+      "input": "hat.up",
+      "required": true
+    },
+    {
+      "action": "game.right",
+      "input": "hat.right",
+      "required": true
+    },
+    {
+      "action": "game.down",
+      "input": "hat.down",
+      "required": true
+    },
+    {
+      "action": "game.left",
+      "input": "hat.left",
+      "required": true
+    },
+    {
+      "action": "game.primary",
+      "input": "button.south",
+      "required": true
+    },
+    {
+      "action": "game.secondary",
+      "input": "button.east",
+      "required": true
+    },
+    {
+      "action": "game.tertiary",
+      "input": "button.west",
+      "required": false
+    },
+    {
+      "action": "game.quaternary",
+      "input": "button.north",
+      "required": false
+    },
+    {
+      "action": "game.start",
+      "input": "button.start",
+      "required": true
+    },
+    {
+      "action": "game.select",
+      "input": "button.select",
+      "required": false
+    },
+    {
+      "action": "game.shoulder-left",
+      "input": "button.shoulder-left",
+      "required": false
+    },
+    {
+      "action": "game.shoulder-right",
+      "input": "button.shoulder-right",
+      "required": false
+    }
   ],
   "rotation": {
-    "allowedOrientations": ["landscape", "portrait-left", "portrait-right"],
+    "allowedOrientations": [
+      "landscape",
+      "portrait-left",
+      "portrait-right"
+    ],
     "defaultOrientation": "landscape",
     "directionalRemap": "rotate-with-display"
   }

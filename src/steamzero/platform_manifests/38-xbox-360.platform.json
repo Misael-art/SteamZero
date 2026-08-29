@@ -1,27 +1,172 @@
 {
-  "schemaVersion": 1, "id": "xbox-360", "kind": "emulated", "name": "Microsoft Xbox 360", "shortName": "Xbox 360",
-  "iconKey": "media-optical", "artworkAsset": "../assets/xbox-360.svg", "systems": ["xbox360"],
+  "schemaVersion": 1,
+  "id": "xbox-360",
+  "kind": "emulated",
+  "name": "Microsoft Xbox 360",
+  "shortName": "Xbox 360",
+  "iconKey": "media-optical",
+  "artworkAsset": "../assets/xbox-360.svg",
+  "systems": [
+    "xbox360"
+  ],
   "capabilities": [
-    {"id": "overview", "label": "Visão geral", "state": "planned", "detail": "Biblioteca Xbox 360 será composta pelo scanner declarativo.", "action": null},
-    {"id": "requirements", "label": "Sistema", "state": "planned", "detail": "Arquivos exigidos por cada título serão verificados localmente.", "action": null},
-    {"id": "graphics", "label": "Vídeo e desempenho", "state": "planned", "detail": "Renderizador e patches por jogo permanecem opt-in.", "action": null},
-    {"id": "controls", "label": "Controles", "state": "ready", "detail": "Perfil Xbox 360 declarativo e reversível.", "action": {"id": "controls.profile.activate", "label": "Selecionar perfil", "requiresConfirmation": true}},
-    {"id": "media", "label": "Mídia", "state": "planned", "detail": "Imagens, executáveis e atalhos serão compostos pelo catálogo.", "action": null}
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "state": "planned",
+      "detail": "Biblioteca Xbox 360 será composta pelo scanner declarativo.",
+      "action": null
+    },
+    {
+      "id": "requirements",
+      "label": "Sistema",
+      "state": "planned",
+      "detail": "Arquivos exigidos por cada título serão verificados localmente.",
+      "action": null
+    },
+    {
+      "id": "graphics",
+      "label": "Vídeo e desempenho",
+      "state": "planned",
+      "detail": "Renderizador e patches por jogo permanecem opt-in.",
+      "action": null
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "state": "ready",
+      "detail": "Perfil Xbox 360 declarativo e reversível.",
+      "action": {
+        "id": "controls.profile.activate",
+        "label": "Selecionar perfil",
+        "requiresConfirmation": true
+      }
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "state": "planned",
+      "detail": "Imagens, executáveis e atalhos serão compostos pelo catálogo.",
+      "action": null
+    }
   ],
   "areas": [
-    {"id": "overview", "label": "Visão geral", "iconKey": "dashboard", "capabilityId": "overview"},
-    {"id": "keysFirmware", "label": "Sistema", "iconKey": "key", "capabilityId": "requirements"},
-    {"id": "graphicsPerformance", "label": "Vídeo e desempenho", "iconKey": "video-display", "capabilityId": "graphics"},
-    {"id": "controls", "label": "Controles", "iconKey": "gamepad", "capabilityId": "controls"},
-    {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "iconKey": "dashboard",
+      "capabilityId": "overview"
+    },
+    {
+      "id": "keysFirmware",
+      "label": "Sistema",
+      "iconKey": "key",
+      "capabilityId": "requirements"
+    },
+    {
+      "id": "graphicsPerformance",
+      "label": "Vídeo e desempenho",
+      "iconKey": "video-display",
+      "capabilityId": "graphics"
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "iconKey": "gamepad",
+      "capabilityId": "controls"
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "iconKey": "image",
+      "capabilityId": "media"
+    }
   ],
-  "emulators": [{"id": "xenia-canary", "name": "Xenia Canary", "adapterId": "xenia-canary", "precedence": 1, "role": "primary", "launch": {"gameArgs": ["{rom}"]}}],
-  "media": {"extensions": ["iso", "xex", "zar"], "artworkKinds": ["cover", "background", "logo", "icon", "video"], "providers": ["screenscraper", "steamgriddb"]},
-  "controls": {"profiles": ["xbox-360-gamepad"], "maxPlayers": 4, "specialized": ["guitar", "drums", "wheel"]},
-  "timing": {"standards": ["ntsc-progressive", "pal-progressive"], "defaultStandard": null, "unknownFallback": "unknown-explicit"},
+  "emulators": [
+    {
+      "id": "xenia-canary",
+      "name": "Xenia Canary",
+      "adapterId": "xenia-canary",
+      "precedence": 1,
+      "role": "primary",
+      "launch": {
+        "gameArgs": [
+          "{rom}"
+        ]
+      }
+    }
+  ],
+  "media": {
+    "extensions": [
+      "iso",
+      "xex",
+      "zar"
+    ],
+    "artworkKinds": [
+      "cover",
+      "background",
+      "logo",
+      "icon",
+      "video"
+    ],
+    "providers": [
+      "screenscraper",
+      "steamgriddb"
+    ],
+    "nature": "optical",
+    "formats": {
+      "iso": [
+        "iso"
+      ],
+      "xex": [
+        "xex"
+      ],
+      "zar": [
+        "zar"
+      ]
+    },
+    "containerPolicy": "extract",
+    "auxiliaryContent": "both",
+    "auxiliaryBinding": "titleid"
+  },
+  "controls": {
+    "profiles": [
+      "xbox-360-gamepad"
+    ],
+    "maxPlayers": 4,
+    "specialized": [
+      "guitar",
+      "drums",
+      "wheel"
+    ]
+  },
+  "timing": {
+    "standards": [
+      "ntsc-progressive",
+      "pal-progressive"
+    ],
+    "defaultStandard": null,
+    "unknownFallback": "unknown-explicit"
+  },
   "presets": [
-    {"id": "como-era", "label": "Como era", "state": "planned", "detail": "Resolução e temporização originais."},
-    {"id": "equilibrado", "label": "Equilibrado", "state": "planned", "detail": "Configuração conservadora com compatibilidade prioritária."},
-    {"id": "melhorado", "label": "Melhorado", "state": "planned", "detail": "Escala e patches identificados e opt-in."}
-  ], "cloud": null
+    {
+      "id": "como-era",
+      "label": "Como era",
+      "state": "planned",
+      "detail": "Resolução e temporização originais."
+    },
+    {
+      "id": "equilibrado",
+      "label": "Equilibrado",
+      "state": "planned",
+      "detail": "Configuração conservadora com compatibilidade prioritária."
+    },
+    {
+      "id": "melhorado",
+      "label": "Melhorado",
+      "state": "planned",
+      "detail": "Escala e patches identificados e opt-in."
+    }
+  ],
+  "cloud": null
 }

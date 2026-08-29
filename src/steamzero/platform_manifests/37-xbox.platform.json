@@ -1,27 +1,165 @@
 {
-  "schemaVersion": 1, "id": "xbox", "kind": "emulated", "name": "Microsoft Xbox", "shortName": "Xbox",
-  "iconKey": "media-optical", "artworkAsset": "../assets/xbox.svg", "systems": ["xbox"],
+  "schemaVersion": 1,
+  "id": "xbox",
+  "kind": "emulated",
+  "name": "Microsoft Xbox",
+  "shortName": "Xbox",
+  "iconKey": "media-optical",
+  "artworkAsset": "../assets/xbox.svg",
+  "systems": [
+    "xbox"
+  ],
   "capabilities": [
-    {"id": "overview", "label": "Visão geral", "state": "planned", "detail": "Biblioteca Xbox será composta pelo scanner declarativo.", "action": null},
-    {"id": "requirements", "label": "Sistema", "state": "planned", "detail": "BIOS e arquivos do sistema fornecidos pelo usuário serão verificados localmente.", "action": null},
-    {"id": "graphics", "label": "Vídeo e desempenho", "state": "planned", "detail": "Renderizador e escala permanecem opt-in.", "action": null},
-    {"id": "controls", "label": "Controles", "state": "ready", "detail": "Perfil Xbox Controller S declarativo e reversível.", "action": {"id": "controls.profile.activate", "label": "Selecionar perfil", "requiresConfirmation": true}},
-    {"id": "media", "label": "Mídia", "state": "planned", "detail": "Imagens de disco serão compostas pelo catálogo.", "action": null}
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "state": "planned",
+      "detail": "Biblioteca Xbox será composta pelo scanner declarativo.",
+      "action": null
+    },
+    {
+      "id": "requirements",
+      "label": "Sistema",
+      "state": "planned",
+      "detail": "BIOS e arquivos do sistema fornecidos pelo usuário serão verificados localmente.",
+      "action": null
+    },
+    {
+      "id": "graphics",
+      "label": "Vídeo e desempenho",
+      "state": "planned",
+      "detail": "Renderizador e escala permanecem opt-in.",
+      "action": null
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "state": "ready",
+      "detail": "Perfil Xbox Controller S declarativo e reversível.",
+      "action": {
+        "id": "controls.profile.activate",
+        "label": "Selecionar perfil",
+        "requiresConfirmation": true
+      }
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "state": "planned",
+      "detail": "Imagens de disco serão compostas pelo catálogo.",
+      "action": null
+    }
   ],
   "areas": [
-    {"id": "overview", "label": "Visão geral", "iconKey": "dashboard", "capabilityId": "overview"},
-    {"id": "keysFirmware", "label": "Sistema", "iconKey": "key", "capabilityId": "requirements"},
-    {"id": "graphicsPerformance", "label": "Vídeo e desempenho", "iconKey": "video-display", "capabilityId": "graphics"},
-    {"id": "controls", "label": "Controles", "iconKey": "gamepad", "capabilityId": "controls"},
-    {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "iconKey": "dashboard",
+      "capabilityId": "overview"
+    },
+    {
+      "id": "keysFirmware",
+      "label": "Sistema",
+      "iconKey": "key",
+      "capabilityId": "requirements"
+    },
+    {
+      "id": "graphicsPerformance",
+      "label": "Vídeo e desempenho",
+      "iconKey": "video-display",
+      "capabilityId": "graphics"
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "iconKey": "gamepad",
+      "capabilityId": "controls"
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "iconKey": "image",
+      "capabilityId": "media"
+    }
   ],
-  "emulators": [{"id": "xemu", "name": "xemu", "adapterId": "xemu", "precedence": 1, "role": "primary", "launch": {"gameArgs": ["-dvd_path", "{rom}"]}}],
-  "media": {"extensions": ["iso", "xiso"], "artworkKinds": ["cover", "background", "logo", "icon", "video"], "providers": ["screenscraper", "steamgriddb"]},
-  "controls": {"profiles": ["xbox-controller-s"], "maxPlayers": 4, "specialized": ["light-gun"]},
-  "timing": {"standards": ["ntsc-u", "ntsc-j", "pal"], "defaultStandard": null, "unknownFallback": "unknown-explicit"},
+  "emulators": [
+    {
+      "id": "xemu",
+      "name": "xemu",
+      "adapterId": "xemu",
+      "precedence": 1,
+      "role": "primary",
+      "launch": {
+        "gameArgs": [
+          "-dvd_path",
+          "{rom}"
+        ]
+      }
+    }
+  ],
+  "media": {
+    "extensions": [
+      "iso",
+      "xiso"
+    ],
+    "artworkKinds": [
+      "cover",
+      "background",
+      "logo",
+      "icon",
+      "video"
+    ],
+    "providers": [
+      "screenscraper",
+      "steamgriddb"
+    ],
+    "nature": "optical",
+    "formats": {
+      "iso": [
+        "iso",
+        "xiso"
+      ]
+    },
+    "containerPolicy": "extract",
+    "auxiliaryContent": "none"
+  },
+  "controls": {
+    "profiles": [
+      "xbox-controller-s"
+    ],
+    "maxPlayers": 4,
+    "specialized": [
+      "light-gun"
+    ]
+  },
+  "timing": {
+    "standards": [
+      "ntsc-u",
+      "ntsc-j",
+      "pal"
+    ],
+    "defaultStandard": null,
+    "unknownFallback": "unknown-explicit"
+  },
   "presets": [
-    {"id": "como-era", "label": "Como era", "state": "planned", "detail": "Resolução e temporização originais."},
-    {"id": "equilibrado", "label": "Equilibrado", "state": "planned", "detail": "Configuração conservadora com compatibilidade prioritária."},
-    {"id": "melhorado", "label": "Melhorado", "state": "planned", "detail": "Escala elevada de forma explícita."}
-  ], "cloud": null
+    {
+      "id": "como-era",
+      "label": "Como era",
+      "state": "planned",
+      "detail": "Resolução e temporização originais."
+    },
+    {
+      "id": "equilibrado",
+      "label": "Equilibrado",
+      "state": "planned",
+      "detail": "Configuração conservadora com compatibilidade prioritária."
+    },
+    {
+      "id": "melhorado",
+      "label": "Melhorado",
+      "state": "planned",
+      "detail": "Escala elevada de forma explícita."
+    }
+  ],
+  "cloud": null
 }

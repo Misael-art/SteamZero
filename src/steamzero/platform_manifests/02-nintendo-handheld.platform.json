@@ -118,7 +118,21 @@
     "providers": [
       "screenscraper",
       "steamgriddb"
-    ]
+    ],
+    "nature": "cartridge",
+    "formats": {
+      "gb": [
+        "gb"
+      ],
+      "gbc": [
+        "gbc"
+      ],
+      "gba": [
+        "gba"
+      ]
+    },
+    "containerPolicy": "native",
+    "auxiliaryContent": "none"
   },
   "controls": {
     "profiles": [

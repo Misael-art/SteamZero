@@ -6,32 +6,188 @@
   "shortName": "PSP",
   "iconKey": "gamepad",
   "artworkAsset": "../assets/playstation-portable.svg",
-  "systems": ["psp"],
+  "systems": [
+    "psp"
+  ],
   "capabilities": [
-    {"id": "overview", "label": "Visão geral", "state": "planned", "detail": "Biblioteca PSP será composta a partir do scanner declarativo.", "action": null},
-    {"id": "requirements", "label": "Sistema", "state": "planned", "detail": "Dados do sistema e assets do emulador serão verificados localmente.", "action": null},
-    {"id": "graphics", "label": "Vídeo e desempenho", "state": "planned", "detail": "Escala de resolução e correções permanecem opt-in.", "action": null},
-    {"id": "controls", "label": "Controles", "state": "ready", "detail": "Perfil PSP declarativo com orientação fixa.", "action": {"id": "controls.profile.activate", "label": "Selecionar perfil", "requiresConfirmation": true}},
-    {"id": "media", "label": "Mídia", "state": "planned", "detail": "Artwork e metadados serão compostos pelo catálogo.", "action": null}
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "state": "planned",
+      "detail": "Biblioteca PSP será composta a partir do scanner declarativo.",
+      "action": null
+    },
+    {
+      "id": "requirements",
+      "label": "Sistema",
+      "state": "planned",
+      "detail": "Dados do sistema e assets do emulador serão verificados localmente.",
+      "action": null
+    },
+    {
+      "id": "graphics",
+      "label": "Vídeo e desempenho",
+      "state": "planned",
+      "detail": "Escala de resolução e correções permanecem opt-in.",
+      "action": null
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "state": "ready",
+      "detail": "Perfil PSP declarativo com orientação fixa.",
+      "action": {
+        "id": "controls.profile.activate",
+        "label": "Selecionar perfil",
+        "requiresConfirmation": true
+      }
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "state": "planned",
+      "detail": "Artwork e metadados serão compostos pelo catálogo.",
+      "action": null
+    }
   ],
   "areas": [
-    {"id": "overview", "label": "Visão geral", "iconKey": "dashboard", "capabilityId": "overview"},
-    {"id": "keysFirmware", "label": "Sistema", "iconKey": "key", "capabilityId": "requirements"},
-    {"id": "graphicsPerformance", "label": "Vídeo e desempenho", "iconKey": "video-display", "capabilityId": "graphics"},
-    {"id": "controls", "label": "Controles", "iconKey": "gamepad", "capabilityId": "controls"},
-    {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "iconKey": "dashboard",
+      "capabilityId": "overview"
+    },
+    {
+      "id": "keysFirmware",
+      "label": "Sistema",
+      "iconKey": "key",
+      "capabilityId": "requirements"
+    },
+    {
+      "id": "graphicsPerformance",
+      "label": "Vídeo e desempenho",
+      "iconKey": "video-display",
+      "capabilityId": "graphics"
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "iconKey": "gamepad",
+      "capabilityId": "controls"
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "iconKey": "image",
+      "capabilityId": "media"
+    }
   ],
   "emulators": [
-    {"id": "ppsspp", "name": "PPSSPP", "adapterId": "ppsspp", "precedence": 1, "role": "primary", "launch": {"gameArgs": ["{rom}"]}},
-    {"id": "retroarch", "name": "RetroArch", "adapterId": "retroarch", "precedence": 2, "role": "fallback", "launch": {"core": "ppsspp", "openArgs": [], "gameArgs": ["-L", "{core}", "{rom}"]}}
+    {
+      "id": "ppsspp",
+      "name": "PPSSPP",
+      "adapterId": "ppsspp",
+      "precedence": 1,
+      "role": "primary",
+      "launch": {
+        "gameArgs": [
+          "{rom}"
+        ]
+      }
+    },
+    {
+      "id": "retroarch",
+      "name": "RetroArch",
+      "adapterId": "retroarch",
+      "precedence": 2,
+      "role": "fallback",
+      "launch": {
+        "core": "ppsspp",
+        "openArgs": [],
+        "gameArgs": [
+          "-L",
+          "{core}",
+          "{rom}"
+        ]
+      }
+    }
   ],
-  "media": {"extensions": ["chd", "cso", "elf", "iso", "pbp", "prx"], "artworkKinds": ["cover", "background", "logo", "icon", "video"], "providers": ["screenscraper", "steamgriddb"]},
-  "controls": {"profiles": ["psp-handheld"], "maxPlayers": 1, "specialized": []},
-  "timing": {"standards": ["ntsc-progressive"], "defaultStandard": "ntsc-progressive", "unknownFallback": "unknown-explicit"},
+  "media": {
+    "extensions": [
+      "chd",
+      "cso",
+      "elf",
+      "iso",
+      "pbp",
+      "prx"
+    ],
+    "artworkKinds": [
+      "cover",
+      "background",
+      "logo",
+      "icon",
+      "video"
+    ],
+    "providers": [
+      "screenscraper",
+      "steamgriddb"
+    ],
+    "nature": "optical",
+    "formats": {
+      "iso": [
+        "iso"
+      ],
+      "cso": [
+        "cso"
+      ],
+      "pbp": [
+        "pbp"
+      ],
+      "chd": [
+        "chd"
+      ]
+    },
+    "preferredFormat": "cso",
+    "conversionTargets": [
+      "cso"
+    ],
+    "containerPolicy": "extract",
+    "auxiliaryContent": "both",
+    "auxiliaryBinding": "titleid"
+  },
+  "controls": {
+    "profiles": [
+      "psp-handheld"
+    ],
+    "maxPlayers": 1,
+    "specialized": []
+  },
+  "timing": {
+    "standards": [
+      "ntsc-progressive"
+    ],
+    "defaultStandard": "ntsc-progressive",
+    "unknownFallback": "unknown-explicit"
+  },
   "presets": [
-    {"id": "como-era", "label": "Como era", "state": "planned", "detail": "Resolução e proporção originais do portátil."},
-    {"id": "equilibrado", "label": "Equilibrado", "state": "planned", "detail": "Escala conservadora com compatibilidade prioritária."},
-    {"id": "melhorado", "label": "Melhorado", "state": "planned", "detail": "Resolução interna elevada de forma explícita."}
+    {
+      "id": "como-era",
+      "label": "Como era",
+      "state": "planned",
+      "detail": "Resolução e proporção originais do portátil."
+    },
+    {
+      "id": "equilibrado",
+      "label": "Equilibrado",
+      "state": "planned",
+      "detail": "Escala conservadora com compatibilidade prioritária."
+    },
+    {
+      "id": "melhorado",
+      "label": "Melhorado",
+      "state": "planned",
+      "detail": "Resolução interna elevada de forma explícita."
+    }
   ],
   "cloud": null
 }

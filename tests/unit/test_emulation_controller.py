@@ -95,13 +95,13 @@ def test_snapshot_publishes_global_management_without_a_synthetic_platform(
     workspace = controller.snapshot({"context": {}})
     global_management = workspace["globalManagement"]
 
-    assert len(workspace["platforms"]) == 36
+    assert len(workspace["platforms"]) == 61
     assert global_management["id"] == "emulation-global"
-    assert global_management["technicalPlatformCount"] == 36
-    assert global_management["editorialDestinationCount"] == 37
+    assert global_management["technicalPlatformCount"] == 61
+    assert global_management["editorialDestinationCount"] == 62
     assert global_management["editorialExperienceCount"] == 155
     assert global_management["editorialSource"]["id"] == "steam"
-    assert len(global_management["platformCards"]) == 36
+    assert len(global_management["platformCards"]) == 61
     switch = next(card for card in global_management["platformCards"] if card["id"] == "switch")
     # Contrato alterado em 2026-08-13: com `which` devolvendo None, nenhum
     # emulador do Switch está instalado. O bloqueador do card é exatamente esse,

@@ -33,7 +33,7 @@
     "pyproject.toml",
     "docs/09-operations/HANDOFF-2026-08-27.md"
   ],
-  "scopeDigest": "d1eaae7a9b0715a02af81d4d54284c06b4e3d501a3d1c3b90a8196e304632017",
+  "scopeDigest": "e9f7dad6267b3edceb7bfefe3b740bdf4b479138f7e6f20b8cdf06a2a84ca7cc",
   "dependsOn": [],
   "knownGaps": [
     "DEBT-CI-VISUAL-IMAGE-SEM-SVG"
@@ -80,12 +80,18 @@
       "reference": "docs/09-operations/HANDOFF-2026-08-27.md",
       "command": "2026-08-27. Handoff de sessao com estado medido, nao relatado: git exato (4 commits em codex/launch-gate-drift-outdated, NAO mergeados, host sem nenhuma das correcoes), inventario fisico do host (33 componentes: 11 installed, 20 missing, 2 degraded por drift, com os commits conferidos), bloqueio exato de cada item da fila, lacunas por dominio, maturidade real de tema contra AURA-SURFACES, pendencias de contraste com as razoes medidas (1,80 e 2,12) e as armadilhas da sessao. Ligado a partir de AGENT-HANDOFF.md como leitura obrigatoria 5.",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_project_status.py",
+      "command": "Revalidacao de digest apos renders das frentes library/transport (docs/status e escopo deste item): run_tests_isolated.py tests/unit/test_project_status.py -q no conteudo novo (9 passed + este gate de consistencia verde apos o digest)",
+      "result": "passed"
     }
   ],
   "nextAction": "Manter status-check e WORKLOG append-only verdes apos harmonizacao a45.",
   "activeWorkstreams": [
     "WS-2026-08-HARMONIZE-A45"
   ],
-  "updatedAt": "2026-08-27",
+  "updatedAt": "2026-08-28",
   "notes": "WORKLOG e historico append-only e nao entra no digest funcional; check_worklog_append_only reprova reescrita de sessoes anteriores. G38 doctor service.generation usa observe(). Digest renovado apos tornar execucao autonoma, evidencia fisica e taxonomia AURA/Theme Engine/Theme Studio regras normativas do AGENTS.md; teste focado de project_status preserva a consistencia do catalogo. Em 2026-08-20 o gate acusou pyproject.toml alterado sem item responsavel: ninguem o declarava, embora ele defina entry points, dependencias e empacotamento. Passou para este item, que ja governa ci.yml, AGENTS.md e Makefile. 2026-08-24: KNOWN-GAPS.md corrigido na linha G40, que afirmava que a tabela platform_slug->systemeid 'nao existe no repositorio' quando ela existe como _PLATFORM_MAP. Documento de lacunas que envelhece sem ser conferido vira o oposto do que promete: manda reimplementar o que ja esta feito. G42 REABERTA em 2026-08-24: fora marcada fechada por 'quatro rotas na ponte HTTP', mas o enunciado dela e 'o motor existe, o caminho de usuario nao' — rota na ponte ainda e motor. Zero QML alcanca os 12 contratos theme.import. 2026-08-25: versao elevada de 0.1.0a46 para 2.0.0rc1 (pre-release, nao 2.0.0 final). O bump entra ANTES do merge porque release_host.prepare exige que o commit seja o tip de origin/main, entao a versao precisa estar na linha principal para a release 2.0.0 poder ser construida. Forma canonica PEP 440 sem hifen: RELEASE_RE monta <versao>-<12 hex>, entao 2.0.0-rc1 produziria id com dois hifens e leitura ambigua; 2.0.0rc1 nao."
 }

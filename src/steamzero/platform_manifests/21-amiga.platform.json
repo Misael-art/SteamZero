@@ -123,7 +123,40 @@
     "providers": [
       "screenscraper",
       "steamgriddb"
-    ]
+    ],
+    "nature": "floppy",
+    "formats": {
+      "adf": [
+        "adf",
+        "adz",
+        "dms",
+        "ipf",
+        "rp9"
+      ],
+      "hdf": [
+        "hdf",
+        "hdz"
+      ],
+      "iso": [
+        "iso",
+        "cue",
+        "chd",
+        "nrg",
+        "mds",
+        "ccd"
+      ],
+      "uae": [
+        "uae"
+      ],
+      "lha": [
+        "lha"
+      ],
+      "m3u": [
+        "m3u"
+      ]
+    },
+    "containerPolicy": "native",
+    "auxiliaryContent": "none"
   },
   "controls": {
     "profiles": [

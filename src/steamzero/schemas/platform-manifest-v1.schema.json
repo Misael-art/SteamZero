@@ -347,6 +347,75 @@
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"
           }
+        },
+        "formats": {
+          "type": "object",
+          "description": "Formato logico -> extensoes que o realizam, entre as extensoes declaradas. A presenca aqui define o que detect_format consegue nomear; extensao fora deste mapa tem formato nao declarado.",
+          "additionalProperties": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9]{1,12}$"
+            }
+          },
+          "propertyNames": {
+            "pattern": "^[a-z0-9][a-z0-9-]{0,15}$"
+          }
+        },
+        "preferredFormat": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,15}$",
+          "description": "Formato preferido da biblioteca quando o mesmo titulo existe em varios formatos declarados."
+        },
+        "conversionTargets": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]{1,12}$"
+          },
+          "description": "Formatos-alvo de conversao que a plataforma declara aceitar (ex.: chd para optica, rvz para disco Wii/GC, nsz para Switch)."
+        },
+        "containerPolicy": {
+          "type": "string",
+          "enum": [
+            "native",
+            "extract"
+          ],
+          "description": "native = o container (zip/7z) roda direto no emulador; extract = o conteudo precisa ser extraido antes do lancamento."
+        },
+        "auxiliaryContent": {
+          "type": "string",
+          "enum": [
+            "none",
+            "update",
+            "dlc",
+            "both"
+          ],
+          "description": "Modelo de conteudo auxiliar da plataforma. none declarado explicitamente e informacao, nao omissao."
+        },
+        "auxiliaryBinding": {
+          "type": "string",
+          "enum": [
+            "titleid",
+            "filename",
+            "directory"
+          ],
+          "description": "Como o conteudo auxiliar se vincula ao titulo base: por Title ID, por marcador no nome do arquivo ou por diretorio dedicado. Relevante apenas com conteudo auxiliar."
+        },
+        "nature": {
+          "type": "string",
+          "enum": [
+            "cartridge",
+            "optical",
+            "floppy",
+            "tape",
+            "digital",
+            "hdd"
+          ],
+          "description": "Natureza da midia primaria da plataforma. Dirige o modelo de conteudo (multidisco so faz sentido para midia optica) e a prioridade de selecao entre formatos do mesmo titulo."
         }
       }
     },

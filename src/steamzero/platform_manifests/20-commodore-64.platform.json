@@ -132,7 +132,40 @@
     "providers": [
       "screenscraper",
       "steamgriddb"
-    ]
+    ],
+    "nature": "floppy",
+    "formats": {
+      "d64": [
+        "d64",
+        "d71",
+        "d81",
+        "d80",
+        "d82",
+        "g64",
+        "g41"
+      ],
+      "t64": [
+        "t64"
+      ],
+      "tap": [
+        "tap"
+      ],
+      "prg": [
+        "prg",
+        "p00"
+      ],
+      "crt": [
+        "crt"
+      ],
+      "x64": [
+        "x64"
+      ],
+      "nib": [
+        "nib"
+      ]
+    },
+    "containerPolicy": "native",
+    "auxiliaryContent": "none"
   },
   "controls": {
     "profiles": [

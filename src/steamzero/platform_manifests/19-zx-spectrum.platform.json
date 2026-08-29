@@ -115,7 +115,32 @@
     "providers": [
       "screenscraper",
       "steamgriddb"
-    ]
+    ],
+    "nature": "tape",
+    "formats": {
+      "tap": [
+        "tap",
+        "tzx"
+      ],
+      "dsk": [
+        "dsk",
+        "img",
+        "mgt",
+        "scl",
+        "trd",
+        "udi"
+      ],
+      "snapshot": [
+        "sna",
+        "szx",
+        "z80"
+      ],
+      "rzx": [
+        "rzx"
+      ]
+    },
+    "containerPolicy": "native",
+    "auxiliaryContent": "none"
   },
   "controls": {
     "profiles": [

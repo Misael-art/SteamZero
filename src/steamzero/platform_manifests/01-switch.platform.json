@@ -6,46 +6,287 @@
   "shortName": "Switch",
   "iconKey": "switch",
   "artworkAsset": "../assets/switch.svg",
-  "systems": ["switch"],
+  "systems": [
+    "switch"
+  ],
   "capabilities": [
-    {"id": "overview", "label": "Visão geral", "state": "ready", "detail": "Inventário local, emuladores e requisitos verificáveis.", "action": {"id": "emulation.refresh", "label": "Verificar ambiente", "requiresConfirmation": false}},
-    {"id": "keys-firmware", "label": "Keys e firmware", "state": "ready", "detail": "Importação local e compatibilidade sem expor conteúdo protegido.", "action": {"id": "requirements.verify", "label": "Validar requisitos", "requiresConfirmation": false}},
-    {"id": "updates-dlc", "label": "Updates e DLC", "state": "ready", "detail": "Conteúdo do usuário associado por Title ID.", "action": {"id": "content.refresh", "label": "Atualizar inventário", "requiresConfirmation": false}},
-    {"id": "mods-cheats", "label": "Mods e cheats", "state": "ready", "detail": "Catálogos e instalação transacional por jogo.", "action": {"id": "extras.refresh", "label": "Atualizar catálogo", "requiresConfirmation": false}},
-    {"id": "graphics", "label": "Gráficos e desempenho", "state": "planned", "detail": "Perfis por jogo pertencem aos tracks G e R.", "action": null},
-    {"id": "controls", "label": "Controles", "state": "ready", "detail": "Perfis base versionados e reversíveis; projeção em emuladores permanece capability separada.", "action": {"id": "controls.profile.activate", "label": "Selecionar perfil", "requiresConfirmation": true}},
-    {"id": "saves", "label": "Saves", "state": "planned", "detail": "Timeline e playtime pertencem ao A1.", "action": null},
-    {"id": "shader-cache", "label": "Shader cache", "state": "planned", "detail": "Auditoria e restauração ainda não compostas.", "action": null},
-    {"id": "media", "label": "Mídia", "state": "ready", "detail": "MediaHub local e arte por jogo disponíveis.", "action": {"id": "media.refresh", "label": "Atualizar mídia", "requiresConfirmation": false}},
-    {"id": "storage", "label": "Armazenamento", "state": "planned", "detail": "Exclusão em cascata e deduplicação pertencem ao A4.", "action": null},
-    {"id": "advanced", "label": "Avançado", "state": "planned", "detail": "Ajustes especializados exigem preview e rollback.", "action": null}
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "state": "ready",
+      "detail": "Inventário local, emuladores e requisitos verificáveis.",
+      "action": {
+        "id": "emulation.refresh",
+        "label": "Verificar ambiente",
+        "requiresConfirmation": false
+      }
+    },
+    {
+      "id": "keys-firmware",
+      "label": "Keys e firmware",
+      "state": "ready",
+      "detail": "Importação local e compatibilidade sem expor conteúdo protegido.",
+      "action": {
+        "id": "requirements.verify",
+        "label": "Validar requisitos",
+        "requiresConfirmation": false
+      }
+    },
+    {
+      "id": "updates-dlc",
+      "label": "Updates e DLC",
+      "state": "ready",
+      "detail": "Conteúdo do usuário associado por Title ID.",
+      "action": {
+        "id": "content.refresh",
+        "label": "Atualizar inventário",
+        "requiresConfirmation": false
+      }
+    },
+    {
+      "id": "mods-cheats",
+      "label": "Mods e cheats",
+      "state": "ready",
+      "detail": "Catálogos e instalação transacional por jogo.",
+      "action": {
+        "id": "extras.refresh",
+        "label": "Atualizar catálogo",
+        "requiresConfirmation": false
+      }
+    },
+    {
+      "id": "graphics",
+      "label": "Gráficos e desempenho",
+      "state": "planned",
+      "detail": "Perfis por jogo pertencem aos tracks G e R.",
+      "action": null
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "state": "ready",
+      "detail": "Perfis base versionados e reversíveis; projeção em emuladores permanece capability separada.",
+      "action": {
+        "id": "controls.profile.activate",
+        "label": "Selecionar perfil",
+        "requiresConfirmation": true
+      }
+    },
+    {
+      "id": "saves",
+      "label": "Saves",
+      "state": "planned",
+      "detail": "Timeline e playtime pertencem ao A1.",
+      "action": null
+    },
+    {
+      "id": "shader-cache",
+      "label": "Shader cache",
+      "state": "planned",
+      "detail": "Auditoria e restauração ainda não compostas.",
+      "action": null
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "state": "ready",
+      "detail": "MediaHub local e arte por jogo disponíveis.",
+      "action": {
+        "id": "media.refresh",
+        "label": "Atualizar mídia",
+        "requiresConfirmation": false
+      }
+    },
+    {
+      "id": "storage",
+      "label": "Armazenamento",
+      "state": "planned",
+      "detail": "Exclusão em cascata e deduplicação pertencem ao A4.",
+      "action": null
+    },
+    {
+      "id": "advanced",
+      "label": "Avançado",
+      "state": "planned",
+      "detail": "Ajustes especializados exigem preview e rollback.",
+      "action": null
+    }
   ],
   "areas": [
-    {"id": "overview", "label": "Visão geral", "iconKey": "dashboard", "capabilityId": "overview"},
-    {"id": "keysFirmware", "label": "Keys e firmware", "iconKey": "key", "capabilityId": "keys-firmware"},
-    {"id": "updatesDlc", "label": "Updates e DLC", "iconKey": "download", "capabilityId": "updates-dlc"},
-    {"id": "modsCheats", "label": "Mods e cheats", "iconKey": "extension", "capabilityId": "mods-cheats"},
-    {"id": "graphicsPerformance", "label": "Gráficos e desempenho", "iconKey": "speedometer", "capabilityId": "graphics"},
-    {"id": "controls", "label": "Controles", "iconKey": "gamepad", "capabilityId": "controls"},
-    {"id": "saves", "label": "Saves", "iconKey": "save", "capabilityId": "saves"},
-    {"id": "shaderCache", "label": "Shader cache", "iconKey": "sparkles", "capabilityId": "shader-cache"},
-    {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"},
-    {"id": "storage", "label": "Armazenamento", "iconKey": "storage", "capabilityId": "storage"},
-    {"id": "advanced", "label": "Avançado", "iconKey": "tune", "capabilityId": "advanced"}
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "iconKey": "dashboard",
+      "capabilityId": "overview"
+    },
+    {
+      "id": "keysFirmware",
+      "label": "Keys e firmware",
+      "iconKey": "key",
+      "capabilityId": "keys-firmware"
+    },
+    {
+      "id": "updatesDlc",
+      "label": "Updates e DLC",
+      "iconKey": "download",
+      "capabilityId": "updates-dlc"
+    },
+    {
+      "id": "modsCheats",
+      "label": "Mods e cheats",
+      "iconKey": "extension",
+      "capabilityId": "mods-cheats"
+    },
+    {
+      "id": "graphicsPerformance",
+      "label": "Gráficos e desempenho",
+      "iconKey": "speedometer",
+      "capabilityId": "graphics"
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "iconKey": "gamepad",
+      "capabilityId": "controls"
+    },
+    {
+      "id": "saves",
+      "label": "Saves",
+      "iconKey": "save",
+      "capabilityId": "saves"
+    },
+    {
+      "id": "shaderCache",
+      "label": "Shader cache",
+      "iconKey": "sparkles",
+      "capabilityId": "shader-cache"
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "iconKey": "image",
+      "capabilityId": "media"
+    },
+    {
+      "id": "storage",
+      "label": "Armazenamento",
+      "iconKey": "storage",
+      "capabilityId": "storage"
+    },
+    {
+      "id": "advanced",
+      "label": "Avançado",
+      "iconKey": "tune",
+      "capabilityId": "advanced"
+    }
   ],
   "emulators": [
-    {"id": "eden", "name": "Eden", "adapterId": "eden", "precedence": 1, "role": "primary",
-     "launch": {"gameArgs": ["-f", "-g", "{rom}"]}},
-    {"id": "citron", "name": "Citron", "adapterId": "citron", "precedence": 2, "role": "fallback",
-     "launch": {"gameArgs": ["-f", "-g", "{rom}"]}},
-    {"id": "ryubing", "name": "Ryubing", "adapterId": "ryubing", "precedence": 3, "role": "fallback",
-     "launch": {"gameArgs": ["-f", "--hide-updates", "{rom}"]}}
+    {
+      "id": "eden",
+      "name": "Eden",
+      "adapterId": "eden",
+      "precedence": 1,
+      "role": "primary",
+      "launch": {
+        "gameArgs": [
+          "-f",
+          "-g",
+          "{rom}"
+        ]
+      }
+    },
+    {
+      "id": "citron",
+      "name": "Citron",
+      "adapterId": "citron",
+      "precedence": 2,
+      "role": "fallback",
+      "launch": {
+        "gameArgs": [
+          "-f",
+          "-g",
+          "{rom}"
+        ]
+      }
+    },
+    {
+      "id": "ryubing",
+      "name": "Ryubing",
+      "adapterId": "ryubing",
+      "precedence": 3,
+      "role": "fallback",
+      "launch": {
+        "gameArgs": [
+          "-f",
+          "--hide-updates",
+          "{rom}"
+        ]
+      }
+    }
   ],
-  "media": {"extensions": ["nsp", "xci", "nsz", "nca", "zip"], "artworkKinds": ["cover", "background", "logo", "icon", "video"], "providers": ["screenscraper", "steamgriddb"]},
-  "controls": {"profiles": ["standard-gamepad", "joycon-pair"], "maxPlayers": 8, "specialized": ["motion"]},
-  "timing": {"standards": ["dynamic"], "defaultStandard": null, "unknownFallback": "unknown-explicit"},
+  "media": {
+    "extensions": [
+      "nsp",
+      "xci",
+      "nsz",
+      "nca",
+      "zip"
+    ],
+    "artworkKinds": [
+      "cover",
+      "background",
+      "logo",
+      "icon",
+      "video"
+    ],
+    "providers": [
+      "screenscraper",
+      "steamgriddb"
+    ],
+    "nature": "digital",
+    "formats": {
+      "nsp": [
+        "nsp"
+      ],
+      "nsz": [
+        "nsz"
+      ],
+      "xci": [
+        "xci"
+      ]
+    },
+    "preferredFormat": "nsp",
+    "conversionTargets": [
+      "nsz"
+    ],
+    "containerPolicy": "extract",
+    "auxiliaryContent": "both",
+    "auxiliaryBinding": "titleid"
+  },
+  "controls": {
+    "profiles": [
+      "standard-gamepad",
+      "joycon-pair"
+    ],
+    "maxPlayers": 8,
+    "specialized": [
+      "motion"
+    ]
+  },
+  "timing": {
+    "standards": [
+      "dynamic"
+    ],
+    "defaultStandard": null,
+    "unknownFallback": "unknown-explicit"
+  },
   "presets": [
-    {"id": "balanced", "label": "Equilibrado", "state": "planned", "detail": "Será definido pelo registry de experiência sem inventar timing."}
+    {
+      "id": "balanced",
+      "label": "Equilibrado",
+      "state": "planned",
+      "detail": "Será definido pelo registry de experiência sem inventar timing."
+    }
   ],
   "cloud": null
 }

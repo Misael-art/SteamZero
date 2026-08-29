@@ -120,7 +120,37 @@
     "providers": [
       "screenscraper",
       "steamgriddb"
-    ]
+    ],
+    "nature": "floppy",
+    "formats": {
+      "dsk": [
+        "dsk",
+        "di1",
+        "di2",
+        "dmk",
+        "fd1",
+        "fd2"
+      ],
+      "cas": [
+        "cas",
+        "wav"
+      ],
+      "rom": [
+        "rom"
+      ],
+      "mx1": [
+        "mx1",
+        "mx2"
+      ],
+      "col": [
+        "col"
+      ],
+      "m3u": [
+        "m3u"
+      ]
+    },
+    "containerPolicy": "native",
+    "auxiliaryContent": "none"
   },
   "controls": {
     "profiles": [
