@@ -11,7 +11,12 @@ import pytest
 
 from steamzero.core import fs, paths
 from steamzero.core.errors import SteamZeroError
-from steamzero.domain.convert import ConversionManager, ConversionTimeout
+from steamzero.domain.convert import (
+    ConversionManager,
+    ConversionPolicy,
+    ConversionTimeout,
+    ConvertResult,
+)
 
 
 class FakeConverter:
@@ -38,6 +43,24 @@ class FakeConverter:
         return True
 
 
+def _optical_policy() -> ConversionPolicy:
+    return ConversionPolicy(
+        platform_id="test-optical",
+        nature="optical",
+        formats={"iso": ("iso",), "chd": ("chd",)},
+        conversion_targets=("chd",),
+        preferred_format="iso",
+    )
+
+
+def _convert(
+    converter: FakeConverter, src: Path, target_format: str, *, dest_dir: Path | None = None
+) -> ConvertResult:
+    return ConversionManager(converter).convert(
+        src, target_format, policy=_optical_policy(), dest_dir=dest_dir
+    )
+
+
 @pytest.fixture
 def src(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
@@ -51,7 +74,7 @@ def src(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
 @pytest.mark.rt
 def test_convert_success_source_intact(src: Path) -> None:
     before = fs.hash_file(src)
-    result = ConversionManager(FakeConverter()).convert(src, "chd")
+    result = _convert(FakeConverter(), src, "chd")
     assert result.dest.exists()
     assert result.dest.read_bytes() == b"converted:original-dump-bytes"
     # AC-LB-02: original mantido (até commit) e intacto
@@ -64,7 +87,7 @@ def test_convert_success_source_intact(src: Path) -> None:
 def test_convert_failure_original_intact(src: Path) -> None:
     before = fs.hash_file(src)
     with pytest.raises(SteamZeroError) as ei:
-        ConversionManager(FakeConverter(mode="fail")).convert(src, "chd")
+        _convert(FakeConverter(mode="fail"), src, "chd")
     assert ei.value.code == "E-CONVERT-FAILED"
     assert fs.hash_file(src) == before  # RT-06: original intacto
     assert not (paths.roms_dir() / "converted").exists()
@@ -74,7 +97,7 @@ def test_convert_failure_original_intact(src: Path) -> None:
 @pytest.mark.rt
 def test_convert_empty_output_fails(src: Path) -> None:
     with pytest.raises(SteamZeroError) as ei:
-        ConversionManager(FakeConverter(mode="empty")).convert(src, "chd")
+        _convert(FakeConverter(mode="empty"), src, "chd")
     assert ei.value.code == "E-CONVERT-FAILED"
     assert src.exists()
 
@@ -83,7 +106,7 @@ def test_convert_empty_output_fails(src: Path) -> None:
 def test_convert_timeout_original_intact(src: Path) -> None:
     before = fs.hash_file(src)
     with pytest.raises(SteamZeroError) as ei:
-        ConversionManager(FakeConverter(mode="timeout")).convert(src, "chd")
+        _convert(FakeConverter(mode="timeout"), src, "chd")
     assert ei.value.code == "E-CONVERT-TIMEOUT"
     assert fs.hash_file(src) == before
     assert not any(paths.staging_dir().iterdir())
@@ -94,7 +117,7 @@ def test_convert_enospc_preflight(src: Path, monkeypatch: pytest.MonkeyPatch) ->
     conv = FakeConverter()
     monkeypatch.setattr(fs, "free_space", lambda _p: 1)
     with pytest.raises(SteamZeroError) as ei:
-        ConversionManager(conv).convert(src, "chd")
+        _convert(conv, src, "chd")
     assert ei.value.code == "E-STORAGE-SPACE"
     assert conv.called is False  # nem chamou a ferramenta
     assert src.exists()
@@ -103,7 +126,7 @@ def test_convert_enospc_preflight(src: Path, monkeypatch: pytest.MonkeyPatch) ->
 def test_convert_rejects_format_traversal_before_converter(src: Path) -> None:
     converter = FakeConverter()
     with pytest.raises(SteamZeroError) as error:
-        ConversionManager(converter).convert(src, "../../outside")
+        _convert(converter, src, "../../outside")
     assert error.value.code == "E-API-SCHEMA"
     assert converter.called is False
     assert src.read_bytes() == b"original-dump-bytes"
@@ -115,7 +138,7 @@ def test_convert_never_overwrites_same_name_or_existing_destination(src: Path) -
     fs.write_atomic(collision, b"existing-output")
 
     with pytest.raises(SteamZeroError) as error:
-        ConversionManager(converter).convert(src, "chd", dest_dir=src.parent)
+        _convert(converter, src, "chd", dest_dir=src.parent)
 
     assert error.value.code == "E-TX-STALE-PLAN"
     assert converter.called is False
@@ -128,7 +151,7 @@ def test_convert_rejects_destination_equal_to_original(src: Path) -> None:
     before = fs.hash_file(src)
 
     with pytest.raises(SteamZeroError) as error:
-        ConversionManager(converter).convert(src, "iso", dest_dir=src.parent)
+        _convert(converter, src, "iso", dest_dir=src.parent)
 
     assert error.value.code == "E-TX-STALE-PLAN"
     assert converter.called is False
@@ -140,7 +163,7 @@ def test_converter_only_receives_staged_copy_and_mutation_is_detected(src: Path)
     before = fs.hash_file(src)
 
     with pytest.raises(SteamZeroError) as error:
-        ConversionManager(FakeConverter(mode="mutate-input")).convert(src, "chd")
+        _convert(FakeConverter(mode="mutate-input"), src, "chd")
 
     assert error.value.code == "E-TX-STALE-PLAN"
     assert fs.hash_file(src) == before
@@ -153,7 +176,7 @@ def test_converter_oserror_is_mapped_and_staging_is_clean(src: Path) -> None:
     before = fs.hash_file(src)
 
     with pytest.raises(SteamZeroError) as error:
-        ConversionManager(FakeConverter(mode="error")).convert(src, "chd")
+        _convert(FakeConverter(mode="error"), src, "chd")
 
     assert error.value.code == "E-CONVERT-FAILED"
     assert fs.hash_file(src) == before
@@ -182,9 +205,31 @@ def test_publish_enospc_removes_partial_and_preserves_original(
 
     monkeypatch.setattr(fs, "copy_file_atomic", copy_with_failure)
     with pytest.raises(SteamZeroError) as error:
-        ConversionManager(FakeConverter()).convert(src, "chd")
+        _convert(FakeConverter(), src, "chd")
 
     assert error.value.code == "E-STORAGE-SPACE"
     assert fs.hash_file(src) == before
     assert not (paths.roms_dir() / "converted" / "Game.chd").exists()
     assert not any(paths.staging_dir().iterdir())
+
+
+def test_convert_rejects_target_not_declared_by_platform_before_converter(
+    src: Path,
+) -> None:
+    nes = src.with_name("Game.nes")
+    fs.write_atomic(nes, b"original-nes-bytes")
+    converter = FakeConverter()
+    policy = ConversionPolicy(
+        platform_id="nes-famicom",
+        nature="cartridge",
+        formats={"nes": ("nes",), "fds": ("fds",)},
+        conversion_targets=(),
+    )
+
+    with pytest.raises(SteamZeroError) as error:
+        ConversionManager(converter).convert(nes, "chd", policy=policy)
+
+    assert error.value.code == "E-CONTENT-UNSUPPORTED"
+    assert "nes-famicom (cartridge) não declara conversão nes->chd" in error.value.detail
+    assert converter.called is False
+    assert nes.read_bytes() == b"original-nes-bytes"

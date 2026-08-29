@@ -21,7 +21,7 @@ from steamzero.adapters.converters import (
 )
 from steamzero.core import fs, paths
 from steamzero.core.errors import SteamZeroError
-from steamzero.domain.convert import ConversionManager
+from steamzero.domain.convert import ConversionManager, ConversionPolicy
 
 
 def _registry(tool: ToolManifest, *, present: bool = True) -> ToolRegistry:
@@ -80,6 +80,16 @@ def _fake_runner(produced: bytes | None) -> Any:
         return 0 if produced is not None else 1
 
     return runner
+
+
+def _switch_policy() -> ConversionPolicy:
+    return ConversionPolicy(
+        platform_id="switch",
+        nature="digital",
+        formats={"nsp": ("nsp",), "nsz": ("nsz",), "xci": ("xci",)},
+        conversion_targets=("nsz",),
+        preferred_format="nsp",
+    )
 
 
 def test_nsp_to_nsz_conversion_preserves_original(env: Path, nsz_tool: ToolManifest) -> None:
@@ -252,7 +262,9 @@ def test_conversion_manager_directly_with_nsz_port(env: Path, nsz_tool: ToolMani
     src.write_bytes(b"original-nsp-bytes")
 
     converter = NszConverter(runner=_fake_runner(b"compressed-nsz"), which=lambda _tool: "/bin/nsz")
-    result = ConversionManager(converter).convert(src, "nsz", dest_dir=env / "out")
+    result = ConversionManager(converter).convert(
+        src, "nsz", policy=_switch_policy(), dest_dir=env / "out"
+    )
 
     assert result.dest.exists()
     assert result.dest.read_bytes() == b"compressed-nsz"

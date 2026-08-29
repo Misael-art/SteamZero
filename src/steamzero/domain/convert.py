@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import errno
 import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -21,6 +22,93 @@ from steamzero.ports import ConversionTimeout, ConverterPort
 
 _SPACE_MARGIN = 16 * 1024 * 1024  # 16 MiB
 _FORMAT_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,15}$")
+_PLATFORM_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
+_MEDIA_NATURES = frozenset({"cartridge", "optical", "floppy", "tape", "digital", "hdd"})
+
+
+@dataclass(frozen=True)
+class ConversionPolicy:
+    """Contrato declarativo que autoriza uma conversão de mídia por plataforma."""
+
+    platform_id: str
+    nature: str
+    formats: Mapping[str, Sequence[str]]
+    conversion_targets: Sequence[str]
+    preferred_format: str | None = None
+
+    def __post_init__(self) -> None:
+        platform_id = self.platform_id.strip().lower()
+        nature = self.nature.strip().lower()
+        if not _PLATFORM_RE.fullmatch(platform_id) or nature not in _MEDIA_NATURES:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail="contrato de conversão de plataforma inválido"
+            )
+
+        normalized_formats: dict[str, tuple[str, ...]] = {}
+        for format_name, extensions in self.formats.items():
+            normalized_name = str(format_name).strip().lower()
+            if not _FORMAT_RE.fullmatch(normalized_name) or isinstance(extensions, str):
+                raise SteamZeroError(
+                    "E-API-SCHEMA", detail="formatos declarados para conversão são inválidos"
+                )
+            normalized_extensions = tuple(
+                str(ext).strip().lower().lstrip(".") for ext in extensions
+            )
+            if not normalized_extensions or any(
+                not re.fullmatch(r"[a-z0-9]{1,12}", ext) for ext in normalized_extensions
+            ):
+                raise SteamZeroError(
+                    "E-API-SCHEMA", detail="extensões declaradas para conversão são inválidas"
+                )
+            normalized_formats[normalized_name] = normalized_extensions
+        if not normalized_formats:
+            raise SteamZeroError("E-API-SCHEMA", detail="plataforma sem formatos declarados")
+
+        targets = tuple(str(target).strip().lower() for target in self.conversion_targets)
+        if any(not _FORMAT_RE.fullmatch(target) for target in targets):
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail="alvos declarados para conversão são inválidos"
+            )
+        preferred = self.preferred_format.strip().lower() if self.preferred_format else None
+        if preferred is not None and preferred not in normalized_formats:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail="formato preferido não está declarado pela plataforma"
+            )
+        object.__setattr__(self, "platform_id", platform_id)
+        object.__setattr__(self, "nature", nature)
+        object.__setattr__(self, "formats", normalized_formats)
+        object.__setattr__(self, "conversion_targets", targets)
+        object.__setattr__(self, "preferred_format", preferred)
+
+    def require_allowed(self, source: Path, target_format: str) -> None:
+        source_extension = source.suffix.lower().lstrip(".")
+        source_format = next(
+            (
+                format_name
+                for format_name, extensions in self.formats.items()
+                if source_extension in extensions
+            ),
+            None,
+        )
+        if source_format is None:
+            raise SteamZeroError(
+                "E-CONTENT-UNSUPPORTED",
+                detail=(
+                    f"{self.platform_id} ({self.nature}) não declara a extensão "
+                    f".{source_extension or 'sem-extensão'} para conversão"
+                ),
+            )
+        allowed_targets = set(self.conversion_targets)
+        if self.preferred_format is not None:
+            allowed_targets.add(self.preferred_format)
+        if target_format not in self.formats or target_format not in allowed_targets:
+            raise SteamZeroError(
+                "E-CONTENT-UNSUPPORTED",
+                detail=(
+                    f"{self.platform_id} ({self.nature}) não declara conversão "
+                    f"{source_format}->{target_format}"
+                ),
+            )
 
 
 @dataclass(frozen=True)
@@ -34,7 +122,12 @@ class ConversionManager:
         self._converter = converter
 
     def convert(
-        self, src: Path, target_format: str, *, dest_dir: Path | None = None
+        self,
+        src: Path,
+        target_format: str,
+        *,
+        policy: ConversionPolicy,
+        dest_dir: Path | None = None,
     ) -> ConvertResult:
         dest_dir = dest_dir or (paths.roms_dir() / "converted")
         normalized_format = target_format.strip().lower()
@@ -44,6 +137,7 @@ class ConversionManager:
             raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="origem não é arquivo regular")
 
         source_path = src.resolve(strict=True)
+        policy.require_allowed(source_path, normalized_format)
         destination_root = dest_dir.resolve(strict=False)
         destination = fs.resolve_within(
             destination_root, destination_root / f"{source_path.stem}.{normalized_format}"

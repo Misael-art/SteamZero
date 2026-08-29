@@ -26,7 +26,8 @@ from typing import Any
 from steamzero.api import contracts
 from steamzero.core import fs, ids, paths, transaction
 from steamzero.core.errors import SteamZeroError
-from steamzero.domain.convert import ConversionManager
+from steamzero.domain.convert import ConversionManager, ConversionPolicy
+from steamzero.domain.platforms import PlatformRegistry
 from steamzero.ports import ConversionTimeout
 
 Which = Callable[[str], str | None]
@@ -428,9 +429,24 @@ class SwitchRomConversionService:
         registry: ToolRegistry,
         *,
         converter: NszConverter | None = None,
+        platforms: PlatformRegistry | None = None,
     ) -> None:
         self._registry = registry
         self._converter = converter or NszConverter()
+        manifest = (platforms or PlatformRegistry.bundled()).get("switch")
+        self._policy = ConversionPolicy(
+            platform_id=manifest.id,
+            nature=str(manifest.media["nature"]),
+            formats=dict(manifest.media["formats"]),
+            conversion_targets=tuple(
+                str(item) for item in manifest.media.get("conversionTargets", ())
+            ),
+            preferred_format=(
+                str(manifest.media["preferredFormat"])
+                if manifest.media.get("preferredFormat")
+                else None
+            ),
+        )
 
     def plan_convert(
         self,
@@ -464,7 +480,7 @@ class SwitchRomConversionService:
         preview_root = paths.staging_for(f"conversion-plan-{ids.new_ulid()}")
         try:
             converted = ConversionManager(self._converter).convert(
-                source, target_format, dest_dir=preview_root
+                source, target_format, policy=self._policy, dest_dir=preview_root
             )
             return transaction.plan_copy_files(
                 {converted.dest: destination},
