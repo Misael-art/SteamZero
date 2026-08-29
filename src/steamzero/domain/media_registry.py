@@ -31,6 +31,7 @@ class MediaMasterEntry:
     title_id: str
     fingerprint: str
     canonical_name: str
+    platform_id: str = "switch"
     aliases: tuple[str, ...] = ()
     region: str = ""
     language: str = ""
@@ -47,6 +48,7 @@ class MediaMasterEntry:
             "titleId": self.title_id,
             "fingerprint": self.fingerprint,
             "canonicalName": self.canonical_name,
+            "platformId": self.platform_id,
             "aliases": list(self.aliases),
             "region": self.region,
             "language": self.language,
@@ -85,6 +87,10 @@ class MediaMasterEntry:
             title_id=d.get("titleId", ""),
             fingerprint=d.get("fingerprint", ""),
             canonical_name=d.get("canonicalName", ""),
+            # Registros v1 não carregavam plataforma. Eles só podiam ter sido
+            # escritos sob masters/switch, portanto o fallback preserva o
+            # layout existente em vez de adivinhar uma plataforma nova.
+            platform_id=d.get("platformId", "switch"),
             aliases=tuple(d.get("aliases", [])),
             region=d.get("region", ""),
             language=d.get("language", ""),
@@ -143,6 +149,20 @@ class MediaRegistry:
         fs.write_atomic_text(
             reg_path / "assignments-v1.json",
             json.dumps({"entries": entries_list}, indent=2, ensure_ascii=False),
+        )
+
+    @staticmethod
+    def assignments_bytes(entries: dict[str, MediaMasterEntry]) -> bytes:
+        """Renderiza o registro para entrar em um plano transacional.
+
+        A migração de layout não pode mover o master e atualizar a referência
+        em duas operações independentes: uma queda entre elas deixaria o
+        registry apontando para um caminho inexistente. O núcleo transacional
+        aplica e reverte ambos no mesmo journal.
+        """
+        entries_list = [entries[game_id].to_dict() for game_id in sorted(entries)]
+        return (json.dumps({"entries": entries_list}, indent=2, ensure_ascii=False) + "\n").encode(
+            "utf-8"
         )
 
     def register_platform(self, slug: str, name: str, kinds: tuple[str, ...]) -> None:

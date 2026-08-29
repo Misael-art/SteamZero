@@ -167,13 +167,19 @@ def test_pipeline_collect_candidate_optimize_and_registry(
         optimizer_tool=lambda src, dst, _profile: dst.write_bytes(src.read_bytes()) > 0,
         candidate_fetcher=lambda _url: PNG,
     )
-    collected = pipeline.collect(source, "g", "tid", "fp", "Game", kind="boxart")
+    collected = pipeline.collect(
+        source, "g", "tid", "fp", "Game", kind="boxart", platform_id="nes-famicom"
+    )
     assert collected.success
-    assert pipeline.get_registry_entry("g") is not None
+    entry = pipeline.get_registry_entry("g")
+    assert entry is not None and entry.platform_id == "nes-famicom"
+    assert collected.collected["box2d"].is_relative_to(root / "masters" / "nes-famicom")
     assert canonical_media_kind("grid") == "box2d"
     assert canonical_media_kind("hero") == "hero"
 
-    remote = pipeline.collect_from_candidate(_candidate("icon"), "g", "tid", "fp", "Game")
+    remote = pipeline.collect_from_candidate(
+        _candidate("icon"), "g", "tid", "fp", "Game", platform_id="nes-famicom"
+    )
     assert remote.success
     entry = pipeline.get_registry_entry("g")
     assert entry is not None and entry.provenance is not None
@@ -196,6 +202,33 @@ def test_pipeline_collect_candidate_optimize_and_registry(
     monkeypatch.setattr(media_module, "_detect_pillow", lambda: False)
     no_optimizer = MediaPipeline(root)
     assert no_optimizer.optimize("g").skipped == ["optimizer-unavailable"]
+
+
+def test_platform_layout_migration_moves_registered_master_and_rolls_back(tmp_path: Path) -> None:
+    root = tmp_path / "media"
+    source = tmp_path / "source.png"
+    source.write_bytes(PNG)
+    pipeline = MediaPipeline(root)
+    pipeline.collect(source, "g", "tid", "fp", "Game")
+    legacy = next((root / "masters" / "switch").rglob("*.png"))
+    orphan = root / "masters" / "switch" / "box2d" / "orphan.png"
+    orphan.write_bytes(PNG)
+
+    plan = pipeline.plan_platform_layout_migration({"g": "nes-famicom"})
+    assert plan.kind == "media.platform-layout-migration"
+    assert {action.kind for action in plan.actions} == {"move", "write"}
+    applied = pipeline.apply_platform_layout_migration(plan.plan_id, plan.confirm_token)
+    migrated = root / "masters" / "nes-famicom" / "box2d" / legacy.name
+    assert applied.status == "ok"
+    assert migrated.is_file() and not legacy.exists()
+    assert orphan.is_file()
+    assert pipeline.get_registry_entry("g").platform_id == "nes-famicom"  # type: ignore[union-attr]
+
+    rolled_back = pipeline.rollback_platform_layout_migration(applied.operation_id)
+    assert rolled_back.status == "rolled-back"
+    assert legacy.is_file() and not migrated.exists()
+    assert orphan.is_file()
+    assert pipeline.get_registry_entry("g").platform_id == "switch"  # type: ignore[union-attr]
 
 
 def test_pipeline_rejects_unsafe_or_failed_optimizer_outputs(tmp_path: Path) -> None:

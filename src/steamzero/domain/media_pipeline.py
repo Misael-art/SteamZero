@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import os
-from collections.abc import Callable
-from dataclasses import dataclass, field
+import re
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from steamzero.core import fs, paths, transaction
@@ -23,10 +24,18 @@ from steamzero.ports import MediaCandidate, MediaProviderPort
 _OWNERSHIP_MARKER = "# SteamZero-Boot-Managed: true"
 _MAX_DOWNLOAD = 32 * 1024 * 1024
 _KIND_ALIASES = {"boxart": "box2d", "grid": "box2d"}
+_PLATFORM_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 
 
 def canonical_media_kind(kind: str) -> str:
     return _KIND_ALIASES.get(kind, kind)
+
+
+def _platform_segment(platform_id: str) -> str:
+    """Valida o identificador que entra em um caminho gerenciado."""
+    if not _PLATFORM_ID.fullmatch(platform_id):
+        raise SteamZeroError("E-API-SCHEMA", detail="id de plataforma de mídia inválido")
+    return platform_id
 
 
 def _download_candidate(url: str) -> bytes:
@@ -122,6 +131,7 @@ class MediaPipeline:
         fingerprint: str,
         canonical_name: str,
         kind: str = "box2d",
+        platform_id: str = "switch",
     ) -> CollectionResult:
         result = CollectionResult(game_id=game_id)
         try:
@@ -130,9 +140,10 @@ class MediaPipeline:
             result.failed.append(str(e))
             return result
         kind = canonical_media_kind(kind)
+        platform_id = _platform_segment(platform_id)
         sha256 = hashlib.sha256(data).hexdigest()
         ext = MASTER_EXTENSIONS.get(kind, ".png")
-        master_rel = Path("masters") / "switch" / kind / f"{sha256}{ext}"
+        master_rel = Path("masters") / platform_id / kind / f"{sha256}{ext}"
         master_path = self._media_root / master_rel
         fs.ensure_dir(master_path.parent)
         if not master_path.is_file():
@@ -146,6 +157,7 @@ class MediaPipeline:
             title_id=title_id,
             fingerprint=fingerprint,
             canonical_name=canonical_name,
+            platform_id=platform_id,
             metadata_origin="local-import",
             confirmed=True,
             masters=masters,
@@ -161,9 +173,11 @@ class MediaPipeline:
         title_id: str,
         fingerprint: str,
         canonical_name: str,
+        platform_id: str = "switch",
     ) -> CollectionResult:
         result = CollectionResult(game_id=game_id)
         kind = canonical_media_kind(candidate.media_kind)
+        platform_id = _platform_segment(platform_id)
         ext = MASTER_EXTENSIONS.get(kind, ".png")
         try:
             data = self._candidate_fetcher(candidate.url)
@@ -174,7 +188,7 @@ class MediaPipeline:
             result.failed.append("invalid-magic")
             return result
         sha256 = hashlib.sha256(data).hexdigest()
-        master_rel = Path("masters") / "switch" / kind / f"{sha256}{ext}"
+        master_rel = Path("masters") / platform_id / kind / f"{sha256}{ext}"
         master_path = self._media_root / master_rel
         fs.ensure_dir(master_path.parent)
         if not master_path.is_file():
@@ -195,6 +209,7 @@ class MediaPipeline:
             title_id=title_id,
             fingerprint=fingerprint,
             canonical_name=canonical_name,
+            platform_id=platform_id,
             metadata_origin=candidate.provider,
             confirmed=True,
             provenance=provenance,
@@ -215,6 +230,7 @@ class MediaPipeline:
         if entry is None:
             result.failed.append("no-registry-entry")
             return result
+        platform_id = _platform_segment(entry.platform_id)
         profiles = [profile] if profile else list(STEAM_PROFILES)
         for pname in profiles:
             for kind, steam_kinds in KIND_TO_STEAM_PROFILES.items():
@@ -224,7 +240,7 @@ class MediaPipeline:
                 if raw_master is None:
                     continue
                 master_rel = Path(raw_master)
-                expected_root = Path("masters") / "switch" / kind
+                expected_root = Path("masters") / platform_id / kind
                 if (
                     master_rel.is_absolute()
                     or ".." in master_rel.parts
@@ -241,7 +257,7 @@ class MediaPipeline:
                     continue
                 opt_rel = (
                     Path("optimized")
-                    / "switch"
+                    / platform_id
                     / pname
                     / f"{game_id}_{pd.key}{MASTER_EXTENSIONS.get(kind, '.png')}"
                 )
@@ -478,7 +494,10 @@ class MediaPipeline:
         )
 
     def _find_optimized(self, game_id: str, profile: str) -> Path | None:
-        opt_root = self._media_root / "optimized" / "switch" / profile
+        entry = self._registry.get_entry(game_id)
+        if entry is None:
+            return None
+        opt_root = self._media_root / "optimized" / _platform_segment(entry.platform_id) / profile
         if not opt_root.is_dir():
             return None
         for f in opt_root.iterdir():
@@ -491,6 +510,72 @@ class MediaPipeline:
 
     def find_optimized(self, game_id: str, profile: str) -> Path | None:
         return self._find_optimized(game_id, profile)
+
+    def plan_platform_layout_migration(
+        self, platform_by_game: Mapping[str, str]
+    ) -> transaction.Plan:
+        """Planeja a separação de masters registrados sem adivinhar órfãos.
+
+        Só entradas registradas sob o layout legado ``masters/switch`` são
+        elegíveis. Arquivos sem entrada, como os observados no host, ficam
+        intactos: não há prova suficiente para escolher seu destino. O plano
+        move o arquivo e atualiza o registry em uma única transação, com
+        verificação de hash e rollback integral providos pelo núcleo.
+        """
+        moves: dict[Path, Path] = {}
+        migrated = dict(self._registry.entries)
+        changed = False
+        for game_id, requested_platform in platform_by_game.items():
+            entry = self._registry.get_entry(game_id)
+            if entry is None:
+                continue
+            platform_id = _platform_segment(requested_platform)
+            masters = dict(entry.masters)
+            for kind, raw_rel in entry.masters.items():
+                rel = Path(raw_rel)
+                legacy_root = Path("masters") / "switch" / kind
+                if rel.is_absolute() or ".." in rel.parts:
+                    raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="master legado inseguro")
+                if not rel.is_relative_to(legacy_root) or platform_id == "switch":
+                    continue
+                source = self._media_root / rel
+                if source.is_symlink() or not source.is_file():
+                    raise SteamZeroError("E-TX-STALE-PLAN", detail="master registrado não existe")
+                target_rel = Path("masters") / platform_id / kind / rel.name
+                moves[source] = self._media_root / target_rel
+                masters[kind] = target_rel.as_posix()
+                changed = True
+            if entry.platform_id != platform_id:
+                changed = True
+            migrated[game_id] = replace(entry, platform_id=platform_id, masters=masters)
+
+        writes = (
+            {
+                self._media_root
+                / "registry"
+                / "assignments-v1.json": MediaRegistry.assignments_bytes(migrated)
+            }
+            if changed
+            else None
+        )
+        return transaction.plan_move_files(
+            moves,
+            root=self._media_root,
+            kind="media.platform-layout-migration",
+            writes=writes,
+        )
+
+    def apply_platform_layout_migration(
+        self, plan_id: str, confirm_token: str
+    ) -> transaction.ApplyResult:
+        result = transaction.apply(plan_id, confirm_token)
+        self._registry = MediaRegistry.load(self._media_root)
+        return result
+
+    def rollback_platform_layout_migration(self, operation_id: str) -> transaction.RollbackResult:
+        result = transaction.rollback(operation_id)
+        self._registry = MediaRegistry.load(self._media_root)
+        return result
 
 
 def _validate_image_magic(data: bytes) -> bool:
