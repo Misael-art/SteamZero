@@ -8204,3 +8204,28 @@ removida imediatamente e não ficou em evidência.
 format, mypy, independence e boundaries verdes. O daemon legítimo atualizou
 seu próprio state home durante a suíte; o harness identificou o PID e não
 atribuiu a alteração aos testes.
+
+## 2026-08-29 — Conversão só por contrato declarado da plataforma
+
+**Baseline e correção.** `ConversionManager.convert` aceitava um nome de
+formato sintaticamente válido sem receber plataforma, natureza ou os formatos
+declarados; uma chamada direta podia portanto solicitar **NES→CHD**. O commit
+`95ebe11` introduz `ConversionPolicy`: plataforma, natureza, `media.formats`,
+`conversionTargets` e formato preferido são validados antes do staging e antes
+de chamar qualquer conversor. Origem ou destino ausente do contrato retorna
+`E-CONTENT-UNSUPPORTED` com o par recusado no detalhe.
+
+**Compatibilidade declarativa.** O serviço NSZ agora forma a política a partir
+do manifesto Switch. `nsp→nsz` continua permitido pelo alvo declarado e
+`nsz→nsp` pelo formato preferido; a prova de integração mantém o original e o
+rollback. Os 32 manifestos empacotados que realmente declaram formatos foram
+validados contra a política; manifestos cloud sem formatos não ganham caminho
+de conversão por isso.
+
+**Falha corrigida no fechamento.** A primeira suíte integral terminou com
+5 falhas de `test_project_status`: o item novo usava valores fora do schema
+(`in-progress`, `not-applicable` e digest vazio), não uma falha de produto.
+O registro foi corrigido, as visões foram regeneradas e o teste de status passou
+(10). A suíte integral repetida passou: 5291 passed / 44 skipped em 30m36s;
+o único aviso foi o daemon instalado, já existente antes do runner, escrever
+`logs/core.jsonl` e `state.db` no seu próprio state home.

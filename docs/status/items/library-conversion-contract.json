@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-LIBRARY-CONVERSION-CONTRACT",
+  "title": "Conversão de biblioteca por contrato de plataforma",
+  "domain": "platform",
+  "implementation": "complete",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/domain/convert.py",
+    "src/steamzero/adapters/converters.py",
+    "tests/integration/test_convert.py",
+    "tests/integration/test_nsz_conversion.py"
+  ],
+  "scopeDigest": "4be35f74ddc7d601a3503e0ffa52ad0321173d74fff43be5dcf8a1a33024056a",
+  "dependsOn": [
+    "SZ-LIBRARY-CANONICAL"
+  ],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "A conversão recebe plataforma, natureza e formatos declarados antes de chamar a ferramenta.",
+    "Formato de origem e destino fora do contrato da plataforma são recusados sem executar o conversor.",
+    "O fluxo NSZ usa o manifesto Switch, preserva a conversão NSP↔NSZ e continua transacional."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_convert.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_convert.py tests/integration/test_nsz_conversion.py -q (21 passed); prova negativa NES→CHD: E-CONTENT-UNSUPPORTED antes de chamar o conversor; 32 contratos de mídia empacotados validados",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests -q (5291 passed, 44 skipped); ruff check/format, mypy, independence e boundaries verdes",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Integrar a branch; a interface genérica de workspace por plataforma deve consumir este contrato, sem reaplicar a regra Switch fora do manifesto.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-29",
+  "notes": "Baseline: ConversionManager.convert aceitava target_format apenas pela sintaxe e não recebia plataforma, natureza ou formatos; assim, uma chamada direta podia pedir CHD para .nes. Correção: ConversionPolicy recebe platformId, nature, formats, conversionTargets e preferredFormat declarados; ela recusa origem ou destino fora do contrato antes do staging/conversor. E-CONTENT-UNSUPPORTED já é registrado para conteúdo não suportado e o detail declara a plataforma, natureza e par recusado. O serviço NSZ constrói a política a partir do manifesto Switch, preservando NSP↔NSZ."
+}

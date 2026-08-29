@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-LIBRARY-CONVERSION-CONTRACT",
+  "item": "SZ-LIBRARY-CONVERSION-CONTRACT",
+  "branch": "codex/library-conversion-contract",
+  "baseRef": "9562d20",
+  "owner": "codex-library-conversion-contract",
+  "state": "closed",
+  "exclusivePaths": [
+    "src/steamzero/domain/convert.py",
+    "src/steamzero/adapters/converters.py",
+    "tests/integration/test_convert.py",
+    "tests/integration/test_nsz_conversion.py"
+  ],
+  "sharedPaths": [
+    "docs/status/items/library-conversion-contract.json",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Commit funcional 95ebe11 criado; integrar após os gates documentais. A interface de workspace por plataforma continua o próximo consumidor deste contrato.",
+  "updatedAt": "2026-08-29"
+}
