@@ -8240,3 +8240,49 @@ de quota sem registrar URL, corpo ou segredo. A prova real mostrou
 
 **Gates:** 5296 passed / 44 skipped em 35m52s; ruff, format, mypy,
 independence e boundaries verdes.
+
+## 2026-08-30 — Sessão: migração do workspace para composição por plataforma
+
+Terceira frente do item SZ-LIBRARY-CANONICAL fechada e provada no host.
+
+**Defeito (frente 3):** `build_switch_workspace` despejava a lista INTEIRA de
+jogos na superfície do Switch. Um disco de PSX aparecia dentro do Switch, as
+plataformas próprias ficavam vazias e o serial `SLUS_005.55` era validado
+contra o padrão de title id do Switch — a biblioteca mista real do operador
+reprovava o contrato do workspace.
+
+**Correção:** migração `build_switch_workspace` → `build_emulation_workspace`
+(commit `77e7f7f`). Cada jogo é roteado pela plataforma que a fonte canônica
+declarou (fallback `switch`), via `games_by_platform` e `_with_games`. Sem
+plataforma declarada o jogo não some permanece na superfície histórica do
+Switch até que todo produtor declare a própria plataforma.
+
+**Gate integral (árvore commitada, 33m):** 5299 passed / 44 skipped; ruff,
+format (527 arquivos), mypy (243), boundaries e independence verdes. O único
+teste que falhou no worktree sujo (`test_committed_catalog_and_generated_views_are_consistent`)
+ficou verde após o saneamento (docs fora de escopo revertidos, digests de pares
+revalidados, visões geradas). `git diff --check` limpo.
+
+**Commits:** `77e7f7f` (funcional, rename + roteamento + testes),
+`9c39cf7` (docs: revalida scopeDigest de pares), `af49819` (docs: workstream).
+Merge ff-only para `main` (`ad823e8..af49819`), push sem force.
+
+**Release governada:** `release_host.py prepare` do run verde `33314115183`
+(commit `af49819e1326`) + `install` com rollback `2.0.0rc1-a897f8ffcfed`.
+Host em `2.0.0rc1-af49819e1326` (wheel SHA-256
+`58afe75a69403437eed90aee2d1ffc73847fd801525a2612482baf30149a4bd0`,
+schemaVersion 4). Convergência `first`/`idempotent` ambos `converged`,
+daemon PID confirmado.
+
+**Prova física no host instalado:** `steamzero emulation workspace --json` —
+`truthState` ready (era unverified), 231 jogos, `playstation` 49 (era 0),
+`switch` 15 todos `platform=switch`, 0 jogos sem `platform`. Evidência em
+`docs/09-operations/evidence/2026-08-30-emulation-workspace-generico/`.
+
+**Estados degradados pré-existentes (não desta release):** `staging.orphan` 1,
+`backup.orphan` 1, `boot.direct` unknown (sem permissão de inspeção), `qml`
+exitCode 124 (janela offscreen 5s). `blockers: []`, `recovery.pending: 0`.
+
+**Fora de escopo (permanece):** lote 2 de manifestos, enxugar o read model,
+consumidores restantes (busca, launcher, scraping) contra a fonte única,
+`updateCount`/`dlcCount` não-Switch em release instalada.

@@ -1,0 +1,21 @@
+STEAMZERO WORKSPACE — RELEASE 2.0.0rc1-af49819e1326
+truthState: ready
+
+platform                 games  declared-in
+------------------------------------------------
+master-system               51  dist=1
+playstation                 49  dist=1
+nes-famicom                 33  dist=1
+nintendo-handheld           30  dist=1
+nintendo-3ds                19  dist=1
+sega-saturn                 18  dist=1
+switch                      15  dist=1
+playstation-2                6  dist=1
+dreamcast                    5  dist=1
+wii-u                        2  dist=1
+nintendo-console             1  dist=1
+playstation-3                1  dist=1
+neo-geo-cd                   1  dist=1
+------------------------------------------------
+TOTAL games: 231
+missing platform fields: 0
