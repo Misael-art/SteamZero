@@ -16,6 +16,7 @@ from steamzero.adapters.lifecycle import ComponentLifecycle
 from steamzero.adapters.registry import AdapterRegistry, AdapterSource, load_manifest
 from steamzero.core import fs, paths, state, transaction
 from steamzero.core.errors import SteamZeroError
+from steamzero.domain import state_audit
 
 _PREFIX = "RetroArch-Linux-x86_64/RetroArch-Linux-x86_64.AppImage.home/.config/retroarch/cores/"
 
@@ -218,4 +219,104 @@ def test_a_core_from_someone_else_is_still_refused(tmp_path) -> None:
     link.symlink_to(alvo)
     assert LibretroCoreExecutor._target_is_ours(link, meta) is False, (
         "symlink no lugar do alvo foi tratado como nosso"
+    )
+
+
+def test_install_leaves_no_orphan_staging(store: state.StateStore, tmp_path: Path) -> None:
+    """Um install de core não pode deixar staging órfão (defeito 2026-08-30).
+
+    A árvore de extração vive em ``staging/libretro/<sha>/<adapter>/``, separada
+    da staging por operação (``staging/<opId>/``) que o transaction limpa. O
+    commit do plano copia o core para o alvo, mas nunca remove a árvore de
+    extração — sobrando um órfão que o ``state audit`` reporta e que o doctor
+    rebaixa para `degraded`. Aqui o install precisa terminar com o audit limpo.
+    """
+    payload = b"no-orphan-core"
+    archive = b"pinned-archive"
+    root = tmp_path / "cores"
+    executor = LibretroCoreExecutor(
+        store,
+        _registry(archive, payload),
+        Artifacts(archive),
+        core_root=root,
+        archive_reader=_archive_reader(payload, "mgba"),
+    )
+
+    prepared = executor.plan_install("libretro-mgba")
+    executor.apply(prepared, prepared.plan.confirm_token)
+    assert executor.status("libretro-mgba")["state"] == "installed"
+
+    report = state_audit.audit(store)
+    assert report.orphan_staging == [], (
+        f"install de core deixou staging órfã: {report.orphan_staging}"
+    )
+
+
+def test_rollback_after_install_leaves_no_orphan_staging(
+    store: state.StateStore, tmp_path: Path
+) -> None:
+    """Rollback de install de core também limpa a staging de extração."""
+    payload = b"rollback-core"
+    archive = b"pinned-archive"
+    root = tmp_path / "cores"
+    executor = LibretroCoreExecutor(
+        store,
+        _registry(archive, payload),
+        Artifacts(archive),
+        core_root=root,
+        archive_reader=_archive_reader(payload, "mgba"),
+    )
+
+    prepared = executor.plan_install("libretro-mgba")
+    applied = executor.apply(prepared, prepared.plan.confirm_token)
+    executor.rollback("libretro-mgba", applied.operation_id)
+    assert executor.status("libretro-mgba")["state"] == "missing"
+
+    report = state_audit.audit(store)
+    assert report.orphan_staging == [], (
+        f"rollback de core deixou staging órfã: {report.orphan_staging}"
+    )
+
+
+def test_crash_after_commit_keeps_core_and_cleans_staging(
+    store: state.StateStore, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Queda in-process após o commit (roll-forward) mantém o core instalado.
+
+    O `finally` do apply roda mesmo sob `SimulatedKill`, então a árvore de
+    extração é removida e o `state audit` fica limpo. O objetivo é combinar a
+    garantia de convergência da transação com a de nenhum órfão de staging.
+    """
+    payload = b"crash-core"
+    archive = b"pinned-archive"
+    root = tmp_path / "cores"
+    executor = LibretroCoreExecutor(
+        store,
+        _registry(archive, payload),
+        Artifacts(archive),
+        core_root=root,
+        archive_reader=_archive_reader(payload, "mgba"),
+    )
+
+    prepared = executor.plan_install("libretro-mgba")
+
+    def crash_after_commit(stage: str) -> None:
+        if stage == "apply.after-commit":
+            raise transaction.SimulatedKill()
+
+    transaction.set_crash_hook(crash_after_commit)
+    try:
+        with pytest.raises(transaction.SimulatedKill):
+            executor.apply(prepared, prepared.plan.confirm_token)
+    finally:
+        transaction.set_crash_hook(None)
+
+    recovered = transaction.recover_plan(prepared.plan.plan_id)
+    outcomes = [item.outcome for item in recovered]
+    assert outcomes in (["kept"], ["applied"]), outcomes
+    assert executor.status("libretro-mgba")["state"] == "installed"
+
+    report = state_audit.audit(store)
+    assert report.orphan_staging == [], (
+        f"crash pós-commit deixou staging órfã: {report.orphan_staging}"
     )

@@ -42,6 +42,7 @@ class PreparedLibretroCore:
     manifest: AdapterManifest
     source: AdapterSource
     plan: transaction.Plan
+    extraction_stage: Path | None = None
 
 
 class LibretroCoreExecutor:
@@ -133,7 +134,9 @@ class LibretroCoreExecutor:
             writes={metadata_path: metadata},
             replace_existing=target.exists() or target.is_symlink(),
         )
-        return PreparedLibretroCore(manifest, source, plan)
+        return PreparedLibretroCore(
+            manifest, source, plan, extraction_stage=self._extraction_stage(manifest, source)
+        )
 
     def plan_uninstall(self, adapter_id: str) -> PreparedLibretroCore:
         manifest, source, core_id, digest = self._details(adapter_id)
@@ -156,13 +159,22 @@ class LibretroCoreExecutor:
             if self.status(prepared.manifest.id)["state"] != expected:
                 raise RuntimeError("estado do core após apply não confere com o plano")
 
-        result = transaction.apply(prepared.plan.plan_id, confirm_token, smoke=verify)
+        # A staging de extração fica FORA do plano; precisa ser limpa mesmo em
+        # queda (BaseException, ex. SimulatedKill de prova de crash) e quando o
+        # apply falha. O `transaction.apply` pode lançar antes de devolver o
+        # resultado, então o try envolve a chamada e o cleanup ocorre no finally.
+        applied: transaction.ApplyResult | None = None
         try:
+            applied = transaction.apply(prepared.plan.plan_id, confirm_token, smoke=verify)
             self.persist_status(prepared.manifest.id)
-        except Exception:
-            transaction.rollback(result.operation_id, reason="libretro-state-failed")
+        except BaseException:
+            if applied is not None:
+                transaction.rollback(applied.operation_id, reason="libretro-state-failed")
             raise
-        return result
+        else:
+            return applied
+        finally:
+            self._cleanup_extraction_stage(prepared)
 
     def validate_plan(self, prepared: PreparedLibretroCore) -> None:
         """Recusa um plano delegado trocado antes de qualquer efeito.
@@ -214,7 +226,7 @@ class LibretroCoreExecutor:
         if crypto.digest_bytes(artifact).hexdigest != source.sha256:
             raise SteamZeroError("E-SUPPLY-CHECKSUM", detail="arquivo de cores diverge do pin")
         expected_name = _ARCHIVE_PREFIX + f"{core_id}_libretro.so"
-        stage = paths.staging_dir() / "libretro" / source.sha256 / manifest.id
+        stage = self._extraction_stage(manifest, source)
         fs.ensure_dir(stage)
         try:
             payload = self._archive_reader(artifact, expected_name)
@@ -240,6 +252,42 @@ class LibretroCoreExecutor:
         except (OSError, ValueError) as exc:
             raise SteamZeroError("E-SUPPLY-CHECKSUM", detail=str(exc)) from exc
         return extracted
+
+    def _extraction_stage(self, manifest: AdapterManifest, source: AdapterSource) -> Path:
+        """Árvore de extração do core, separada da staging por operação.
+
+        Vive em ``staging/libretro/<sha256>/<adapter>``. A staging por operação
+        (``staging/<opId>/``) é limpa pelo ``transaction``, mas esta árvore é
+        criada fora do plano e precisa ser removida quando o install termina —
+        caso contrário sobra um órfão que o ``state audit`` reporta.
+        """
+        sha = source.sha256 or "unknown"
+        return paths.staging_dir() / "libretro" / sha / manifest.id
+
+    def _cleanup_extraction_stage(self, prepared: PreparedLibretroCore) -> None:
+        """Remove a árvore de extração do core (idempotente).
+
+        A árvore é a que o ``plan_install`` guardou; só existe quando o core foi
+        realmente extraído (install de core já presente não extrai nada). Se já
+        não existir a remoção não é erro. Depois poda os diretórios vazios acima
+        (``<sha>`` e ``libretro``) até a raiz da staging, para que o ``state
+        audit`` não os reporte como órfãos.
+        """
+        stage = prepared.extraction_stage
+        if stage is None:
+            return
+        if stage.exists():
+            fs.remove_tree(stage)
+        root = paths.staging_dir()
+        cursor = stage.parent
+        while cursor != root and cursor.exists():
+            try:
+                if any(cursor.iterdir()):
+                    break
+                fs.remove_tree(cursor)
+            except OSError:
+                break
+            cursor = cursor.parent
 
     @staticmethod
     def _target_is_ours(target: Path, metadata: Path) -> bool:
