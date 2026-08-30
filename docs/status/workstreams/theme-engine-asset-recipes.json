@@ -6,7 +6,7 @@
   "branch": "codex/theme-engine-asset-recipes",
   "baseRef": "e71d9b41982de74328cd9956b447f6009cbee509",
   "owner": "codex-theme-engine",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/domain/asset_recipes.py",
     "src/steamzero/schemas/asset-recipe-v1.schema.json",
@@ -67,6 +67,6 @@
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
     "tests/integration/test_qml_handheld_offscreen.py"
   ],
-  "nextAction": "Release governada autorizada nesta thread: construir do commit verde e instalar no host.",
-  "updatedAt": "2026-08-18"
+  "nextAction": "Fechado por inventario seletivo (2026-08-30): toda a capacidade desta frente ja esta no main — asset_recipes.py, scene_layout/motion/surfaces/containers.py, dynamic_palette.py, glass_panels.py, studio_graph.py e os QML (AssetRecipePreview, SceneRepeater, GlassPanel, SceneMotion/Surface/Container Preview, ThemeStudioCanvas, SceneBadge) com os schemas v1 correspondentes. Nenhum arquivo de codigo da branch esta ausente do main. Branch codex/theme-engine-asset-recipes NAO mesclar — obsoleta. O item SZ-THEME-ENGINE permanece degraded e a pendencia real (proxima onda do Launcher/inspector do Studio + orcamento de desempenho aferido na release instalada) e trabalho de validacao fisica, registrada no item, nao deste workstream de desenvolvimento.",
+  "updatedAt": "2026-08-30"
 }

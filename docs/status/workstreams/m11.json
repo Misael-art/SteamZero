@@ -6,9 +6,9 @@
   "branch": "codex/m11-frontends-idempotentes",
   "baseRef": "e1e2c73",
   "owner": "m11-frontends",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": ["src/steamzero/adapters/frontends", "tests/integration/test_frontend_adapters.py"],
   "sharedPaths": ["docs/WORKLOG.md", "src/steamzero/adapters/registry.py"],
-  "nextAction": "Finalizar idempotencia e preparar integracao isolada do adapter M11.",
+  "nextAction": "Fechado por inventario seletivo (2026-08-30): a capacidade RetroFE foi realizada no main sob outra forma — domain/retrofe_declarations.py, retrofe_text_slice.py, scene_retrofe.py e tests (test_retrofe_vertical_slice, test_scene_retrofe, fixtures vs04_*.xml) — nao via adapters/frontends, que nunca existiu. A branch codex/m11-frontends-idempotentes NAO resolve como ref (removida/renomeada) e nao e ancestral. Item SZ-FRONTEND-RETROFE verif=dev op=ready integration=integrated. A pendencia de produto real (contratos de UI RetroFE e jornada importacao/aplicacao/lancamento) esta registrada no item.",
   "updatedAt": "2026-08-10"
 }

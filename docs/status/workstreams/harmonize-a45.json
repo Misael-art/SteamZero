@@ -6,7 +6,7 @@
   "branch": "codex/harmonize-main-a45",
   "baseRef": "245e8d8e9dd3977f15f9402143d6e432966e7202",
   "owner": "harmonize-a45-agent",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "docs/status",
     "tools/project_status.py",
@@ -29,6 +29,6 @@
     "src/steamzero/ui",
     "docs/KNOWN-GAPS.md"
   ],
-  "nextAction": "UI audit preservada via cherry-pick; corrigir status-check WORKLOG append-only e doctor falso verde; depois ADRs/M11/G37.",
-  "updatedAt": "2026-08-26"
+  "nextAction": "Fechado por inventario seletivo (2026-08-30): a harmonizacao a45 foi concluida e esta no main — tools/project_status.py, diagnostics/doctor.py, domain/theme_editor.py e tests/test_project_status.py + test_doctor.py + test_theme_editor.py presentes; o status-check do WORKLOG append-only e o doctor falso-verde foram corrigidos. Item SZ-GOVERNANCE-STATUS verif=dev op=ready. Branch codex/harmonize-main-a45 NAO mesclar — obsoleta. Restam ADRs/M11/G37 como trabalho normativo posterior, fora do escopo deste workstream.",
+  "updatedAt": "2026-08-30"
 }

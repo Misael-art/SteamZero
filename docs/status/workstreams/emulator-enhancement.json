@@ -6,7 +6,7 @@
   "branch": "codex/emulator-enhancement-platform",
   "baseRef": "31eac279a7e48a8d0e9468f7b9f3d2ec8e0bafab",
   "owner": "emulator-enhancement-agent",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/domain/emulator_config.py",
     "src/steamzero/domain/enhancement_catalog.py",
@@ -30,6 +30,6 @@
     "tests/unit/test_known_good_catalog.py"
   ],
   "sharedPaths": ["src/steamzero/adapters/emulation.py", "docs/WORKLOG.md", "docs/STATUS.md", "docs/ACTIVE-WORK.md"],
-  "nextAction": "Onda 1: identidade de título tipada por plataforma com bump do schema known-good-profile v1→v2 e migração preservando Switch.",
-  "updatedAt": "2026-08-20"
+  "nextAction": "Fechado por inventario seletivo (2026-08-30): a capacidade da Onda 1 ja esta no main sob a forma atual — game_identity.py, game_enhancements.py, adapters/enhancements/{installer,renderers}.py e os schemas known-good-profile v1 E v2 (bump v1->v2 feito). enhancement_catalog.py/enhancement_filter.py/known_good_catalog.py nunca materializaram nesses paths. Branch codex/emulator-enhancement-platform NAO mesclar — obsoleta. Item SZ-EMULATION-ENHANCEMENTS complete.",
+  "updatedAt": "2026-08-30"
 }

@@ -8497,3 +8497,35 @@ a repetir trabalho.
 
 Workstreams: EMULATOR-ENHANCEMENT, HARMONIZE-A45, M11 e THEME-ASSET-RECIPES
 seguem pendentes de inventário seletivo de capacidade (decisão de produto).
+
+## 2026-08-30 — Sessão: inventário seletivo das 4 frentes antigas
+
+Comparação capacidade por capacidade com main, sem merge bruto. Veredito:
+todas as 4 têm a capacidade presente no main (sob forma atual) — branches
+obsoletas/substituídas, fechadas com nota.
+
+- WS-2026-08-EMULATOR-ENHANCEMENT (branch 21 ahead) → obsoleta. Capacidade no
+  main: game_identity.py, game_enhancements.py,
+  adapters/enhancements/{installer,renderers}.py, schemas known-good-profile v1
+  E v2 (bump feito). enhancement_catalog/enhancement_filter/known_good_catalog
+  nunca materializou nesses paths. Item SZ-EMULATION-ENHANCEMENTS complete.
+- WS-2026-08-HARMONIZE-A45 (branch 25 ahead) → obsoleta. Harmonização a45 no
+  main: tools/project_status.py, diagnostics/doctor.py, domain/theme_editor.py,
+  tests correspondentes; status-check WORKLOG append-only e doctor falso-verde
+  corrigidos. Item SZ-GOVERNANCE-STATUS verif=dev op=ready. Restam ADRs/M11/G37
+  como trabalho normativo posterior.
+- WS-2026-08-M11 (branch sem ref remota) → substituída. RetroFE no main via
+  domain/retrofe_{declarations,text_slice}.py, scene_retrofe.py e tests
+  (test_retrofe_vertical_slice, test_scene_retrofe, fixtures vs04_*.xml) — não
+  via adapters/frontends, que nunca existiu. Item SZ-FRONTEND-RETROFE
+  verif=dev op=ready integrated. Pendência de produto (contratos de UI RetroFE
+  e jornada) registrada no item.
+- WS-2026-08-THEME-ASSET-RECIPES (branch 47 ahead) → obsoleta. Zero arquivos de
+  código ausentes do main: asset_recipes, scene_*, dynamic_palette, glass_panels,
+  studio_graph e QML correspondentes todos presentes. Item SZ-THEME-ENGINE segue
+  degraded; a pendência real (próxima onda + orçamento de desempenho) é trabalho
+  de validação física, registrada no item.
+
+Sem merge das 4 branches. Restam 6 workstreams ativos com pendência real:
+AURA-LAUNCHER, COMPONENT-MATRIZ, CONTROLS-INPUT-PROFILES, ERROR-CATALOG-AUDIT,
+M10, V2-HARMONIZED.
