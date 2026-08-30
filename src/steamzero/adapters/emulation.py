@@ -77,8 +77,8 @@ from steamzero.domain.bios_catalog import BiosLibrary
 from steamzero.domain.bitrot import BitrotManager, BitrotTarget
 from steamzero.domain.cloud_platforms import CloudPlatformService
 from steamzero.domain.emulation_workspace import (
+    build_emulation_workspace,
     build_global_management,
-    build_switch_workspace,
     compute_readiness,
 )
 from steamzero.domain.game_enhancements import ProviderRole
@@ -659,7 +659,7 @@ class EmulationController:
         controllers = self._controller_count()
         input_profile_status = self._input_profiles.status("switch")
 
-        workspace = build_switch_workspace(
+        workspace = build_emulation_workspace(
             probe=lambda emulator_id: next(
                 (
                     row["installState"] == "installed"

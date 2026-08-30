@@ -60,8 +60,8 @@ QML = shutil.which("qml6") or shutil.which("qml")
 
 from steamzero.adapters.desktop_contracts import handheld_ui_contracts  # noqa: E402
 from steamzero.domain.emulation_workspace import (  # noqa: E402
+    build_emulation_workspace,
     build_global_management,
-    build_switch_workspace,
 )
 from steamzero.domain.keys_firmware import RequirementCheck  # noqa: E402
 
@@ -147,7 +147,7 @@ def _sample_workspace() -> dict[str, Any]:
     — são as funções de domínio reais. Só as sondas e as linhas de emulador são
     fixas, para que duas execuções em máquinas diferentes deem o mesmo resultado.
     """
-    workspace = build_switch_workspace(
+    workspace = build_emulation_workspace(
         probe=lambda emulator_id: emulator_id == "eden",
         keys=RequirementCheck("ok", "keys", "rev17", "rev18", "Keys compatíveis."),
         firmware=RequirementCheck("ok", "firmware", "17.0.0", "18.0.1", "Firmware compatível."),

@@ -4,13 +4,13 @@ import json
 from pathlib import Path
 
 from steamzero.api import contracts
-from steamzero.domain.emulation_workspace import build_global_management, build_switch_workspace
+from steamzero.domain.emulation_workspace import build_emulation_workspace, build_global_management
 from steamzero.domain.keys_firmware import RequirementCheck
 from steamzero.domain.platforms import PlatformRegistry
 
 
 def test_switch_workspace_matches_versioned_contract() -> None:
-    payload = build_switch_workspace(
+    payload = build_emulation_workspace(
         probe=lambda emulator_id: emulator_id == "eden",
         keys=RequirementCheck("ok", "keys", "rev17", "rev18", "Keys compatíveis."),
         firmware=RequirementCheck("ok", "firmware", "17.0.0", "18.0.1", "Firmware compatível."),
@@ -74,7 +74,7 @@ def test_switch_workspace_matches_versioned_contract() -> None:
 
 
 def test_global_management_keeps_technical_and_editorial_counts_distinct() -> None:
-    payload = build_switch_workspace()
+    payload = build_emulation_workspace()
     global_management = build_global_management(
         platforms=payload["platforms"],
         editorial_platforms=[
@@ -103,7 +103,7 @@ def test_global_management_keeps_technical_and_editorial_counts_distinct() -> No
 
 
 def test_workspace_accepts_visible_game_with_unverified_identity() -> None:
-    payload = build_switch_workspace(
+    payload = build_emulation_workspace(
         games=[
             {
                 "id": "hash-prefix",
@@ -135,7 +135,7 @@ def test_probe_failure_degrades_to_data_instead_of_crashing() -> None:
     def broken_probe(_emulator_id: str) -> bool:
         raise OSError("runtime indisponível")
 
-    payload = build_switch_workspace(probe=broken_probe)
+    payload = build_emulation_workspace(probe=broken_probe)
 
     assert payload["truthState"] == "unverified"
     assert all(row["state"] == "unverified" for row in payload["platforms"][0]["emulators"])
@@ -143,7 +143,7 @@ def test_probe_failure_degrades_to_data_instead_of_crashing() -> None:
 
 
 def test_invalid_selection_falls_back_to_safe_defaults() -> None:
-    payload = build_switch_workspace(selected_scope="future", selected_area="future")
+    payload = build_emulation_workspace(selected_scope="future", selected_area="future")
 
     platform = payload["platforms"][0]
     assert platform["selectedScope"] == "global"
@@ -151,7 +151,7 @@ def test_invalid_selection_falls_back_to_safe_defaults() -> None:
 
 
 def test_requirement_kind_is_normalized_and_unwired_actions_are_disabled() -> None:
-    payload = build_switch_workspace(
+    payload = build_emulation_workspace(
         keys={
             "kind": "firmware",
             "status": "ok",

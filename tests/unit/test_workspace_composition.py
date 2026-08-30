@@ -17,7 +17,7 @@ from typing import Any
 
 import pytest
 
-from steamzero.domain.emulation_workspace import build_switch_workspace
+from steamzero.domain.emulation_workspace import build_emulation_workspace
 from steamzero.domain.platform_composer import EmulatorFacts
 
 
@@ -55,24 +55,24 @@ class TestWithoutFactsNothingIsClaimed:
     """
 
     def test_placeholder_is_preserved(self) -> None:
-        for platform in _others(build_switch_workspace()):
+        for platform in _others(build_emulation_workspace()):
             assert platform["state"] == "planned"
 
     def test_no_platform_claims_launchability(self) -> None:
-        for platform in _others(build_switch_workspace()):
+        for platform in _others(build_emulation_workspace()):
             assert platform.get("launchable") in (None, False)
 
 
 class TestWithFactsThePlatformSpeaks:
     def test_every_platform_gets_a_reason_when_not_launchable(self) -> None:
         """A regra que elimina a linha morta, verificada no payload inteiro."""
-        payload = build_switch_workspace(emulator_facts=_absent, core_present=lambda _c: False)
+        payload = build_emulation_workspace(emulator_facts=_absent, core_present=lambda _c: False)
         for platform in _others(payload):
             if platform.get("launchable") is False:
                 assert platform.get("launchReason"), f"{platform['id']} sem motivo"
 
     def test_emulator_rows_carry_name_and_icon(self) -> None:
-        payload = build_switch_workspace(emulator_facts=_absent)
+        payload = build_emulation_workspace(emulator_facts=_absent)
         rows = [
             row
             for platform in _others(payload)
@@ -85,20 +85,22 @@ class TestWithFactsThePlatformSpeaks:
 
     def test_missing_core_is_reported_per_platform(self) -> None:
         """O ponto do RetroArch: instalado não basta, o core é por plataforma."""
-        payload = build_switch_workspace(emulator_facts=_installed, core_present=lambda _c: False)
+        payload = build_emulation_workspace(
+            emulator_facts=_installed, core_present=lambda _c: False
+        )
         snes = next(p for p in _others(payload) if p["id"] == "snes")
         assert snes["launchable"] is False
         assert "snes9x" in str(snes["launchReason"])
 
     def test_present_core_makes_the_platform_launchable(self) -> None:
-        payload = build_switch_workspace(emulator_facts=_installed, core_present=lambda _c: True)
+        payload = build_emulation_workspace(emulator_facts=_installed, core_present=lambda _c: True)
         snes = next(p for p in _others(payload) if p["id"] == "snes")
         assert snes["launchable"] is True
         assert snes["launchReason"] is None
 
     def test_one_retroarch_install_serves_many_platforms(self) -> None:
         """A propriedade central: um adapter instalado, várias plataformas vivas."""
-        payload = build_switch_workspace(emulator_facts=_installed, core_present=lambda _c: True)
+        payload = build_emulation_workspace(emulator_facts=_installed, core_present=lambda _c: True)
         launchable = [p["id"] for p in _others(payload) if p.get("launchable")]
         assert len(launchable) >= 20, f"esperava muitas plataformas vivas, vi {len(launchable)}"
 
@@ -107,7 +109,7 @@ class TestSwitchIsUntouched:
     """A composição das demais não pode alterar a verdade do Switch."""
 
     def test_switch_still_comes_from_its_own_builder(self) -> None:
-        payload = build_switch_workspace(emulator_facts=_installed, core_present=lambda _c: True)
+        payload = build_emulation_workspace(emulator_facts=_installed, core_present=lambda _c: True)
         platforms = payload["platforms"]
         assert isinstance(platforms, list)
         switch = platforms[0]
@@ -115,7 +117,7 @@ class TestSwitchIsUntouched:
         assert "launchable" not in switch or switch.get("launchable") is None
 
     def test_switch_requirements_survive_composition(self) -> None:
-        payload = build_switch_workspace(
+        payload = build_emulation_workspace(
             keys={
                 "kind": "keys",
                 "status": "ok",
@@ -154,7 +156,7 @@ class TestBiosRequirementsAreProjected:
         return next(p for p in payload["platforms"] if p["id"] == platform_id)  # type: ignore[index]
 
     def test_missing_bios_blocks_primary_with_platform_and_emulator(self) -> None:
-        payload = build_switch_workspace(
+        payload = build_emulation_workspace(
             emulator_facts=_installed,
             core_present=lambda _c: True,
             bios_present=lambda _p, _a, _n: False,
@@ -166,7 +168,7 @@ class TestBiosRequirementsAreProjected:
         assert "kick34005.A500" in reason
 
     def test_present_bios_makes_the_platform_launchable(self) -> None:
-        payload = build_switch_workspace(
+        payload = build_emulation_workspace(
             emulator_facts=_installed,
             core_present=lambda _c: True,
             bios_present=lambda _p, _a, _n: True,
@@ -176,7 +178,7 @@ class TestBiosRequirementsAreProjected:
         assert amiga["launchReason"] is None
 
     def test_partial_bios_presence_is_missing_not_silent(self) -> None:
-        payload = build_switch_workspace(
+        payload = build_emulation_workspace(
             emulator_facts=_installed,
             core_present=lambda _c: True,
             bios_present=lambda _p, _a, name: name == "kick34005.A500",
@@ -195,7 +197,7 @@ class TestBiosRequirementsAreProjected:
 
     def test_requirement_is_unverified_without_a_probe(self) -> None:
         """Sem leitura do host não há como afirmar ausência: declara sem bloquear."""
-        payload = build_switch_workspace(emulator_facts=_installed, core_present=lambda _c: True)
+        payload = build_emulation_workspace(emulator_facts=_installed, core_present=lambda _c: True)
         amiga = self._platform(payload, "amiga")
         bios = amiga["requirements"]["bios"]  # type: ignore[index]
         assert bios["status"] == "unverified"
@@ -203,7 +205,7 @@ class TestBiosRequirementsAreProjected:
         assert amiga["launchable"] is True
 
     def test_emulator_row_carries_required_and_present(self) -> None:
-        payload = build_switch_workspace(
+        payload = build_emulation_workspace(
             emulator_facts=_installed,
             core_present=lambda _c: True,
             bios_present=lambda _p, _a, name: name == "kick34005.A500",
@@ -215,7 +217,7 @@ class TestBiosRequirementsAreProjected:
     def test_bios_of_a_non_primary_emulator_does_not_block(self) -> None:
         """PlayStation declara BIOS só no fallback RetroArch; o primário
         DuckStation não exige, e a plataforma não bloqueia por causa do fallback."""
-        payload = build_switch_workspace(
+        payload = build_emulation_workspace(
             emulator_facts=_installed,
             core_present=lambda _c: True,
             bios_present=lambda _p, _a, _n: False,
@@ -228,7 +230,7 @@ class TestBiosRequirementsAreProjected:
         def broken(_p: str, _a: str, _n: str) -> bool:
             raise RuntimeError("store central inacessível")
 
-        payload = build_switch_workspace(
+        payload = build_emulation_workspace(
             emulator_facts=_installed,
             core_present=lambda _c: True,
             bios_present=broken,
@@ -238,7 +240,7 @@ class TestBiosRequirementsAreProjected:
         assert amiga["launchable"] is False, "ausência não provada por leitura falha"
 
     def test_composed_bios_payload_still_validates(self) -> None:
-        build_switch_workspace(
+        build_emulation_workspace(
             emulator_facts=_installed,
             core_present=lambda _c: True,
             bios_present=lambda _p, _a, _n: False,
@@ -248,8 +250,8 @@ class TestBiosRequirementsAreProjected:
 class TestContractStillHolds:
     @pytest.mark.parametrize("core", [True, False])
     def test_composed_payload_validates(self, core: bool) -> None:
-        """build_switch_workspace valida contra o schema antes de retornar."""
-        build_switch_workspace(emulator_facts=_installed, core_present=lambda _c: core)
+        """build_emulation_workspace valida contra o schema antes de retornar."""
+        build_emulation_workspace(emulator_facts=_installed, core_present=lambda _c: core)
 
     def test_failing_adapter_degrades_only_its_own_platforms(self) -> None:
         """AGENTS.md §8: falha de um adapter não derruba a central.
@@ -263,7 +265,7 @@ class TestContractStillHolds:
                 raise RuntimeError("provedor quebrou")
             return _absent(adapter_id)
 
-        payload = build_switch_workspace(emulator_facts=broken)
+        payload = build_emulation_workspace(emulator_facts=broken)
         others = _others(payload)
         assert len(others) >= 30, "a central continua navegável"
 

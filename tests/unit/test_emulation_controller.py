@@ -3446,6 +3446,34 @@ def test_library_scan_covers_every_platform_directory_even_with_switch_present(
     assert "playstation" in platforms
 
 
+def test_workspace_routes_each_game_to_its_own_platform(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    """O jogo pertence à plataforma que o scanner declarou, não ao Switch.
+
+    A fonte canônica já grava `platform` em cada entrada, mas a projeção do
+    workspace despejava a lista INTEIRA na superfície do Switch: PSX e Mega
+    Drive apareciam dentro do Switch e as próprias plataformas ficavam sem
+    jogo nenhum. É a assimetria que esta frente existe para desfazer.
+    """
+    controller = _controller(monkeypatch, tmp_path)
+    root = _mixed_root(tmp_path)
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(root)}),
+    )
+    controller.scan_library()
+
+    workspace = controller.snapshot({"context": {}})
+    by_id = {str(row["id"]): row for row in workspace["platforms"]}
+
+    for platform_id in ("switch", "playstation", "mega-drive"):
+        rows = by_id[platform_id]["games"]
+        assert rows, f"{platform_id} ficou sem jogo na projeção"
+        assert {str(game["platform"]) for game in rows} == {platform_id}, (
+            f"{platform_id} recebeu jogo de outra plataforma: "
+            f"{ {str(game['platform']) for game in rows} }"
+        )
+
+
 def _mixed_root(tmp_path: Path) -> Path:
     """Raiz mista mínima: Switch, PSX e Mega Drive sob o mesmo pai."""
     root = tmp_path / "mixed-roms"

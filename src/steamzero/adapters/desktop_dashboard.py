@@ -47,7 +47,7 @@ from steamzero.diagnostics.doctor import run_doctor
 from steamzero.domain import theme_import_esde
 from steamzero.domain.bios_sources import approved_bios_sources, resolve_approved_bios_source
 from steamzero.domain.collections import CollectionManager
-from steamzero.domain.emulation_workspace import build_switch_workspace
+from steamzero.domain.emulation_workspace import build_emulation_workspace
 from steamzero.domain.operation_history import OperationHistory
 from steamzero.domain.playtime import PlaytimeCatalog
 from steamzero.domain.theme_editor import ThemeEditorManager
@@ -362,7 +362,7 @@ def _unreadable_workspace() -> dict[str, Any]:
     usuário que vê "importe suas keys" quando as keys estão instaladas conclui
     que os dados foram perdidos.
     """
-    payload = build_switch_workspace()
+    payload = build_emulation_workspace()
     for platform in payload["platforms"]:
         requirements = platform.get("requirements")
         if not isinstance(requirements, dict):

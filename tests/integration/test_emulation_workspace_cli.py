@@ -51,7 +51,7 @@ def _handler_calls() -> set[str]:
     """Nomes efetivamente CHAMADOS no handler.
 
     Verificar por substring reprovaria o docstring, que cita
-    `build_switch_workspace` para explicar o defeito. A primeira versão deste
+    `build_emulation_workspace` para explicar o defeito. A primeira versão deste
     teste caiu exatamente nessa armadilha — a mesma que ele existe para impedir.
     """
     names: set[str] = set()
@@ -68,12 +68,12 @@ class TestTheCliDoesNotComposeOnItsOwn:
     """O gate que impede a segunda implementação de renascer."""
 
     def test_the_handler_does_not_call_the_builder_directly(self) -> None:
-        """`build_switch_workspace` no handler é a forma exata do defeito.
+        """`build_emulation_workspace` no handler é a forma exata do defeito.
 
         Chamá-lo ali significa compor um read model paralelo ao do controller, e
         os dois divergem no primeiro argumento que alguém esquecer.
         """
-        assert "build_switch_workspace" not in _handler_calls(), (
+        assert "build_emulation_workspace" not in _handler_calls(), (
             "a CLI voltou a compor o workspace por conta própria; "
             "use EmulationController.snapshot()"
         )
@@ -100,12 +100,12 @@ class TestTheComposedWorkspaceCarriesHostState:
     def test_the_partial_composition_loses_games_and_keys(self) -> None:
         """Documenta o defeito, para que a correção tenha contra o que ser medida.
 
-        Se esta asserção parar de valer, o `build_switch_workspace` sem
+        Se esta asserção parar de valer, o `build_emulation_workspace` sem
         argumentos passou a compor sozinho — e aí o teste acima perde o sentido.
         """
-        from steamzero.domain.emulation_workspace import build_switch_workspace
+        from steamzero.domain.emulation_workspace import build_emulation_workspace
 
-        partial = build_switch_workspace(probe=lambda _emulator_id: True)
+        partial = build_emulation_workspace(probe=lambda _emulator_id: True)
         platform = self._switch(partial)
         assert not platform.get("games"), "sem `games`, a composição parcial não perde nada"
         assert (platform.get("requirements") or {}).get("keys", {}).get("status") == "unverified"
@@ -116,7 +116,7 @@ class TestTheComposedWorkspaceCarriesHostState:
         Não afirma um número: afirma que games e requisitos ATRAVESSAM. Fixar
         "15 jogos" amarraria o teste ao disco de uma máquina.
         """
-        from steamzero.domain.emulation_workspace import build_switch_workspace
+        from steamzero.domain.emulation_workspace import build_emulation_workspace
 
         # Os cinco campos que o schema exige, e não um dicionário aproximado:
         # o workspace valida o próprio contrato antes de retornar. A primeira
@@ -131,7 +131,7 @@ class TestTheComposedWorkspaceCarriesHostState:
                 "statusLabel": "Pronto para jogar",
             }
         ]
-        full = build_switch_workspace(
+        full = build_emulation_workspace(
             probe=lambda _emulator_id: True,
             # As SEIS chaves. `_requirement_payload` exige o conjunto completo
             # e, faltando qualquer uma, degrada em silêncio para `unverified` —
@@ -170,7 +170,7 @@ class TestEveryStateArgumentIsExercised:
     de silenciosamente ficar de fora — que é como o defeito nasceu.
     """
 
-    #: Parâmetros de `build_switch_workspace` que transportam estado do host.
+    #: Parâmetros de `build_emulation_workspace` que transportam estado do host.
     #: `selected_scope`/`selected_area` ficam de fora: são seleção de UI.
     STATE_ARGUMENTS = frozenset(
         {
@@ -190,9 +190,9 @@ class TestEveryStateArgumentIsExercised:
     def test_the_builder_signature_has_not_grown_silently(self) -> None:
         import inspect
 
-        from steamzero.domain.emulation_workspace import build_switch_workspace
+        from steamzero.domain.emulation_workspace import build_emulation_workspace
 
-        actual = set(inspect.signature(build_switch_workspace).parameters) - {
+        actual = set(inspect.signature(build_emulation_workspace).parameters) - {
             "selected_scope",
             "selected_area",
         }
@@ -225,7 +225,7 @@ class TestEveryStateArgumentIsExercised:
             for node in ast.walk(tree)
             if isinstance(node, ast.Call)
             and isinstance(node.func, ast.Name)
-            and node.func.id == "build_switch_workspace"
+            and node.func.id == "build_emulation_workspace"
         )
         passed = {keyword.arg for keyword in call.keywords}
         assert argument in passed, f"o controller não passa {argument!r}"
@@ -245,9 +245,9 @@ class TestAPartialRequirementIsDiagnosed:
     """
 
     def test_an_incomplete_requirement_is_diagnosed_not_silent(self) -> None:
-        from steamzero.domain.emulation_workspace import build_switch_workspace
+        from steamzero.domain.emulation_workspace import build_emulation_workspace
 
-        workspace = build_switch_workspace(
+        workspace = build_emulation_workspace(
             probe=lambda _emulator_id: True,
             keys={"kind": "keys", "status": "ok", "installed": "rev21"},
         )
@@ -262,9 +262,9 @@ class TestAPartialRequirementIsDiagnosed:
 
     def test_partial_value_keeps_authoritative_kind(self) -> None:
         """A posição no contrato continua autoritativa sobre o produtor."""
-        from steamzero.domain.emulation_workspace import build_switch_workspace
+        from steamzero.domain.emulation_workspace import build_emulation_workspace
 
-        workspace = build_switch_workspace(
+        workspace = build_emulation_workspace(
             probe=lambda _emulator_id: True,
             firmware={"kind": "keys", "installed": "22.5.0"},
         )

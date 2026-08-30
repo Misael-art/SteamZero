@@ -18,7 +18,7 @@ from typing import Any
 
 import pytest
 
-from steamzero.domain.emulation_workspace import build_switch_workspace
+from steamzero.domain.emulation_workspace import build_emulation_workspace
 
 
 def _requirement(kind: str, installed: str) -> dict[str, Any]:
@@ -48,7 +48,7 @@ def _games(count: int) -> list[dict[str, Any]]:
 def _healthy_workspace() -> dict[str, Any]:
     """Equivalente sintético do host descrito no diagnóstico: keys rev21,
     firmware 22.5.0, 15 jogos e os três emuladores instalados."""
-    return build_switch_workspace(
+    return build_emulation_workspace(
         probe=lambda _emulator_id: True,
         keys=_requirement("keys", "rev21"),
         firmware=_requirement("firmware", "22.5.0"),
@@ -103,14 +103,14 @@ class TestSimplifiedBuilderIsNotTheTruth:
 
     def test_bare_builder_erases_installed_versions(self) -> None:
         """Isto documenta o mecanismo do sintoma, não um comportamento desejado."""
-        bare = _switch(build_switch_workspace())
+        bare = _switch(build_emulation_workspace())
         assert bare["requirements"]["keys"]["installed"] is None
         assert bare["requirements"]["keys"]["status"] == "unverified"
         assert bare["games"] == []
 
     def test_healthy_and_bare_differ_exactly_where_it_hurts(self) -> None:
         healthy = _switch(_healthy_workspace())
-        bare = _switch(build_switch_workspace())
+        bare = _switch(build_emulation_workspace())
         assert healthy["requirements"]["keys"]["status"] == "ok"
         assert bare["requirements"]["keys"]["status"] == "unverified"
 
@@ -184,7 +184,7 @@ class TestDashboardPreservesTruthOnFailure:
             calls["n"] += 1
             if calls["n"] == 2:
                 raise RuntimeError("falha transitória")
-            return build_switch_workspace(
+            return build_emulation_workspace(
                 probe=lambda _e: True,
                 keys=_requirement("keys", "rev21"),
                 firmware=_requirement("firmware", "22.5.0"),
@@ -206,7 +206,7 @@ class TestNoImportIsRequestedWhileProjectionsHold:
 
     def test_missing_requirement_offers_repair_without_erasing(self) -> None:
         """Ausência REAL pede importação — e é isso que a distingue de falha."""
-        payload = build_switch_workspace(
+        payload = build_emulation_workspace(
             probe=lambda _e: True,
             keys={
                 "kind": "keys",

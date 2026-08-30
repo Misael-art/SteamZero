@@ -42,8 +42,8 @@ sys.path.insert(0, str(ROOT / "src"))
 from steamzero.adapters.desktop_contracts import handheld_ui_contracts  # noqa: E402
 from steamzero.api import contracts  # noqa: E402
 from steamzero.domain.emulation_workspace import (  # noqa: E402
+    build_emulation_workspace,
     build_global_management,
-    build_switch_workspace,
 )
 from steamzero.domain.keys_firmware import RequirementCheck  # noqa: E402
 
@@ -154,7 +154,7 @@ def _emulation_workspace(*, installed: str | None = "eden") -> dict[str, Any]:
     áreas e ações a tela desenha, e uma versão inventada mediria uma tela que
     não existe. O schema `emulation-workspace-v1` valida o resultado.
     """
-    workspace = build_switch_workspace(
+    workspace = build_emulation_workspace(
         probe=lambda emulator_id: emulator_id == installed,
         keys=RequirementCheck("ok", "keys", "rev17", "rev18", "Keys compatíveis."),
         firmware=RequirementCheck("ok", "firmware", "17.0.0", "18.0.1", "Firmware compatível."),
@@ -334,7 +334,7 @@ SCENARIOS: dict[str, dict[str, Any]] = {
     },
     "emulation-ready": {
         "description": "Workspace de emulação completo: 36 plataformas, 4 estados de emulador.",
-        "origin": "domínio real (build_switch_workspace + build_global_management)",
+        "origin": "domínio real (build_emulation_workspace + build_global_management)",
         "status": _status(),
         "dashboard": _dashboard(
             emulation=_emulation_workspace(),
@@ -343,7 +343,7 @@ SCENARIOS: dict[str, dict[str, Any]] = {
     },
     "emulation-no-emulator": {
         "description": "Nenhum emulador instalado: o bloqueador é instalação.",
-        "origin": "domínio real (build_switch_workspace + build_global_management)",
+        "origin": "domínio real (build_emulation_workspace + build_global_management)",
         "status": _status(truth="degraded"),
         "dashboard": _dashboard(
             emulation=_emulation_workspace(installed=None),

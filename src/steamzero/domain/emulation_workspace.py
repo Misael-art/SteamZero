@@ -59,6 +59,18 @@ def _project_platform(
     )
 
 
+def _with_games(platform: dict[str, Any], rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """Entrega à plataforma os jogos que a fonte canônica atribuiu a ela.
+
+    Placeholder com jogo não é contradição: significa que o disco foi varrido
+    mas ninguém consultou o host sobre emulador, core e BIOS daquela
+    plataforma. Esconder os jogos por causa disso seria repetir, do outro lado,
+    o erro de deixar a plataforma sem modelo próprio.
+    """
+    platform["games"] = [dict(row) for row in rows]
+    return platform
+
+
 def _open_platform_action(platform_id: str, label: str = "Abrir plataforma") -> dict[str, Any]:
     """Navegar até a plataforma, com o alvo dentro do próprio id.
 
@@ -205,7 +217,7 @@ def build_global_management(
     }
 
 
-def build_switch_workspace(
+def build_emulation_workspace(
     *,
     catalog: SwitchEmulatorCatalog | None = None,
     probe: Any = None,
@@ -235,7 +247,20 @@ def build_switch_workspace(
         "firmware": _requirement_payload("firmware", firmware),
     }
     emulators = _emulator_rows(catalog or SwitchEmulatorCatalog(), probe, emulator_capabilities)
-    game_rows = [dict(game) for game in games]
+    # O jogo pertence à plataforma que a fonte canônica declarou. Antes a lista
+    # inteira era despejada na superfície do Switch: um disco de PSX aparecia
+    # dentro do Switch, as demais plataformas ficavam vazias e o serial
+    # `SLUS_005.55` era validado contra o padrão de title id do Switch — a
+    # biblioteca mista real do operador reprovava o contrato do workspace.
+    # Sem plataforma declarada o jogo NÃO some: some seria a falha silenciosa
+    # que a seção 8 proíbe. Ele continua na superfície histórica do Switch, que
+    # é onde já estava, até que todo produtor declare a própria plataforma — a
+    # varredura canônica já declara, e o item SZ-LIBRARY-CANONICAL cobra isso.
+    games_by_platform: dict[str, list[dict[str, Any]]] = {}
+    for game in games:
+        platform_id = str(game.get("platform") or switch_manifest.id)
+        games_by_platform.setdefault(platform_id, []).append(dict(game))
+    game_rows = games_by_platform.get(switch_manifest.id, [])
     state, status_label, readiness = compute_readiness(requirements, emulators)
     areas = _areas(requirements, state, switch_manifest)
     area_data = _area_data(requirements, emulators, game_rows)
@@ -291,7 +316,10 @@ def build_switch_workspace(
         "platforms": [
             switch_platform,
             *[
-                _project_platform(manifest, emulator_facts, core_present, bios_present)
+                _with_games(
+                    _project_platform(manifest, emulator_facts, core_present, bios_present),
+                    games_by_platform.get(manifest.id, []),
+                )
                 for manifest in registry.list()
                 if manifest.id != "switch"
             ],
