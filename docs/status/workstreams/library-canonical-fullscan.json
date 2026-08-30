@@ -8,6 +8,7 @@
   "owner": "codex-library-full-scan",
   "state": "active",
   "exclusivePaths": [
+    "src/steamzero/domain/library.py",
     "tests/unit/test_service_transport_compression.py",
     "docs/09-operations/evidence/2026-08-28-library-full-scan",
     "docs/09-operations/evidence/2026-08-28-transport-compression"
@@ -15,11 +16,10 @@
   "sharedPaths": [
     "docs/WORKLOG.md",
     "docs/status/items/library-canonical.json",
-    "src/steamzero/domain/library.py",
     "src/steamzero/service/client.py",
     "src/steamzero/service/core.py",
     "src/steamzero/i18n/messages_pt_br.py"
   ],
-  "nextAction": "Com o transporte comprimindo (prova no acervo real em docs/09-operations/evidence/2026-08-28-transport-compression), rodar o rescan completo do acervo, ligar os consumidores a fonte unica e depois enxugar o read model. ARBITRAGEM DE POSSE PROPOSTA (§2 falhou 2x num dia): (1) posse pertence ao ITEM, nao a frente — frente pega arquivo emprestado via scopePaths do item e registra o emprestimo no workstream; (2) arquivos de infraestrutura transversal (service/client.py, service/core.py, service/methods.py, core/errors.py, i18n) devem ser 'compartilhados por design' sob custodia do agregador/dono, com regra de edicao solo (uma frente por vez, marcada em ACTIVE-WORK), em vez de claim exclusivo por frente de adapter; (3) conflitos de claim exclusive devem reprovar na REGISTRO do workstream (hoje so pegam no status-check do commit, depois do trabalho feito). Disputas abertas para o coordenador julgar: service/client.py+core.py (esta frente x WS-2026-08-EMULATION-LONG-OPERATIONS), src/steamzero/domain/library.py (esta frente x WS-2026-08-V2-HARMONIZED).",
+  "nextAction": "Custódia arbitrada: SZ-LIBRARY-CANONICAL é o único dono de src/steamzero/domain/library.py; WS-2026-08-V2-HARMONIZED não pode editá-lo. Implementar conteúdo auxiliar vinculado ao título base, depois rodar o rescan completo e ligar consumidores à fonte única.",
   "updatedAt": "2026-08-28"
 }
