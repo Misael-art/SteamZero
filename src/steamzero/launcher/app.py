@@ -2,10 +2,11 @@
 # Copyright (C) 2026 SteamZero contributors
 """Processo do AURA Launcher.
 
-Monta as seções da home, sobe a ponte e abre a cena. A fonte da biblioteca é
-injetada: hoje vem de um arquivo passado por ``--library``, porque a varredura
-real do acervo roda por jobs assíncronos e ligá-la aqui seria integração de
-fachada.
+Monta as seções da home, sobe a ponte e abre a cena. A biblioteca vem da fonte
+canônica do projeto (``emulation-library-cache-v1.json``), achada sozinha
+quando ninguém passou ``--library``; o argumento continua valendo para apontar
+outro arquivo. O lançamento de cada jogo é delegado à rota de produto
+``emulation launch --game-id``, que resolve emulador, chaves e sessão.
 
 Sem biblioteca, o Launcher **abre assim mesmo**, com a home vazia acionável que
 o domínio já resolve. Primeira execução sem acervo é o caso comum, não erro.
@@ -15,12 +16,13 @@ from __future__ import annotations
 
 import argparse
 import json
-from collections.abc import Mapping, Sequence
+import shutil
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
 from steamzero.core import paths
-from steamzero.launcher.launch import LaunchPlan, consume_context, launch_detached
+from steamzero.launcher.launch import LaunchPlan, Spawn, consume_context, launch_detached
 from steamzero.launcher.navigation import HomeSection
 
 _DEFAULT_SECTION = "library"
@@ -112,6 +114,63 @@ def _context_path() -> Path:
     return paths.state_home() / "launcher" / "return.json"
 
 
+class LaunchRouter:
+    """Decide a rota de lançamento de cada jogo e delega o spawn ao adapter.
+
+    A home do Launcher é da biblioteca canônica de emulação, então cada item é
+    lançado pela rota de produto ``emulation launch --game-id``. A rota por tipo
+    de jogo é uma discriminação futura (Steam AppID → wrapper Steam), feita aqui
+    pelo ``kind`` do registro — nunca pela mesma chamada genérica.
+    """
+
+    def __init__(
+        self,
+        *,
+        on_spawn: Spawn,
+        context_path: Path,
+        executable: Callable[[], str] | None = None,
+    ) -> None:
+        self._spawn = on_spawn
+        self._context_path = Path(context_path)
+        self._executable = executable or _steamzero_executable
+
+    def launch(self, game_id: str, focus_id: str = "") -> None:
+        # O antigo `steamzero-launch <game_id>` era o wrapper de jogo Steam
+        # (`--appid APPID -- %command%`) e não existe como binário publicado;
+        # passava o id canônico de emulação a um comando cujo contrato é outro.
+        executable = self._executable()
+        argv = (executable, "emulation", "launch", "--game-id", game_id)
+        plan = LaunchPlan(
+            game_id=game_id,
+            argv=argv,
+            focus_id=focus_id or f"{_DEFAULT_SECTION}:{game_id}",
+            context_path=self._context_path,
+        )
+        launch_detached(plan, spawn=self._spawn)
+
+
+def _steamzero_executable() -> str:
+    """Caminho absoluto do `steamzero` para lançar o jogo desacoplado.
+
+    O processo nasce em sessão própria (`start_new_session`) e pode não herdar
+    o PATH do launcher. ``shutil.which`` resolve o binário publicado; a falha
+    em encontrá-lo é uma falha de integração (o instalador publica
+    ``/usr/local/bin/steamzero``) e aparece como erro do spawn, que o
+    ``launch_detached`` converte em contexto limpo + exceção — nunca sucesso
+    vazio.
+    """
+    resolved = None
+    for candidate in ("/usr/local/bin/steamzero", "/usr/bin/steamzero", "steamzero"):
+        path = candidate if "/" in candidate else shutil.which(candidate)
+        if not path or not Path(path).is_file():
+            continue
+        resolved = str(Path(path).resolve())
+        break
+    if resolved is None:
+        raise OSError("steamzero CLI não encontrado no PATH do launcher")
+    return resolved
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--library", type=Path, default=None)
@@ -130,20 +189,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     sections = build_sections(library)
     titles = build_titles(library)
 
-    def on_launch(game_id: str, focus_id: str) -> None:
-        plan = LaunchPlan(
-            game_id=game_id,
-            argv=("steamzero-launch", game_id),
-            focus_id=focus_id or f"{_DEFAULT_SECTION}:{game_id}",
-            context_path=context_path,
-        )
-        launch_detached(plan, spawn=spawn_detached)
+    router = LaunchRouter(on_spawn=spawn_detached, context_path=context_path)
 
     bridge = LauncherBridge(
         sections=sections,
         titles=titles,
         context_path=context_path,
-        on_launch=on_launch,
+        on_launch=router.launch,
     )
     return launch_launcher_ui(bridge)
 

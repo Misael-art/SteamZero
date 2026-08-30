@@ -126,3 +126,46 @@ def test_launcher_reads_the_canonical_library_without_being_told_where(
     assert names == ["Chrono Trigger", "Ridge Racer"], (
         f"o Launcher não achou a biblioteca canônica sozinho: {library}"
     )
+
+
+def test_launch_route_is_emulation_launch_not_steam_wrapper(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """O Launcher lança jogo canônico pela rota de produto, não pelo wrapper Steam.
+
+    Regressão 2026-08-30: `on_launch` montava `steamzero-launch <game_id>`.
+    Esse binário não é publicado pelo instalador e, mesmo que fosse, o contrato
+    do `steamzero-launch` é o wrapper de jogo Steam (`--appid APPID -- %command%`).
+    O id canônico de emulação passava por um comando cujo contrato é outro, e o
+    spawn falho deixava o contexto de retorno pendurado.
+    """
+    from steamzero.launcher import app as app_module
+
+    fake_bin = tmp_path / "steamzero"
+    fake_bin.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    fake_bin.chmod(0o755)
+
+    captured: list[tuple[str, ...]] = []
+
+    def fake_spawn(argv: tuple[str, ...]) -> int:
+        captured.append(argv)
+        return 12345
+
+    router = app_module.LaunchRouter(
+        on_spawn=fake_spawn,
+        context_path=tmp_path / "return.json",
+        executable=lambda: str(fake_bin),
+    )
+    router.launch("celeste")
+
+    assert captured, "o lançamento não acionou nenhum spawn"
+    assert captured[0][0] == str(fake_bin), (
+        f"o launcher deve usar o binário `steamzero`, não o wrapper Steam: {captured[0]}"
+    )
+    assert captured[0][0].endswith("steamzero")
+    assert captured[0][1:5] == ("emulation", "launch", "--game-id", "celeste"), (
+        f"a rota de jogo canônico deve ser `emulation launch --game-id`: {captured[0]}"
+    )
+    assert "steamzero-launch" not in captured[0][0], (
+        "regressão: o wrapper Steam não pode lançar jogo de emulação"
+    )

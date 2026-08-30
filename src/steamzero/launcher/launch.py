@@ -82,9 +82,21 @@ def launch_detached(plan: LaunchPlan, *, spawn: Spawn) -> LaunchHandle:
     """Grava o contexto e então lança o jogo desacoplado do launcher.
 
     ``spawn`` é obrigatório: quem cria processo é o adapter, não o domínio.
+
+    A ordem é deliberada e testada: o contexto vai para o disco ANTES do spawn,
+    para que um crash no meio da criação do processo não perca o lugar do
+    usuário. Se o próprio spawn falhar (executável ausente, erro de execução o
+    jogo nunca chegou a iniciar — e o contexto pendurado levaria uma sessão
+    futura a devolver o foco para um jogo que não roda. Nesse caso o contexto é
+    removido e a falha é sinalizada, para que a UI aja em vez de fingir sucesso.
     """
-    fs.write_atomic_text(plan.context_path, json.dumps(plan.context_payload(), ensure_ascii=False))
-    pid = spawn(tuple(plan.argv))
+    payload = json.dumps(plan.context_payload(), ensure_ascii=False)
+    fs.write_atomic_text(plan.context_path, payload)
+    try:
+        pid = spawn(tuple(plan.argv))
+    except BaseException:
+        fs.remove_file(plan.context_path)
+        raise
     return LaunchHandle(pid=pid, game_id=plan.game_id)
 
 

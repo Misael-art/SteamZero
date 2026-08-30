@@ -110,6 +110,31 @@ def test_context_is_written_before_the_process_starts(tmp_path: Path) -> None:
     assert order == ["spawn"]
 
 
+def test_failed_spawn_does_not_leave_a_pending_return(tmp_path: Path) -> None:
+    """Spawn falho (ex.: executável ausente) não pode deixar contexto pendurado.
+
+    O contexto é gravado antes do spawn por crash-safety (item 4/5 da DoD). Mas
+    se o spawn falha, o jogo nunca começou — e um contexto pendurado faria uma
+    sessão futura devolver o foco para um jogo que não roda. A falha deve
+    remover o contexto e se propagar para a UI agir.
+    """
+
+    def broken_spawn(argv: tuple[str, ...]) -> int:
+        raise FileNotFoundError(f"executável ausente: {argv[0]}")
+
+    plan = LaunchPlan(
+        game_id="celeste",
+        argv=("steamzero-launch", "celeste"),
+        focus_id="library:celeste",
+        context_path=tmp_path / "return.json",
+    )
+    with pytest.raises(FileNotFoundError):
+        launch_detached(plan, spawn=broken_spawn)
+    assert not (tmp_path / "return.json").exists(), (
+        "spawn falho deixou contexto de retorno pendurado"
+    )
+
+
 def test_context_is_consumed_once(tmp_path: Path) -> None:
     context_path = tmp_path / "return.json"
     plan = LaunchPlan(
