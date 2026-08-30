@@ -8286,3 +8286,39 @@ exitCode 124 (janela offscreen 5s). `blockers: []`, `recovery.pending: 0`.
 **Fora de escopo (permanece):** lote 2 de manifestos, enxugar o read model,
 consumidores restantes (busca, launcher, scraping) contra a fonte única,
 `updateCount`/`dlcCount` não-Switch em release instalada.
+
+## 2026-08-30 — Sessão: robustez — staging de extração de core libretro sem órfão
+
+Correção do vazamento de staging identificado no diagnóstico dos
+`degraded` (item SZ-EMULATION-LONG-OPERATIONS / agregadores).
+
+**Defeito:** o executor de cores libretro extraía o `payload.so` em
+`staging/libretro/<sha256>/<adapter>/`, uma árvore FORA da staging por operação
+(`staging/<opId>/`) que o transaction limpa no commit/rollback. Depois de o
+plano copiar o core para o alvo, essa árvore nunca era removida — virava órfão
+que o `state audit` reporta e que rebaixa o `doctor` para `degraded`.
+No host em 2026-08-30: `doctor` → `staging.orphan: 1`; `state audit` →
+`orphanStaging: ['libretro']` (árvore `staging/libretro/4b7ed8dc…/…/payload.so`,
+mtime 2026-08-27, pré-existente).
+
+**Correção (commit `3721c4f`, branch `codex/emuladores-robustez-orbita`):**
+`PreparedLibretroCore` guarda `extraction_stage`; `apply` remove essa árvore no
+`finally` (inclusive em queda `BaseException` e em falha), e `_cleanup_extraction_stage`
+poda os diretórios vazios acima até a raiz da staging.
+
+**Provas (testes em `tests/unit/test_libretro_cores.py`):**
+`test_install_leaves_no_orphan_staging` (falhava antes — reprodução vermelha),
+`test_rollback_after_install_leaves_no_orphan_staging`,
+`test_crash_after_commit_keeps_core_and_cleans_staging`.
+
+**Gates na árvore commitada:** 5302 passed / 44 skipped / 0 failed (32m44s);
+ruff, format, mypy, boundaries, independence e status-check verdes.
+
+**Fora do escopo / pendente:**
+- Órfão já no host segue presente porque a release instalada é anterior à
+  correção; limpar exige `state cleanup-plan` → `cleanup-apply` (decisão do
+  operador) ou release nova.
+- Vazamento potencial análogo em `preservation.py`
+  (`staging/preservation/<ulid>/`) — domínio de preservação de saves, item
+  próprio; registrado para consideração, não corrigido aqui.
+- Correção aguarda merge em `main` + release + autorização de install.
