@@ -20,6 +20,6 @@
     "src/steamzero/service/core.py",
     "src/steamzero/i18n/messages_pt_br.py"
   ],
-  "nextAction": "Custódia arbitrada: SZ-LIBRARY-CANONICAL é o único dono de src/steamzero/domain/library.py; WS-2026-08-V2-HARMONIZED não pode editá-lo. Implementar conteúdo auxiliar vinculado ao título base, depois rodar o rescan completo e ligar consumidores à fonte única.",
-  "updatedAt": "2026-08-28"
+  "nextAction": "Custódia arbitrada mantida: SZ-LIBRARY-CANONICAL é o único dono de src/steamzero/domain/library.py; WS-2026-08-V2-HARMONIZED não pode editá-lo. Migração do workspace concluída (build_emulation_workspace roteia por plataforma); próximo: lote 2 de manifestos, enxugar o read model e ligar consumidores à fonte única.",
+  "updatedAt": "2026-08-30"
 }
