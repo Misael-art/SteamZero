@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import json
 import socket
 import urllib.error
@@ -225,6 +226,28 @@ def test_http_status_is_normalized_and_not_retried_when_terminal() -> None:
         )
     assert raised.value.status == 404
     assert raised.value.retryable is False
+
+
+def test_http_error_exposes_only_sanitized_classification() -> None:
+    error = urllib.error.HTTPError(
+        "https://downloads.example/file?secret=value",
+        403,
+        "forbidden",
+        {},
+        io.BytesIO(b"Erreur de login: private-account"),
+    )
+    with pytest.raises(NetworkFailure) as raised:
+        HttpClient(transport=FakeTransport([error])).get(
+            "https://downloads.example/file",
+            policy=policy(max_bytes=128),
+            http_error_classifier=lambda _status, body: (
+                "credential-rejected" if b"login" in body else None
+            ),
+        )
+
+    assert raised.value.classification == "credential-rejected"
+    assert "private-account" not in str(raised.value)
+    assert "secret=value" not in str(raised.value)
 
 
 def test_cancellation_stops_before_transport() -> None:

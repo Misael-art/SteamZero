@@ -219,6 +219,12 @@ class ScreenScraperAdapter(BaseMediaProvider):
     def supported_platforms(self) -> frozenset[str]:
         return frozenset(_PLATFORM_MAP)
 
+    def _classify_http_error(self, status: int, body: bytes) -> str | None:
+        if status != 403:
+            return None
+        code = _forbidden_code(body.decode("utf-8", errors="replace"))
+        return "credential-rejected" if code == "E-SCRAPE-CREDENTIAL-REJECTED" else "quota"
+
     def test_connection(self) -> bool:
         if self._devid is None or self._devpassword is None:
             raise SteamZeroError(

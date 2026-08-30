@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import io
 import json
 import urllib.error
 from unittest.mock import patch
@@ -169,6 +170,28 @@ def test_connection_rejects_error_response(adapter: ScreenScraperAdapter) -> Non
     ):
         adapter.test_connection()
     assert exc.value.code == "E-SCRAPE-CREDENTIAL-REJECTED"
+
+
+def test_connection_classifies_real_http_403_login_body_as_auth() -> None:
+    error = urllib.error.HTTPError(
+        "https://www.screenscraper.fr/api2/ssuserInfos.php?secret=hidden",
+        403,
+        "forbidden",
+        {},
+        io.BytesIO(b"Erreur de login"),
+    )
+    adapter = ScreenScraperAdapter(
+        devid="test-dev",
+        devpassword="test-pass",
+        rate_limiter=None,
+        client=HttpClient(transport=FakeTransport([error])),
+    )
+
+    with pytest.raises(SteamZeroError) as exc:
+        adapter.test_connection()
+
+    assert exc.value.code == "E-SCRAPE-CREDENTIAL-REJECTED"
+    assert "secret=hidden" not in str(exc.value)
 
 
 def test_search_returns_candidates_from_json(

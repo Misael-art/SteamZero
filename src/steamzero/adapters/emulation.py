@@ -5911,7 +5911,9 @@ class EmulationController:
         )
         all_candidates: list[MediaCandidate] = []
         provider_errors: dict[str, str] = {}
-        providers = self._ordered_media_providers(mgr._providers, kinds)
+        providers = self._ordered_media_providers(
+            mgr._providers, kinds, platform_slug=identity.platform_slug
+        )
         if skip_providers:
             providers = [p for p in providers if p.name not in skip_providers]
         total_providers = len(providers)
@@ -6014,7 +6016,10 @@ class EmulationController:
 
     @staticmethod
     def _ordered_media_providers(
-        providers: Sequence[MediaProviderPort], media_kinds: Sequence[str]
+        providers: Sequence[MediaProviderPort],
+        media_kinds: Sequence[str],
+        *,
+        platform_slug: str | None = None,
     ) -> list[MediaProviderPort]:
         registry = ProviderRegistry()
         for provider in providers:
@@ -6022,7 +6027,7 @@ class EmulationController:
         ordered: list[MediaProviderPort] = []
         seen: set[str] = set()
         for kind in media_kinds:
-            for provider in registry.providers_for_kind(kind):
+            for provider in registry.providers_for_kind(kind, platform_slug=platform_slug):
                 if provider.name not in seen:
                     seen.add(provider.name)
                     ordered.append(provider)

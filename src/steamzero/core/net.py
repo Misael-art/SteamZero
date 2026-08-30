@@ -34,6 +34,7 @@ _USER_AGENT = "SteamZero/0.1"
 TransferProgress = Callable[[int, int | None], None]
 CancelCheck = Callable[[], None]
 TransferDiagnostic = Callable[[dict[str, object]], None]
+HttpErrorClassifier = Callable[[int, bytes], str | None]
 
 _RELEVANT_ENVIRONMENT = (
     "ALL_PROXY",
@@ -82,6 +83,7 @@ class NetworkFailure(Exception):
     detail: str = ""
     status: int | None = None
     retryable: bool = False
+    classification: str | None = None
 
     def __str__(self) -> str:
         return f"{self.code}: {self.detail}" if self.detail else self.code
@@ -239,8 +241,15 @@ class HttpClient:
         policy: NetworkPolicy,
         headers: Mapping[str, str] | None = None,
         cancel: CancellationToken | None = None,
+        http_error_classifier: HttpErrorClassifier | None = None,
     ) -> HttpResult:
-        with self.open(url, policy=policy, headers=headers, cancel=cancel) as response:
+        with self.open(
+            url,
+            policy=policy,
+            headers=headers,
+            cancel=cancel,
+            http_error_classifier=http_error_classifier,
+        ) as response:
             body = _read_limited(response, policy.max_bytes, cancel)
             return HttpResult(
                 url=_response_url(response, url),
@@ -257,6 +266,7 @@ class HttpClient:
         policy: NetworkPolicy,
         headers: Mapping[str, str] | None = None,
         cancel: CancellationToken | None = None,
+        http_error_classifier: HttpErrorClassifier | None = None,
     ) -> Iterator[ResponsePort]:
         _validate_url(url, policy)
         merged_headers = {"User-Agent": _USER_AGENT, **dict(headers or {})}
@@ -276,11 +286,30 @@ class HttpClient:
                 raise
             except urllib.error.HTTPError as exc:
                 retryable = exc.code in {408, 425, 429, 500, 502, 503, 504}
+                classification = None
+                if http_error_classifier is not None:
+                    limit = min(policy.max_bytes, 256 * 1024)
+                    try:
+                        body = exc.read(limit + 1)
+                    except OSError:
+                        body = b""
+                    if len(body) <= limit:
+                        candidate = http_error_classifier(int(exc.code), body)
+                        if (
+                            candidate
+                            and len(candidate) <= 64
+                            and all(
+                                char.isascii() and (char.islower() or char.isdigit() or char == "-")
+                                for char in candidate
+                            )
+                        ):
+                            classification = candidate
                 failure = NetworkFailure(
                     "E-NET-HTTP",
                     f"HTTP {exc.code}",
                     status=exc.code,
                     retryable=retryable,
+                    classification=classification,
                 )
                 exc.close()
             except TimeoutError as exc:
@@ -332,6 +361,7 @@ def fetch_bytes(
     retry: RetryPolicy | None = None,
     cancel: CancellationToken | None = None,
     client: HttpClient | None = None,
+    http_error_classifier: HttpErrorClassifier | None = None,
 ) -> bytes:
     """Atalho seguro para adapters síncronos que precisam do corpo em memória."""
     host = (urlsplit(url).hostname or "").casefold().rstrip(".")
@@ -346,7 +376,17 @@ def fetch_bytes(
     if observer is not None and observer.diagnostic is not None:
         observer.diagnostic(_network_diagnostic(host=host, phase="starting", dns="unknown"))
     try:
-        body = (client or HttpClient()).get(url, policy=policy, headers=headers, cancel=cancel).body
+        body = (
+            (client or HttpClient())
+            .get(
+                url,
+                policy=policy,
+                headers=headers,
+                cancel=cancel,
+                http_error_classifier=http_error_classifier,
+            )
+            .body
+        )
     except NetworkFailure as exc:
         if observer is not None and observer.diagnostic is not None:
             observer.diagnostic(

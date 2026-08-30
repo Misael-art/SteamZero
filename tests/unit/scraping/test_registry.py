@@ -84,6 +84,35 @@ def test_providers_for_kind_filters_unsupported() -> None:
     assert [p.name for p in result] == ["a"]
 
 
+def test_search_best_skips_provider_outside_declared_platform() -> None:
+    registry = ProviderRegistry()
+    unsupported = FakeProvider("switch-only", frozenset({"boxart"}), frozenset({"switch"}))
+    supported = FakeProvider("psx", frozenset({"boxart"}), frozenset({"playstation"}))
+    registry.register(unsupported)
+    registry.register(supported)
+    registry.fallback_order["boxart"] = ["switch-only", "psx"]
+
+    result = registry.search_best(
+        GameIdentity(game_id="g1", title="Test", platform_slug="playstation"), "boxart"
+    )
+
+    assert result is None
+    assert unsupported.calls == []
+    assert [call.platform_slug for call in supported.calls] == ["playstation"]
+
+
+def test_search_best_preserves_fallback_when_no_provider_declares_platform() -> None:
+    registry = ProviderRegistry()
+    legacy = FakeProvider("legacy", frozenset({"boxart"}), frozenset({"switch"}))
+    registry.register(legacy)
+
+    registry.search_best(
+        GameIdentity(game_id="g1", title="Test", platform_slug="new-platform"), "boxart"
+    )
+
+    assert [call.platform_slug for call in legacy.calls] == ["new-platform"]
+
+
 def test_search_best_returns_first_match() -> None:
     registry = ProviderRegistry()
 

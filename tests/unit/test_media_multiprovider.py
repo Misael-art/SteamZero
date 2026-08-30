@@ -25,6 +25,7 @@ class FakeProvider:
         failures: int = 0,
         error_code: str | None = None,
         identities: list[GameIdentity] | None = None,
+        platforms: frozenset[str] = frozenset({"switch"}),
     ) -> None:
         self._name = name
         self._kinds = frozenset(kinds)
@@ -32,6 +33,7 @@ class FakeProvider:
         self._failures = failures
         self._error_code = error_code
         self._identities = identities
+        self._platforms = platforms
 
     @property
     def name(self) -> str:
@@ -41,7 +43,7 @@ class FakeProvider:
         return self._kinds
 
     def supported_platforms(self) -> frozenset[str]:
-        return frozenset({"switch"})
+        return self._platforms
 
     def search(
         self,
@@ -179,6 +181,26 @@ def test_global_media_search_uses_the_inventory_platform(tmp_path: Path) -> None
 
     assert calls == ["screenscraper"]
     assert identities[0].platform_slug == "playstation"
+
+
+def test_global_media_search_prefers_provider_declaring_inventory_platform(
+    tmp_path: Path,
+) -> None:
+    calls: list[str] = []
+    switch = FakeProvider("switch-only", {"boxart"}, calls, platforms=frozenset({"switch"}))
+    playstation = FakeProvider(
+        "playstation", {"boxart"}, calls, platforms=frozenset({"playstation"})
+    )
+    controller = _controller(tmp_path, [switch, playstation])
+    _plant_library(controller, tmp_path, 1)
+    cache = controller._library_cache_path  # type: ignore[attr-defined]
+    payload = json.loads(cache.read_text(encoding="utf-8"))
+    payload["games"][0]["platform"] = "playstation"
+    cache.write_text(json.dumps(payload), encoding="utf-8")
+
+    _run_global(controller)
+
+    assert calls == ["playstation"]
 
 
 @pytest.mark.parametrize(

@@ -150,6 +150,7 @@ class BaseMediaProvider(ABC):
                 max_bytes=max_bytes,
                 timeout_seconds=timeout_seconds or _DEFAULT_TIMEOUT_SECONDS,
                 client=self._client,
+                http_error_classifier=self._classify_http_error,
             )
         except NetworkFailure as exc:
             if exc.status == 429:
@@ -157,6 +158,11 @@ class BaseMediaProvider(ABC):
                     "E-SCRAPE-RATE-LIMITED", detail=f"{self.name}: rate limit (HTTP 429)"
                 ) from exc
             if exc.status == 403:
+                if exc.classification == "credential-rejected":
+                    raise SteamZeroError(
+                        "E-SCRAPE-CREDENTIAL-REJECTED",
+                        detail=f"{self.name}: credencial recusada (HTTP 403)",
+                    ) from exc
                 raise SteamZeroError(
                     "E-SCRAPE-QUOTA-EXCEEDED", detail=f"{self.name}: quota/cota excedida (HTTP 403)"
                 ) from exc
@@ -185,6 +191,10 @@ class BaseMediaProvider(ABC):
                 "E-SCRAPE-PROVIDER-UNREACHABLE",
                 detail=f"{self.name}: {exc.detail}",
             ) from exc
+
+    def _classify_http_error(self, _status: int, _body: bytes) -> str | None:
+        """Classificação sanitizada opcional; o corpo nunca sai do transporte."""
+        return None
 
     @staticmethod
     def _validate_media(data: bytes, expected_kind: str | None = None) -> str | None:

@@ -67,8 +67,10 @@ class ProviderRegistry:
     def list_providers(self) -> frozenset[str]:
         return frozenset(self._providers)
 
-    def providers_for_kind(self, media_kind: str) -> list[MediaProviderPort]:
-        """Retorna providers na ordem de fallback para o tipo de mídia."""
+    def providers_for_kind(
+        self, media_kind: str, *, platform_slug: str | None = None
+    ) -> list[MediaProviderPort]:
+        """Retorna providers por mídia e, quando conhecido, pela plataforma declarada."""
         order = self.fallback_order.get(media_kind, list(self._providers))
         result: list[MediaProviderPort] = []
         seen: set[str] = set()
@@ -77,12 +79,17 @@ class ProviderRegistry:
                 continue
             seen.add(name)
             provider = self._providers.get(name)
-            if provider is not None and media_kind in provider.supported_kinds():
+            if provider is not None and self._supports(provider, media_kind, platform_slug):
                 result.append(provider)
         for name, provider in self._providers.items():
-            if name not in seen and media_kind in provider.supported_kinds():
+            if name not in seen and self._supports(provider, media_kind, platform_slug):
                 result.append(provider)
-        return result
+        if result or platform_slug is None:
+            return result
+        # A identidade legada pode carregar slug que nenhum adapter ainda
+        # normalizou. Nesse caso a ausência de declaração não pode apagar todo
+        # o fallback: a busca continua degradável, como era antes do contrato.
+        return self.providers_for_kind(media_kind)
 
     def search_best(
         self,
@@ -98,7 +105,7 @@ class ProviderRegistry:
         Retorna ``None`` se nenhum provider retornar candidatos com confiança
         >= ``min_confidence``.
         """
-        for provider in self.providers_for_kind(media_kind):
+        for provider in self.providers_for_kind(media_kind, platform_slug=identity.platform_slug):
             candidates = _search_provider(provider, identity, [media_kind], region_priority)
             best: MediaCandidate | None = None
             for c in candidates:
@@ -128,13 +135,19 @@ class ProviderRegistry:
         result: dict[str, list[MediaCandidate]] = {}
         for kind in kinds:
             all_candidates: list[MediaCandidate] = []
-            for provider in self.providers_for_kind(kind):
+            for provider in self.providers_for_kind(kind, platform_slug=identity.platform_slug):
                 all_candidates.extend(_search_provider(provider, identity, [kind], region_priority))
             filtered = [c for c in all_candidates if c.confidence >= min_confidence]
             filtered.sort(key=lambda c: c.confidence, reverse=True)
             if filtered:
                 result[kind] = filtered
         return result
+
+    @staticmethod
+    def _supports(provider: MediaProviderPort, media_kind: str, platform_slug: str | None) -> bool:
+        if media_kind not in provider.supported_kinds():
+            return False
+        return platform_slug is None or platform_slug in provider.supported_platforms()
 
 
 def _search_provider(
