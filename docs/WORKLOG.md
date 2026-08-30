@@ -8349,3 +8349,48 @@ não-defeito de código.
 **Fora do escopo (Fase C, sequência):** funcionamento real do emulador com ROM;
 vazamento potencial análogo em `preservation.py` (`staging/preservation/<ulid>/`)
 — domínio de preservação de saves, item próprio, registrado para consideração.
+
+## 2026-08-30 — Sessão: P0 do AURA Launcher — rota real de lançamento e contexto
+
+Defeito crítico resolvido (branch `codex/aura-launcher-p0`).
+
+**Sintoma:** no host, "selecionar jogo → jogar" não funcionava. O Launcher
+montava `argv = ('steamzero-launch', game_id)`; esse binário não é publicado
+pelo instalador (só `steamzero`, `steamzero-launcher`,
+`steamzero-gamemode-session`) e, mesmo existente, o `steamzero-launch` é o
+wrapper de jogo **Steam** (`--appid APPID -- %command%`), não a rota de jogo
+canônico de emulação. O id canônico passava por um comando cujo contrato é
+outro → `FileNotFoundError` no spawn. Além disso, `launch_detached` gravava o
+contexto de retorno ANTES do spawn; spawn falho deixava `return.json`
+pendurado, e uma sessão futura devolveria o foco para um jogo que não roda.
+
+**Correção (commit `5a2a527`):**
+- `LaunchRouter` decide a rota por tipo de jogo; a home é da biblioteca
+  canônica de emulação, então cada item vai para
+  `steamzero emulation launch --game-id` (rota de produto que resolve
+  emulador/chaves/update-DLC/sessão). Steam AppID (futuro) usa o wrapper
+  Steam, discriminado pelo `kind`.
+- `_steamzero_executable` resolve o caminho absoluto do binário publicado.
+- `launch_detached` remove o contexto se o spawn falhar, mantendo a escrita
+  antecipada por crash-safety (testada).
+
+**Provas:** `test_launch_route_is_emulation_launch_not_steam_wrapper` (a rota é
+`emulation launch`, não o wrapper Steam) e
+`test_failed_spawn_does_not_leave_a_pending_return` (spawn falho não deixa
+`return.json`). 33 passed na frente. Rota validada no host: `steamzero
+emulation launch --game-id <id>` degrada com `E-CONTENT-KEYS-INCOMPAT` (keys
+do usuário não sincronizadas), diagnóstico acionável — não crash.
+
+**Pendente:** prova end-to-end "jogar → voltar" exige o operador (interação
+humana) após publicar release com a correção.
+
+**Docs de coordenação (registrados, não editando frente alheia):**
+- Item `SZ-AURA-LAUNCHER` atualizado (nextAction + evidência + digest) — frente
+  própria.
+- `WS-2026-08-COMPONENT-MATRIZ` continua `active` e seu `nextAction` diz "zero
+  instalações físicas"; isso está DESATUALIZADO (o executor libretro já foi
+  provado com mgba/stella/snes9x na sessão de robustez). Editar o workstream
+  de outra frente exige arbitração do coordenador — registrado, não alterado.
+- As demais frentes `active` com branch absorvida (controls, host-update,
+  error-catalog, v2-harmonized) têm pendencias reais ou decisões do operador;
+  não foram fechadas.

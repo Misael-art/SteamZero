@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopeDigest": "f3cf0a239e0260f90341245315d1a757dee20b7956362bf55efb0cd6ebf1cd95",
+  "scopeDigest": "5542e897724cd3d8da9018f630cbba7f714e8934a96d00bd67bd3369e4631aff",
   "scopePaths": [
     "docs/00-vision/PROJECT-VISION.md",
     "docs/00-vision/NON-GOALS.md",
@@ -95,6 +95,12 @@
       "result": "passed"
     },
     {
+      "kind": "test",
+      "reference": "tests/integration/test_launcher_app.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_launcher_app.py tests/integration/test_launcher_launch.py -q (15 passed). test_launch_route_is_emulation_launch_not_steam_wrapper prova a rota de produto (steamzero emulation launch --game-id, nao o wrapper Steam binario inexistente); test_failed_spawn_does_not_leave_a_pending_return prova que spawn falho remove o return.json. 33 passed no total da frente.",
+      "result": "passed"
+    },
+    {
       "kind": "hardware",
       "reference": "docs/09-operations/evidence/2026-08-26-aura-launcher-fisico",
       "command": "2026-08-26, release 2.0.0rc1-720928250e1a instalada, host Valve Jupiter. PRIMEIRA evidencia fisica do Launcher, e ela achou defeito: a home exibia identificadores em hash no lugar dos titulos (ae18c7e53583298461a0edea em vez de '1969 (Homebrew) (SMS)'). A biblioteca estava corretamente ligada — cartoes existem, foco funciona, secao populada; falhava o rotulo. Isolado por comparacao: a central desktop no MESMO host e release exibe titulos sem dificuldade. CAUSA RAIZ: a biblioteca canonica publica o rotulo em 'name' e nao existe chave 'title' no acervo real (medido: 23 chaves por jogo, com name e sem title); build_titles lia game.get('title') or identifier, entao o fallback para o id disparava em TODO o acervo, nao em caso de borda. CORRIGIDO: le name, com title mantido como alias. Validado contra o acervo real: 80 jogos, 80 titulos resolvidos, 0 caindo no id. PROVA NEGATIVA: revertendo para ler so title, 2 dos 4 testes novos reprovam. NAO PROVADO: a captura com titulos corretos exige uma release com esta correcao; a atual carrega o defeito. Navegacao por controle, lancamento, sessao e retorno seguem pendentes de interacao humana (sem automacao de clique/tecla neste host).",
@@ -107,7 +113,7 @@
       "result": "partial"
     }
   ],
-  "nextAction": "Publicar release com a correcao de layout e recapturar para confirmar o wrap na release instalada (a captura 03 e da arvore). Depois, navegacao por controle, lancamento de jogo real, acompanhamento de sessao e retorno — pendentes de interacao humana.",
+  "nextAction": "Rota de lancamento corrigida: cada jogo canonico vai para `steamzero emulation launch --game-id` (era `steamzero-launch <id>`, wrapper Steam de contrato alheio e binario nao publicado), e o contexto de retorno e removido se o spawn falhar. Prova end-to-end na release: selecionar jogo base com core instalado -> jogar -> encerrar -> voltar ao mesmo cartao (pende da interacao humana do operador, apos publicar release com a correcao). Depois: navegacao por controle completa, acompanhamento de sessao e retorno fisico.",
   "activeWorkstreams": [
     "WS-2026-08-AURA-LAUNCHER"
   ],

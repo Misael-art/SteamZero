@@ -13,6 +13,6 @@
   "sharedPaths": [
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Capturar a home do Launcher com acervo real na release instalada; navegacao por controle, lancamento e retorno dependem de interacao humana.",
-  "updatedAt": "2026-08-26"
+  "nextAction": "Publicar release com a rota de lancamento corrigida (emulation launch --game-id) e provar controle-jogo-retorno no host. A parte tecnica da rota e do contexto foi corrigida; a prova end-to-end depende da interacao humana do operador.",
+  "updatedAt": "2026-08-30"
 }
