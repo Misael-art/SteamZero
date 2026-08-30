@@ -3,9 +3,9 @@
   "kind": "workstream",
   "id": "WS-2026-08-LIBRARY-CANONICAL-FULLSCAN",
   "item": "SZ-LIBRARY-CANONICAL",
-  "branch": "codex/library-full-scan",
+  "branch": "codex/library-auxiliary-content",
   "baseRef": "23b13b6",
-  "owner": "codex-library-full-scan",
+  "owner": "codex-library-auxiliary-content",
   "state": "active",
   "exclusivePaths": [
     "src/steamzero/domain/library.py",
