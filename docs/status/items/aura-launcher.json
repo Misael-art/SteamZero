@@ -104,6 +104,12 @@
     },
     {
       "kind": "hardware",
+      "reference": "src/steamzero/adapters/launcher_catalog.py",
+      "command": "release 2.0.0rc1-920ec79e875a instalada: catalog_games da biblioteca canonica devolve 231 jogos base em 13 plataformas, 0 titulos caindo no hash (home agrupa por sistema, nunca exibe o id). Rota steamzero emulation launch --game-id processa jogo base e degrada com E-CONTENT-KEYS-INCOMPAT (diagnostico acionavel, nao crash). Prova 'jogar -> voltar' pende de keys sincronizadas + interacao humana.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
       "reference": "docs/09-operations/evidence/2026-08-26-aura-launcher-fisico",
       "command": "2026-08-26, release 2.0.0rc1-720928250e1a instalada, host Valve Jupiter. PRIMEIRA evidencia fisica do Launcher, e ela achou defeito: a home exibia identificadores em hash no lugar dos titulos (ae18c7e53583298461a0edea em vez de '1969 (Homebrew) (SMS)'). A biblioteca estava corretamente ligada — cartoes existem, foco funciona, secao populada; falhava o rotulo. Isolado por comparacao: a central desktop no MESMO host e release exibe titulos sem dificuldade. CAUSA RAIZ: a biblioteca canonica publica o rotulo em 'name' e nao existe chave 'title' no acervo real (medido: 23 chaves por jogo, com name e sem title); build_titles lia game.get('title') or identifier, entao o fallback para o id disparava em TODO o acervo, nao em caso de borda. CORRIGIDO: le name, com title mantido como alias. Validado contra o acervo real: 80 jogos, 80 titulos resolvidos, 0 caindo no id. PROVA NEGATIVA: revertendo para ler so title, 2 dos 4 testes novos reprovam. NAO PROVADO: a captura com titulos corretos exige uma release com esta correcao; a atual carrega o defeito. Navegacao por controle, lancamento, sessao e retorno seguem pendentes de interacao humana (sem automacao de clique/tecla neste host).",
       "result": "partial"

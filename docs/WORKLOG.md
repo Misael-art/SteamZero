@@ -8425,3 +8425,24 @@ format, mypy, boundaries, independence e status-check verdes.
   centrais já portados seletivamente no main (retropad, retroarch_autoconfig,
   input_profiles, ui_audit_runner, azahar manifest, doctor/theme_editor) —
   branches obsoletas, a auditar/fechar sem merge pelo coordenador.
+
+## 2026-08-30 — Sessão: prova física do P0 do Launcher na release instalada
+
+Release governada `2.0.0rc1-920ec79e875a` (commit `920ec79e`, run CI verde
+`33337162296`, wheel SHA `602412e8…`) ativada no host, com rollback
+`2.0.0rc1-984d5c48a38c`. PR #106 merged ff-only em `main`.
+
+**Prova instalada:**
+- `steamzero doctor` → `runtime.provenance` `2.0.0rc1-920ec79e875a`,
+  `service.generation` `daemon na release ativada`, `state.db.integrity` ok,
+  `staging.orphan`/`backup.orphan` pass, `recovery.pending` 0; `state audit`
+  → `clean: True`.
+- Catálogo da home (via `launcher_catalog.catalog_games` na release):
+  **231 jogos base, 13 plataformas, 0 títulos caindo no hash** — a home agrupa
+  por sistema e nunca exibe o id no lugar do nome.
+- Rota de produto `steamzero emulation launch --game-id <id>` processa o jogo
+  base e degrada com `E-CONTENT-KEYS-INCOMPAT` (keys do usuário não
+  sincronizadas) — diagnóstico acionável, não crash.
+
+**Pendente (interação humana):** prova "jogar → voltar ao mesmo cartão" no
+Launcher, que exige keys sincronizadas + interação física do operador.
