@@ -8529,3 +8529,39 @@ obsoletas/substituídas, fechadas com nota.
 Sem merge das 4 branches. Restam 6 workstreams ativos com pendência real:
 AURA-LAUNCHER, COMPONENT-MATRIZ, CONTROLS-INPUT-PROFILES, ERROR-CATALOG-AUDIT,
 M10, V2-HARMONIZED.
+
+## 2026-08-30 — Sessão: update real de componentes — Dolphin atualizado, RetroArch pin purgado
+
+Avanço da pendência real do workstream COMPONENT-MATRIZ (update de versão).
+
+**Dolphin: atualizado com sucesso.** Plano v3 (executor flatpak, alvo commit
+fixado) → job no daemon → `component status` `installed` no commit
+`377c3e63506e` (antes `outdated`). O update real de componente do executor
+Flatpak foi exercitado e confirmou install/verify/rollback no caminho de
+update.
+
+**RetroArch: causa raiz encontrada — pin purgado do Flathub.** O update
+falhou 2x com `E-SUPPLY-REMOTE-FAILED` (rolled-back automático — resiliência
+§8 correta). Diagnóstico: o executor roda
+`flatpak remote-info --user --app --show-commit --commit=<pin> <remote> <ref>`;
+o pin no manifest `retroarch.adapter.json` (`d8644a97df3d…`) retorna **404** do
+Flathub (commit purgado/rotacionado). O commit atual confirmado do remoto é
+`9c51e2bcb6f7…` (2x confirmado). Não é falha de rede (1.1.1.1:443 OK,
+`remote-info` da metadata funciona) nem bug do executor (que recusou e
+rollbackou corretamente) — é **manifesto desatualizado**.
+
+**Correção de supply-chain:** `retroarch.adapter.json` pin atualizado para
+`9c51e2bcb6f7f29ecb327ee057b273c5b59efc22d35026e90aef601bc0052752`;
+`make update-component-lock` regenerou o lockfile (manifestHash
+`519cd62e…`); gate `component-lock` OK; resolve do novo pin confirmado no
+Flathub. Conformance 395 passed.
+
+**Descoberta operacional (lição):** comandos de host precisam rodar com o
+`XDG_STATE_HOME` REAL (`~/.local/state`), não o da sessão do agente
+(`~/.config/ai.opencode.desktop`) — o harness sobrescreve e faz `plan`/`apply`
+gravarem em diretórios diferentes (plano "não encontrado"). Foi colisão de
+ambiente, não bug de produto.
+
+**Pendente:** a correção de pin entra na próxima release governada; o update
+físico do RetroArch no host exige essa release (o daemon lê o manifest da
+release instalada). O Dolphin já está `installed`.

@@ -22,13 +22,13 @@
     "restore"
   ],
   "sources": [
-    {
-      "type": "flatpak",
-      "ref": "org.libretro.RetroArch",
-      "remote": "flathub",
-      "version": "d8644a97df3db3cdd46eff2f7aea7d429c40f7e1e7ed5788a191714cc29a74a8",
-      "priority": 1
-    }
+  {
+    "type": "flatpak",
+    "ref": "org.libretro.RetroArch",
+    "remote": "flathub",
+    "version": "9c51e2bcb6f7f29ecb327ee057b273c5b59efc22d35026e90aef601bc0052752",
+    "priority": 1
+  }
   ],
   "paths": {
     "config": "{XDG_CONFIG_HOME}/retroarch/retroarch.cfg"
