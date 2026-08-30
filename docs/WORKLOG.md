@@ -8322,3 +8322,30 @@ ruff, format, mypy, boundaries, independence e status-check verdes.
   (`staging/preservation/<ulid>/`) — domínio de preservação de saves, item
   próprio; registrado para consideração, não corrigido aqui.
 - Correção aguarda merge em `main` + release + autorização de install.
+
+## 2026-08-30 — Sessão: prova física da correção de staging no host
+
+Fase A+B da robustez de emuladores entregue e provada fisicamente na release
+`2.0.0rc1-984d5c48a38c` (commit `984d5c48`, run CI verde `33323635121`,
+wheel SHA-256 `b82115cc…`).
+
+**Correção ativada (commit 3721c4f):** staging de extração de core libretro
+removida no `finally` do apply (inclusive em queda/BaseException e falha).
+
+**Prova no host instalado:** instalado `libretro-stella` via executor
+corrigido → `steamzero state audit` → `orphanStaging: []`, `orphanBackups: []`;
+`steamzero doctor` → `staging.orphan` pass, `backup.orphan` pass. Nenhum órfão
+novo introduzido.
+
+**Órfãos antigos (pré-correção) quarentenados** via `state cleanup-apply`
+(reversível, retenção 7d): `staging/libretro` (resíduo snes9x) e
+`backup/state-premigration-*.db`.
+
+**Doctor final:** 11 checks pass; único `warn` é `boot.direct` = "Sem permissão
+para inspecionar a configuração de boot" (`/boot/grub/grub.cfg` é
+`-rw------- root:root`; uid 1000 sem leitura) — condição de host, pré-existente,
+não-defeito de código.
+
+**Fora do escopo (Fase C, sequência):** funcionamento real do emulador com ROM;
+vazamento potencial análogo em `preservation.py` (`staging/preservation/<ulid>/`)
+— domínio de preservação de saves, item próprio, registrado para consideração.
