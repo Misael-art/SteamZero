@@ -310,6 +310,21 @@ class TestPlatformRomScanner:
 
 
 class TestPlatformDirectoryInventory:
+    def test_keeps_manifest_declared_auxiliary_content(self, tmp_path: Path) -> None:
+        wiiu = tmp_path / "Wii U"
+        (wiiu / "updates").mkdir(parents=True)
+        (wiiu / "dlc").mkdir()
+        (wiiu / "Game.wud").write_bytes(b"")
+        (wiiu / "updates" / "Game Update.wud").write_bytes(b"")
+        (wiiu / "dlc" / "Game DLC.wud").write_bytes(b"")
+
+        row = PlatformDirectoryInventory.from_registry(PlatformRegistry.bundled()).inventory(
+            tmp_path
+        )[0]
+
+        assert [item.content_kind for item in row.selected_games] == ["base"]
+        assert {item.content_kind for item in row.auxiliary_content} == {"update", "dlc"}
+
     def test_maps_manifest_aliases_and_selects_every_unique_game(self, tmp_path: Path) -> None:
         psx = tmp_path / "PSX"
         psx.mkdir()

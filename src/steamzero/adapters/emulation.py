@@ -85,7 +85,11 @@ from steamzero.domain.game_enhancements import ProviderRole
 from steamzero.domain.game_identity import IdentityScheme, validate_identity_value
 from steamzero.domain.input_profiles import InputProfileManager
 from steamzero.domain.launch_profile import LaunchProfile, build_argv, find_core, parse_launch
-from steamzero.domain.library import PlatformDirectoryInventory, PlatformRomScanner
+from steamzero.domain.library import (
+    AuxiliaryContent,
+    PlatformDirectoryInventory,
+    PlatformRomScanner,
+)
 from steamzero.domain.media_pipeline import MediaPipeline
 from steamzero.domain.platform_composer import EmulatorFacts
 from steamzero.domain.platforms import PlatformRegistry
@@ -1679,7 +1683,7 @@ class EmulationController:
         directory_inventory = PlatformDirectoryInventory.from_registry(registry)
         emulator_cache = EmulatorCacheReader(paths.data_home())
         discovered: dict[str, dict[str, Any]] = {}
-        auxiliary: list[Any] = []
+        auxiliary: list[AuxiliaryContent] = []
         unidentified = 0
         errors: list[str] = []
         roots = self.library_roots()
@@ -1719,8 +1723,19 @@ class EmulationController:
             switch_claimed_paths = {str(match.path) for match in matches}
             switch_base_count = sum(1 for match in matches if match.content_kind == "base")
             plat_matches = platform_scanner.inventory(root)
+            # O auxiliar mora em subdiretório declarado pelo manifesto, e o
+            # scanner plano não desce nele. Coletar só no ramo de fallback
+            # significava que TODA plataforma cujo base é achado no nível de
+            # cima ficava sem update e sem DLC — o Wii U com `updates/` ao lado
+            # do `.wud` reportava updateCount 0.
+            directory_rows = directory_inventory.inventory(root)
+            auxiliary.extend(
+                AuxiliaryContent.from_candidate(item)
+                for row in directory_rows
+                if row.disposition == "matched"
+                for item in row.auxiliary_content
+            )
             if not any(match.content_kind == "base" for match in plat_matches):
-                directory_rows = directory_inventory.inventory(root)
                 directory_report.extend(
                     {
                         "root": str(row.path),
@@ -1805,7 +1820,7 @@ class EmulationController:
                 elif match.content_kind == "dlc":
                     counts["dlcs"] += 1
                 if match.content_kind != "base":
-                    auxiliary.append(match)
+                    auxiliary.append(AuxiliaryContent.from_candidate(match))
                     continue
                 try:
                     stat = match.path.stat()

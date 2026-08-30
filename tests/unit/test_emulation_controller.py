@@ -2645,6 +2645,30 @@ class TestAssociatedContentProjection:
         assert game["updateVersion"] == "v3"
         assert game["contentKind"] == "base"
 
+    def test_non_switch_auxiliary_content_associates_without_crashing(
+        self, monkeypatch, tmp_path: Path
+    ) -> None:  # type: ignore[no-untyped-def]
+        """Wii U declara auxiliaryContent both: o update precisa ser associado
+        pelo mesmo laço que trata o Switch, sem exigir campos do Switch."""
+        controller = _controller(monkeypatch, tmp_path)
+        root = tmp_path / "home" / "Games"
+        roms = root / "Wii U"
+        (roms / "updates").mkdir(parents=True)
+        (roms / "dlc").mkdir()
+        root_plan = controller.plan_action({"actionId": "library.root.add", "path": str(root)})
+        _apply(controller, root_plan)
+        (roms / "Game.wud").write_bytes(b"owned-game")
+        (roms / "updates" / "Game.wud").write_bytes(b"owned-update")
+        (roms / "dlc" / "Game.wud").write_bytes(b"owned-dlc")
+
+        controller.scan_library()
+
+        data = json.loads(controller._library_cache_path.read_text(encoding="utf-8"))  # type: ignore[attr-defined]
+        rows = [game for game in data["games"] if game["platform"] == "wii-u"]
+        assert [game["name"] for game in rows] == ["Game"]
+        assert rows[0]["updateCount"] == 1
+        assert rows[0]["dlcCount"] == 1
+
     def test_auxiliary_content_never_becomes_a_game(self, monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
         controller = _controller(monkeypatch, tmp_path)
         roms = tmp_path / "home" / "Games" / "Switch"

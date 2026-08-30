@@ -176,6 +176,34 @@ class RomCandidate:
     evidence: str
 
 
+@dataclass(frozen=True)
+class AuxiliaryContent:
+    """Update/DLC pronto para associação, seja qual for a plataforma.
+
+    Os dois produtores de auxiliar — o passe do Switch e o inventário canônico
+    de diretórios — convergem para esta forma. ``title_id`` e ``version`` são o
+    que o Switch consegue extrair do nome e o que as demais plataformas não
+    declaram; explícitos como ``None``, eles deixam de ser um atributo que o
+    consumidor precisa adivinhar com ``getattr``.
+    """
+
+    path: Path
+    content_kind: str
+    parent_title_id: str | None = None
+    title_id: str | None = None
+    version: int | None = None
+
+    @classmethod
+    def from_candidate(cls, candidate: Any) -> AuxiliaryContent:
+        return cls(
+            path=candidate.path,
+            content_kind=candidate.content_kind,
+            parent_title_id=getattr(candidate, "parent_title_id", None),
+            title_id=getattr(candidate, "title_id", None),
+            version=getattr(candidate, "version", None),
+        )
+
+
 class PlatformRomScanner:
     def __init__(
         self,
@@ -391,6 +419,7 @@ class PlatformDirectory:
     platform_id: str | None
     game_count: int
     selected_games: tuple[RomCandidate, ...]
+    auxiliary_content: tuple[RomCandidate, ...]
     skipped_symlinks: int
 
 
@@ -403,9 +432,12 @@ class PlatformDirectoryInventory:
     pasta desconhecida.
     """
 
-    def __init__(self, scanner: PlatformRomScanner, aliases: dict[str, str]) -> None:
+    def __init__(
+        self, scanner: PlatformRomScanner, aliases: dict[str, str], auxiliary: dict[str, str]
+    ) -> None:
         self._scanner = scanner
         self._aliases = dict(aliases)
+        self._auxiliary = dict(auxiliary)
 
     @classmethod
     def from_registry(cls, registry: Any) -> PlatformDirectoryInventory:
@@ -425,7 +457,8 @@ class PlatformDirectoryInventory:
         for alias, platform_id in _DIRECTORY_PLATFORM_ALIASES.items():
             if platform_id in known_ids:
                 aliases[_directory_key(alias)] = platform_id
-        return cls(PlatformRomScanner.from_manifests(manifest_dicts), aliases)
+        auxiliary = {m.id: str(m.media.get("auxiliaryContent") or "none") for m in manifests}
+        return cls(PlatformRomScanner.from_manifests(manifest_dicts), aliases, auxiliary)
 
     def inventory(self, root: Path) -> list[PlatformDirectory]:
         """Lista filhas de ``root`` em ordem estável, sem seguir symlinks.
@@ -444,11 +477,11 @@ class PlatformDirectoryInventory:
             if child.is_symlink() or not child.is_dir():
                 continue
             if _is_non_game_directory(child.name):
-                results.append(PlatformDirectory(child, "excluded", None, 0, (), 0))
+                results.append(PlatformDirectory(child, "excluded", None, 0, (), (), 0))
                 continue
             platform_id = self._aliases.get(_directory_key(child.name))
             if platform_id is None:
-                results.append(PlatformDirectory(child, "unmatched", None, 0, (), 0))
+                results.append(PlatformDirectory(child, "unmatched", None, 0, (), (), 0))
                 continue
             candidates, skipped = self._inventory_tree(child, platform_id)
             selected = tuple(self._unique_games(candidates, child))
@@ -459,6 +492,9 @@ class PlatformDirectoryInventory:
                     platform_id,
                     self._unique_game_count(candidates, child),
                     selected,
+                    tuple(
+                        candidate for candidate in candidates if candidate.content_kind != "base"
+                    ),
                     skipped,
                 )
             )
@@ -474,7 +510,9 @@ class PlatformDirectoryInventory:
                     candidate = Path(directory) / child_dir
                     if candidate.is_symlink():
                         skipped_symlinks += 1
-                    elif not _is_non_game_directory(child_dir):
+                    elif self._auxiliary_kind(
+                        platform_id, child_dir
+                    ) is not None or not _is_non_game_directory(child_dir):
                         safe_dirs.append(child_dir)
                 child_dirs[:] = safe_dirs
                 siblings = set(files)
@@ -488,13 +526,21 @@ class PlatformDirectoryInventory:
                         siblings,
                         root_platform=platform_id,
                     )
+                    relative_parts = path.relative_to(root).parts[:-1]
+                    auxiliary_kind = next(
+                        filter(
+                            None,
+                            (self._auxiliary_kind(platform_id, part) for part in relative_parts),
+                        ),
+                        None,
+                    )
                     candidates.append(
                         RomCandidate(
                             path=path,
                             format=detect_format(filename),
                             platform=platform,
-                            content_kind=kind,
-                            evidence=evidence,
+                            content_kind=auxiliary_kind or kind,
+                            evidence="manifest-auxiliary-directory" if auxiliary_kind else evidence,
                         )
                     )
         except OSError:
@@ -502,6 +548,15 @@ class PlatformDirectoryInventory:
             # as demais sejam exibidas. O resultado parcial continua verdadeiro.
             pass
         return candidates, skipped_symlinks
+
+    def _auxiliary_kind(self, platform_id: str, directory: str) -> str | None:
+        policy = self._auxiliary.get(platform_id, "none")
+        name = directory.casefold()
+        if name in {"update", "updates", "patch", "patches"} and policy in {"update", "both"}:
+            return "update"
+        if name in {"dlc", "dlcs"} and policy in {"dlc", "both"}:
+            return "dlc"
+        return None
 
     @staticmethod
     def _game_key(candidate: RomCandidate, root: Path) -> str:
