@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopeDigest": "5542e897724cd3d8da9018f630cbba7f714e8934a96d00bd67bd3369e4631aff",
+  "scopeDigest": "fa54c59532f0b93e489685ebeb6ea319dd10e5e8e052c0eebfa98659e54a90df",
   "scopePaths": [
     "docs/00-vision/PROJECT-VISION.md",
     "docs/00-vision/NON-GOALS.md",
@@ -30,7 +30,9 @@
     "src/steamzero/adapters/launcher_ui.py",
     "tests/integration/test_launcher_app.py",
     "docs/09-operations/evidence/2026-08-26-aura-launcher-fisico",
-    "src/steamzero/ui/qml/launcher/LauncherHome.qml"
+    "src/steamzero/ui/qml/launcher/LauncherHome.qml",
+    "src/steamzero/adapters/launcher_catalog.py",
+    "tests/unit/test_launcher_catalog.py"
   ],
   "dependsOn": [
     "SZ-AURA-UI",

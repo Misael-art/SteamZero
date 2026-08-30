@@ -7,7 +7,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 
 | ID | Arquivos no escopo | Evidencias | Aprovadas | Verificacao | Observacao |
 |---|---|---|---|---|---|
-| SZ-AGG-ADAPTERS | 108 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-ADAPTERS | 109 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-ASSETS | 10 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-CORE | 40 | 1 | 1 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-DOMAIN | 92 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
@@ -17,9 +17,9 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-PRIVILEGED | 7 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SCHEMAS | 49 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SERVICE-API | 11 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-TESTS | 365 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-TESTS | 366 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TOOLS | 39 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AURA-LAUNCHER | 32 | 11 | 9 | hw |  |
+| SZ-AURA-LAUNCHER | 34 | 11 | 9 | hw |  |
 | SZ-AURA-UI | 14 | 3 | 3 | unit |  |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
@@ -48,4 +48,4 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-UI-DESKTOP-AUDIT | 253 | 26 | 18 | dev |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 
-Arquivos em `src/`: **519**. Sob agregador apenas, sem item de capacidade: **298** (57%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
+Arquivos em `src/`: **520**. Sob agregador apenas, sem item de capacidade: **298** (57%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.

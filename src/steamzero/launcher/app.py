@@ -21,6 +21,7 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+from steamzero.adapters.launcher_catalog import CatalogGame, catalog_games
 from steamzero.core import paths
 from steamzero.launcher.launch import LaunchPlan, Spawn, consume_context, launch_detached
 from steamzero.launcher.navigation import HomeSection
@@ -171,6 +172,28 @@ def _steamzero_executable() -> str:
     return resolved
 
 
+def _sections_from_catalog(catalog: Sequence[CatalogGame]) -> tuple[HomeSection, ...]:
+    """Agrupa a home por plataforma, preservando a primeira ordem de chegada.
+
+    A home fullscreen agrupa por sistema: sem isso uma seção única com o acervo
+    inteiro tornaria a navegação por controle impraticável. Um jogo cuja
+    plataforma não tem seção conhecida cai em ``outros``.
+    """
+    grouped: dict[str, list[str]] = {}
+    for game in catalog:
+        section = game.platform or "outros"
+        try:
+            HomeSection(id=section, title=section, items=(game.id,))
+        except ValueError:
+            section = "outros"
+            HomeSection(id=section, title=section, items=(game.id,))
+        grouped.setdefault(section, []).append(game.id)
+    return tuple(
+        HomeSection(id=name, title=_SECTION_TITLES.get(name, name), items=tuple(items))
+        for name, items in grouped.items()
+    )
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--library", type=Path, default=None)
@@ -186,8 +209,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     consume_context(context_path)
 
     library = _read_library(args.library)
-    sections = build_sections(library)
-    titles = build_titles(library)
+    catalog = catalog_games(library)
+    sections = _sections_from_catalog(catalog)
+    titles = {game.id: game.title for game in catalog}
 
     router = LaunchRouter(on_spawn=spawn_detached, context_path=context_path)
 

@@ -8394,3 +8394,34 @@ humana) após publicar release com a correção.
 - As demais frentes `active` com branch absorvida (controls, host-update,
   error-catalog, v2-harmonized) têm pendencias reais ou decisões do operador;
   não foram fechadas.
+
+## 2026-08-30 — Sessão: catálogo da home do AURA Launcher por plataforma
+
+Complemento do P0: a home do Launcher passou a agrupar por **plataforma** e a
+excluir update/DLC, com o rótulo correto vindo de `name`.
+
+**Por quê:** a home lia o cache cru com `build_sections`, cuja default é
+`library` — como o cache não tem campo `section`, TODA a biblioteca caía numa
+única seção, tornando a navegação por controle impraticável. Além disso,
+oferecia update/DLC que o `launch_game` recusa.
+
+**Correção (frente AURA-LAUNCHER):** portado `adapters/launcher_catalog.py`
+(`CatalogGame`, `catalog_games`) da PR #92 (capacidade ausente no main) e usado
+via `_sections_from_catalog` no `app.py`: seção = plataforma, rótulo = `name`
+(nunca o id), update/DLC fora. `build_sections`/`build_titles` preservados
+(usados por testes).
+
+**Provas:** `tests/unit/test_launcher_catalog.py` (5 novos: base listada com
+rótulo canônico, update/DLC excluídos, fallback de título nunca mostra o id,
+registro corrompido não esvazia a home, plataforma derivada para formatos
+Switch). 38 passed na frente.
+
+**Gates:** suíte integral 5304 passed / 44 skipped / 0 failed (35m); ruff,
+format, mypy, boundaries, independence e status-check verdes.
+
+**Registro de coordenação** (não editando frente alheia):
+- PR #92: a única capacidade genuína ausente no main era `launcher_catalog.py`
+  (portada aqui). As demais PRs históricas (#64, #78-82) tiveram símbolos
+  centrais já portados seletivamente no main (retropad, retroarch_autoconfig,
+  input_profiles, ui_audit_runner, azahar manifest, doctor/theme_editor) —
+  branches obsoletas, a auditar/fechar sem merge pelo coordenador.
