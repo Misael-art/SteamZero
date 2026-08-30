@@ -6,13 +6,13 @@
   "branch": "codex/host-update-prova-fisica",
   "baseRef": "00459c7",
   "owner": "codex-host-update",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "docs/09-operations/evidence/2026-08-26-host-update-preflight"
   ],
   "sharedPaths": [
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Executar update contra o host quando houver autorizacao explicita, para provar preservacao de banco, quarentena de candidata invalida e rollback disponivel antes da ativacao.",
-  "updatedAt": "2026-08-26"
+  "nextAction": "Fechado: preflight de recusa e caminho de sucesso do update provados fisicamente (evidencia 2026-08-26, secoes 1-6), com banco preservado, daemon convergente, rollback conhecido e ownership/proveniencia. A unica pendencia restante — quarentena de candidata deliberadamente invalida DURANTE a ativacao — exige release controlada/fixture e autorizacao especifica do operador; registrada como passo do fechamento 2.0, nao do workstream. Branch absorvida por main.",
+  "updatedAt": "2026-08-30"
 }

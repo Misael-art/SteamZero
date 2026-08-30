@@ -8446,3 +8446,33 @@ Release governada `2.0.0rc1-920ec79e875a` (commit `920ec79e`, run CI verde
 
 **Pendente (interação humana):** prova "jogar → voltar ao mesmo cartão" no
 Launcher, que exige keys sincronizadas + interação física do operador.
+
+## 2026-08-30 — Sessão: arbitragem de coordenação (workstreams + PRs)
+
+**Workstreams fechados** (branch absorvida por main e escopo concluído):
+- WS-2026-08-EMULATION-LONG-OPERATIONS — item promovido a ready; install físico
+  do melonDS provado no host.
+- WS-2026-08-HOST-UPDATE — preflight de recusa/sucesso do update provados; resta
+  a quarentena de candidata inválida (release quebrada controlada), registrada
+  como passo do fechamento 2.0, não do workstream.
+- WS-2026-08-LIBRARY-CANONICAL-FULLSCAN — migração do workspace provada no host
+  (231 jogos base, 61 plataformas, roteamento por plataforma). As 110 plataformas
+  sem manifesto e 12 variantes são DECISÃO DE PRODUTO (registradas no item).
+
+Mantidos `active` (pendência real no item): AURA-LAUNCHER (prova jogar->voltar,
+interação humana), COMPONENT-MATRIZ (update real de versão), CONTROLS-INPUT-PROFILES
+(2 verificações do operador), ERROR-CATALOG-AUDIT (cauda longa do catálogo),
+M10 (autoconfig gerenciado), V2-HARMONIZED (item normativo de distribuição).
+
+**PRs históricas fechadas sem merge** (arbitragem 2026-08-30): #64, #78, #79,
+#80, #81, #82, #92 — conteúdo válido já portado seletivamente para main
+(símbolos-chave confirmados presentes: ui_audit_runner, retropad,
+retroarch_autoconfig, input_profiles, theme_editor, doctor, azahar manifest,
+launcher_catalog). Restam nas branches apenas documentos de evidência de
+sessões antigas e files de status renomeados, já substituídos pelos canônicos.
+Segue proibido mesclá-las.
+
+**4 frentes com commits exclusivos antigos** (EMULATOR-ENHANCEMENT,
+HARMONIZE-A45, M11/RetroFE, THEME-ASSET-RECIPES) permanecem `active` e com
+branch NÃO ancestral de main: exigem inventário seletivo de capacidade
+(ausente/substituída/obsoleta) — decisão de produto, não fechamento automático.

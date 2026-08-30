@@ -6,7 +6,7 @@
   "branch": "codex/library-auxiliary-content",
   "baseRef": "23b13b6",
   "owner": "codex-library-auxiliary-content",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/domain/library.py",
     "tests/unit/test_service_transport_compression.py",
@@ -20,6 +20,6 @@
     "src/steamzero/service/core.py",
     "src/steamzero/i18n/messages_pt_br.py"
   ],
-  "nextAction": "Custódia arbitrada mantida: SZ-LIBRARY-CANONICAL é o único dono de src/steamzero/domain/library.py; WS-2026-08-V2-HARMONIZED não pode editá-lo. Migração do workspace concluída (build_emulation_workspace roteia por plataforma); próximo: lote 2 de manifestos, enxugar o read model e ligar consumidores à fonte única.",
+  "nextAction": "Fechado: a migracao do workspace foi concluida e provada fisicamente (build_emulation_workspace roteia cada jogo pela plataforma declarada; biblioteca canonica no host com 231 jogos base e 61 plataformas; conteudo auxiliar classificado). Custodia mantida: SZ-LIBRARY-CANONICAL segue dono unico de src/steamzero/domain/library.py. As 110 plataformas sem manifesto e as 12 variantes ambiguas sao DECISAO DE PRODUTO (lote 2 de manifestos, enxugar o read model, ligar consumidores) — registradas no item, fora do escopo tecnico ja fechado deste workstream. Branch codex/library-auxiliary-content absorvida por main.",
   "updatedAt": "2026-08-30"
 }

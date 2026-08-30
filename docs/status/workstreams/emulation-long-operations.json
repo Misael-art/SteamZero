@@ -6,7 +6,7 @@
   "branch": "codex/melonds-smoke-install-fisico",
   "baseRef": "450e823581f0d0d3680bc5ac4aaddc7a6308810c",
   "owner": "codex-melonds-metadata-smoke",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/service/client.py",
     "src/steamzero/service/core.py",
@@ -37,6 +37,6 @@
     "docs/status/items/emulation-long-operations.json",
     "docs/status/workstreams/emulation-long-operations.json"
   ],
-  "nextAction": "Executar o install físico do melonDS na release 2.0.0rc1-92d91d631b80 provando o download no daemon (unit com AF_INET/AF_INET6/AF_NETLINK) e o smoke flatpak-info; atualizar item conforme resultado.",
-  "updatedAt": "2026-08-25"
+  "nextAction": "Fechado: o install físico do melonDS foi provado na release instalada (job no daemon com allowlist de rede e smoke flatpak-info conferindo o commit fixado), e o item SZ-EMULATION-LONG-OPERATIONS foi promovido a ready. Branch codex/melonds-smoke-install-fisico foi absorvida por main.",
+  "updatedAt": "2026-08-30"
 }
