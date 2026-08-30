@@ -8229,3 +8229,14 @@ O registro foi corrigido, as visões foram regeneradas e o teste de status passo
 (10). A suíte integral repetida passou: 5291 passed / 44 skipped em 30m36s;
 o único aviso foi o daemon instalado, já existente antes do runner, escrever
 `logs/core.jsonl` e `state.db` no seu próprio state home.
+
+## 2026-08-29 — Filtro declarativo de providers e diagnóstico real do 403
+
+`supported_platforms` passou a orientar a busca, preservando fallback amplo
+quando nenhum provider declara a plataforma. O transporte entrega ao adapter
+somente classificação sanitizada; ScreenScraper distingue credencial recusada
+de quota sem registrar URL, corpo ou segredo. A prova real mostrou
+`ssid`/`sspassword` ausentes no cofre, não quota nem usuário fictício.
+
+**Gates:** 5296 passed / 44 skipped em 35m52s; ruff, format, mypy,
+independence e boundaries verdes.

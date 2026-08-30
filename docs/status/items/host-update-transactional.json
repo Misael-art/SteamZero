@@ -26,7 +26,7 @@
     "tools/release_host.py",
     "docs/09-operations/evidence/2026-08-26-host-update-preflight"
   ],
-  "scopeDigest": "eb7c2578b0e2bbe50bca4375ff2c1a7fb76aaff3f33c2dd643ff5946f678b84f",
+  "scopeDigest": "601fd2f333040ef9896f99bf023df35b2f378c09b729bd9e461e682ceb4579e7",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [

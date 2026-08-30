@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-MEDIA-PROVIDER-PLATFORM-FILTER",
+  "item": "SZ-MEDIA-PROVIDER-PLATFORM-FILTER",
+  "branch": "codex/media-provider-platform-filter",
+  "baseRef": "d8e4074",
+  "owner": "codex-media-provider-platform-filter",
+  "state": "closed",
+  "exclusivePaths": [
+    "src/steamzero/adapters/scraping/registry.py",
+    "src/steamzero/adapters/scraping/base.py",
+    "src/steamzero/adapters/scraping/screenscraper.py",
+    "src/steamzero/core/net.py",
+    "src/steamzero/adapters/emulation.py",
+    "tests/unit/scraping/test_registry.py",
+    "tests/unit/scraping/test_base.py",
+    "tests/unit/scraping/test_screenscraper.py",
+    "tests/unit/test_core_net.py",
+    "tests/unit/test_media_multiprovider.py"
+  ],
+  "sharedPaths": [
+    "docs/status/items/media-provider-platform-filter.json",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Integrado; aguarda credenciais pessoais reais para nova prova física de download.",
+  "updatedAt": "2026-08-29"
+}

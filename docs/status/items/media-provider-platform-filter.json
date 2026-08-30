@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-MEDIA-PROVIDER-PLATFORM-FILTER",
+  "title": "Filtro de provedores de mídia por plataforma",
+  "domain": "media",
+  "implementation": "complete",
+  "integration": "integrated",
+  "verification": "unit",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/adapters/scraping/registry.py",
+    "src/steamzero/adapters/scraping/base.py",
+    "src/steamzero/adapters/scraping/screenscraper.py",
+    "src/steamzero/core/net.py",
+    "src/steamzero/adapters/emulation.py",
+    "tests/unit/scraping/test_registry.py",
+    "tests/unit/scraping/test_base.py",
+    "tests/unit/scraping/test_screenscraper.py",
+    "tests/unit/test_core_net.py",
+    "tests/unit/test_media_multiprovider.py"
+  ],
+  "scopeDigest": "40d01a0c18eff6dc15cb1543c33aa75e685fb66c812c8a69eccef26d71932bde",
+  "dependsOn": ["SZ-MEDIA-SCRAPING"],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "A busca prefere providers que declaram a plataforma da identidade e só usa fallback amplo quando nenhum provider a declara.",
+    "A ordem de fallback permanece determinística entre providers elegíveis.",
+    "HTTP 403 do ScreenScraper é classificado pelo corpo sanitizado sem persistir corpo, URL ou credencial."
+  ],
+  "evidence": [{"kind":"test","reference":"tests/unit/test_core_net.py","command":".venv/bin/python tools/run_tests_isolated.py tests/unit/test_project_status.py tests/unit/test_core_net.py tests/unit/scraping tests/unit/test_media_multiprovider.py -q (197 passed)","result":"passed"},{"kind":"test","reference":"tests/unit/scraping/test_registry.py","command":".venv/bin/python tools/run_tests_isolated.py tests -q (5296 passed, 44 skipped, 35m52s)","result":"passed"}],
+  "nextAction": "Restaurar ssid/sspassword do operador no Secret Service e repetir busca real em uma release futura; não há download a tentar sem essa credencial.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-29",
+  "notes": "supported_platforms era um contrato morto: cada adapter o declarava, mas ProviderRegistry filtrava somente media_kind. A preferência por cobertura declarada preserva fallback amplo para plataformas sem declaração. A prova física revelou que BaseMediaProvider transformava qualquer HTTP 403 em quota antes de ScreenScraperAdapter ler o motivo retornado pelo servidor. A consulta real sem expor segredo confirmou credencial recusada e cofre sem ssid/sspassword; não foi demonstrada quota nem usuário fictício."
+}
