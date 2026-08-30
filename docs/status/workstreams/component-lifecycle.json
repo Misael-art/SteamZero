@@ -13,6 +13,6 @@
   "sharedPaths": [
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Instalar ao menos um core libretro pelo fluxo governado para provar install/verify/rollback do executor libretro, hoje com zero instalacoes fisicas; depois instrumentar progresso por bytes e cancelamento cooperativo.",
+  "nextAction": "Executor libretro provado no host (install, verify, rollback com custodia conferida por hash e noop inerte — o item SZ-COMPONENT-LIFECYCLE esta ready). Proximo passo real: update de versao entre pins diferentes (o unico caminho do executor ainda sem exercicio), instrumentar progresso por bytes e cancelamento cooperativo, e instalar os componentes restantes (Azahar, PPSSPP, Xemu).",
   "updatedAt": "2026-08-27"
 }

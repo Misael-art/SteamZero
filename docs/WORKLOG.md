@@ -8476,3 +8476,24 @@ Segue proibido mesclá-las.
 HARMONIZE-A45, M11/RetroFE, THEME-ASSET-RECIPES) permanecem `active` e com
 branch NÃO ancestral de main: exigem inventário seletivo de capacidade
 (ausente/substituída/obsoleta) — decisão de produto, não fechamento automático.
+
+## 2026-08-30 — Sessão: sincronização de nextAction em 3 workstreams
+
+Inconsistência documental residual corrigida: workstreams com nextAction
+desatualizado (itens canônicos já corretos) — risco de induzir o próximo agente
+a repetir trabalho.
+
+- WS-2026-08-COMPONENT-MATRIZ: nextAction era 'instalar o primeiro core
+  libretro' (já provado). Atualizado para o passo real: update REAL de versão
+  entre pins, progresso por bytes/cancelamento e componentes restantes
+  (Azahar, PPSSPP, Xemu). Item SZ-COMPONENT-LIFECYCLE ready.
+- WS-2026-08-CONTROLS-INPUT-PROFILES: nextAction era 'materializar o
+  autoconfig' (já ocorreu). Atualizado para as duas provas físicas restantes do
+  operador (cartão verde e chegada do perfil no lançamento real).
+- WS-2026-08-V2-HARMONIZED: nextAction ainda citava Flatpak v3 e custódia da
+  biblioteca como pendências (já evoluíram). Atualizado para o que resta ao
+  fechamento 2.0 (consumidores da biblioteca canônica, artwork, matriz física,
+  ES-DE/RetroFE, 7 controles, updater/quarentena).
+
+Workstreams: EMULATOR-ENHANCEMENT, HARMONIZE-A45, M11 e THEME-ASSET-RECIPES
+seguem pendentes de inventário seletivo de capacidade (decisão de produto).

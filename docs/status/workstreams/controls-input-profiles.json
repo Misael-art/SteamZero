@@ -18,6 +18,6 @@
   "sharedPaths": [
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Materializar o autoconfig gerenciado pelo caminho governado (controls apply exige token e foi bloqueado pelo harness) e provar marcador de ownership, recusa de arquivo de terceiro e chegada do perfil ao lancamento real.",
+  "nextAction": "Materializacao do autoconfig gerenciado concluida (marcador de ownership, recusa de arquivo de terceiro e chegada do perfil ao lancamento real provados). Restam duas provas fisicas do operador, ambas com o host na mao: (1) confirmar o cartao em verde com o botao sumido (central > Emulacao > jogo > cartao de controles); (2) abrir um jogo da plataforma e confirmar a chegada do perfil no lancamento real.",
   "updatedAt": "2026-08-26"
 }
