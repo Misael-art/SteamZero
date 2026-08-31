@@ -42,6 +42,7 @@ class CatalogGame:
     id: str
     title: str
     platform: str
+    cover_url: str = ""
 
     def to_dict(self) -> dict[str, str]:
         # A seção é a plataforma: a home agrupa por sistema.
@@ -50,6 +51,7 @@ class CatalogGame:
             "title": self.title,
             "section": self.platform,
             "system": self.platform,
+            "coverUrl": self.cover_url,
         }
 
 
@@ -59,6 +61,21 @@ def _platform_of(record: Mapping[str, Any]) -> str:
         return platform
     fmt = str(record.get("format") or "").casefold()
     return {"nsp": "switch", "xci": "switch", "nsz": "switch"}.get(fmt, fmt or "outros")
+
+
+def _cover_of(record: Mapping[str, Any]) -> str:
+    """Capa exibível do jogo.
+
+    A biblioteca canônica publica artwork em ``coverUrl``/``artworkUrl`` e
+    ``bannerAsset`` quando o scraping/mídia foi concluído. Quando ainda não há
+    arte (o caso comum hoje), devolvemos vazio e o cartão usa um placeholder
+    honesto — nunca uma imagem de "placeholder" fingindo capa de jogo.
+    """
+    for key in ("coverUrl", "artworkUrl", "bannerAsset"):
+        value = record.get(key)
+        if isinstance(value, str) and value:
+            return value
+    return ""
 
 
 def catalog_games(records: Sequence[Mapping[str, Any]]) -> tuple[CatalogGame, ...]:
@@ -76,5 +93,12 @@ def catalog_games(records: Sequence[Mapping[str, Any]]) -> tuple[CatalogGame, ..
         title = str(record.get("name") or record.get("title") or "")
         if not identifier or not title:
             continue
-        games.append(CatalogGame(id=identifier, title=title, platform=_platform_of(record)))
+        games.append(
+            CatalogGame(
+                id=identifier,
+                title=title,
+                platform=_platform_of(record),
+                cover_url=_cover_of(record),
+            )
+        )
     return tuple(games)

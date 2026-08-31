@@ -229,6 +229,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     catalog = catalog_games(library)
     sections = _sections_from_catalog(catalog)
     titles = {game.id: game.title for game in catalog}
+    covers = {game.id: game.cover_url for game in catalog if game.cover_url}
 
     router = LaunchRouter(on_spawn=spawn_detached, context_path=context_path)
 
@@ -237,6 +238,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     bridge = LauncherBridge(
         sections=sections,
         titles=titles,
+        covers=covers,
         context_path=context_path,
         on_launch=router.launch,
         accessibility=accessibility,

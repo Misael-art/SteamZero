@@ -122,7 +122,7 @@ Item {
                     color: home._hc("#8b93a8", "#c6d0db")
                     font.pixelSize: 13
                 }
-                Row {
+                Flow {
                     spacing: 12
                     Repeater {
                         model: sectionColumn.modelData.items
@@ -131,31 +131,55 @@ Item {
                             readonly property string nodeId:
                                 home._nodeId(sectionColumn.sectionId, modelData.id)
                             objectName: "launcherItem"
-                            width: 180
-                            height: 100
+                            // Cartão responsivo: largura derivada da largura
+                            // útil da área, mínimo 180px, máximo 280px. Em 1080p
+                            // a grade redistribui colunas em vez de fixar 180px.
+                            width: Math.min(Math.max(home.width / (Math.max(3, Math.floor(home.width / 240))) - 14, 180), 280)
+                            height: 132
                             radius: 10
                             color: home._hc("#0b1622", "#03080c")
                             border.width: home.currentFocus === nodeId ? 3 : 1
                             border.color: home.currentFocus === nodeId
                                 ? home._hc("#22d3ee", "#55d8ff") : home._hc("#243044", "#68839b")
-                            Text {
-                                // `centerIn` sem largura deixava o texto crescer
-                                // na largura natural e vazar do cartão de 180px,
-                                // sobrepondo os vizinhos. O defeito ficou escondido
-                                // enquanto a home mostrava o id em hash: hash curto
-                                // cabia. Com o título real — "Alex Kidd in Shinobi
-                                // World (Hack) (Graphics Restoration) (SMS)" — a
-                                // linha atravessava três cartões.
+                            clip: true
+                            // Capa do jogo, quando o scraping/mídia a produziu.
+                            Image {
                                 anchors.fill: parent
-                                anchors.margins: 10
-                                text: modelData.title
-                                color: home._hc("#f2f6fb", "#ffffff")
-                                font.pixelSize: 14
+                                visible: !!modelData.coverUrl
+                                source: modelData.coverUrl || ""
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                                // Limita a decodificação à resolução útil: evita
+                                // o pico de memória de decodificar a arte nativa.
+                                sourceSize.width: width * 2
+                                sourceSize.height: height * 2
+                            }
+                            // Placeholder honesto quando não há arte: um retângulo
+                            // com a inicial do sistema, nunca imagem "de capa".
+                            Text {
+                                anchors.fill: parent
+                                visible: !modelData.coverUrl
+                                text: String(modelData.title || "?").charAt(0)
+                                color: home._hc("#8b93a8", "#c6d0db")
+                                font.pixelSize: 48
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
+                            }
+                            Text {
+                                // Legenda sobre a capa (ou sobre o placeholder).
+                                anchors.fill: parent
+                                anchors.bottomMargin: 6
+                                anchors.leftMargin: 8
+                                anchors.rightMargin: 8
+                                verticalAlignment: Text.AlignBottom
+                                text: modelData.title
+                                color: home._hc("#f2f6fb", "#ffffff")
+                                font.pixelSize: 13
                                 wrapMode: Text.Wrap
-                                maximumLineCount: 4
+                                maximumLineCount: 2
                                 elide: Text.ElideRight
+                                style: Text.Outline
+                                styleColor: home._hc("#000000", "#000000")
                             }
                         }
                     }

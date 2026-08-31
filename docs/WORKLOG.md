@@ -8742,3 +8742,29 @@ camada naive `Keys.onGamepad*` pedida é IMPOSSÍVEL neste runtime. A navegaçã
 por "controle" do Launcher funciona via Steam Input (que emula teclado
 `Keys.on*`); controle literal/libinput sem emulação não navega. Registrado
 como gap e decisão futura (liberar evento gamepad via libinput/Steam-Input).
+
+## 2026-08-31 — Sessão: Etapa 2 — capas, grade responsiva e media recycling no Launcher
+
+Radiografia 2026-08-31 (P0-C capas, P1-A grade rígida, seção 4 perf) -> correções.
+
+**Capas/arte nos cartões do Launcher:** `CatalogGame` ganhou `coverUrl` (de
+`coverUrl`/`artworkUrl`/`bannerAsset` da biblioteca canônica), propagado pelo
+modelo da bridge (`covers` no LauncherBridge) e renderizado por launcherItem:
+`Image` com `fillMode PreserveAspectCrop`, `asynchronous: true` e
+`sourceSize` limitado (decodificação na resolução útil, sem pico de memória de
+arte nativa). Sem `coverUrl` (o caso comum hoje, pois o artwork do acervo real
+ainda não foi produzido), o cartão usa placeholder honesto: a inicial do jogo
+sobre o fundo — nunca "imagem de capa" fingindo conteúdo.
+
+**Grade responsiva:** substituí o `Row` fixo (180x100) por `Flow` com largura
+de cartão derivada da largura útil (`Math.min(Math.max(home.width/cols-14,180),
+280)`), de modo que em 1080p a grade redistribui colunas em vez de ficar
+esparsa. Cartão passou para 132 de altura para acomodar a legenda sobre a capa.
+
+**Mídia/cache:** `Image.async` + `sourceSize` limitado nas capas do Launcher
+mesmo padrão da central (o `MediaEffectLayer`/LOD/pooling do EditorialLibrary
+fica como trabalho de perf separado, registrado na radiografia).
+
+**Testes:** `check_launcher_covers.qml` (novo, no gate QML): cartões instanciam,
+largura responsiva >=180, elemento de imagem presente. Outros harnesses launcher
++ Python continuam verdes. 54 passed na frente.

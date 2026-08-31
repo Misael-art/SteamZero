@@ -105,10 +105,12 @@ class LauncherBridge:
         context_path: Path,
         on_launch: LaunchCallback,
         titles: Mapping[str, str] | None = None,
+        covers: Mapping[str, str] | None = None,
         accessibility: Mapping[str, Any] | None = None,
     ) -> None:
         self._sections = tuple(sections)
         self._titles = dict(titles or {})
+        self._covers = dict(covers or {})
         self._context_path = Path(context_path)
         self._on_launch = on_launch
         self._accessibility = dict(accessibility or {})
@@ -128,7 +130,11 @@ class LauncherBridge:
                     "id": section.id,
                     "title": section.title,
                     "items": [
-                        {"id": item, "title": self._titles.get(item, item)}
+                        {
+                            "id": item,
+                            "title": self._titles.get(item, item),
+                            "coverUrl": self._covers.get(item, ""),
+                        }
                         for item in section.items
                     ],
                 }
