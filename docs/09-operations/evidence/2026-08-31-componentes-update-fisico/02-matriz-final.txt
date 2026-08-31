@@ -1,0 +1,47 @@
+STEAMZERO — MATRIZ DE COMPONENTES FINAL (host)
+release: 2.0.0rc1
+
+total=33 instalados=32 missing=1 outdated=None degraded=None
+
+checks do doctor (estado/robustez):
+  runtime.provenance  pass
+  service.generation  pass
+  jobs.stale          pass
+  staging.orphan      pass
+  backup.orphan       pass
+  journal.orphan      pass
+  recovery.pending    pass
+
+emuladores instalados:
+  azahar
+  cemu
+  citron
+  dolphin
+  duckstation
+  eden
+  flycast
+  libretro-bluemsx
+  libretro-fbneo
+  libretro-freeintv
+  libretro-fuse
+  libretro-genesis-plus-gx
+  libretro-mednafen-ngp
+  libretro-mednafen-pce
+  libretro-mednafen-vb
+  libretro-mednafen-wswan
+  libretro-mesen
+  libretro-mgba
+  libretro-mupen64plus-next
+  libretro-opera
+  libretro-puae
+  libretro-snes9x
+  libretro-stella
+  libretro-vice-x64
+  melonds
+  pcsx2
+  ppsspp
+  retroarch
+  rpcs3
+  ryubing
+  xemu
+  xenia-canary

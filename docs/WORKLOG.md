@@ -8585,3 +8585,33 @@ staging.orphan/backup.orphan pass, recovery.pending 0. `state audit` → clean.
 
 O update real de versão do executor Flatpak (a pendência do workstream
 COMPONENT-MATRIZ) foi exercitado e fechado para Dolphin e RetroArch.
+
+## 2026-08-31 — Sessão: instalação robusta do fluxo de todos os emuladores
+
+Validação e instalação de todos os componentes instaláveis via fluxo governado
+(plan -> apply -> job no daemon -> verificar -> convergência), com resiliência:
+falha de um componente registra e continua, nunca para o lote.
+
+**Resultado — matriz final no host: 32 instalados, 0 outdated, 1 missing.**
+
+Instalados nesta sessão (16): ppsspp, xemu (flatpak) e 14 cores libretro
+(bluemsx, fbneo, freeintv, fuse, genesis-plus-gx, mednafen-ngp/pce/vb/wswan,
+mesen, mupen64plus-next, opera, puae, vice-x64). Somados a azahar, dolphin,
+retroarch (sessões anteriores) e os já presentes (cemu, citron, duckstation,
+eden, flycast, mgba, snes9x, stella, melonds, pcsx2, rpcs3, ryubing,
+xenia-canary) — 32 no total, cobrindo emulador + cores.
+
+**Sunshine (único missing):** é `kind: tool` (streaming), `capabilities
+["detect","status"]` (SEM `install`) e `type: native` (deb de pacote do
+sistema). Por design o projeto não o instala como emulador — instalação nativa
+privilegiada fora do escopo de emuladores. Tratado como streaming, não
+emulador (decisão correta do manifesto).
+
+**Robustez validada:** `doctor` — runtime.provenance pass, service.generation
+pass, jobs.stale pass, staging/backup/journal.orphan pass, recovery.pending 0;
+`state audit` -> `clean: True`. 17 cores libretro fisicamente no diretório do
+RetroArch. Nenhum degraded/outdated. O ciclo install/verify/rollback convergiu
+em TODOS, com os 3 tipos de fonte exercitados (flatpak: ppsspp/xemu; libretro:
+14 cores; engine: já presentes).
+
+Evidência: docs/09-operations/evidence/2026-08-31-componentes-update-fisico/.
