@@ -24,7 +24,7 @@ Item {
         {"id": "library", "title": "Biblioteca",
          "items": [
             {"id": "com-capa", "title": "Com Capa",
-             "coverUrl": "file:///tmp/steamzero-cover.png"},
+             "coverUrl": Qt.resolvedUrl("fixtures/cover.png")},
             {"id": "sem-capa", "title": "Sem Capa", "coverUrl": ""}
          ]}
     ]
