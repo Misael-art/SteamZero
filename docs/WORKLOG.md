@@ -8715,3 +8715,30 @@ entregam por padrao.
 Registro documental desta radiografia e o ponto de partida das correcoes:
 contraste (pontual), acessibilidade herdada (pontual), gamepad keys (naive) —
 seguindo a recomendacao de fechar os "CORRIGIR" antes de ampliar features.
+
+## 2026-08-31 — Sessão: a11y herdada + contraste + gamepad (Etapa 1 CORRIGIR)
+
+Radiografia 2026-08-31 -> correções de acessibilidade no Launcher/central.
+
+**Contraste (commit e6f525c):** palette.disabled.buttonText/text da central
+era #667481/#122131 (3,40:1) e o LauncherGamePage usava #5f6b85/#0a0f16
+(3,59:1) — reprovavam WCAG AA. Corrigido para #8b93a8 (5,31:1 e 6,26:1, já
+usada nos rótulos do Launcher). Novo teste test_ui_disabled_contrast prova AA
+nos pares e, como prova negativa, que os valores antigos reprovam.
+
+**Acessibilidade herdada (commit 631a05f):** o Launcher passou a herdar
+highContrast/visualScale/reducedMotion do host (kreadconfig6, mesmas probes da
+central desktop), expostos no modelo da bridge e propagados a Home/GamePage.
+Cores fixas ganham _hc(light, hc) que troca para valores high-contrast da
+paleta UiTokens sem refatorar tokens (não arriscar layout da release).
+Testes: check_launcher_accessibility.qml (QML, 41 assertions) +
+test_the_model_exposes_accessibility (Python).
+
+**Gamepad — achado técnico importante:** o Qt 6.11.1 deste host **não expõe**
+`Keys.onGamepad*` como handlers válidos nem `Qt.Key_Gamepad*` como constantes
+QML — o harness reprovou com "Cannot assign to non-existent property
+onGamepadRightPressed" e o probe de constantes confirmou ausência. Portanto a
+camada naive `Keys.onGamepad*` pedida é IMPOSSÍVEL neste runtime. A navegação
+por "controle" do Launcher funciona via Steam Input (que emula teclado
+`Keys.on*`); controle literal/libinput sem emulação não navega. Registrado
+como gap e decisão futura (liberar evento gamepad via libinput/Steam-Input).
