@@ -24,8 +24,8 @@ ApplicationWindow {
     palette.highlightedText: textColor
     palette.toolTipBase: raisedColor
     palette.toolTipText: textColor
-    palette.disabled.buttonText: "#667481"
-    palette.disabled.text: "#667481"
+    palette.disabled.buttonText: "#8b93a8"
+    palette.disabled.text: "#8b93a8"
 
     // Bridge de tema: lê do dashboard JSON se disponível, fallback para tokens
     // embutidos. Tema e alto contraste coexist: highContrast sobrepõe o tema

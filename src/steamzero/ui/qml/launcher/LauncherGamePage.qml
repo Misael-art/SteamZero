@@ -107,7 +107,7 @@ Item {
                     Text {
                         anchors.centerIn: parent
                         text: modelData.label
-                        color: modelData.enabled ? "#f2f6fb" : "#5f6b85"
+                        color: modelData.enabled ? "#f2f6fb" : "#8b93a8"
                         font.pixelSize: 14
                     }
                 }
