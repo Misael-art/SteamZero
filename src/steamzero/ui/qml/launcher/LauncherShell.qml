@@ -18,6 +18,8 @@ Item {
 
     required property var focusMap
     required property var sections
+    // Preferências de acessibilidade herdadas do host (highContrast etc.).
+    property var accessibility: ({"highContrast": false, "visualScale": 1.0, "reducedMotion": false})
     // Função que devolve a página de um jogo, injetada por quem monta o shell.
     property var resolveGamePage: null
     // Contexto gravado antes do lançamento, lido na inicialização.
@@ -85,6 +87,7 @@ Item {
         focusMap: shell.focusMap
         sections: shell.sections
         currentFocus: shell.homeFocus
+        accessibility: shell.accessibility
         onCurrentFocusChanged: shell.homeFocus = currentFocus
     }
 
@@ -96,6 +99,7 @@ Item {
             ? shell.gamePage
             : ({"gameId": "", "title": "", "platform": "", "lastPlayed": null,
                 "initialFocus": "", "actions": []})
+        accessibility: shell.accessibility
         onActivated: function(actionId) {
             if (actionId === "play")
                 shell.launchFocused()

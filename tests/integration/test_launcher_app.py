@@ -80,6 +80,27 @@ def test_an_empty_library_still_opens_with_an_actionable_home(tmp_path: Path) ->
     assert model["focusMap"]["diagnostics"]
 
 
+def test_the_model_exposes_accessibility_from_the_host(tmp_path: Path) -> None:
+    """A acessibilidade herdada chega ao QML via o modelo da ponte.
+
+    O Launcher não lê `kreadconfig6` direto: quem lê é o processo
+    (`_host_accessibility` no `app.py`) e entrega aqui, no modelo que o QML
+    consome. Sem isso, o alto contraste configurado no Plasma não chegava à
+    home fullscreen, que ficava com as cores fixas do tema escuro.
+    """
+    bridge = LauncherBridge(
+        sections=build_sections([]),
+        context_path=tmp_path / "return.json",
+        on_launch=lambda game, focus: None,
+        accessibility={"highContrast": True, "visualScale": 1.0, "reducedMotion": False},
+    )
+    with bridge.serving() as base:
+        model = _get(f"{base}/model", bridge.token)
+    assert model["accessibility"]["highContrast"] is True
+    assert model["accessibility"]["visualScale"] == 1.0
+    assert model["accessibility"]["reducedMotion"] is False
+
+
 def test_main_reports_the_missing_runtime_instead_of_crashing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

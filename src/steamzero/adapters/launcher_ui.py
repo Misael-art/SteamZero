@@ -105,16 +105,23 @@ class LauncherBridge:
         context_path: Path,
         on_launch: LaunchCallback,
         titles: Mapping[str, str] | None = None,
+        accessibility: Mapping[str, Any] | None = None,
     ) -> None:
         self._sections = tuple(sections)
         self._titles = dict(titles or {})
         self._context_path = Path(context_path)
         self._on_launch = on_launch
+        self._accessibility = dict(accessibility or {})
         self.token = secrets.token_urlsafe(32)
         self._focus = resolve_home_focus(self._sections)
 
     def model(self) -> dict[str, Any]:
         return {
+            "accessibility": {
+                "highContrast": bool(self._accessibility.get("highContrast", False)),
+                "visualScale": float(self._accessibility.get("visualScale", 1.0)),
+                "reducedMotion": bool(self._accessibility.get("reducedMotion", False)),
+            },
             "focusMap": self._focus.to_qml_object(),
             "sections": [
                 {

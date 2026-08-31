@@ -24,6 +24,17 @@ Item {
     required property var sections
 
     property string currentFocus: focusMap && focusMap.initial ? focusMap.initial : ""
+    // Preferências de acessibilidade herdadas do host (highContrast etc.).
+    property var accessibility: ({"highContrast": false, "visualScale": 1.0, "reducedMotion": false})
+
+    // Em alto contraste o Launcher usa os mesmos valores da central (UiTokens
+    // highContrast): texto branco, acento claro, borda forte e fundo quase
+    // preto. Fora disso mantém o tema atual — sem refatorar para tokens, para
+    // não arriscar o layout da release.
+    function _hc(lightValue, highContrastValue) {
+        return home.accessibility && home.accessibility.highContrast
+            ? highContrastValue : lightValue
+    }
 
     readonly property var currentNode: focusMap && focusMap.nodes
         ? focusMap.nodes[currentFocus] : undefined
@@ -91,7 +102,8 @@ Item {
         Text {
             objectName: "launcherHeader"
             text: qsTr("Início")
-            color: home.currentFocus === "header:home" ? "#22d3ee" : "#8b93a8"
+            color: home.currentFocus === "header:home"
+                ? home._hc("#22d3ee", "#55d8ff") : home._hc("#8b93a8", "#c6d0db")
             font.pixelSize: 20
         }
 
@@ -107,7 +119,7 @@ Item {
                 spacing: 6
                 Text {
                     text: sectionColumn.modelData.title
-                    color: "#8b93a8"
+                    color: home._hc("#8b93a8", "#c6d0db")
                     font.pixelSize: 13
                 }
                 Row {
@@ -122,9 +134,10 @@ Item {
                             width: 180
                             height: 100
                             radius: 10
-                            color: "#0b1622"
+                            color: home._hc("#0b1622", "#03080c")
                             border.width: home.currentFocus === nodeId ? 3 : 1
-                            border.color: home.currentFocus === nodeId ? "#22d3ee" : "#243044"
+                            border.color: home.currentFocus === nodeId
+                                ? home._hc("#22d3ee", "#55d8ff") : home._hc("#243044", "#68839b")
                             Text {
                                 // `centerIn` sem largura deixava o texto crescer
                                 // na largura natural e vazar do cartão de 180px,
@@ -136,7 +149,7 @@ Item {
                                 anchors.fill: parent
                                 anchors.margins: 10
                                 text: modelData.title
-                                color: "#f2f6fb"
+                                color: home._hc("#f2f6fb", "#ffffff")
                                 font.pixelSize: 14
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter

@@ -194,6 +194,23 @@ def _sections_from_catalog(catalog: Sequence[CatalogGame]) -> tuple[HomeSection,
     )
 
 
+def _host_accessibility() -> dict[str, Any]:
+    """Herda as preferências de acessibilidade do host (sem mutar nada).
+
+    Usa as MESMAS probes do dashboard desktop, para que o Launcher respeite o
+    alto contraste e a redução de movimento que o usuário já configurou no
+    Plasma. Em ambiente sem `kreadconfig6` (ex.: sessão sem Plasma) degrada
+    para os padrões — nunca quebra o lançamento.
+    """
+    from steamzero.adapters.desktop_kde import high_contrast_enabled, reduced_motion_enabled
+
+    return {
+        "highContrast": high_contrast_enabled(),
+        "reducedMotion": reduced_motion_enabled(),
+        "visualScale": 1.0,
+    }
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--library", type=Path, default=None)
@@ -215,11 +232,14 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     router = LaunchRouter(on_spawn=spawn_detached, context_path=context_path)
 
+    accessibility = _host_accessibility()
+
     bridge = LauncherBridge(
         sections=sections,
         titles=titles,
         context_path=context_path,
         on_launch=router.launch,
+        accessibility=accessibility,
     )
     return launch_launcher_ui(bridge)
 

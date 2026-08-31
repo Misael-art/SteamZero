@@ -21,6 +21,7 @@ Window {
     property string token: ""
     property var model: null
     property string failure: ""
+    property var accessibility: ({"highContrast": false, "visualScale": 1.0, "reducedMotion": false})
 
     function _argument(name) {
         const args = Qt.application.arguments
@@ -59,6 +60,8 @@ Window {
             }
             try {
                 root.model = JSON.parse(text)
+                if (root.model && root.model.accessibility)
+                    root.accessibility = root.model.accessibility
             } catch (error) {
                 root.failure = "modelo ilegível"
             }
@@ -80,6 +83,7 @@ Window {
             LauncherShell {
                 focusMap: root.model.focusMap
                 sections: root.model.sections
+                accessibility: root.accessibility
                 onLaunchRequested: function(gameId, focusId) {
                     root._request("POST", "/launch",
                                   {"gameId": gameId, "focusId": focusId},

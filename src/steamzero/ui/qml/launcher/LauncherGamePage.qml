@@ -20,6 +20,13 @@ Item {
     required property var model
 
     property string currentFocus: model && model.initialFocus ? model.initialFocus : ""
+    // Preferências de acessibilidade herdadas do host (highContrast etc.).
+    property var accessibility: ({"highContrast": false, "visualScale": 1.0, "reducedMotion": false})
+
+    function _hc(lightValue, highContrastValue) {
+        return page.accessibility && page.accessibility.highContrast
+            ? highContrastValue : lightValue
+    }
 
     readonly property var actions: model && model.actions ? model.actions : []
     readonly property int actionCount: actions.length
@@ -78,7 +85,7 @@ Item {
         Text {
             objectName: "gameTitle"
             text: page.model ? page.model.title : ""
-            color: "#f2f6fb"
+            color: page._hc("#f2f6fb", "#ffffff")
             font.pixelSize: 28
         }
         Text {
@@ -86,7 +93,7 @@ Item {
                 ? page.model.platform + (page.model.lastPlayed
                     ? " · jogado em " + page.model.lastPlayed : "")
                 : ""
-            color: "#8b93a8"
+            color: page._hc("#8b93a8", "#c6d0db")
             font.pixelSize: 13
         }
 
@@ -100,14 +107,16 @@ Item {
                     width: 170
                     height: 46
                     radius: 8
-                    color: modelData.enabled ? "#0b1622" : "#0a0f16"
+                    color: modelData.enabled
+                        ? page._hc("#0b1622", "#03080c") : page._hc("#0a0f16", "#0a141d")
                     border.width: page.currentFocus === modelData.focusId ? 3 : 1
                     border.color: page.currentFocus === modelData.focusId
-                        ? "#22d3ee" : "#243044"
+                        ? page._hc("#22d3ee", "#55d8ff") : page._hc("#243044", "#68839b")
                     Text {
                         anchors.centerIn: parent
                         text: modelData.label
-                        color: modelData.enabled ? "#f2f6fb" : "#8b93a8"
+                        color: modelData.enabled
+                            ? page._hc("#f2f6fb", "#ffffff") : page._hc("#8b93a8", "#c6d0db")
                         font.pixelSize: 14
                     }
                 }
@@ -119,7 +128,7 @@ Item {
             visible: text !== ""
             width: parent.width
             wrapMode: Text.Wrap
-            color: "#ff8a90"
+            color: page._hc("#ff8a90", "#ff8e94")
             font.pixelSize: 11
             text: {
                 for (let i = 0; i < page.actions.length; ++i)
