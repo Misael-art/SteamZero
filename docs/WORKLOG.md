@@ -8865,3 +8865,15 @@ cobertos por carga compilada + gate visual.
 
 **Limitação de teste (registrada):** harness QML de `LauncherMain` (Window
 FullScreen) não roda offscreen — limitação do ambiente, não defeito.
+
+## 2026-08-31 — Registro: flakiness conhecida em teste de emulação
+
+`test_launch_game_persists_ephemeral_start_ticks_identity` (test_emulation_controller.py)
+apresenta flakiness: falhou na suíte integral (1 failed / 5318 passed) mas passa
+isolado em 4,40s. Causa provável (não regressão): o teste usa
+`controller._monotonic = lambda: next(iter((10.0, 11.0)))` — um iterador que se
+esgota com `StopIteration` quando `_monotonic` é lido mais vezes do que os 2
+valores, dependendo da ordem de execução/estado efêmero de ticks. O teste NÃO
+toca o escopo de Launcher/coleções entregue nesta rodada. Registrar para o
+próximo agente não investigar à toa; se reincidir, o defeito é do teste (iterador
+de ticks), não do código de produção.
