@@ -8565,3 +8565,23 @@ ambiente, não bug de produto.
 **Pendente:** a correção de pin entra na próxima release governada; o update
 físico do RetroArch no host exige essa release (o daemon lê o manifest da
 release instalada). O Dolphin já está `installed`.
+
+## 2026-08-31 — Sessão: fechamento do update físico de componentes (Dolphin + RetroArch)
+
+Release governada `2.0.0rc1-5127fbc855d9` (commit `5127fbc`, run CI verde
+`33341904384`, wheel SHA `06e8cca6…`) ativada no host, rollback
+`2.0.0rc1-920ec79e875a`.
+
+- **Dolphin**: `outdated → installed` no commit fixado `377c3e63506e` (já na
+  rodada anterior).
+- **RetroArch**: pin purgado do Flathub (`d8644a97` → 404); repinado para
+  `9c51e2bcb6f7` no retroarch.adapter.json e component-lock.json; nesta release
+  o daemon passou a ver o pin corrigido e o update convergiu
+  `outdated → installed` no commit `9c51e2bcb6f7`.
+
+**Matriz de componentes no host: 15 instalados, 0 outdated, 18 missing**.
+Doctor: provenance `2.0.0rc1-5127fbc855d9`, service.generation convergente,
+staging.orphan/backup.orphan pass, recovery.pending 0. `state audit` → clean.
+
+O update real de versão do executor Flatpak (a pendência do workstream
+COMPONENT-MATRIZ) foi exercitado e fechado para Dolphin e RetroArch.

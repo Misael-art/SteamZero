@@ -20,9 +20,10 @@
     "docs/09-operations/evidence/2026-08-16-component-apply-async",
     "docs/09-operations/evidence/2026-08-16-component-plan-terminalization",
     "docs/09-operations/evidence/2026-08-27-matriz-componentes-fisica",
-    "docs/09-operations/evidence/2026-08-27-launch-gate-drift"
+    "docs/09-operations/evidence/2026-08-27-launch-gate-drift",
+    "docs/09-operations/evidence/2026-08-31-componentes-update-fisico"
   ],
-  "scopeDigest": "60446c35f94fe56d45dda5396c1d57d8cc6bcc4ef31393d4a3ca464925f968b1",
+  "scopeDigest": "29acfa355b38a728d49fec2bcad6489f90a350855c338a2abd29252cd3470233",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -100,9 +101,15 @@
       "reference": "tests/integration/test_component_lifecycle.py",
       "command": "test_healthy_libretro_core_is_not_reported_as_degraded — core Libretro sadio recusava launch com E-COMPONENT-DEGRADED, e a tela anunciava 'componente degradado / execute reparo' para uma instalacao perfeita, convidando o usuario a reparar o que nao estava quebrado. Core Libretro nao tem execucao propria por DESIGN: quem o carrega e o frontend. Passa a levantar E-COMPONENT-NO-LAUNCH, codigo novo com copia propria. Observado no host em 2026-08-27 com libretro-snes9x instalado e verificado. NAO OBSERVADO no artefato instalado: a release ativa segue com o codigo antigo.",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-31-componentes-update-fisico/README.md",
+      "command": "release 2.0.0rc1-5127fbc855d9. Update REAL do executor Flatpak exercitado fisicamente: Dolphin outdated -> installed no commit 377c3e63506e; RetroArch outdated -> installed no commit 9c51e2bcb6f7 (apos repin do manifest, cujo commit anterior d8644a97 estava purgado do Flathub — 404). Matriz no host: 15 instalados, 0 outdated, 18 missing. doctor: provenance na release, service.generation convergente, staging/backup orphao pass, recovery.pending 0; state audit clean.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Executor libretro provado no host: install, verify, rollback com custodia conferida por hash, e noop inerte (mtime e sha256 intactos, nenhum journal novo). Falta o update REAL de versao, que exige uma versao alvo diferente da instalada — o unico caminho do executor ainda sem exercicio. Depois, instrumentar progresso por bytes e cancelamento cooperativo, e os 16 cores restantes.",
+  "nextAction": "Executor libretro e o update REAL do Flatpak provados no host: Dolphin atualizado para 377c3e63506e e RetroArch para 9c51e2bcb6f7 (outdated -> installed) na release 2.0.0rc1-5127fbc855d9; o pin do RetroArch estava purgado do Flathub (404) e foi repinado. Matriz no host: 15 instalados, 0 outdated, 18 missing. Proximo: instrumentar progresso por bytes e cancelamento cooperativo, e instalar os componentes restantes (Azahar, PPSSPP, Xemu).",
   "activeWorkstreams": [
     "WS-2026-08-COMPONENT-MATRIZ"
   ],
