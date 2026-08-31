@@ -8615,3 +8615,32 @@ em TODOS, com os 3 tipos de fonte exercitados (flatpak: ppsspp/xemu; libretro:
 14 cores; engine: já presentes).
 
 Evidência: docs/09-operations/evidence/2026-08-31-componentes-update-fisico/.
+
+## 2026-08-31 — Sessão: auditoria e correção do catálogo de erros
+
+Auditoria do workstream ERROR-CATALOG-AUDIT (correção em `9c0fd0c`, PR #107
+merged).
+
+**Auditoria (3 dimensões automatizadas):** 122 códigos catalogados, 122 emitidos
+no src, 0 códigos não-catalogados (nada quebraria build_error/SteamZeroError),
+0 códigos sem campo de i18n (title/what/impact/cause/action).
+
+**Achado (1 desalinhamento real) → corrigido:** `E-CONTENT-UNSUPPORTED` tinha
+`probableCause`/`manualAction` específicos de IMAGEM ("Tipo MIME ou magic bytes
+não correspondem a JPEG, PNG ou WebP" / "Use uma imagem JPEG/PNG/WebP"), mas era
+emitido para "envelope inválido" (crypto.py) e "tipo de arquivo não reconhecido"
+(emulation.py). O texto dizia ao usuário para usar uma imagem quando a causa era
+outra estrutura. Corrigido para causa genérica ("arquivo ou conteúdo não
+reconhecido ou suportado: formato, tipo MIME ou magic bytes fora do conjunto
+aceito") e manualAction útil, alinhado ao `what` genérico.
+
+**Novo teste de governança:** `test_every_catalogued_code_is_emitted_anywhere` —
+a recíproca de `test_every_code_literal_in_src_is_registered` (prova que todo
+código do catálogo tem emissão real no src, detectando código morto/órfão que a
+direção contrária não cobre). Fecha a travas da cauda longa.
+
+**Validação:** CI do PR #107 integralmente verde (Python 3.11/3.12/3.14, Gate
+visual QML, Wheel/supply-chain, Smokes). Gates locais verdes.
+
+**Pendente:** a correção é de código; o host refletirá na próxima release
+governada.
