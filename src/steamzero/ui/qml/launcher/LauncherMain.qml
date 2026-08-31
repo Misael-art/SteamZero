@@ -8,6 +8,7 @@
 // vazia nesse intervalo faria o usuário concluir que não tem jogos.
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Window
 
 Window {
@@ -37,6 +38,13 @@ Window {
     }
 
     function _request(method, path, body, onDone) {
+        if (root.api === "" || root.token === "") {
+            // Sem canal não há requisição válida; chamar `open` com URL vazia
+            // travaria o XMLHttpRequest. O estado já foi marcado como offline
+            // em `_start`; aqui apenas sinalizamos para o callback.
+            onDone(0, "")
+            return
+        }
         const request = new XMLHttpRequest()
         request.open(method, root.api + path)
         request.setRequestHeader("X-SteamZero-Token", root.token)
@@ -71,36 +79,87 @@ Window {
         root._request("POST", "/launch", {"gameId": gameId, "focusId": focusId}, function() {})
     }
 
-    Component.onCompleted: {
-        root.api = _argument("--steamzero-api")
-        root.token = _argument("--steamzero-token")
+    // Estados acionáveis do fluxo: loading, error, offline, ready.
+    property string loadState: "loading"
+
+    function _start() {
         if (root.api === "" || root.token === "") {
             // Sem canal não há como buscar a biblioteca nem lançar nada; dizer
             // isso é melhor do que abrir uma home permanentemente vazia.
             root.failure = "canal local ausente"
+            root.loadState = "offline"
             return
         }
+        root.loadState = "loading"
+        root.failure = ""
         _request("GET", "/model", null, function(status, text) {
             if (status !== 200) {
                 root.failure = "modelo indisponível (" + status + ")"
+                root.loadState = "error"
                 return
             }
             try {
                 root.model = JSON.parse(text)
                 if (root.model && root.model.accessibility)
                     root.accessibility = root.model.accessibility
+                root.loadState = "ready"
             } catch (error) {
                 root.failure = "modelo ilegível"
+                root.loadState = "error"
             }
         })
+    }
+
+    function _retry() {
+        root.model = null
+        root._start()
+    }
+
+    Component.onCompleted: {
+        root.api = _argument("--steamzero-api")
+        root.token = _argument("--steamzero-token")
+        root._start()
     }
 
     Text {
         anchors.centerIn: parent
         visible: root.model === null
-        color: root.failure === "" ? "#8b93a8" : "#ff8a90"
+        color: root.loadState === "offline" || root.loadState === "error" ? "#ff8a90" : "#8b93a8"
         font.pixelSize: 16
-        text: root.failure === "" ? qsTr("Carregando biblioteca…") : root.failure
+        text: root.loadState === "loading"
+            ? qsTr("Carregando biblioteca…")
+            : (root.loadState === "offline"
+                ? qsTr("Canal local ausente — o daemon do SteamZero não está acessível.")
+                : root.failure)
+    }
+
+    Rectangle {
+        anchors.centerIn: parent
+        visible: root.loadState === "offline" || root.loadState === "error"
+        objectName: "launcherRetry"
+        width: 200
+        height: 44
+        radius: 8
+        color: "#0b1622"
+        border.width: 1
+        border.color: "#243044"
+        // Estado acionável: o usuário não fica preso numa tela de erro sem
+        // saída — pode pedir de novo (retry) e voltar ao fluxo.
+        Text {
+            anchors.centerIn: parent
+            text: qsTr("Tentar novamente")
+            color: "#f2f6fb"
+            font.pixelSize: 14
+        }
+        MouseArea {
+            anchors.fill: parent
+            onClicked: root._retry()
+        }
+        Keys.onReturnPressed: root._retry()
+        Keys.onEnterPressed: root._retry()
+        Keys.onSpacePressed: root._retry()
+        focus: root.loadState === "offline" || root.loadState === "error"
+        activeFocusOnTab: true
     }
 
     // Painel de busca full-text. Aparece quando a busca está ativa; usa a

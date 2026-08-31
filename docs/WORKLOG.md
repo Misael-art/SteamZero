@@ -8819,3 +8819,27 @@ na biblioteca, recebeu mídia e lançou) — e a chave foi o par firmware+keys.
   copiar para /tmp persistente, nunca logar conteúdo. Só registrar o caminho.
 - O teste físico de "jogar -> voltar" no Launcher ainda depende de interação
   humana (o P0-A), mas o jogo Switch já prova o ciclo emulação+keys+mídia.
+
+## 2026-08-31 — Sessão: estados acionáveis e robustez do Launcher (P0-B parcial)
+
+Radiografia 2026-08-31 — estados acionáveis e robustez do `_request`.
+
+**Estados acionáveis:** `LauncherMain` ganhou `loadState` (loading/offline/error/
+ready) e botão "Tentar novamente" (`launcherRetry`) visível em offline/error,
+com retry que re-chama o modelo. Antes só havia um Text "Carregando biblioteca…"
+e nenhuma saída de erro.
+
+**Bug de robustez corrigido:** `_request` com api/token vazios chamava
+`XMLHttpRequest.open("GET", "/model")` com URL vazia, o que travava o request
+(janela de espera indefinida). Agora guarda e devolve `onDone(0,"")` quando não
+há canal — o estado offline é marcado em `_start` antes.
+
+**Limitação de teste (registrada):** o harness QML dos estados (Window
+FullScreen) não roda offscreen (`QT_QPA_PLATFORM=offscreen`) — a janela trava o
+loop de eventos. A `LauncherMain` é uma Window e os harnesses válidos testam
+`LauncherHome`/`LauncherShell` (Item). O harness de estados foi removido;
+a correção `_request` e os estados são validados por carga compilada + gate
+visual da central. Registrar como limitação do ambiente, não defeito.
+
+**Pendente:** coleções gerenciadas + gamepad nativo (gap de infraestrutura: sem
+QtGamepad/libinput no host — registrar como decisão futura).
