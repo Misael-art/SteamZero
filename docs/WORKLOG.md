@@ -8768,3 +8768,23 @@ fica como trabalho de perf separado, registrado na radiografia).
 **Testes:** `check_launcher_covers.qml` (novo, no gate QML): cartões instanciam,
 largura responsiva >=180, elemento de imagem presente. Outros harnesses launcher
 + Python continuam verdes. 54 passed na frente.
+
+## 2026-08-31 — Sessão: busca full-text no Launcher (P0-B)
+
+Radiografia 2026-08-31 (P0-B busca ausente) -> busca implementada.
+
+**Backend (ponte):** `LauncherBridge.search(query)` filtra a biblioteca por
+título (case-insensitive, substring) e devolve na forma de item de seção
+(id, title, coverUrl) — a busca vive na ponte (que tem o mapa id->título),
+não no QML, para não duplicar o acervo. Rota GET `/search?q=` na bridge.
+Busca com query vazia é recusada (400) — não lista o acervo inteiro por engano.
+
+**QML:** `LauncherMain` ganhou painel de busca (campo TextField + grade de
+resultados, `launcherSearchField`/`launcherSearchItem`), ativado por
+`searchRequested`; `LauncherShell` emite `searchRequested` ao pressionar 'F'
+(rota de entrada por teclado/controle, e Steam Input emula teclado).
+
+**Testes:** `test_search_filters_by_title_case_insensitive` (rota /search:
+case-insensitive, substring, miss vazio). 55 passed na frente.
+
+**Pendente (não da busca):** coleções, estados acionáveis e gamepad nativo.

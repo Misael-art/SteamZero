@@ -51,6 +51,13 @@ class _Handler(BaseHTTPRequestHandler):
         if self.path == "/model":
             self._send(200, self._bridge.model())
             return
+        if self.path.startswith("/search?"):
+            query = self._query_param("q")
+            if query is None:
+                self._send(400, {"error": "parâmetro q ausente"})
+                return
+            self._send(200, self._bridge.search(query))
+            return
         self._send(404, {"error": "rota desconhecida"})
 
     def do_POST(self) -> None:
@@ -78,6 +85,15 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_response(204)
         self.send_header("Content-Length", "0")
         self.end_headers()
+
+    def _query_param(self, name: str) -> str | None:
+        from urllib.parse import parse_qs, urlsplit
+
+        parsed = urlsplit(self.path)
+        values = parse_qs(parsed.query).get(name)
+        if not values:
+            return None
+        return values[0]
 
     def _send(self, status: int, body: dict[str, Any]) -> None:
         payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
@@ -141,6 +157,29 @@ class LauncherBridge:
                 for section in self._sections
             ],
         }
+
+    def search(self, query: str) -> dict[str, Any]:
+        """Filtra a biblioteca por título (case-insensitive, substring).
+
+        A busca vive na ponte porque é ela quem tem o mapa id->título; o QML
+        não duplica o acervo. Devolve o resultado na mesma forma de uma seção
+        (id, title, coverUrl) para que a home renderize um "resultado" sem
+        lógica própria.
+        """
+        needle = query.strip().casefold()
+        matches: list[dict[str, Any]] = []
+        if needle:
+            for game_id, title in self._titles.items():
+                if needle in str(title).casefold():
+                    matches.append(
+                        {
+                            "id": game_id,
+                            "title": str(title),
+                            "coverUrl": self._covers.get(game_id, ""),
+                        }
+                    )
+        matches.sort(key=lambda row: str(row["title"]).casefold())
+        return {"query": query, "games": matches}
 
     def launch(self, game_id: str, focus_id: str) -> None:
         self._on_launch(game_id, focus_id)

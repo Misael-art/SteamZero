@@ -101,6 +101,33 @@ def test_the_model_exposes_accessibility_from_the_host(tmp_path: Path) -> None:
     assert model["accessibility"]["reducedMotion"] is False
 
 
+def test_search_filters_by_title_case_insensitive(tmp_path: Path) -> None:
+    """A busca filtra a biblioteca por título (case-insensitive) via /search.
+
+    A ponte é quem tem o mapa id->título; a busca vive nela, não no QML. Sem
+    isso o Launcher duplicaria o acervo. Devolve o resultado na mesma forma de
+    um item de seção (id, title, coverUrl) para a home renderizar.
+    """
+    tracks = [
+        {"id": "celeste", "title": "Celeste", "coverUrl": ""},
+        {"id": "tunic", "title": "Tunic", "coverUrl": ""},
+    ]
+    bridge = LauncherBridge(
+        sections=build_sections(tracks),
+        titles={t["id"]: t["title"] for t in tracks},
+        context_path=tmp_path / "return.json",
+        on_launch=lambda game, focus: None,
+    )
+    # case-insensitive e substring
+    with bridge.serving() as base:
+        hit = _get(f"{base}/search?q=CELe", bridge.token)
+        miss = _get(f"{base}/search?q=zzz", bridge.token)
+    assert [g["id"] for g in hit["games"]] == ["celeste"]
+    assert hit["games"][0]["title"] == "Celeste"
+    assert hit["games"][0]["coverUrl"] == ""
+    assert miss["games"] == []
+
+
 def test_main_reports_the_missing_runtime_instead_of_crashing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -32,6 +32,7 @@ Item {
     property string exitFocus: ""
 
     signal launchRequested(string gameId, string focusId)
+    signal searchRequested()
 
     function _restoredFocus() {
         const fallback = focusMap && focusMap.initial ? focusMap.initial : ""
@@ -78,6 +79,14 @@ Item {
     }
 
     Keys.onEscapePressed: back()
+    Keys.onPressed: function(event) {
+        // 'F' abre a busca (rota de entrada por teclado/controle); o Steam Input
+        // emula teclado, então esta é a via do "controle" também.
+        if (event.text === "f" || event.text === "F") {
+            shell.searchRequested()
+            event.accepted = true
+        }
+    }
     focus: true
 
     LauncherHome {
