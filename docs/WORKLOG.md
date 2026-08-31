@@ -8788,3 +8788,34 @@ resultados, `launcherSearchField`/`launcherSearchItem`), ativado por
 case-insensitive, substring, miss vazio). 55 passed na frente.
 
 **Pendente (não da busca):** coleções, estados acionáveis e gamepad nativo.
+
+## 2026-08-31 — Registro operacional: firmware/keys Switch e BIOS pack no host
+
+Informação de produto validada em 2026-08-31, para o agente futuro não precisar
+redescobrir. O fluxo Switch é o único que ficou jogável no acervo real (apareceu
+na biblioteca, recebeu mídia e lançou) — e a chave foi o par firmware+keys.
+
+**Caminhos no host (só o operador tem acesso; NÃO cifrar/commitear os arquivos):**
+- Firmware + prodkey do Switch:
+  `/home/misael/emulation/roms/switch/Firmware/Firmware.22.5.0.zip` (340 MB).
+  Keys em `/home/misael/emulation/roms/switch/Firmware/ProdKeys.NET-v22.5.0/`:
+  `prod.keys` (14.612 bytes), `title.keys`.
+- BIOS pack (plataformas clássicas):
+  `/home/misael/emulation/RetroDECK_Platform_BIOS_Pack/bios/` + `manifest.json`
+  (`roms/` vazio; bios é a pasta dos arquivos).
+
+**Como o fluxo Switch ficou jogável (para reproduzir):**
+1. `prod.keys` deve estar sincronizada com o emulador (o `emulation launch` do
+   Switch exige `prod.keys` projetada — falha `E-CONTENT-KEYS-INCOMPAT` se
+   divergir do emulator). Medido: `steamzero component status` do emulador
+   Switch (eden/ryujinx) deve refletir a keys projetada.
+2. Firmware (`Firmware.22.5.0.zip`) importado/instalado para o emulador Switch.
+3. Com mídia (`SteamGridDB`/artwork) associada, o jogo base aparece e o
+   `emulation launch --game-id` roda. Foi o único jogo que mostrou as capas e
+   lançou com sucesso — a mídia do acervo real está concentrada no Switch.
+
+**Regras (importante):**
+- Os arquivos de keys/firmware são **do usuário** — nunca commitear no repo, nunca
+  copiar para /tmp persistente, nunca logar conteúdo. Só registrar o caminho.
+- O teste físico de "jogar -> voltar" no Launcher ainda depende de interação
+  humana (o P0-A), mas o jogo Switch já prova o ciclo emulação+keys+mídia.
