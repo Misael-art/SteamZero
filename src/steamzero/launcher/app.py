@@ -194,6 +194,46 @@ def _sections_from_catalog(catalog: Sequence[CatalogGame]) -> tuple[HomeSection,
     )
 
 
+def _sections_from_collections(catalog: Sequence[CatalogGame]) -> tuple[HomeSection, ...]:
+    """Adiciona uma seção por coleção persistida, com os membros jogáveis.
+
+    Usa o `CollectionManager` do domínio para resolver as regras (tag/favorite)
+    — o Launcher não reimplementa a lógica de coleção. Só entram coleções com
+    pelo menos um membro presente no acervo; uma coleção vazia não viraria
+    uma seção sem jogos na home.
+    """
+    from steamzero.domain.collections import CollectionManager
+
+    # O gameRef da coleção usa o prefixo `emulation:` (contrato do domínio);
+    # o id do Launcher é o id canônico da biblioteca sem o prefixo.
+    games = [{"gameRef": f"emulation:{game.id}"} for game in catalog]
+    try:
+        state = CollectionManager().state(games)
+    except Exception:
+        return ()
+    sections: list[HomeSection] = []
+    for collection in state.get("collections", []):
+        title = str(collection.get("name") or "")
+        members = tuple(
+            str(member).removeprefix("emulation:")
+            for member in collection.get("members", [])
+            if str(member).startswith("emulation:")
+        )
+        if not title or not members:
+            continue
+        try:
+            sections.append(
+                HomeSection(
+                    id=f"collection-{collection.get('id', '')}",
+                    title=title,
+                    items=members,
+                )
+            )
+        except ValueError:
+            continue
+    return tuple(sections)
+
+
 def _host_accessibility() -> dict[str, Any]:
     """Herda as preferências de acessibilidade do host (sem mutar nada).
 
@@ -227,7 +267,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     library = _read_library(args.library)
     catalog = catalog_games(library)
-    sections = _sections_from_catalog(catalog)
+    sections = _sections_from_catalog(catalog) + _sections_from_collections(catalog)
     titles = {game.id: game.title for game in catalog}
     covers = {game.id: game.cover_url for game in catalog if game.cover_url}
 

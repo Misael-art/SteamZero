@@ -8843,3 +8843,25 @@ visual da central. Registrar como limitação do ambiente, não defeito.
 
 **Pendente:** coleções gerenciadas + gamepad nativo (gap de infraestrutura: sem
 QtGamepad/libinput no host — registrar como decisão futura).
+
+## 2026-08-31 — Sessão: coleções e estados acionáveis no Launcher
+
+**Coleções:** `_sections_from_collections(catalog)` usa o `CollectionManager` do
+domínio (regra tag/favorite — o Launcher não reimplementa a lógica). Cada
+coleção com pelo menos um membro vira uma `HomeSection` na home, com os membros
+convertidos de `emulation:<id>` (gameRef do domínio) para o id canônico do
+Launcher. O id da seção usa `collection-<slug>` (o `HomeSection._identifier` não
+aceita `:`). Sem coleção com membro → sem seção vazia.
+
+**Estados acionáveis:** `LauncherMain` diferencia loadState
+(loading/offline/error/ready) com botão "Tentar novamente" (`launcherRetry`) em
+offline/error; retry re-chama o modelo. Antes só havia o Text "Carregando…".
+Bug de robustez: `_request` com api/token vazios chamava `XMLHttpRequest.open`
+com URL vazia e travava — agora guard devolve `onDone(0,"")`.
+
+**Testes:** `test_launcher_collections.py` (2: seção criada com membros
+convertidos; coleção vazia não vira seção). Gatilho de busca/shell e estados
+cobertos por carga compilada + gate visual.
+
+**Limitação de teste (registrada):** harness QML de `LauncherMain` (Window
+FullScreen) não roda offscreen — limitação do ambiente, não defeito.
