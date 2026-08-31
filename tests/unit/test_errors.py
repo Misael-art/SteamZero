@@ -108,3 +108,21 @@ def test_every_code_literal_in_src_is_registered() -> None:
                 if code not in errors.ERROR_CATALOG:
                     unknown.setdefault(code, []).append(f"{py.relative_to(src_root)}:{i}")
     assert not unknown, f"códigos emitidos fora do catálogo: {unknown}"
+
+
+def test_every_catalogued_code_is_emitted_anywhere() -> None:
+    """Recíproca da governança: todo código do catálogo tem um site de emissão real.
+
+    Um código catalogado mas nunca emitido não é usado por nenhum caminho, e o
+    texto `probableCause`/`manualAction` correspondente pode envelhecer como
+    promessa que nenhuma máquina executa. Detecta códigos mortos/órfãos que a
+    direção contrária (literais no src -> catálogo) não cobre.
+    """
+    pattern = re.compile(r"[\"'](E-[A-Z]+-[A-Z0-9-]+)[\"']")
+    src_root = Path(errors.__file__).resolve().parent.parent.parent
+    emitted: set[str] = set()
+    for py in sorted(src_root.rglob("*.py")):
+        for line in py.read_text(encoding="utf-8").splitlines():
+            emitted.update(pattern.findall(line))
+    orphan = sorted(set(errors.ERROR_CATALOG) - emitted)
+    assert not orphan, f"códigos do catálogo sem emissão no src: {orphan}"

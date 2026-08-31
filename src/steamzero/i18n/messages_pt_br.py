@@ -153,8 +153,8 @@ MESSAGES: dict[str, str] = {
     "error.E-CONTENT-UNSUPPORTED.title": "Tipo de arquivo não suportado",
     "error.E-CONTENT-UNSUPPORTED.what": "O formato do arquivo não é reconhecido ou suportado.",
     "error.E-CONTENT-UNSUPPORTED.impact": "A importação foi recusada.",
-    "error.E-CONTENT-UNSUPPORTED.cause": "Tipo MIME ou magic bytes não correspondem a JPEG, PNG ou WebP.",
-    "error.E-CONTENT-UNSUPPORTED.action": "Use uma imagem nos formatos JPEG, PNG ou WebP.",
+    "error.E-CONTENT-UNSUPPORTED.cause": "O arquivo ou o conteúdo não é reconhecido ou suportado (formato, tipo MIME ou magic bytes fora do conjunto aceito).",
+    "error.E-CONTENT-UNSUPPORTED.action": "Verifique o formato do arquivo e use um tipo suportado; se o erro persistir, registre o diagnóstico com o código acima.",
     # ---- COMPONENT --------------------------------------------------------
     "error.E-COMPONENT-UPDATE-ROLLEDBACK.title": "Atualização revertida",
     "error.E-COMPONENT-UPDATE-ROLLEDBACK.what": "A atualização falhou. A versão anterior foi restaurada.",
