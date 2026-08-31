@@ -109,7 +109,7 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Executor libretro e o update REAL do Flatpak provados no host: Dolphin atualizado para 377c3e63506e e RetroArch para 9c51e2bcb6f7 (outdated -> installed) na release 2.0.0rc1-5127fbc855d9; o pin do RetroArch estava purgado do Flathub (404) e foi repinado. Matriz no host: 15 instalados, 0 outdated, 18 missing. Proximo: instrumentar progresso por bytes e cancelamento cooperativo, e instalar os componentes restantes (Azahar, PPSSPP, Xemu).",
+  "nextAction": "Executor libretro e o update REAL do Flatpak provados no host: Dolphin atualizado para 377c3e63506e e RetroArch para 9c51e2bcb6f7 (outdated -> installed) na release 2.0.0rc1-5127fbc855d9; o pin do RetroArch estava purgado do Flathub (404) e foi repinado. Todos os componentes instalados: Azahar, PPSSPP e Xemu adicionados — matriz no host com 32 instalados, 0 outdated (Sunshine e tool de streaming sem capability install, por design nao instala como emulador). Progresso por bytes e cancelamento cooperativo implementados e testados (unit=bytes no transfer_observer + context.safepoint cancelando o download; flatpak reporta etapas por ser subprocess). Proximo: validacao fisica de lancamento de jogo real (jogar -> voltar) e acompanhamento de sessao, que exigem interacao humana.",
   "activeWorkstreams": [
     "WS-2026-08-COMPONENT-MATRIZ"
   ],

@@ -13,6 +13,6 @@
   "sharedPaths": [
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Executor libretro provado no host (install, verify, rollback com custodia conferida por hash e noop inerte — o item SZ-COMPONENT-LIFECYCLE esta ready). Proximo passo real: update de versao entre pins diferentes (o unico caminho do executor ainda sem exercicio), instrumentar progresso por bytes e cancelamento cooperativo, e instalar os componentes restantes (Azahar, PPSSPP, Xemu).",
+  "nextAction": "Todos os componentes instalados: Azahar, PPSSPP e Xemu adicionados no host (matriz 32 instalados; Sunshine = tool de streaming sem capability install, por design nao instala como emulador). Update REAL de versao do Flatpak provado (Dolphin e RetroArch outdated -> installed). Progresso por bytes e cancelamento cooperativo implementados e testados (test_download_persists_real_byte_progress_while_job_is_running e test_cancel_during_download_stops_before_apply_and_terminalizes). Resposta do daemon: transfer_observer com unit=bytes e context.safepoint cancelando o download; flatpak reporta etapas por ser subprocess. Proximo: validacao fisica de lancamento de jogo real (jogar -> voltar) e o acompanhamento de sessao, que exigem interacao humana.",
   "updatedAt": "2026-08-27"
 }

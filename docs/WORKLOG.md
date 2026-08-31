@@ -8644,3 +8644,31 @@ visual QML, Wheel/supply-chain, Smokes). Gates locais verdes.
 
 **Pendente:** a correção é de código; o host refletirá na próxima release
 governada.
+
+## 2026-08-31 — Sessão: validação de progresso por bytes e cancelamento cooperativo
+
+Fechamento da pendência do workstream COMPONENT-MATRIZ: "instrumentar progresso
+por bytes e cancelamento cooperativo".
+
+**Validação (já implementada e testada):**
+- `test_download_persists_real_byte_progress_while_job_is_running`: o download
+  reporta `unit: "bytes"`, stage `downloading`, current/total = bytes lidos,
+  persistido no job (progresso real por bytes).
+- `test_cancel_during_download_stops_before_apply_and_terminalizes`: cancelar no
+  meio do download para a leitura (`bytes_read < 6`), `canRetry`, plano aborted,
+  `apply` nunca rodou (cancelamento cooperativo real).
+
+**Mecanismo:** `transfer_observer` (core/net.py `fetch_bytes`) publica
+`progress(received, total)` a cada chunk e chama `cancel_check()` no loop; o job
+liga isso via `context.safepoint()` — parar é cooperativo, nunca só no fim. O
+executor Flatpak reporta etapas (`flatpak install` é subprocess e não expõe
+bytes por chunk), limitação aceitável e documentada.
+
+**Estado COMPONENT-MATRIZ:** todos os componentes instalados (matriz 32, 0
+outdated; Sunshine = tool de streaming sem capability install). Update real de
+versão do Flatpak provado (Dolphin, RetroArch). Progresso por bytes + cancel
+cooperativo testados. Item/workstream atualizados.
+
+**Pendente de interação humana:** validação física de lançamento de jogo real
+(jogar -> voltar) e acompanhamento de sessão no Launcher; decisão de produto
+para instalação do Sunshine como serviço de streaming.
