@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopeDigest": "9606de0527ba945162f214f692e7045f98b0e011ed3339f36444814f1e6bf469",
+  "scopeDigest": "f28b21638d9f5a7d8e40793963cd2c99296c4e6cbb1649a4631aa54a8c40f421",
   "scopePaths": [
     "docs/00-vision/PROJECT-VISION.md",
     "docs/00-vision/NON-GOALS.md",
