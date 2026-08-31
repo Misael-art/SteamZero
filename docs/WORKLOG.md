@@ -8672,3 +8672,46 @@ cooperativo testados. Item/workstream atualizados.
 **Pendente de interação humana:** validação física de lançamento de jogo real
 (jogar -> voltar) e acompanhamento de sessão no Launcher; decisão de produto
 para instalação do Sunshine como serviço de streaming.
+
+## 2026-08-31 — Sessão: auditoria visual do AURA Launcher e da central (radiografia)
+
+Auditoria visual despachada a um subagente sobre a release `2.0.0rc1-2c876835efd4`
+(código mais recente). Método honesto: o modelo de auditoria não aceita entrada
+de imagem, então a avaliação foi ESTÁTICA (código QML + contratos + status
+items) ancorada em análise programática das 15 capturas offscreen geradas em
+`/tmp/steamzero-audit/` (cores, luminância, contraste WCAG por cores declaradas,
+densidade). Nenhum arquivo do repo foi modificado na auditoria. Fluxos que
+dependem de usuário/keys foram registrados como NÃO validados.
+
+**Notas por dimensão (~5.6/10):** qualidade visual 6, ergonomia 7, acessibilidade
+6.5, fluidez 5, completude funcional 4, robustez de contrato 9.
+
+**Posicionamento vs mercado:** NA FRENTE em disciplina de acessibilidade
+(ex.: `Accessible.name`, 48px, escala, high-contrast verificados por teste),
+robustez de contrato (mutacao + harnesses que reprovam, nunca skip), acervo
+canonico 231/13 plataformas, foco sem becos, lancamento com diagnostico
+acionavel. ATRAS em artwork/capas, busca, colecoes, gamepad nativo, estados
+acionaveis e polimento console-like — onde Playnite/ES-DE/Steam Deck ja
+entregam por padrao.
+
+**Achados P0 (bloqueantes):**
+- P0-A "jogar -> voltar" NAO validado no host (pende de prod.keys sincronizadas
+  + interacao humana) — registro como "nao validado", nunca alegado.
+- P0-B Launcher sem busca/colecoes/estados (grep = 0 em launcher/*.qml).
+- P0-C cartoes do Launcher sem capa/art (Rectangle+Text, sem Image/coverUrl).
+
+**Achados P1:**
+- Contraste desabilitado #667481/#122131 = 3.40:1 (falha AA 4.5) em Main.qml e
+  #5f6b85/#0b1622 no LauncherGamePage.
+- Launcher com cores fixas (#22d3ee, #8b93a8, #0b1622, #f2f6fb, #243044,
+  #5f6b85, #ff8a90) ignorando high-contrast — nao herda ThemeBridge/AccessibilityMenu.
+- Sem Keys.onGamepad* (grep = 0): navegacao por "controle" e' na verdade por
+  teclado (Keys.on*); Steam Input emula teclado, mas controle literal/libinput
+  sem emulacao nao navega.
+- Grade rigida 180x100 (LauncherHome) sem redistribuir em 1080p+.
+- MultiEffect+ShaderEffectSource por cartao em EditorialLibrary sem LOD/pooling
+  e sem sourceSize em muitas capas (risco de jank/memoria).
+
+Registro documental desta radiografia e o ponto de partida das correcoes:
+contraste (pontual), acessibilidade herdada (pontual), gamepad keys (naive) —
+seguindo a recomendacao de fechar os "CORRIGIR" antes de ampliar features.
