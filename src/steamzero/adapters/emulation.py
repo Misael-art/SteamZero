@@ -1137,7 +1137,17 @@ class EmulationController:
                 "E-COMPONENT-DEGRADED", detail="defina o emulador padrão deste jogo"
             )
         self._require_launchable_emulator(emulator_id)
-        platform_id = str(game.get("platformId") or "switch")
+        # Nunca adivinhar a plataforma. O default anterior era "switch", o
+        # console mais restritivo do catálogo: um jogo sem plataforma passava a
+        # exigir prod.keys, a recusar o emulador correto e a aceitar um
+        # emulador de Switch. Palpite silencioso num caminho que dispara
+        # processo é pior que recusa explícita.
+        platform_id = str(game.get("platformId") or "")
+        if not platform_id:
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN",
+                detail="jogo sem plataforma declarada; faça uma nova varredura da biblioteca",
+            )
         rom = Path(str(game["path"]))
 
         # Switch: classificação base/update/dlc e keys são restritos ao Switch.
@@ -5649,11 +5659,18 @@ class EmulationController:
                 or size < 0
             ):
                 continue
+            # Mesmo palpite, mesmo risco: um alvo rotulado com a plataforma
+            # errada produz diagnóstico errado. Mas tirar a entrada do
+            # inventário seria pior — a integridade do arquivo não depende de
+            # saber a plataforma, e removê-la faria corrupção passar sem
+            # detecção, em silêncio. O rótulo assume o desconhecido; a
+            # verificação continua.
+            platform_id = str(game.get("platformId") or "") or "unknown"
             targets.append(
                 BitrotTarget(
                     asset_id=f"emulation:{game_id}",
                     title=title,
-                    platform_id=str(game.get("platformId") or "switch"),
+                    platform_id=platform_id,
                     path=Path(raw_path),
                     size=size,
                 )
@@ -7731,6 +7748,13 @@ class EmulationController:
                 normalized = dict(game)
                 normalized["contentKind"] = "base"
                 normalized["name"] = SwitchLibraryScanner.clean_display_name(candidate_path)
+                # A varredura grava a plataforma em `platform`; o lançamento e o
+                # inventário liam `platformId`. A chave não batia, então nenhuma
+                # entrada do acervo real declarava plataforma para quem lança —
+                # e o default silencioso rio abaixo transformava todo jogo em
+                # Switch. Normalizar aqui mantém a tradução num lugar só, na
+                # fronteira onde o cache vira dado de domínio.
+                normalized["platformId"] = str(game.get("platformId") or game.get("platform") or "")
                 valid.append(normalized)
             return valid, max(0, unidentified)
         except (OSError, ValueError, json.JSONDecodeError):

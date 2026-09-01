@@ -3625,3 +3625,72 @@ def test_game_in_a_directory_without_platform_manifest_is_not_silently_lost(
         "o jogo sumiu sem deixar rastro: não entrou na biblioteca nem foi "
         f"contado como incompatível (resultado: {result})"
     )
+
+
+class TestPlatformSurvivesTheLibraryCache:
+    """A plataforma gravada pela varredura precisa chegar ao lançamento.
+
+    A varredura grava `platform`; o lançamento lia `platformId` e caía num
+    default `"switch"`. As duas chaves nunca se encontraram, então TODO jogo do
+    acervo real era tratado como Switch: o emulador correto era recusado (a
+    plataforma Switch não declara flycast) e um emulador de Switch era aceito
+    para uma ROM de Dreamcast — a polaridade exatamente invertida.
+
+    Nenhum teste pegou porque as fixtures escreviam `platformId`, a chave que o
+    código lia e que a varredura real nunca produz.
+    """
+
+    def _cache(self, controller: object, tmp_path: Path, game: dict[str, object]) -> Path:
+        cache = controller._library_cache_path  # type: ignore[attr-defined]
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_text(
+            json.dumps({"schemaVersion": 1, "games": [game], "unidentified": 0}),
+            encoding="utf-8",
+        )
+        return cache
+
+    def _dreamcast_entry(self, tmp_path: Path) -> dict[str, object]:
+        rom = tmp_path / "jogo.gdi"
+        rom.write_bytes(b"D" * 2048)
+        stat = rom.stat()
+        fingerprint = hashlib.sha256(
+            f"{rom}\0{stat.st_size}\0{stat.st_mtime_ns}".encode()
+        ).hexdigest()
+        return {
+            "id": "5c5fd6b29bee06c2f1fb5ff5",
+            "name": "Jogo Dreamcast",
+            "state": "ready",
+            "path": str(rom),
+            "fingerprint": fingerprint,
+            "size": stat.st_size,
+            "format": "gdi",
+            "contentKind": "base",
+            # Exatamente como a varredura grava: `platform`, sem `platformId`.
+            "platform": "dreamcast",
+        }
+
+    def test_the_scanner_key_reaches_the_launch_path(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        controller = _controller(monkeypatch, tmp_path)
+        self._cache(controller, tmp_path, self._dreamcast_entry(tmp_path))
+        games, _ = controller._load_library_cache()  # type: ignore[attr-defined]
+        assert games, "a entrada da varredura precisa sobreviver ao cache"
+        assert games[0]["platformId"] == "dreamcast", (
+            "sem esta tradução o jogo vira Switch no lançamento"
+        )
+
+    def test_a_platformless_entry_is_refused_instead_of_guessed(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        """Recusar é o pior caso aceitável; adivinhar não é.
+
+        O default anterior escolhia justamente o console mais restritivo, que
+        exige prod.keys — então o palpite não era só errado, era o mais caro.
+        """
+        controller = _controller(monkeypatch, tmp_path)
+        entry = self._dreamcast_entry(tmp_path)
+        del entry["platform"]
+        self._cache(controller, tmp_path, entry)
+        games, _ = controller._load_library_cache()  # type: ignore[attr-defined]
+        assert games[0]["platformId"] == "", "ausência não pode virar uma plataforma qualquer"
