@@ -185,8 +185,18 @@ def _sections_from_catalog(catalog: Sequence[CatalogGame]) -> tuple[HomeSection,
         try:
             HomeSection(id=section, title=section, items=(game.id,))
         except ValueError:
+            # A recusa pode ser da seção OU do item, e a mensagem não era
+            # consultada. Reagir sempre como se fosse a seção fazia a segunda
+            # tentativa levantar de novo quando o id do jogo é que estava fora
+            # do contrato — e, por estar fora do try, ela derrubava a home
+            # inteira por causa de um registro. Aqui a distinção é explícita:
+            # seção ruim tem fallback, item ruim descarta só aquele jogo, como
+            # build_sections já fazia.
+            try:
+                HomeSection(id="outros", title="outros", items=(game.id,))
+            except ValueError:
+                continue
             section = "outros"
-            HomeSection(id=section, title=section, items=(game.id,))
         grouped.setdefault(section, []).append(game.id)
     return tuple(
         HomeSection(id=name, title=_SECTION_TITLES.get(name, name), items=tuple(items))

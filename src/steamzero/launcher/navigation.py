@@ -14,14 +14,14 @@ coluna e não inventa foco quando a lista chega vazia.
 
 from __future__ import annotations
 
-import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+
+from steamzero.launcher.identifiers import is_identifier
 
 DIAG_FOCUS_EMPTY = "LAUNCHER-FOCUS-EMPTY-001"
 MAX_SECTIONS = 12
 MAX_ITEMS_PER_SECTION = 512
-_IDENTIFIER = re.compile(r"^[a-z][a-zA-Z0-9-]{0,63}$")
 
 # Nó sintético do topo. A primeira linha precisa de um destino para cima, senão
 # o usuário que sobe uma vez perde a referência de que há barra de navegação.
@@ -30,7 +30,7 @@ EMPTY_ID = "empty:action"
 
 
 def _identifier(value: str, *, name: str) -> str:
-    if not isinstance(value, str) or not _IDENTIFIER.fullmatch(value):
+    if not is_identifier(value):
         raise ValueError(f"{name} id inválido: {value!r}")
     return value
 

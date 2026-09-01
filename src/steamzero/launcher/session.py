@@ -16,16 +16,14 @@ foco.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import Any
 
+from steamzero.launcher.identifiers import is_focus_id, is_identifier
 from steamzero.launcher.navigation import FocusMap
 
 DIAG_RETURN_MISSING = "LAUNCHER-RETURN-MISSING-001"
 DIAG_RETURN_INVALID = "LAUNCHER-RETURN-INVALID-002"
-_FOCUS_ID = re.compile(r"^[a-z][a-zA-Z0-9-]{0,63}:[a-z][a-zA-Z0-9-]{0,63}$")
-_GAME_ID = re.compile(r"^[a-z][a-zA-Z0-9-]{0,63}$")
 
 
 @dataclass(frozen=True)
@@ -38,7 +36,7 @@ class GameSummary:
     blocked_reason: str = ""
 
     def __post_init__(self) -> None:
-        if not _GAME_ID.fullmatch(self.id):
+        if not is_identifier(self.id):
             raise ValueError(f"game id inválido: {self.id!r}")
         if not self.title:
             raise ValueError("game title vazio")
@@ -119,9 +117,9 @@ class LaunchContext:
 
     @classmethod
     def capture(cls, *, game_id: str, focus_id: str) -> LaunchContext:
-        if not _GAME_ID.fullmatch(game_id):
+        if not is_identifier(game_id):
             raise ValueError(f"game id inválido: {game_id!r}")
-        if not _FOCUS_ID.fullmatch(focus_id):
+        if not is_focus_id(focus_id):
             raise ValueError(f"focus id inválido: {focus_id!r}")
         return cls(game_id=game_id, focus_id=focus_id)
 
@@ -162,7 +160,7 @@ def restore_context(payload: object, focus: FocusMap) -> tuple[str, tuple[Return
             ),
         )
     raw_focus = payload.get("focusId")
-    if not isinstance(raw_focus, str) or not _FOCUS_ID.fullmatch(raw_focus):
+    if not is_focus_id(raw_focus):
         return focus.initial, (
             ReturnDiagnostic(
                 code=DIAG_RETURN_INVALID,

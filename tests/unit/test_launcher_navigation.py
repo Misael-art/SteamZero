@@ -152,3 +152,88 @@ class TestBuildTitlesReadsTheCanonicalLabel:
         from steamzero.launcher.app import build_titles
 
         assert build_titles([{"id": "sem-rotulo"}]) == {"sem-rotulo": "sem-rotulo"}
+
+
+class TestCanonicalHexIdentifiers:
+    """O acervo real publica ids hexadecimais; o contrato precisa aceitá-los.
+
+    O contrato exigia letra na primeira posição — convenção dos ids sintéticos
+    (`header:home`, `empty:action`) aplicada sem querer ao acervo. Os ids
+    canônicos são hex de 24 caracteres: 63% começam por dígito. No host, 147 dos
+    231 jogos eram recusados e o Launcher encerrava antes da home.
+
+    A fixture que já existia usava `ae18c7e53583298461a0edea`, que começa por
+    letra e passava por sorte do sorteio. Por isso nenhum teste pegou o defeito.
+    """
+
+    def test_a_hex_id_starting_with_a_digit_is_accepted(self) -> None:
+        from steamzero.launcher.identifiers import is_identifier
+
+        assert is_identifier("5c5fd6b29bee06c2f1fb5ff5")
+        assert is_identifier("0f40d4d28a0476a35c8bbaeb")
+        assert is_identifier("ae18c7e53583298461a0edea")
+
+    def test_a_section_accepts_the_whole_hex_catalog(self) -> None:
+        section = HomeSection(
+            id="outros",
+            title="Outros",
+            items=("5c5fd6b29bee06c2f1fb5ff5", "1f40d4d28a0476a35c8bbaeb"),
+        )
+        assert len(section.items) == 2
+
+    def test_a_focus_id_pairs_two_hex_sides(self) -> None:
+        from steamzero.launcher.identifiers import is_focus_id
+
+        assert is_focus_id("outros:5c5fd6b29bee06c2f1fb5ff5")
+        assert is_focus_id("header:home")
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "-flag-que-parece-opcao",
+            "com:dois-pontos",
+            "com espaco",
+            "com/barra",
+            "com;ponto-e-virgula",
+            "x" * 65,
+            "",
+        ],
+    )
+    def test_the_hazards_stay_rejected(self, value: str) -> None:
+        """Alargar a cabeça do contrato não pode alargar o resto.
+
+        Cada um destes viraria outra coisa ao atravessar foco, argv ou o
+        separador do focus id — que é justamente o que o contrato protege.
+        """
+        from steamzero.launcher.identifiers import is_identifier
+
+        assert not is_identifier(value)
+
+
+class TestOneBadRecordDoesNotEmptyTheHome:
+    """Um registro fora do contrato descarta a si mesmo, não a home inteira."""
+
+    def test_an_invalid_item_is_dropped_and_the_rest_survives(self) -> None:
+        from steamzero.adapters.launcher_catalog import CatalogGame
+        from steamzero.launcher.app import _sections_from_catalog
+
+        catalog = [
+            CatalogGame(id="5c5fd6b29bee06c2f1fb5ff5", title="Válido", platform="snes"),
+            CatalogGame(id="id:invalido", title="Corrompido", platform="snes"),
+            CatalogGame(id="ae18c7e53583298461a0edea", title="Válido também", platform="snes"),
+        ]
+        sections = _sections_from_catalog(catalog)
+        items = tuple(item for section in sections for item in section.items)
+        assert items == ("5c5fd6b29bee06c2f1fb5ff5", "ae18c7e53583298461a0edea")
+
+    def test_an_invalid_platform_falls_back_instead_of_dropping_the_game(self) -> None:
+        """Seção ruim tem fallback; só o item ruim é descartado."""
+        from steamzero.adapters.launcher_catalog import CatalogGame
+        from steamzero.launcher.app import _sections_from_catalog
+
+        catalog = [
+            CatalogGame(id="5c5fd6b29bee06c2f1fb5ff5", title="Jogo", platform="plataforma:ruim"),
+        ]
+        sections = _sections_from_catalog(catalog)
+        assert [section.id for section in sections] == ["outros"]
+        assert sections[0].items == ("5c5fd6b29bee06c2f1fb5ff5",)

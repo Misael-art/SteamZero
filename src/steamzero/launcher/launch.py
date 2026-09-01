@@ -33,11 +33,10 @@ from pathlib import Path
 from typing import Any
 
 from steamzero.core import fs
+from steamzero.launcher.identifiers import is_focus_id, is_identifier
 
 DIAG_CONTEXT_LOST = "LAUNCHER-CONTEXT-LOST-001"
 MAX_ARGV = 64
-_GAME_ID = re.compile(r"^[a-z][a-zA-Z0-9-]{0,63}$")
-_FOCUS_ID = re.compile(r"^[a-z][a-zA-Z0-9-]{0,63}:[a-z][a-zA-Z0-9-]{0,63}$")
 _UNSAFE_ARGUMENT = re.compile(r"[;&|`$\n\r]")
 
 Spawn = Callable[[tuple[str, ...]], int]
@@ -51,9 +50,9 @@ class LaunchPlan:
     context_path: Path
 
     def __post_init__(self) -> None:
-        if not _GAME_ID.fullmatch(self.game_id):
+        if not is_identifier(self.game_id):
             raise ValueError(f"game id inválido: {self.game_id!r}")
-        if not _FOCUS_ID.fullmatch(self.focus_id):
+        if not is_focus_id(self.focus_id):
             raise ValueError(f"focus id inválido: {self.focus_id!r}")
         if isinstance(self.argv, str) or not isinstance(self.argv, tuple | list):
             raise ValueError("argv precisa ser sequência já separada, não string de shell")
