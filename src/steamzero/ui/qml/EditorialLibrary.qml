@@ -576,6 +576,13 @@ Item {
         anchors.fill: parent
         visible: !root.highContrast && root.recipeMediaSource(root.selectedGame, "contextualBackdrop") !== ""
         source: root.recipeMediaSource(root.selectedGame, "contextualBackdrop")
+        // O backdrop cobre o viewport inteiro, então o teto é o viewport — e
+        // não menos que isso. Ele aparece a 34% sob um véu de 91%, o que tenta
+        // justificar um divisor agressivo aqui; mas quanto detalhe sobrevive a
+        // essa atenuação é afirmação de fidelidade visual, e a §10 exige medição
+        // na release e no hardware para sustentá-la. Sem essa medição, o teto
+        // honesto é o tamanho de desenho.
+        decodeSize: root.coverDecodeSize(width, height)
         fillMode: root.recipeFillMode("contextualBackdrop")
         effects: root.recipeEffects("contextualBackdrop", "contextualBackdrop")
         opacity: root.highContrast ? 0 : 0.34

@@ -14,10 +14,15 @@ Item {
     // Teto de decodificação da mídia, em pixels de dispositivo. Uma capa de
     // 600x900 desenhada numa célula de 190x274 custa o mesmo decode e a mesma
     // textura de GPU que uma capa em tela cheia; quem sabe o tamanho real é a
-    // superfície que instancia este renderer, não o renderer. `Qt.size(0, 0)`
-    // mantém o comportamento antigo (tamanho natural do arquivo) para quem
-    // ainda não declarou o teto.
-    property size decodeSize: Qt.size(0, 0)
+    // superfície que instancia este renderer, não o renderer.
+    //
+    // É `required` de propósito. Um padrão como `Qt.size(0, 0)` — o valor que a
+    // Image entende como "tamanho natural do arquivo" — deixaria uma superfície
+    // nova voltar ao decode integral só por esquecimento, e em silêncio: nada
+    // falha, a mídia aparece igual, e o custo só se manifesta como rolagem
+    // travada num aparelho que o autor da superfície talvez não tenha. Exigir a
+    // declaração transforma esse esquecimento em erro de carregamento do QML.
+    required property size decodeSize
     // QtQuick.Effects/MultiEffect existe somente a partir do Qt 6.5. O
     // launcher publica esta capacidade depois de conferir o runtime; sem ela,
     // a mídia continua visível e a vinheta declarativa permanece funcional.
@@ -53,6 +58,11 @@ Item {
         anchors.fill: parent
         source: root.source
         fillMode: root.fillMode
+        // Teto, não tamanho alvo: uma arte menor que o teto continua sendo
+        // decodificada no tamanho natural (medido — arte 320x180 com teto de
+        // 4096 mantém implicitWidth 320). Por isso declarar um teto generoso
+        // numa tela 4K não infla o consumo de uma capa pequena. Em SVG o teto
+        // vira mesmo o tamanho de rasterização, que é o comportamento desejado.
         sourceSize: root.decodeSize
         // Decodificar fora da thread de render é o que impede que uma capa
         // grande apareça como engasgo na rolagem. O custo é um quadro sem a

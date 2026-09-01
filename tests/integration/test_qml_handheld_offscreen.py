@@ -280,6 +280,47 @@ def test_darkbutton_stays_readable_on_the_light_theme(tmp_path: Path) -> None:
 
 
 @pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
+def test_media_effect_layer_refuses_a_surface_without_a_decode_ceiling() -> None:
+    """Uma superfície que esquece o teto de decode não carrega.
+
+    O teto é `required` justamente porque o esquecimento seria silencioso: a
+    mídia apareceria igual e o custo só surgiria como rolagem travada num
+    aparelho que o autor da superfície talvez não tenha. Este teste guarda a
+    garantia contra o conserto tentador — devolver um valor padrão à propriedade
+    faria o erro de carregamento sumir junto com a proteção.
+    """
+    qml_directory = ROOT / "src" / "steamzero" / "ui" / "qml"
+    with tempfile.TemporaryDirectory(prefix="steamzero-decode-ceiling-") as tmp:
+        probe = Path(tmp) / "probe.qml"
+        probe.write_text(
+            "import QtQuick\n"
+            f'import "{qml_directory.as_uri()}"\n'
+            "Item {\n"
+            '    MediaEffectLayer { source: "cover.png" }\n'
+            "    Timer { interval: 50; running: true; onTriggered: Qt.exit(0) }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        completed = subprocess.run(
+            [str(QML), str(probe)],
+            cwd=ROOT,
+            env=_qml_environment(),
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    assert completed.returncode != 0, (
+        "MediaEffectLayer aceitou uma superfície sem teto de decode declarado\n"
+        f"stdout:\n{completed.stdout}\nstderr:\n{completed.stderr}"
+    )
+    assert "Required property decodeSize was not initialized" in completed.stderr, (
+        "a recusa deve nomear o teto de decode, senão o autor da superfície não "
+        f"sabe o que declarar\nstderr:\n{completed.stderr}"
+    )
+
+
+@pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
 def test_media_effect_layer_composes_with_the_advanced_renderer() -> None:
     """O caminho de produção compõe: Qt >= 6.5 publica a capacidade e o launcher a passa.
 
