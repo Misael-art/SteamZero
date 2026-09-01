@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-UX-AUDIT",
+  "item": "SZ-UI-DESKTOP-AUDIT",
+  "branch": "codex/ux-audit-2026-08-31",
+  "baseRef": "0a7c021e",
+  "owner": "codex-ux-auditor",
+  "state": "closed",
+  "exclusivePaths": [
+    "docs/09-operations/evidence/2026-08-31-ux-audit"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Radiografia registrada; a proxima frente deve tratar o P0 de identidade do catalogo do AURA Launcher e repetir a jornada Big Picture fisicamente.",
+  "updatedAt": "2026-08-31"
+}

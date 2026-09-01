@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "12a9a7843efc26cd6b8b40b296a171eb9ec14ed001443911cc4742194c5197ed",
+  "scopeDigest": "babb42dc49e32047706e378b8c4e14b3e929419f8578840106228e7ea4daa0e4",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -64,6 +64,7 @@
     "tests/unit/test_scene_containers.py",
     "tests/qml/check_scene_containers.qml",
     "docs/09-operations/evidence/2026-08-19-theme-engine-a47",
+    "docs/09-operations/evidence/2026-08-31-ux-audit",
     "tools/theme_perf_probe.py",
     "tests/unit/test_theme_perf_probe.py"
   ],
@@ -287,9 +288,15 @@
       "reference": "tests/integration/test_qml_handheld_offscreen.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_qml_handheld_offscreen.py -q (43 passed)",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-08-31-ux-audit/03-theme-studio-canvas-1280x720.png",
+      "command": "harness QML temporario: ThemeStudioCanvas desenhou cena via SceneRepeater e exibiu arvore/inspector; evidencia offscreen, sem medicao fisica e sem prova de edicao direta",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Avancar a proxima onda da especificacao (componentes do Launcher e inspector do Studio) com o orcamento de desempenho ja aferido na release instalada.",
+  "nextAction": "Priorizar a continuidade visual da jornada AURA/Launcher somente apos o contrato de catalogo estar resiliente; no Theme Engine, repetir medicao fisica na proxima release apos o porte QML e manter contraste/estados por tema como lacuna de UX.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],

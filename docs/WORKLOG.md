@@ -8877,3 +8877,38 @@ valores, dependendo da ordem de execução/estado efêmero de ticks. O teste NÃ
 toca o escopo de Launcher/coleções entregue nesta rodada. Registrar para o
 próximo agente não investigar à toa; se reincidir, o defeito é do teste (iterador
 de ticks), não do código de produção.
+
+## 2026-08-31 — Sessão: radiografia consultiva de UX
+
+**Escopo:** auditoria observacional da Central, AURA UI, AURA Launcher/Big
+Picture, Theme Engine/Studio, mídia, emulação, acessibilidade e jornadas de
+lançamento. Nenhum código, host, instalação ou release foi alterado.
+
+**Evidência:** `docs/09-operations/evidence/2026-08-31-ux-audit/` contém a
+captura da Central real, 55 estados do runner on-screen, fixture visual isolada
+do Launcher, canvas do Studio em harness e o relatório consultivo. A release
+observada foi `2.0.0rc1-0920e785d174`.
+
+**Achado P0:** `steamzero-launcher` encerra antes de abrir com o catálogo real,
+por `ValueError` de ID canônico inválido. O relatório registra a reprodução em
+`launcher-failure.txt`; a fixture não foi usada para promover o estado do
+Launcher. A jornada jogar/fechar/retornar e o atalho físico no Big Picture
+permanecem não validados.
+
+**Diagnóstico consultivo:** a Central apresenta hierarquia e estados honestos,
+mas perde legibilidade em dicas inferiores, disabled, densidade handheld e
+blocos sem capa. O Theme Studio desenha a cena real, porém continua com a
+sensação de inspector somente leitura: autoria direta, undo/redo e timeline não
+foram observados. Mídia não expõe o ciclo provider → progresso → quota → capa
+aplicada em uma única jornada.
+
+**Próxima ação:** tratar a identidade do catálogo como bloqueador do Launcher;
+depois provar a jornada de sofá e o Big Picture fisicamente, fechar contraste
+renderizado e iniciar uma primeira edição direta no canvas do Studio. Itens de
+status atualizados, digests recalculados e visões regeneradas.
+
+**Verificação:** `make status-check`, `ruff check`, `ruff format --check`,
+`mypy`, `make independence boundaries` e `git diff --check` passaram. A rodada
+focada da auditoria passou com 106 testes. A suíte integral foi iniciada, chegou
+a 31% sem erro reportado, ficou sem progresso por vários minutos e foi
+interrompida pela sessão (exit 130); não é declarada como aprovada.

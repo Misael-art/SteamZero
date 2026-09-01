@@ -1,0 +1,22 @@
+SteamZero UX audit — AURA Launcher real-catalog failure
+Date: 2026-08-31 (local audit record)
+Release observed: 2.0.0rc1-0920e785d174
+Display: DISPLAY=:0, WAYLAND_DISPLAY=wayland-0, X11/XCB capture
+
+Command:
+  steamzero-launcher
+
+Observed result:
+  The process exits before opening a usable window. The installed release raises
+  ValueError while converting a canonical library item into a launcher focus id:
+  "item id inválido: <canonical-id>".
+
+Reproduction context:
+  The canonical emulation library contains 231 games whose persisted identifiers
+  are hash-shaped values. The launcher focus-id contract currently accepts a
+  leading letter followed by alphanumeric/hyphen characters. No game was launched
+  from the real Launcher because the shell failed before the home screen.
+
+This is a product-blocking observation, not a code change. A separate temporary
+fixture was used only to inspect the visual shell; it is not evidence that the
+real catalog path works. See 02-launcher-fixture-1600x1000.png.
