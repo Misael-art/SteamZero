@@ -280,6 +280,18 @@ def test_darkbutton_stays_readable_on_the_light_theme(tmp_path: Path) -> None:
 
 
 @pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
+def test_media_effect_layer_composes_with_the_advanced_renderer() -> None:
+    """O caminho de produção compõe: Qt >= 6.5 publica a capacidade e o launcher a passa.
+
+    Sem este teste, todo o gate de mídia rodava no caminho degradado. As camadas
+    que só existem para alimentar o MultiEffect (textura intermediária e máscara
+    gradiente) nunca eram exercitadas com um consumidor real, e um gate delas
+    passaria igual estando errado nos dois sentidos.
+    """
+    _run_qml("check_media_effect_layer.qml", "--steamzero-qtquick-effects")
+
+
+@pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
 def test_editorial_library_renders_at_logical_scale_200() -> None:
     """A composição editorial continua utilizável em 4K físico a 200% lógico."""
     _run_qml("check_editorial_library.qml", scale_factor=2)

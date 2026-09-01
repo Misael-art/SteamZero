@@ -11,6 +11,13 @@ Item {
     required property url source
     property int fillMode: Image.PreserveAspectCrop
     property var effects: []
+    // Teto de decodificação da mídia, em pixels de dispositivo. Uma capa de
+    // 600x900 desenhada numa célula de 190x274 custa o mesmo decode e a mesma
+    // textura de GPU que uma capa em tela cheia; quem sabe o tamanho real é a
+    // superfície que instancia este renderer, não o renderer. `Qt.size(0, 0)`
+    // mantém o comportamento antigo (tamanho natural do arquivo) para quem
+    // ainda não declarou o teto.
+    property size decodeSize: Qt.size(0, 0)
     // QtQuick.Effects/MultiEffect existe somente a partir do Qt 6.5. O
     // launcher publica esta capacidade depois de conferir o runtime; sem ela,
     // a mídia continua visível e a vinheta declarativa permanece funcional.
@@ -35,12 +42,22 @@ Item {
     readonly property int sourceStatus: mediaSource.status
     readonly property bool advancedEffectsLoaded:
         advancedRenderer.status === Loader.Ready
+    // Superfície de diagnóstico das camadas que só existem para alimentar o
+    // renderer avançado. Sem ela não há como provar, de fora, que a textura e a
+    // máscara acompanham o consumidor em vez de custar por capa sem uso.
+    readonly property bool mediaTextureBound: mediaTexture.sourceItem !== null
+    readonly property bool maskRenderable: gradientMask.visible
 
     Image {
         id: mediaSource
         anchors.fill: parent
         source: root.source
         fillMode: root.fillMode
+        sourceSize: root.decodeSize
+        // Decodificar fora da thread de render é o que impede que uma capa
+        // grande apareça como engasgo na rolagem. O custo é um quadro sem a
+        // imagem; o placeholder abaixo já cobre esse intervalo.
+        asynchronous: true
         visible: true
         opacity: {
             if (root.advancedEffectsLoaded)
@@ -53,10 +70,15 @@ Item {
     // Mantém uma única decodificação da mídia e esconde a imagem crua. As
     // camadas confiáveis abaixo reutilizam esta textura, em vez de abrir outra
     // source ou aceitar bytes/código do tema.
+    //
+    // `sourceItem` só é ligado quando o renderer avançado existe para consumir
+    // a textura. Sem esse gate, cada capa da biblioteca alocava um FBO do
+    // tamanho do delegate e o redesenhava mesmo quando nada além da Image
+    // aparecia na tela — uma cópia por capa, por quadro, sem consumidor.
     ShaderEffectSource {
         id: mediaTexture
         anchors.fill: parent
-        sourceItem: mediaSource
+        sourceItem: root.advancedEffectsLoaded ? mediaSource : null
         hideSource: root.advancedEffectsLoaded
     }
 
@@ -65,9 +87,13 @@ Item {
     Item {
         id: gradientMask
         anchors.fill: parent
-        // ShaderEffectSource abaixo oculta esta source da cena, mas ela deve
-        // permanecer renderizável para que a máscara tenha alpha válido.
-        visible: true
+        // O ShaderEffectSource do renderer avançado oculta esta source da cena,
+        // mas ela deve permanecer renderizável para que a máscara tenha alpha
+        // válido. Sem esse renderer não há quem a oculte nem quem a consuma: o
+        // gradiente branco ficaria por cima da mídia e ainda custaria um nó de
+        // cena por capa. Por isso a existência da máscara acompanha a do
+        // consumidor.
+        visible: root.advancedEffectsLoaded
         Rectangle {
             anchors.fill: parent
             gradient: Gradient {
@@ -100,9 +126,15 @@ Item {
         }
     }
 
-    VignetteLayer {
+    // A vinheta são quatro retângulos com gradiente. Multiplicados pelas capas
+    // visíveis de uma grade, é um custo que só se justifica quando a pilha
+    // resolvida pediu vinheta; por isso ela é carregada, e não apenas ocultada.
+    Loader {
         anchors.fill: parent
-        tint: root.vignetteEffect ? root.vignetteEffect.color : "#000000"
-        strength: root.vignetteEffect ? root.vignetteEffect.strength : 0
+        active: root.vignetteActive
+        sourceComponent: VignetteLayer {
+            tint: root.vignetteEffect ? root.vignetteEffect.color : "#000000"
+            strength: root.vignetteEffect ? root.vignetteEffect.strength : 0
+        }
     }
 }

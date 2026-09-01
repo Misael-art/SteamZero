@@ -10,6 +10,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Window
 
 Item {
     id: root
@@ -1152,6 +1153,11 @@ Item {
                                     anchors.fill: parent
                                     source: modelData.coverUrl
                                     visible: modelData.coverUrl !== ""
+                                    // Teto único do carrossel: a capa focada é a
+                                    // maior, e usar o mesmo teto na periférica
+                                    // evita reabrir o decode a cada troca de foco.
+                                    decodeSize: root.coverDecodeSize(root.coverWidth(),
+                                        root.coverHeight())
                                     fillMode: root.recipeFillMode(index === root.selectedIndex
                                         ? "focusedCover" : "peripheralCover")
                                     effects: index === root.selectedIndex
@@ -1252,6 +1258,8 @@ Item {
                                     anchors.fill: parent
                                     source: modelData.coverUrl
                                     visible: modelData.coverUrl !== ""
+                                    decodeSize: root.coverDecodeSize(gameGrid.cellWidth,
+                                        gameGrid.cellHeight)
                                     fillMode: root.recipeFillMode("peripheralCover")
                                     effects: root.recipeEffects("peripheralCover", "peripheralCover")
                                 }
@@ -1339,6 +1347,8 @@ Item {
                                         anchors.fill: parent
                                         source: modelData.coverUrl || ""
                                         visible: modelData.coverUrl !== ""
+                                        sourceSize: root.coverDecodeSize(44, 56)
+                                        asynchronous: true
                                         fillMode: Image.PreserveAspectCrop
                                     }
                                     NavigationIcon {
@@ -1417,6 +1427,9 @@ Item {
                                 anchors.fill: parent
                                 source: root.selectedGame.coverUrl || ""
                                 visible: root.selectedGame.coverUrl !== ""
+                                sourceSize: root.coverDecodeSize(root.compact ? 152 : 280,
+                                    root.compact ? 220 : 400)
+                                asynchronous: true
                                 fillMode: Image.PreserveAspectCrop
                             }
                             NavigationIcon {
@@ -1635,6 +1648,14 @@ Item {
                 }
             }
         }
+    }
+
+    // Cada superfície declara o tamanho em que a capa vai ser desenhada; o teto
+    // de decode vem do LOD compartilhado, nunca de uma conta local.
+    property CoverLod coverLod: CoverLod { devicePixelRatio: Screen.devicePixelRatio }
+
+    function coverDecodeSize(logicalWidth, logicalHeight) {
+        return coverLod.decodeSize(logicalWidth, logicalHeight)
     }
 
     function coverWidth() {

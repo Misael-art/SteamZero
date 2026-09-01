@@ -12,6 +12,12 @@ Window {
     property int failures: 0
     property int phase: 0
     property int viewLayoutCheck: 0
+    // A capa é decodificada fora da thread de render (LOD assíncrono), então
+    // `Ready` chega alguns ticks depois de o delegate existir. Esperar é o que
+    // o usuário faz; o orçamento existe para que uma capa que NUNCA carrega
+    // continue reprovando em vez de pendurar a suíte.
+    property int coverLoadTicks: 0
+    readonly property int coverLoadTickBudget: 30
     property bool capturePending: false
     readonly property string captureOutput: {
         const args = Qt.application.arguments
@@ -376,6 +382,11 @@ Window {
                     const coverLayer = findMediaLayer(delegate)
                     check(coverLayer !== null,
                           "card do carrossel deve montar a camada de mídia")
+                    if (coverLayer !== null && coverLayer.sourceStatus === Image.Loading
+                        && coverLoadTicks < coverLoadTickBudget) {
+                        coverLoadTicks += 1
+                        return
+                    }
                     check(coverLayer !== null && coverLayer.visible
                           && coverLayer.sourceStatus === Image.Ready,
                           "capa publicada deve renderizar no card (status "

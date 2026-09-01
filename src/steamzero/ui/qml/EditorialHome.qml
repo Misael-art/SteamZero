@@ -7,6 +7,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Window
 
 Item {
     id: root
@@ -40,6 +41,13 @@ Item {
     signal systemRequested()
     signal continueRequested(var game)
     signal maintenanceRequested(string area)
+
+    // Mesmo LOD da biblioteca: a arte é a mesma, o teto de decode também.
+    property CoverLod coverLod: CoverLod { devicePixelRatio: Screen.devicePixelRatio }
+
+    function coverDecodeSize(logicalWidth, logicalHeight) {
+        return coverLod.decodeSize(logicalWidth, logicalHeight)
+    }
 
     readonly property int minimumTarget: Math.max(48, themeMinimumTarget)
     readonly property bool compact: width < 980
@@ -216,6 +224,11 @@ Item {
                 anchors.fill: parent
                 source: root.featured && root.featured.coverUrl ? root.featured.coverUrl : ""
                 visible: source !== "" && !root.highContrast
+                // Fundo a 22% de opacidade: decodificar a arte inteira aqui
+                // custaria o mesmo que uma capa em tela cheia para um efeito
+                // que ninguém consegue ler em detalhe.
+                sourceSize: root.coverDecodeSize(width, height)
+                asynchronous: true
                 fillMode: Image.PreserveAspectCrop
                 opacity: 0.22
             }
@@ -239,6 +252,9 @@ Item {
                     Image {
                         anchors.fill: parent
                         source: root.featured && root.featured.coverUrl ? root.featured.coverUrl : ""
+                        sourceSize: root.coverDecodeSize(root.compact ? 82 : 120,
+                            root.compact ? 120 : 172)
+                        asynchronous: true
                         fillMode: Image.PreserveAspectCrop
                     }
                 }
