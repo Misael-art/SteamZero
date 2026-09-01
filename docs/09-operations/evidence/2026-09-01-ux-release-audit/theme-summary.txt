@@ -1,0 +1,14 @@
+Temas e configuração
+
+Temas disponíveis: org.steamzero.asset-recipes-demo, org.steamzero.aura,
+org.steamzero.default e org.steamzero.steamdeck; todos compatíveis.
+
+Tema ativo: org.steamzero.asset-recipes-demo. Foram executados planos de
+ativação read-only para os quatro IDs. Os três temas não ativos produziram plano
+com rollback G-FULL; planejar o tema já ativo retornou E-THEME-ACTIVE. Nenhum
+plano foi aplicado, portanto não há certificação de troca visual real tema a
+tema nesta sessão.
+
+Na interface, AURA aparece com “Aplicar”, “Ver (somente leitura)” e “Duplicar e
+editar”. O Theme Studio é legível e coerente como inspector, mas a autoria
+direta no canvas, timeline e undo/redo não foram demonstrados.

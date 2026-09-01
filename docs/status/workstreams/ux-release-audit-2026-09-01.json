@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-UX-RELEASE-AUDIT",
+  "item": "SZ-UI-DESKTOP-AUDIT",
+  "branch": "codex/ux-release-audit-2026-09-01",
+  "baseRef": "66778958",
+  "owner": "codex-ux-release-auditor",
+    "state": "closed",
+  "exclusivePaths": ["docs/09-operations/evidence/2026-09-01-ux-release-audit"],
+  "sharedPaths": ["docs/status", "docs/STATUS.md", "docs/ACTIVE-WORK.md", "docs/WORKLOG.md"],
+    "nextAction": "Aguardar correção P0 de lifecycle, perfis das 12 plataformas e jornada Big Picture antes de nova certificação física.",
+  "updatedAt": "2026-09-01"
+}

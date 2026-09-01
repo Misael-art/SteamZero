@@ -8877,3 +8877,34 @@ valores, dependendo da ordem de execução/estado efêmero de ticks. O teste NÃ
 toca o escopo de Launcher/coleções entregue nesta rodada. Registrar para o
 próximo agente não investigar à toa; se reincidir, o defeito é do teste (iterador
 de ticks), não do código de produção.
+
+## 2026-09-01 — Sessão: auditoria UX da release instalada 667
+
+**Proveniência:** branch `codex/ux-release-audit-2026-09-01`, base
+`667789588f238a335068451650205c109ecd0367`, release observada
+`2.0.0rc1-667789588f23` no host convergido.
+
+**Resultado:** catálogo real com 231 jogos em 13 plataformas; somente Switch
+aceitou launch. As outras 12 plataformas foram recusadas com perfil ausente,
+evitando iniciar o emulador errado. Foram exercitados 32 componentes: 15
+abriram e foram fechados; 17 cores Libretro recusaram launch próprio com motivo
+correto. Após o encerramento não restaram processos/janelas de emulador. A
+sessão lógica Switch, porém, permaneceu `running`: `session recover` rejeitou o
+mesmo ID hexadecimal aceito pelo launch. A matriz de controles terminou por
+timeout; a busca `F` do Launcher não produziu mudança observável.
+
+**Visual e produto:** Central/AURA UI coerente, mas com alerta de perfil e
+rodapé de baixo contraste; Launcher fullscreen legível, com placeholders
+honestos e foco ciano; handheld apresenta recorte sem indicação clara de
+scroll; mídia mostra propósito e varredura, mas não mostra bem quota, retry e
+resultado por capa. Quatro temas foram listados e planejados em modo somente
+leitura; não houve aplicação, troca nem mutação de tema. Big Picture não foi
+certificado.
+
+**Verificação:** runner live com 55 capturas e QML returncode 0; suíte focada
+com 253 testes passou; Ruff, formatação, mypy e independence/boundaries
+passaram. A suíte integral expirou no limite controlado de 180 s em 17%, sem
+resultado final. Nenhuma instalação, publicação, rollback, push ou mutação de
+host foi realizada nesta sessão.
+
+**Evidência:** `docs/09-operations/evidence/2026-09-01-ux-release-audit/`.

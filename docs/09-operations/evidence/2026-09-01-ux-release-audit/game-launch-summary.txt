@@ -1,0 +1,19 @@
+Matriz de jogos — 13 plataformas com ROMs existentes
+
+Release: 2.0.0rc1-667789588f23.
+
+Dreamcast, Master System, Neo Geo CD, NES/Famicom, Nintendo 3DS, Nintendo
+console, Nintendo handheld, PlayStation, PlayStation 2, PlayStation 3, Sega
+Saturn e Wii U foram recusados com `E-API-SCHEMA`: a plataforma não declara um
+perfil de launch para Eden. A recusa é explícita e evita o defeito anterior de
+rotear tudo para Switch/Eden, mas também mostra que esses perfis ainda não estão
+entregues.
+
+Switch foi o único aceito com `platformId=switch` e `emulatorId=eden`. O
+processo foi iniciado durante a matriz e encerrado. Em uma segunda tentativa,
+o componente respondeu “eden já está em execução”; não ficou processo visível,
+mas a sessão persistiu como `running`.
+
+`session recover` recusou o mesmo identificador hexadecimal com
+`E-API-SCHEMA: gameId inválido`. Resultado: não há prova de jogar, fechar,
+restaurar foco e limpar lifecycle; a jornada permanece P0 aberta.

@@ -1,0 +1,1718 @@
+{
+  "schemaVersion": 2,
+  "kind": "steamzero-ui-action-inventory",
+  "coverage": {
+    "declared": [
+      "overview",
+      "emulators",
+      "steam",
+      "profiles",
+      "sync",
+      "cast",
+      "system",
+      "themes",
+      "library",
+      "sidebar",
+      "handheld-drawer",
+      "task-drawer",
+      "credentials",
+      "plan-dialogs",
+      "jobs",
+      "recovery",
+      "notifications"
+    ],
+    "covered": [
+      "emulators"
+    ],
+    "missing": [
+      "overview",
+      "steam",
+      "profiles",
+      "sync",
+      "cast",
+      "system",
+      "themes",
+      "library",
+      "sidebar",
+      "handheld-drawer",
+      "task-drawer",
+      "credentials",
+      "plan-dialogs",
+      "jobs",
+      "recovery",
+      "notifications"
+    ],
+    "complete": false
+  },
+  "contractCount": 120,
+  "publishedActionCount": 67,
+  "verdictCounts": {
+    "blocked-explained": 2,
+    "handled-locally": 61,
+    "routed": 4
+  },
+  "silentNoOps": [],
+  "unrouted": [],
+  "unexplainedBlocked": [],
+  "actions": [
+    {
+      "surface": "emulationWorkspace.platforms[0].areaData.keysFirmware.cards[0].action",
+      "id": "keys.import",
+      "kind": "",
+      "label": "Importar keys",
+      "enabled": false,
+      "reason": "Importação pela interface ainda não está conectada ao serviço.",
+      "confirmation": false,
+      "contract": "keys.import",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "blocked-explained",
+      "message": "Importação pela interface ainda não está conectada ao serviço.",
+      "explains": true
+    },
+    {
+      "surface": "emulationWorkspace.platforms[0].areaData.keysFirmware.cards[1].action",
+      "id": "firmware.import",
+      "kind": "",
+      "label": "Importar firmware",
+      "enabled": false,
+      "reason": "Importação pela interface ainda não está conectada ao serviço.",
+      "confirmation": false,
+      "contract": "firmware.import",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "blocked-explained",
+      "message": "Importação pela interface ainda não está conectada ao serviço.",
+      "explains": true
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[0].action",
+      "id": "platform.open:switch",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:switch",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma switch não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[1].action",
+      "id": "platform.open:nintendo-handheld",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:nintendo-handheld",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma nintendo-handheld não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[2].action",
+      "id": "platform.open:nes-famicom",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:nes-famicom",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma nes-famicom não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[3].action",
+      "id": "platform.open:snes",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:snes",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma snes não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[4].action",
+      "id": "platform.open:mega-drive",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:mega-drive",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma mega-drive não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[5].action",
+      "id": "platform.open:arcade",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:arcade",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma arcade não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[6].action",
+      "id": "platform.open:playstation",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:playstation",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma playstation não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[7].action",
+      "id": "platform.open:geforce-now",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:geforce-now",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma geforce-now não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[8].action",
+      "id": "platform.open:xbox-cloud-gaming",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:xbox-cloud-gaming",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma xbox-cloud-gaming não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[9].action",
+      "id": "platform.open:amazon-luna",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:amazon-luna",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma amazon-luna não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[10].action",
+      "id": "platform.open:nintendo-console",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:nintendo-console",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma nintendo-console não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[11].action",
+      "id": "platform.open:master-system",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:master-system",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma master-system não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[12].action",
+      "id": "platform.open:game-gear",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:game-gear",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma game-gear não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[13].action",
+      "id": "platform.open:pc-engine-turbografx",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:pc-engine-turbografx",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma pc-engine-turbografx não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[14].action",
+      "id": "platform.open:atari-classics",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:atari-classics",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma atari-classics não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[15].action",
+      "id": "platform.open:neo-geo-pocket",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:neo-geo-pocket",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma neo-geo-pocket não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[16].action",
+      "id": "platform.open:wonderswan",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:wonderswan",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma wonderswan não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[17].action",
+      "id": "platform.open:msx",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:msx",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma msx não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[18].action",
+      "id": "platform.open:zx-spectrum",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:zx-spectrum",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma zx-spectrum não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[19].action",
+      "id": "platform.open:commodore-64",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:commodore-64",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma commodore-64 não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[20].action",
+      "id": "platform.open:amiga",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:amiga",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma amiga não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[21].action",
+      "id": "platform.open:colecovision",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:colecovision",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma colecovision não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[22].action",
+      "id": "platform.open:intellivision",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:intellivision",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma intellivision não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[23].action",
+      "id": "platform.open:virtual-boy",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:virtual-boy",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma virtual-boy não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[24].action",
+      "id": "platform.open:three-do",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:three-do",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma three-do não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[25].action",
+      "id": "platform.open:sega-cd-32x",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:sega-cd-32x",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma sega-cd-32x não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[26].action",
+      "id": "platform.open:nintendo-64",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:nintendo-64",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma nintendo-64 não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[27].action",
+      "id": "platform.open:playstation-2",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:playstation-2",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma playstation-2 não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[28].action",
+      "id": "platform.open:playstation-portable",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:playstation-portable",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma playstation-portable não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[29].action",
+      "id": "platform.open:dreamcast",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:dreamcast",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma dreamcast não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[30].action",
+      "id": "platform.open:nintendo-ds",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:nintendo-ds",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma nintendo-ds não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[31].action",
+      "id": "platform.open:nintendo-3ds",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:nintendo-3ds",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma nintendo-3ds não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[32].action",
+      "id": "platform.open:wii-u",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:wii-u",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma wii-u não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[33].action",
+      "id": "platform.open:playstation-3",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:playstation-3",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma playstation-3 não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[34].action",
+      "id": "platform.open:xbox",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:xbox",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma xbox não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[35].action",
+      "id": "platform.open:xbox-360",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:xbox-360",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma xbox-360 não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[36].action",
+      "id": "platform.open:sega-saturn",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:sega-saturn",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma sega-saturn não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[37].action",
+      "id": "platform.open:sg-1000",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:sg-1000",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma sg-1000 não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[38].action",
+      "id": "platform.open:neo-geo-cd",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:neo-geo-cd",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma neo-geo-cd não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[39].action",
+      "id": "platform.open:vectrex",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:vectrex",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma vectrex não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[40].action",
+      "id": "platform.open:odyssey2",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:odyssey2",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma odyssey2 não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[41].action",
+      "id": "platform.open:channelf",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:channelf",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma channelf não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[42].action",
+      "id": "platform.open:pc-engine-supergrafx",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:pc-engine-supergrafx",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma pc-engine-supergrafx não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[43].action",
+      "id": "platform.open:atari-st",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:atari-st",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma atari-st não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[44].action",
+      "id": "platform.open:apple2",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:apple2",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma apple2 não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[45].action",
+      "id": "platform.open:bbc-micro",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:bbc-micro",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma bbc-micro não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[46].action",
+      "id": "platform.open:coco",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:coco",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma coco não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[47].action",
+      "id": "platform.open:ti99",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:ti99",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma ti99 não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[48].action",
+      "id": "platform.open:zx81",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:zx81",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma zx81 não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[49].action",
+      "id": "platform.open:thomson",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:thomson",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma thomson não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[50].action",
+      "id": "platform.open:x68000",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:x68000",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma x68000 não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[51].action",
+      "id": "platform.open:pc88",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:pc88",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma pc88 não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[52].action",
+      "id": "platform.open:pc98",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:pc98",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma pc98 não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[53].action",
+      "id": "platform.open:gameandwatch",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:gameandwatch",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma gameandwatch não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[54].action",
+      "id": "platform.open:supervision",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:supervision",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma supervision não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[55].action",
+      "id": "platform.open:megaduck",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:megaduck",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma megaduck não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[56].action",
+      "id": "platform.open:doom",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:doom",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma doom não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[57].action",
+      "id": "platform.open:quake",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:quake",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma quake não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[58].action",
+      "id": "platform.open:pico8",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:pico8",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma pico8 não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[59].action",
+      "id": "platform.open:tic80",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:tic80",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma tic80 não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.platformCards[60].action",
+      "id": "platform.open:wasm4",
+      "kind": "",
+      "label": "Abrir plataforma",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "platform.open:wasm4",
+      "endpoint": "",
+      "method": "",
+      "screen": "",
+      "verdict": "handled-locally",
+      "message": "A plataforma wasm4 não está no workspace publicado; nada foi alterado.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.emulators[0].action",
+      "id": "emulator.install:dolphin",
+      "kind": "",
+      "label": "Instalar",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "emulator.plan",
+      "endpoint": "/emulation/emulator/plan",
+      "method": "POST",
+      "screen": "emulators",
+      "verdict": "routed",
+      "message": "A bridge não publicou o contrato emulator.plan; nenhuma mudança foi feita.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.emulators[1].action",
+      "id": "emulator.launch:eden",
+      "kind": "",
+      "label": "Abrir",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "emulator.launch",
+      "endpoint": "/emulation/emulator/launch",
+      "method": "POST",
+      "screen": "emulators",
+      "verdict": "routed",
+      "message": "A bridge não publicou o contrato emulator.launch; nenhuma mudança foi feita.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.emulators[2].action",
+      "id": "emulator.repair:citron",
+      "kind": "",
+      "label": "Reparar",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "emulator.plan",
+      "endpoint": "/emulation/emulator/plan",
+      "method": "POST",
+      "screen": "emulators",
+      "verdict": "routed",
+      "message": "A bridge não publicou o contrato emulator.plan; nenhuma mudança foi feita.",
+      "explains": null
+    },
+    {
+      "surface": "emulationWorkspace.globalManagement.emulators[3].action",
+      "id": "emulator.stop:ryubing",
+      "kind": "",
+      "label": "Fechar",
+      "enabled": true,
+      "reason": null,
+      "confirmation": false,
+      "contract": "emulator.stop",
+      "endpoint": "/emulation/emulator/stop",
+      "method": "POST",
+      "screen": "emulators",
+      "verdict": "routed",
+      "message": "A bridge não publicou o contrato emulator.stop; nenhuma mudança foi feita.",
+      "explains": null
+    }
+  ],
+  "notCoveredContracts": [
+    {
+      "contract": "admin.health",
+      "label": "Ver saúde administrativa",
+      "screen": "system"
+    },
+    {
+      "contract": "bios.audit",
+      "label": "Auditar store de BIOS",
+      "screen": "emulators"
+    },
+    {
+      "contract": "bios.import.apply",
+      "label": "Confirmar importação de BIOS",
+      "screen": "emulators"
+    },
+    {
+      "contract": "bios.import.plan",
+      "label": "Revisar importação de BIOS",
+      "screen": "emulators"
+    },
+    {
+      "contract": "bios.rollback.apply",
+      "label": "Confirmar rollback de BIOS",
+      "screen": "emulators"
+    },
+    {
+      "contract": "bios.rollback.plan",
+      "label": "Revisar rollback de BIOS",
+      "screen": "emulators"
+    },
+    {
+      "contract": "bios.scan",
+      "label": "Selecionar e varrer BIOS",
+      "screen": "emulators"
+    },
+    {
+      "contract": "bios.scan.status",
+      "label": "Consultar varredura de BIOS",
+      "screen": "emulators"
+    },
+    {
+      "contract": "bios.sources",
+      "label": "Listar origens aprovadas de BIOS",
+      "screen": "emulators"
+    },
+    {
+      "contract": "bios.status",
+      "label": "Consultar requisitos de BIOS",
+      "screen": "emulators"
+    },
+    {
+      "contract": "cast.discover",
+      "label": "Descobrir receptores",
+      "screen": "cast"
+    },
+    {
+      "contract": "cast.pair",
+      "label": "Parear receptor",
+      "screen": "cast"
+    },
+    {
+      "contract": "cast.sessions",
+      "label": "Sessões ativas",
+      "screen": "cast"
+    },
+    {
+      "contract": "cast.start",
+      "label": "Iniciar transmissão",
+      "screen": "cast"
+    },
+    {
+      "contract": "cast.status",
+      "label": "Status da transmissão",
+      "screen": "cast"
+    },
+    {
+      "contract": "cast.stop",
+      "label": "Parar transmissão",
+      "screen": "cast"
+    },
+    {
+      "contract": "cloud.launch",
+      "label": "Abrir serviço cloud",
+      "screen": "emulation"
+    },
+    {
+      "contract": "collections.apply",
+      "label": "Aplicar alteração de coleção",
+      "screen": "overview"
+    },
+    {
+      "contract": "collections.list",
+      "label": "Ver coleções",
+      "screen": "overview"
+    },
+    {
+      "contract": "collections.plan",
+      "label": "Revisar alteração de coleção",
+      "screen": "overview"
+    },
+    {
+      "contract": "component.apply",
+      "label": "Aplicar componente",
+      "screen": "emulators"
+    },
+    {
+      "contract": "component.history",
+      "label": "Consultar histórico do componente",
+      "screen": "system"
+    },
+    {
+      "contract": "component.launch",
+      "label": "Abrir componente",
+      "screen": "emulators"
+    },
+    {
+      "contract": "component.list",
+      "label": "Listar componentes",
+      "screen": "emulators"
+    },
+    {
+      "contract": "component.matrix",
+      "label": "Consultar capacidades de componentes",
+      "screen": "emulators"
+    },
+    {
+      "contract": "component.open-config",
+      "label": "Abrir configuração do componente",
+      "screen": "emulators"
+    },
+    {
+      "contract": "component.open-config.matrix",
+      "label": "Consultar decisões de configuração",
+      "screen": "emulators"
+    },
+    {
+      "contract": "component.plan",
+      "label": "Revisar instalação",
+      "screen": "emulators"
+    },
+    {
+      "contract": "component.recover",
+      "label": "Recuperar componente",
+      "screen": "system"
+    },
+    {
+      "contract": "component.recovery.apply",
+      "label": "Confirmar recovery",
+      "screen": "system"
+    },
+    {
+      "contract": "component.recovery.inspect",
+      "label": "Inspecionar recuperação de componentes",
+      "screen": "system"
+    },
+    {
+      "contract": "component.recovery.plan",
+      "label": "Revisar recovery",
+      "screen": "system"
+    },
+    {
+      "contract": "component.rollback",
+      "label": "Desfazer componente (legado)",
+      "screen": "system"
+    },
+    {
+      "contract": "component.rollback.apply",
+      "label": "Confirmar reversão do componente",
+      "screen": "system"
+    },
+    {
+      "contract": "component.rollback.plan",
+      "label": "Revisar reversão do componente",
+      "screen": "system"
+    },
+    {
+      "contract": "component.status",
+      "label": "Consultar componente",
+      "screen": "emulators"
+    },
+    {
+      "contract": "component.stop",
+      "label": "Revisar parada do componente",
+      "screen": "emulators"
+    },
+    {
+      "contract": "component.verify",
+      "label": "Verificar componente",
+      "screen": "emulators"
+    },
+    {
+      "contract": "credential.delete",
+      "label": "Remover credencial",
+      "screen": "media"
+    },
+    {
+      "contract": "credential.save",
+      "label": "Salvar credencial",
+      "screen": "media"
+    },
+    {
+      "contract": "credential.status",
+      "label": "Atualizar credenciais",
+      "screen": "media"
+    },
+    {
+      "contract": "credential.test",
+      "label": "Testar credencial",
+      "screen": "media"
+    },
+    {
+      "contract": "desktop.conflict.apply",
+      "label": "Resolver conflito",
+      "screen": "overview"
+    },
+    {
+      "contract": "desktop.conflict.plan",
+      "label": "Revisar conflito",
+      "screen": "overview"
+    },
+    {
+      "contract": "desktop.profile.apply",
+      "label": "Aplicar perfil",
+      "screen": "profiles"
+    },
+    {
+      "contract": "desktop.profile.plan",
+      "label": "Revisar perfil",
+      "screen": "profiles"
+    },
+    {
+      "contract": "desktop.profile.reset",
+      "label": "Aplicar modo seguro",
+      "screen": "profiles"
+    },
+    {
+      "contract": "desktop.recover",
+      "label": "Recuperar Desktop",
+      "screen": "system"
+    },
+    {
+      "contract": "desktop.status",
+      "label": "Atualizar central",
+      "screen": "global"
+    },
+    {
+      "contract": "diagnostics.export.apply",
+      "label": "Confirmar exportação revisada",
+      "screen": "system"
+    },
+    {
+      "contract": "emulation.action.apply",
+      "label": "Confirmar alteração",
+      "screen": "emulation"
+    },
+    {
+      "contract": "emulation.action.plan",
+      "label": "Revisar alteração",
+      "screen": "emulation"
+    },
+    {
+      "contract": "emulation.action.rollback",
+      "label": "Desfazer alteração",
+      "screen": "system"
+    },
+    {
+      "contract": "emulator.apply",
+      "label": "Aplicar no emulador",
+      "screen": "emulators"
+    },
+    {
+      "contract": "game.launch",
+      "label": "Jogar",
+      "screen": "library"
+    },
+    {
+      "contract": "hud.presets",
+      "label": "Consultar presets HUD",
+      "screen": "steam-gameplay"
+    },
+    {
+      "contract": "job.cancel",
+      "label": "Cancelar tarefa",
+      "screen": "tasks"
+    },
+    {
+      "contract": "job.retry",
+      "label": "Tentar novamente",
+      "screen": "tasks"
+    },
+    {
+      "contract": "job.status",
+      "label": "Ver tarefa",
+      "screen": "tasks"
+    },
+    {
+      "contract": "jobs.list",
+      "label": "Listar tarefas",
+      "screen": "tasks"
+    },
+    {
+      "contract": "keyboard.settings",
+      "label": "Salvar conforto do teclado",
+      "screen": "system"
+    },
+    {
+      "contract": "keyboard.toggle",
+      "label": "Alternar teclado",
+      "screen": "global"
+    },
+    {
+      "contract": "library.health",
+      "label": "Ver saúde da coleção",
+      "screen": "overview"
+    },
+    {
+      "contract": "library.health.apply",
+      "label": "Executar verificação anti-bitrot",
+      "screen": "overview"
+    },
+    {
+      "contract": "library.health.plan",
+      "label": "Revisar verificação anti-bitrot",
+      "screen": "overview"
+    },
+    {
+      "contract": "library.scan",
+      "label": "Escanear biblioteca",
+      "screen": "library"
+    },
+    {
+      "contract": "lsfg.apply",
+      "label": "Instalar LSFG",
+      "screen": "system"
+    },
+    {
+      "contract": "lsfg.plan",
+      "label": "Revisar LSFG",
+      "screen": "system"
+    },
+    {
+      "contract": "lsfg.rollback",
+      "label": "Desfazer LSFG",
+      "screen": "system"
+    },
+    {
+      "contract": "operations.detail",
+      "label": "Ver detalhes da operação",
+      "screen": "system"
+    },
+    {
+      "contract": "operations.history",
+      "label": "Ver histórico de operações",
+      "screen": "system"
+    },
+    {
+      "contract": "operations.rollback.apply",
+      "label": "Confirmar rollback da operação",
+      "screen": "system"
+    },
+    {
+      "contract": "operations.rollback.plan",
+      "label": "Revisar rollback da operação",
+      "screen": "system"
+    },
+    {
+      "contract": "panel.autohide",
+      "label": "Alternar painel",
+      "screen": "profiles"
+    },
+    {
+      "contract": "playtime.continue.emulation",
+      "label": "Continuar jogo emulado",
+      "screen": "overview"
+    },
+    {
+      "contract": "playtime.continue.steam",
+      "label": "Continuar jogo Steam",
+      "screen": "overview"
+    },
+    {
+      "contract": "playtime.recover.steam",
+      "label": "Recuperar sessão Steam",
+      "screen": "overview"
+    },
+    {
+      "contract": "profiles.history",
+      "label": "Ver histórico de perfis",
+      "screen": "steam"
+    },
+    {
+      "contract": "provider.link",
+      "label": "Abrir documentação do provider",
+      "screen": "media"
+    },
+    {
+      "contract": "session.recovery",
+      "label": "Recuperar sessão de jogo",
+      "screen": "system"
+    },
+    {
+      "contract": "session.select",
+      "label": "Trocar sessão",
+      "screen": "overview"
+    },
+    {
+      "contract": "state.export",
+      "label": "Exportar estado",
+      "screen": "system"
+    },
+    {
+      "contract": "steam.game.launch",
+      "label": "Jogar jogo Steam",
+      "screen": "library"
+    },
+    {
+      "contract": "steam.gameplay.apply",
+      "label": "Aplicar perfil Steam",
+      "screen": "steam"
+    },
+    {
+      "contract": "steam.gameplay.plan",
+      "label": "Revisar perfil Steam",
+      "screen": "steam"
+    },
+    {
+      "contract": "steam.gameplay.recover",
+      "label": "Recuperar perfil Steam",
+      "screen": "steam"
+    },
+    {
+      "contract": "steam.gameplay.rollback",
+      "label": "Desfazer perfil Steam",
+      "screen": "steam"
+    },
+    {
+      "contract": "steam.input.open",
+      "label": "Configurar Steam Input",
+      "screen": "steam"
+    },
+    {
+      "contract": "steam.launch-options.apply",
+      "label": "Aplicar opções de lançamento",
+      "screen": "steam"
+    },
+    {
+      "contract": "steam.launch-options.plan",
+      "label": "Revisar opções de lançamento",
+      "screen": "steam"
+    },
+    {
+      "contract": "steam.launch-options.rollback",
+      "label": "Desfazer opções de lançamento",
+      "screen": "system"
+    },
+    {
+      "contract": "steam.maintenance.apply",
+      "label": "Executar manutenção",
+      "screen": "steam"
+    },
+    {
+      "contract": "steam.maintenance.plan",
+      "label": "Revisar manutenção",
+      "screen": "steam"
+    },
+    {
+      "contract": "steam.maintenance.recover",
+      "label": "Recuperar manutenção",
+      "screen": "system"
+    },
+    {
+      "contract": "steam.media.apply",
+      "label": "Publicar mídia na Steam",
+      "screen": "media"
+    },
+    {
+      "contract": "steam.media.plan",
+      "label": "Revisar publicação Steam",
+      "screen": "media"
+    },
+    {
+      "contract": "steam.media.rollback",
+      "label": "Desfazer publicação Steam",
+      "screen": "system"
+    },
+    {
+      "contract": "steam.open",
+      "label": "Abrir Steam",
+      "screen": "steam"
+    },
+    {
+      "contract": "support.bundle",
+      "label": "Exportar pacote de suporte",
+      "screen": "system"
+    },
+    {
+      "contract": "sync.status",
+      "label": "Ver fila de sincronização",
+      "screen": "sync"
+    },
+    {
+      "contract": "terminal.open",
+      "label": "Abrir terminal",
+      "screen": "system"
+    },
+    {
+      "contract": "theme.apply",
+      "label": "Aplicar tema",
+      "screen": "system"
+    },
+    {
+      "contract": "theme.apply.confirm",
+      "label": "Confirmar aplicação de tema",
+      "screen": "system"
+    },
+    {
+      "contract": "theme.apply.rollback",
+      "label": "Reverter aplicação de tema",
+      "screen": "system"
+    },
+    {
+      "contract": "theme.editor.cancel",
+      "label": "Cancelar sessão de edição",
+      "screen": "system"
+    },
+    {
+      "contract": "theme.editor.create",
+      "label": "Criar novo tema",
+      "screen": "system"
+    },
+    {
+      "contract": "theme.editor.export",
+      "label": "Exportar tema como ZIP",
+      "screen": "system"
+    },
+    {
+      "contract": "theme.editor.load",
+      "label": "Carregar tema para edição",
+      "screen": "system"
+    },
+    {
+      "contract": "theme.editor.preview",
+      "label": "Preview ao vivo do tema editado",
+      "screen": "system"
+    },
+    {
+      "contract": "theme.editor.save",
+      "label": "Salvar tema editado",
+      "screen": "system"
+    },
+    {
+      "contract": "theme.editor.set-metadata",
+      "label": "Alterar metadados de tema",
+      "screen": "system"
+    },
+    {
+      "contract": "theme.editor.set-tokens",
+      "label": "Alterar tokens de tema",
+      "screen": "system"
+    },
+    {
+      "contract": "theme.import.esde.apply",
+      "label": "Importar esquema de tema ES-DE",
+      "screen": "system"
+    },
+    {
+      "contract": "theme.import.esde.inspect",
+      "label": "Examinar tema ES-DE antes de importar",
+      "screen": "system"
+    },
+    {
+      "contract": "theme.import.package.apply",
+      "label": "Importar pacote de tema SteamZero",
+      "screen": "system"
+    },
+    {
+      "contract": "theme.import.package.inspect",
+      "label": "Examinar pacote de tema antes de importar",
+      "screen": "system"
+    },
+    {
+      "contract": "theme.list",
+      "label": "Listar temas disponíveis",
+      "screen": "system"
+    }
+  ]
+}

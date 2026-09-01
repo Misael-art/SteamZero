@@ -1,0 +1,15 @@
+Mídia e capas
+
+Providers publicados: SteamGridDB, ScreenScraper, IGDB/Twitch, integração local
+com Steam e Steam Web API opcional. A tela de mídia expõe “Varrer agora” e uma
+descrição clara de capas, nomes e correspondência por Title ID/DAT.
+
+O histórico do read model registra media.global com 212 itens processados,
+zero atualizações efetivas, 19 sem candidato e ScreenScraper interrompido por
+E-SCRAPE-QUOTA-EXCEEDED. O catálogo visual mostra arte de Switch e placeholders
+em outras entradas.
+
+Não foi aplicado novo download: o fluxo exige provider/credencial e confirmação;
+não existe comando CLI standalone simples para baixar capas, e a instrução da
+auditoria é observacional. Resultado: arquitetura visível, download novo não
+certificado.

@@ -1,0 +1,16 @@
+Verificações
+
+Runner live: 55 capturas, bridge-live, QML returncode 0. O manifesto registra
+worktree dirty porque o workstream documental já estava criado durante a
+captura; não havia alteração de produto.
+
+Suíte focada desta árvore: aprovada (253 testes em 57,58 s). A suíte integral
+foi executada uma vez, mas expirou no limite controlado de 180 s em 17% do
+progresso; não há resultado final de aprovação/reprovação.
+
+Gates estáticos desta árvore: ruff check OK; ruff format --check OK (532
+arquivos); mypy OK (245 arquivos); independence/boundaries OK.
+
+Também foram executados os testes funcionais de release, inventários, planos
+read-only, matriz de componentes e runner visual. Os resultados de comportamento
+do host são os registros observacionais desta evidência.

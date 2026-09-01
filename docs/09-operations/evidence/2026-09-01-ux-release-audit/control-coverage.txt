@@ -1,0 +1,10 @@
+Cobertura de funções e botões
+
+ui_action_inventory: 120 contratos publicados, 67 ações nos read models;
+61 handled-locally, 4 routed, 2 blocked-explained, zero no-op silencioso e zero
+ação habilitada sem rota. A cobertura declarada é 1/17 superfícies.
+
+ui_control_inventory foi tentado na release atual por 150 segundos e terminou
+com timeout sem produzir relatório. Portanto não é possível afirmar que todos
+os botões de todas as áreas foram realmente clicados. Os contratos não cobertos
+ficam pendentes, não são classificados como aprovados.

@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "84e4adb79196d73df2704b35899093963526173333380a77c0ea41121c16a06b",
+    "scopeDigest": "868bdb18680967d355b11dd7cf546fc88d733f9e13e4880d2a94447a5c0d37e2",
   "scopePaths": [
     "src/steamzero/domain/theme_editor.py",
     "src/steamzero/domain/theme_marketplace.py",
@@ -22,7 +22,8 @@
     "tests/unit/test_studio_graph.py",
     "tests/unit/test_theme_editor_extends.py",
     "tests/unit/test_theme_import_package.py",
-    "tests/unit/test_theme_marketplace.py"
+    "tests/unit/test_theme_marketplace.py",
+    "docs/09-operations/evidence/2026-09-01-ux-release-audit"
   ],
   "dependsOn": [
     "SZ-THEME-ENGINE"
@@ -98,6 +99,12 @@
       "reference": "tests/qml/check_theme_studio_canvas.qml",
       "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_theme_studio_canvas.qml (canvas desenha a cena do no pelo previewKey declarado; sonda verificada por mutacao nos dois sentidos: canDrawScene invertido e chave inexistente)",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit/theme-summary.txt",
+      "command": "quatro temas listados e planejados read-only; o editor visual permanece observado como inspector, sem prova de autoria direta, timeline ou undo/redo",
+      "result": "recorded"
     }
   ],
   "nextAction": "Capturar o canvas desenhando a cena na proxima release instalada e, depois, avaliar edicao direta no canvas — hoje o Studio e somente leitura.",

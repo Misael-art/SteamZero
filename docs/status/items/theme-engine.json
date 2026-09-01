@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "12a9a7843efc26cd6b8b40b296a171eb9ec14ed001443911cc4742194c5197ed",
+    "scopeDigest": "8fdd84d36a4babb0a5cf8c482081e9da1474e0a30826af1bf6923db1a575df35",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -64,6 +64,7 @@
     "tests/unit/test_scene_containers.py",
     "tests/qml/check_scene_containers.qml",
     "docs/09-operations/evidence/2026-08-19-theme-engine-a47",
+    "docs/09-operations/evidence/2026-09-01-ux-release-audit",
     "tools/theme_perf_probe.py",
     "tests/unit/test_theme_perf_probe.py"
   ],
@@ -287,6 +288,12 @@
       "reference": "tests/integration/test_qml_handheld_offscreen.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_qml_handheld_offscreen.py -q (43 passed)",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit/release-state.txt",
+      "command": "release 2.0.0rc1-667789588f23: asset-recipes-demo é o tema ativo; a auditoria não promove a prova para AURA UI ou AURA Launcher",
+      "result": "recorded"
     }
   ],
   "nextAction": "Avancar a proxima onda da especificacao (componentes do Launcher e inspector do Studio) com o orcamento de desempenho ja aferido na release instalada.",

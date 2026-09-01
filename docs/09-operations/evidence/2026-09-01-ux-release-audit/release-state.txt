@@ -1,0 +1,15 @@
+Auditoria de release instalada — 2026-09-01
+
+Release ativa: 2.0.0rc1-667789588f23
+Commit do daemon: 667789588f238a335068451650205c109ecd0367
+Branch de auditoria: codex/ux-release-audit-2026-09-01
+Serviço: converged
+Sessão: Valve Jupiter LCD / KDE Wayland / DISPLAY=:0 / 800x1280
+Doctor: degraded somente em boot.direct por falta de permissão; integridade,
+jobs, staging, backup, journal e input do Deck passaram.
+Catálogo: 231 jogos em 13 plataformas.
+Componentes instalados: 32.
+
+Não foi feita instalação, publicação, rollback ou push. As preferências de tema
+não foram aplicadas; foram somente listadas e planejadas para não alterar o host.
+Processos e janelas abertos durante os testes foram encerrados.

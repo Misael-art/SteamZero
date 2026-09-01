@@ -1,0 +1,13 @@
+Matriz de executores instalados
+
+32 componentes testados por `component launch`: 15 standalone iniciaram e
+foram encerrados — Azahar, Cemu, Citron, Dolphin, DuckStation, Eden, Flycast,
+MelonDS, PCSX2, PPSSPP, RetroArch, RPCS3, Ryubing, Xemu e Xenia Canary.
+
+17 cores Libretro retornaram `E-COMPONENT-NO-LAUNCH` com a explicação correta de
+que são carregados pelo RetroArch. Isso é comportamento esperado de arquitetura,
+não falha de instalação.
+
+Após o teste não havia processos ou janelas dos executores abertos. A única
+exceção de estado foi a sessão lógica Switch persistida como running, registrada
+na matriz de jogos.

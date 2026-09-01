@@ -9,7 +9,7 @@
     "verification": "hw",
     "operation": "unknown",
     "distribution": "not-packaged",
-    "scopeDigest": "8af3fa046255bfc365be9ce26f97c7965690e78c2c2ac7e61a5297296b12d090",
+    "scopeDigest": "e1cbc7f8c9362d84554b2cdd96fdfc9ffc91c2899e391c4288a55b67414b569c",
     "scopePaths": [
         "docs/00-vision/PROJECT-VISION.md",
         "docs/00-vision/NON-GOALS.md",
@@ -30,6 +30,7 @@
         "src/steamzero/adapters/launcher_ui.py",
         "tests/integration/test_launcher_app.py",
         "docs/09-operations/evidence/2026-08-26-aura-launcher-fisico",
+        "docs/09-operations/evidence/2026-09-01-ux-release-audit",
         "src/steamzero/ui/qml/launcher/LauncherHome.qml",
         "src/steamzero/adapters/launcher_catalog.py",
         "tests/unit/test_launcher_catalog.py"
@@ -39,7 +40,10 @@
         "SZ-THEME-ENGINE"
     ],
     "knownGaps": [
-        "GAP-LAUNCHER-REAL-CATALOG-PHYSICAL"
+        "GAP-LAUNCHER-REAL-CATALOG-PHYSICAL",
+        "GAP-LAUNCHER-PLATFORM-PROFILES",
+        "GAP-LAUNCHER-SESSION-ID-CONSISTENCY",
+        "GAP-LAUNCHER-BIG-PICTURE-JOURNEY"
     ],
     "acceptanceCriteria": [
         "Home fullscreen, biblioteca, busca, colecoes e pagina de jogo funcionam por controle.",
@@ -127,9 +131,21 @@
             "reference": "tests/unit/test_launcher_navigation.py",
             "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_launcher_navigation.py tests/unit/test_launcher_session.py tests/unit/test_launcher_catalog.py tests/unit/test_launcher_collections.py tests/integration/test_launcher_app.py -q",
             "result": "passed"
+        },
+        {
+            "kind": "hardware",
+            "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit/game-launch-summary.txt",
+            "command": "release 2.0.0rc1-667789588f23: 12 plataformas recusadas por perfil de launch ausente; Switch aceito, mas session recover rejeita o mesmo ID hexadecimal",
+            "result": "failed"
+        },
+        {
+            "kind": "hardware",
+            "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit/01-launcher-fullscreen.png",
+            "command": "AURA Launcher real abriu em fullscreen 1280x800 com títulos e foco ciano; busca por F não produziu mudança observável",
+            "result": "partial"
         }
     ],
-    "nextAction": "Abrir o Launcher na sessao grafica com a release corrigida instalada e percorrer jogar/voltar com o acervo real; a correcao do contrato de id esta provada por teste e contra o acervo, mas nao fisicamente.",
+    "nextAction": "P0: alinhar IDs aceitos por launch/status/recover e entregar perfis de launch para as 12 plataformas; depois provar jogo, fechamento, retorno e Big Picture.",
     "activeWorkstreams": [
         "WS-2026-08-AURA-LAUNCHER"
     ],
