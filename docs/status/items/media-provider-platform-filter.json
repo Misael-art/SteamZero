@@ -21,7 +21,7 @@
     "tests/unit/test_core_net.py",
     "tests/unit/test_media_multiprovider.py"
   ],
-  "scopeDigest": "8b6df8b71676fe4f9fa9f25a03486aa15ecc66030a010bdc9e555ae0bec00231",
+  "scopeDigest": "37159ced8a7aafedfe0fa8d38866907b791e757900116c109a8058e1033d9811",
   "dependsOn": [
     "SZ-MEDIA-SCRAPING"
   ],
@@ -47,6 +47,6 @@
   ],
   "nextAction": "Restaurar ssid/sspassword do operador no Secret Service e repetir busca real em uma release futura; não há download a tentar sem essa credencial.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-08-29",
-  "notes": "supported_platforms era um contrato morto: cada adapter o declarava, mas ProviderRegistry filtrava somente media_kind. A preferência por cobertura declarada preserva fallback amplo para plataformas sem declaração. A prova física revelou que BaseMediaProvider transformava qualquer HTTP 403 em quota antes de ScreenScraperAdapter ler o motivo retornado pelo servidor. A consulta real sem expor segredo confirmou credencial recusada e cofre sem ssid/sspassword; não foi demonstrada quota nem usuário fictício."
+  "updatedAt": "2026-09-01",
+  "notes": "supported_platforms era um contrato morto: cada adapter o declarava, mas ProviderRegistry filtrava somente media_kind. A preferência por cobertura declarada preserva fallback amplo para plataformas sem declaração. A prova física revelou que BaseMediaProvider transformava qualquer HTTP 403 em quota antes de ScreenScraperAdapter ler o motivo retornado pelo servidor. A consulta real sem expor segredo confirmou credencial recusada e cofre sem ssid/sspassword; não foi demonstrada quota nem usuário fictício. Digest renovado pela correcao de perda de plataforma no cache canonico; nenhum estagio deste item foi promovido."
 }
