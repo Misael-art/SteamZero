@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "b0d9694a4a97e9ccc3f888b1938f535f3f8120ade64feaca3081867de2b4dc68",
+  "scopeDigest": "c884f3e9b4a8754ed22573b4cb78315d5c21522f75412eff853add74dccfb7eb",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -31,6 +31,7 @@
     "src/steamzero/schemas/glass-panel-v1.schema.json",
     "src/steamzero/schemas/theme-manifest-v1.schema.json",
     "src/steamzero/schemas/ir-scene-v1.schema.json",
+    "src/steamzero/ui/qml/CoverLod.qml",
     "src/steamzero/ui/qml/MediaEffectLayer.qml",
     "src/steamzero/ui/qml/ReflectionLayer.qml",
     "src/steamzero/ui/qml/AssetRecipePreview.qml",
@@ -280,12 +281,18 @@
       "reference": "tests/unit/test_theme_effects.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_effects.py tests/unit/test_scene_contract.py tests/unit/test_scene_image_pipeline.py tests/unit/test_asset_recipes.py tests/unit/test_themes.py tests/unit/test_theme_editor.py tests/unit/test_scene_layout.py tests/unit/test_scene_motion.py tests/unit/test_scene_surfaces.py tests/unit/test_scene_containers.py tests/unit/test_studio_graph.py tests/unit/test_dynamic_palette.py tests/unit/test_glass_panels.py -q (316 passed) e 8 harnesses qml6 offscreen (rc=0)",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_qml_handheld_offscreen.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_qml_handheld_offscreen.py -q (43 passed)",
+      "result": "passed"
     }
   ],
   "nextAction": "Avancar a proxima onda da especificacao (componentes do Launcher e inspector do Studio) com o orcamento de desempenho ja aferido na release instalada.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],
-  "updatedAt": "2026-08-24",
-  "notes": "Estado permanece parcial, com tres capacidades agora provadas fisicamente na release instalada. GAP-THEME-ASSET-INVERT-HUE e GAP-THEME-FALLBACK-SIGNAL fechados: invert e hue rotate sao aplicados pelo node builtin AssetColorTransform, com variantes pixel-distintas e alpha preservado. DEBT-HOST-INSTALL-DAEMON-RESTART FECHADO: a release 0.1.0a46-862fe3aa6837 convergiu sozinha (restarted=true) na primeira instalacao em que ativacao e convergencia rodaram ambas com o codigo corrigido. O defeito levou tres diagnosticos: nao era falta de restart nem o smoke em si, e sim _verify_release rodando 'doctor --json' com check=True, enquanto o doctor real sai com EXIT_FAILURE em status=failed; os testes escondiam isso porque o fake saia com codigo 0. GAP-THEME-PERF-BUDGET-UNMEASURED fechado. Eu havia afirmado que VRAM nao era mensuravel; isso valia para uma API portatil e por processo, mas nao para este host: o amdgpu expoe drm-memory-vram no fdinfo do processo. A sonda passou a medir, agrupando por drm-client-id porque o driver repete o mesmo cliente em varios fds. Na release instalada: p95 13,882 ms, startup 147 ms, 46,6 MB de VRAM — dentro dos tres limites. O criterio foi reescrito para excluir FPS apresentado, que exige instrumentacao do compositor inexistente na plataforma; o ritmo do render loop nao serve de substituto. Reconciliacao 2026-08-24: o porte v2 alterou MediaEffectLayer.qml e ReflectionLayer.qml (degradacao segura de efeitos no Qt 6.4) e tests/unit/test_theme_effects.py dentro deste escopo. As provas automatizadas foram re-executadas e estao verdes, mas as medicoes de desempenho no host (p95, startup, RSS, VRAM) sao ANTERIORES a essa mudanca de QML e precisam ser refeitas na proxima release instalada antes de sustentar o eixo hw."
+  "updatedAt": "2026-08-31",
+  "notes": "Estado permanece parcial, com tres capacidades agora provadas fisicamente na release instalada. GAP-THEME-ASSET-INVERT-HUE e GAP-THEME-FALLBACK-SIGNAL fechados: invert e hue rotate sao aplicados pelo node builtin AssetColorTransform, com variantes pixel-distintas e alpha preservado. DEBT-HOST-INSTALL-DAEMON-RESTART FECHADO: a release 0.1.0a46-862fe3aa6837 convergiu sozinha (restarted=true) na primeira instalacao em que ativacao e convergencia rodaram ambas com o codigo corrigido. O defeito levou tres diagnosticos: nao era falta de restart nem o smoke em si, e sim _verify_release rodando 'doctor --json' com check=True, enquanto o doctor real sai com EXIT_FAILURE em status=failed; os testes escondiam isso porque o fake saia com codigo 0. GAP-THEME-PERF-BUDGET-UNMEASURED fechado. Eu havia afirmado que VRAM nao era mensuravel; isso valia para uma API portatil e por processo, mas nao para este host: o amdgpu expoe drm-memory-vram no fdinfo do processo. A sonda passou a medir, agrupando por drm-client-id porque o driver repete o mesmo cliente em varios fds. Na release instalada: p95 13,882 ms, startup 147 ms, 46,6 MB de VRAM — dentro dos tres limites. O criterio foi reescrito para excluir FPS apresentado, que exige instrumentacao do compositor inexistente na plataforma; o ritmo do render loop nao serve de substituto. Reconciliacao 2026-08-24: o porte v2 alterou MediaEffectLayer.qml e ReflectionLayer.qml (degradacao segura de efeitos no Qt 6.4) e tests/unit/test_theme_effects.py dentro deste escopo. As provas automatizadas foram re-executadas e estao verdes, mas as medicoes de desempenho no host (p95, startup, RSS, VRAM) sao ANTERIORES a essa mudanca de QML e precisam ser refeitas na proxima release instalada antes de sustentar o eixo hw.LOD de capas: MediaEffectLayer passou a aceitar um teto de decode declarado (CoverLod) e a decodificar fora da thread de render. A textura intermediaria e a mascara gradiente agora acompanham o renderer avancado em vez de custar por capa sem consumidor; sem esse gate a mascara ainda ficava visivel sobre a midia quando QtQuick.Effects estava ausente. Nao ha medicao de FPS ou memoria neste ciclo: o ganho declarado e a remocao de trabalho sem consumidor, nao um numero de desempenho."
 }
