@@ -3694,3 +3694,192 @@ class TestPlatformSurvivesTheLibraryCache:
         self._cache(controller, tmp_path, entry)
         games, _ = controller._load_library_cache()  # type: ignore[attr-defined]
         assert games[0]["platformId"] == "", "ausência não pode virar uma plataforma qualquer"
+
+
+class TestMediaSearchDoesNotGuessThePlatform:
+    """A busca de mídia herdava o mesmo palpite `"switch"` do lançamento.
+
+    Aqui o dano é mais silencioso que no lançamento: ninguém vê um erro. O
+    registry filtra os providers pela plataforma declarada, então buscar capa de
+    um jogo de Master System como se fosse Switch consulta o catálogo errado e
+    devolve candidatos errados com confiança plausível — que a varredura em
+    lote então aplica.
+
+    O vazio é seguro justamente porque NÃO é um palpite: quando nenhum provider
+    declara o slug, `providers_for_kind` refaz a busca sem filtro. Ausência
+    degrada para busca ampla; palpite não degrada, aponta para o lugar errado.
+    """
+
+    def test_an_unknown_platform_degrades_to_an_unfiltered_search(self) -> None:
+        from steamzero.adapters.scraping.registry import ProviderRegistry
+
+        class _Provider:
+            def __init__(self, name: str, platforms: tuple[str, ...]) -> None:
+                self.name = name
+                self._platforms = platforms
+
+            def supported_kinds(self) -> tuple[str, ...]:
+                return ("boxart",)
+
+            def supported_platforms(self) -> tuple[str, ...]:
+                return self._platforms
+
+        registry = ProviderRegistry()
+        registry.register(_Provider("screenscraper", ("master-system", "switch")))  # type: ignore[arg-type]
+        registry.register(_Provider("libretro", ("master-system",)))  # type: ignore[arg-type]
+
+        unfiltered = registry.providers_for_kind("boxart")
+        assert len(unfiltered) == 2, "sem filtro, os dois providers respondem"
+
+        empty_slug = registry.providers_for_kind("boxart", platform_slug="")
+        assert empty_slug == unfiltered, (
+            "plataforma desconhecida deve alcançar todos os providers, não nenhum"
+        )
+
+        guessed = registry.providers_for_kind("boxart", platform_slug="switch")
+        assert [p.name for p in guessed] == ["screenscraper"], (
+            "um palpite estreita a busca a quem declara aquela plataforma — por isso "
+            "adivinhar é pior que não declarar"
+        )
+
+    def test_the_batch_passes_the_normalized_platform(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        controller = _controller(monkeypatch, tmp_path)
+        rom = tmp_path / "sonic.sms"
+        rom.write_bytes(b"S" * 2048)
+        stat = rom.stat()
+        fingerprint = hashlib.sha256(
+            f"{rom}\0{stat.st_size}\0{stat.st_mtime_ns}".encode()
+        ).hexdigest()
+        cache = controller._library_cache_path  # type: ignore[attr-defined]
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_text(
+            json.dumps(
+                {
+                    "schemaVersion": 1,
+                    "unidentified": 0,
+                    "games": [
+                        {
+                            "id": "7ad91c3e5b2048fa61c07d99",
+                            "name": "Sonic",
+                            "state": "ready",
+                            "path": str(rom),
+                            "fingerprint": fingerprint,
+                            "size": stat.st_size,
+                            "format": "sms",
+                            "contentKind": "base",
+                            # Como a varredura grava de verdade.
+                            "platform": "master-system",
+                        },
+                        {
+                            "id": "1c0b7f4a9d3e25b8ff610a42",
+                            "name": "Sem plataforma",
+                            "state": "ready",
+                            "path": str(rom),
+                            "fingerprint": fingerprint,
+                            "size": stat.st_size,
+                            "format": "sms",
+                            "contentKind": "base",
+                            # Registro sem plataforma nenhuma: o caso que o
+                            # default silenciosamente convertia em Switch.
+                        },
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        seen: list[dict[str, object]] = []
+
+        def _capture(store, job, ctx, *, skip_providers=None):  # type: ignore[no-untyped-def]
+            seen.append(dict(job.params))
+            return {"provider_errors": {}, "candidate_count": 0}
+
+        monkeypatch.setattr(controller, "_execute_media_search", _capture)
+
+        class _Ctx:
+            def safepoint(self) -> None:
+                return None
+
+            def checkpoint(self, payload: object) -> None:
+                return None
+
+            def set_progress(self, *args: object, **kwargs: object) -> None:
+                return None
+
+        from steamzero.jobs.models import Job
+
+        job = Job(
+            id="job-media-platform",
+            type="media.global",
+            priority=0,
+            state="running",
+            params={"mode": "refresh"},
+        )
+        controller._media_global_job_handler(job, _Ctx())  # type: ignore[attr-defined,arg-type]
+
+        assert seen, "a varredura em lote precisa ter chamado a busca de mídia"
+        slugs = {str(params["game_id"]): params["platform_slug"] for params in seen}
+        assert slugs["7ad91c3e5b2048fa61c07d99"] == "master-system", (
+            "a plataforma declarada precisa chegar à busca"
+        )
+        # Este é o caso que o default antigo corrompia: sem plataforma, ele
+        # respondia "switch" e mandava a busca ao catálogo errado com toda a
+        # aparência de acerto. O vazio devolve a busca ampla.
+        assert slugs["1c0b7f4a9d3e25b8ff610a42"] == "", (
+            "sem plataforma declarada a busca deve ser ampla, não uma busca de Switch"
+        )
+
+    def test_the_single_game_search_declares_the_platform(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        """A busca de um jogo só não declarava plataforma alguma.
+
+        Ela nem chegava a ter a chave nos params: caía inteira no default do
+        consumidor, então toda busca interativa da UI era feita como se o jogo
+        fosse de Switch — inclusive para os 216 jogos do acervo real que não são.
+        """
+        controller = _controller(monkeypatch, tmp_path)
+        # A ROM precisa estar sob uma biblioteca permitida: `plan_action` resolve
+        # o jogo pelo caminho antes de montar a mutação.
+        roms = tmp_path / "home" / "roms"
+        roms.mkdir(parents=True, exist_ok=True)
+        rom = roms / "sonic.sms"
+        rom.write_bytes(b"S" * 2048)
+        stat = rom.stat()
+        fingerprint = hashlib.sha256(
+            f"{rom}\0{stat.st_size}\0{stat.st_mtime_ns}".encode()
+        ).hexdigest()
+        cache = controller._library_cache_path  # type: ignore[attr-defined]
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_text(
+            json.dumps(
+                {
+                    "schemaVersion": 1,
+                    "unidentified": 0,
+                    "games": [
+                        {
+                            "id": "7ad91c3e5b2048fa61c07d99",
+                            "name": "Sonic",
+                            "state": "ready",
+                            "path": str(rom),
+                            "fingerprint": fingerprint,
+                            "size": stat.st_size,
+                            "format": "sms",
+                            "contentKind": "base",
+                            "platform": "master-system",
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        controller.plan_action(  # type: ignore[attr-defined]
+            {"actionId": "game.media.search:7ad91c3e5b2048fa61c07d99"}
+        )
+        pending = list(controller._pending.values())  # type: ignore[attr-defined]
+        assert pending, "a ação precisa registrar a mutação pendente"
+        assert pending[0].metadata["platform_slug"] == "master-system", (
+            "sem esta declaração a busca interativa procura no catálogo do Switch"
+        )

@@ -2517,6 +2517,10 @@ class EmulationController:
                     "game_id": game_id,
                     "title_id": title_id,
                     "title": str(game.get("name", "")),
+                    # A busca de um jogo só não declarava plataforma nenhuma, e
+                    # por isso caía inteira no default: toda busca interativa
+                    # era uma busca de Switch. A plataforma está aqui.
+                    "platform_slug": str(game.get("platformId") or game.get("platform") or ""),
                     "media_kinds": payload.get("mediaKinds"),
                     "local_media_source": str(game.get("mediaSource", "fallback")),
                     "local_media_url": str(game.get("coverUrl", "")),
@@ -2797,6 +2801,7 @@ class EmulationController:
                         "game_id": meta["game_id"],
                         "title_id": meta["title_id"],
                         "title": meta["title"],
+                        "platform_slug": meta.get("platform_slug", ""),
                         "media_kinds": meta.get("media_kinds"),
                         "local_media_source": meta.get("local_media_source", "fallback"),
                         "local_media_url": meta.get("local_media_url", ""),
@@ -5911,7 +5916,13 @@ class EmulationController:
         game_id = params["game_id"]
         title_id = params["title_id"]
         title = params["title"]
-        platform_slug = str(params.get("platform_slug") or "switch")
+        # Plataforma desconhecida fica vazia, e não em Switch. O registry trata
+        # slug que nenhum provider declara refazendo a busca SEM filtro
+        # (`providers_for_kind`), então o vazio degrada para busca ampla. Um
+        # palpite, ao contrário, não degrada: ele filtra os providers pela
+        # plataforma errada e consulta o catálogo do Switch para um jogo de
+        # Master System, devolvendo candidatos errados com confiança plausível.
+        platform_slug = str(params.get("platform_slug") or "")
         media_kinds = params.get("media_kinds")
         kinds = media_kinds or [
             "grid",
@@ -6161,7 +6172,13 @@ class EmulationController:
                             "game_id": game_id,
                             "title_id": title_id,
                             "title": title,
-                            "platform_slug": str(game.get("platform") or "switch"),
+                            # `_load_library_cache` normaliza `platformId` a
+                            # partir do `platform` que a varredura escreve; ler a
+                            # chave normalizada mantém este caminho e o de
+                            # lançamento na mesma fonte. Sem plataforma, vazio.
+                            "platform_slug": str(
+                                game.get("platformId") or game.get("platform") or ""
+                            ),
                             "media_kinds": None,
                             "local_media_source": str(game.get("mediaSource") or "fallback"),
                             "local_media_url": local_url,
