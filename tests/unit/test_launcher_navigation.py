@@ -237,3 +237,62 @@ class TestOneBadRecordDoesNotEmptyTheHome:
         sections = _sections_from_catalog(catalog)
         assert [section.id for section in sections] == ["outros"]
         assert sections[0].items == ("5c5fd6b29bee06c2f1fb5ff5",)
+
+
+class TestTheCatalogSizeCannotCloseTheHome:
+    """Quantidade de seções vem do acervo do usuário; ela não pode travar o Launcher.
+
+    O teto valia 12 enquanto o projeto empacota 61 manifests de plataforma. Um
+    acervo com 13 sistemas — o do host — fazia `resolve_home_focus` levantar, e
+    o processo morria antes da home: tela preta com traceback no journal, que é
+    a falha que a seção 8 do AGENTS.md proíbe.
+
+    O teste anterior deste módulo parava em `_sections_from_catalog` e dizia que
+    os jogos "chegavam à home". Não chegavam: a home só existe depois do mapa de
+    foco. Por isso a asserção aqui atravessa até o grafo.
+    """
+
+    def test_thirteen_sections_still_open_the_home(self) -> None:
+        sections = tuple(
+            HomeSection(id=f"plataforma-{i}", title=f"Plataforma {i}", items=(f"jogo{i}",))
+            for i in range(13)
+        )
+        focus = resolve_home_focus(sections)
+        assert focus.initial == "plataforma-0:jogo0"
+        assert focus.diagnostics == ()
+
+    def test_the_ceiling_covers_every_bundled_platform(self) -> None:
+        """Uma salvaguarda menor que o próprio domínio é defeito, não proteção."""
+        import importlib.resources
+
+        from steamzero.launcher.navigation import MAX_SECTIONS
+
+        manifests = [
+            entry
+            for entry in importlib.resources.files("steamzero.platform_manifests").iterdir()
+            if entry.name.endswith(".platform.json")
+        ]
+        assert len(manifests) <= MAX_SECTIONS
+
+    def test_going_over_the_ceiling_degrades_instead_of_raising(self) -> None:
+        from steamzero.launcher.navigation import DIAG_SECTIONS_TRUNCATED, MAX_SECTIONS
+
+        sections = tuple(
+            HomeSection(id=f"s{i}", title=f"S{i}", items=(f"g{i}",))
+            for i in range(MAX_SECTIONS + 5)
+        )
+        focus = resolve_home_focus(sections)
+        assert focus.initial == "s0:g0"
+        codes = [diagnostic.code for diagnostic in focus.diagnostics]
+        assert DIAG_SECTIONS_TRUNCATED in codes
+
+    def test_the_loss_is_declared_not_silent(self) -> None:
+        """Cortar sem dizer o que ficou de fora é perda silenciosa."""
+        from steamzero.launcher.navigation import MAX_SECTIONS
+
+        sections = tuple(
+            HomeSection(id=f"s{i}", title=f"S{i}", items=(f"g{i}",))
+            for i in range(MAX_SECTIONS + 3)
+        )
+        focus = resolve_home_focus(sections)
+        assert "3" in focus.diagnostics[0].reason

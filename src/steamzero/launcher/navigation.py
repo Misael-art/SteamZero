@@ -20,7 +20,15 @@ from dataclasses import dataclass, field
 from steamzero.launcher.identifiers import is_identifier
 
 DIAG_FOCUS_EMPTY = "LAUNCHER-FOCUS-EMPTY-001"
-MAX_SECTIONS = 12
+DIAG_SECTIONS_TRUNCATED = "LAUNCHER-FOCUS-TRUNCATED-001"
+
+# O limite existe para manter o grafo de foco finito, não para dizer quantos
+# sistemas o usuário pode ter. Ele valia 12 e o projeto empacota 61 manifests de
+# plataforma — um acervo com 13 sistemas derrubava o Launcher antes da home.
+# Dimensionar abaixo do próprio domínio transforma uma salvaguarda em defeito,
+# então o teto acompanha os manifests empacotados com folga para as seções de
+# coleção, que entram na mesma home.
+MAX_SECTIONS = 128
 MAX_ITEMS_PER_SECTION = 512
 
 # Nó sintético do topo. A primeira linha precisa de um destino para cima, senão
@@ -112,8 +120,25 @@ def resolve_home_focus(sections: Sequence[HomeSection]) -> FocusMap:
     e não teria para onde ir. Home inteiramente vazia cai num nó de ação, com
     diagnóstico — nunca em ausência de foco.
     """
+    # Estourar o teto não pode derrubar a home. O número de seções vem do acervo
+    # do usuário, e nenhum dado dele deve ser capaz de impedir o Launcher de
+    # abrir: levantar aqui deixava a tela preta com o traceback no journal, que é
+    # exatamente a falha que a seção 8 do AGENTS.md proíbe. O excedente é cortado
+    # e a perda fica declarada no diagnóstico, em vez de silenciosa.
+    overflow: tuple[FocusDiagnostic, ...] = ()
     if len(sections) > MAX_SECTIONS:
-        raise ValueError(f"home excede {MAX_SECTIONS} seções")
+        descartadas = len(sections) - MAX_SECTIONS
+        overflow = (
+            FocusDiagnostic(
+                code=DIAG_SECTIONS_TRUNCATED,
+                reason=(
+                    f"home tem {len(sections)} seções e o foco comporta "
+                    f"{MAX_SECTIONS}; {descartadas} ficaram de fora"
+                ),
+                fallback=sections[MAX_SECTIONS - 1].id,
+            ),
+        )
+        sections = tuple(sections[:MAX_SECTIONS])
 
     populated = [section for section in sections if section.items]
     if not populated:
@@ -129,6 +154,7 @@ def resolve_home_focus(sections: Sequence[HomeSection]) -> FocusMap:
             nodes={HEADER_ID: header, EMPTY_ID: empty},
             initial=EMPTY_ID,
             diagnostics=(
+                *overflow,
                 FocusDiagnostic(
                     code=DIAG_FOCUS_EMPTY,
                     reason="nenhuma seção da home tem itens",
@@ -173,4 +199,4 @@ def resolve_home_focus(sections: Sequence[HomeSection]) -> FocusMap:
     first = populated[0]
     initial = _node_id(first.id, first.items[0])
     nodes[HEADER_ID] = FocusNode(id=HEADER_ID, section="header", column=0, down=initial)
-    return FocusMap(nodes=nodes, initial=initial, rows=tuple(rows))
+    return FocusMap(nodes=nodes, initial=initial, rows=tuple(rows), diagnostics=overflow)
