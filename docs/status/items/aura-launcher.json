@@ -9,7 +9,7 @@
     "verification": "hw",
     "operation": "unknown",
     "distribution": "not-packaged",
-    "scopeDigest": "e1cbc7f8c9362d84554b2cdd96fdfc9ffc91c2899e391c4288a55b67414b569c",
+    "scopeDigest": "153328155338d0dbda1406f1da89c65af46f5d2024ce406a0c932bff072af50e",
     "scopePaths": [
         "docs/00-vision/PROJECT-VISION.md",
         "docs/00-vision/NON-GOALS.md",
@@ -43,7 +43,8 @@
         "GAP-LAUNCHER-REAL-CATALOG-PHYSICAL",
         "GAP-LAUNCHER-PLATFORM-PROFILES",
         "GAP-LAUNCHER-SESSION-ID-CONSISTENCY",
-        "GAP-LAUNCHER-BIG-PICTURE-JOURNEY"
+        "GAP-LAUNCHER-BIG-PICTURE-JOURNEY",
+        "GAP-LAUNCHER-HOME-ACTIVATION"
     ],
     "acceptanceCriteria": [
         "Home fullscreen, biblioteca, busca, colecoes e pagina de jogo funcionam por controle.",
@@ -143,9 +144,27 @@
             "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit/01-launcher-fullscreen.png",
             "command": "AURA Launcher real abriu em fullscreen 1280x800 com títulos e foco ciano; busca por F não produziu mudança observável",
             "result": "partial"
+        },
+        {
+            "kind": "hardware",
+            "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit/launcher-game-journey-retest.txt",
+            "command": "Return e clique no cartão real 1969 (.sms) deixaram a tela idêntica; nenhum game page, /launch, emulador, fade ou retorno foi observado",
+            "result": "failed"
+        },
+        {
+            "kind": "diagnostic",
+            "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit/rom-discovery-summary.txt",
+            "command": "raiz física com 8016 arquivos contra 231 registros canônicos; 716 ZIP e 317 7Z físicos, zero no catálogo do Launcher",
+            "result": "recorded"
+        },
+        {
+            "kind": "hardware",
+            "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit/launcher-controls-retest.txt",
+            "command": "Down e F no Launcher real deixaram a captura idêntica; não houve troca de foco nem abertura da busca",
+            "result": "failed"
         }
     ],
-    "nextAction": "P0: alinhar IDs aceitos por launch/status/recover e entregar perfis de launch para as 12 plataformas; depois provar jogo, fechamento, retorno e Big Picture.",
+    "nextAction": "P0: implementar ativação Return/Enter/clique no cartão; depois provar launch, fade-in, fechamento, fade-out, retorno e perfis das 12 plataformas.",
     "activeWorkstreams": [
         "WS-2026-08-AURA-LAUNCHER"
     ],

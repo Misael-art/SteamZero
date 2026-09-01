@@ -9,6 +9,6 @@
     "state": "closed",
   "exclusivePaths": ["docs/09-operations/evidence/2026-09-01-ux-release-audit"],
   "sharedPaths": ["docs/status", "docs/STATUS.md", "docs/ACTIVE-WORK.md", "docs/WORKLOG.md"],
-    "nextAction": "Aguardar correção P0 de lifecycle, perfis das 12 plataformas e jornada Big Picture antes de nova certificação física.",
+    "nextAction": "Corrigir ativação/navegação do Launcher e ampliar o catálogo canônico; depois repetir a jornada ROM real -> emulador -> fechar -> retorno.",
   "updatedAt": "2026-09-01"
 }

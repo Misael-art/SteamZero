@@ -19,8 +19,8 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-SERVICE-API | 11 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TESTS | 371 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TOOLS | 39 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AURA-LAUNCHER | 106 | 15 | 11 | hw |  |
-| SZ-AURA-UI | 82 | 4 | 3 | unit |  |
+| SZ-AURA-LAUNCHER | 111 | 18 | 11 | hw |  |
+| SZ-AURA-UI | 87 | 4 | 3 | unit |  |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
 | SZ-COMPONENT-LIFECYCLE | 23 | 12 | 10 | hw |  |
@@ -37,15 +37,15 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-FRONTEND-STEAM-SHORTCUTS | 2 | 1 | 1 | unit |  |
 | SZ-GOVERNANCE-STATUS | 22 | 7 | 5 | dev |  |
 | SZ-HOST-UPDATE-TRANSACTIONAL | 18 | 12 | 9 | hw |  |
-| SZ-LIBRARY-CANONICAL | 20 | 8 | 6 | dev |  |
+| SZ-LIBRARY-CANONICAL | 93 | 9 | 6 | dev |  |
 | SZ-LIBRARY-CONVERSION-CONTRACT | 4 | 2 | 2 | unit |  |
 | SZ-MEDIA-PROVIDER-PLATFORM-FILTER | 10 | 2 | 2 | unit |  |
 | SZ-MEDIA-SCRAPING | 29 | 6 | 6 | unit |  |
 | SZ-ONLINE-P2P | 37 | 2 | 1 | none |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
-| SZ-THEME-ENGINE | 146 | 36 | 33 | hw |  |
-| SZ-THEME-STUDIO | 80 | 11 | 10 | hw |  |
-| SZ-UI-DESKTOP-AUDIT | 322 | 29 | 19 | dev |  |
+| SZ-THEME-ENGINE | 151 | 36 | 33 | hw |  |
+| SZ-THEME-STUDIO | 85 | 11 | 10 | hw |  |
+| SZ-UI-DESKTOP-AUDIT | 327 | 31 | 19 | dev |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 
 Arquivos em `src/`: **522**. Sob agregador apenas, sem item de capacidade: **298** (57%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.

@@ -10,17 +10,39 @@ quando não possui perfil. Porém, a experiência ainda não está pronta para
 cliente final. Apenas Switch possui launch aceito; o ciclo de sessão não fecha
 porque o mesmo ID hexadecimal aceito no launch é recusado por `session recover`.
 
-Minha nota global é **5/10**: a casca é clara, moderna e honesta em vários
-estados, mas o botão central do produto — jogar e voltar sem deixar lixo de
-estado — ainda não é confiável.
+Minha nota global revisada é **3/10**: a casca é clara, moderna e honesta em
+vários estados, mas a home não possui ativação de cartão e impede o botão
+central do produto — jogar e voltar — antes mesmo do emulador abrir.
+
+## Reteste solicitado: Launcher → ROM real → jogo → retorno
+
+O reteste foi executado no Launcher real, sem abrir emulador vazio e sem usar a
+CLI como atalho. A primeira ROM física apresentada foi
+`1969 (Homebrew) (SMS).sms`. Return/Enter no cartão focado e clique no cartão
+produziram a mesma tela — as capturas têm SHA-256 idêntico. Uma passagem
+adicional com `Down` e `F` também produziu capturas idênticas, sem mover foco ou
+abrir busca. Não houve página de
+jogo, botão de jogar, processo de emulador, fade-in, fade-out ou retorno.
+
+Esse não é apenas um teste “não realizado”: é uma falha P0 observável. A
+`LauncherHome.qml` só trata setas; os cartões não têm `MouseArea` e não existe
+ativação por Return/Enter/Space. Assim, nenhum emulador pode ser legitimamente
+certificado a partir do Launcher nesta release. O Launcher foi fechado por
+Alt+F4 e não deixou processo ou janela aberta.
+
+O acervo físico também é maior que o catálogo consumido: há 8.016 arquivos na
+raiz, incluindo 716 `.zip` e 317 `.7z`, mas a fonte canônica expõe 231 jogos e
+zero registros dessas duas extensões. A matriz de amostras reais e os números
+completos estão em `launcher-game-journey-retest.txt` e
+`rom-discovery-summary.txt`.
 
 ## Notas por área
 
 | Área | Nota | Parecer de experiência |
 |---|---:|---|
 | Central/AURA UI | 7/10 | Boa hierarquia, cabeçalho consistente, navegação por áreas e status de prontidão visível. O banner “Perfil do Desktop desatualizado” tem contraste muito baixo e domina a tela. |
-| AURA Launcher | 6/10 | Fullscreen, foco ciano e agrupamento por plataforma são compreensíveis. A busca por `F` não respondeu, não há affordance forte de busca e não há prova de página/retorno. |
-| Emulação/launch | 3/10 | 15 executores abrem como programas; apenas Switch aceita jogo. Os demais perfis faltam e o lifecycle deixa sessão running. |
+| AURA Launcher | 2/10 | Fullscreen, foco ciano e agrupamento por plataforma são compreensíveis, mas o cartão real não abre página nem dispara launch. Busca por `F` também não respondeu. |
+| Emulação/launch | 1/10 | Nenhum jogo foi legitimamente iniciado pelo Launcher nesta rodada; fade-in, fade-out e retorno permanecem não testáveis até existir ativação. |
 | Biblioteca/ROMs | 6/10 | 231 ROMs são identificadas em 13 plataformas e os nomes aparecem corretamente. A grade mistura arte, placeholders e espaços vazios sem explicar disponibilidade. |
 | Mídia/capas | 4/10 | Providers e varredura são visíveis, mas quota, zero atualizações e ausência de candidatos tornam o resultado imprevisível. |
 | Temas/configuração | 6/10 | Quatro temas instalados, ações bem rotuladas e receitas declarativas coerentes. Troca tema a tema e aplicação real não foram certificadas. |
@@ -31,20 +53,26 @@ estado — ainda não é confiável.
 
 ## Achados P0
 
-1. **Lifecycle inconsistente:** `emulation launch` aceita o ID hexadecimal real
+1. **Ativação ausente no Launcher:** o cartão focado não responde a Return/Enter
+   nem clique; não existe caminho de usuário até a página de jogo.
+2. **Lifecycle inconsistente:** `emulation launch` aceita o ID hexadecimal real
    do Switch; `session recover` rejeita o mesmo ID como inválido. O usuário
    pode fechar a janela e continuar vendo “Em andamento”, sem recuperação.
-2. **Cobertura de launch incompleta:** 12 das 13 plataformas com ROM foram
+3. **Cobertura de launch incompleta:** 12 das 13 plataformas com ROM foram
    recusadas porque não possuem perfil de launch para Eden. A recusa é melhor
    que iniciar o emulador errado, mas o produto não entrega a biblioteca
    anunciada.
-3. **Big Picture não entregável:** sem frontend/atalho verificável não há
+4. **Biblioteca física incompleta:** o catálogo do Launcher expõe 231 registros,
+   enquanto a raiz contém 8.016 arquivos; ZIP/7Z não aparecem no catálogo.
+5. **Big Picture não entregável:** sem frontend/atalho verificável não há
    caminho de sofá completo para iniciar, jogar e retornar.
 
 ## Dores P1/P2
 
 - `F` não abriu a busca no Launcher real; o usuário não descobre facilmente
   como pesquisar.
+- Return/Enter e clique não ativam o cartão; isso bloqueia a jornada inteira e
+  não deve ser confundido com “emulador não abriu”.
 - “Favoritos” mostra zero enquanto há favoritos persistidos no estado; isso
   destrói confiança na organização da biblioteca.
 - O alerta marrom de perfil desatualizado usa texto/ações com contraste fraco.
@@ -95,13 +123,16 @@ aplicada nesta auditoria observacional.
 A próxima onda deve ser “confiança no Jogar”: uma identidade canônica única do
 scan ao launch, perfis corretos por plataforma, `session status/recover` aceitando
 os mesmos IDs, fechamento que limpa a sessão e retorno ao mesmo cartão/foco.
+Antes disso, implementar e provar ativação real do cartão e resultado de launch.
 Depois disso, completar busca e Big Picture. Só então vale investir em mais
 efeitos, polimento de capas ou edição visual avançada.
 
 ## Evidência e limites
 
 As 55 capturas estão em `central-live/`; as capturas principais são
-`01-launcher-fullscreen.png` e `02-launcher-search.png`. Foram encerrados os
+`01-launcher-fullscreen.png`, `02-launcher-search.png`,
+`03-launcher-activation-noop.png` e `04-launcher-controls-inert.png`. Foram
+encerrados os
 processos e janelas de emuladores iniciados pela equipe. Permaneceu apenas uma
 sessão lógica Switch marcada como running, porque a própria API recusou a
 recuperação do ID real. Não houve instalação, publicação, rollback, troca de

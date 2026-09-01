@@ -14,3 +14,7 @@ arquivos); mypy OK (245 arquivos); independence/boundaries OK.
 Também foram executados os testes funcionais de release, inventários, planos
 read-only, matriz de componentes e runner visual. Os resultados de comportamento
 do host são os registros observacionais desta evidência.
+
+Reteste solicitado do Launcher: a ROM real .sms foi exibida, mas Return, clique,
+Down e F mantiveram a captura idêntica; nenhum emulador foi aberto sem ROM e
+nenhuma chamada direta foi usada para contornar a falha de ativação.

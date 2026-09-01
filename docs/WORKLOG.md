@@ -8908,3 +8908,24 @@ resultado final. Nenhuma instalação, publicação, rollback, push ou mutação
 host foi realizada nesta sessão.
 
 **Evidência:** `docs/09-operations/evidence/2026-09-01-ux-release-audit/`.
+
+## 2026-09-01 — Complemento: reteste da jornada Launcher com ROM real
+
+**Correção do diagnóstico:** o reteste não abriu emuladores isolados. O
+Launcher real foi aberto e apresentou o cartão físico
+`1969 (Homebrew) (SMS).sms`. Return/Enter, clique, `Down` e `F` não produziram
+qualquer mudança; as capturas antes/depois ficaram com o mesmo SHA-256. A
+home não alcança a página de jogo e, consequentemente, não há launch, jogo,
+fade-in, fechamento, fade-out ou retorno a certificar nesta release.
+
+**Cobertura do acervo:** a raiz física possui 8.016 arquivos, incluindo 716
+ZIP, 317 7Z, 432 BIN, 46 CHD, 178 NSP e 1 ISO. O catálogo consumido pelo
+Launcher possui 231 registros, zero ZIP/7Z, 32 BIN, 44 CHD, 15 NSP e 1 ISO.
+Foi preparada matriz de ROM real por plataforma no diretório de evidências;
+nenhum arquivo foi alterado ou lançado por atalho fora do Launcher.
+
+**Resultado:** P0 novo confirmado — ativação/navegação da home inerte — além
+dos P0 anteriores de perfis de plataforma, lifecycle e Big Picture. O
+Launcher foi encerrado por Alt+F4 e não deixou processos/janelas. A release,
+o host e a árvore de produto não foram modificados; somente documentação e
+evidências desta auditoria foram atualizadas.

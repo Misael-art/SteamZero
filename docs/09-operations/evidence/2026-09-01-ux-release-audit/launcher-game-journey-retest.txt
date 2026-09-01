@@ -1,0 +1,38 @@
+RETESTE DA JORNADA REAL DO LAUNCHER — 2026-09-01
+
+Objetivo: selecionar uma ROM real no AURA Launcher, abrir a página do jogo,
+lançar pelo botão do Launcher, observar fade-in, fechar o emulador, observar
+fade-out e retornar ao contexto anterior.
+
+Release: 2.0.0rc1-667789588f23.
+Launcher: steamzero-launcher real, fullscreen 1280x800, biblioteca canônica
+carregada com 231 jogos em 13 plataformas.
+
+Procedimento executado:
+1. A home abriu e destacou o cartão real "1969 (Homebrew) (SMS)", arquivo .sms.
+2. Foi enviado Return com o cartão focado.
+3. Foi feito clique no cartão focado.
+4. A tela permaneceu exatamente na home; não surgiu página de jogo, botão Play,
+   rota /launch, processo de emulador ou transição visual.
+5. A captura antes e depois da confirmação tem o mesmo SHA-256:
+   1308cd106ad6a6a7e9dfb935a8245415285a26e6888ac705698d5c103c87d4c7.
+6. O Launcher foi fechado por Alt+F4; não restaram processo ou janela visível.
+
+Resultado: FALHA P0 DE PRODUTO. A home não implementa ativação do cartão:
+LauncherHome.qml tem movimento por setas, mas não trata Return/Enter/Space e os
+cartões não possuem MouseArea. Portanto não foi possível testar legitimamente
+nenhum emulador ou jogo a partir do Launcher, nem observar fade-in, fade-out ou
+retorno. Não foi usado o CLI como atalho, para não falsificar a jornada pedida.
+
+Matriz de ROMs reais preparada para a próxima execução após a correção do P0:
+dreamcast=.chd Ikaruga; master-system=.sms 1969; neo-geo-cd=.chd Samurai
+Spirits; nes-famicom=.nes Aladdin; nintendo-3ds=.3ds Donkey Kong Country
+Returns 3D; nintendo-console=.rvz Tatsunoko vs. Capcom; nintendo-handheld=.gb
+Bishoujo Senshi Sailormoon; playstation=.bin Guilty Gear e .chd Alundra;
+playstation-2=.chd Black; playstation-3=.iso Ratchet & Clank; sega-saturn=.chd
+Akumajou Dracula X; switch=.nsp Demon Slayer; wii-u=.wua Nano Assault Neo.
+
+Conclusão de cobertura: a ausência de launch do Launcher invalida a certificação
+end-to-end desta rodada. As 13 linhas acima são candidatos concretos, não
+resultados de jogo. A execução deve ser repetida depois de existir uma ação de
+ativação observável e um contrato de resultado/erro na UI.

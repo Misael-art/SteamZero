@@ -1,0 +1,33 @@
+DESCOBERTA FÍSICA DE ROMS — 2026-09-01
+
+Raiz observada: /home/misael/emulation/roms (somente leitura).
+Arquivos físicos: 8016.
+Registros na biblioteca canônica consumida pelo Launcher: 231, em 13
+plataformas.
+
+Extensões físicas relevantes:
+.bin 432 | .iso 1 | .zip 716 | .7z 317 | .chd 46 | .nsp 178 | .wua 2 |
+.rvz 1 | .3ds 19 | .sms 51 | .nes 32 | .gb 30.
+
+Extensões presentes no catálogo canônico:
+.bin 32 | .iso 1 | .zip 0 | .7z 0 | .chd 44 | .nsp 15 | .wua 2 |
+.rvz 1 | .3ds 19 | .sms 51 | .nes 32 | .gb 30.
+
+Leitura de produto: o Launcher não está vendo o acervo físico inteiro. ZIP e
+7Z existem na raiz, mas zero registros chegam ao catálogo canônico. Também há
+grande diferença de NSP físico (178) para NSP canônico (15) e BIN físico (432)
+para BIN canônico (32). Isso é uma lacuna de scan/manifesto/canonicalização,
+não uma razão para abrir emulador vazio.
+
+Amostras canônicas para teste posterior, todas com caminho físico real:
+dreamcast .chd Ikaruga; master-system .sms 1969; neo-geo-cd .chd Samurai
+Spirits; nes-famicom .nes Aladdin; nintendo-3ds .3ds Donkey Kong Country
+Returns 3D; nintendo-console .rvz Tatsunoko vs. Capcom; nintendo-handheld .gb
+Bishoujo Senshi Sailormoon; playstation .bin Guilty Gear e .chd Alundra;
+playstation-2 .chd Black; playstation-3 .iso Ratchet & Clank; sega-saturn .chd
+Akumajou Dracula X; switch .nsp Demon Slayer; wii-u .wua Nano Assault Neo.
+
+ZIP/7Z não foram lançados porque não aparecem no Launcher e a instrução desta
+auditoria proíbe contornar o catálogo por chamada direta. A próxima prova deve
+primeiro explicar/contabilizar cada arquivo não canonizado e só então selecionar
+um jogo suportado por plataforma.

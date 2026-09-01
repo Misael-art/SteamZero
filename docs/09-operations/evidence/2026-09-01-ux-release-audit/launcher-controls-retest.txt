@@ -1,0 +1,15 @@
+RETESTE DE CONTROLES DO LAUNCHER — 2026-09-01
+
+No Launcher real fullscreen, com o cartão 1969 (.sms) focado, foram enviados
+Down e F, cada um com captura após a ação. As três capturas — antes, depois de
+Down e depois de F — possuem o mesmo SHA-256:
+1308cd106ad6a6a7e9dfb935a8245415285a26e6888ac705698d5c103c87d4c7.
+
+Resultado: o foco não saiu do primeiro cartão e o painel de busca não apareceu.
+O contrato existente em LauncherHome.qml/LauncherShell.qml prevê Keys, mas a
+release observada não entrega mudança visual/funcional para o usuário. O
+Launcher foi fechado por Alt+F4 e não deixou processos ou janelas.
+
+Este resultado é separado do bloqueio de launch: sem navegação e ativação
+observáveis, não existe forma legítima de escolher jogos de outras plataformas
+ou alcançar o botão de jogar para provar fade-in/fade-out.
