@@ -8916,3 +8916,35 @@ independência, fronteiras, `make status-check` e `git diff --check` passaram.
 A suíte integral foi tentada duas vezes; em ambas avançou até aproximadamente
 29% e permaneceu sem progresso, sendo interrompida com exit 130. Não é
 declarada como aprovada e fica registrada como limitação reproduzível do gate.
+
+## 2026-09-01 — Sessão: auditoria funcional final da release 873
+
+**Proveniência:** a branch própria `codex/ux-audit-2026-09-01` foi conferida no
+tip documental `e677bb4c`; a release realmente ativa foi `2.0.0rc1-8733353c1ad9`
+com daemon `converged`. Nenhuma instalação, publicação, rollback, push ou troca
+de tema foi executada.
+
+**Resultado funcional:** a Central física passou a mostrar títulos reais, e o
+AURA Launcher real abriu em fullscreen 1280x800 com foco ciano. O runner live
+produziu 55 capturas, QML returncode 0 e worktree limpo. A busca por `F` não
+produziu mudança observável na janela real. SRM/ES-DE continuam ausentes.
+
+**Emulação:** 15 executores standalone iniciaram e foram encerrados; 17 cores
+Libretro recusaram launch próprio com diagnóstico correto de dependência do
+RetroArch. A matriz de 13 plataformas com jogos existentes não foi aprovada:
+respostas aceitas declararam `switch`/`eden` para caminhos Dreamcast, Game Boy
+e Wii U, caracterizando P0 de identidade de rota. `session status` também
+recusou um ID hexadecimal aceito por `emulation launch`. Não foi alegado que
+um jogo foi jogado quando o emulador correto não pôde ser provado.
+
+**Ações e mídia:** o inventário atual encontrou 61 ações locais, 4 roteadas e
+2 bloqueadas com motivo, mas cobriu apenas 1/17 superfícies; a sondagem de
+controles terminou por timeout. A descoberta de capas confirmou providers,
+receitas e histórico `media.global` degradado por quota, mas não aplicou novo
+download sem credencial/rota pública de CLI reproduzível.
+
+**Verificação:** 249 testes focados passaram; ruff check, ruff format, mypy,
+independência, fronteiras e `make status-check` passaram. A suíte integral foi
+tentada uma vez com timeout de 180s, alcançou aproximadamente 29% e não gerou
+resumo confiável; permanece inconclusiva. Evidência completa em
+`docs/09-operations/evidence/2026-09-01-functional-ux-audit/`.

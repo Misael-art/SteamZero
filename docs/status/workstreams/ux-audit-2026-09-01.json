@@ -4,11 +4,11 @@
   "id": "WS-2026-09-UX-AUDIT-RERUN",
   "item": "SZ-UI-DESKTOP-AUDIT",
   "branch": "codex/ux-audit-2026-09-01",
-  "baseRef": "db59992b",
+  "baseRef": "e677bb4c",
   "owner": "codex-ux-auditor-rerun",
   "state": "closed",
-  "exclusivePaths": ["docs/09-operations/evidence/2026-09-01-ux-audit"],
+  "exclusivePaths": ["docs/09-operations/evidence/2026-09-01-functional-ux-audit"],
   "sharedPaths": ["docs/status", "docs/STATUS.md", "docs/ACTIVE-WORK.md", "docs/WORKLOG.md"],
-  "nextAction": "Rerun concluído: corrigir o novo limite de 12 seções e explicar a divergência de read model antes da próxima validação física.",
+  "nextAction": "Rerun concluído: corrigir a identidade de platform/emulator na rota de jogos e repetir a prova de jogo, input e retorno.",
   "updatedAt": "2026-09-01"
 }

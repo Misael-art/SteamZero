@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "5668f59bbf7bd42fa2a7ba3177cdaef69d0d38458ca53617692bf83e25e96f73",
+  "scopeDigest": "83c632f16cf6b06ec1f17149a42cafcbb5db6bdf678137872aa9b7cb2732c166",
   "scopePaths": [
     "src/steamzero/domain/theme_editor.py",
     "src/steamzero/domain/theme_marketplace.py",
@@ -24,6 +24,7 @@
     "tests/unit/test_theme_import_package.py",
     "tests/unit/test_theme_marketplace.py",
     "docs/09-operations/evidence/2026-09-01-ux-audit"
+    ,"docs/09-operations/evidence/2026-09-01-functional-ux-audit"
   ],
   "dependsOn": [
     "SZ-THEME-ENGINE"
@@ -104,6 +105,12 @@
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-09-01-ux-audit/studio-themes.png",
       "command": "runner bridge-live: lista de quatro temas e ações Aplicar/Ver/Duplicar visíveis; autoria direta no canvas permanece não validada",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-01-functional-ux-audit/central-live-873/studio-themes.png",
+      "command": "release ativa: quatro temas visíveis; asset-recipes-demo é o tema ativo do runtime; AURA fullscreen não foi aplicado para não alterar estado persistente",
       "result": "recorded"
     }
   ],

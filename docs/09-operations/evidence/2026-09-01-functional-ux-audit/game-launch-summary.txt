@@ -1,0 +1,21 @@
+Matriz de jogos — release ativa 2.0.0rc1-8733353c1ad9
+
+13 plataformas com jogos existentes na biblioteca foram tentadas: Dreamcast,
+Master System, Neo Geo CD, NES/Famicom, Nintendo 3DS, Nintendo console,
+Nintendo handheld, PlayStation, PlayStation 2, PlayStation 3, Sega Saturn,
+Switch e Wii U.
+
+Resultado observado: 3 respostas `status=ok` e 10 recusas subsequentes por
+`E-COMPONENT-DEGRADED` (“eden já está em execução”). As 3 respostas OK —
+Dreamcast, Nintendo handheld e Wii U — declararam simultaneamente
+`platformId=switch` e `emulatorId=eden`, embora os caminhos fossem `.cdi`, `.gb`
+e `.wua` de plataformas distintas. A primeira tentativa com Master System
+também foi aceita como Switch/Eden.
+
+Isso é um bloqueio P0 de roteamento/proveniência: o cliente pode iniciar o
+emulador errado para uma ROM. Por esse motivo não é honesto declarar “um jogo
+jogado por emulador”; a aplicação não entregou a seleção correta. A tentativa
+de `session status` com um ID hexadecimal real também retornou
+`E-API-SCHEMA` (“gameId inválido”), enquanto o launch o aceitou.
+
+Os processos iniciados durante a matriz foram encerrados após cada tentativa.

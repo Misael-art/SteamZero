@@ -1,0 +1,18 @@
+Capas e mídia — 2026-09-01
+
+O read model expõe SteamGridDB, ScreenScraper, IGDB/Twitch e integração local
+com Steam. O diretório de ROMs contém 231 bases, mas a biblioteca ainda mostra
+capas vazias/placeholder em parte relevante da grade.
+
+O histórico de jobs registra `media.global` com 212 itens processados, 211
+efetivos, 19 sem candidato e provider ScreenScraper interrompido por
+`E-SCRAPE-QUOTA-EXCEEDED`; o resultado foi `degraded`. Também há um
+`media.search` anterior com zero candidatos.
+
+Foi procurada uma rota pública de download na CLI. O fluxo de mídia existente
+é exposto pela Central como ação de plano/aplicação, exige provider/credenciais
+e confirmação, e não há comando standalone simples “baixar capas”. Não foi
+aplicada uma mutação de rede/cache nesta auditoria: sem credencial fornecida e
+com a matriz de controles incompleta, isso não provaria uma jornada reproduzível
+para o cliente. Resultado: tentativa de descoberta documentada; download
+novo não certificado.

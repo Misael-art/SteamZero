@@ -9,7 +9,7 @@
     "verification": "hw",
     "operation": "unknown",
     "distribution": "not-packaged",
-    "scopeDigest": "6df2cdc6350a4a0b684abe914a5e69a07ee7798a6201c25481261eb2e5482adf",
+    "scopeDigest": "a3b31b9d554d3e17faa4dc7d675792ecccd2b983002156eac1258e2a4ac8c17d",
     "scopePaths": [
         "docs/00-vision/PROJECT-VISION.md",
         "docs/00-vision/NON-GOALS.md",
@@ -31,6 +31,7 @@
         "tests/integration/test_launcher_app.py",
         "docs/09-operations/evidence/2026-08-26-aura-launcher-fisico",
         "docs/09-operations/evidence/2026-09-01-ux-audit",
+        "docs/09-operations/evidence/2026-09-01-functional-ux-audit",
         "src/steamzero/ui/qml/launcher/LauncherHome.qml",
         "src/steamzero/adapters/launcher_catalog.py",
         "tests/unit/test_launcher_catalog.py"
@@ -42,7 +43,8 @@
     "knownGaps": [
         "GAP-LAUNCHER-REAL-CATALOG-PHYSICAL",
         "GAP-LAUNCHER-HOME-SECTION-LIMIT",
-        "GAP-LAUNCHER-CATALOG-PROVENANCE"
+        "GAP-LAUNCHER-CATALOG-PROVENANCE",
+        "GAP-LAUNCHER-GAME-ROUTE-IDENTITY"
     ],
     "acceptanceCriteria": [
         "Home fullscreen, biblioteca, busca, colecoes e pagina de jogo funcionam por controle.",
@@ -142,9 +144,21 @@
             "reference": "docs/09-operations/evidence/2026-09-01-ux-audit/02-launcher-fixture-active-db59992b.png",
             "command": "release ativa com fixture temporária: shell abre, placeholders e foco ciano aparecem; busca, coleção, launch e retorno continuam não validados",
             "result": "partial"
+        },
+        {
+            "kind": "hardware",
+            "reference": "docs/09-operations/evidence/2026-09-01-functional-ux-audit/05-launcher-real-8733353c.png",
+            "command": "release 2.0.0rc1-8733353c1ad9: AURA Launcher real abre em fullscreen 1280x800 com títulos do acervo e foco ciano; busca por F não produziu mudança observável",
+            "result": "partial"
+        },
+        {
+            "kind": "hardware",
+            "reference": "docs/09-operations/evidence/2026-09-01-functional-ux-audit/game-launch-summary.txt",
+            "command": "13 plataformas com jogos foram tentadas; respostas aceitas declararam platformId=switch/emulatorId=eden mesmo para caminhos Dreamcast, Game Boy e Wii U",
+            "result": "failed"
         }
     ],
-    "nextAction": "Resolver o novo P0 de limite de 12 seções e a divergência de read model; então repetir home real, busca, coleções, detalhe, jogar/voltar e atalho Big Picture na release instalada.",
+    "nextAction": "P0: corrigir a identidade platformId/emulatorId do launch e session status; então repetir um jogo por emulador com input, áudio, encerramento e retorno. Depois provar busca, coleções e Big Picture.",
     "activeWorkstreams": [
         "WS-2026-08-AURA-LAUNCHER"
     ],

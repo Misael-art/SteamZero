@@ -1,0 +1,12 @@
+Auditoria funcional/UX — 2026-09-01
+
+Release ativa observada: 2.0.0rc1-8733353c1ad9
+Commit do daemon: 8733353c1ad9a8e1a9d91dd5f9391cab213a1cfa
+Branch de auditoria: codex/ux-audit-2026-09-01
+Sessão: Valve Jupiter Deck LCD, KDE Wayland, DISPLAY=:0, 800x1280
+Estado do serviço: converged
+Doctor: degradado somente porque a inspeção de boot.direct exige permissão; demais checks OK.
+Origem Git configurada: https://github.com/Misael-art/SteamZero.git
+
+Nenhuma instalação, publicação, rollback, push ou alteração de tema foi executada.
+Foram iniciados processos de UI/emuladores somente para validação e encerrados ao final.

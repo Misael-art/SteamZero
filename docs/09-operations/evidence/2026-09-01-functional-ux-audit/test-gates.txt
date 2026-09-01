@@ -1,0 +1,16 @@
+Gates encerrados em 2026-09-01
+
+Foco funcional: PASS — 249 passed em 56,66s, incluindo Launcher, UI action
+inventory, QML handheld e temas.
+ruff check src tools tests: PASS.
+ruff format --check src tools tests: PASS — 532 arquivos.
+mypy src: PASS — 245 arquivos sem problemas.
+make independence boundaries: PASS — independência OK e 0 violações de fronteira.
+
+Suíte integral: INCONCLUSIVA por timeout operacional de 180s. O processo chegou
+a aproximadamente 29%, com falhas/erros impressos antes do timeout, mas não
+produziu o resumo de testes nem uma classificação confiável. Não foi repetida
+para evitar mascarar o defeito de infraestrutura; o foco passou completamente.
+
+O `make status-check` e a regeneração de STATUS/ACTIVE-WORK devem ser executados
+no fechamento documental desta sessão.

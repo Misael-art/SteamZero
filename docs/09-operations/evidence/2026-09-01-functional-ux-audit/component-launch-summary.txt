@@ -1,0 +1,20 @@
+Matriz de componentes instalados — release ativa 2.0.0rc1-8733353c1ad9
+
+32 componentes instalados foram submetidos a `steamzero component launch`.
+
+15 executores standalone iniciaram: azahar, cemu, citron, dolphin, duckstation,
+eden, flycast, melonds, pcsx2, ppsspp, retroarch, rpcs3, ryubing, xemu e
+xenia-canary. Os processos iniciados pela matriz foram encerrados depois do
+teste; a validação não declara renderização de jogo, áudio ou controles desses
+executores.
+
+17 cores Libretro retornaram E-COMPONENT-NO-LAUNCH com explicação coerente:
+libretro-bluemsx, libretro-fbneo, libretro-freeintv, libretro-fuse,
+libretro-genesis-plus-gx, libretro-mednafen-ngp, libretro-mednafen-pce,
+libretro-mednafen-vb, libretro-mednafen-wswan, libretro-mesen, libretro-mgba,
+libretro-mupen64plus-next, libretro-opera, libretro-puae, libretro-snes9x,
+libretro-stella e libretro-vice-x64. Eles devem ser carregados pelo RetroArch.
+
+Conclusão: a rota de abertura dos executores está exercitável; a matriz de
+jogo por emulador não foi aprovada porque a rota de jogo abaixo colapsa a
+identidade para Eden/Switch.

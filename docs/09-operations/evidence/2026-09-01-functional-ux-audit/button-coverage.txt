@@ -1,0 +1,14 @@
+Cobertura de botões/ações — 2026-09-01
+
+`tools/ui_action_inventory.py` encontrou 120 contratos publicados e 67 ações
+nos read models: 61 handled-locally, 4 routed, 2 blocked-explained, 0 no-op
+silencioso, 0 habilitada sem rota e 0 desabilitada sem motivo.
+
+A ferramenta cobriu 1/17 superfícies. Ficam fora da execução automatizada:
+overview, steam, profiles, sync, cast, system, themes, library, sidebar,
+handheld-drawer, task-drawer, credentials, plan-dialogs, jobs, recovery e
+notifications. A tentativa complementar de `tools/ui_control_inventory.py`
+terminou por timeout dentro de `subprocess.run`, sem relatório utilizável.
+
+Logo, “todos os botões” não foi comprovado nesta rodada; a evidência distingue
+contratos coerentes de cliques físicos realmente executados.

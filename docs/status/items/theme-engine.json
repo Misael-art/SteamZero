@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "7bfa31f1c7f2ab64f753fc9262b820c507c5476bd94e5d0986f291bc0138bcb3",
+  "scopeDigest": "2debf0410df1ff8ced2825f1feee4b3912f08f7f355775eeabb15c3352767427",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -65,6 +65,7 @@
     "tests/qml/check_scene_containers.qml",
     "docs/09-operations/evidence/2026-08-19-theme-engine-a47",
     "docs/09-operations/evidence/2026-09-01-ux-audit",
+    "docs/09-operations/evidence/2026-09-01-functional-ux-audit",
     "tools/theme_perf_probe.py",
     "tests/unit/test_theme_perf_probe.py"
   ],
@@ -293,6 +294,12 @@
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-09-01-ux-audit/README.md",
       "command": "rerun da release ativa: asset-recipes-demo listado/ativo; observação visual não promove certificação física do Theme Engine",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-01-functional-ux-audit/release-state.txt",
+      "command": "release ativa 2.0.0rc1-8733353c1ad9: tema asset-recipes-demo ativo; AURA UI/Launcher continuam dimensões independentes",
       "result": "recorded"
     }
   ],

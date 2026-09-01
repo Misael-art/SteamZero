@@ -9,13 +9,14 @@
     "verification": "unit",
     "operation": "degraded",
     "distribution": "installed",
-    "scopeDigest": "f1b6a4de8bfabdb9dc07e4860144df9e14ed0d29f2175d7883d1f3999a26540b",
+    "scopeDigest": "8ad3d22d896bf16f0dbf60feb48f1026da85633ae6fd2b3fbdb7dffefa0fed52",
     "scopePaths": [
         "src/steamzero/domain/default_theme.py",
         "src/steamzero/themes",
         "src/steamzero/themes/org.steamzero.aura",
     "src/steamzero/themes/org.steamzero.default",
-    "docs/09-operations/evidence/2026-09-01-ux-audit",
+        "docs/09-operations/evidence/2026-09-01-ux-audit",
+        "docs/09-operations/evidence/2026-09-01-functional-ux-audit",
         "tests/integration/test_qml_handheld_offscreen.py",
         "tests/qml/check_theme_editor_aura.qml",
         "tests/unit/test_default_theme.py",
@@ -54,9 +55,15 @@
             "reference": "docs/09-operations/evidence/2026-09-01-ux-audit/01-central-active-800x1280.png",
             "command": "release 2.0.0rc1-db59992ba514: Central instalada abriu na sessão gráfica interna e exibiu estado vazio (0 títulos) com aviso de perfil não aplicado",
             "result": "partial"
+        },
+        {
+            "kind": "hardware",
+            "reference": "docs/09-operations/evidence/2026-09-01-functional-ux-audit/01-central-active-8733353c.png",
+            "command": "release 2.0.0rc1-8733353c1ad9: Central instalada abriu e exibiu títulos reais; a divergência física 0 versus runner 246 não se repetiu",
+            "result": "passed"
         }
     ],
-    "nextAction": "Usar o rerun 2026-09-01 para fechar contraste renderizado, rodapé de dicas, densidade handheld e explicar a divergência 0/246; manter AURA UI separada do AURA Launcher.",
+    "nextAction": "Manter AURA UI separada do Launcher; fechar contraste renderizado, rodapé de dicas e densidade handheld na próxima prova física.",
     "activeWorkstreams": [],
     "updatedAt": "2026-08-31",
     "notes": "Renomeado de SZ-THEME-AURA para eliminar ambiguidade. AURA UI e o tema/sistema visual instalado na central; nao e a experiencia fullscreen de biblioteca. O digest foi renovado porque o escopo compartilhado de temas recebeu a fixture de layouts; testes AURA e QML permaneceram verdes, sem promocao de estado. Nao ha certificacao visual/hardware deste item. Digest renovado porque o harness QML compartilhado passou a exercitar o caminho avancado de midia (--steamzero-qtquick-effects); nenhum estado do AURA UI foi promovido."
