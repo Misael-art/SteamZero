@@ -9,12 +9,13 @@
     "verification": "unit",
     "operation": "degraded",
     "distribution": "installed",
-    "scopeDigest": "74c72a50c48ea14ff5b8a6088cd0f102c8da552c24a4acfaece8031c98f854f5",
+    "scopeDigest": "f1b6a4de8bfabdb9dc07e4860144df9e14ed0d29f2175d7883d1f3999a26540b",
     "scopePaths": [
         "src/steamzero/domain/default_theme.py",
         "src/steamzero/themes",
         "src/steamzero/themes/org.steamzero.aura",
-        "src/steamzero/themes/org.steamzero.default",
+    "src/steamzero/themes/org.steamzero.default",
+    "docs/09-operations/evidence/2026-09-01-ux-audit",
         "tests/integration/test_qml_handheld_offscreen.py",
         "tests/qml/check_theme_editor_aura.qml",
         "tests/unit/test_default_theme.py",
@@ -47,9 +48,15 @@
             "reference": "tests/integration/test_qml_handheld_offscreen.py",
             "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_qml_handheld_offscreen.py -q",
             "result": "passed"
+        },
+        {
+            "kind": "hardware",
+            "reference": "docs/09-operations/evidence/2026-09-01-ux-audit/01-central-active-800x1280.png",
+            "command": "release 2.0.0rc1-db59992ba514: Central instalada abriu na sessão gráfica interna e exibiu estado vazio (0 títulos) com aviso de perfil não aplicado",
+            "result": "partial"
         }
     ],
-    "nextAction": "Validar visualmente AURA UI na central real, sem confundir essa prova com o AURA Launcher.",
+    "nextAction": "Usar o rerun 2026-09-01 para fechar contraste renderizado, rodapé de dicas, densidade handheld e explicar a divergência 0/246; manter AURA UI separada do AURA Launcher.",
     "activeWorkstreams": [],
     "updatedAt": "2026-08-31",
     "notes": "Renomeado de SZ-THEME-AURA para eliminar ambiguidade. AURA UI e o tema/sistema visual instalado na central; nao e a experiencia fullscreen de biblioteca. O digest foi renovado porque o escopo compartilhado de temas recebeu a fixture de layouts; testes AURA e QML permaneceram verdes, sem promocao de estado. Nao ha certificacao visual/hardware deste item. Digest renovado porque o harness QML compartilhado passou a exercitar o caminho avancado de midia (--steamzero-qtquick-effects); nenhum estado do AURA UI foi promovido."

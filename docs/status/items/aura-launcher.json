@@ -9,7 +9,7 @@
     "verification": "hw",
     "operation": "unknown",
     "distribution": "not-packaged",
-    "scopeDigest": "25539c9c25b15c9a07af08839276f86be9eb767c34781a25b97dc7331b63931d",
+    "scopeDigest": "6df2cdc6350a4a0b684abe914a5e69a07ee7798a6201c25481261eb2e5482adf",
     "scopePaths": [
         "docs/00-vision/PROJECT-VISION.md",
         "docs/00-vision/NON-GOALS.md",
@@ -30,6 +30,7 @@
         "src/steamzero/adapters/launcher_ui.py",
         "tests/integration/test_launcher_app.py",
         "docs/09-operations/evidence/2026-08-26-aura-launcher-fisico",
+        "docs/09-operations/evidence/2026-09-01-ux-audit",
         "src/steamzero/ui/qml/launcher/LauncherHome.qml",
         "src/steamzero/adapters/launcher_catalog.py",
         "tests/unit/test_launcher_catalog.py"
@@ -39,7 +40,9 @@
         "SZ-THEME-ENGINE"
     ],
     "knownGaps": [
-        "GAP-LAUNCHER-REAL-CATALOG-PHYSICAL"
+        "GAP-LAUNCHER-REAL-CATALOG-PHYSICAL",
+        "GAP-LAUNCHER-HOME-SECTION-LIMIT",
+        "GAP-LAUNCHER-CATALOG-PROVENANCE"
     ],
     "acceptanceCriteria": [
         "Home fullscreen, biblioteca, busca, colecoes e pagina de jogo funcionam por controle.",
@@ -127,9 +130,21 @@
             "reference": "tests/unit/test_launcher_navigation.py",
             "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_launcher_navigation.py tests/unit/test_launcher_session.py tests/unit/test_launcher_catalog.py tests/unit/test_launcher_collections.py tests/integration/test_launcher_app.py -q",
             "result": "passed"
+        },
+        {
+            "kind": "hardware",
+            "reference": "docs/09-operations/evidence/2026-09-01-ux-audit/launcher-failure.txt",
+            "command": "release 2.0.0rc1-db59992ba514: IDs hexadecimais superados, mas a home encerra com ValueError home excede 12 seções; catálogo canônico tem 13 plataformas",
+            "result": "failed"
+        },
+        {
+            "kind": "hardware",
+            "reference": "docs/09-operations/evidence/2026-09-01-ux-audit/02-launcher-fixture-active-db59992b.png",
+            "command": "release ativa com fixture temporária: shell abre, placeholders e foco ciano aparecem; busca, coleção, launch e retorno continuam não validados",
+            "result": "partial"
         }
     ],
-    "nextAction": "Abrir o Launcher na sessao grafica com a release corrigida instalada e percorrer jogar/voltar com o acervo real; a correcao do contrato de id esta provada por teste e contra o acervo, mas nao fisicamente.",
+    "nextAction": "Resolver o novo P0 de limite de 12 seções e a divergência de read model; então repetir home real, busca, coleções, detalhe, jogar/voltar e atalho Big Picture na release instalada.",
     "activeWorkstreams": [
         "WS-2026-08-AURA-LAUNCHER"
     ],

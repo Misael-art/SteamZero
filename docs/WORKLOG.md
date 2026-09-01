@@ -8877,3 +8877,42 @@ valores, dependendo da ordem de execução/estado efêmero de ticks. O teste NÃ
 toca o escopo de Launcher/coleções entregue nesta rodada. Registrar para o
 próximo agente não investigar à toa; se reincidir, o defeito é do teste (iterador
 de ticks), não do código de produção.
+
+## 2026-09-01 — Sessão: rerun da auditoria UX na release ativa
+
+**Proveniência:** branch própria `codex/ux-audit-2026-09-01`, base
+`db59992b`. Release ativa confirmada em modo somente leitura:
+`2.0.0rc1-db59992ba514`, daemon convergido. `origin` identificado como
+`https://github.com/Misael-art/SteamZero.git`; nenhum push, instalação,
+publicação ou rollback foi executado.
+
+**Resultado:** o P0 de IDs hexadecimais não reaparece, mas o AURA Launcher real
+encerra antes da home com `ValueError: home excede 12 seções`; o catálogo
+canônico tem 231 jogos em 13 plataformas. Uma fixture temporária abre o shell,
+mas não valida catálogo, busca, coleções, launch ou retorno.
+
+**Central:** a janela instalada abriu na sessão interna 800x1280 e exibiu
+`0 títulos publicados` e `Nenhum perfil foi aplicado`. O runner on-screen com
+bridge-live produziu 55 capturas e mostrou 246 títulos. A divergência foi
+registrada como risco de proveniência/read model, não como aprovação da
+biblioteca. Tema asset-recipes-demo permaneceu ativo; Theme Studio segue sem
+autoria direta validada.
+
+**Evidência:** `docs/09-operations/evidence/2026-09-01-ux-audit/` contém
+capturas da Central, Launcher com fixture, tentativa de busca, manifesto,
+falha real e relatório completo. Os itens SZ-AURA-LAUNCHER,
+SZ-UI-DESKTOP-AUDIT, SZ-AURA-UI, SZ-THEME-ENGINE e SZ-THEME-STUDIO foram
+atualizados sem promoção indevida de estado; digests e views regenerados.
+
+**Checkout:** nesta sessão a branch foi criada limpa a partir do tip atual,
+o worktree ficou dirty somente pelo registro documental necessário antes da
+captura e o manifesto deixou isso explícito. Não houve commit de outro agente
+nem push sem origem identificada nesta branch; as três anomalias históricas
+continuam sendo risco de governança a monitorar.
+
+**Verificação:** testes focados de Launcher/UI/Theme passaram: 151 testes em
+37,84s, com preservação do estado real antes/depois. Ruff, formatação, mypy,
+independência, fronteiras, `make status-check` e `git diff --check` passaram.
+A suíte integral foi tentada duas vezes; em ambas avançou até aproximadamente
+29% e permaneceu sem progresso, sendo interrompida com exit 130. Não é
+declarada como aprovada e fica registrada como limitação reproduzível do gate.

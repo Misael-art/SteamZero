@@ -1,0 +1,28 @@
+SteamZero UX audit rerun — release and checkout provenance
+Date: 2026-09-01 (America/Sao_Paulo)
+
+Active host release (read-only service status):
+  2.0.0rc1-db59992ba514
+  daemon commit: db59992ba5145242c50d0a5c5ac38c4e4a95eb8a
+  state: converged
+
+Repository used for the on-screen runner:
+  branch: codex/ux-audit-2026-09-01
+  commit: db59992ba5145242c50d0a5c5ac38c4e4a95eb8a
+  worktree: dirty only because the audit workstream was registered before capture
+  data origin: bridge-live
+  captures: 55
+  QML return code: 0
+
+Physical Central observation:
+  DISPLAY=:0, WAYLAND_DISPLAY=wayland-0, internal display 800x1280, KDE Wayland.
+  The installed Central opened and showed “0 títulos publicados” plus the
+  “Nenhum perfil foi aplicado” warning. The on-screen bridge runner later
+  rendered 246 titles in its live read model. These are recorded as two distinct
+  observations; the runner capture is not used to certify the installed
+  catalog's end-to-end state.
+
+Checkout controls observed:
+  origin is explicitly configured as https://github.com/Misael-art/SteamZero.git
+  for fetch and push. This rerun used a dedicated branch and performed no push,
+  install, publish, rollback, or host mutation.

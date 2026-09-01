@@ -1,0 +1,22 @@
+SteamZero UX audit rerun — AURA Launcher real-catalog failure
+Date: 2026-09-01 (America/Sao_Paulo)
+Release: 2.0.0rc1-db59992ba514
+Command: steamzero-launcher
+
+Observed result:
+  The installed launcher exits before rendering the home. The hexadecimal item
+  ID failure from the previous audit is gone. The new terminal failure is:
+
+    ValueError: home excede 12 seções
+
+  The canonical catalog has 231 games across 13 platform sections. The launcher
+  therefore still does not reach home, search, collections, game detail, launch,
+  or return with the real catalog.
+
+Secondary visual check:
+  `steamzero-launcher --library /tmp/steamzero-ux-audit/launcher-fixture.json`
+  opened a temporary three-game fixture and showed the expected focus ring and
+  initial-letter placeholders. This fixture is visual-only evidence and does not
+  override the real-catalog P0. A synthetic `xdotool` F-key attempt did not open
+  search; search remains not validated because the injection is not equivalent
+  to a physical control event.

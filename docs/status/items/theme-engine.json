@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "12a9a7843efc26cd6b8b40b296a171eb9ec14ed001443911cc4742194c5197ed",
+  "scopeDigest": "7bfa31f1c7f2ab64f753fc9262b820c507c5476bd94e5d0986f291bc0138bcb3",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -64,6 +64,7 @@
     "tests/unit/test_scene_containers.py",
     "tests/qml/check_scene_containers.qml",
     "docs/09-operations/evidence/2026-08-19-theme-engine-a47",
+    "docs/09-operations/evidence/2026-09-01-ux-audit",
     "tools/theme_perf_probe.py",
     "tests/unit/test_theme_perf_probe.py"
   ],
@@ -287,9 +288,15 @@
       "reference": "tests/integration/test_qml_handheld_offscreen.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_qml_handheld_offscreen.py -q (43 passed)",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-01-ux-audit/README.md",
+      "command": "rerun da release ativa: asset-recipes-demo listado/ativo; observação visual não promove certificação física do Theme Engine",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Avancar a proxima onda da especificacao (componentes do Launcher e inspector do Studio) com o orcamento de desempenho ja aferido na release instalada.",
+  "nextAction": "Manter a dimensão do Theme Engine parcial: explicar a divergência de read model antes de usar capturas live como prova física e repetir medição na próxima release; contraste por tema e acessibilidade seguem abertos.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],

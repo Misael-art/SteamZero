@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "84e4adb79196d73df2704b35899093963526173333380a77c0ea41121c16a06b",
+  "scopeDigest": "5668f59bbf7bd42fa2a7ba3177cdaef69d0d38458ca53617692bf83e25e96f73",
   "scopePaths": [
     "src/steamzero/domain/theme_editor.py",
     "src/steamzero/domain/theme_marketplace.py",
@@ -22,7 +22,8 @@
     "tests/unit/test_studio_graph.py",
     "tests/unit/test_theme_editor_extends.py",
     "tests/unit/test_theme_import_package.py",
-    "tests/unit/test_theme_marketplace.py"
+    "tests/unit/test_theme_marketplace.py",
+    "docs/09-operations/evidence/2026-09-01-ux-audit"
   ],
   "dependsOn": [
     "SZ-THEME-ENGINE"
@@ -98,9 +99,15 @@
       "reference": "tests/qml/check_theme_studio_canvas.qml",
       "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_theme_studio_canvas.qml (canvas desenha a cena do no pelo previewKey declarado; sonda verificada por mutacao nos dois sentidos: canDrawScene invertido e chave inexistente)",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-01-ux-audit/studio-themes.png",
+      "command": "runner bridge-live: lista de quatro temas e ações Aplicar/Ver/Duplicar visíveis; autoria direta no canvas permanece não validada",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Capturar o canvas desenhando a cena na proxima release instalada e, depois, avaliar edicao direta no canvas — hoje o Studio e somente leitura.",
+  "nextAction": "Manter partial/degraded: lista de temas observada na release ativa, mas autoria direta no canvas permanece não validada. Próxima entrega: explicar a origem do preview, provar edição direta com undo/redo e repetir na release instalada.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-18",
   "notes": "Estado permanece parcial. O canvas central deixou de ser placeholder: quando o no selecionado e um layout com cena resolvida, ele desenha usando o MESMO SceneRepeater que a interface usa — um renderizador proprio do Studio poderia divergir do que o usuario ve, e o preview mentiria para quem edita. O no de layout passou a declarar previewKey, entao o canvas acha a cena sem fatiar o id: se o formato do id mudasse, o desenho sumiria em silencio. No sem cena propria (binding, motion, efeito) mostra o rotulo e diz por que nao desenhou, em vez de exibir vazio. A arvore ja carrega depth e path, com irmaos de rotulo repetido desambiguados pela posicao. Falta ainda: edicao no canvas (hoje e so leitura) e evidencia fisica desta fatia na proxima release instalada."
