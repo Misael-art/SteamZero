@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-THEME-IMPORT-SURFACE",
+  "title": "Importação de temas acessível pela área Temas",
+  "domain": "themes",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+    "tests/qml/check_theme_editor_import.qml"
+  ],
+  "scopeDigest": "6df576e6bca7d181fa7e2263139ad080c673a8ef4e2e02a6e3f2d4b95e671785",
+  "dependsOn": [
+    "SZ-THEME-STUDIO"
+  ],
+  "knownGaps": [
+    "GAP-THEME-IMPORT-RETROFE",
+    "GAP-THEME-STUDIO-PHYSICAL-CANVAS"
+  ],
+  "acceptanceCriteria": [
+    "A área Temas oferece entrada explícita para importar um tema ES-DE.",
+    "Inspeção ocorre antes de qualquer escrita e apresenta esquemas e limitações.",
+    "Importação exige nome e esquema, trata erro/cancelamento e atualiza a lista.",
+    "O fluxo não aplica automaticamente o tema importado e mantém o contrato de segurança."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_theme_editor_import.qml",
+      "command": "QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qml tests/qml/check_theme_editor_import.qml",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_theme_editor_aura.qml",
+      "command": "QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qml tests/qml/check_theme_editor_aura.qml",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_theme_editor_asset_recipes.qml",
+      "command": "QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qml tests/qml/check_theme_editor_asset_recipes.qml",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+      "command": "/usr/lib/qt6/bin/qmllint src/steamzero/ui/qml/ThemeEditorPanel.qml",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "ruff check, ruff format --check, mypy src e make independence boundaries",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests -q; runner permaneceu sem saída em 17% e foi interrompido; nenhum processo ou socket residual",
+      "result": "partial"
+    }
+  ],
+  "nextAction": "Validar a jornada na release instalada com uma pasta ES-DE real.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-09-02",
+  "notes": "O backend já implementa inspect/apply como tema editável. Esta frente fecha a descoberta e a jornada da superfície Temas sem duplicar o importador."
+}

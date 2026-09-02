@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "97c252f6cd468d36849991a65d3bc57ac49701e3005b1b63c3acbe935c53bd59",
+  "scopeDigest": "0580fa151bb765580ab55239db2cd836c7f6fc023f5abd01c1e25bcf2dbdd2ca",
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun",
     "src/steamzero/domain/theme_editor.py",

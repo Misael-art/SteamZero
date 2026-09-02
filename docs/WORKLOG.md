@@ -9203,3 +9203,18 @@ Prova: `8 passed` no recorte combinado; Ruff, formatação, mypy, independência
 boundaries passaram. A suíte integral repetiu a ausência de saída em 17% e foi
 interrompida sem processos ou sockets residuais. Nenhuma instalação,
 publicação, push ou ação de host foi executada.
+
+## 2026-09-02 — Sessão: importação de tema pela área Temas
+
+Workstream: `WS-2026-09-THEME-IMPORT-SURFACE`, branch
+`codex/ux-audit-platform-context-2026-09-02`. O `ThemeEditorPanel` agora
+oferece a jornada ES-DE dentro da própria área Temas: escolher pasta, examinar
+esquemas sem escrever, selecionar a paleta, informar o nome e importar como
+tema editável. O fluxo usa `scheme` do contrato, trata falhas, atualiza a lista
+e deixa o tema ativo inalterado. A importação de RetroFE continua explicitamente
+fora do contrato disponível.
+
+Provas: `qmllint` e os três harnesses QML do editor passaram; Ruff, formatação,
+mypy, independência e boundaries passaram. A suíte integral repetiu a parada
+em 17% e foi interrompida sem processos ou sockets residuais. Nenhuma
+instalação, publicação, push ou ação de host foi executada.

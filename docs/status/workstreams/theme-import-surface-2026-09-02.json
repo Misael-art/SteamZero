@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-THEME-IMPORT-SURFACE",
+  "item": "SZ-THEME-IMPORT-SURFACE",
+  "branch": "codex/ux-audit-platform-context-2026-09-02",
+  "baseRef": "84dd64a",
+  "owner": "codex-ux-audit",
+  "state": "closed",
+  "exclusivePaths": [
+    "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+    "tests/qml/check_theme_editor_import.qml"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Validar a jornada na release instalada com uma pasta ES-DE real.",
+  "updatedAt": "2026-09-02"
+}
