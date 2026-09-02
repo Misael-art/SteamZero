@@ -9117,3 +9117,26 @@ métricas de desempenho seguem não validados.
 Correção de segurança subsequente: o inventário também bloqueia raízes abaixo
 de diretórios-pai simbólicos. A regressão passou `4 passed`; o digest do item
 foi renovado sem promover a capacidade além de `partial`.
+
+## 2026-09-02 — Sessão: isolamento de saves e mídia por plataforma
+
+Workstream: `WS-2026-09-EMULATION-PLATFORM-SCOPE`, branch
+`codex/ux-audit-platform-context-2026-09-02`. O snapshot do controller agora
+separa as linhas Switch antes do enriquecimento específico de keys, firmware,
+saves, shader cache, controles e mídia; as demais plataformas permanecem no
+workspace geral com seus dados canônicos. O job global criado pela UI leva
+`platform_id=switch`, filtra o acervo antes de buscar/otimizar e publica
+`platformId` no resultado. Jobs antigos sem escopo continuam compatíveis como
+operações globais explícitas.
+
+Provas: `5 passed` no teste de biblioteca mista e job de mídia; `131 passed` no
+controller; `81 passed` no bridge/dashboard; Ruff, formatação, mypy,
+independência e boundaries passaram. A suíte integral foi tentada com
+`TMPDIR=/tmp`, permaneceu sem saída em 17% e foi interrompida; não restaram
+processos ou sockets, portanto o gate integral permanece parcial.
+
+Nenhuma instalação, publicação, rollback, download, varredura real ou
+lançamento foi executado. A correção QML dos cards Keys/Firmware, contratos de
+mover/comprimir/desinstalar armazenamento e validação física da release seguem
+fora desta frente e dependem das workstreams proprietárias/autorização do
+operador.

@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-EMULATION-PLATFORM-SCOPE",
+  "title": "Isolamento de saves e mídia por plataforma",
+  "domain": "emulation",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/adapters/emulation.py",
+    "tests/integration/test_emulation_platform_scope.py"
+  ],
+  "scopeDigest": "0b1b70df8b00cc5e98c02814f784a4f7c4a86eb2d3d7a5ca597717a221d46d8f",
+  "dependsOn": [
+    "SZ-LIBRARY-CANONICAL"
+  ],
+  "knownGaps": [
+    "GAP-EMULATION-PHYSICAL-LAUNCH",
+    "GAP-UI-REQUIREMENT-CARD-FALLBACK"
+  ],
+  "acceptanceCriteria": [
+    "A área do Switch usa somente jogos cuja plataforma canônica é Switch.",
+    "Cards de saves, estados, shader cache e pipeline de mídia não exibem jogos de outra plataforma.",
+    "Ações globais de mídia iniciadas na área do Switch processam somente jogos Switch.",
+    "O escopo efetivo aparece no job e no resultado para a UI explicar o que foi atualizado.",
+    "Uma biblioteca mista mantém os arquivos de outras plataformas intactos e fora do fluxo do Switch."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_emulation_platform_scope.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_emulation_platform_scope.py tests/integration/test_emulation_storage.py tests/integration/test_preservation_controller.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_emulation_controller.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_emulation_controller.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_desktop_ui_bridge.py",
+      "command": "TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests/integration/test_desktop_ui_bridge.py tests/unit/test_desktop_dashboard.py tests/integration/test_emulation_platform_scope.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "ruff check, ruff format --check, mypy src e make independence boundaries",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests -q; runner permaneceu sem saída em 17% e foi interrompido; nenhum processo ou socket residual",
+      "result": "partial"
+    }
+  ],
+  "nextAction": "Validar a experiência na release instalada; a execução física do jogo e a correção QML dos cards Keys/Firmware continuam nas frentes proprietárias.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-09-02",
+  "notes": "A área de emulação do Switch recebia a lista mista retornada pelo cache canônico. Isso fazia Saves e mídia apresentarem jogos de NES/PSP e o botão Atualizar todas varrer o acervo inteiro. A correção mantém Gestão geral/editorial separadas e restringe a área operacional ao contexto da plataforma."
+}

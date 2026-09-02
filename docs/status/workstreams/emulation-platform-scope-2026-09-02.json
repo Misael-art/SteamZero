@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-EMULATION-PLATFORM-SCOPE",
+  "item": "SZ-EMULATION-PLATFORM-SCOPE",
+  "branch": "codex/ux-audit-platform-context-2026-09-02",
+  "baseRef": "7de80432",
+  "owner": "codex-ux-audit",
+  "state": "closed",
+  "exclusivePaths": [
+    "src/steamzero/adapters/emulation.py",
+    "tests/integration/test_emulation_platform_scope.py"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Validar a experiência na release instalada; a execução física do jogo e a correção QML dos cards Keys/Firmware continuam nas frentes proprietárias.",
+  "updatedAt": "2026-09-02"
+}
