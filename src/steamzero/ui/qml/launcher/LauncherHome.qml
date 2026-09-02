@@ -178,15 +178,30 @@ Item {
             font.pixelSize: 20
         }
 
+        // Reconciliação do acervo. O texto se monta a partir do que a varredura
+        // REALMENTE contou: exigir `filesFound` para exibir qualquer coisa
+        // escondia justamente o caso com mais a explicar — um cache sem esse
+        // campo continua sabendo quantos arquivos ficaram para revisão.
         Text {
-            visible: Number(home.catalogSummary.filesFound || 0) > 0
-            text: qsTr("%1 arquivo(s) encontrados · %2 jogo(s) · %3 update(s)/DLC · %4 para revisão")
-                .arg(home.catalogSummary.filesFound || 0)
-                .arg(home.catalogSummary.games || 0)
-                .arg(Number(home.catalogSummary.updates || 0)
-                    + Number(home.catalogSummary.dlcs || 0))
-                .arg(Number(home.catalogSummary.incompatible || 0)
-                    + Number(home.catalogSummary.ignored || 0))
+            readonly property int reviewCount:
+                Number(home.catalogSummary.incompatible || 0)
+                + Number(home.catalogSummary.ignored || 0)
+            readonly property int auxiliaryCount:
+                Number(home.catalogSummary.updates || 0)
+                + Number(home.catalogSummary.dlcs || 0)
+            visible: Number(home.catalogSummary.games || 0) > 0 || reviewCount > 0
+            text: {
+                const parts = []
+                if (Number(home.catalogSummary.filesFound || 0) > 0)
+                    parts.push(qsTr("%1 arquivo(s) encontrados")
+                        .arg(home.catalogSummary.filesFound))
+                parts.push(qsTr("%1 jogo(s)").arg(home.catalogSummary.games || 0))
+                if (auxiliaryCount > 0)
+                    parts.push(qsTr("%1 update(s)/DLC").arg(auxiliaryCount))
+                if (reviewCount > 0)
+                    parts.push(qsTr("%1 para revisão").arg(reviewCount))
+                return parts.join(" · ")
+            }
             color: home._hc("#8b93a8", "#c6d0db")
             font.pixelSize: 12
             Accessible.name: qsTr("Resumo da biblioteca")

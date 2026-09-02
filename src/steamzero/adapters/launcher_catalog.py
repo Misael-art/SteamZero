@@ -119,8 +119,9 @@ def catalog_summary(
     raw_summary = raw.get("scanSummary")
     summary = dict(raw_summary) if isinstance(raw_summary, Mapping) else {}
     if not summary:
+        summary = _summary_from_root_stats(raw)
+    if not summary:
         summary = {
-            "filesFound": len(records),
             "games": len(catalog),
             "updates": sum(
                 1 for record in records if str(record.get("contentKind") or "base") == "update"
@@ -128,8 +129,6 @@ def catalog_summary(
             "dlcs": sum(
                 1 for record in records if str(record.get("contentKind") or "base") == "dlc"
             ),
-            "incompatible": 0,
-            "ignored": 0,
             "incompatibleReasons": {},
             "ignoredReasons": {},
             "platformCounts": {},
@@ -146,5 +145,50 @@ def catalog_summary(
     summary.setdefault("ignored", 0)
     summary.setdefault("incompatibleReasons", {})
     summary.setdefault("ignoredReasons", {})
-    summary.setdefault("filesFound", len(records))
+    # `filesFound` NÃO tem default. Um acervo cujo envelope não conta arquivos é
+    # um acervo cuja varredura não os contou; preencher com o número de jogos
+    # afirmaria que todo arquivo virou jogo. No cache real do operador isso
+    # publicava "231 arquivos, 231 jogos, 0 para revisão" enquanto o rootStats
+    # do MESMO arquivo registrava 6724 ignorados e 1061 incompatíveis. A UI
+    # oculta o resumo quando o campo está ausente, que é dizer "não sei" em vez
+    # de dizer um número errado com ar de fato.
     return summary
+
+
+def _summary_from_root_stats(raw: Mapping[str, Any]) -> dict[str, Any]:
+    """Reconstrói o resumo a partir do ``rootStats`` da própria varredura.
+
+    Caches gravados antes de ``scanSummary`` existir continuam carregando a
+    contagem verdadeira em ``rootStats``. Ler dali é a diferença entre a UI
+    dizer a verdade e a UI inventar um denominador — os dois números moram no
+    mesmo arquivo.
+    """
+    root_stats = raw.get("rootStats")
+    if not isinstance(root_stats, Mapping) or not root_stats:
+        return {}
+    totals: dict[str, int] = {}
+    for entry in root_stats.values():
+        counts = entry.get("counts") if isinstance(entry, Mapping) else None
+        if not isinstance(counts, Mapping):
+            continue
+        for key, value in counts.items():
+            if isinstance(value, int):
+                totals[str(key)] = totals.get(str(key), 0) + value
+    if not totals:
+        return {}
+    # `filesFound` NÃO é reconstruído somando os baldes. Medido no acervo real,
+    # a soma dá 8381 para 8016 arquivos e 202 symlinks — 163 a mais, exatamente
+    # o total de updates+DLCs, que as duas varreduras (Switch e diretórios)
+    # contam cada uma por si. Somar publicaria um total que não fecha com o
+    # disco. Os baldes individuais continuam verdadeiros e são o que importa
+    # para o usuário entender o que ficou de fora.
+    return {
+        "updates": totals.get("updates", 0),
+        "dlcs": totals.get("dlcs", 0),
+        "incompatible": totals.get("incompatible", 0),
+        "ignored": totals.get("ignored", 0),
+        "incompatibleReasons": {},
+        "ignoredReasons": {},
+        "platformCounts": {},
+        "roots": len(root_stats),
+    }
