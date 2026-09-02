@@ -679,6 +679,20 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 self._required_string(payload, "scheme"),
                 self._required_string(payload, "name"),
             )
+        if path == "/theme/import/retrofe/inspect":
+            return self._dashboard().theme_import_retrofe_inspect(
+                self._required_string(payload, "source"),
+            )
+        if path == "/theme/import/retrofe/apply":
+            return self._dashboard().theme_import_retrofe_apply(
+                self._required_string(payload, "source"),
+                self._required_string(payload, "layout"),
+                self._required_string(payload, "sceneId"),
+                self._required_string(payload, "name"),
+                self._required_string(payload, "author"),
+                self._required_string(payload, "license"),
+                overwrite=payload.get("overwrite") is True,
+            )
         if path == "/theme/editor/create":
             return self._dashboard().editor_create(
                 self._required_string(payload, "name"),

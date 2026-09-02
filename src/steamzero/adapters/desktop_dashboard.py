@@ -44,7 +44,7 @@ from steamzero.core.secret import Secret
 from steamzero.core.session_state import SESSION_OWNER
 from steamzero.core.state import StateStore
 from steamzero.diagnostics.doctor import run_doctor
-from steamzero.domain import theme_import_esde
+from steamzero.domain import theme_import_esde, theme_import_retrofe
 from steamzero.domain.bios_sources import approved_bios_sources, resolve_approved_bios_source
 from steamzero.domain.collections import CollectionManager
 from steamzero.domain.emulation_workspace import build_emulation_workspace
@@ -1814,6 +1814,32 @@ class DesktopDashboard:
             "derived": list(imported.derived),
             "unsupportedSlots": theme_import_esde.unsupported_slots(),
         }
+
+    def theme_import_retrofe_inspect(self, source: str) -> dict[str, Any]:
+        """Inspeciona layouts RetroFE sem instalar ou ativar uma cena."""
+        return theme_import_retrofe.inspect(source)
+
+    def theme_import_retrofe_apply(
+        self,
+        source: str,
+        layout: str,
+        scene_id: str,
+        name: str,
+        author: str,
+        license_id: str,
+        *,
+        overwrite: bool = False,
+    ) -> dict[str, Any]:
+        """Publica uma cena RetroFE compilada, sem aplicar a aparência."""
+        return theme_import_retrofe.apply(
+            source,
+            layout,
+            scene_id=scene_id,
+            name=name,
+            author=author,
+            license_id=license_id,
+            overwrite=overwrite,
+        )
 
     # -- theme editor --------------------------------------------------
 
