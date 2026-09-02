@@ -17,7 +17,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-PRIVILEGED | 7 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SCHEMAS | 49 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SERVICE-API | 11 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-TESTS | 377 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-TESTS | 378 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TOOLS | 39 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AURA-LAUNCHER | 109 | 17 | 13 | hw |  |
 | SZ-AURA-UI | 16 | 4 | 4 | unit |  |
@@ -30,6 +30,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-EMULATION-M10 | 6 | 3 | 2 | vm |  |
 | SZ-EMULATION-PLATFORM-CONTEXT | 3 | 4 | 2 | unit |  |
 | SZ-EMULATION-PLATFORM-SCOPE | 2 | 5 | 4 | unit |  |
+| SZ-EMULATION-STORAGE-MANAGEMENT | 2 | 3 | 2 | unit |  |
 | SZ-EMULATION-STORAGE-READMODEL | 6 | 5 | 4 | unit |  |
 | SZ-FRONTEND-ESDE | 2 | 5 | 2 | unit |  |
 | SZ-FRONTEND-ESDE-SYSTEMS | 3 | 1 | 1 | unit |  |

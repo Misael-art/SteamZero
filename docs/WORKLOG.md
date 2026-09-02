@@ -9140,3 +9140,22 @@ lançamento foi executado. A correção QML dos cards Keys/Firmware, contratos d
 mover/comprimir/desinstalar armazenamento e validação física da release seguem
 fora desta frente e dependem das workstreams proprietárias/autorização do
 operador.
+
+## 2026-09-02 — Sessão: gestão transacional de armazenamento
+
+Workstream: `WS-2026-09-EMULATION-STORAGE-MANAGEMENT`, branch
+`codex/ux-audit-platform-context-2026-09-02`. A área de armazenamento passou a
+publicar atalho de compactação NSZ para uma ROM identificada, ações de atualizar,
+reparar e desinstalar os runtimes observados, e o controller ganhou
+`library.root.move:<rootId>` com destino informado no payload. O plano enumera
+arquivos regulares, congela hashes, recusa symlinks/colisões e atualiza a
+configuração de raízes e diretórios dos emuladores no mesmo plano. A primitiva
+transacional conserva diretórios vazios no caminho antigo; nenhum arquivo é
+apagado implicitamente.
+
+Provas: `3 passed` no contrato de gestão e `6 passed` no recorte combinado;
+Ruff, formatação, mypy, independência e boundaries passaram. A suíte integral
+foi tentada com `TMPDIR=/tmp`, repetiu o bloqueio em 17% e foi interrompida sem
+processos ou sockets residuais. O seletor visual de destino ainda depende do
+frontend QML sob custódia de outra frente; nenhuma instalação, publicação,
+rollback, download, varredura real ou lançamento foi executado.

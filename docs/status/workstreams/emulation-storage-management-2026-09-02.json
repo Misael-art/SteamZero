@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-EMULATION-STORAGE-MANAGEMENT",
+  "item": "SZ-EMULATION-STORAGE-MANAGEMENT",
+  "branch": "codex/ux-audit-platform-context-2026-09-02",
+  "baseRef": "b660467",
+  "owner": "codex-ux-audit",
+  "state": "closed",
+  "exclusivePaths": [
+    "src/steamzero/adapters/emulation.py",
+    "tests/integration/test_emulation_storage_management.py"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Integrar seletor visual de destino no frontend proprietário e validar a experiência na release instalada.",
+  "updatedAt": "2026-09-02"
+}

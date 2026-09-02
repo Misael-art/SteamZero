@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-EMULATION-STORAGE-MANAGEMENT",
+  "title": "Contratos de gestão de armazenamento da emulação",
+  "domain": "emulation",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/adapters/emulation.py",
+    "tests/integration/test_emulation_storage_management.py"
+  ],
+  "scopeDigest": "c474928bb2d4acf9cbc264e3631d4c2a050a4e923063170353c00763cde62339",
+  "dependsOn": [
+    "SZ-EMULATION-STORAGE-READMODEL"
+  ],
+  "knownGaps": [
+    "GAP-STORAGE-MOVE-UI-DESTINATION",
+    "GAP-STORAGE-BATCH-COMPRESSION",
+    "GAP-EMULATION-PHYSICAL-LAUNCH"
+  ],
+  "acceptanceCriteria": [
+    "Mover uma raiz registrada gera preview transacional, recusa colisões e atualiza o registro de raízes no mesmo plano.",
+    "A conversão NSZ permanece acessível como atalho de compactação sem substituir a ROM original implicitamente.",
+    "A área de armazenamento referencia a desinstalação existente de emuladores, preservando confirmação e rollback.",
+    "Mudança de origem depois do preview falha sem mover arquivos nem alterar a configuração.",
+    "A operação deixa evidência de plano, confirmação, rollback e arquivos preservados."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_emulation_storage_management.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_emulation_storage_management.py tests/integration/test_emulation_platform_scope.py tests/integration/test_emulation_storage.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "ruff check, ruff format --check, mypy src e make independence boundaries",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests -q; runner permaneceu sem saída em 17% e foi interrompido; nenhum processo ou socket residual",
+      "result": "partial"
+    }
+  ],
+  "nextAction": "Integrar seletor visual de destino no frontend proprietário e validar a experiência na release instalada.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-09-02",
+  "notes": "O read model de armazenamento já publica estatísticas, mas a captura ainda não oferece movimento de diretórios, compactação de ROMs ou um agrupamento de gestão. O backend já possui primitives transacionais de movimento e conversão; esta fatia as conecta ao controller sem executar operações no host."
+}
