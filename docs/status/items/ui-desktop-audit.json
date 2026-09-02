@@ -45,7 +45,7 @@
     "tools/ui_dialog_probe.qml",
     "tools/ui_scenario_fixtures.py"
   ],
-  "scopeDigest": "ae24271cbac448b429074ade5900db0f95743fdd2b979a449fa0d1bdd5253f47",
+  "scopeDigest": "94dc0380ce4ab1e1de501ce4caaa4aa194d781b86ce12ad52e4679217fd09166",
   "dependsOn": [],
   "knownGaps": [
     "GAP-UI-CONTRAST-MEASUREMENT",
@@ -248,6 +248,12 @@
       "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun/verification.txt",
       "command": "lote focado interrompido por timeout apos oito casos em captura QML; nao promovido como aprovado. Nenhum processo residual.",
       "result": "partial"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun/08-deep-functional-ux-audit.md",
+      "command": "matriz consolidada UX-01..UX-16 com severidade, evidência, estado e critério de aceite; backend de escopo/armazenamento distinguido dos gaps de QML e validação física",
+      "result": "recorded"
     }
   ],
   "nextAction": "Corrigir a ativacao live do Launcher antes de certificar jogos. Em paralelo, fechar os artefatos de contraste/truncamento do tema claro, tornar Emulacao e Temas navegaveis por controle e repetir a matriz em lote sem travamento do harness QML.",

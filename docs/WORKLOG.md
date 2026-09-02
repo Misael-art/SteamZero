@@ -9159,3 +9159,18 @@ foi tentada com `TMPDIR=/tmp`, repetiu o bloqueio em 17% e foi interrompida sem
 processos ou sockets residuais. O seletor visual de destino ainda depende do
 frontend QML sob custódia de outra frente; nenhuma instalação, publicação,
 rollback, download, varredura real ou lançamento foi executado.
+
+## 2026-09-02 — Sessão: matriz consolidada de auditoria funcional e UX
+
+A reauditoria foi consolidada em
+`docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun/08-deep-functional-ux-audit.md`.
+O documento lista UX-01..UX-16, separando P0/P1, evidência visual/técnica,
+estado atual e critério de aceite. O resultado distingue as correções já
+entregues no backend (isolamento por plataforma, read model de armazenamento e
+planos de movimento/NSZ) dos bloqueios ainda pertencentes ao QML compartilhado,
+à integração de temas e à validação física do Launcher.
+
+O documento também registra o novo teste técnico: bateria focada aprovada,
+gates estáticos aprovados e suíte integral reproduzindo a parada em 17% com
+`TMPDIR=/tmp`, sem pytest ou socket residual. Nenhuma ação de host, publicação,
+push ou lançamento físico foi feita nesta sessão.
