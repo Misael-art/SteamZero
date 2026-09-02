@@ -21,7 +21,7 @@
     "tests/unit/test_core_net.py",
     "tests/unit/test_media_multiprovider.py"
   ],
-  "scopeDigest": "172bf768df7484fda18ac8eeb828ae24cfabe6da79a4907bc5fcb79c3ebd263c",
+  "scopeDigest": "0d459c28f44d85e2f5146507052c8b33c7f19df1c3e191e0ee69b34b04343ec5",
   "dependsOn": [
     "SZ-MEDIA-SCRAPING"
   ],
@@ -48,5 +48,5 @@
   "nextAction": "Restaurar ssid/sspassword do operador no Secret Service e repetir busca real em uma release futura; não há download a tentar sem essa credencial.",
   "activeWorkstreams": [],
   "updatedAt": "2026-09-01",
-  "notes": "supported_platforms era um contrato morto: cada adapter o declarava, mas ProviderRegistry filtrava somente media_kind. A preferência por cobertura declarada preserva fallback amplo para plataformas sem declaração. A prova física revelou que BaseMediaProvider transformava qualquer HTTP 403 em quota antes de ScreenScraperAdapter ler o motivo retornado pelo servidor. A consulta real sem expor segredo confirmou credencial recusada e cofre sem ssid/sspassword; não foi demonstrada quota nem usuário fictício. Digest renovado pela correcao de perda de plataforma no cache canonico; nenhum estagio deste item foi promovido. Os tres produtores de platform_slug pararam de adivinhar Switch (2026-09-01): o consumidor de media.search, a varredura em lote e a busca de um jogo so — esta ultima nao declarava plataforma alguma, entao TODA busca interativa era feita como se o jogo fosse de Switch. O vazio e seguro porque providers_for_kind refaz a busca sem filtro quando nenhum provider declara o slug; o palpite nao degradava, filtrava para a plataforma errada. Nenhum estagio promovido."
+  "notes": "supported_platforms era um contrato morto: cada adapter o declarava, mas ProviderRegistry filtrava somente media_kind. A preferência por cobertura declarada preserva fallback amplo para plataformas sem declaração. A prova física revelou que BaseMediaProvider transformava qualquer HTTP 403 em quota antes de ScreenScraperAdapter ler o motivo retornado pelo servidor. A consulta real sem expor segredo confirmou credencial recusada e cofre sem ssid/sspassword; não foi demonstrada quota nem usuário fictício. Digest renovado pela correcao de perda de plataforma no cache canonico; nenhum estagio deste item foi promovido. Os tres produtores de platform_slug pararam de adivinhar Switch (2026-09-01): o consumidor de media.search, a varredura em lote e a busca de um jogo so — esta ultima nao declarava plataforma alguma, entao TODA busca interativa era feita como se o jogo fosse de Switch. O vazio e seguro porque providers_for_kind refaz a busca sem filtro quando nenhum provider declara o slug; o palpite nao degradava, filtrava para a plataforma errada. Nenhum estagio promovido. Digest renovado pelo suporte a container nativo (2026-09-01); nenhum estagio deste item foi promovido."
 }
