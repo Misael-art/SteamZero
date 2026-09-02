@@ -71,4 +71,27 @@ def test_summary_does_not_follow_symlinks(tmp_path: Path) -> None:
     assert bucket["state"] == "degraded"
     assert bucket["files"] == 0
     assert bucket["bytes"] == 0
-    assert "simbólica" in bucket["error"]
+    assert "simbólico" in bucket["error"]
+
+
+def test_summary_blocks_a_root_below_a_symlink_parent(tmp_path: Path) -> None:
+    physical = tmp_path / "physical"
+    (physical / "roms").mkdir(parents=True)
+    (physical / "roms" / "game.nes").write_bytes(b"nes")
+    parent_link = tmp_path / "parent-link"
+    parent_link.symlink_to(physical, target_is_directory=True)
+
+    summary = collect_storage_summary(
+        rom_roots=(parent_link / "roms",),
+        emulator_roots=(),
+        saves_root=tmp_path / "saves",
+        media_root=tmp_path / "media",
+        cache_roots=(),
+        volume_root=tmp_path,
+        statvfs=_statvfs,
+    )
+
+    bucket = next(bucket for bucket in summary["buckets"] if bucket["id"] == "roms")
+    assert bucket["state"] == "degraded"
+    assert bucket["files"] == 0
+    assert "diretório pai" in bucket["error"]

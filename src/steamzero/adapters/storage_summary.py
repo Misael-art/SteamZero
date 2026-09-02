@@ -19,12 +19,13 @@ StatVFS = Callable[[str | bytes | os.PathLike[str] | os.PathLike[bytes]], os.sta
 
 
 def _scan_root(root: Path) -> dict[str, Any]:
-    if root.is_symlink():
+    absolute = root.absolute()
+    if root.is_symlink() or any(parent.is_symlink() for parent in absolute.parents):
         return {
             "state": "blocked",
             "files": 0,
             "bytes": 0,
-            "error": "a raiz simbólica não é contabilizada",
+            "error": "a raiz ou um diretório pai simbólico não é contabilizado",
         }
     try:
         resolved = root.resolve(strict=True)
