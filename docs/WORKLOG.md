@@ -9218,3 +9218,19 @@ Provas: `qmllint` e os três harnesses QML do editor passaram; Ruff, formataçã
 mypy, independência e boundaries passaram. A suíte integral repetiu a parada
 em 17% e foi interrompida sem processos ou sockets residuais. Nenhuma
 instalação, publicação, push ou ação de host foi executada.
+
+## 2026-09-02 — Sessão: auditoria de mídia por plataforma
+
+Workstream: `WS-2026-09-MEDIA-AUDIT-PLATFORM-SCOPE`, branch
+`codex/ux-audit-platform-context-2026-09-02`. O modo `media.audit` passou a
+aceitar o escopo efetivo da plataforma: filtra masters, otimizações, links e
+registros pelo segmento gerenciado, preserva a auditoria global quando não há
+filtro e grava o `platformId` no relatório persistido. O resultado do job
+também expõe escopo e o resumo passa a informar de qual escopo veio a última
+auditoria.
+
+Provas: `2 passed` no teste de auditoria; Ruff, formatação, mypy,
+independência e boundaries passaram. A suíte integral foi tentada com
+`TMPDIR=/tmp`, repetiu a parada em 17% e foi interrompida sem processos ou
+sockets residuais. Nenhuma instalação, publicação, push ou ação de host foi
+executada.

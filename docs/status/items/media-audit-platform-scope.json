@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-MEDIA-AUDIT-PLATFORM-SCOPE",
+  "title": "Auditoria do pipeline de mídia por plataforma",
+  "domain": "media",
+  "implementation": "planned",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/domain/media_pipeline.py",
+    "src/steamzero/domain/switch_media.py",
+    "src/steamzero/adapters/emulation.py",
+    "tests/integration/test_media_audit_platform_scope.py"
+  ],
+  "scopeDigest": "b8029edef9cf6975bf9a0cb5e54571c3317880b6c5dba60374bbad109a799e65",
+  "dependsOn": [
+    "SZ-MEDIA-PIPELINE-PLATFORM-SCOPE"
+  ],
+  "knownGaps": [
+    "GAP-MEDIA-UI-PIPELINE-CLARITY",
+    "GAP-EMULATION-PHYSICAL-LAUNCH"
+  ],
+  "acceptanceCriteria": [
+    "media.audit com platform_id audita somente os masters, otimizações, links e registros da plataforma solicitada.",
+    "media.audit global preserva a cobertura global existente.",
+    "O relatório persistido e a resposta do job declaram o escopo efetivo.",
+    "A auditoria continua somente leitura e não apaga nem altera mídia."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_media_audit_platform_scope.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_media_audit_platform_scope.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "ruff check, ruff format --check, mypy src e make independence boundaries",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests -q; runner permaneceu sem saída em 17% e foi interrompido; nenhum processo ou socket residual",
+      "result": "partial"
+    }
+  ],
+  "nextAction": "Integrar o resultado na superfície visual e validar na release instalada.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-09-02",
+  "notes": "A auditoria acionada dentro de uma plataforma precisa preservar o mesmo isolamento já aplicado às métricas e aos jobs de mídia."
+}
