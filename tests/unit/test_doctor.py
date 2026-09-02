@@ -58,6 +58,60 @@ def test_doctor_reports_g25_audit_checks_when_clean(
     assert data["orphanJournals"] == 0
 
 
+def test_doctor_publishes_recovery_guidance_for_stale_jobs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    from steamzero.core import fs as core_fs
+    from steamzero.core import state as core_state
+    from steamzero.jobs.manager import JobManager
+
+    core_fs.ensure_state_layout()
+    store = core_state.open_state()
+    try:
+        store.migrate()
+        stale = JobManager(store).create("media.global")
+        stale.state = "running"
+        store.save_job(stale.to_row())
+    finally:
+        store.close()
+
+    _data, checks = run_doctor()
+    check = next(item for item in checks if item["name"] == "jobs.stale")
+    assert check["status"] == "warn"
+    assert check["severity"] == "warning"
+    assert check["what"]
+    assert check["impact"]
+    assert "Tarefas" in check["manualAction"]
+    assert check["action"] == {
+        "kind": "navigate",
+        "target": "system.operations",
+        "label": "Abrir tarefas",
+        "enabled": True,
+        "requiresConfirmation": False,
+    }
+
+
+def test_doctor_marks_operator_only_recovery_without_fake_action(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    with patch("steamzero.diagnostics.doctor.boot_status") as mock:
+        mock.return_value = {
+            "state": "backoff",
+            "configured": True,
+            "permissionDenied": False,
+            "reason": "falhas repetidas",
+            "backoff": True,
+        }
+        _data, checks = run_doctor()
+
+    check = next(item for item in checks if item["name"] == "boot.direct")
+    assert check["status"] == "warn"
+    assert check["action"] is None
+    assert "operador" in check["manualAction"]
+
+
 def test_doctor_warns_on_stale_jobs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # G25: um job running (stalado) faz jobs.stale virar warn — elimina o falso
     # verde operacional que motivou o G25.

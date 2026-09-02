@@ -2,8 +2,10 @@
 # Copyright (C) 2026 SteamZero contributors
 """Doctor mínimo (M2). Verifica saúde do núcleo sem mutar estado do usuário.
 
-Cada check tem name/status(pass|warn|fail)/message. O status geral do envelope
-deriva dos checks. Evidência antes de afirmação (P10): reporta o que verificou.
+Cada check mantém ``name/status/message`` para compatibilidade e acrescenta
+guidance estruturado: o que foi observado, impacto, orientação e ação segura.
+Isso permite que a superfície Sistema seja orientada à recuperação sem fazer o
+Doctor executar mutações por conta própria.
 """
 
 from __future__ import annotations
@@ -23,9 +25,149 @@ from steamzero.core.identity import runtime_identity
 from steamzero.core.state import StateStore
 from steamzero.domain import state_audit
 
+_READ_ONLY_ACTIONS: dict[str, dict[str, object]] = {
+    "operations": {
+        "kind": "navigate",
+        "target": "system.operations",
+        "label": "Abrir tarefas",
+        "enabled": True,
+        "requiresConfirmation": False,
+    },
+    "diagnostics": {
+        "kind": "navigate",
+        "target": "system.diagnostics.export",
+        "label": "Exportar diagnóstico",
+        "enabled": True,
+        "requiresConfirmation": True,
+    },
+}
 
-def _check(name: str, status: str, message: str) -> dict[str, str]:
-    return {"name": name, "status": status, "message": message}
+
+_CHECK_GUIDANCE: dict[str, dict[str, object]] = {
+    "runtime.python": {
+        "what": "A versão de Python disponível para o SteamZero.",
+        "impact": "Uma versão incompatível impede executar componentes do aplicativo.",
+        "manualAction": (
+            "Atualize o runtime pelo pacote aprovado e execute o diagnóstico novamente."
+        ),
+    },
+    "runtime.provenance": {
+        "what": "A identidade e a origem da release em execução.",
+        "impact": (
+            "Sem proveniência, a versão ativa não pode ser comparada com o daemon com segurança."
+        ),
+        "manualAction": (
+            "Confirme a release instalada com o operador antes de qualquer atualização."
+        ),
+        "action": "diagnostics",
+    },
+    "service.generation": {
+        "what": "A convergência entre a release ativa e o daemon.",
+        "impact": (
+            "Divergência pode fazer a interface e o serviço responderem com estados diferentes."
+        ),
+        "manualAction": (
+            "Não reinicie nem instale manualmente; registre o diagnóstico e siga o "
+            "fluxo governado de release."
+        ),
+        "action": "diagnostics",
+    },
+    "state.layout": {
+        "what": "A existência das pastas de estado exigidas pelo aplicativo.",
+        "impact": "Uma pasta ausente pode impedir tarefas, rollback ou recuperação persistente.",
+        "manualAction": (
+            "Exporte o diagnóstico e peça reparo pelo fluxo aprovado; esta leitura "
+            "não altera o estado."
+        ),
+        "action": "diagnostics",
+    },
+    "state.db.integrity": {
+        "what": "A integridade lógica do banco de estado.",
+        "impact": "Falha pode tornar catálogos, tarefas ou rollbacks indisponíveis.",
+        "manualAction": "Exporte o diagnóstico antes de qualquer reparo para preservar evidência.",
+        "action": "diagnostics",
+    },
+    "jobs.stale": {
+        "what": "Operações que ficaram em execução sem concluir após uma interrupção.",
+        "impact": "A tarefa pode não ter aplicado tudo e não deve ser repetida às cegas.",
+        "manualAction": (
+            "Abra Tarefas, confira o detalhe e use somente a recuperação disponível "
+            "para aquela operação."
+        ),
+        "action": "operations",
+    },
+    "staging.orphan": {
+        "what": "Árvores temporárias sem operação correspondente no banco.",
+        "impact": (
+            "O espaço pode estar ocupado por dados que não pertencem a uma tarefa recuperável."
+        ),
+        "manualAction": (
+            "Abra Tarefas e exporte o diagnóstico; não apague a árvore sem "
+            "confirmação de ownership."
+        ),
+        "action": "operations",
+    },
+    "backup.orphan": {
+        "what": "Backups sem operação correspondente no banco.",
+        "impact": (
+            "O backup pode ser necessário para recuperação e não pode ser tratado "
+            "como lixo automaticamente."
+        ),
+        "manualAction": "Abra Tarefas, preserve o backup e solicite revisão antes de removê-lo.",
+        "action": "operations",
+    },
+    "journal.orphan": {
+        "what": "Journals sem operação correspondente no banco.",
+        "impact": "A trilha de uma operação pode estar incompleta para auditoria ou rollback.",
+        "manualAction": (
+            "Exporte o diagnóstico e peça reconciliação; o Doctor não modifica journals."
+        ),
+        "action": "diagnostics",
+    },
+    "recovery.pending": {
+        "what": "Operações não terminais registradas no journal.",
+        "impact": "Aplicar outra ação antes da recuperação pode aumentar o risco de duplicação.",
+        "manualAction": (
+            "Abra Tarefas, revise a operação e aguarde ou confirme a recuperação indicada."
+        ),
+        "action": "operations",
+    },
+    "deck.input.keys": {
+        "what": "Se os botões do Deck chegam ao sistema como teclas reconhecíveis.",
+        "impact": "Sem um caminho de entrada, a navegação por controle pode não responder.",
+        "manualAction": (
+            "Verifique o provider de entrada no host; nenhum ajuste é aplicado pelo Doctor."
+        ),
+    },
+    "boot.direct": {
+        "what": "O estado observado da cadeia de boot direto do SteamZero.",
+        "impact": (
+            "Backoff, degradação ou permissão negada podem impedir a entrada no modo de jogo."
+        ),
+        "manualAction": (
+            "Siga a validação de boot com o operador; esta tela somente observa e "
+            "não altera o host."
+        ),
+    },
+}
+
+
+def _check(name: str, status: str, message: str) -> dict[str, Any]:
+    guidance = _CHECK_GUIDANCE.get(name, {})
+    action_key = guidance.get("action")
+    action = _READ_ONLY_ACTIONS.get(action_key) if isinstance(action_key, str) else None
+    return {
+        "name": name,
+        "status": status,
+        "message": message,
+        "severity": {"pass": "ok", "warn": "warning", "fail": "error"}.get(status, "unknown"),
+        "what": guidance.get("what", "Verificação do estado do sistema."),
+        "impact": guidance.get("impact", "O estado requer atenção antes de prosseguir."),
+        "manualAction": guidance.get(
+            "manualAction", "Nenhuma ação automática é executada por esta verificação."
+        ),
+        "action": dict(action) if action is not None else None,
+    }
 
 
 def _pending_operations() -> int:
@@ -39,9 +181,9 @@ def _pending_operations() -> int:
     return pending
 
 
-def run_doctor() -> tuple[dict[str, Any], list[dict[str, str]]]:
+def run_doctor() -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Executa os checks do doctor; retorna (data, checks)."""
-    checks: list[dict[str, str]] = []
+    checks: list[dict[str, Any]] = []
 
     py = sys.version_info
     checks.append(
