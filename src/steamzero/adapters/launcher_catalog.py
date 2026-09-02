@@ -102,3 +102,49 @@ def catalog_games(records: Sequence[Mapping[str, Any]]) -> tuple[CatalogGame, ..
             )
         )
     return tuple(games)
+
+
+def catalog_summary(
+    payload: Mapping[str, Any] | None,
+    catalog: Sequence[CatalogGame],
+    records: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Publica a reconciliação do scan sem transformar arquivo em palpite.
+
+    O resumo vem do envelope da varredura canônica quando disponível. Para uma
+    lista crua passada por ``--library``, só fatos observáveis nessa lista são
+    publicados; contadores de arquivos não são inventados.
+    """
+    raw = payload if isinstance(payload, Mapping) else {}
+    raw_summary = raw.get("scanSummary")
+    summary = dict(raw_summary) if isinstance(raw_summary, Mapping) else {}
+    if not summary:
+        summary = {
+            "filesFound": len(records),
+            "games": len(catalog),
+            "updates": sum(
+                1 for record in records if str(record.get("contentKind") or "base") == "update"
+            ),
+            "dlcs": sum(
+                1 for record in records if str(record.get("contentKind") or "base") == "dlc"
+            ),
+            "incompatible": 0,
+            "ignored": 0,
+            "incompatibleReasons": {},
+            "ignoredReasons": {},
+            "platformCounts": {},
+            "roots": 0,
+        }
+    summary["games"] = len(catalog)
+    platform_counts: dict[str, int] = {}
+    for game in catalog:
+        platform_counts[game.platform] = platform_counts.get(game.platform, 0) + 1
+    summary["platformCounts"] = platform_counts
+    summary.setdefault("updates", 0)
+    summary.setdefault("dlcs", 0)
+    summary.setdefault("incompatible", 0)
+    summary.setdefault("ignored", 0)
+    summary.setdefault("incompatibleReasons", {})
+    summary.setdefault("ignoredReasons", {})
+    summary.setdefault("filesFound", len(records))
+    return summary

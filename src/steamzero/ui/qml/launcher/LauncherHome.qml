@@ -22,6 +22,7 @@ Item {
     required property var focusMap
     // Seções já ordenadas: [{id, title, items: [{id, title}]}].
     required property var sections
+    property var catalogSummary: ({})
 
     property string currentFocus: focusMap && focusMap.initial ? focusMap.initial : ""
     // Preferências de acessibilidade herdadas do host (highContrast etc.).
@@ -175,6 +176,21 @@ Item {
             color: home.currentFocus === "header:home"
                 ? home._hc("#22d3ee", "#55d8ff") : home._hc("#8b93a8", "#c6d0db")
             font.pixelSize: 20
+        }
+
+        Text {
+            visible: Number(home.catalogSummary.filesFound || 0) > 0
+            text: qsTr("%1 arquivo(s) encontrados · %2 jogo(s) · %3 update(s)/DLC · %4 para revisão")
+                .arg(home.catalogSummary.filesFound || 0)
+                .arg(home.catalogSummary.games || 0)
+                .arg(Number(home.catalogSummary.updates || 0)
+                    + Number(home.catalogSummary.dlcs || 0))
+                .arg(Number(home.catalogSummary.incompatible || 0)
+                    + Number(home.catalogSummary.ignored || 0))
+            color: home._hc("#8b93a8", "#c6d0db")
+            font.pixelSize: 12
+            Accessible.name: qsTr("Resumo da biblioteca")
+            Accessible.description: text
         }
 
         Repeater {

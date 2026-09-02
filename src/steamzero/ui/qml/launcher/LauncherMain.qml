@@ -308,6 +308,7 @@ Window {
                 id: launcherShell
                 focusMap: root.model.focusMap
                 sections: root.model.sections
+                catalogSummary: root.model.catalogSummary || ({})
                 accessibility: root.accessibility
                 resolveGamePage: function(gameId) { return root._resolveGamePage(gameId) }
                 returnContext: root.model.returnContext || null

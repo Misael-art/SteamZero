@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from steamzero.adapters.launcher_catalog import catalog_games, catalog_summary
 from steamzero.adapters.launcher_ui import LauncherBridge
 from steamzero.launcher.app import build_sections, build_titles, main
 
@@ -66,6 +67,40 @@ def test_the_bridge_publishes_context_consumed_by_the_real_entry_point(tmp_path:
     with bridge.serving() as base:
         model = _get(f"{base}/model", bridge.token)
     assert model["returnContext"] == {"gameId": "celeste", "focusId": "library:celeste"}
+
+
+def test_the_launcher_model_publishes_scan_reconciliation(tmp_path: Path) -> None:
+    records = [
+        {"id": "a1", "name": "Chrono Trigger", "platform": "snes"},
+        {"id": "u1", "name": "Update", "platform": "snes", "contentKind": "update"},
+    ]
+    catalog = catalog_games(records)
+    summary = catalog_summary(
+        {
+            "scanSummary": {
+                "filesFound": 7,
+                "updates": 1,
+                "dlcs": 0,
+                "incompatible": 2,
+                "ignored": 1,
+                "incompatibleReasons": {"archive-needs-extraction": 2},
+            }
+        },
+        catalog,
+        records,
+    )
+    bridge = LauncherBridge(
+        sections=build_sections(records),
+        titles=build_titles(records),
+        context_path=tmp_path / "return.json",
+        on_launch=lambda game, focus: None,
+        catalog_summary=summary,
+    )
+    with bridge.serving() as base:
+        model = _get(f"{base}/model", bridge.token)
+    assert model["catalogSummary"]["filesFound"] == 7
+    assert model["catalogSummary"]["games"] == 1
+    assert model["catalogSummary"]["incompatibleReasons"] == {"archive-needs-extraction": 2}
 
 
 def test_the_bridge_refuses_a_request_without_the_token(tmp_path: Path) -> None:

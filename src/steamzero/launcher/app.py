@@ -21,7 +21,7 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from steamzero.adapters.launcher_catalog import CatalogGame, catalog_games
+from steamzero.adapters.launcher_catalog import CatalogGame, catalog_games, catalog_summary
 from steamzero.core import paths
 from steamzero.launcher.launch import LaunchPlan, Spawn, consume_context, launch_detached
 from steamzero.launcher.navigation import HomeSection
@@ -85,7 +85,9 @@ def canonical_library_path() -> Path:
     return paths.data_home() / "emulation-library-cache-v1.json"
 
 
-def _read_library(path: Path | None) -> list[Mapping[str, Any]]:
+def _read_library_payload(
+    path: Path | None,
+) -> tuple[list[Mapping[str, Any]], Mapping[str, Any] | None]:
     """Lê o acervo, achando-o sozinho quando ninguém disse onde está.
 
     Quem abre o Launcher pelo entry point não passa ``--library``, e sem isso a
@@ -99,16 +101,21 @@ def _read_library(path: Path | None) -> list[Mapping[str, Any]]:
     """
     source = path if path is not None else canonical_library_path()
     if not source.is_file():
-        return []
+        return [], None
     try:
         payload = json.loads(source.read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return []
+        return [], None
+    envelope = payload if isinstance(payload, Mapping) else None
     if isinstance(payload, Mapping):
         payload = payload.get("games")
     if not isinstance(payload, list):
-        return []
-    return [item for item in payload if isinstance(item, Mapping)]
+        return [], envelope
+    return [item for item in payload if isinstance(item, Mapping)], envelope
+
+
+def _read_library(path: Path | None) -> list[Mapping[str, Any]]:
+    return _read_library_payload(path)[0]
 
 
 def _context_path() -> Path:
@@ -276,7 +283,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     restored_context = consume_context(context_path)
     return_context = restored_context if isinstance(restored_context, Mapping) else None
 
-    library = _read_library(args.library)
+    library, payload = _read_library_payload(args.library)
     catalog = catalog_games(library)
     sections = _sections_from_catalog(catalog) + _sections_from_collections(catalog)
     titles = {game.id: game.title for game in catalog}
@@ -294,6 +301,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         on_launch=router.launch,
         accessibility=accessibility,
         return_context=return_context,
+        catalog_summary=catalog_summary(payload, catalog, library),
     )
     return launch_launcher_ui(bridge)
 

@@ -18,6 +18,7 @@ Item {
 
     required property var focusMap
     required property var sections
+    property var catalogSummary: ({})
     // Preferências de acessibilidade herdadas do host (highContrast etc.).
     property var accessibility: ({"highContrast": false, "visualScale": 1.0, "reducedMotion": false})
     // Função que devolve a página de um jogo, injetada por quem monta o shell.
@@ -152,6 +153,7 @@ Item {
         visible: shell.screen === "home"
         focusMap: shell.focusMap
         sections: shell.sections
+        catalogSummary: shell.catalogSummary
         currentFocus: shell.homeFocus
         accessibility: shell.accessibility
         onCurrentFocusChanged: shell.homeFocus = currentFocus

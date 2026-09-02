@@ -1657,9 +1657,11 @@ class EmulationController:
     def _count_unclaimed(
         self,
         root: Path,
-        counts: dict[str, int],
+        counts: dict[str, Any],
         discovered: dict[str, dict[str, Any]],
         errors: list[str],
+        scanner: PlatformRomScanner | None = None,
+        claimed_paths: set[str] | None = None,
     ) -> None:
         """Contabiliza o que nenhuma varredura reivindicou nesta raiz.
 
@@ -1681,12 +1683,32 @@ class EmulationController:
                     # sufixo comprimido era contado como incompatível mesmo
                     # tendo sido canonizado, e um container nativo apareceria
                     # ao mesmo tempo no catálogo e na conta de incompatíveis.
-                    if str(candidate) in discovered:
+                    if str(candidate) in (claimed_paths or set(discovered)):
                         continue
                     if candidate.suffix.casefold() in self._ARCHIVE_SUFFIXES:
                         counts["incompatible"] += 1
+                        reason = "archive-unclassified"
+                        if scanner is not None:
+                            siblings = {
+                                item.name for item in candidate.parent.iterdir() if item.is_file()
+                            }
+                            _platform, _kind, evidence = scanner.classify(
+                                candidate.name,
+                                siblings,
+                                path=candidate,
+                            )
+                            if evidence.startswith("archive-"):
+                                reason = evidence
+                        reasons = counts.setdefault("incompatibleReasons", {})
+                        if isinstance(reasons, dict):
+                            reasons[reason] = int(reasons.get(reason, 0)) + 1
                     else:
                         counts["ignored"] = counts.get("ignored", 0) + 1
+                        reasons = counts.setdefault("ignoredReasons", {})
+                        if isinstance(reasons, dict):
+                            reasons["unsupported-format"] = (
+                                int(reasons.get("unsupported-format", 0)) + 1
+                            )
         except OSError as exc:
             errors.append(f"{root}: {exc}")
             counts["errors"] += 1
@@ -1710,7 +1732,16 @@ class EmulationController:
             ctx.set_progress("scan", current=0, total=len(roots), unit="roots")
         for root_index, raw_root in enumerate(roots):
             root = Path(raw_root)
-            counts = {"base": 0, "updates": 0, "dlcs": 0, "incompatible": 0, "errors": 0}
+            counts: dict[str, Any] = {
+                "base": 0,
+                "updates": 0,
+                "dlcs": 0,
+                "incompatible": 0,
+                "ignored": 0,
+                "errors": 0,
+                "incompatibleReasons": {},
+                "ignoredReasons": {},
+            }
             if ctx is not None:
                 ctx.safepoint()
                 ctx.set_progress(
@@ -1751,25 +1782,34 @@ class EmulationController:
                 if row.disposition == "matched"
                 for item in row.auxiliary_content
             )
-            if not any(match.content_kind == "base" for match in plat_matches):
-                directory_report.extend(
-                    {
-                        "root": str(row.path),
-                        "disposition": row.disposition,
-                        "platformId": row.platform_id,
-                        "gameCount": row.game_count,
-                        "selectedCount": len(row.selected_games),
-                        "skippedSymlinks": row.skipped_symlinks,
-                    }
-                    for row in directory_rows
-                )
-                plat_matches = [
+            directory_report.extend(
+                {
+                    "root": str(row.path),
+                    "disposition": row.disposition,
+                    "platformId": row.platform_id,
+                    "gameCount": row.game_count,
+                    "selectedCount": len(row.selected_games),
+                    "skippedSymlinks": row.skipped_symlinks,
+                }
+                for row in directory_rows
+            )
+            all_platform_matches: list[Any] = []
+            seen_platform_paths: set[str] = set()
+            for candidate in (
+                *plat_matches,
+                *(
                     game
                     for row in directory_rows
                     if row.disposition == "matched"
                     for game in row.selected_games
-                ]
-            for pm in plat_matches:
+                ),
+            ):
+                path_key = str(candidate.path)
+                if path_key in seen_platform_paths:
+                    continue
+                seen_platform_paths.add(path_key)
+                all_platform_matches.append(candidate)
+            for pm in all_platform_matches:
                 if pm.content_kind != "base":
                     continue
                 if str(pm.path) in switch_claimed_paths:
@@ -1818,6 +1858,31 @@ class EmulationController:
                     "platform": pm.platform,
                     "evidence": pm.evidence,
                 }
+            directory_report.extend(
+                {
+                    "root": str(row.path),
+                    "disposition": row.disposition,
+                    "platformId": row.platform_id,
+                    "gameCount": row.game_count,
+                    "selectedCount": len(row.selected_games),
+                    "skippedSymlinks": row.skipped_symlinks,
+                }
+                for row in directory_rows
+            )
+            claimed_paths = (
+                {
+                    str(match.path)
+                    for match in matches
+                    if match.content_kind in {"base", "update", "dlc"}
+                }
+                | {
+                    str(match.path)
+                    for match in all_platform_matches
+                    if match.platform is not None
+                    and match.content_kind in {"base", "update", "dlc"}
+                }
+                | {str(item.path) for row in directory_rows for item in row.auxiliary_content}
+            )
             if switch_base_count == 0:
                 # A contabilidade de arquivos que NENHUM scanner reivindicou
                 # rodava só no caminho do Switch. Numa raiz sem Switch — o caso
@@ -1825,7 +1890,14 @@ class EmulationController:
                 # plataforma — a varredura devolvia "scanned, 0 jogos, 0 erros":
                 # o arquivo sumia sem nenhum diagnóstico. Falha degrada, nunca
                 # some calada (AGENTS.md secão 8).
-                self._count_unclaimed(root, counts, discovered, errors)
+                self._count_unclaimed(
+                    root,
+                    counts,
+                    discovered,
+                    errors,
+                    platform_scanner,
+                    claimed_paths,
+                )
                 root_stats[root_id(root)] = {"counts": counts, "lastScan": scanned_at}
                 continue
             for match in matches:
@@ -1888,7 +1960,14 @@ class EmulationController:
                     # o scanner do Switch já sabia serem de Switch.
                     "platform": "switch",
                 }
-            self._count_unclaimed(root, counts, discovered, errors)
+            self._count_unclaimed(
+                root,
+                counts,
+                discovered,
+                errors,
+                platform_scanner,
+                claimed_paths,
+            )
             root_stats[root_id(root)] = {"counts": counts, "lastScan": scanned_at}
             if ctx is not None:
                 ctx.set_progress(
@@ -1934,22 +2013,6 @@ class EmulationController:
         for game in discovered.values():
             game.pop("updateVersionNumber", None)
         game_rows = sorted(discovered.values(), key=lambda game: str(game["name"]).casefold())
-        payload = {
-            "schemaVersion": 1,
-            "games": game_rows,
-            "unidentified": unidentified,
-            "errors": errors[:20],
-            "ignoredAuxiliary": len(auxiliary),
-            "rootStats": root_stats,
-            "directoryInventory": directory_report,
-            "scannedAt": scanned_at,
-        }
-        fs.write_atomic_text(
-            self._library_cache_path,
-            json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":")),
-        )
-        if ctx is not None:
-            ctx.set_progress("done", current=len(roots), total=len(roots), unit="roots")
         # O resultado da varredura publica o denominador, não só o numerador.
         # Sem isto, uma raiz cujo conteúdo nenhum scanner reivindicou devolvia
         # "scanned, 0 jogos, 0 erros" e o usuário não tinha como distinguir
@@ -1958,14 +2021,77 @@ class EmulationController:
             int(stat["counts"].get("incompatible", 0)) for stat in root_stats.values()
         )
         ignored = sum(int(stat["counts"].get("ignored", 0)) for stat in root_stats.values())
+        incompatible_reasons: dict[str, int] = {}
+        ignored_reasons: dict[str, int] = {}
+        files_found = 0
+        updates = 0
+        dlcs = 0
+        for raw_stat in root_stats.values():
+            raw_counts = raw_stat.get("counts", {})
+            if not isinstance(raw_counts, Mapping):
+                continue
+            files_found += sum(
+                int(raw_counts.get(key, 0))
+                for key in ("base", "updates", "dlcs", "incompatible", "ignored")
+            )
+            updates += int(raw_counts.get("updates", 0))
+            dlcs += int(raw_counts.get("dlcs", 0))
+            for source, target in (
+                (raw_counts.get("incompatibleReasons"), incompatible_reasons),
+                (raw_counts.get("ignoredReasons"), ignored_reasons),
+            ):
+                if not isinstance(source, Mapping):
+                    continue
+                for reason, value in source.items():
+                    target[str(reason)] = target.get(str(reason), 0) + int(value)
+        platform_counts: dict[str, int] = {}
+        for game in game_rows:
+            platform = str(game.get("platform") or "outros")
+            platform_counts[platform] = platform_counts.get(platform, 0) + 1
+        scan_summary = {
+            "filesFound": files_found,
+            "games": len(game_rows),
+            "updates": updates,
+            "dlcs": dlcs,
+            "unidentified": unidentified,
+            "incompatible": incompatible,
+            "ignored": ignored,
+            "incompatibleReasons": incompatible_reasons,
+            "ignoredReasons": ignored_reasons,
+            "platformCounts": platform_counts,
+            "roots": len(roots),
+        }
+        payload = {
+            "schemaVersion": 1,
+            "games": game_rows,
+            "unidentified": unidentified,
+            "errors": errors[:20],
+            "ignoredAuxiliary": len(auxiliary),
+            "rootStats": root_stats,
+            "directoryInventory": directory_report,
+            "scanSummary": scan_summary,
+            "scannedAt": scanned_at,
+        }
+        fs.write_atomic_text(
+            self._library_cache_path,
+            json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":")),
+        )
+        if ctx is not None:
+            ctx.set_progress("done", current=len(roots), total=len(roots), unit="roots")
         return {
             "status": "scanned",
             "games": len(game_rows),
+            "filesFound": files_found,
+            "updates": updates,
+            "dlcs": dlcs,
             "unidentified": unidentified,
             "errors": errors[:20],
             "ignoredAuxiliary": len(auxiliary),
             "incompatible": incompatible,
             "ignored": ignored,
+            "incompatibleReasons": incompatible_reasons,
+            "ignoredReasons": ignored_reasons,
+            "platformCounts": platform_counts,
             "roots": len(roots),
         }
 
@@ -3942,8 +4068,11 @@ class EmulationController:
                 "updates": int(raw_counts.get("updates", 0)),
                 "dlcs": int(raw_counts.get("dlcs", 0)),
                 "incompatible": int(raw_counts.get("incompatible", 0)),
+                "ignored": int(raw_counts.get("ignored", 0)),
                 "errors": int(raw_counts.get("errors", 0)),
             }
+            incompatible_reasons = raw_counts.get("incompatibleReasons", {})
+            ignored_reasons = raw_counts.get("ignoredReasons", {})
             last_scan = raw_stats.get("lastScan") if isinstance(raw_stats, Mapping) else None
             root_games = [
                 game
@@ -4017,6 +4146,7 @@ class EmulationController:
                         f"{sanitize_display_path(root)} · {counts['base']} base(s), "
                         f"{counts['updates']} update(s), {counts['dlcs']} DLC(s), "
                         f"{counts['incompatible']} incompatível(is), "
+                        f"{counts['ignored']} ignorado(s), "
                         f"{counts['errors']} erro(s) · última varredura: "
                         f"{last_scan or 'nunca'}"
                     ),
@@ -4029,10 +4159,66 @@ class EmulationController:
                     "displayPath": sanitize_display_path(root),
                     "accessible": accessible,
                     "counts": counts,
+                    "incompatibleReasons": dict(incompatible_reasons)
+                    if isinstance(incompatible_reasons, Mapping)
+                    else {},
+                    "ignoredReasons": dict(ignored_reasons)
+                    if isinstance(ignored_reasons, Mapping)
+                    else {},
                     "lastScan": last_scan,
                 }
             )
         return rows
+
+    def _library_scan_summary(
+        self,
+        games: Sequence[Mapping[str, Any]],
+        unidentified: int,
+        roots: Sequence[str],
+    ) -> dict[str, Any]:
+        """Lê o resumo canônico da última varredura, com fallback seguro."""
+        summary: dict[str, Any] = {}
+        try:
+            if self._library_cache_path.is_file() and not self._library_cache_path.is_symlink():
+                cached = json.loads(self._library_cache_path.read_text(encoding="utf-8"))
+                raw = cached.get("scanSummary")
+                if isinstance(raw, Mapping):
+                    summary = dict(raw)
+        except (OSError, json.JSONDecodeError, AttributeError):
+            summary = {}
+        summary["games"] = len(games)
+        summary["unidentified"] = unidentified
+        summary.setdefault("filesFound", len(games))
+        summary.setdefault("updates", 0)
+        summary.setdefault("dlcs", 0)
+        summary.setdefault("incompatible", 0)
+        summary.setdefault("ignored", 0)
+        summary.setdefault("incompatibleReasons", {})
+        summary.setdefault("ignoredReasons", {})
+        summary.setdefault("roots", len(roots))
+        return summary
+
+    @staticmethod
+    def _scan_summary_detail(summary: Mapping[str, Any]) -> str:
+        reasons = summary.get("incompatibleReasons", {})
+        labels = {
+            "archive-native": "containers nativos",
+            "archive-needs-extraction": "precisam de extração",
+            "archive-platform-unknown": "sem plataforma reconhecida",
+            "archive-policy-undeclared": "sem política declarada",
+            "archive-unclassified": "containers sem classificação",
+        }
+        details = [
+            f"{int(summary.get('filesFound', 0))} arquivo(s) encontrados",
+            f"{int(summary.get('games', 0))} jogo(s) canônico(s)",
+            f"{int(summary.get('updates', 0))} update(s) · {int(summary.get('dlcs', 0))} DLC(s)",
+            f"{int(summary.get('ignored', 0))} ignorado(s)",
+        ]
+        if isinstance(reasons, Mapping):
+            for reason, value in sorted(reasons.items()):
+                if int(value) > 0:
+                    details.append(f"{int(value)} {labels.get(str(reason), str(reason))}")
+        return " · ".join(details) + "."
 
     def _area_data(
         self,
@@ -4071,6 +4257,7 @@ class EmulationController:
         )
         media_pipeline = self._media_pipeline_summary(games)
         library_root_rows = self._library_root_rows(games)
+        scan_summary = self._library_scan_summary(games, unidentified, roots)
         return {
             "overview": {
                 "cards": [
@@ -4091,6 +4278,17 @@ class EmulationController:
                         "ready" if games else "attention",
                         f"{len(roots)} diretório(s)",
                         action=self._action("library.root.add", "Adicionar diretório"),
+                    ),
+                    self._card(
+                        "library-reconciliation",
+                        "Reconciliação do catálogo",
+                        self._scan_summary_detail(scan_summary),
+                        "attention"
+                        if int(scan_summary.get("incompatible", 0))
+                        or int(scan_summary.get("ignored", 0))
+                        else "ready",
+                        f"{int(scan_summary.get('filesFound', 0))} arquivo(s)",
+                        action=self._action("library.scan", "Atualizar contagens"),
                     ),
                 ],
                 "primaryAction": self._action("library.scan", "Varrer biblioteca"),

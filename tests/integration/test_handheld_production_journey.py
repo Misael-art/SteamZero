@@ -140,6 +140,7 @@ def test_handheld_journey_from_root_to_transactional_steam_publication(
     base_rom.write_bytes(b"base")
     update_rom.write_bytes(b"update")
     dlc_rom.write_bytes(b"dlc")
+    (roms / "ambiguous-dump.zip").write_bytes(b"archive")
 
     root_result = _apply(
         controller,
@@ -150,7 +151,18 @@ def test_handheld_journey_from_root_to_transactional_steam_publication(
     scan_job = _terminal_job(controller, str(scan["jobId"]))
     assert scan_job["rawState"] == "completed"
     assert scan["games"] == 1
+    assert scan["filesFound"] == 4
+    assert scan["updates"] == 1
+    assert scan["dlcs"] == 1
+    assert scan["incompatible"] == 1
+    assert scan["incompatibleReasons"] == {"archive-platform-unknown": 1}
+    assert scan["platformCounts"] == {"switch": 1}
     assert scan["ignoredAuxiliary"] == 2
+    cache = json.loads(
+        (paths.data_home() / "emulation-library-cache-v1.json").read_text(encoding="utf-8")
+    )
+    assert cache["scanSummary"]["filesFound"] == 4
+    assert cache["scanSummary"]["platformCounts"] == {"switch": 1}
 
     snapshot = controller.snapshot({"context": {}})
     games = snapshot["platforms"][0]["games"]

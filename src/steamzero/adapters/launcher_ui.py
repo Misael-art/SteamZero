@@ -124,6 +124,7 @@ class LauncherBridge:
         covers: Mapping[str, str] | None = None,
         accessibility: Mapping[str, Any] | None = None,
         return_context: Mapping[str, Any] | None = None,
+        catalog_summary: Mapping[str, Any] | None = None,
     ) -> None:
         self._sections = tuple(sections)
         self._titles = dict(titles or {})
@@ -132,6 +133,7 @@ class LauncherBridge:
         self._on_launch = on_launch
         self._accessibility = dict(accessibility or {})
         self._return_context = dict(return_context or {}) or None
+        self._catalog_summary = dict(catalog_summary or {})
         self.token = secrets.token_urlsafe(32)
         self._focus = resolve_home_focus(self._sections)
 
@@ -147,6 +149,7 @@ class LauncherBridge:
             # aqui faz a restauração existir no entry point real, e não apenas
             # no harness que injeta returnContext diretamente.
             "returnContext": self._return_context,
+            "catalogSummary": self._catalog_summary,
             "sections": [
                 {
                     "id": section.id,
