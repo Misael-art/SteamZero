@@ -3884,3 +3884,45 @@ class TestMediaSearchDoesNotGuessThePlatform:
         assert pending[0].metadata["platform_slug"] == "master-system", (
             "sem esta declaração a busca interativa procura no catálogo do Switch"
         )
+
+
+class TestScanAccountsForEveryFile:
+    """Reivindicar sem contar faz o arquivo sumir do denominador.
+
+    `auxiliary_content` guarda tudo que não é base, e isso inclui o que o
+    classificador não reconheceu (`content_kind "unknown"`). Reivindicar o
+    desconhecido o tirava dos ignorados sem somá-lo em lugar nenhum. Medido no
+    acervo real do operador em 2026-09-02: 8016 arquivos no disco, 7635
+    contabilizados — 381 sumiam calados, o oposto da reconciliação que a home
+    publica.
+    """
+
+    def test_an_unclassified_file_is_ignored_with_a_reason(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        controller = _controller(monkeypatch, tmp_path)
+        roms = tmp_path / "home" / "roms"
+        nes = roms / "nes"
+        nes.mkdir(parents=True, exist_ok=True)
+        (nes / "Metroid.nes").write_bytes(b"NES\x1a" + b"0" * 64)
+        # Extensão que nenhuma plataforma declara: o classificador não a
+        # reconhece e ela entrava em `auxiliary_content` como "unknown".
+        (nes / "leiame.qualquercoisa").write_bytes(b"x" * 32)
+
+        result = controller.scan_library()
+        job = result.get("job") or {}
+        assert job.get("state") == "succeeded", job
+
+        cache = json.loads(controller._library_cache_path.read_text(encoding="utf-8"))  # type: ignore[attr-defined]
+        totals = {"base": 0, "updates": 0, "dlcs": 0, "incompatible": 0, "ignored": 0}
+        for entry in (cache.get("rootStats") or {}).values():
+            for key in totals:
+                value = entry.get("counts", {}).get(key, 0)
+                if isinstance(value, int):
+                    totals[key] += value
+
+        physical = sum(1 for path in roms.rglob("*") if path.is_file() and not path.is_symlink())
+        assert sum(totals.values()) == physical, (
+            f"todo arquivo precisa cair num balde: {totals} para {physical} arquivos"
+        )
+        assert totals["ignored"] >= 1, "o arquivo não classificado precisa aparecer como ignorado"

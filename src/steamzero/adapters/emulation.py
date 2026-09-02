@@ -1881,8 +1881,35 @@ class EmulationController:
                     if match.platform is not None
                     and match.content_kind in {"base", "update", "dlc"}
                 }
-                | {str(item.path) for row in directory_rows for item in row.auxiliary_content}
+                # `auxiliary_content` guarda tudo que não é base, e isso INCLUI
+                # o que o classificador não reconheceu (`content_kind
+                # "unknown"`). Reivindicar o desconhecido o tirava dos
+                # ignorados sem nunca somá-lo em lugar nenhum: medido no acervo
+                # real, 381 arquivos sumiam do denominador — exatamente a
+                # diferença entre os 7635 contabilizados e os 8016 do disco.
+                # Um arquivo que ninguém classificou não é reivindicado por
+                # ninguém; ele cai em `ignored` com motivo, como deve.
+                | {
+                    str(item.path)
+                    for row in directory_rows
+                    for item in row.auxiliary_content
+                    if item.content_kind in {"update", "dlc"}
+                }
             )
+            # Auxiliar de plataforma precisa ser CONTADO, não só reivindicado:
+            # o laço de `all_platform_matches` acima processa apenas
+            # `content_kind == "base"`.
+            switch_counted = {
+                str(match.path) for match in matches if match.content_kind in {"update", "dlc"}
+            }
+            for row in directory_rows:
+                for extra in row.auxiliary_content:
+                    if str(extra.path) in switch_counted:
+                        continue
+                    if extra.content_kind == "update":
+                        counts["updates"] += 1
+                    elif extra.content_kind == "dlc":
+                        counts["dlcs"] += 1
             if switch_base_count == 0:
                 # A contabilidade de arquivos que NENHUM scanner reivindicou
                 # rodava só no caminho do Switch. Numa raiz sem Switch — o caso
