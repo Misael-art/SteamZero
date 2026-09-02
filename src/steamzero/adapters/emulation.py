@@ -2398,6 +2398,10 @@ class EmulationController:
             )
         elif action == "library.root.add":
             plan = self._plan_root_add(Path(self._required_string(payload, "path")))
+        elif action.startswith("library.root.move:"):
+            selected_root = self._root_from_action(action)
+            destination = Path(self._required_string(payload, "path"))
+            plan = self._plan_root_move(selected_root, destination)
         elif action.startswith("library.root.open:"):
             selected_root = self._root_from_action(action)
             plan = transaction.plan_write_files(
@@ -4536,6 +4540,37 @@ class EmulationController:
                 ),
             ],
         }
+        conversion_game = next(
+            (
+                game
+                for game in games
+                if isinstance(game.get("path"), str)
+                and Path(str(game["path"])).suffix.casefold() in {".nsp", ".xci", ".nro", ".nsz"}
+            ),
+            None,
+        )
+        if not nsz_ready:
+            bucket_actions["roms"].append(
+                self._action("nsz.install", "Instalar compactador NSZ", confirmation=True)
+            )
+        elif conversion_game is not None:
+            conversion_path = str(conversion_game["path"])
+            bucket_actions["roms"].append(
+                self._action(
+                    "nsz.convert",
+                    "Compactar ROM para NSZ"
+                    if Path(conversion_path).suffix.casefold() != ".nsz"
+                    else "Converter NSZ para formato original",
+                    enabled=keys["status"] == "ok",
+                    reason=(
+                        None
+                        if keys["status"] == "ok"
+                        else "Importe e valide as keys antes de converter ROMs."
+                    ),
+                    confirmation=True,
+                )
+                | {"path": conversion_path},
+            )
         for bucket in storage_summary["buckets"]:
             bucket_state = str(bucket["state"])
             status_label = {
@@ -4577,6 +4612,24 @@ class EmulationController:
                 "Espaço disponível" if volume["state"] == "ready" else "Não verificado",
             )
             | {"metric": volume_metric},
+        )
+        lifecycle_actions = [
+            action
+            for emulator in emulators
+            for action in emulator.get("actions", [])
+            if str(action.get("id", "")).startswith(
+                ("emulator.update:", "emulator.repair:", "emulator.uninstall:")
+            )
+        ]
+        storage_cards.append(
+            self._card(
+                "storage-management",
+                "Gerenciar instalações",
+                "Atualize, repare ou desinstale emuladores sem remover ROMs, saves ou mídia.",
+                "ready" if lifecycle_actions else "attention",
+                "Ações disponíveis" if lifecycle_actions else "Nenhum runtime observado",
+                actions=lifecycle_actions,
+            )
         )
         return {
             "overview": {
@@ -5677,6 +5730,98 @@ class EmulationController:
             writes,
             root=root,
             kind="emulation.library-roots",
+        )
+
+    def _plan_root_move(self, selected: Path, destination: Path) -> transaction.Plan:
+        """Move uma raiz registrada e sua configuração em um único plano.
+
+        A primitiva transacional trabalha com arquivos; enumerar explicitamente
+        cada arquivo mantém hashes, precondições e rollback verificáveis sem
+        transformar um rename de diretório em uma operação não auditável. O
+        destino precisa existir, ser real e não pode ser ancestral/descendente
+        da origem.
+        """
+        source = validate_rom_root(
+            selected,
+            managed_roots=(
+                paths.keys_dir(),
+                paths.firmware_dir(),
+                paths.media_dir(),
+                paths.data_home() / "cache",
+            ),
+        )
+        target = validate_rom_root(
+            destination,
+            managed_roots=(
+                paths.keys_dir(),
+                paths.firmware_dir(),
+                paths.media_dir(),
+                paths.data_home() / "cache",
+            ),
+        )
+        if target == source or target.is_relative_to(source) or source.is_relative_to(target):
+            raise SteamZeroError(
+                "E-CONTENT-UNSAFE-PATH",
+                detail="origem e destino não podem estar na mesma árvore",
+            )
+
+        moves: dict[Path, Path] = {}
+        try:
+            entries = sorted(source.rglob("*"), key=str)
+        except OSError as exc:
+            raise SteamZeroError(
+                "E-CONTENT-UNSAFE-PATH", detail="não foi possível enumerar a raiz de ROMs"
+            ) from exc
+        for entry in entries:
+            if entry.is_symlink():
+                raise SteamZeroError(
+                    "E-CONTENT-UNSAFE-PATH",
+                    detail=f"movimento recusou symlink dentro da raiz: {entry}",
+                )
+            if entry.is_dir():
+                continue
+            if not entry.is_file():
+                raise SteamZeroError(
+                    "E-CONTENT-UNSAFE-PATH",
+                    detail=f"entrada não regular dentro da raiz: {entry}",
+                )
+            relative = entry.relative_to(source)
+            moves[entry] = target / relative
+
+        configured, excluded = self._root_config()
+        source_key = source.resolve(strict=False)
+        new_roots = [
+            target if root.resolve(strict=False) == source_key else root for root in configured
+        ]
+        if all(root.resolve(strict=False) != target for root in new_roots):
+            new_roots.append(target)
+        excluded.add(source_key)
+        excluded.discard(target)
+        root_data = {
+            "schemaVersion": 1,
+            "roots": [str(root) for root in sorted(set(new_roots), key=str)],
+            "excludedRoots": [str(root) for root in sorted(excluded, key=str)],
+        }
+        active_roots = [
+            Path(raw)
+            for raw in self.library_roots()
+            if Path(raw).resolve(strict=False) != source_key
+        ]
+        active_roots.append(target)
+        writes: dict[Path, bytes] = {
+            self._roots_path: json.dumps(
+                root_data,
+                sort_keys=True,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ).encode()
+        }
+        writes.update(self._emulator_game_directory_writes(active_roots))
+        return transaction.plan_move_files(
+            moves,
+            root=Path("/"),
+            kind="emulation.library-root-move",
+            writes=writes,
         )
 
     def _plan_root_remove(self, selected: Path) -> transaction.Plan:
