@@ -708,3 +708,61 @@ class TestDirectoryInventoryNamesTheFormat:
         }
         assert found["Contra.zip"].format == "zip"
         assert found["Contra.zip"].evidence == "archive-native"
+
+
+class TestSystemIdComesFromTheDisk:
+    """O sistema que o usuário já organizou não precisa ser inventado.
+
+    O manifesto agrupa por runtime compartilhado: `nintendo-handheld` cobre gb,
+    gbc e gba porque o emulador é o mesmo. Isso vazou para a experiência — 296
+    jogos do acervo real apareciam como "nintendo-handheld" enquanto o disco tem
+    `roms/gb`, `roms/gbc` e `roms/gba` separados.
+
+    Medido em 2026-09-02 após a correção: 1005 dos 1119 jogos resolvem sistema
+    (170 gbc, 147 nes, 111 famicom, 77 gb, 49 gba…); os demais ficam nulos.
+    """
+
+    def test_the_directory_decides_the_system(self, tmp_path: Path) -> None:
+        from steamzero.domain.library import system_for_path
+
+        rom = tmp_path / "gbc" / "jogo.gbc"
+        rom.parent.mkdir(parents=True)
+        rom.write_bytes(b"0")
+        assert system_for_path(rom, tmp_path, ("gb", "gbc", "gba")) == "gbc"
+
+    def test_the_most_specific_directory_wins(self, tmp_path: Path) -> None:
+        from steamzero.domain.library import system_for_path
+
+        rom = tmp_path / "gb" / "gba" / "jogo.gba"
+        rom.parent.mkdir(parents=True)
+        rom.write_bytes(b"0")
+        assert system_for_path(rom, tmp_path, ("gb", "gbc", "gba")) == "gba", (
+            "o diretório mais próximo do arquivo é o que declara o sistema"
+        )
+
+    def test_no_declaration_stays_null_instead_of_guessing(self, tmp_path: Path) -> None:
+        """Adivinhar por extensão erraria: 43 das 213 extensões são disputadas.
+
+        Sem sinal, o jogo fica no grupo e a UI mostra o grupo — mesma regra do
+        `containerPolicy` e da plataforma.
+        """
+        from steamzero.domain.library import system_for_path
+
+        rom = tmp_path / "diversos" / "jogo.gba"
+        rom.parent.mkdir(parents=True)
+        rom.write_bytes(b"0")
+        assert system_for_path(rom, tmp_path, ("gb", "gbc", "gba")) is None
+
+    def test_declared_system_names_are_unique_across_platforms(self) -> None:
+        """É esta unicidade que torna o diretório uma evidência confiável.
+
+        Gate de expansão: dois manifestos declarando o mesmo `system` tornariam
+        o diretório ambíguo e a derivação, um palpite.
+        """
+        from collections import Counter
+
+        counts = Counter(
+            name for platform in PlatformRegistry.bundled().list() for name in platform.systems
+        )
+        repetidos = [name for name, total in counts.items() if total > 1]
+        assert not repetidos, f"nome de sistema declarado em mais de uma plataforma: {repetidos}"

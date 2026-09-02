@@ -415,6 +415,40 @@ def _directory_key(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", name.casefold())
 
 
+def system_for_path(path: Path, root: Path, systems: Sequence[str]) -> str | None:
+    """Qual SISTEMA da plataforma o caminho declara, ou ``None``.
+
+    O manifesto agrupa sistemas que compartilham runtime: `nintendo-handheld`
+    cobre gb, gbc e gba; `nes-famicom` cobre nes e famicom. O agrupamento existe
+    porque o emulador é o mesmo, e vazou para a experiência — 296 jogos viram
+    "nintendo-handheld" na tela.
+
+    A informação para desfazer isso já está no disco: o acervo real tem
+    diretórios separados para gb, gbc, gba, nes, famicom, snes, sfc. Esta função
+    lê o que o usuário já organizou; ela não deduz por extensão, porque 43 das
+    213 extensões declaradas pertencem a mais de uma plataforma.
+
+    Os 101 nomes de sistema declarados são únicos entre todas as plataformas,
+    então um diretório que casa com um deles não é ambíguo. Sem casamento
+    devolve ``None``: o jogo fica no grupo e a UI diz o grupo, em vez de a
+    varredura inventar um sistema.
+    """
+    declared = {_directory_key(name): name for name in systems}
+    if not declared:
+        return None
+    try:
+        parts = path.relative_to(root).parts[:-1]
+    except ValueError:
+        parts = path.parts[:-1]
+    # O diretório mais específico vence: `roms/nintendo/gbc/jogo.gbc` deve
+    # resolver gbc, não o ancestral.
+    for part in reversed(parts):
+        match = declared.get(_directory_key(part))
+        if match is not None:
+            return match
+    return None
+
+
 def _is_non_game_directory(name: str) -> bool:
     return name.casefold() in _NON_GAME_DIRECTORY_NAMES
 
