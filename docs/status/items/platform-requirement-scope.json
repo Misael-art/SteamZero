@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-PLATFORM-REQUIREMENT-SCOPE",
+  "title": "Escopo de requisitos por plataforma",
+  "domain": "platform",
+  "implementation": "complete",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/domain/platforms.py",
+    "src/steamzero/domain/platform_composer.py",
+    "src/steamzero/adapters/emulation.py",
+    "src/steamzero/platform_manifests/01-switch.platform.json",
+    "src/steamzero/platform_manifests/36-playstation-3.platform.json",
+    "src/steamzero/schemas/platform-manifest-v1.schema.json",
+    "tests/unit/test_platform_requirements.py"
+  ],
+  "scopeDigest": "012393167bc0b90c9b0d9f9906c59f3157edde37b582626b93e30fd1d55a2002",
+  "dependsOn": [
+    "SZ-AGG-PLATFORM-MANIFESTS"
+  ],
+  "knownGaps": [
+    "GAP-FIRMWARE-PS3-STORE-NOT-WIRED",
+    "GAP-PLATFORM-PSVITA-ABSENT",
+    "GAP-QML-GLOBAL-REQUIREMENT-ROW-OWNED-BY-V2"
+  ],
+  "acceptanceCriteria": [
+    "O manifesto declara explicitamente Keys/Firmware somente onde aplicável.",
+    "O read model não projeta Keys/Firmware em plataformas sem declaração.",
+    "Emuladores sem requisito não recebem estado pendente de Keys/Firmware.",
+    "O estado não verificado de PS3 não é apresentado como pronto nem como ausente."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_platform_requirements.py",
+      "command": ".venv/bin/python -m pytest tests/unit/test_platform_requirements.py tests/unit/test_workspace_composition.py tests/unit/test_switch_schemas.py tests/integration/test_emulation_workspace_cli.py tests/unit/test_launch_profile.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": ".venv/bin/ruff check src tools tests; .venv/bin/ruff format --check src tools tests; .venv/bin/mypy src; make independence boundaries",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests -q; runner chegou a 17%, ficou sem saída por 30s e foi interrompido com código 130; sem processos pytest/run_tests_isolated residuais",
+      "result": "partial"
+    }
+  ],
+  "nextAction": "Integrar a remoção visual de cards não aplicáveis no QML compartilhado e ligar o store de firmware PS3.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-09-02",
+  "notes": "Recorte funcional do agregador de manifests. O campo declarativo é opcional para preservar manifests antigos; Switch declara keys+firmware e PS3 declara firmware. O read model não publica esses requisitos em NES e demais plataformas sem declaração. Não promete ainda a verificação física do firmware PS3 nem adiciona o manifesto PS Vita; ambos permanecem lacunas explícitas."
+}

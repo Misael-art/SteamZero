@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-PLATFORM-REQUIREMENT-SCOPE",
+  "item": "SZ-PLATFORM-REQUIREMENT-SCOPE",
+  "branch": "codex/ux-audit-platform-context-2026-09-02",
+  "baseRef": "5f482ce",
+  "owner": "codex-ux-audit",
+  "state": "closed",
+  "exclusivePaths": [
+    "src/steamzero/domain/platforms.py",
+    "src/steamzero/domain/platform_composer.py",
+    "src/steamzero/adapters/emulation.py",
+    "src/steamzero/platform_manifests/01-switch.platform.json",
+    "src/steamzero/platform_manifests/36-playstation-3.platform.json",
+    "src/steamzero/schemas/platform-manifest-v1.schema.json",
+    "tests/unit/test_platform_requirements.py"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Integrar a remoção visual de cards não aplicáveis no QML compartilhado e ligar o store de firmware PS3.",
+  "updatedAt": "2026-09-02"
+}

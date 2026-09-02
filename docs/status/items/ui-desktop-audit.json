@@ -45,7 +45,7 @@
     "tools/ui_dialog_probe.qml",
     "tools/ui_scenario_fixtures.py"
   ],
-  "scopeDigest": "2f6446d148bde28cb7d71dde73a1d2d4478eed375555c830a4bc7551970959ca",
+  "scopeDigest": "3364f63d239ba130d48abc90dc6f4e3eb8914bc5f3a55b3fe4b9dfcc51e29acd",
   "dependsOn": [],
   "knownGaps": [
     "GAP-UI-CONTRAST-MEASUREMENT",

@@ -13,7 +13,7 @@
     "src/steamzero/adapters/emulation.py",
     "tests/integration/test_emulation_storage_management.py"
   ],
-  "scopeDigest": "d2d6bdaeca7e516ae9b8b230aaf44a3b91aeebe2d9db7cbee9ab21fe8e5fed04",
+  "scopeDigest": "d078dd6befbc55d2270e5cb9a298fea1de55e63d56dd5d1f0d8fe2607d205f6c",
   "dependsOn": [
     "SZ-EMULATION-STORAGE-READMODEL"
   ],

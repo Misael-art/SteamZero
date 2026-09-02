@@ -9263,3 +9263,21 @@ ES-DE, Ruff, formatação, mypy, independência e boundaries passaram. A suíte
 integral repetiu a parada em 17% e foi interrompida sem processos `pytest` ou
 `run_tests_isolated` residuais. Nenhuma instalação, publicação, push ou ação de
 host foi executada.
+
+## 2026-09-02 — Sessão: requisitos de plataforma sem vazamento de Switch
+
+Workstream: `WS-2026-09-PLATFORM-REQUIREMENT-SCOPE`, branch
+`codex/ux-audit-platform-context-2026-09-02`. O contrato de manifestos passou a
+aceitar declaração explícita de requisitos: Switch publica Keys e Firmware e
+PlayStation 3 publica somente Firmware. O placeholder deixou de fabricar esses
+requisitos para plataformas sem declaração; o cartão global mantém apenas um
+estado contratual `not-required` para compatibilidade da QML. Emuladores sem
+Keys não recebem mais estado ou ação de Keys pendentes.
+
+Provas: `86 passed` no recorte de composição, CLI, schema e launch; recorte de
+regressão posterior `33 passed`; Ruff, formatação, mypy, independência,
+boundaries e `make status-check` passaram. A suíte integral chegou a 17%, ficou
+sem saída por 30 segundos e foi interrompida com código 130, sem processos
+residuais. Nenhuma instalação, publicação, push ou ação de host foi executada.
+Ficam abertos: remoção visual do fallback na QML compartilhada, ligação do
+store de firmware PS3 e manifesto PS Vita.
