@@ -8996,3 +8996,25 @@ aprovação integral.
 
 Nenhuma instalação, publicação, rollback ou mutação de host foi executada.
 Validação visual/hardware do AURA UI continua pendente para o operador.
+
+## 2026-09-02 — Sessão: fechamento dos contratos e gates integrais
+
+Workstream: `WS-2026-09-THEME-ACTIVE-NOOP`, branch
+`codex/ux-console-experience-p0-2026-09-02`. A primeira execução integral
+encontrou duas falhas legítimas após 5.350 testes: a expectativa do read model
+não incluía o contador `ignored`, e o status informativo `already-active` não
+estava classificado em `KNOWN_STATUSES`. O commit `3f5c8b0` foi
+complementado por `89bf28c`, com a declaração do status como sucesso e a
+expectativa canônica do contador.
+
+Fechamento integral: `.venv/bin/python tools/run_tests_isolated.py tests -q`
+terminou com `5351 passed, 44 skipped`; o `test_project_status` que havia
+acusado disputa de custódia também passou após retirar
+`tests/unit/test_emulation_controller.py` do workstream desta sessão, pois o
+arquivo pertence à frente ativa de auditoria de erros. Ruff, formatação,
+mypy, independência, boundaries e `make status-check` passaram.
+
+Nenhuma instalação, publicação, rollback, download, lançamento de emulador ou
+mutação de host foi executada. O teste físico do AURA Launcher e a validação
+visual do AURA UI continuam dependentes de autorização/release e interação do
+operador.

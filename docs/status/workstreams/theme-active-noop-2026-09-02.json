@@ -6,14 +6,16 @@
   "branch": "codex/ux-console-experience-p0-2026-09-02",
   "baseRef": "7252246",
   "owner": "codex-ux-console-experience",
-  "state": "closed",
+    "state": "closed",
   "exclusivePaths": [
+    "src/steamzero/api/envelope.py",
     "src/steamzero/domain/theme_preferences.py",
     "src/steamzero/adapters/desktop_dashboard.py",
     "src/steamzero/cli/main.py",
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
     "tests/unit/test_theme_preferences.py",
     "tests/unit/test_desktop_dashboard.py",
+    "tests/unit/test_envelope.py",
     "tests/qml/check_theme_editor_aura.qml"
   ],
   "sharedPaths": [
@@ -22,6 +24,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Código e provas focadas concluídos; aguardar validação visual do AURA UI na próxima release instalada.",
+  "nextAction": "Código e provas concluídos; o teste de read model permanece sob o workstream de auditoria que já possui sua custódia exclusiva.",
   "updatedAt": "2026-09-02"
 }
