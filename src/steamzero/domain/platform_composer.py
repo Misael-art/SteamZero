@@ -176,6 +176,7 @@ def compose_platform(
     any_installed = False
     launchable = False
     launch_reason: str | None = None
+    selected_primary = False
     primary_bios_names: tuple[str, ...] = ()
     primary_adapter_id: str | None = None
     primary_bios_present: dict[str, bool] | None = None
@@ -240,8 +241,13 @@ def compose_platform(
                 if bios_present is not None:
                     row["biosPresent"] = bios_present
 
-        # A primeira linha por precedência define a jogabilidade da plataforma.
-        if not rows:
+        # A primeira linha INSTALADA por precedência define o emulador padrão.
+        # Antes a primeira linha do manifesto definia a jogabilidade mesmo
+        # quando estava ausente; assim um fallback instalado não aparecia como
+        # primário e a sessão mostrava "Nenhum emulador definido" apesar de
+        # haver runtime, core e ROMs disponíveis.
+        if not selected_primary and facts.installed:
+            selected_primary = True
             primary_adapter_id = adapter_id
             primary_bios_names = profile.requires_bios if profile is not None else ()
             primary_bios_present = (
@@ -261,6 +267,21 @@ def compose_platform(
             )
         rows.append(row)
 
+    primary_row = next(
+        (row for row in rows if row.get("installState") in {"installed", "degraded"}),
+        None,
+    )
+    payload["defaultEmulatorId"] = primary_row["id"] if primary_row else None
+    payload["primaryEmulator"] = {
+        "id": primary_row["id"] if primary_row else None,
+        "name": str(primary_row["name"]) if primary_row else "",
+        "state": str(primary_row["state"]) if primary_row else "unavailable",
+        "statusLabel": (
+            str(primary_row["statusLabel"]) if primary_row else "Nenhum emulador instalado"
+        ),
+        "source": "precedence" if primary_row else "none",
+    }
+
     if not rows:
         # Plataforma sem emulador declarado. É o caso das de nuvem, que não são
         # emuladas: sem este ramo o laço acima nunca roda e a plataforma sairia
@@ -271,6 +292,11 @@ def compose_platform(
             if manifest.kind == "cloud"
             else "esta plataforma ainda não declara emulador"
         )
+    elif not selected_primary:
+        # Há emuladores declarados, mas nenhum runtime instalado. A plataforma
+        # precisa continuar explicando o bloqueio mesmo depois de publicar o
+        # estado explícito de ``primaryEmulator`` como ``none``.
+        launch_reason = "o emulador desta plataforma não está instalado"
 
     payload["emulators"] = rows
     payload["launchable"] = launchable

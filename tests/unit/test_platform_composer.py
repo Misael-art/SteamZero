@@ -149,6 +149,47 @@ class TestEmulatorRows:
         assert row["installable"] is False
         assert row["reason"] == "fonte EOL"
 
+    def test_primary_emulator_is_published_for_a_generic_platform(
+        self, registry: PlatformRegistry
+    ) -> None:
+        platform = compose_platform(registry.get("nes-famicom"), facts_for=_installed)
+        assert platform["defaultEmulatorId"] == "retroarch"
+        assert platform["primaryEmulator"] == {
+            "id": "retroarch",
+            "name": "RetroArch",
+            "state": "ready",
+            "statusLabel": "Instalado",
+            "source": "precedence",
+        }
+
+    def test_installed_fallback_becomes_primary_when_preferred_is_absent(
+        self, registry: PlatformRegistry
+    ) -> None:
+        def only_fallback(adapter_id: str) -> EmulatorFacts:
+            return EmulatorFacts(
+                adapter_id=adapter_id,
+                display_name=adapter_id,
+                installable=True,
+                installed=adapter_id == "retroarch",
+            )
+
+        platform = compose_platform(
+            registry.get("playstation"),
+            facts_for=only_fallback,
+            core_present_for=lambda _core: True,
+        )
+        assert platform["defaultEmulatorId"] == "retroarch"
+        assert platform["primaryEmulator"]["id"] == "retroarch"
+        assert platform["launchable"] is True
+
+    def test_no_installed_emulator_has_an_explicit_primary_state(
+        self, registry: PlatformRegistry
+    ) -> None:
+        platform = compose_platform(registry.get("snes"), facts_for=_absent)
+        assert platform["defaultEmulatorId"] is None
+        assert platform["primaryEmulator"]["source"] == "none"
+        assert platform["primaryEmulator"]["statusLabel"] == "Nenhum emulador instalado"
+
 
 class TestComposingDoesNotEnable:
     """Compor é declarar estado. Habilitar é outra decisão."""
