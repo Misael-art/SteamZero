@@ -50,3 +50,26 @@ publicação, lançamento de emulador ou mutação de host foi executada. A capt
 PNG da entrega física (`02-entrega-funcional.png`) e a prova de controle → jogo
 → retorno só podem ser registradas depois de autorização do operador para o
 fluxo governado de release e interação física no host.
+
+## Onda 3 — reconciliação do catálogo
+
+Commit funcional: a ser isolado no fechamento desta sessão.
+
+A varredura canônica agora grava `scanSummary` no mesmo cache consumido pelo
+Launcher e pela Central: arquivos encontrados, jogos base, updates, DLC,
+ignorados, incompatíveis, contagens por plataforma e motivos de containers
+não promovidos (`archive-platform-unknown`, `archive-needs-extraction` e
+`archive-policy-undeclared`). O passe de contabilidade recebe os caminhos já
+reivindicados por todos os scanners, evitando contar update/DLC duas vezes.
+Diretórios de plataforma reconhecidos entram na reconciliação mesmo quando a
+mesma raiz também contém ROMs do Switch.
+
+Provas focadas: `73 passed` em Launcher, jornada handheld, classificação de
+ROMs e raízes Switch; o cenário integrado confirmou quatro arquivos físicos,
+um jogo, um update, um DLC e um ZIP incompatível com motivo
+`archive-platform-unknown`, além da persistência do resumo no cache. A Central
+exibe o resumo na visão geral e o Launcher o publica no modelo e na home.
+
+Ainda não validado fisicamente: a release instalada continua
+`2.0.0rc1-145cf9d44738`; nenhuma instalação, publicação, varredura do acervo
+real ou captura PNG de entrega foi executada nesta sessão.

@@ -19,7 +19,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-SERVICE-API | 11 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TESTS | 372 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TOOLS | 39 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AURA-LAUNCHER | 108 | 16 | 12 | hw |  |
+| SZ-AURA-LAUNCHER | 108 | 17 | 13 | hw |  |
 | SZ-AURA-UI | 14 | 3 | 3 | unit |  |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
@@ -37,7 +37,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-FRONTEND-STEAM-SHORTCUTS | 2 | 1 | 1 | unit |  |
 | SZ-GOVERNANCE-STATUS | 22 | 7 | 5 | dev |  |
 | SZ-HOST-UPDATE-TRANSACTIONAL | 18 | 12 | 9 | hw |  |
-| SZ-LIBRARY-CANONICAL | 88 | 9 | 6 | dev |  |
+| SZ-LIBRARY-CANONICAL | 88 | 10 | 7 | dev |  |
 | SZ-LIBRARY-CONVERSION-CONTRACT | 4 | 2 | 2 | unit |  |
 | SZ-MEDIA-PROVIDER-PLATFORM-FILTER | 10 | 2 | 2 | unit |  |
 | SZ-MEDIA-SCRAPING | 29 | 6 | 6 | unit |  |

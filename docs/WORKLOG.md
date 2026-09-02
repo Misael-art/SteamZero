@@ -8944,3 +8944,34 @@ correção, o teste físico de controle → jogo → retorno e a certificação 
 fade/processo permanecem **não validados**, aguardando autorização de release
 e interação do operador. A evidência detalhada está em
 `docs/09-operations/evidence/2026-09-02-ux-console-experience/README.md`.
+
+## 2026-09-02 — Sessão: reconciliação canônica de arquivos e jogos
+
+Workstream: `WS-2026-09-LAUNCHER-P0-ACTIVATION`, branch
+`codex/ux-console-experience-p0-2026-09-02`. O catálogo tinha contadores de
+arquivo disponíveis apenas no retorno imediato da varredura; o cache consumido
+pelas superfícies não carregava o denominador nem o motivo de ZIP/7Z fora do
+catálogo. Além disso, updates/DLC reconhecidos eram recontados como ignorados
+no passe de arquivos e diretórios de outras plataformas só eram promovidos
+quando não havia base Switch na raiz.
+
+A correção preserva caminhos reivindicados por todos os scanners, reconcilia
+raízes mistas, grava `scanSummary` no cache canônico e publica o mesmo resumo
+na Central e no AURA Launcher. A home passa a comunicar arquivos encontrados,
+jogos canônicos, updates/DLC e itens para revisão; a Central mostra os mesmos
+dados na visão geral. Containers continuam dependendo da política declarada:
+nenhum ZIP/7Z é aceito por palpite.
+
+Provas focadas: `73 passed` em
+`test_launcher_app.py`, `test_handheld_production_journey.py`,
+`test_library_rom_classify.py` e `test_switch_roots.py`; Ruff, formatação,
+mypy, independência e boundaries passaram; o gate isolado focado não alterou
+o state real. A suíte integral isolada foi tentada, apresentou falhas em bloco
+por volta de 18% e ficou sem progresso em torno de 29% no runner QML; o próprio
+runner foi interrompido e o diagnóstico permanece aberto, sem alegação de
+aprovação integral.
+
+Nenhuma instalação, publicação, rollback, download, varredura do acervo real
+ou lançamento de emulador foi executado. A release observada permanece
+`2.0.0rc1-145cf9d44738`; a captura PNG da release corrigida, o teste físico de
+controle → jogo → retorno e as métricas de desempenho continuam não validados.

@@ -9,7 +9,7 @@
     "verification": "hw",
     "operation": "unknown",
     "distribution": "not-packaged",
-    "scopeDigest": "19482fe7b9d0e3e0ae088b550569bf15657f640769d232dbbe76fd2492690cbd",
+    "scopeDigest": "6be40a4635a4e2ab5258f6e0ab70318fefed735429aaf19359c6b2a98c690e46",
     "scopePaths": [
         "docs/00-vision/PROJECT-VISION.md",
         "docs/00-vision/NON-GOALS.md",
@@ -149,9 +149,15 @@
             "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun/rom-catalog.txt",
             "command": "leitura somente leitura do acervo: 8.016 arquivos fisicos contra 231 jogos canonicos em 13 plataformas; ZIP/7Z fisicos nao foram lancados por bypass.",
             "result": "recorded"
+        },
+        {
+            "kind": "test",
+            "reference": "tests/integration/test_launcher_app.py",
+            "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_launcher_app.py tests/integration/test_handheld_production_journey.py tests/unit/test_library_rom_classify.py tests/unit/test_switch_roots.py -q (73 passed; o Launcher publica o resumo canônico e a varredura preserva motivos de containers não promovidos)",
+            "result": "passed"
         }
     ],
-    "nextAction": "Corrigir a ativacao fisica do cartao no Launcher; somente depois repetir cada plataforma com jogo real e provar emulador, fade-in, encerramento, fade-out e retorno ao foco.",
+    "nextAction": "Publicar/instalar uma release autorizada e provar fisicamente ativação, lançamento, fade-in, encerramento, fade-out e retorno ao foco; a implementação e o resumo canônico já estão isolados.",
     "activeWorkstreams": [
         "WS-2026-08-AURA-LAUNCHER",
         "WS-2026-09-LAUNCHER-P0-ACTIVATION"
