@@ -1,0 +1,24 @@
+{
+    "schemaVersion": 1,
+    "kind": "workstream",
+    "id": "WS-2026-09-LAUNCHER-P0-ACTIVATION",
+    "item": "SZ-AURA-LAUNCHER",
+    "branch": "codex/ux-console-experience-p0-2026-09-02",
+    "baseRef": "bad8735f",
+    "owner": "codex-ux-console-experience",
+    "state": "active",
+    "exclusivePaths": [
+        "src/steamzero/ui/qml/launcher",
+        "tests/qml/launcher",
+        "tests/integration/test_launcher_app.py",
+        "docs/09-operations/evidence/2026-09-02-ux-console-experience"
+    ],
+    "sharedPaths": [
+        "docs/status",
+        "docs/STATUS.md",
+        "docs/ACTIVE-WORK.md",
+        "docs/WORKLOG.md"
+    ],
+    "nextAction": "Aguardar autorização de publicação/instalação; depois provar na release instalada Return, Enter, Space, controle e clique com uma única abertura da página de jogo.",
+    "updatedAt": "2026-09-02"
+}

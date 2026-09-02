@@ -8909,3 +8909,38 @@ oito casos e não foi contado como aprovação. O workstream foi fechado com os
 gaps registrados nos itens de Launcher, UI Desktop, biblioteca canônica e Theme
 Studio. A verificação final confirmou que nenhum processo de teste, QML,
 Launcher, central ou emulador ficou aberto.
+
+## 2026-09-02 — Sessão: ativação P0 do cartão no AURA Launcher
+
+Workstream próprio: `WS-2026-09-LAUNCHER-P0-ACTIVATION`, branch
+`codex/ux-console-experience-p0-2026-09-02`, baseado no tip `bad8735f`. O
+baseline físico da release `2.0.0rc1-145cf9d44738` foi preservado: o cartão
+`1969 (Homebrew) (SMS)` recebia foco, mas Return/clique não mudavam a tela;
+antes/depois permaneceram com SHA-256
+`1308cd106ad6a6a7e9dfb935a8245415285a26e6888ac705698d5c103c87d4c7`.
+
+Commit funcional `3d8f9bb` fecha a rota de interação do primeiro P0: cartões
+com foco, `Accessible.name/role/description`, estado pressed, `TapHandler`,
+Return/Enter/Space pela mesma função, feedback semântico, debounce de duplo
+disparo e sinal explícito `gameActivated`. `LauncherShell` conecta o sinal a
+`openGame`; `LauncherMain` resolve a página pelo catálogo; a home vazia expõe
+retry focável; a página de jogo aceita a mesma ativação nas ações e mostra a
+capa ou placeholder honesto.
+
+Provas: 45 harnesses QML passaram; o novo
+`check_launcher_activation.qml` provou cartão → página, clique/toque,
+teclado, acessibilidade, pressed, feedback único, duplo disparo e retry vazio;
+os testes Python focados passaram (`47 passed`). Ruff, formatação, mypy e
+`make independence boundaries` passaram. A suíte integral isolada foi
+iniciada, mas reproduziu a lentidão do runner em `ui_control_probe.qml`:
+permaneceu cerca de 18 minutos em 29% sem concluir; o processo do próprio
+runner foi encerrado com SIGTERM e nenhuma janela QML/Launcher/emulador ficou
+aberta. `make status-check` reconhece este item; ainda acusa apenas os
+`scopeDigest` preexistentes de `SZ-AURA-UI` e `SZ-UI-DESKTOP-AUDIT`.
+
+Nenhuma instalação, publicação, rollback, varredura, download, aplicação de
+tema ou lançamento de emulador foi executado. A captura PNG da release com a
+correção, o teste físico de controle → jogo → retorno e a certificação de
+fade/processo permanecem **não validados**, aguardando autorização de release
+e interação do operador. A evidência detalhada está em
+`docs/09-operations/evidence/2026-09-02-ux-console-experience/README.md`.
