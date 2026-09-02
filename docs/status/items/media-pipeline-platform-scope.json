@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-MEDIA-PIPELINE-PLATFORM-SCOPE",
+  "title": "Estatísticas do pipeline de mídia por plataforma",
+  "domain": "media",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/adapters/emulation.py",
+    "tests/integration/test_media_pipeline_platform_scope.py"
+  ],
+  "scopeDigest": "b42048fa8d26b99ea6d6bd6f527a964c6c32d155fedf6644a1f5f9b9d334dd9d",
+  "dependsOn": [
+    "SZ-EMULATION-PLATFORM-SCOPE",
+    "SZ-MEDIA-PROVIDER-PLATFORM-FILTER"
+  ],
+  "knownGaps": [
+    "GAP-MEDIA-UI-PIPELINE-CLARITY",
+    "GAP-EMULATION-PHYSICAL-LAUNCH"
+  ],
+  "acceptanceCriteria": [
+    "A estatística de cache do pipeline conta somente mídia associada aos jogos do contexto atual.",
+    "O pipeline publica o platformId efetivo e o denominador de jogos processáveis.",
+    "O cálculo continua somente leitura e ignora symlinks, arquivos ausentes e caminhos inválidos.",
+    "Chamadas globais preservam a semântica global existente."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_media_pipeline_platform_scope.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_media_pipeline_platform_scope.py tests/integration/test_emulation_platform_scope.py tests/integration/test_emulation_storage_platform_scope.py tests/integration/test_emulation_storage_management.py tests/integration/test_emulation_storage.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "ruff check, ruff format --check, mypy src e make independence boundaries",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests -q; runner permaneceu sem saída em 17% e foi interrompido; nenhum processo ou socket residual",
+      "result": "partial"
+    }
+  ],
+  "nextAction": "Integrar escopo, denominador e fases na superfície visual e validar na release instalada.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-09-02",
+  "notes": "A lista de jogos já é filtrada por plataforma, mas a métrica cacheBytes ainda varria media_dir inteiro. Esta frente torna a estatística coerente com o catálogo contextual."
+}

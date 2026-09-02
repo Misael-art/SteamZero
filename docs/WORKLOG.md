@@ -9190,3 +9190,16 @@ mypy, independência e boundaries passaram. O gate integral foi executado com
 de 30 segundos; nenhuma sobra de pytest ou socket foi encontrada. Nenhuma
 instalação, publicação, rollback, download, varredura real ou lançamento foi
 executado.
+
+## 2026-09-02 — Sessão: cache de mídia por plataforma
+
+Workstream: `WS-2026-09-MEDIA-PIPELINE-PLATFORM-SCOPE`, branch
+`codex/ux-audit-platform-context-2026-09-02`. O resumo do pipeline deixou de
+varrer `media_dir` global para calcular `cacheBytes`: agora consulta os estados
+de mídia dos jogos do contexto, deduplica caminhos, ignora symlinks e publica
+`scope.platformId`, quantidade de jogos e arquivos de mídia considerados.
+
+Prova: `8 passed` no recorte combinado; Ruff, formatação, mypy, independência e
+boundaries passaram. A suíte integral repetiu a ausência de saída em 17% e foi
+interrompida sem processos ou sockets residuais. Nenhuma instalação,
+publicação, push ou ação de host foi executada.
