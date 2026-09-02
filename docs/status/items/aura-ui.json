@@ -9,7 +9,7 @@
     "verification": "unit",
     "operation": "degraded",
     "distribution": "installed",
-    "scopeDigest": "74c72a50c48ea14ff5b8a6088cd0f102c8da552c24a4acfaece8031c98f854f5",
+    "scopeDigest": "f574fec13d301ddb0289cc78307501f6eadacad6050eef57c1d81e930908b77e",
     "scopePaths": [
         "src/steamzero/domain/default_theme.py",
         "src/steamzero/themes",
@@ -52,5 +52,5 @@
     "nextAction": "Validar visualmente AURA UI na central real, sem confundir essa prova com o AURA Launcher.",
     "activeWorkstreams": [],
     "updatedAt": "2026-08-31",
-    "notes": "Renomeado de SZ-THEME-AURA para eliminar ambiguidade. AURA UI e o tema/sistema visual instalado na central; nao e a experiencia fullscreen de biblioteca. O digest foi renovado porque o escopo compartilhado de temas recebeu a fixture de layouts; testes AURA e QML permaneceram verdes, sem promocao de estado. Nao ha certificacao visual/hardware deste item. Digest renovado porque o harness QML compartilhado passou a exercitar o caminho avancado de midia (--steamzero-qtquick-effects); nenhum estado do AURA UI foi promovido."
+    "notes": "Renomeado de SZ-THEME-AURA para eliminar ambiguidade. AURA UI e o tema/sistema visual instalado na central; nao e a experiencia fullscreen de biblioteca. O digest foi renovado porque o escopo compartilhado de temas recebeu a fixture de layouts; testes AURA e QML permaneceram verdes, sem promocao de estado. Nao ha certificacao visual/hardware deste item. Digest renovado porque o harness QML compartilhado passou a exercitar o caminho avancado de midia (--steamzero-qtquick-effects); nenhum estado do AURA UI foi promovido. Digest renovado por mudança compartilhada de reconciliação do catálogo; nenhuma capacidade visual foi promovida."
 }
