@@ -23,6 +23,9 @@ Window {
     property int applyRequests: 0
     property string lastConfirmPlanId: ""
     property string lastCreateExtends: ""
+    property string lastExportDestination: ""
+    property string lastExportPlanId: ""
+    property int exportApplyRequests: 0
     property int appliedSignals: 0
 
     readonly property var auraColors: ({
@@ -111,6 +114,20 @@ Window {
         if (actionId === "theme.editor.cancel") {
             cancelRequests += 1
             callback({"status": "cancelled", "sessionId": payload.sessionId})
+            return
+        }
+        if (actionId === "theme.editor.export") {
+            lastExportDestination = payload.destination || ""
+            callback({"plan": {"planId": "plan-theme-export-1",
+                                "confirmToken": "token-theme-export-1",
+                                "rollbackGuarantee": "G-FULL"},
+                      "filename": "theme.zip", "size": 128})
+            return
+        }
+        if (actionId === "theme.editor.export.apply") {
+            exportApplyRequests += 1
+            lastExportPlanId = payload.planId || ""
+            callback({"status": "applied", "operationId": "op-theme-export-1"})
             return
         }
         if (actionId === "theme.apply") {
@@ -273,6 +290,24 @@ Window {
                   "Duplicar e editar deve abrir sessão editável")
             check(editor.editorReadOnly === false, "cópia do usuário não é somente leitura")
             phase = 6
+            return
+        }
+        if (phase === 6) {
+            check(editor.localPath("file:///tmp/theme.zip") === "/tmp/theme.zip",
+                  "destino do FileDialog deve virar caminho local")
+            editor.exportPlan = {"planId": "plan-theme-export-1",
+                                 "confirmToken": "token-theme-export-1",
+                                 "rollbackGuarantee": "G-FULL",
+                                 "destination": "/tmp/theme.zip",
+                                 "filename": "theme.zip", "size": 128}
+            editor.confirmExport()
+            check(exportApplyRequests === 1,
+                  "confirmar exportação deve chamar o contrato de apply")
+            check(lastExportPlanId === "plan-theme-export-1",
+                  "exportação deve confirmar o planId recebido")
+            check(editor.exportPlan === null,
+                  "após confirmar exportação o plano deve ser limpo")
+            phase = 7
             return
         }
         check(checks > 0, "o harness precisa executar ao menos uma verificação")

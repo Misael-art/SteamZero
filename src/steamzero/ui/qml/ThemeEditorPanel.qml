@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 
 Rectangle {
@@ -20,13 +21,21 @@ Rectangle {
 
     property var requestAction: function(_ida, _payload, _cb, _ecb) {}
     property var request: function(_method, _path, _payload, _cb, _ecb) {}
+    property var localPath: function(url) {
+        const value = String(url || "")
+        return value.startsWith("file://")
+            ? decodeURIComponent(value.replace(/^file:\/\/(?:localhost)?/, ""))
+            : ""
+    }
 
     property bool compactLayout: false
     // Tema ativo no host (dashboard.theme.activeId). Main.qml deve vincular.
     property string activeThemeId: ""
     property var applyPlan: null
+    property var exportPlan: null
 
     signal applied()
+    signal exported(string destination)
 
     color: panel.backgroundColor
     // Garante altura mínima útil quando embutido em ScrollView do shell.
@@ -206,6 +215,26 @@ Rectangle {
             // activeThemeId vem do shell (binding); applied() dispara refresh.
             panel.refreshThemeList()
             panel.applied()
+        })
+    }
+
+    function beginExport() {
+        if (!panel.editorSessionId)
+            return
+        exportDialog.open()
+    }
+
+    function confirmExport() {
+        if (!panel.exportPlan)
+            return
+        panel.requestAction("theme.editor.export.apply", {
+            "planId": panel.exportPlan.planId,
+            "confirmToken": panel.exportPlan.confirmToken
+        }, function(_r) {
+            const destination = panel.exportPlan.destination || ""
+            panel.exportPlan = null
+            exportPreviewDialog.close()
+            panel.exported(destination)
         })
     }
 
@@ -578,28 +607,22 @@ Rectangle {
                 }
 
                 Button {
-                    // Exportação ZIP via download browser (document.*) não existe
-                    // no shell Qt/QML. Mantém o botão visível mas desabilitado com
-                    // motivo honesto até haver FileDialog + escrita segura.
+                    objectName: "themeEditorExport"
                     text: qsTr("Exportar")
-                    enabled: false
+                    enabled: panel.editorSessionId !== ""
                     implicitHeight: 36
                     implicitWidth: 90
                     Accessible.name: text
-                    Accessible.description: qsTr("Exportação de ZIP ainda não disponível neste shell")
-                    ToolTip.visible: hovered || activeFocus
-                    ToolTip.delay: 400
-                    ToolTip.text: qsTr("Exportação de ZIP ainda não disponível neste shell")
+                    onClicked: panel.beginExport()
                     background: Rectangle {
-                        color: panel.borderColor
+                        color: parent.enabled ? panel.surfaceColor : panel.borderColor
                         radius: 6
-                        border.color: panel.borderColor
+                        border.color: parent.activeFocus ? panel.cyanColor : panel.borderColor
                         border.width: 1
-                        opacity: 0.7
                     }
                     contentItem: Label {
                         text: parent.text
-                        color: panel.mutedColor
+                        color: parent.enabled ? panel.cyanColor : panel.mutedColor
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
@@ -1189,6 +1212,98 @@ Rectangle {
                     }
 
                     Item { Layout.fillHeight: true }
+                }
+            }
+        }
+    }
+
+    // =====================================================================
+    // THEME EXPORT
+    // =====================================================================
+    FileDialog {
+        id: exportDialog
+        title: qsTr("Salvar tema exportado")
+        fileMode: FileDialog.SaveFile
+        nameFilters: [qsTr("Pacote de tema (*.zip)")]
+        defaultSuffix: "zip"
+        onAccepted: {
+            const destination = panel.localPath(selectedFile)
+            if (!destination)
+                return
+            panel.requestAction("theme.editor.export", {
+                "sessionId": panel.editorSessionId,
+                "destination": destination
+            }, function(response) {
+                panel.exportPlan = Object.assign({}, response.plan || {}, {
+                    "destination": destination,
+                    "filename": response.filename || destination.split("/").pop(),
+                    "size": response.size || 0
+                })
+                exportPreviewDialog.open()
+            })
+        }
+    }
+
+    Dialog {
+        id: exportPreviewDialog
+        title: qsTr("Revisar exportação do tema")
+        modal: true
+        width: Math.min(panel.width > 0 ? panel.width - 32 : 720, 620)
+        x: panel.width > 0 ? (panel.width - width) / 2 : 0
+        y: panel.height > 0 ? Math.max((panel.height - height) / 2, 24) : 24
+        standardButtons: Dialog.NoButton
+
+        background: Rectangle {
+            color: panel.raisedColor
+            radius: 12
+            border.color: panel.cyanDarkColor
+            border.width: 1
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 14
+            Label {
+                text: qsTr("O pacote será gravado somente após a confirmação.")
+                color: panel.textColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            TextArea {
+                readOnly: true
+                text: panel.exportPlan
+                    ? qsTr("Arquivo: %1\nTamanho: %2 bytes\nGarantia: %3")
+                        .arg(panel.exportPlan.filename || "tema.zip")
+                        .arg(panel.exportPlan.size || 0)
+                        .arg(panel.exportPlan.rollbackGuarantee || "G-FULL")
+                    : ""
+                color: panel.textColor
+                wrapMode: TextEdit.WrapAnywhere
+                Layout.fillWidth: true
+                Layout.minimumHeight: 92
+                background: Rectangle {
+                    color: panel.backgroundColor
+                    radius: 8
+                    border.color: panel.borderColor
+                }
+                Accessible.name: qsTr("Prévia da exportação do tema")
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Button {
+                    text: qsTr("Cancelar")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 44
+                    onClicked: {
+                        panel.exportPlan = null
+                        exportPreviewDialog.close()
+                    }
+                }
+                Button {
+                    text: qsTr("Confirmar exportação")
+                    enabled: panel.exportPlan !== null
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 44
+                    onClicked: panel.confirmExport()
                 }
             }
         }

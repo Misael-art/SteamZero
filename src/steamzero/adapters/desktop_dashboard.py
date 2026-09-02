@@ -38,7 +38,7 @@ from steamzero.adapters.registry import AdapterManifest, AdapterRegistry
 from steamzero.adapters.resource_probe import ResourceProbe
 from steamzero.adapters.steam_gameplay import SteamGameplayController
 from steamzero.adapters.theme_catalog import ThemeCatalog, validate_theme_directory
-from steamzero.core import log
+from steamzero.core import log, transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.secret import Secret
 from steamzero.core.session_state import SESSION_OWNER
@@ -1840,6 +1840,42 @@ class DesktopDashboard:
 
     def editor_export_zip(self, session_id: str) -> bytes:
         return self._theme_editor.export_zip(session_id)
+
+    def plan_theme_export(self, session_id: str, destination: Path) -> dict[str, Any]:
+        """Planeja a gravação do ZIP do Studio no destino escolhido pelo usuário.
+
+        O editor produz os bytes, mas não grava diretamente: a ponte devolve um
+        plano com precondições e confirmação, igual às demais exportações da
+        central. Assim, um destino existente ou trocado entre preview e apply
+        nunca é sobrescrito silenciosamente.
+        """
+        if not destination.is_absolute():
+            raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="destino precisa ser absoluto")
+        if destination.suffix.casefold() != ".zip":
+            raise SteamZeroError("E-API-SCHEMA", detail="destino precisa terminar em .zip")
+        if not destination.parent.is_dir() or destination.is_symlink():
+            raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="destino de exportação inválido")
+        if destination.exists() and not destination.is_file():
+            raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="destino não é um arquivo regular")
+        package = self._theme_editor.export_zip(session_id)
+        plan = transaction.plan_write_files(
+            {destination: package},
+            root=destination.parent,
+            kind="theme.editor.export",
+        )
+        return {
+            "plan": plan.to_dict(),
+            "filename": destination.name,
+            "size": len(package),
+        }
+
+    @staticmethod
+    def apply_theme_export(plan_id: str, confirm_token: str) -> dict[str, Any]:
+        plan = transaction.load_plan(plan_id)
+        if plan.kind != "theme.editor.export":
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="plano não exporta tema")
+        result = transaction.apply(plan_id, confirm_token)
+        return {"status": result.status, "operationId": result.operation_id}
 
     def editor_cancel(self, session_id: str) -> dict[str, str]:
         return self._theme_editor.cancel(session_id)

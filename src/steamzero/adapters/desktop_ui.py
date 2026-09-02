@@ -707,15 +707,15 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 overwrite=bool(payload.get("overwrite", False)),
             )
         if path == "/theme/editor/export":
-            zip_data = self._dashboard().editor_export_zip(
+            return self._dashboard().plan_theme_export(
                 self._required_string(payload, "sessionId"),
+                Path(self._required_string(payload, "destination")),
             )
-            import base64
-
-            return {
-                "zip": base64.b64encode(zip_data).decode("ascii"),
-                "filename": f"theme-{payload['sessionId'][:8]}.zip",
-            }
+        if path == "/theme/editor/export/apply":
+            return self._dashboard().apply_theme_export(
+                self._required_string(payload, "planId"),
+                self._required_string(payload, "confirmToken"),
+            )
         if path == "/theme/editor/cancel":
             return self._dashboard().editor_cancel(
                 self._required_string(payload, "sessionId"),

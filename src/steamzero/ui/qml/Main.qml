@@ -5912,12 +5912,14 @@ ApplicationWindow {
                                     compactLayout: root.compactLayout
                                     requestAction: root.requestAction
                                     request: root.request
+                                    localPath: root.localPath
                                     activeThemeId: root.desktopStatus.dashboard
                                         && root.desktopStatus.dashboard.theme
                                         && root.desktopStatus.dashboard.theme.activeId
                                         ? String(root.desktopStatus.dashboard.theme.activeId)
                                         : (root._themeBridge.themeId || "")
                                     onApplied: root.refreshStatus(qsTr("Tema aplicado"))
+                                    onExported: root.notify(qsTr("Tema exportado"), false)
                                 }
                             }
                             // Biblioteca editorial: usa somente os read models já

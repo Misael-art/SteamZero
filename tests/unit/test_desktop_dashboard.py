@@ -21,6 +21,7 @@ from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.domain.gamemode import GameModeTruth, build_truth
 from steamzero.domain.saves import SavesStore
+from steamzero.domain.theme_editor import ThemeEditorManager
 from steamzero.ports import CaptureConsent
 
 
@@ -207,6 +208,45 @@ def test_theme_apply_reports_active_theme_without_creating_plan(tmp_path: Path) 
         "message": "Já está em uso",
     }
     assert list((tmp_path / "config").glob("**/*")) == [preference_path]
+
+
+def test_theme_export_uses_confirmed_transaction_and_preserves_target(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    manager = ThemeEditorManager()
+    dashboard = DesktopDashboard(theme_editor=manager)
+    session = manager.create("Exportável")
+    session_id = str(session["sessionId"])
+    destination = tmp_path / "exports" / "theme.zip"
+    destination.parent.mkdir()
+
+    planned = dashboard.plan_theme_export(session_id, destination)
+    plan = planned["plan"]
+    assert plan["kind"] == "theme.editor.export"
+    assert not destination.exists()
+
+    with pytest.raises(SteamZeroError, match="confirmToken"):
+        dashboard.apply_theme_export(str(plan["planId"]), "wrong-token")
+    assert not destination.exists()
+
+    result = dashboard.apply_theme_export(str(plan["planId"]), str(plan["confirmToken"]))
+    assert result["status"] == "ok"
+    assert destination.read_bytes()[:2] == b"PK"
+
+
+def test_theme_export_rejects_unsafe_destination(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    manager = ThemeEditorManager()
+    dashboard = DesktopDashboard(theme_editor=manager)
+    session_id = str(manager.create("Exportável")["sessionId"])
+
+    with pytest.raises(SteamZeroError, match=r"terminar em \.zip"):
+        dashboard.plan_theme_export(session_id, tmp_path / "theme.json")
 
 
 def test_steam_continue_uses_only_numeric_rungameid_uri() -> None:

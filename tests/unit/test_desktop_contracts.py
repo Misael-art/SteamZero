@@ -129,6 +129,19 @@ def test_matrix_covers_required_services_and_explicit_non_applicable_items() -> 
         assert action["endpoint"]
 
 
+def test_theme_export_contract_requires_destination_and_confirmation() -> None:
+    matrix = handheld_ui_contracts()["byId"]
+    export = matrix["theme.editor.export"]
+    assert export["endpoint"] == "/theme/editor/export"
+    assert export["confirmation"] == {"required": True, "mode": "dialog"}
+    assert export["inputSchema"]["required"] == ["sessionId", "destination"]
+
+    confirm = matrix["theme.editor.export.apply"]
+    assert confirm["endpoint"] == "/theme/editor/export/apply"
+    assert confirm["inputSchema"]["required"] == ["planId", "confirmToken"]
+    assert confirm["confirmation"] == {"required": True, "mode": "dialog"}
+
+
 def test_async_scan_contract_publishes_polling_and_terminal_states() -> None:
     scan = handheld_ui_contracts()["byId"]["library.scan"]
     assert scan["jobSemantics"] == {
