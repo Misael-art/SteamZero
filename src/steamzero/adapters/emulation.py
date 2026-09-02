@@ -4527,6 +4527,10 @@ class EmulationController:
             media_root=paths.media_dir(),
             cache_roots=(paths.data_home() / "cache", paths.data_home() / "catalog-cache"),
             volume_root=paths.data_home(),
+            rom_files=tuple(
+                Path(str(game["path"])) for game in games if isinstance(game.get("path"), str)
+            ),
+            platform_id="switch",
         )
         storage_cards: list[dict[str, Any]] = []
         bucket_actions: dict[str, list[dict[str, Any]]] = {

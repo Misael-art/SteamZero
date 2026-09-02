@@ -24,7 +24,7 @@ def test_workspace_exposes_storage_statistics_without_mutating_files(
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
     roms = tmp_path / "roms"
     roms.mkdir()
-    (roms / "game.nes").write_bytes(b"rom")
+    (roms / "game.nsp").write_bytes(b"rom")
     data = tmp_path / "data" / "steamzero"
     (data / "saves").mkdir(parents=True)
     (data / "saves" / "slot.bin").write_bytes(b"save")
@@ -40,10 +40,32 @@ def test_workspace_exposes_storage_statistics_without_mutating_files(
         controller,
         controller.plan_action({"actionId": "library.root.add", "path": str(roms)}),
     )
+    monkeypatch.setattr(
+        controller,
+        "_load_library_cache",
+        lambda: (
+            [
+                {
+                    "id": "switch-1",
+                    "titleId": "0100ABCDEF123000",
+                    "name": "Jogo Switch",
+                    "state": "ready",
+                    "statusLabel": "Pronto",
+                    "path": str(roms / "game.nsp"),
+                    "platform": "switch",
+                    "platformId": "switch",
+                }
+            ],
+            0,
+        ),
+    )
+    monkeypatch.setattr(controller, "_enrich_games", lambda games, *_args: games)
+    monkeypatch.setattr(controller, "_enrich_preservation", lambda games: games)
+    monkeypatch.setattr(controller, "_enrich_controls", lambda games: games)
 
     tracked = {
         path: path.read_bytes()
-        for path in (roms / "game.nes", data / "saves" / "slot.bin", data / "media" / "cover.png")
+        for path in (roms / "game.nsp", data / "saves" / "slot.bin", data / "media" / "cover.png")
     }
     platform = controller.snapshot({"context": {}})["platforms"][0]
     storage = platform["areaData"]["storage"]

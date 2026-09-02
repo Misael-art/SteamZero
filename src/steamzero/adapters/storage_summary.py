@@ -113,6 +113,64 @@ def _aggregate_roots(roots: Iterable[Path]) -> dict[str, Any]:
     }
 
 
+def _aggregate_files(files: Iterable[Path]) -> dict[str, Any]:
+    """Conta arquivos canônicos sem revarrer a raiz física inteira.
+
+    Uma raiz de ROM pode conter mais de uma plataforma. Para uma superfície
+    contextual, receber a lista de arquivos já classificados é a única forma
+    de manter a métrica alinhada ao catálogo sem atribuir toda a raiz ao
+    primeiro sistema encontrado.
+    """
+    unique: list[Path] = []
+    seen: set[Path] = set()
+    for file in files:
+        absolute = file.absolute()
+        if absolute not in seen:
+            seen.add(absolute)
+            unique.append(absolute)
+
+    files_count = 0
+    total_bytes = 0
+    missing = 0
+    errors = 0
+    blocked = 0
+    for file in unique:
+        if file.is_symlink() or any(parent.is_symlink() for parent in file.parents):
+            blocked += 1
+            continue
+        try:
+            if not file.exists():
+                missing += 1
+                continue
+            if not file.is_file():
+                errors += 1
+                continue
+            files_count += 1
+            total_bytes += file.stat().st_size
+        except OSError:
+            errors += 1
+
+    if blocked or errors:
+        state = "degraded"
+        error = "alguns arquivos canônicos não puderam ser lidos"
+    elif missing and files_count == 0:
+        state = "missing"
+        error = "nenhum arquivo canônico foi encontrado"
+    elif missing:
+        state = "degraded"
+        error = f"{missing} arquivo(s) canônico(s) não encontrado(s)"
+    else:
+        state = "ready" if files_count else "empty"
+        error = None
+    return {
+        "state": state,
+        "files": files_count,
+        "bytes": total_bytes,
+        "roots": len({file.parent for file in unique}),
+        "error": error,
+    }
+
+
 def _volume(root: Path, statvfs: StatVFS) -> dict[str, Any]:
     try:
         info = statvfs(str(root))
@@ -143,6 +201,8 @@ def collect_storage_summary(
     media_root: Path,
     cache_roots: Sequence[Path],
     volume_root: Path,
+    rom_files: Sequence[Path] | None = None,
+    platform_id: str | None = None,
     statvfs: StatVFS = os.statvfs,
 ) -> dict[str, Any]:
     """Retorna o uso observado das categorias gerenciadas pela emulação."""
@@ -155,7 +215,11 @@ def collect_storage_summary(
     )
     buckets: list[dict[str, Any]] = []
     for bucket_id, label, roots in definitions:
-        values = _aggregate_roots(roots)
+        values = (
+            _aggregate_files(rom_files)
+            if bucket_id == "roms" and rom_files is not None
+            else _aggregate_roots(roots)
+        )
         buckets.append({"id": bucket_id, "label": label, **values})
     total_files = sum(int(bucket["files"]) for bucket in buckets)
     total_bytes = sum(int(bucket["bytes"]) for bucket in buckets)
@@ -164,4 +228,8 @@ def collect_storage_summary(
         "buckets": buckets,
         "totals": {"files": total_files, "bytes": total_bytes},
         "volume": _volume(volume_root, statvfs),
+        "scope": {
+            "platformId": platform_id or "global",
+            "romFiles": len(rom_files) if rom_files is not None else None,
+        },
     }
