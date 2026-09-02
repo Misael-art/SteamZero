@@ -382,8 +382,8 @@ class GameMediaManager:
         self._store.save(state)
         return state
 
-    def audit(self) -> AuditReport:
-        return self._pipeline.audit()
+    def audit(self, platform_id: str | None = None) -> AuditReport:
+        return self._pipeline.audit(platform_id=platform_id)
 
     def plan_prune_orphan_cache(self) -> transaction.Plan:
         return self._pipeline.plan_prune_orphan_cache()

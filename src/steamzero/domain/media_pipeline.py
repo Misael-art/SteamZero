@@ -409,7 +409,15 @@ class MediaPipeline:
         )
 
     # --- 4. AUDIT ---
-    def audit(self) -> AuditReport:
+    def audit(self, platform_id: str | None = None) -> AuditReport:
+        """Audita o pipeline inteiro ou somente uma plataforma.
+
+        A árvore de mídia é compartilhada entre as plataformas, mas os
+        diretórios gerenciados carregam o ``platform_id`` no caminho. Sem esse
+        filtro, uma ação disparada na página do Switch apresentava órfãos e
+        arquivos de outros sistemas como se fossem problemas do Switch.
+        """
+        platform_segment = _platform_segment(platform_id) if platform_id else None
         report = AuditReport()
         masters_dir = self._media_root / "masters"
         optimized_dir = self._media_root / "optimized"
@@ -419,20 +427,31 @@ class MediaPipeline:
         if masters_dir.is_dir():
             for f in masters_dir.rglob("*"):
                 if f.is_file() and not f.is_symlink():
-                    master_files.add(str(f.relative_to(masters_dir)))
+                    relative = f.relative_to(masters_dir)
+                    if platform_segment is None or (
+                        relative.parts and relative.parts[0] == platform_segment
+                    ):
+                        master_files.add(str(relative))
         report.stats["masterFiles"] = len(master_files)
 
         opt_files: set[str] = set()
         if optimized_dir.is_dir():
             for f in optimized_dir.rglob("*"):
                 if f.is_file() and not f.is_symlink():
-                    opt_files.add(str(f.relative_to(optimized_dir)))
+                    relative = f.relative_to(optimized_dir)
+                    if platform_segment is None or (
+                        relative.parts and relative.parts[0] == platform_segment
+                    ):
+                        opt_files.add(str(relative))
         report.stats["optimizedFiles"] = len(opt_files)
 
         view_files: set[str] = set()
         if views_dir.is_dir():
             for f in views_dir.rglob("*"):
-                if f.is_symlink():
+                if f.is_symlink() and (
+                    platform_segment is None
+                    or self._view_belongs_to_platform(f, optimized_dir, platform_segment)
+                ):
                     view_files.add(str(f.relative_to(views_dir)))
                     if not f.exists():
                         report.add(
@@ -454,18 +473,37 @@ class MediaPipeline:
                 orphan_masters += 1
         report.stats["orphanMasters"] = orphan_masters
 
-        for game_id in self._registry.entries:
-            if not any((optimized_dir / p).is_file() for p in opt_files if game_id in p):
-                mstr = self._registry.entries[game_id]
-                if mstr.confirmed:
-                    report.add(
-                        "warning",
-                        "optimized-missing",
-                        f"Jogo {game_id} ({mstr.canonical_name}) sem optimized",
-                    )
+        entries = list(self._registry.entries.items())
+        if platform_segment is not None:
+            entries = [
+                (game_id, entry)
+                for game_id, entry in entries
+                if entry.platform_id == platform_segment
+            ]
+        report.stats["registryEntries"] = len(entries)
+        for game_id, mstr in entries:
+            if (
+                not any((optimized_dir / p).is_file() for p in opt_files if game_id in p)
+                and mstr.confirmed
+            ):
+                report.add(
+                    "warning",
+                    "optimized-missing",
+                    f"Jogo {game_id} ({mstr.canonical_name}) sem optimized",
+                )
 
         report.add("info", "audit-complete", f"Auditoria concluída: {report.stats}")
         return report
+
+    @staticmethod
+    def _view_belongs_to_platform(link: Path, optimized_dir: Path, platform_id: str) -> bool:
+        """Resolve o destino lexical de um link, inclusive quando quebrado."""
+        try:
+            target = (link.parent / os.readlink(link)).resolve(strict=False)
+            platform_root = (optimized_dir / platform_id).resolve(strict=False)
+            return target == platform_root or target.is_relative_to(platform_root)
+        except (OSError, ValueError):
+            return False
 
     def plan_prune_orphan_cache(self) -> transaction.Plan:
         """Planeja remover somente masters sem referência no registro canônico."""

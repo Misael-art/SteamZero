@@ -4274,6 +4274,7 @@ class EmulationController:
         except OSError:
             pass
         last_audit: str | None = None
+        last_audit_scope = "global"
         try:
             if (
                 self._media_audit_path.is_file()
@@ -4283,6 +4284,11 @@ class EmulationController:
                 payload = json.loads(self._media_audit_path.read_text(encoding="utf-8"))
                 if payload.get("schemaVersion") == 1 and isinstance(payload.get("checkedAt"), str):
                     last_audit = str(payload["checkedAt"])
+                    stored_scope = payload.get("scope")
+                    if isinstance(stored_scope, Mapping) and isinstance(
+                        stored_scope.get("platformId"), str
+                    ):
+                        last_audit_scope = str(stored_scope["platformId"])
         except (OSError, UnicodeError, json.JSONDecodeError, AttributeError):
             pass
         active_jobs = [
@@ -4303,6 +4309,7 @@ class EmulationController:
             "providerErrors": provider_errors,
             "providerDetails": provider_details,
             "lastAudit": last_audit,
+            "lastAuditScope": last_audit_scope,
             "lastScan": last_scan,
             "cacheBytes": cache_bytes,
             "scope": {
@@ -6817,19 +6824,31 @@ class EmulationController:
         if mode == "audit":
             with self._store_factory() as store:
                 store.migrate()
-                report = self._media_manager(store).audit().to_dict()
+                report = self._media_manager(store).audit(platform_id=platform_id or None).to_dict()
             checked_at = datetime.now(UTC).isoformat()
+            scope = {"platformId": platform_id or "global"}
             fs.write_atomic_text(
                 self._media_audit_path,
                 json.dumps(
-                    {"schemaVersion": 1, "checkedAt": checked_at, "report": report},
+                    {
+                        "schemaVersion": 1,
+                        "checkedAt": checked_at,
+                        "scope": scope,
+                        "report": report,
+                    },
                     sort_keys=True,
                     ensure_ascii=False,
                     separators=(",", ":"),
                 ),
             )
             ctx.set_progress("done", current=1, total=1, unit="audit")
-            return {"mode": mode, "checked_at": checked_at, "report": report}
+            return {
+                "mode": mode,
+                "platformId": platform_id or "global",
+                "scope": scope,
+                "checked_at": checked_at,
+                "report": report,
+            }
 
         all_games, _unidentified = self._load_library_cache()
         games = self._games_for_platform(all_games, platform_id) if platform_id else all_games
