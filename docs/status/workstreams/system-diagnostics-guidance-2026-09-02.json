@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-SYSTEM-DIAGNOSTICS-GUIDANCE",
+  "item": "SZ-SYSTEM-DIAGNOSTICS-GUIDANCE",
+  "branch": "codex/ux-audit-platform-context-2026-09-02",
+  "baseRef": "77bdc07",
+  "owner": "codex-ux-audit",
+  "state": "closed",
+  "exclusivePaths": [
+    "src/steamzero/diagnostics/doctor.py",
+    "tests/unit/test_doctor.py"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Código e provas concluídos; integração visual e validação física permanecem na frente QML.",
+  "updatedAt": "2026-09-02"
+}

@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-SYSTEM-DIAGNOSTICS-GUIDANCE",
+  "title": "Diagnóstico do sistema orientado à recuperação",
+  "domain": "ui",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/diagnostics/doctor.py",
+    "tests/unit/test_doctor.py"
+  ],
+  "scopeDigest": "11dc547c634ea4497396f60aae9a51f56b31fa657a6233ef04356572cdcd4dba",
+  "dependsOn": [],
+  "knownGaps": [
+    "GAP-SYSTEM-DIAGNOSTICS-QML-RECOVERY",
+    "GAP-EMULATION-PHYSICAL-LAUNCH"
+  ],
+  "acceptanceCriteria": [
+    "Cada check do Doctor publica estado, causa, impacto e orientação sem expor segredos ou caminhos pessoais.",
+    "Alertas com ação segura publicam ação allowlisted, alvo, rótulo e se a ação está habilitada.",
+    "Alertas sem ação automática explicam que a recuperação depende do operador, sem sugerir mutação inexistente.",
+    "O contrato continua read-only e permanece compatível com consumidores que usam apenas name, status e message."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_doctor.py",
+      "command": "rtk .venv/bin/python tools/run_tests_isolated.py tests/unit/test_doctor.py tests/unit/test_desktop_dashboard.py tests/integration/test_diagnostics.py tests/integration/test_desktop_ui_bridge.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "rtk .venv/bin/ruff check src tools tests; rtk .venv/bin/ruff format --check src tools tests; rtk .venv/bin/mypy src; rtk make independence boundaries",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "rtk env TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests -q; chegou a 17%, sem saída por 30s, interrompido; sem processos residuais",
+      "result": "partial"
+    }
+  ],
+  "nextAction": "Integrar guidance à hierarquia visual da tela Sistema e validar foco, ação e recuperação na release instalada; isso pertence à custódia QML posterior.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-09-02",
+  "notes": "A tela Sistema atualmente lista checks técnicos em sequência, mas jobs.stale e artefatos órfãos não diziam o impacto nem ofereciam caminho seguro. O Doctor agora publica guidance estruturado compatível com name/status/message, aponta somente navegação read-only existente e deixa boot/ações sem rota como orientação explícita ao operador. A hierarquia visual, foco, progresso e execução das ações continuam fora do escopo por pertencerem à integração QML posterior."
+}

@@ -9354,3 +9354,20 @@ saída por 30 segundos e foi interrompida de forma controlada, sem processos
 residuais. O commit funcional é `3bf5e22`. Nenhuma instalação, publicação,
 push ou ação de host foi executada. A seleção visual de destino/lote continua
 pendente na frente QML compartilhada.
+
+## 2026-09-02 — Sessão: guidance de recuperação do Doctor
+
+Workstream: `WS-2026-09-SYSTEM-DIAGNOSTICS-GUIDANCE`, branch
+`codex/ux-audit-platform-context-2026-09-02`. O Doctor mantém os campos
+compatíveis `name`, `status` e `message`, e passa a publicar severidade,
+observação, impacto, orientação manual e ação segura quando existe uma rota
+read-only para Tarefas ou exportação de diagnóstico. Alertas de boot e entrada
+sem rota de mutação não fabricam botões; orientam explicitamente a revisão do
+operador. A integração visual, foco, progresso e execução na tela Sistema
+continuam sob a custódia QML posterior.
+
+Provas: `100 passed` no recorte de Doctor/dashboard/diagnósticos/bridge; Ruff,
+formatação, mypy, independência, boundaries e `make status-check` passaram. A
+suíte integral chegou a 17%, ficou sem saída por 30 segundos e foi interrompida
+de forma controlada, sem processos residuais. O commit funcional é `23d498e`.
+Nenhuma instalação, publicação, push ou ação de host foi executada.

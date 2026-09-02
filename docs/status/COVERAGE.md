@@ -53,6 +53,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-PLATFORM-REQUIREMENT-SCOPE | 7 | 3 | 2 | unit |  |
 | SZ-PLATFORM-VITA-CATALOG | 5 | 3 | 2 | unit |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
+| SZ-SYSTEM-DIAGNOSTICS-GUIDANCE | 2 | 3 | 2 | unit |  |
 | SZ-THEME-ENGINE | 78 | 35 | 33 | hw |  |
 | SZ-THEME-IMPORT-RETROFE | 6 | 4 | 3 | unit |  |
 | SZ-THEME-IMPORT-SURFACE | 4 | 8 | 7 | unit |  |
