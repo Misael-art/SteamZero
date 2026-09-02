@@ -21,7 +21,7 @@
     "tests/unit/test_core_net.py",
     "tests/unit/test_media_multiprovider.py"
   ],
-  "scopeDigest": "82c0085d81ffd7e52fc679d53b498e3b70dc93989b7e19038e5610fbdacf324f",
+  "scopeDigest": "5c62d8b2560cba39ae677ecd2a643e8cca59b7a6b53e7891dba3c0100204901c",
   "dependsOn": [
     "SZ-MEDIA-SCRAPING"
   ],

@@ -13,7 +13,12 @@
     "src/steamzero/platform_manifests"
   ],
   "dependsOn": [],
-  "knownGaps": [],
+  "knownGaps": [
+    "GAP-PLATFORM-PS4-ABSENT",
+    "GAP-PLATFORM-CORE-PER-SYSTEM",
+    "GAP-PLATFORM-PSVITA-ABSENT",
+    "GAP-FIRMWARE-SWITCH-ONLY"
+  ],
   "acceptanceCriteria": [
     "Todo arquivo do escopo tem custodia declarada e aparece no catalogo.",
     "Nenhuma alegacao de verificacao e feita por este item."
@@ -21,6 +26,7 @@
   "evidence": [],
   "nextAction": "Cobrir a curadoria dos manifests por um item de catalogo de plataformas.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-08-11",
-  "notes": "Item AGREGADOR: existe para que nenhum arquivo de codigo fique sem custodia declarada, nao para alegar capacidade verificada. Onde um item de capacidade especifico cobre o mesmo caminho, ELE prevalece — o agregador responde apenas pelo resto do diretorio. Promover um recorte deste escopo a item proprio, com aceitacao e evidencia, e o caminho normal; o agregador encolhe quando isso acontece."
+  "updatedAt": "2026-09-02",
+  "notes": "Item AGREGADOR: existe para que nenhum arquivo de codigo fique sem custodia declarada, nao para alegar capacidade verificada. Onde um item de capacidade especifico cobre o mesmo caminho, ELE prevalece — o agregador responde apenas pelo resto do diretorio. Promover um recorte deste escopo a item proprio, com aceitacao e evidencia, e o caminho normal; o agregador encolhe quando isso acontece. Auditoria de cobertura em 2026-09-02: 61 plataformas no manifesto, 58 com emulador declarado E perfil de launch E emulador instalado; as 3 restantes (amazon-luna, geforce-now, xbox-cloud-gaming) sao servicos de nuvem e corretamente nao declaram emulador. Xbox (xemu) e Xbox 360 (xenia-canary) estao cobertos; Wii esta coberto dentro de `nintendo-console` (systems: gamecube, wii) via dolphin. LACUNA: PlayStation 4 nao existe no catalogo — nem manifesto, nem entrada em `systems`. Xbox One e Xbox Series tambem ausentes, coerente por nao haver emulador viavel; PS4 tem emulacao emergente (shadPS4), entao a ausencia pode ser decisao deliberada, mas nao estava registrada em lugar nenhum e por isso parecia omissao. LACUNA (2026-09-02, reproduzida): o core do perfil de launch pendura no GRUPO, nao no sistema, e para grupos heterogeneos ele esta errado. `atari-classics` agrupa 7 systems (atari2600, atari5200, atari7800, atarilynx, jaguar, atarijaguar, atarixe) sob o core `stella`, que emula somente o 2600 — 5200/XE precisam de atari800, 7800 de prosystem, Lynx de handy, Jaguar de virtualjaguar. O manifesto declara .a52/.a78/.lnx/.j64 entre as extensoes, entao esses arquivos resolveriam o core errado. `sega-cd-32x` tem o mesmo problema: genesis_plus_gx roda Sega CD mas nao 32X (precisa de picodrive). Corrigir exige `systemId` no scan e no cache canonico (hoje so existe `platformId`), porque sem saber QUAL sistema e o jogo nao ha como escolher o core por sistema. Grupos homogeneos conferidos e corretos: nintendo-handheld (mgba/gb,gbc,gba), nes-famicom (mesen), nintendo-console (dolphin/gamecube,wii), amiga, msx, coco, commodore-64. LACUNA PS Vita: ausente do catalogo (nem manifesto, nem `systems`, nem emulador declarado); o acervo real tem 5 arquivos em roms/psvita que a varredura marca `archive-platform-unknown`. LACUNA firmware nao-Switch: `_requirements` consulta `list_firmware_key_items(\"switch\", ...)` com a plataforma escrita como constante, e o modulo `keys_firmware.py` se declara 'store para Switch'. PS3 (rpcs3) precisa de PS3UPDAT.PUP e NADA e verificado; o manifesto do PS3 declara a capacidade `requirements` como `planned` com o texto 'Firmware fornecido pelo usuario sera verificado localmente'. `FirmwareDatabase` e `KeysFirmwareStore` nao sao instanciados em nenhum ponto de src/ — so em testes. Mesma forma de `supported_platforms` e `containerPolicy`: dominio pronto, ligacao ao produto ausente.",
+  "scopeDigest": "2727938dec322dec998cfce2b3e00644ae216510a1d51d46cae852a83b114131"
 }

@@ -22,5 +22,6 @@
   "nextAction": "Promover a itens proprios os recortes de dominio com contrato e teste dedicados.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-11",
-  "notes": "Item AGREGADOR: existe para que nenhum arquivo de codigo fique sem custodia declarada, nao para alegar capacidade verificada. Onde um item de capacidade especifico cobre o mesmo caminho, ELE prevalece — o agregador responde apenas pelo resto do diretorio. Promover um recorte deste escopo a item proprio, com aceitacao e evidencia, e o caminho normal; o agregador encolhe quando isso acontece."
+  "notes": "Item AGREGADOR: existe para que nenhum arquivo de codigo fique sem custodia declarada, nao para alegar capacidade verificada. Onde um item de capacidade especifico cobre o mesmo caminho, ELE prevalece — o agregador responde apenas pelo resto do diretorio. Promover um recorte deste escopo a item proprio, com aceitacao e evidencia, e o caminho normal; o agregador encolhe quando isso acontece.",
+  "scopeDigest": "6607944f8cc9e03c9e09d39c153b66ca14f3cf35913138c0488ca234ea86ae10"
 }
