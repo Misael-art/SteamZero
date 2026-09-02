@@ -9,7 +9,7 @@
     "verification": "unit",
     "operation": "degraded",
     "distribution": "installed",
-    "scopeDigest": "ed8f191b4bc3928110027b5f215b30f7bc27bc6cf8898b21ecc9e7ad8d88d8c1",
+    "scopeDigest": "2668da65d566ae691e475a5a5e525f4159f432b93f3c9cb4a61468f439a1f9ce",
     "scopePaths": [
         "src/steamzero/domain/default_theme.py",
         "src/steamzero/domain/theme_preferences.py",

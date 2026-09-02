@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-THEME-STUDIO-METADATA",
+  "item": "SZ-THEME-STUDIO",
+  "branch": "codex/ux-console-experience-p0-2026-09-02",
+  "baseRef": "c5021141",
+  "owner": "codex-ux-console-experience",
+  "state": "closed",
+  "exclusivePaths": [
+    "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+    "tests/qml/check_theme_editor_aura.qml"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Aguardar release autorizada para captura física; edição direta no canvas permanece fora desta fatia.",
+  "updatedAt": "2026-09-02"
+}

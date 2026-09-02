@@ -9040,3 +9040,24 @@ release instalada e validação física do Studio permanecem pendentes.
 Nenhuma instalação, publicação, rollback ou mutação de host foi executada. A
 release observada permanece `2.0.0rc1-145cf9d44738`; exportação e autoria física
 dependem de release autorizada e interação do operador.
+
+## 2026-09-02 — Sessão: edição de metadados no Theme Studio
+
+Workstream: `WS-2026-09-THEME-STUDIO-METADATA`, branch
+`codex/ux-console-experience-p0-2026-09-02`. O painel do Theme Studio passou a
+expor `name`, `author`, `license` e `description`: temas builtin permanecem
+somente leitura, enquanto temas de usuário enviam `theme.editor.set-metadata`
+com sessão, campo e valor e atualizam o manifesto retornado.
+
+Provas focadas: harness QML `tests/qml/check_theme_editor_aura.qml` passou com
+os dois cenários (builtin sem despacho e cópia de usuário atualizada); a suíte
+de editor/contratos/dashboard passou com `101 passed`. Os digests de AURA UI,
+Theme Studio e UI Desktop foram regenerados, `make status-check` passou e o
+workstream foi fechado. A suíte integral desta sessão ainda precisa ser
+reexecutada após a atualização documental; a tentativa anterior foi afetada
+por digests obsoletos e sockets temporários deixados por execuções isoladas,
+com `tests/unit/test_service_core.py` depois passando `43 passed`.
+
+Nenhuma instalação, publicação, rollback ou mutação de host foi executada.
+Captura PNG da release instalada e validação física do Theme Studio continuam
+pendentes; edição direta no canvas segue fora desta fatia.
