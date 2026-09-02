@@ -652,12 +652,23 @@ class EmulationController:
             str(row["id"]): str(row.get("version") or row.get("installedVersion") or "unknown")
             for row in all_rows
         }
-        games, unidentified = self._load_library_cache()
+        raw_games, _unidentified = self._load_library_cache()
         roots = self.library_roots()
         key_status, firmware_status = self._requirements(emulator_rows)
-        games = self._enrich_games(games, emulator_rows, key_status, firmware_status)
-        games = self._enrich_preservation(games)
-        games = self._enrich_controls(games)
+        # Este controller alimenta a superfície operacional do Switch, mas o
+        # cache canônico é misto. Enriquecer todas as linhas com keys,
+        # firmware, saves e controles do Switch fazia outras plataformas
+        # parecerem jogos Switch. Jogos não-Switch continuam no workspace geral
+        # como dados canônicos; somente as linhas Switch passam pelo pipeline
+        # específico desta fachada.
+        switch_raw_games = self._games_for_platform(raw_games, "switch")
+        switch_games = self._enrich_games(
+            switch_raw_games, emulator_rows, key_status, firmware_status
+        )
+        switch_games = self._enrich_preservation(switch_games)
+        switch_games = self._enrich_controls(switch_games)
+        enriched_by_id = {str(game.get("id")): game for game in switch_games}
+        games = [enriched_by_id.get(str(game.get("id")), dict(game)) for game in raw_games]
         content = self._content.list_records()
         integrity = self._content.integrity_report()
         physical_dock = self._physical_dock(desktop_status)
@@ -777,8 +788,8 @@ class EmulationController:
         )
         platform["areaData"] = self._area_data(
             emulator_rows,
-            games,
-            unidentified,
+            switch_games,
+            0,
             roots,
             content,
             integrity,
@@ -3052,7 +3063,11 @@ class EmulationController:
             )
             self._pending[plan.plan_id] = _PendingMutation(
                 kind="media-global",
-                metadata={"mode": mode, "overwrite": overwrite},
+                metadata={
+                    "mode": mode,
+                    "overwrite": overwrite,
+                    "platform_id": self._media_scope_from_payload(payload),
+                },
             )
         elif action == "media.cache.prune-orphans":
             with self._store_factory() as store:
@@ -3203,6 +3218,7 @@ class EmulationController:
                     params={
                         "mode": pending.metadata["mode"],
                         "overwrite": pending.metadata["overwrite"],
+                        "platform_id": pending.metadata["platform_id"],
                     },
                     priority="maintenance",
                     created_by="ui",
@@ -6614,8 +6630,15 @@ class EmulationController:
     def _media_global_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
         mode = str(job.params.get("mode") or "")
         overwrite = job.params.get("overwrite") is True
+        requested_platform_id = job.params.get("platform_id")
+        platform_id = str(requested_platform_id or "")
         if mode not in {"audit", "search-missing", "refresh", "overwrite", "optimize"}:
             raise SteamZeroError("E-API-SCHEMA", detail="modo global de mídia inválido")
+        if platform_id and platform_id != "switch":
+            raise SteamZeroError(
+                "E-API-SCHEMA",
+                detail="esta superfície de emulação só aceita o escopo da plataforma Switch",
+            )
         if mode == "overwrite" and not overwrite:
             raise SteamZeroError(
                 "E-API-SCHEMA",
@@ -6638,7 +6661,8 @@ class EmulationController:
             ctx.set_progress("done", current=1, total=1, unit="audit")
             return {"mode": mode, "checked_at": checked_at, "report": report}
 
-        games, _unidentified = self._load_library_cache()
+        all_games, _unidentified = self._load_library_cache()
+        games = self._games_for_platform(all_games, platform_id) if platform_id else all_games
         total = len(games)
         processed = 0
         skipped = 0
@@ -6751,6 +6775,7 @@ class EmulationController:
         outcome = "degraded" if provider_errors else "partial" if no_candidates else "success"
         return {
             "mode": mode,
+            "platformId": platform_id or "global",
             "overwrite": overwrite,
             "outcome": outcome,
             "total": total,
@@ -8395,6 +8420,35 @@ class EmulationController:
             return valid, resolved
         except (OSError, ValueError, json.JSONDecodeError):
             return [], 0
+
+    @staticmethod
+    def _games_for_platform(
+        games: Sequence[Mapping[str, Any]], platform_id: str
+    ) -> list[dict[str, Any]]:
+        """Retorna somente linhas canônicas do contexto solicitado.
+
+        A ausência de plataforma não é convertida em Switch: o cache precisa
+        declarar o destino antes de uma superfície específica poder operar
+        sobre o jogo. Isso evita que uma ROM antiga ou incompleta seja salva,
+        raspada ou atualizada no sistema errado.
+        """
+        return [
+            dict(game)
+            for game in games
+            if str(game.get("platformId") or game.get("platform") or "") == platform_id
+        ]
+
+    @staticmethod
+    def _media_scope_from_payload(payload: Mapping[str, Any]) -> str:
+        requested = payload.get("platformId")
+        if requested is None:
+            return "switch"
+        if not isinstance(requested, str) or requested != "switch":
+            raise SteamZeroError(
+                "E-API-SCHEMA",
+                detail="esta superfície de emulação só aceita o escopo da plataforma Switch",
+            )
+        return requested
 
     def _count_projection_ghosts(self) -> int:
         """Conta jogos do cache cujo arquivo sumiu (verificação pós-reparo)."""
