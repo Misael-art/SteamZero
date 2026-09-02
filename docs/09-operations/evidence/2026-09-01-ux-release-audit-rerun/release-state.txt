@@ -1,0 +1,9 @@
+Release ativa: 2.0.0rc1-145cf9d44738
+Commit do daemon: 145cf9d44738b4ceb50a591355149137575b4ecb
+service status: converged; daemonRelease igual à activatedRelease; restarted=false
+doctor: degraded somente em boot.direct=unknown por falta de permissão para inspecionar boot
+doctor: runtime, provenance, geração do serviço, banco, jobs, staging, backups, journal, recovery e deck input = pass
+pendingOperations=0; staleJobs=0; orphanStaging=0; orphanBackups=0; orphanJournals=0
+frontends status: SRM ausente e ES-DE ausente; nenhum frontend opcional foi alterado
+theme status: org.steamzero.asset-recipes-demo 1.0.0 ativo
+host/session mutation: nenhuma

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-UX-RELEASE-AUDIT-RERUN",
+  "item": "SZ-UI-DESKTOP-AUDIT",
+  "branch": "codex/ux-release-audit-rerun-2026-09-01",
+  "baseRef": "145cf9d4",
+  "owner": "codex-ux-release-auditor",
+  "state": "closed",
+  "exclusivePaths": [
+    "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Corrigir a ativação live do Launcher; depois repetir o ciclo por plataforma com jogo real, emulador, fade-in/fade-out e retorno.",
+  "updatedAt": "2026-09-02"
+}

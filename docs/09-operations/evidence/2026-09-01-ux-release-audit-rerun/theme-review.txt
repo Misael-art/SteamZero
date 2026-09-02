@@ -1,0 +1,6 @@
+Temas disponíveis: 4 builtin compatíveis — Theme Engine — asset único, AURA, SteamZero e Steam Deck.
+Tema ativo: org.steamzero.asset-recipes-demo 1.0.0; nenhuma ativação foi aplicada.
+Planos read-only: AURA, SteamZero e Steam Deck retornaram theme.preference.activate com garantia G-FULL e apenas 1 arquivo de preferência afetado. O tema já ativo foi recusado com E-THEME-ACTIVE (“tema ativo não pode ser removido”), embora a operação solicitada fosse plan; isso torna a semântica da revisão inconsistente.
+Capturas live: studio-themes.png e deck-themes.png mostram a superfície de temas; studio-themes.png expõe “Editor de Temas”, “Criar Novo Tema” e ações “Ver”, “Duplicar e editar” e “Aplicar”.
+Achados visuais: ações truncadas, footer de controle pouco legível no tema claro e banner de perfil com texto/botão de baixa separação; a estrutura de cards é compreensível, mas a hierarquia e o feedback de foco precisam de prova física.
+Theme Studio: a tela é acessível na auditoria live e o canvas/preview é coberto por testes offscreen; a edição direta permanece somente leitura na release observada.

@@ -1,0 +1,7 @@
+Fonte física observada: /home/misael/emulation/roms (somente leitura).
+Arquivos físicos: 8.016.
+Extensões físicas relevantes: .bin 432; .iso 1; .zip 716; .7z 317; .chd 46; .nsp 178; .wua 2; .rvz 1; .3ds 19; .sms 51; .nes 32; .gb 30.
+Catálogo canônico lido pelo serviço: 231 jogos, 13 plataformas com jogos.
+Distribuição canônica: dreamcast 5; master-system 51; neo-geo-cd 1; nes-famicom 33; nintendo-3ds 19; nintendo-console 1; nintendo-handheld 30; playstation 49; playstation-2 6; playstation-3 1; sega-saturn 18; switch 15; wii-u 2.
+Formatos canônicos medidos: .cdi 1; .chd 44; .bin 32; .img 1; .pbp 1; .iso 1; .nsp 15; .wua 2; .rvz 1; .3ds 19; .sms 51; .nes 32; .unf 1; .gb 30.
+Gap: 716 ZIP e 317 7Z físicos não aparecem no catálogo canônico; não foram lançados por bypass. A diferença impede afirmar cobertura completa de mídias.

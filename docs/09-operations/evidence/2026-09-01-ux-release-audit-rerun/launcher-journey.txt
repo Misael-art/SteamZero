@@ -1,0 +1,7 @@
+Launcher real: steamzero-launcher, DISPLAY=:0, WAYLAND_DISPLAY=wayland-0, QT_QPA_PLATFORM=xcb.
+Estado inicial: home fullscreen 1280x800; primeiro foco em “1969 (Homebrew) (SMS)”; item real com extensão .sms.
+Ações: Return, clique no cartão e navegação Down/F em execuções de controle.
+Resultado: nenhuma ação alterou a tela; não apareceu página de jogo, botão Play, overlay, fade-in, processo de emulador ou retorno.
+Prova: before e after têm SHA-256 1308cd106ad6a6a7e9dfb935a8245415285a26e6888ac705698d5c103c87d4c7.
+Conclusão: a jornada não chega ao spawn; não foi seguro nem válido abrir emulador por CLI para substituir a rota do Launcher.
+Cleanup: Alt+F4; janela SteamZero ausente; nenhum steamzero-launcher/QML/emulador residual.

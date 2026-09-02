@@ -8877,3 +8877,35 @@ valores, dependendo da ordem de execução/estado efêmero de ticks. O teste NÃ
 toca o escopo de Launcher/coleções entregue nesta rodada. Registrar para o
 próximo agente não investigar à toa; se reincidir, o defeito é do teste (iterador
 de ticks), não do código de produção.
+
+## 2026-09-02 — Reauditoria UX da release 145: Launcher ainda bloqueia o ciclo físico
+
+Release ativa conferida somente em leitura: `2.0.0rc1-145cf9d44738`, daemon
+convergido, `doctor` degradado apenas porque `boot.direct` não pode ser
+inspecionado sem permissão, e zero operações pendentes. Nenhuma instalação,
+rollback, aplicação de tema, varredura, download ou mutação da sessão foi feita.
+
+O Launcher fullscreen real abriu com o acervo canônico e mostrou títulos reais,
+incluindo `1969 (Homebrew) (SMS)`, confirmando a correção do fallback de `name`
+versus hash. Return, clique, Down e F foram exercitados; o cartão não ativou, as
+capturas antes/depois têm o mesmo SHA-256 e não nasceu emulador. A decisão correta
+foi parar nesse ponto: abrir Eden/RetroArch/PCSX2/Dolphin/RPCS3 por CLI violaria o
+fluxo pedido e produziria uma falsa certificação. Fade-in, jogo em execução,
+fade-out, restauração de foco e retorno continuam abertos.
+
+A leitura do workspace encontrou 231 jogos canônicos em 13 plataformas, enquanto
+o disco contém 8.016 arquivos, inclusive 716 ZIP e 317 7Z que não aparecem na
+fonte publicada observada. Eles não foram lançados por bypass. O `ui_audit_runner`
+live concluiu 55 capturas com QML return code 0; Biblioteca mostrou mistura de
+capas reais e placeholders; Theme Studio apareceu, mas ações truncam, o banner de
+perfil e o rodapé de dicas permanecem difíceis de ler no tema claro e a navegação
+manual encontrou Emulação desabilitada. O plan do tema ativo foi recusado como
+`E-THEME-ACTIVE`, embora os planos alternativos tenham sido gerados em revisão.
+
+As capturas e o relatório completo estão em
+`docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun/`. Um lote de
+testes focados foi interrompido por timeout reproduzível numa captura QML após
+oito casos e não foi contado como aprovação. O workstream foi fechado com os
+gaps registrados nos itens de Launcher, UI Desktop, biblioteca canônica e Theme
+Studio. A verificação final confirmou que nenhum processo de teste, QML,
+Launcher, central ou emulador ficou aberto.

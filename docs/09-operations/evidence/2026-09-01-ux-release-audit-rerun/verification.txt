@@ -1,0 +1,6 @@
+ui_audit_runner --on-screen: concluído; 55 capturas; dataOrigin=bridge-live; qmlReturncode=0; viewport 1280x800; backend software.
+Testes focados em lote: interrompidos por timeout após oito pontos, presos numa captura QML do harness; nenhum processo ficou aberto. O resultado não é tratado como aprovação.
+Suíte integral `.venv/bin/python tools/run_tests_isolated.py tests -q`: timeout controlado de 180s; avançou até 17% com skips esperados e sem falha explícita no trecho observado. Não é aprovação integral.
+Gates estáticos: ruff check OK; ruff format --check OK (532 arquivos); mypy OK (245 arquivos); make independence boundaries OK; make status-check OK.
+Testes existentes relevantes já registrados no item: contratos de navegação, catálogo, sessão, app/launch, Theme Studio e inventário de controles verdes; isso não substitui a prova física do Launcher.
+Limpeza final: pgrep não encontrou run_tests_isolated, pytest, qmltestrunner, steamzero-launcher, steamzero desktop ui, Main.qml ou emuladores.
