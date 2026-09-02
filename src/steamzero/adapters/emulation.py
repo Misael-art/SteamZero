@@ -73,7 +73,8 @@ from steamzero.core.net import NetworkFailure, fetch_bytes
 from steamzero.core.secret import Secret
 from steamzero.core.session_state import SESSION_OWNER
 from steamzero.core.state import StateStore
-from steamzero.domain.bios_catalog import BiosLibrary
+from steamzero.domain.bios_catalog import BiosLibrary, bios_legacy_view_path, bios_view_path
+from steamzero.domain.bios_sources import approved_bios_sources
 from steamzero.domain.bitrot import BitrotManager, BitrotTarget
 from steamzero.domain.cloud_platforms import CloudPlatformService
 from steamzero.domain.emulation_workspace import (
@@ -89,6 +90,7 @@ from steamzero.domain.library import (
     AuxiliaryContent,
     PlatformDirectoryInventory,
     PlatformRomScanner,
+    system_for_path,
 )
 from steamzero.domain.media_pipeline import MediaPipeline
 from steamzero.domain.platform_composer import EmulatorFacts
@@ -518,6 +520,8 @@ class EmulationController:
         self._pending: dict[str, _PendingMutation] = {}
         self._bios_library = BiosLibrary()
         self._running_pids: dict[str, int] = {}
+        # (identidade do arquivo, jogos normalizados, não identificados)
+        self._library_cache_memo: tuple[tuple[int, int], list[dict[str, Any]], int] | None = None
         self._background_lock = threading.Lock()
         self._background_runners: dict[str, JobManager] = {}
         self._background_threads: dict[str, threading.Thread] = {}
@@ -889,14 +893,23 @@ class EmulationController:
         falhou não prova presença, e sondar não pode derrubar a central
         (AGENTS.md §8).
         """
-        try:
-            target = fs.resolve_within(paths.bios_dir(), paths.bios_dir() / platform_id / name)
-        except SteamZeroError:
-            return False
-        try:
-            return target.is_file()
-        except OSError:
-            return False
+        # Aceita as duas views: a canônica, que o importador ativo escreve, e a
+        # legada, que instalações anteriores à migração ainda têm. Ler só a
+        # legada tornava invisível toda BIOS importada pelo fluxo atual.
+        for candidate in (
+            bios_view_path(platform_id, name),
+            bios_legacy_view_path(platform_id, name),
+        ):
+            try:
+                target = fs.resolve_within(paths.bios_dir(), candidate)
+            except SteamZeroError:
+                continue
+            try:
+                if target.is_file():
+                    return True
+            except OSError:
+                continue
+        return False
 
     def _plan_flatpak_emulator(
         self, store: StateStore, registry: AdapterRegistry, emulator_id: str, action: str
@@ -1004,6 +1017,46 @@ class EmulationController:
                 if emulator["adapterId"] == emulator_id and emulator.get("role") == "primary":
                     return platform.id
         return "multi"
+
+    def _declared_emulators_for(self, platform_id: str) -> list[str]:
+        """Emuladores que a PLATAFORMA declara, na ordem que ela declara.
+
+        ``role: primary`` primeiro, depois ``precedence`` crescente. A ordem é
+        do manifesto, não uma preferência inventada aqui.
+        """
+        registry = PlatformRegistry.bundled()
+        try:
+            platform = registry.get(platform_id)
+        except KeyError:
+            return []
+        ordered = sorted(
+            platform.emulators,
+            key=lambda item: (
+                0 if item.get("role") == "primary" else 1,
+                int(item.get("precedence") or 99),
+            ),
+        )
+        return [str(item["adapterId"]) for item in ordered if item.get("adapterId")]
+
+    def _platform_emulator_for(self, platform_id: str) -> str | None:
+        """Primeiro emulador declarado pela plataforma que está lançável.
+
+        Sem isto, o ``defaultEmulatorId`` global valia para TODO jogo. Com o
+        default em `eden` (um emulador de Switch), NES, Master System,
+        PlayStation e Dreamcast resolviam para `eden` e paravam em "plataforma
+        não declara um perfil de launch": medido no acervo real, 1104 de 1119
+        jogos eram inalcançáveis enquanto o emulador correto estava declarado
+        no manifesto e nunca era consultado.
+        """
+        for candidate in self._declared_emulators_for(platform_id):
+            if self._launch_profile_for(platform_id, candidate) is None:
+                continue
+            try:
+                self._require_launchable_emulator(candidate)
+            except SteamZeroError:
+                continue
+            return candidate
+        return None
 
     def _launch_profile_for(self, platform_id: str, adapter_id: str) -> LaunchProfile | None:
         registry = PlatformRegistry.bundled()
@@ -1127,7 +1180,126 @@ class EmulationController:
             "processGroups": len(groups),
         }
 
-    def launch_game(self, game_id: str) -> dict[str, Any]:
+    def adopt_known_bios(self) -> dict[str, Any]:
+        """Incorpora ao store central a BIOS que já está no disco do usuário.
+
+        Filosofia de mínimo atrito, igual à lista de raízes de ROM: os
+        diretórios conhecidos são um FACILITADOR. O que estiver lá e casar com o
+        catálogo é incorporado e o emulador fica funcional; o que não estiver, o
+        usuário importa de fato, como acontece com keys e firmware.
+
+        O casamento é por SHA-256, nunca por nome. Medido no host em
+        2026-09-02: `AmigaVision.rom` tem exatamente o mesmo hash de
+        `kick40068.A1200` — casar por nome perderia o arquivo, e aceitar um nome
+        conhecido com conteúdo diferente adotaria a BIOS errada.
+
+        Nada é sobrescrito e nada é apagado: a importação copia para o store
+        gerenciado, e o que não for reconhecido é contado com motivo, nunca
+        descartado em silêncio.
+        """
+        adopted: list[dict[str, str]] = []
+        unrecognized = 0
+        duplicates = 0
+        already_present = 0
+        examined = 0
+        errors: list[str] = []
+        for source in approved_bios_sources(extra_candidates=self._emulator_bios_source_dirs()):
+            try:
+                summary = self._bios_library.scan(source.path)
+            except SteamZeroError as exc:
+                errors.append(f"{source.label}: {exc.detail or exc.code}")
+                continue
+            examined += int(summary.get("examined") or 0)
+            counts = summary.get("counts") or {}
+            # A categoria é `unknown-ignored`; ler `unknown` devolvia sempre 0.
+            # Medido no host: o relatório dizia "0 não reconhecidos" havendo
+            # 1288 — errado para baixo, escondendo justamente o que o usuário
+            # precisaria revisar. É a mesma classe do denominador inventado.
+            unrecognized += int(counts.get("unknown-ignored") or 0)
+            # "você tem duas cópias" é situação diferente de "não sei o que é
+            # isto", e o scanner já as separa; juntá-las apagaria a distinção.
+            duplicates += int(counts.get("duplicate-source") or 0)
+            # "já estava lá" não é "não achei nada": sem esta contagem, a
+            # segunda execução relataria 0 incorporados e pareceria falha,
+            # quando o resultado correto é que não havia nada novo a fazer.
+            already_present += int(counts.get("already-present") or 0)
+            novos = [
+                candidate
+                for candidate in summary.get("candidates") or []
+                if candidate.get("platformId") and candidate.get("category") == "new"
+            ]
+            if not novos:
+                continue
+            try:
+                # Sem seleção explícita: `import_plan` já restringe aos
+                # candidatos IDENTIFICADOS e novos. O hash completo não sai do
+                # domínio — `public()` o trunca de propósito —, então pedir uma
+                # seleção aqui exigiria furar essa fronteira para reconstruir o
+                # que o próprio plano sabe filtrar.
+                plan = self._bios_library.import_plan(str(summary["scanId"]))
+                self._bios_library.import_apply(str(plan["planId"]), str(plan["confirmToken"]))
+            except SteamZeroError as exc:
+                errors.append(f"{source.label}: {exc.detail or exc.code}")
+                continue
+            for candidate in novos:
+                adopted.append(
+                    {
+                        "platformId": str(candidate.get("platformId")),
+                        "name": str(candidate.get("canonicalName") or ""),
+                        # O arquivo do usuário raramente tem o nome canônico:
+                        # `AmigaVision.rom` É `kick40068.A1200`, provado por
+                        # hash. Sem publicar a origem, o usuário não tem como
+                        # saber qual arquivo dele foi reconhecido.
+                        "sourceMember": str(candidate.get("sourceMember") or ""),
+                        "source": source.label,
+                    }
+                )
+        return {
+            "adopted": adopted,
+            "adoptedCount": len(adopted),
+            "unrecognized": unrecognized,
+            "duplicates": duplicates,
+            "alreadyPresent": already_present,
+            "examined": examined,
+            "errors": errors,
+        }
+
+    def _emulator_bios_source_dirs(self) -> tuple[Path, ...]:
+        """Diretórios de BIOS dos emuladores, como ORIGEM além de destino.
+
+        Quem já usava o emulador antes do SteamZero tem a BIOS ali. Só o
+        adapter sabe resolvê-los, então o domínio os recebe prontos.
+        """
+        dirs: list[Path] = []
+        for adapter_id in ("retroarch", "duckstation", "pcsx2", "melonds", "flycast"):
+            dirs.extend(self._emulator_bios_targets(adapter_id))
+        return tuple(dirs)
+
+    def game_readiness(self, game_id: str) -> dict[str, Any]:
+        """Diz se o jogo pode ser iniciado, e por que não, sem efeito nenhum.
+
+        Roda EXATAMENTE as pré-condições de ``launch_game`` — as duas chamam
+        ``_launch_preflight``. Reimplementar a sequência aqui recriaria a
+        divergência clássica: a tela diria "pode jogar" e o lançamento diria
+        outra coisa. A UI oferecia "Jogar" habilitado para todo jogo, inclusive
+        Switch sem ``prod.keys``, e o erro só aparecia depois do gesto.
+        """
+        try:
+            self._launch_preflight(game_id)
+        except SteamZeroError as exc:
+            return {"playable": False, "code": exc.code, "reason": exc.detail or exc.code}
+        except (OSError, KeyError, ValueError) as exc:
+            # Preflight é diagnóstico: um caminho ilegível ou um registro
+            # incompleto viram "não posso" com motivo, nunca exceção na tela.
+            return {"playable": False, "code": "E-CONTENT-UNSUPPORTED", "reason": str(exc)}
+        return {"playable": True, "code": "", "reason": ""}
+
+    def _launch_preflight(self, game_id: str) -> dict[str, Any]:
+        """Resolve e valida tudo que o lançamento exige, sem spawnar nada.
+
+        Extraído de ``launch_game`` para que a disponibilidade mostrada na tela
+        e a decisão real de lançar não possam divergir.
+        """
         game = self._current_game(game_id)
         settings = self._load_game_settings(strict=True)
         game_settings = self._settings_for_game_with_global(game, settings)
@@ -1191,6 +1363,31 @@ class EmulationController:
                     detail=f"o core {profile.core} não está instalado no RetroArch; "
                     "instale/verifique o core antes de jogar",
                 )
+        return {
+            "game": game,
+            "game_settings": game_settings,
+            "emulator_id": emulator_id,
+            "platform_id": platform_id,
+            "rom": rom,
+            "profile": profile,
+            "source_type": source_type,
+            "flatpak_ref": flatpak_ref,
+            "payload": payload,
+            "core_path": core_path,
+        }
+
+    def launch_game(self, game_id: str) -> dict[str, Any]:
+        preflight = self._launch_preflight(game_id)
+        game = preflight["game"]
+        game_settings = preflight["game_settings"]
+        emulator_id = str(preflight["emulator_id"])
+        platform_id = str(preflight["platform_id"])
+        rom = preflight["rom"]
+        profile = preflight["profile"]
+        source_type = preflight["source_type"]
+        flatpak_ref = preflight["flatpak_ref"]
+        payload = preflight["payload"]
+        core_path = preflight["core_path"]
         # Melhorias são aplicadas ANTES de montar o argv, não apenas antes do
         # spawn: uma melhoria pode precisar influenciar o próprio comando (core
         # override, flag de shader, parâmetro de executor). Aplicar depois do
@@ -1856,6 +2053,23 @@ class EmulationController:
                     "coverUrl": None,
                     "mediaSource": None,
                     "platform": pm.platform,
+                    # O sistema fica AO LADO da plataforma, nunca no lugar dela:
+                    # `platformId` continua resolvendo emulador e launch, que é
+                    # o caminho recém-estabilizado. `systemId` existe para
+                    # agrupar e apresentar — sem ele, 296 jogos aparecem como
+                    # "nintendo-handheld" enquanto o disco já separa gb, gbc e
+                    # gba. Nulo quando o diretório não declara, porque adivinhar
+                    # sistema por extensão erraria: 43 das 213 extensões
+                    # pertencem a mais de uma plataforma.
+                    "systemId": (
+                        system_for_path(
+                            pm.path,
+                            root,
+                            registry.get(pm.platform).systems if pm.platform else (),
+                        )
+                        if pm.platform
+                        else None
+                    ),
                     "evidence": pm.evidence,
                 }
             directory_report.extend(
@@ -5633,7 +5847,8 @@ class EmulationController:
                 "E-CONTENT-UNSAFE-ARCHIVE", detail="arquivo de BIOS fora dos limites"
             )
         digest = fs.hash_file(selected, algo="sha256")
-        dest = fs.resolve_within(paths.bios_dir(), paths.bios_dir() / platform_id / selected.name)
+        # Escrita sempre na view canônica; nada novo vai para o layout legado.
+        dest = fs.resolve_within(paths.bios_dir(), bios_view_path(platform_id, selected.name))
         copies = self._new_copy_targets(selected, [dest], digest)
         root = self._compatible_root({candidate: b"" for _, candidate in copies})
         plan = (
@@ -6777,13 +6992,66 @@ class EmulationController:
 
     @staticmethod
     def _emulator_bios_targets(adapter_id: str) -> tuple[Path, ...]:
+        """Diretórios de BIOS do emulador, incluindo o sandbox do Flatpak.
+
+        Só os caminhos nativos eram conhecidos. Medido no host em 2026-09-02:
+        `~/.config/retroarch/system` NÃO existe, enquanto
+        `~/.var/app/org.libretro.RetroArch/config/retroarch/system` existe — os
+        emuladores estão instalados por Flatpak. Projetar só no caminho nativo
+        grava onde o emulador não lê, e o jogo continua sem BIOS depois de uma
+        projeção que reportou sucesso.
+        """
         home = Path.home()
+        flatpak = home / ".var" / "app"
         return {
-            "retroarch": (home / ".config/retroarch/system",),
-            "duckstation": (home / ".config/duckstation/bios",),
-            "pcsx2": (home / ".config/PCSX2/bios",),
-            "melonds": (home / ".config/melonDS/bios",),
+            "retroarch": (
+                home / ".config/retroarch/system",
+                flatpak / "org.libretro.RetroArch/config/retroarch/system",
+            ),
+            "duckstation": (
+                home / ".config/duckstation/bios",
+                home / ".local/share/duckstation/bios",
+                flatpak / "org.duckstation.DuckStation/data/duckstation/bios",
+            ),
+            "pcsx2": (
+                home / ".config/PCSX2/bios",
+                flatpak / "net.pcsx2.PCSX2/config/PCSX2/bios",
+            ),
+            "melonds": (
+                home / ".config/melonDS/bios",
+                flatpak / "net.kuribo64.melonDS/config/melonDS",
+            ),
+            "flycast": (
+                home / ".local/share/flycast",
+                flatpak / "org.flycast.Flycast/data/flycast",
+            ),
         }.get(adapter_id, ())
+
+    @staticmethod
+    def _usable_bios_view(candidate: Path) -> Path | None:
+        """Caminho REAL da view publicada, ou ``None`` se não serve.
+
+        A recusa a symlink existia por segurança — não seguir link para fora do
+        que gerenciamos. Só que a view canônica É um link: o importador publica
+        `platforms/<p>/<nome>` apontando para `objects/sha256/…`, a única cópia
+        física. A projeção recusava exatamente o que o próprio importador
+        produz, e a BIOS adotada continuava pedindo importação.
+
+        A regra correta não é "sem link", é "resolve dentro do store". Devolver
+        o caminho resolvido é o que permite manter `O_NOFOLLOW` no hash do
+        núcleo: quem hasheia recebe o arquivo regular, não o link.
+        """
+        try:
+            if not candidate.is_file():
+                return None
+            if not candidate.is_symlink():
+                return candidate
+            resolved = candidate.resolve(strict=True)
+            if not resolved.is_relative_to(paths.bios_dir().resolve(strict=False)):
+                return None
+            return resolved
+        except OSError:
+            return None
 
     def _bios_projection_copies(self, platform_id: str, adapter_id: str) -> list[tuple[Path, Path]]:
         """Projeta as BIOS do store central aos diretórios reais dos emuladores.
@@ -6808,8 +7076,24 @@ class EmulationController:
             )
         copies: list[tuple[Path, Path]] = []
         for name in profile.requires_bios:
-            source = paths.bios_dir() / platform_id / name
-            if source.is_symlink() or not source.is_file():
+            # A BIOS importada pelo fluxo atual mora na view canônica; a legada
+            # só existe em instalação anterior à migração. Ler apenas a legada
+            # fazia uma importação bem-sucedida continuar pedindo importação.
+            source = next(
+                (
+                    resolved
+                    for resolved in (
+                        self._usable_bios_view(candidate)
+                        for candidate in (
+                            bios_view_path(platform_id, name),
+                            bios_legacy_view_path(platform_id, name),
+                        )
+                    )
+                    if resolved is not None
+                ),
+                None,
+            )
+            if source is None:
                 raise SteamZeroError(
                     "E-CONTENT-BIOS-MISSING",
                     detail=f"importe a BIOS '{name}' de {platform_id} antes de projetar",
@@ -7292,6 +7576,24 @@ class EmulationController:
                 key = "emulatorId"
             if key not in result:
                 result[key] = value
+        # O default global é uma preferência, não uma decisão de plataforma. Ele
+        # só vale quando o emulador escolhido declara perfil de launch para a
+        # plataforma DESTE jogo; caso contrário quem decide é o manifesto da
+        # plataforma. O ajuste explícito por jogo continua soberano: se o
+        # usuário escolheu um emulador para aquele título, respeitamos e
+        # deixamos o preflight recusar com motivo, em vez de trocar por baixo.
+        platform_id = str(game.get("platformId") or game.get("platform") or "")
+        if not platform_id:
+            return result
+        explicit = self._resolve_settings(game, settings).get("emulatorId")
+        if isinstance(explicit, str) and explicit:
+            return result
+        chosen = result.get("emulatorId")
+        if isinstance(chosen, str) and self._launch_profile_for(platform_id, chosen) is not None:
+            return result
+        fallback = self._platform_emulator_for(platform_id)
+        if fallback is not None:
+            result["emulatorId"] = fallback
         return result
 
     def _media_manager(self, store: StateStore) -> GameMediaManager:
@@ -7953,8 +8255,26 @@ class EmulationController:
         return max(matches, key=lambda root: len(root.parts))
 
     def _load_library_cache(self) -> tuple[list[dict[str, Any]], int]:
+        # Memoizado pela identidade do arquivo (mtime+tamanho), não por tempo:
+        # uma varredura nova muda o mtime e invalida sozinha, sem janela em que
+        # o produto sirva um acervo velho. Medido com os 1119 jogos reais: cada
+        # chamada relia e normalizava o cache inteiro em 877 ms, e
+        # `_current_game` chama isto — então checar a disponibilidade do
+        # catálogo levava ~19 minutos, o que torna a informação inútil na tela.
         if not self._library_cache_path.is_file() or self._library_cache_path.is_symlink():
+            self._library_cache_memo = None
             return [], 0
+        try:
+            stamp = self._library_cache_path.stat()
+            key = (stamp.st_mtime_ns, stamp.st_size)
+        except OSError:
+            key = None
+        memo = self._library_cache_memo
+        if key is not None and memo is not None and memo[0] == key:
+            # Cópia rasa por item: quem consome normaliza e às vezes escreve no
+            # dicionário, e um memo compartilhado por referência deixaria essa
+            # escrita vazar para a próxima chamada.
+            return [dict(game) for game in memo[1]], memo[2]
         try:
             data = json.loads(self._library_cache_path.read_text(encoding="utf-8"))
             games = data.get("games", [])
@@ -8004,7 +8324,10 @@ class EmulationController:
                 # fronteira onde o cache vira dado de domínio.
                 normalized["platformId"] = str(game.get("platformId") or game.get("platform") or "")
                 valid.append(normalized)
-            return valid, max(0, unidentified)
+            resolved = max(0, unidentified)
+            if key is not None:
+                self._library_cache_memo = (key, [dict(game) for game in valid], resolved)
+            return valid, resolved
         except (OSError, ValueError, json.JSONDecodeError):
             return [], 0
 

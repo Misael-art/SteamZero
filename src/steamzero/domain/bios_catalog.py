@@ -33,6 +33,29 @@ _CHUNK = 1024 * 1024
 _TRUNC = 12
 
 
+def bios_view_path(platform_id: str, canonical_name: str) -> Path:
+    """Onde a BIOS publicada de uma plataforma fica visível — layout canônico.
+
+    Existia em duas formas: `bios/platforms/<p>/<nome>`, escrita pelo
+    importador ativo (`BiosLibrary`, usado por UI, ponte e CLI), e
+    `bios/<p>/<nome>`, que a projeção e a sonda de presença liam. Uma BIOS
+    importada corretamente ficava invisível para quem precisava dela, e o jogo
+    continuava dizendo "importe a BIOS antes de projetar". Nunca apareceu
+    porque o diretório `bios/` sequer existe num host que ainda não importou
+    nada — o caminho nunca foi exercitado ponta a ponta.
+    """
+    return paths.bios_dir() / "platforms" / platform_id / canonical_name
+
+
+def bios_legacy_view_path(platform_id: str, canonical_name: str) -> Path:
+    """Layout v1, mantido apenas para LER instalações anteriores à migração.
+
+    Nada novo é escrito aqui. `bios.py` ainda publica esta view como link
+    durante a migração; quem lê aceita as duas, quem escreve usa só a canônica.
+    """
+    return paths.bios_dir() / platform_id / canonical_name
+
+
 @dataclass(frozen=True)
 class BiosIdentity:
     id: str
@@ -94,6 +117,31 @@ class BiosCatalog:
             for item in self._identities
             if platform_id is None or item.platform_id == platform_id
         ]
+
+    def required_names_for(self, platform_id: str, adapter_id: str) -> tuple[str, ...]:
+        """Nomes de BIOS que ESTE consumidor exige, na ordem do catálogo.
+
+        Esta é a fonte única. O mesmo fato vivia também em `requiresBios`, no
+        perfil de launch do manifesto: uma lista de nomes sem hash e sem
+        consumidor, mantida em paralelo. As duas cobrem hoje exatamente as
+        mesmas 4 plataformas (amiga, playstation, sega-cd-32x, three-do) — mas
+        por curadoria, não por construção, e é assim que uma delas envelhece
+        sozinha. O catálogo é quem sabe: ele tem hash, variante aceita e o
+        consumidor (adapter + core) a que cada arquivo pertence.
+        """
+        names: list[str] = []
+        for item in self._identities:
+            if item.platform_id != platform_id:
+                continue
+            for consumer in item.consumers:
+                if str(consumer.get("adapterId") or "") != adapter_id:
+                    continue
+                if not bool(consumer.get("required", item.required)):
+                    continue
+                if item.canonical_name not in names:
+                    names.append(item.canonical_name)
+                break
+        return tuple(names)
 
 
 @dataclass(frozen=True)
@@ -582,7 +630,7 @@ class BiosLibrary:
 
     @staticmethod
     def _view_path(identity: BiosIdentity) -> Path:
-        return paths.bios_dir() / "platforms" / identity.platform_id / identity.canonical_name
+        return bios_view_path(identity.platform_id, identity.canonical_name)
 
     @staticmethod
     def _publish_object(scan: BiosScan, candidate: ScanCandidate, destination: Path) -> None:

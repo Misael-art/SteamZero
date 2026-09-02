@@ -798,7 +798,14 @@ def test_library_keeps_games_without_title_id_as_unverified(monkeypatch, tmp_pat
             "name": "Example Game",
             "state": "unverified",
             "statusLabel": "XCZ · Title ID não identificado",
-            "emulatorId": None,
+            # Contrato alterado em 2026-09-02: a linha publica o emulador
+            # EFETIVO, não só o explicitamente configurado. Ela alimenta
+            # `launch_ready` e usa a mesma resolução de `launch_game`; publicar
+            # `None` aqui enquanto o lançamento resolve `eden` recriaria a
+            # divergência tela↔lançamento. O valor não é palpite: é o
+            # `role: primary` declarado pelo manifesto da plataforma, exigido
+            # instalado por `_platform_emulator_for`.
+            "emulatorId": "eden",
             "path": str(game),
             "fingerprint": published[0]["fingerprint"],
             "size": len(b"owned-game"),
@@ -822,13 +829,18 @@ def test_library_keeps_games_without_title_id_as_unverified(monkeypatch, tmp_pat
                 "id": f"game.launch:{published[0]['id']}",
                 "label": "Jogar",
                 "enabled": False,
-                "reason": "Selecione um emulador para este jogo.",
+                # Contrato alterado em 2026-09-02: o emulador deixou de ser uma
+                # escolha pendente. A plataforma o declara (`role: primary`), e
+                # o que falta é instalá-lo. "Selecione um emulador" mandava o
+                # usuário decidir algo que o manifesto já decidiu; "instale" diz
+                # o que de fato bloqueia e é acionável.
+                "reason": "Instale o emulador deste jogo antes de jogar.",
                 "requiresConfirmation": False,
             },
             "launchReadiness": {
                 "state": "blocked",
-                "emulator": "unconfigured",
-                "reason": "Selecione um emulador para este jogo.",
+                "emulator": "not-installed",
+                "reason": "Instale o emulador deste jogo antes de jogar.",
             },
             "deleteAction": {
                 "id": f"game.delete:{published[0]['id']}",
@@ -2724,7 +2736,13 @@ def test_bios_import_plans_applies_and_persists(monkeypatch, tmp_path: Path) -> 
         }
     )
     _apply(controller, plan)
-    target = core_paths.bios_dir() / "three-do" / "panafz1.bin"
+    # Contrato alterado em 2026-09-02: a importação escreve na view
+    # canônica (`bios/platforms/<p>/<nome>`), a mesma que `BiosLibrary`
+    # — o importador usado por UI, ponte e CLI — já usava. O layout
+    # legado continua sendo LIDO, para instalações anteriores, mas nada
+    # novo é escrito nele: manter duas views de escrita era o que fazia
+    # uma BIOS importada ficar invisível para a projeção.
+    target = core_paths.bios_dir() / "platforms" / "three-do" / "panafz1.bin"
     assert target.is_file()
     assert target.read_bytes() == b"owned-bios"
     with controller._store_factory() as store:  # type: ignore[attr-defined]
@@ -2822,7 +2840,13 @@ def test_bios_import_reimport_is_idempotent_on_the_file(monkeypatch, tmp_path: P
         }
     )
     _apply(controller, second)
-    target = core_paths.bios_dir() / "three-do" / "panafz1.bin"
+    # Contrato alterado em 2026-09-02: a importação escreve na view
+    # canônica (`bios/platforms/<p>/<nome>`), a mesma que `BiosLibrary`
+    # — o importador usado por UI, ponte e CLI — já usava. O layout
+    # legado continua sendo LIDO, para instalações anteriores, mas nada
+    # novo é escrito nele: manter duas views de escrita era o que fazia
+    # uma BIOS importada ficar invisível para a projeção.
+    target = core_paths.bios_dir() / "platforms" / "three-do" / "panafz1.bin"
     assert target.is_file()
     assert target.read_bytes() == b"owned-bios"
 
@@ -3926,3 +3950,426 @@ class TestScanAccountsForEveryFile:
             f"todo arquivo precisa cair num balde: {totals} para {physical} arquivos"
         )
         assert totals["ignored"] >= 1, "o arquivo não classificado precisa aparecer como ignorado"
+
+
+class TestEmulatorResolutionFollowsThePlatform:
+    """O default global não pode decidir plataforma.
+
+    `defaultEmulatorId` valia para TODO jogo. Com o default em `eden` — um
+    emulador de Switch — NES, Master System, PlayStation e Dreamcast resolviam
+    para `eden` e paravam em "plataforma não declara um perfil de launch".
+    Medido no acervo real em 2026-09-02: 1104 de 1119 jogos eram inalcançáveis
+    enquanto o emulador correto estava declarado no manifesto e nunca era
+    consultado. Depois da correção: 1100 jogáveis, e os 19 restantes recusados
+    por core ausente, com motivo.
+    """
+
+    def test_a_global_default_from_another_platform_does_not_win(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        controller = _controller(monkeypatch, tmp_path)
+        monkeypatch.setattr(
+            controller, "_load_global_settings", lambda: {"defaultEmulatorId": "eden"}
+        )
+        monkeypatch.setattr(controller, "_require_launchable_emulator", lambda _id: None)
+        game = {"id": "abc123", "platformId": "playstation", "name": "Jogo"}
+        resolved = controller._settings_for_game_with_global(game, {})  # type: ignore[attr-defined]
+        assert resolved["emulatorId"] != "eden", (
+            "um emulador de Switch não pode ser escolhido para PlayStation"
+        )
+        assert (
+            controller._launch_profile_for("playstation", resolved["emulatorId"])  # type: ignore[attr-defined]
+            is not None
+        ), "o emulador escolhido precisa declarar perfil de launch para a plataforma"
+
+    def test_the_global_default_still_wins_on_its_own_platform(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        controller = _controller(monkeypatch, tmp_path)
+        monkeypatch.setattr(
+            controller, "_load_global_settings", lambda: {"defaultEmulatorId": "eden"}
+        )
+        monkeypatch.setattr(controller, "_require_launchable_emulator", lambda _id: None)
+        game = {"id": "abc123", "platformId": "switch", "name": "Jogo"}
+        resolved = controller._settings_for_game_with_global(game, {})  # type: ignore[attr-defined]
+        assert resolved["emulatorId"] == "eden", "a preferência global vale onde ela faz sentido"
+
+    def test_an_explicit_per_game_choice_is_never_swapped(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        """Trocar a escolha do usuário por baixo é pior que recusar com motivo."""
+        controller = _controller(monkeypatch, tmp_path)
+        monkeypatch.setattr(controller, "_load_global_settings", lambda: {})
+        monkeypatch.setattr(controller, "_require_launchable_emulator", lambda _id: None)
+        game = {"id": "abc123", "platformId": "playstation", "name": "Jogo"}
+        settings = {"abc123": {"emulatorId": "eden"}}
+        resolved = controller._settings_for_game_with_global(game, settings)  # type: ignore[attr-defined]
+        assert resolved["emulatorId"] == "eden"
+
+
+class TestReadinessMatchesTheLaunchDecision:
+    """A tela e o lançamento não podem divergir.
+
+    As duas rotas chamam `_launch_preflight`. A UI oferecia "Jogar" habilitado
+    para todo jogo, inclusive Switch sem `prod.keys`, e o erro só aparecia
+    depois do gesto.
+    """
+
+    def test_an_unknown_game_is_refused_with_a_reason_not_an_exception(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        controller = _controller(monkeypatch, tmp_path)
+        verdict = controller.game_readiness("naoexiste")
+        assert verdict["playable"] is False
+        assert verdict["reason"], "recusar sem dizer o motivo é o silêncio que queremos eliminar"
+
+    def test_readiness_and_launch_agree_on_the_same_game(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        controller = _controller(monkeypatch, tmp_path)
+        verdict = controller.game_readiness("naoexiste")
+        assert verdict["playable"] is False
+        with pytest.raises(SteamZeroError) as excinfo:
+            controller.launch_game("naoexiste")
+        assert excinfo.value.code == verdict["code"], (
+            "o codigo mostrado na tela precisa ser o mesmo que o lancamento produz"
+        )
+
+
+class TestLibraryCacheIsMemoizedByFileIdentity:
+    """Ler e normalizar 1119 jogos a cada consulta custava 877 ms.
+
+    `_current_game` chama `_load_library_cache`, então checar a
+    disponibilidade do catálogo levava ~19 minutos — informação inútil na tela.
+    """
+
+    def test_a_new_scan_invalidates_the_memo(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        controller = _controller(monkeypatch, tmp_path)
+        roms = tmp_path / "home" / "roms" / "nes"
+        roms.mkdir(parents=True, exist_ok=True)
+        rom = roms / "a.nes"
+        rom.write_bytes(b"NES\x1a" + b"0" * 64)
+        cache = controller._library_cache_path  # type: ignore[attr-defined]
+        cache.parent.mkdir(parents=True, exist_ok=True)
+
+        def write(names: list[str]) -> None:
+            games = []
+            for name in names:
+                stat = rom.stat()
+                games.append(
+                    {
+                        "id": name,
+                        "name": name,
+                        "state": "ready",
+                        "path": str(rom),
+                        "size": stat.st_size,
+                        "format": "nes",
+                        "contentKind": "base",
+                        "platform": "nes-famicom",
+                    }
+                )
+            cache.write_text(
+                json.dumps({"schemaVersion": 1, "games": games, "unidentified": 0}),
+                encoding="utf-8",
+            )
+
+        write(["um"])
+        first, _ = controller._load_library_cache()  # type: ignore[attr-defined]
+        assert [g["id"] for g in first] == ["um"]
+        write(["um", "dois"])
+        second, _ = controller._load_library_cache()  # type: ignore[attr-defined]
+        assert [g["id"] for g in second] == ["um", "dois"], (
+            "uma varredura nova precisa invalidar o memo sozinha"
+        )
+
+    def test_the_memo_does_not_leak_writes_between_calls(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        controller = _controller(monkeypatch, tmp_path)
+        roms = tmp_path / "home" / "roms" / "nes"
+        roms.mkdir(parents=True, exist_ok=True)
+        rom = roms / "a.nes"
+        rom.write_bytes(b"NES\x1a" + b"0" * 64)
+        cache = controller._library_cache_path  # type: ignore[attr-defined]
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_text(
+            json.dumps(
+                {
+                    "schemaVersion": 1,
+                    "unidentified": 0,
+                    "games": [
+                        {
+                            "id": "um",
+                            "name": "um",
+                            "state": "ready",
+                            "path": str(rom),
+                            "size": rom.stat().st_size,
+                            "format": "nes",
+                            "contentKind": "base",
+                            "platform": "nes-famicom",
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        first, _ = controller._load_library_cache()  # type: ignore[attr-defined]
+        # O rótulo é normalizado a partir do arquivo, não do id: `a.nes` -> `a`.
+        original = first[0]["name"]
+        first[0]["name"] = "mexido"
+        second, _ = controller._load_library_cache()  # type: ignore[attr-defined]
+        assert second[0]["name"] == original, "escrita de um chamador não pode vazar para o próximo"
+
+
+class TestImportedBiosReachesTheProjection:
+    """Importar BIOS pelo fluxo do produto precisa destravar a projeção.
+
+    Havia duas views: `bios/platforms/<p>/<nome>`, escrita pelo importador
+    ativo (`BiosLibrary`, usado por UI, ponte e CLI), e `bios/<p>/<nome>`, que
+    a projeção e a sonda de presença liam. Uma BIOS importada corretamente
+    ficava invisível para quem precisava dela, e o jogo continuava dizendo
+    "importe a BIOS antes de projetar".
+
+    Nunca apareceu porque o diretório `bios/` sequer existe num host que ainda
+    não importou nada — medido no host em 2026-09-02. O caminho passava nos
+    testes e falharia na primeira vez que alguém usasse.
+    """
+
+    def test_the_canonical_view_is_enough_to_project(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        controller = _controller(monkeypatch, tmp_path)
+        canonical = tmp_path / "data" / "steamzero" / "bios" / "platforms" / "amiga"
+        canonical.mkdir(parents=True)
+        (canonical / "kick34005.A500").write_bytes(b"a500")
+        (canonical / "kick40068.A1200").write_bytes(b"a1200")
+
+        plan = controller.plan_action(
+            {"actionId": "bios.link", "platformId": "amiga", "adapterId": "retroarch"}
+        )
+        _apply(controller, plan)
+        system = tmp_path / "home" / ".config" / "retroarch" / "system"
+        assert (system / "kick34005.A500").read_bytes() == b"a500", (
+            "a BIOS publicada pelo importador ativo precisa alcançar a projeção"
+        )
+
+    def test_the_legacy_view_still_projects(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        """Instalação anterior à migração não pode regredir."""
+        controller = _controller(monkeypatch, tmp_path)
+        legacy = tmp_path / "data" / "steamzero" / "bios" / "amiga"
+        legacy.mkdir(parents=True)
+        (legacy / "kick34005.A500").write_bytes(b"a500")
+        (legacy / "kick40068.A1200").write_bytes(b"a1200")
+
+        plan = controller.plan_action(
+            {"actionId": "bios.link", "platformId": "amiga", "adapterId": "retroarch"}
+        )
+        _apply(controller, plan)
+        system = tmp_path / "home" / ".config" / "retroarch" / "system"
+        assert (system / "kick34005.A500").read_bytes() == b"a500"
+
+    def test_presence_probe_sees_the_canonical_view(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        controller = _controller(monkeypatch, tmp_path)
+        canonical = tmp_path / "data" / "steamzero" / "bios" / "platforms" / "amiga"
+        canonical.mkdir(parents=True)
+        (canonical / "kick34005.A500").write_bytes(b"a500")
+        assert (
+            controller._bios_present_for("amiga", "retroarch", "kick34005.A500")  # type: ignore[attr-defined]
+            is True
+        ), "a sonda de presença lia só o layout legado e negava BIOS importada"
+
+
+class TestBiosRequirementsHaveASingleSource:
+    """`requiresBios` e o catálogo de BIOS não podem divergir.
+
+    O mesmo fato vive em dois lugares: `requiresBios`, no perfil de launch do
+    manifesto (só nomes), e `bios_catalogs/index-v2.json` (hash, variante e
+    consumidor). Hoje cobrem exatamente as mesmas 4 plataformas — por
+    curadoria, não por construção. É a mesma forma dos defeitos que custaram
+    esta sessão: o contrato de identificador copiado em cinco regexes,
+    `supported_platforms` declarado e morto, `platform` gravado numa chave e
+    lido em outra.
+
+    Este teste é o gate: acrescentar BIOS num lado sem o outro reprova.
+    """
+
+    def test_every_declared_requirement_exists_in_the_catalog(self) -> None:
+        from steamzero.domain.bios_catalog import BiosCatalog
+        from steamzero.domain.platforms import PlatformRegistry
+
+        catalog = BiosCatalog.bundled()
+        divergencias: list[str] = []
+        for platform in PlatformRegistry.bundled().list():
+            for emulator in platform.emulators:
+                adapter_id = str(emulator.get("adapterId") or "")
+                declared = tuple((emulator.get("launch") or {}).get("requiresBios") or ())
+                if not declared and not adapter_id:
+                    continue
+                from_catalog = catalog.required_names_for(platform.id, adapter_id)
+                if set(declared) != set(from_catalog):
+                    divergencias.append(
+                        f"{platform.id} · {adapter_id}: manifesto={sorted(declared)} "
+                        f"catalogo={sorted(from_catalog)}"
+                    )
+        assert not divergencias, (
+            "requisito de BIOS declarado em um lugar e ausente no outro:\n"
+            + "\n".join(divergencias)
+        )
+
+
+class TestBiosSearchIsAFacilitator:
+    """Diretórios conhecidos existem para reduzir atrito, não como verdade.
+
+    O que estiver lá e casar com o catálogo é incorporado e o emulador fica
+    funcional; o que não estiver, o usuário importa de fato, como em keys e
+    firmware.
+
+    Medido no host em 2026-09-02: nenhum dos quatro diretórios declarados
+    existia, enquanto 1608 arquivos de BIOS estavam em `~/emulation/bios` e os
+    emuladores instalados por Flatpak tinham seus próprios diretórios, nenhum
+    deles consultado. Depois: 1629 examinados, 6 BIOS incorporadas.
+    """
+
+    def _catalog_bios(self) -> dict[str, bytes]:
+        """Conteúdos reais cujo SHA-256 o catálogo empacotado declara."""
+        from steamzero.domain.bios_catalog import BiosCatalog
+
+        catalog = BiosCatalog.bundled()
+        wanted: dict[str, bytes] = {}
+        for identity in catalog.requirements("amiga"):
+            for variant in identity.variants:
+                size = int(variant["size"])
+                # Não há como fabricar um conteúdo com hash escolhido; o teste
+                # usa o próprio par (tamanho, hash) para provar a REJEIÇÃO por
+                # conteúdo, e o caminho de aceitação é exercitado com o objeto
+                # publicado diretamente no store.
+                wanted[identity.canonical_name] = b"\0" * size
+                break
+        return wanted
+
+    def test_a_name_match_with_wrong_content_is_not_adopted(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        """Casar por nome adotaria a BIOS errada; o hash é o contrato."""
+        controller = _controller(monkeypatch, tmp_path)
+        source = tmp_path / "home" / "emulation" / "bios"
+        source.mkdir(parents=True)
+        for name, content in self._catalog_bios().items():
+            (source / name).write_bytes(content)
+
+        report = controller.adopt_known_bios()
+        assert report["adoptedCount"] == 0, (
+            "arquivo com nome conhecido e conteúdo divergente não é aquela BIOS"
+        )
+        assert report["examined"] >= 1, "o arquivo precisa ter sido examinado, não ignorado"
+
+    def test_an_empty_host_reports_nothing_adopted_without_failing(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        controller = _controller(monkeypatch, tmp_path)
+        report = controller.adopt_known_bios()
+        assert report["adoptedCount"] == 0
+        assert report["errors"] == [], "ausência de origem não é erro; é o caso comum"
+
+    def test_flatpak_directories_are_projection_targets(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        """Projetar só no caminho nativo grava onde o emulador não lê.
+
+        No host os emuladores estão instalados por Flatpak:
+        `~/.config/retroarch/system` não existe e
+        `~/.var/app/org.libretro.RetroArch/config/retroarch/system` existe.
+        """
+        controller = _controller(monkeypatch, tmp_path)
+        targets = controller._emulator_bios_targets("retroarch")  # type: ignore[attr-defined]
+        assert any(".var/app" in str(target) for target in targets), (
+            "o diretório do sandbox Flatpak precisa ser alvo de projeção"
+        )
+
+    def test_the_published_view_is_usable_even_being_a_link(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        """A view canônica é link para o store de objetos.
+
+        A projeção recusava symlink por segurança e, com isso, recusava
+        exatamente o que o importador produz.
+        """
+        controller = _controller(monkeypatch, tmp_path)
+        bios_root = tmp_path / "data" / "steamzero" / "bios"
+        objects = bios_root / "objects" / "sha256" / "aa"
+        objects.mkdir(parents=True)
+        blob = objects / "aabbccdd"
+        blob.write_bytes(b"conteudo")
+        view = bios_root / "platforms" / "amiga"
+        view.mkdir(parents=True)
+        link = view / "kick34005.A500"
+        link.symlink_to(blob)
+        resolved = controller._usable_bios_view(link)  # type: ignore[attr-defined]
+        assert resolved == blob.resolve(), "o link interno ao store precisa resolver para o objeto"
+
+    def test_a_link_pointing_outside_the_store_is_refused(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        controller = _controller(monkeypatch, tmp_path)
+        outside = tmp_path / "fora.bin"
+        outside.write_bytes(b"x")
+        view = tmp_path / "data" / "steamzero" / "bios" / "platforms" / "amiga"
+        view.mkdir(parents=True)
+        link = view / "kick34005.A500"
+        link.symlink_to(outside)
+        assert controller._usable_bios_view(link) is None, (  # type: ignore[attr-defined]
+            "seguir link para fora do store é justamente o que a recusa protege"
+        )
+
+
+class TestAdoptionReportTellsTheWholeStory:
+    """Contar errado para baixo esconde o que o usuário precisa revisar.
+
+    A categoria do scanner é `unknown-ignored`; o relatório lia `unknown` e por
+    isso publicava sempre 0. Medido no host em 2026-09-02: dizia "0 não
+    reconhecidos" havendo 1292. É a mesma classe do denominador inventado do
+    acervo — um número com ar de fato, errado na direção que tranquiliza.
+    """
+
+    def test_ignored_files_are_counted_not_zeroed(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        controller = _controller(monkeypatch, tmp_path)
+        source = tmp_path / "home" / "emulation" / "bios"
+        source.mkdir(parents=True)
+        for index in range(3):
+            (source / f"desconhecido-{index}.bin").write_bytes(bytes([index]) * 64)
+
+        report = controller.adopt_known_bios()
+        assert report["examined"] >= 3
+        assert report["unrecognized"] >= 3, (
+            f"arquivo examinado e não reconhecido precisa aparecer na conta; relatorio={report}"
+        )
+
+    def test_the_report_separates_the_three_situations(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        """'não sei o que é', 'você tem duas cópias' e 'já estava lá' diferem."""
+        controller = _controller(monkeypatch, tmp_path)
+        report = controller.adopt_known_bios()
+        for field in ("unrecognized", "duplicates", "alreadyPresent", "examined"):
+            assert field in report, f"o relatório precisa publicar {field}"
+
+    def test_an_adopted_file_reports_the_users_own_name(  # type: ignore[no-untyped-def]
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        """`AmigaVision.rom` É `kick40068.A1200`, provado por hash.
+
+        Sem publicar a origem, o usuário não tem como saber qual arquivo dele
+        foi reconhecido — e é justamente o caso em que ele mais se pergunta.
+        """
+        controller = _controller(monkeypatch, tmp_path)
+        report = controller.adopt_known_bios()
+        for entry in report["adopted"]:
+            assert "sourceMember" in entry, "o nome do arquivo do usuário precisa viajar"
