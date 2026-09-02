@@ -53,7 +53,7 @@ fluxo governado de release e interação física no host.
 
 ## Onda 3 — reconciliação do catálogo
 
-Commit funcional: a ser isolado no fechamento desta sessão.
+Commit funcional: `ec0b7ee`.
 
 A varredura canônica agora grava `scanSummary` no mesmo cache consumido pelo
 Launcher e pela Central: arquivos encontrados, jogos base, updates, DLC,
