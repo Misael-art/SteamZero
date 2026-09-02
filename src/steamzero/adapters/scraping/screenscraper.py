@@ -138,6 +138,7 @@ _PLATFORMS_WITHOUT_SYSTEMEID = frozenset(
         "geforce-now",
         "xbox-cloud-gaming",
         "amazon-luna",
+        "playstation-vita",
     }
 )
 _MEDIA_KIND_MAP: dict[str, str] = {

@@ -75,7 +75,7 @@ def test_cloud_platforms_are_not_false_blocked_for_lacking_an_emulator() -> None
     assert "| geforce-now | serviço cloud | browser | — | — | nenhum |" in table
     assert "| xbox-cloud-gaming | serviço cloud | browser | — | — | nenhum |" in table
     assert "| amazon-luna | serviço cloud | browser | — | — | nenhum |" in table
-    assert blocked == 46
+    assert blocked == 47
 
 
 def test_every_active_emulator_declares_the_mandatory_lifecycle() -> None:

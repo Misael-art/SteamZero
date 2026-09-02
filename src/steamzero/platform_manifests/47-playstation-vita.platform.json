@@ -1,0 +1,116 @@
+{
+    "schemaVersion": 1,
+    "id": "playstation-vita",
+    "kind": "emulated",
+    "name": "Sony PlayStation Vita",
+    "shortName": "PlayStation Vita",
+    "iconKey": "input-gaming",
+    "artworkAsset": "../assets/playstation-portable.svg",
+    "requirements": ["keys", "firmware"],
+    "systems": ["psvita", "playstation-vita", "vita"],
+    "capabilities": [
+        {
+            "id": "overview",
+            "label": "Visão geral",
+            "state": "planned",
+            "detail": "Biblioteca PlayStation Vita será composta pelo scanner declarativo.",
+            "action": null
+        },
+        {
+            "id": "requirements",
+            "label": "Keys e firmware",
+            "state": "planned",
+            "detail": "Requisitos fornecidos pelo usuário serão verificados localmente quando o adapter Vita estiver disponível.",
+            "action": null
+        },
+        {
+            "id": "graphics",
+            "label": "Vídeo e desempenho",
+            "state": "planned",
+            "detail": "Renderizador e perfis gráficos permanecem opt-in.",
+            "action": null
+        },
+        {
+            "id": "controls",
+            "label": "Controles",
+            "state": "ready",
+            "detail": "Perfil portátil base declarativo e reversível.",
+            "action": {
+                "id": "controls.profile.activate",
+                "label": "Selecionar perfil",
+                "requiresConfirmation": true
+            }
+        },
+        {
+            "id": "media",
+            "label": "Mídia",
+            "state": "planned",
+            "detail": "Artwork será composto pelos provedores declarados.",
+            "action": null
+        }
+    ],
+    "areas": [
+        {
+            "id": "overview",
+            "label": "Visão geral",
+            "iconKey": "dashboard",
+            "capabilityId": "overview"
+        },
+        {
+            "id": "keysFirmware",
+            "label": "Keys e firmware",
+            "iconKey": "key",
+            "capabilityId": "requirements"
+        },
+        {
+            "id": "graphicsPerformance",
+            "label": "Vídeo e desempenho",
+            "iconKey": "video-display",
+            "capabilityId": "graphics"
+        },
+        {"id": "controls", "label": "Controles", "iconKey": "gamepad", "capabilityId": "controls"},
+        {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
+    ],
+    "emulators": [],
+    "media": {
+        "extensions": ["vpk", "pkg", "zip", "7z", "vita"],
+        "artworkKinds": ["cover", "background", "logo", "icon", "video"],
+        "providers": ["screenscraper", "steamgriddb"],
+        "nature": "digital",
+        "formats": {"vpk": ["vpk"], "pkg": ["pkg"], "vita": ["vita"]},
+        "containerPolicy": "native",
+        "auxiliaryContent": "both",
+        "auxiliaryBinding": "filename"
+    },
+    "controls": {
+        "profiles": ["standard-gamepad"],
+        "maxPlayers": 1,
+        "specialized": ["touchscreen", "rear-touchpad"]
+    },
+    "timing": {
+        "standards": ["ntsc", "pal"],
+        "defaultStandard": null,
+        "unknownFallback": "unknown-explicit"
+    },
+    "presets": [
+        {
+            "id": "como-era",
+            "label": "Como era",
+            "state": "planned",
+            "detail": "Saída portátil original quando o runtime estiver disponível."
+        },
+        {
+            "id": "equilibrado",
+            "label": "Equilibrado",
+            "state": "planned",
+            "detail": "Nitidez sem alterar timing."
+        },
+        {
+            "id": "melhorado",
+            "label": "Melhorado",
+            "state": "planned",
+            "detail": "Aprimoramentos opt-in."
+        }
+    ],
+    "cloud": null
+}
