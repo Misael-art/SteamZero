@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-EMULATION-PLATFORM-CONTEXT",
+  "item": "SZ-EMULATION-PLATFORM-CONTEXT",
+  "branch": "codex/ux-audit-platform-context-2026-09-02",
+  "baseRef": "main",
+  "owner": "codex-ux-audit",
+  "state": "closed",
+  "exclusivePaths": [
+    "src/steamzero/domain/platform_composer.py",
+    "tests/unit/test_platform_composer.py",
+    "tests/unit/test_workspace_composition.py"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Integrar a correção na release futura e validar no host; a UI de requisitos e o ciclo físico de lançamento permanecem com as frentes proprietárias.",
+  "updatedAt": "2026-09-02"
+}

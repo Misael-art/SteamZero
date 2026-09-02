@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-EMULATION-PLATFORM-CONTEXT",
+  "title": "Contexto de emulação por plataforma",
+  "domain": "emulation",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/domain/platform_composer.py",
+    "tests/unit/test_platform_composer.py",
+    "tests/unit/test_workspace_composition.py"
+  ],
+  "scopeDigest": "7a70b284ef470874241ffe95c241a499aaa9e9313ab229472cba686bc89f76c5",
+  "dependsOn": [
+    "SZ-AGG-PLATFORM-MANIFESTS",
+    "SZ-LIBRARY-CANONICAL"
+  ],
+  "knownGaps": [
+    "GAP-UI-REQUIREMENT-CARD-FALLBACK",
+    "GAP-EMULATION-PHYSICAL-LAUNCH"
+  ],
+  "acceptanceCriteria": [
+    "Cada plataforma publicada expõe o emulador primário escolhido por precedência quando houver um instalado.",
+    "A seleção de emulador não mistura adapters de outra plataforma.",
+    "A UI não exibe Keys/Firmware quando o manifesto não declara esses requisitos.",
+    "Requisitos específicos de BIOS, firmware e sistema preservam a semântica publicada pela plataforma.",
+    "Uma biblioteca mista mantém jogos e destinos isolados por plataforma."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_platform_composer.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_platform_composer.py tests/unit/test_workspace_composition.py tests/integration/test_emulation_workspace_cli.py tests/integration/test_cli_emulation.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_component_lifecycle.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_keys_firmware.py tests/integration/test_media.py tests/integration/test_bios.py tests/integration/test_component_lifecycle.py tests/integration/test_desktop_ui_bridge.py tests/unit/test_desktop_dashboard.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "src/steamzero/ui/qml/Emulation.qml",
+      "command": "Inspeção do overview: overviewCards() ainda injeta health-keys e health-firmware quando a área não existe; a correção pertence ao workstream proprietário da QML compartilhada.",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests -q (runner interrompido após permanecer sem saída em 17%; sem processo residual)",
+      "result": "partial"
+    }
+  ],
+  "nextAction": "Integrar a composição na próxima release e validar no host; a UI de requisitos e o ciclo físico de lançamento permanecem com as frentes proprietárias.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-09-02",
+  "notes": "A auditoria das capturas encontrou prontidão de 100% ao lado de 'Nenhum emulador definido' em uma plataforma não-Switch. A composição genérica publica as linhas de emuladores, mas não materializa primaryEmulator; o overview também injeta Keys/Firmware por fallback quando a plataforma não possui essa área. A correção desta frente cobre a primeira causa; a segunda pertence à UI compartilhada já custodiada por outro workstream."
+}

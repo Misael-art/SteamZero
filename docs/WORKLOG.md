@@ -9061,3 +9061,31 @@ com `tests/unit/test_service_core.py` depois passando `43 passed`.
 Nenhuma instalação, publicação, rollback ou mutação de host foi executada.
 Captura PNG da release instalada e validação física do Theme Studio continuam
 pendentes; edição direta no canvas segue fora desta fatia.
+
+## 2026-09-02 — Sessão: contexto de emulação por plataforma
+
+Workstream: `WS-2026-09-EMULATION-PLATFORM-CONTEXT`, branch
+`codex/ux-audit-platform-context-2026-09-02`. A auditoria das capturas e do
+read model reproduziu a contradição entre “100% prontidão” e “Nenhum emulador
+definido” em plataformas genéricas: `compose_platform()` publicava as linhas
+de emulador, mas não materializava o primário. A correção publica
+`defaultEmulatorId` e `primaryEmulator`, seleciona o primeiro runtime instalado
+por precedência e mantém um motivo explícito quando nenhum está instalado;
+também cobre fallback instalado quando o preferido está ausente.
+
+Provas focadas: `69 passed` em composição/workspace/CLI e `187 passed` em
+emulação, mídia, BIOS, lifecycle, bridge e dashboard; quatro harnesses QML
+offscreen retornaram código 0. Ruff, formatação, mypy, independência,
+boundaries e `make status-check` passaram. A suíte integral foi tentada, ficou
+sem saída em 17% por mais de dois minutos e foi interrompida; não restaram
+processos ou sockets de teste, portanto o resultado é parcial e não há
+alegação de aprovação integral.
+
+A injeção visual de Keys/Firmware para plataformas cujo manifesto não declara
+essa área continua aberta na `Emulation.qml`, que é arquivo compartilhado sob
+custódia de outro workstream; storage, saves, pipeline de mídia, Theme Studio,
+rollback, sistema, ativação física do Launcher e ciclo jogo→retorno também não
+foram promovidos por esta sessão. Nenhuma instalação, publicação, rollback,
+download, varredura real ou lançamento de emulador foi executado. A release
+observada permanece `2.0.0rc1-145cf9d44738`; captura da release instalada,
+controle físico e métricas de desempenho continuam não validados.
