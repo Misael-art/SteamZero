@@ -1529,10 +1529,6 @@
         "requirements": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "keys",
-            "firmware"
-          ],
           "properties": {
             "keys": {
               "$ref": "#/$defs/requirement"

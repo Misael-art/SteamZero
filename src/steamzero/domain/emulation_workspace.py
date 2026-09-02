@@ -33,6 +33,18 @@ _SCOPE_DEFS = (
 )
 
 
+def _not_applicable_requirement(kind: str) -> dict[str, Any]:
+    """Mantém o contrato de cartão sem alegar que o requisito existe."""
+    return {
+        "kind": kind,
+        "status": "not-required",
+        "required": None,
+        "installed": None,
+        "detail": "Não exigido pelo manifesto desta plataforma.",
+        "blocksPlay": False,
+    }
+
+
 def _project_platform(
     manifest: PlatformManifest,
     emulator_facts: Callable[[str], EmulatorFacts] | None,
@@ -187,8 +199,10 @@ def build_global_management(
                 "readiness": dict(platform["readiness"]),
                 "runtime": ", ".join(runtimes) or "Nenhum runtime declarado",
                 "coreRequired": cores,
-                "keysStatus": dict(requirements.get("keys") or {}),
-                "firmwareStatus": dict(requirements.get("firmware") or {}),
+                "keysStatus": dict(requirements.get("keys") or _not_applicable_requirement("keys")),
+                "firmwareStatus": dict(
+                    requirements.get("firmware") or _not_applicable_requirement("firmware")
+                ),
                 "biosStatus": (dict(requirements["bios"]) if requirements.get("bios") else None),
                 "blocker": blocker or None,
                 "action": primary,

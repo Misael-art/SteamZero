@@ -17,6 +17,7 @@ from steamzero.api import contracts
 from steamzero.core.errors import SteamZeroError
 
 _SCHEMA = "platform-manifest-v1.schema.json"
+_REQUIREMENT_KINDS = frozenset({"keys", "firmware"})
 
 
 @dataclass(frozen=True)
@@ -37,6 +38,7 @@ class PlatformManifest:
     timing: dict[str, Any]
     presets: tuple[dict[str, Any], ...]
     cloud: dict[str, Any] | None
+    requirements: tuple[str, ...]
 
 
 def load_platform_manifest(data: dict[str, Any]) -> PlatformManifest:
@@ -81,6 +83,17 @@ def load_platform_manifest(data: dict[str, Any]) -> PlatformManifest:
         raise SteamZeroError(
             "E-API-SCHEMA",
             detail=f"plataforma {data['id']} possui actions duplicadas",
+        )
+
+    requirements = tuple(str(item) for item in data.get("requirements", ()))
+    unknown_requirements = set(requirements) - _REQUIREMENT_KINDS
+    if unknown_requirements:
+        raise SteamZeroError(
+            "E-API-SCHEMA",
+            detail=(
+                f"plataforma {data['id']} possui requisitos desconhecidos: "
+                f"{sorted(unknown_requirements)}"
+            ),
         )
 
     cloud = data["cloud"]
@@ -132,6 +145,7 @@ def load_platform_manifest(data: dict[str, Any]) -> PlatformManifest:
         timing=dict(data["timing"]),
         presets=tuple(dict(item) for item in data["presets"]),
         cloud=dict(cloud) if cloud is not None else None,
+        requirements=requirements,
     )
 
 
@@ -267,6 +281,9 @@ def platform_placeholder(manifest: PlatformManifest) -> dict[str, Any]:
         for emulator in manifest.emulators
     ]
     blockers = ["A composição operacional desta plataforma ainda não foi verificada neste host."]
+    requirements = {
+        kind: _declared_requirement(kind, manifest.name) for kind in manifest.requirements
+    }
     return {
         "id": manifest.id,
         "kind": manifest.kind,
@@ -306,10 +323,7 @@ def platform_placeholder(manifest: PlatformManifest) -> dict[str, Any]:
         "selectedArea": str(areas[0]["id"]),
         "emulators": emulator_rows,
         "games": [],
-        "requirements": {
-            "keys": _not_required("keys"),
-            "firmware": _not_required("firmware"),
-        },
+        "requirements": requirements,
         "fallbackArtworkAsset": manifest.artwork_asset,
         "capabilities": [
             {
@@ -329,12 +343,13 @@ def platform_placeholder(manifest: PlatformManifest) -> dict[str, Any]:
     }
 
 
-def _not_required(kind: str) -> dict[str, Any]:
+def _declared_requirement(kind: str, platform_name: str) -> dict[str, Any]:
+    label = "Keys" if kind == "keys" else "Firmware"
     return {
         "kind": kind,
-        "status": "not-required",
+        "status": "unverified",
         "required": None,
         "installed": None,
-        "detail": "Não exigido pelo manifesto desta plataforma.",
+        "detail": f"{label} de {platform_name} ainda não verificado neste host.",
         "blocksPlay": False,
     }

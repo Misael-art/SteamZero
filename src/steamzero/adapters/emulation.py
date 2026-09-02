@@ -3887,7 +3887,13 @@ class EmulationController:
                             )
                     except SteamZeroError:
                         running = False
-                keys_ready = bool(installed and self._key_projection_valid(emulator_id))
+                requires_keys = manifest.requires_keys is not None
+                requires_firmware = manifest.requires_firmware is not None
+                keys_ready = (
+                    bool(installed and self._key_projection_valid(emulator_id))
+                    if requires_keys
+                    else None
+                )
                 if state == "installed":
                     row_state, status_label, source_state = "ready", "Instalado", "verified"
                 elif degraded:
@@ -3945,7 +3951,7 @@ class EmulationController:
                             f"emulator.install:{emulator_id}", "Instalar", confirmation=True
                         )
                     )
-                if installed and not keys_ready:
+                if installed and requires_keys and not keys_ready:
                     actions.append(
                         self._action(
                             "keys.repair" if keys_cataloged else "keys.import",
@@ -3989,14 +3995,12 @@ class EmulationController:
                         "health": {
                             "state": "degraded" if installed else "unavailable",
                             "versionCurrent": up_to_date,
-                            "keysReady": keys_ready,
-                            "firmwareReady": False,
                             "reason": (
                                 status.get("detail")
                                 or (
-                                    "Aguardando verificação completa da plataforma."
+                                    "Aguardando verificação dos requisitos declarados."
                                     if installed
-                                    else "Pendente: instalação e firmware."
+                                    else "Pendente: instalação."
                                 )
                             ),
                         },
@@ -4010,6 +4014,11 @@ class EmulationController:
                         "action": actions[0],
                     }
                 )
+                health = rows[-1]["health"]
+                if requires_keys:
+                    health["keysReady"] = bool(keys_ready)
+                if requires_firmware:
+                    health["firmwareReady"] = False
         return rows
 
     def _requirements(

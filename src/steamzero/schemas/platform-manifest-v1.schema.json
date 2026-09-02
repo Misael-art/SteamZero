@@ -113,6 +113,17 @@
           "$ref": "#/$defs/cloud"
         }
       ]
+    },
+    "requirements": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 2,
+      "items": {
+        "enum": [
+          "keys",
+          "firmware"
+        ]
+      }
     }
   },
   "$defs": {

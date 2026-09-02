@@ -6,6 +6,9 @@
   "shortName": "PlayStation 3",
   "iconKey": "media-optical",
   "artworkAsset": "../assets/playstation-3.svg",
+  "requirements": [
+    "firmware"
+  ],
   "systems": [
     "ps3"
   ],

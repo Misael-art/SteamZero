@@ -6,6 +6,10 @@
   "shortName": "Switch",
   "iconKey": "switch",
   "artworkAsset": "../assets/switch.svg",
+  "requirements": [
+    "keys",
+    "firmware"
+  ],
   "systems": [
     "switch"
   ],
