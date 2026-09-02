@@ -9317,3 +9317,22 @@ segundos e foi interrompida de forma controlada, sem processos residuais. O
 commit funcional é `c47fb48`. Nenhuma instalação, publicação, push ou ação de
 host foi executada; a prova física e os adapters de cores ainda ausentes ficam
 pendentes.
+
+## 2026-09-02 — Sessão: importação segura de cenas RetroFE
+
+Workstream: `WS-2026-09-THEME-IMPORT-RETROFE`, branch
+`codex/ux-audit-platform-context-2026-09-02`. O compilador RetroFE passou a
+ser alcançável pela bridge Desktop: `inspect` descobre layouts locais, mostra
+IR, cobertura e degradações sem escrever; `apply` escolhe um layout, exige
+nome/autor/licença, valida limites e publica atomicamente uma cena em
+`data/steamzero/scenes`, sem ativá-la. Symlinks, XML não UTF-8, arquivos acima
+do teto e sobrescrita sem confirmação falham de forma estruturada.
+
+Provas: `21 passed` no importador/contratos; `164 passed` no recorte de
+dashboard, contratos, ES-DE e slice RetroFE; Ruff, formatação, mypy,
+independência e boundaries passaram. A suíte integral chegou a 17%, ficou sem
+saída por 30 segundos e foi interrompida de forma controlada, sem processos
+residuais. O commit funcional é `11464fc`. Nenhuma instalação, publicação,
+push ou ação de host foi executada. A entrada visual na área Temas e a cópia de
+assets RetroFE continuam lacunas declaradas; a frente QML compartilhada é a
+responsável pelo primeiro ponto.

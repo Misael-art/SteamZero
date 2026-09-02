@@ -15,12 +15,11 @@
     "tests/unit/test_theme_import_esde.py",
     "tests/qml/check_theme_editor_import.qml"
   ],
-  "scopeDigest": "4549b0dba161a684e3efdb988be14753cca0dd6a38770592221957efd8077634",
+  "scopeDigest": "77f0f0c0fc62311a9a7b220262046a0504928c1c0cb4c11b6a6488cc02c671fd",
   "dependsOn": [
     "SZ-THEME-STUDIO"
   ],
   "knownGaps": [
-    "GAP-THEME-IMPORT-RETROFE",
     "GAP-THEME-STUDIO-PHYSICAL-CANVAS"
   ],
   "acceptanceCriteria": [

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-THEME-IMPORT-RETROFE",
+  "item": "SZ-THEME-IMPORT-RETROFE",
+  "branch": "codex/ux-audit-platform-context-2026-09-02",
+  "baseRef": "a70b47d",
+  "owner": "codex-ux-audit",
+  "state": "closed",
+  "exclusivePaths": [
+    "src/steamzero/adapters/desktop_contracts.py",
+    "src/steamzero/adapters/desktop_dashboard.py",
+    "src/steamzero/adapters/desktop_ui.py",
+    "src/steamzero/core/paths.py",
+    "src/steamzero/domain/theme_import_retrofe.py",
+    "tests/unit/test_theme_import_retrofe.py"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Fechado por implementação parcial verificada; entrada visual e cópia de assets continuam lacunas declaradas.",
+  "updatedAt": "2026-09-02"
+}

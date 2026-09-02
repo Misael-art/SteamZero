@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-THEME-IMPORT-RETROFE",
+  "title": "Importação segura de cenas RetroFE",
+  "domain": "themes",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopeDigest": "88ad3472152d0f42f23e7e4b62f4d1512450418923c51c805c530521e054ded4",
+  "scopePaths": [
+    "src/steamzero/adapters/desktop_contracts.py",
+    "src/steamzero/adapters/desktop_dashboard.py",
+    "src/steamzero/adapters/desktop_ui.py",
+    "src/steamzero/core/paths.py",
+    "src/steamzero/domain/theme_import_retrofe.py",
+    "tests/unit/test_theme_import_retrofe.py"
+  ],
+  "dependsOn": ["SZ-THEME-ENGINE"],
+  "knownGaps": [
+    "GAP-THEME-RETROFE-QML-ENTRY",
+    "GAP-THEME-RETROFE-ASSET-COPY"
+  ],
+  "acceptanceCriteria": [
+    "A central consegue inspecionar uma pasta ou layout RetroFE local sem escrever nada.",
+    "A inspeção mostra layouts, cobertura, perdas e reparos antes da aplicação.",
+    "A aplicação exige uma escolha explícita e grava apenas IR validado em armazenamento gerenciado.",
+    "Symlinks, arquivos excessivos e XML inválido falham de forma estruturada.",
+    "A origem RetroFE permanece separada do importador ES-DE e não executa conteúdo de terceiros."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_theme_import_retrofe.py",
+      "command": "TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_import_retrofe.py tests/unit/test_desktop_contracts.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_desktop_dashboard.py",
+      "command": "TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests/unit/test_desktop_dashboard.py tests/unit/test_desktop_contracts.py tests/unit/test_theme_import_esde.py tests/integration/test_retrofe_vertical_slice.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "ruff check, ruff format --check, mypy src e make independence boundaries",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests -q; runner permaneceu sem saída em 17% e foi interrompido; nenhum processo residual",
+      "result": "partial"
+    }
+  ],
+  "nextAction": "Conectar a entrada visual na área Temas e copiar assets RetroFE somente após contrato de ativos e validação de licença.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-09-02",
+  "notes": "A rota backend agora inspeciona e publica IR validado sem ativação automática. A entrada visual depende da frente QML compartilhada; assets não são copiados silenciosamente e a cena continua separada de theme.json."
+}
