@@ -48,6 +48,13 @@ Rectangle {
     property bool editorReadOnly: false
     property bool editorDirty: false
     property var editorThemeList: []
+    property string esdeImportSource: ""
+    property var esdeImportSchemes: []
+    property int esdeImportSchemeIndex: -1
+    property string esdeImportName: ""
+    property bool esdeImportBusy: false
+    property string esdeImportNotice: ""
+    property bool esdeImportNoticeIsError: false
     // Objeto QML completo do tema (themeId/themeVersion/resolved/effects), na
     // forma exata de ``to_theme_qml_object``. O ThemeBridge espera esse formato
     // em ``_source.resolved`` — alimentá-lo com o dicionário de tokens puro
@@ -151,6 +158,73 @@ Rectangle {
     function refreshThemeList() {
         panel.request("GET", "/theme/list", {}, function(resp) {
             panel.editorThemeList = resp.themes || []
+        })
+    }
+
+    function resetEsdeImport() {
+        panel.esdeImportSource = ""
+        panel.esdeImportSchemes = []
+        panel.esdeImportSchemeIndex = -1
+        panel.esdeImportName = ""
+        panel.esdeImportBusy = false
+        panel.esdeImportNotice = ""
+        panel.esdeImportNoticeIsError = false
+    }
+
+    function inspectEsdeImport() {
+        const source = panel.esdeImportSource.trim()
+        if (source === "")
+            return
+        panel.esdeImportBusy = true
+        panel.esdeImportNotice = ""
+        panel.esdeImportNoticeIsError = false
+        panel.requestAction("theme.import.esde.inspect", {source: source},
+            function(response) {
+                panel.esdeImportBusy = false
+                panel.esdeImportSchemes = response && response.schemes
+                    ? response.schemes : []
+                panel.esdeImportSchemeIndex = panel.esdeImportSchemes.length > 0 ? 0 : -1
+                panel.esdeImportNotice = panel.esdeImportSchemes.length > 0
+                    ? qsTr("Escolha um esquema e dê um nome ao tema editável.")
+                    : qsTr("Nenhum esquema de cor importável foi encontrado.")
+                panel.esdeImportNoticeIsError = panel.esdeImportSchemes.length === 0
+            },
+            function(message) {
+                panel.esdeImportBusy = false
+                panel.esdeImportSchemes = []
+                panel.esdeImportSchemeIndex = -1
+                panel.esdeImportNotice = String(message || qsTr("Não foi possível examinar o tema."))
+                panel.esdeImportNoticeIsError = true
+            })
+    }
+
+    function applyEsdeImport() {
+        if (panel.esdeImportSchemeIndex < 0 || panel.esdeImportName.trim() === "")
+            return
+        const selected = panel.esdeImportSchemes[panel.esdeImportSchemeIndex]
+        const scheme = selected && selected.scheme
+            ? String(selected.scheme) : String(selected || "")
+        if (scheme === "")
+            return
+        panel.esdeImportBusy = true
+        panel.esdeImportNotice = ""
+        panel.esdeImportNoticeIsError = false
+        panel.requestAction("theme.import.esde.apply", {
+            source: panel.esdeImportSource.trim(),
+            scheme: scheme,
+            name: panel.esdeImportName.trim()
+        }, function(response) {
+            panel.esdeImportBusy = false
+            panel.refreshThemeList()
+            panel.esdeImportNotice = qsTr("Tema importado como editável; ele ainda não foi aplicado.")
+            panel.esdeImportNoticeIsError = false
+            panel.esdeImportSchemes = []
+            panel.esdeImportSchemeIndex = -1
+            panel.esdeImportName = ""
+        }, function(message) {
+            panel.esdeImportBusy = false
+            panel.esdeImportNotice = String(message || qsTr("Não foi possível importar o tema."))
+            panel.esdeImportNoticeIsError = true
         })
     }
 
@@ -322,6 +396,44 @@ Rectangle {
                 font.weight: Font.Medium
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
+            }
+        }
+
+        RowLayout {
+            Layout.leftMargin: 20
+            Layout.rightMargin: 20
+            Layout.minimumHeight: 48
+            spacing: 12
+
+            Button {
+                objectName: "themeImportEsdeButton"
+                text: qsTr("Importar tema ES-DE")
+                Layout.minimumHeight: 48
+                Layout.preferredWidth: 220
+                Accessible.name: text
+                Accessible.description: qsTr("Examina um tema ES-DE e o converte em tema editável")
+                onClicked: esdeImportDialog.open()
+                background: Rectangle {
+                    color: parent.hovered ? panel.cyanColor : panel.surfaceColor
+                    radius: 8
+                    border.color: parent.activeFocus ? panel.textColor : panel.cyanColor
+                    border.width: parent.activeFocus ? 2 : 1
+                }
+                contentItem: Label {
+                    text: parent.text
+                    color: parent.hovered ? "#071019" : panel.cyanColor
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    font.weight: Font.Medium
+                }
+            }
+
+            Label {
+                text: qsTr("ES-DE → tema editável, sem aplicar automaticamente")
+                color: panel.mutedColor
+                font.pixelSize: 12
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
             }
         }
 
@@ -525,6 +637,159 @@ Rectangle {
                 Item { Layout.minimumHeight: 24 }
             }
         }
+    }
+
+    Dialog {
+        id: esdeImportDialog
+        objectName: "themeImportEsdeDialog"
+        modal: true
+        closePolicy: Popup.CloseOnEscape
+        width: Math.min(panel.width - 24, 640)
+        height: Math.min(panel.height - 24, 560)
+        x: (panel.width - width) / 2
+        y: (panel.height - height) / 2
+        title: qsTr("Importar tema ES-DE")
+        standardButtons: Dialog.NoButton
+        onOpened: importSourceField.forceActiveFocus()
+        onClosed: panel.resetEsdeImport()
+
+        contentItem: ColumnLayout {
+            spacing: 10
+
+            Label {
+                text: qsTr("Examine primeiro. A importação cria um tema editável e não altera o tema ativo.")
+                color: panel.mutedColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                TextField {
+                    id: importSourceField
+                    objectName: "themeImportEsdeSource"
+                    text: panel.esdeImportSource
+                    placeholderText: qsTr("Pasta do tema ES-DE")
+                    Accessible.name: qsTr("Pasta do tema ES-DE")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onTextChanged: panel.esdeImportSource = text
+                }
+                Button {
+                    objectName: "themeImportEsdeBrowse"
+                    text: qsTr("Escolher")
+                    Accessible.name: text
+                    Layout.minimumHeight: 48
+                    onClicked: esdeImportFolderDialog.open()
+                }
+                Button {
+                    objectName: "themeImportEsdeInspect"
+                    text: qsTr("Examinar")
+                    enabled: !panel.esdeImportBusy && panel.esdeImportSource.trim() !== ""
+                    Accessible.name: text
+                    Accessible.description: enabled
+                        ? qsTr("Lê os esquemas sem gravar arquivos")
+                        : qsTr("Informe a pasta do tema antes de examinar")
+                    Layout.minimumHeight: 48
+                    onClicked: panel.inspectEsdeImport()
+                }
+            }
+
+            Label {
+                text: panel.esdeImportNotice
+                visible: panel.esdeImportNotice !== ""
+                color: panel.esdeImportNoticeIsError ? panel.redColor : panel.greenColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
+            Label {
+                text: qsTr("Esquemas encontrados")
+                visible: panel.esdeImportSchemes.length > 0
+                color: panel.textColor
+                font.weight: Font.Medium
+            }
+
+            ScrollView {
+                visible: panel.esdeImportSchemes.length > 0
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                contentWidth: availableWidth
+                ColumnLayout {
+                    width: parent.availableWidth
+                    spacing: 4
+                    Repeater {
+                        model: panel.esdeImportSchemes
+                        delegate: RowLayout {
+                            required property int index
+                            required property var modelData
+                            Layout.fillWidth: true
+                            Layout.minimumHeight: 48
+                            RadioButton {
+                                text: modelData && modelData.scheme
+                                    ? String(modelData.scheme) : qsTr("Esquema")
+                                checked: panel.esdeImportSchemeIndex === index
+                                Accessible.name: qsTr("Esquema %1").arg(text)
+                                onClicked: panel.esdeImportSchemeIndex = index
+                            }
+                            Label {
+                                text: modelData && modelData.isMonochrome
+                                    ? qsTr("monocromático; derivação limitada")
+                                    : qsTr("paleta convertível")
+                                color: modelData && modelData.isMonochrome
+                                    ? panel.amberColor : panel.mutedColor
+                                font.pixelSize: 11
+                                Layout.fillWidth: true
+                                elide: Text.ElideRight
+                            }
+                        }
+                    }
+                }
+            }
+
+            TextField {
+                id: importNameField
+                objectName: "themeImportEsdeName"
+                text: panel.esdeImportName
+                visible: panel.esdeImportSchemes.length > 0
+                placeholderText: qsTr("Nome do tema importado")
+                Accessible.name: qsTr("Nome do tema importado")
+                Layout.fillWidth: true
+                Layout.minimumHeight: 48
+                onTextChanged: panel.esdeImportName = text
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Button {
+                    text: qsTr("Cancelar")
+                    Accessible.name: text
+                    Layout.minimumHeight: 48
+                    onClicked: esdeImportDialog.close()
+                }
+                Item { Layout.fillWidth: true }
+                Button {
+                    objectName: "themeImportEsdeApply"
+                    text: panel.esdeImportBusy ? qsTr("Importando…") : qsTr("Importar como editável")
+                    enabled: !panel.esdeImportBusy
+                        && panel.esdeImportSchemeIndex >= 0
+                        && panel.esdeImportName.trim() !== ""
+                    Accessible.name: text
+                    Accessible.description: enabled
+                        ? qsTr("Cria o tema e deixa o tema ativo inalterado")
+                        : qsTr("Examine um esquema e informe um nome")
+                    Layout.minimumHeight: 48
+                    onClicked: panel.applyEsdeImport()
+                }
+            }
+        }
+    }
+
+    FolderDialog {
+        id: esdeImportFolderDialog
+        title: qsTr("Escolher pasta do tema ES-DE")
+        onAccepted: panel.esdeImportSource = panel.localPath(selectedFolder)
     }
 
     // =====================================================================
