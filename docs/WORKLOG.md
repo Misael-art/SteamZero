@@ -9113,3 +9113,7 @@ preview e rollback. Nenhuma instalação, publicação, rollback, download,
 varredura real ou lançamento de emulador foi executado. A release documentada
 permanece `2.0.0rc1-145cf9d44738`; captura instalada, controle físico e
 métricas de desempenho seguem não validados.
+
+Correção de segurança subsequente: o inventário também bloqueia raízes abaixo
+de diretórios-pai simbólicos. A regressão passou `4 passed`; o digest do item
+foi renovado sem promover a capacidade além de `partial`.

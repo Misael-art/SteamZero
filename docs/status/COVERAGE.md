@@ -29,7 +29,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-EMULATION-LONG-OPERATIONS | 28 | 17 | 11 | hw |  |
 | SZ-EMULATION-M10 | 6 | 3 | 2 | vm |  |
 | SZ-EMULATION-PLATFORM-CONTEXT | 3 | 4 | 2 | unit |  |
-| SZ-EMULATION-STORAGE-READMODEL | 6 | 4 | 3 | unit |  |
+| SZ-EMULATION-STORAGE-READMODEL | 6 | 5 | 4 | unit |  |
 | SZ-FRONTEND-ESDE | 2 | 5 | 2 | unit |  |
 | SZ-FRONTEND-ESDE-SYSTEMS | 3 | 1 | 1 | unit |  |
 | SZ-FRONTEND-LAUNCHBOX | 1 | 0 | 0 | none | sem evidencia registrada |

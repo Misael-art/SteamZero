@@ -17,7 +17,7 @@
     "tests/integration/test_emulation_storage.py",
     "tests/integration/test_cli_emulation.py"
   ],
-  "scopeDigest": "be9e07c2ad83663596fcee11362cf8f3e1f33db6788250db4677a1b353211834",
+  "scopeDigest": "2a12db52449b51a40d7a4a998365cd2ce9db230e477e8d2a8ee5e7354996ad66",
   "dependsOn": [
     "SZ-LIBRARY-CANONICAL"
   ],
@@ -58,6 +58,12 @@
       "reference": "tests",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests -q; runner permaneceu sem saída em 17% e foi interrompido; nenhum processo ou socket residual",
       "result": "partial"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_storage_summary.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_storage_summary.py tests/integration/test_emulation_storage.py -q",
+      "result": "passed"
     }
   ],
   "nextAction": "Criar contratos transacionais para mover diretórios, compactar ROMs e desinstalar emuladores; depois validar a superfície física na release.",
