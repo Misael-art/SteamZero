@@ -44,7 +44,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-ONLINE-P2P | 37 | 2 | 1 | none |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
 | SZ-THEME-ENGINE | 78 | 35 | 33 | hw |  |
-| SZ-THEME-STUDIO | 80 | 11 | 10 | hw |  |
+| SZ-THEME-STUDIO | 80 | 14 | 13 | hw |  |
 | SZ-UI-DESKTOP-AUDIT | 322 | 29 | 18 | dev |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 

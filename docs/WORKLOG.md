@@ -9018,3 +9018,25 @@ Nenhuma instalação, publicação, rollback, download, lançamento de emulador 
 mutação de host foi executada. O teste físico do AURA Launcher e a validação
 visual do AURA UI continuam dependentes de autorização/release e interação do
 operador.
+
+## 2026-09-02 — Sessão: exportação transacional do Theme Studio
+
+Workstream: `WS-2026-09-THEME-STUDIO-EXPORT`, branch
+`codex/ux-console-experience-p0-2026-09-02`. O botão Exportar do editor estava
+desabilitado embora o backend já produzisse ZIP; a interface não oferecia
+destino escolhido nem confirmação. A correção habilita FileDialog, converte o
+destino em plano de escrita com precondições e confirmação, e aplica o pacote
+somente pelo executor transacional. Destinos relativos, extensões inválidas,
+symlink, diretório ou token incorreto são recusados; a gravação confirmada foi
+provada com ZIP válido.
+
+Provas focadas: `64 passed` em dashboard/contratos e o harness QML do editor;
+o gate integral terminou com `5354 passed, 44 skipped`, com a matriz de
+capacidades regenerada pelo alvo oficial e `71 passed` na verificação final
+focada. Ruff, formatação, mypy, independência, boundaries e `make status-check`
+passaram. A evidência só cobre o contrato e o fluxo offscreen; captura PNG da
+release instalada e validação física do Studio permanecem pendentes.
+
+Nenhuma instalação, publicação, rollback ou mutação de host foi executada. A
+release observada permanece `2.0.0rc1-145cf9d44738`; exportação e autoria física
+dependem de release autorizada e interação do operador.

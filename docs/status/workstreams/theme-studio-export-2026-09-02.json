@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-THEME-STUDIO-EXPORT",
+  "item": "SZ-THEME-STUDIO",
+  "branch": "codex/ux-console-experience-p0-2026-09-02",
+  "baseRef": "1d36a49b",
+  "owner": "codex-ux-console-experience",
+  "state": "closed",
+  "exclusivePaths": [
+    "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+    "tests/qml/check_theme_editor_aura.qml",
+    "tests/unit/test_desktop_ui.py",
+    "tests/unit/test_desktop_dashboard.py",
+    "docs/09-operations/evidence/2026-09-02-theme-studio-export"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Código e provas concluídos; publicação/instalação e evidência física continuam dependentes de autorização e interação do operador.",
+  "updatedAt": "2026-09-02"
+}
