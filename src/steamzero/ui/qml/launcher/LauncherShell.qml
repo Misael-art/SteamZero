@@ -33,6 +33,8 @@ Item {
 
     signal launchRequested(string gameId, string focusId)
     signal searchRequested()
+    signal actionRequested(string actionId)
+    signal feedbackRequested(string kind)
 
     function _restoredFocus() {
         const fallback = focusMap && focusMap.initial ? focusMap.initial : ""
@@ -91,6 +93,7 @@ Item {
 
     LauncherHome {
         id: home
+        objectName: "launcherHome"
         anchors.fill: parent
         visible: shell.screen === "home"
         focusMap: shell.focusMap
@@ -98,6 +101,12 @@ Item {
         currentFocus: shell.homeFocus
         accessibility: shell.accessibility
         onCurrentFocusChanged: shell.homeFocus = currentFocus
+        onGameActivated: function(gameId) {
+            if (!shell.openGame(gameId))
+                shell.feedbackRequested("activation-failed")
+        }
+        onActionActivated: function(actionId) { shell.actionRequested(actionId) }
+        onFeedbackRequested: function(kind) { shell.feedbackRequested(kind) }
     }
 
     LauncherGamePage {

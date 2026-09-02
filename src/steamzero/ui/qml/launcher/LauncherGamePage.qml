@@ -43,6 +43,13 @@ Item {
 
     signal activated(string actionId)
 
+    function activateAction(action) {
+        if (action === undefined || action === null || action.enabled === false)
+            return false
+        page.activated(String(action.id))
+        return true
+    }
+
     function move(delta) {
         if (actions.length === 0)
             return false
@@ -74,13 +81,57 @@ Item {
 
     Keys.onLeftPressed: move(-1)
     Keys.onRightPressed: move(1)
-    Keys.onReturnPressed: activate()
+    Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter
+                || event.key === Qt.Key_Space) {
+            if (page.activateAction(page.focusedAction))
+                event.accepted = true
+        }
+    }
     focus: true
 
     Column {
         anchors.fill: parent
         anchors.margins: 28
         spacing: 12
+
+        Row {
+            spacing: 16
+
+            Rectangle {
+                width: 220
+                height: 132
+                radius: 8
+                color: page._hc("#0b1622", "#03080c")
+                border.color: page._hc("#243044", "#68839b")
+                border.width: 1
+                clip: true
+                Accessible.name: qsTr("Capa de %1").arg(page.model ? page.model.title : "")
+                Accessible.role: Accessible.Graphic
+
+                Image {
+                    anchors.fill: parent
+                    visible: !!(page.model && page.model.coverUrl)
+                    source: page.model && page.model.coverUrl ? page.model.coverUrl : ""
+                    fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
+                    sourceSize.width: width * 2
+                    sourceSize.height: height * 2
+                }
+                Text {
+                    anchors.fill: parent
+                    visible: !(page.model && page.model.coverUrl)
+                    text: page.model && page.model.title
+                        ? String(page.model.title).charAt(0) : "?"
+                    color: page._hc("#8b93a8", "#c6d0db")
+                    font.pixelSize: 48
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+            }
+
+            Column {
+                spacing: 8
 
         Text {
             objectName: "gameTitle"
@@ -96,22 +147,51 @@ Item {
             color: page._hc("#8b93a8", "#c6d0db")
             font.pixelSize: 13
         }
+            }
+        }
 
         Row {
             spacing: 12
             Repeater {
                 model: page.actions
                 delegate: Rectangle {
+                    id: actionButton
                     required property var modelData
                     objectName: "gameAction"
                     width: 170
                     height: 46
                     radius: 8
+                    property bool keyboardPressed: false
+                    readonly property bool pressed:
+                        tapHandler.pressed || keyboardPressed
                     color: modelData.enabled
                         ? page._hc("#0b1622", "#03080c") : page._hc("#0a0f16", "#0a141d")
                     border.width: page.currentFocus === modelData.focusId ? 3 : 1
                     border.color: page.currentFocus === modelData.focusId
                         ? page._hc("#22d3ee", "#55d8ff") : page._hc("#243044", "#68839b")
+                    scale: pressed ? 0.98 : 1.0
+                    focus: page.currentFocus === modelData.focusId
+                    activeFocusOnTab: true
+                    Accessible.name: modelData.label
+                    Accessible.role: Accessible.Button
+                    Accessible.description: modelData.enabled
+                        ? qsTr("Ativar %1").arg(modelData.label)
+                        : (modelData.reason || qsTr("Ação indisponível"))
+
+                    TapHandler { id: tapHandler; onTapped: page.activateAction(modelData) }
+                    Keys.onPressed: function(event) {
+                        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter
+                                || event.key === Qt.Key_Space) {
+                            actionButton.keyboardPressed = true
+                            if (page.activateAction(modelData))
+                                event.accepted = true
+                        }
+                    }
+                    Keys.onReleased: function(event) {
+                        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter
+                                || event.key === Qt.Key_Space)
+                            actionButton.keyboardPressed = false
+                    }
                     Text {
                         anchors.centerIn: parent
                         text: modelData.label

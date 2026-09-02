@@ -79,6 +79,34 @@ Window {
         root._request("POST", "/launch", {"gameId": gameId, "focusId": focusId}, function() {})
     }
 
+    function _resolveGamePage(gameId) {
+        if (!root.model || !root.model.sections)
+            return null
+        for (let s = 0; s < root.model.sections.length; ++s) {
+            const section = root.model.sections[s]
+            if (!section || !section.items)
+                continue
+            for (let i = 0; i < section.items.length; ++i) {
+                const item = section.items[i]
+                if (String(item.id) !== String(gameId))
+                    continue
+                return {
+                    "gameId": String(item.id),
+                    "title": String(item.title || item.id),
+                    "platform": String(section.title || section.id),
+                    "coverUrl": String(item.coverUrl || ""),
+                    "lastPlayed": null,
+                    "initialFocus": "action:play",
+                    "actions": [
+                        {"id": "play", "focusId": "action:play", "label": qsTr("Jogar"),
+                         "enabled": true, "reason": ""}
+                    ]
+                }
+            }
+        }
+        return null
+    }
+
     // Estados acionáveis do fluxo: loading, error, offline, ready.
     property string loadState: "loading"
 
@@ -143,6 +171,9 @@ Window {
         color: "#0b1622"
         border.width: 1
         border.color: "#243044"
+        Accessible.name: qsTr("Tentar novamente")
+        Accessible.role: Accessible.Button
+        Accessible.description: qsTr("Recarregar a biblioteca do SteamZero")
         // Estado acionável: o usuário não fica preso numa tela de erro sem
         // saída — pode pedir de novo (retry) e voltar ao fluxo.
         Text {
@@ -151,10 +182,7 @@ Window {
             color: "#f2f6fb"
             font.pixelSize: 14
         }
-        MouseArea {
-            anchors.fill: parent
-            onClicked: root._retry()
-        }
+        TapHandler { onTapped: root._retry() }
         Keys.onReturnPressed: root._retry()
         Keys.onEnterPressed: root._retry()
         Keys.onSpacePressed: root._retry()
@@ -264,6 +292,7 @@ Window {
                 focusMap: root.model.focusMap
                 sections: root.model.sections
                 accessibility: root.accessibility
+                resolveGamePage: function(gameId) { return root._resolveGamePage(gameId) }
                 onLaunchRequested: function(gameId, focusId) {
                     root._request("POST", "/launch",
                                   {"gameId": gameId, "focusId": focusId},
@@ -272,6 +301,10 @@ Window {
                 onSearchRequested: function() {
                     root.searching = true
                     searchField.forceActiveFocus()
+                }
+                onActionRequested: function(actionId) {
+                    if (actionId === "library.add" || actionId === "library.retry")
+                        root._retry()
                 }
             }
         }
