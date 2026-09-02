@@ -358,6 +358,8 @@ class TestTheImportPathTheUserCanActuallyReach:
 
         by_scheme = {entry["scheme"]: entry for entry in report["schemes"]}
         assert set(by_scheme) == {"vivo", "apagado"}
+        assert by_scheme["vivo"]["id"] == "vivo"
+        assert by_scheme["vivo"]["name"] == "vivo"
         assert by_scheme["vivo"]["isMonochrome"] is False
         assert by_scheme["vivo"]["colors"]["accent"] == "#e94560"
         assert by_scheme["apagado"]["isMonochrome"] is True, (

@@ -1765,6 +1765,11 @@ class DesktopDashboard:
             imported = theme_import_esde.import_scheme(name, colors)
             entries.append(
                 {
+                    # ``scheme`` é o campo canônico do contrato. ``id`` e
+                    # ``name`` mantêm compatibilidade com consumidores visuais
+                    # que tratam cada opção como uma entidade selecionável.
+                    "id": name,
+                    "name": name,
                     "scheme": name,
                     "isMonochrome": imported.is_monochrome,
                     "sourceTags": imported.source_tags,
