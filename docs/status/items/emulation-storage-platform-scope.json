@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-EMULATION-STORAGE-PLATFORM-SCOPE",
+  "title": "Estatísticas de armazenamento por plataforma",
+  "domain": "emulation",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/adapters/storage_summary.py",
+    "src/steamzero/adapters/emulation.py",
+    "tests/unit/test_storage_summary.py",
+    "tests/integration/test_emulation_storage.py",
+    "tests/integration/test_emulation_storage_platform_scope.py"
+  ],
+  "scopeDigest": "4c6e5ec2f5766a716c1c23aa5b529f48ef4256536e168e06ba02f38825389c41",
+  "dependsOn": [
+    "SZ-EMULATION-STORAGE-READMODEL",
+    "SZ-EMULATION-PLATFORM-SCOPE"
+  ],
+  "knownGaps": [
+    "GAP-STORAGE-MOVE-UI-DESTINATION",
+    "GAP-STORAGE-BATCH-COMPRESSION",
+    "GAP-EMULATION-PHYSICAL-LAUNCH"
+  ],
+  "acceptanceCriteria": [
+    "O bucket de ROMs da área de uma plataforma conta somente arquivos canônicos dessa plataforma.",
+    "Arquivos de outras plataformas na mesma raiz permanecem fora do resumo e não são alterados.",
+    "O resumo continua read-only, seguro contra symlinks e compatível com chamadas sem filtro.",
+    "A resposta publica o escopo efetivo para a UI não apresentar estatística global como se fosse da plataforma."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_emulation_storage_platform_scope.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_storage_summary.py tests/integration/test_emulation_storage_platform_scope.py tests/integration/test_emulation_storage.py tests/integration/test_emulation_platform_scope.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "ruff check, ruff format --check, mypy src e make independence boundaries",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests -q; runner permaneceu sem saída em 17% e foi interrompido; nenhum processo ou socket residual",
+      "result": "partial"
+    }
+  ],
+  "nextAction": "Integrar a apresentação visual por plataforma e validar o resumo na release instalada.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-09-02",
+  "notes": "A filtragem de jogos já existe, mas a coleta de armazenamento ainda varre raízes completas. Esta frente alinha a métrica física ao mesmo contexto canônico usado por saves e mídia."
+}

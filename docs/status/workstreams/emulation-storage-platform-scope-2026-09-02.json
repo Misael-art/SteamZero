@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-EMULATION-STORAGE-PLATFORM-SCOPE",
+  "item": "SZ-EMULATION-STORAGE-PLATFORM-SCOPE",
+  "branch": "codex/ux-audit-platform-context-2026-09-02",
+  "baseRef": "8ad17eb",
+  "owner": "codex-ux-audit",
+  "state": "closed",
+  "exclusivePaths": [
+    "src/steamzero/adapters/storage_summary.py",
+    "src/steamzero/adapters/emulation.py",
+    "tests/unit/test_storage_summary.py",
+    "tests/integration/test_emulation_storage.py",
+    "tests/integration/test_emulation_storage_platform_scope.py"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Integrar a apresentação visual por plataforma e validar o resumo na release instalada.",
+  "updatedAt": "2026-09-02"
+}

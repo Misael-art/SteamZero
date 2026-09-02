@@ -9174,3 +9174,19 @@ O documento também registra o novo teste técnico: bateria focada aprovada,
 gates estáticos aprovados e suíte integral reproduzindo a parada em 17% com
 `TMPDIR=/tmp`, sem pytest ou socket residual. Nenhuma ação de host, publicação,
 push ou lançamento físico foi feita nesta sessão.
+
+## 2026-09-02 — Sessão: métricas de armazenamento por plataforma
+
+Workstream: `WS-2026-09-EMULATION-STORAGE-PLATFORM-SCOPE`, branch
+`codex/ux-audit-platform-context-2026-09-02`. O read model deixou de atribuir
+uma raiz física inteira à plataforma atual quando a biblioteca é mista. A área
+operacional passa a fornecer os arquivos canônicos do contexto ao bucket de
+ROMs, publica `scope.platformId` e mantém as demais categorias read-only e
+protegidas contra symlinks.
+
+Prova: `7 passed` no recorte de armazenamento/plataforma; Ruff, formatação,
+mypy, independência e boundaries passaram. O gate integral foi executado com
+`TMPDIR=/tmp`, permaneceu sem saída em 17% e foi interrompido após duas esperas
+de 30 segundos; nenhuma sobra de pytest ou socket foi encontrada. Nenhuma
+instalação, publicação, rollback, download, varredura real ou lançamento foi
+executado.
