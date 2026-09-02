@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-EMULATION-STORAGE-READMODEL",
+  "title": "Read model de armazenamento da emulação",
+  "domain": "emulation",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/adapters/storage_summary.py",
+    "src/steamzero/adapters/emulation.py",
+    "src/steamzero/schemas/emulation-workspace-v1.schema.json",
+    "tests/unit/test_storage_summary.py",
+    "tests/integration/test_emulation_storage.py",
+    "tests/integration/test_cli_emulation.py"
+  ],
+  "scopeDigest": "be9e07c2ad83663596fcee11362cf8f3e1f33db6788250db4677a1b353211834",
+  "dependsOn": [
+    "SZ-LIBRARY-CANONICAL"
+  ],
+  "knownGaps": [
+    "GAP-STORAGE-MOVE-DIRECTORY",
+    "GAP-STORAGE-ROM-COMPRESSION",
+    "GAP-STORAGE-EMULATOR-UNINSTALL",
+    "GAP-EMULATION-PHYSICAL-LAUNCH"
+  ],
+  "acceptanceCriteria": [
+    "O workspace publica bytes e arquivos por ROMs, emuladores, saves, mídia e cache.",
+    "O espaço total e livre do volume são publicados sem seguir symlinks ou caminhos fora do escopo gerenciado.",
+    "Diretórios ausentes ou ilegíveis aparecem com estado e motivo explícitos.",
+    "A UI recebe ações existentes para varredura, reconciliação e limpeza de cache órfão, sem botões mudos.",
+    "O resumo é validado pelo schema e não altera o estado real durante a leitura."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_storage_summary.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_storage_summary.py tests/integration/test_emulation_storage.py tests/integration/test_preservation_controller.py tests/integration/test_cli_emulation.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_emulation_controller.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_emulation_controller.py tests/unit/test_platform_composer.py tests/unit/test_workspace_composition.py tests/integration/test_preservation_controller.py tests/integration/test_emulation_storage.py tests/integration/test_cli_emulation.py tests/integration/test_desktop_ui_bridge.py tests/unit/test_desktop_dashboard.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "ruff check/format, mypy, make independence boundaries e make status-check após a integração do resumo",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests -q; runner permaneceu sem saída em 17% e foi interrompido; nenhum processo ou socket residual",
+      "result": "partial"
+    }
+  ],
+  "nextAction": "Criar contratos transacionais para mover diretórios, compactar ROMs e desinstalar emuladores; depois validar a superfície física na release.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-09-02",
+  "notes": "A captura do usuário mostra Armazenamento compartilhado com apenas 0 registro(s), sem visão de ROMs, saves, mídia, cache ou espaço do volume. Esta fatia entrega observabilidade read-only por categoria, volume e integridade, com ações existentes de inventário/reconciliação/limpeza de cache. Mover diretórios, compactar ROMs e desinstalar emuladores continuam fora desta capacidade até haver contratos transacionais próprios."
+}

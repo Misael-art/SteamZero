@@ -9089,3 +9089,27 @@ foram promovidos por esta sessão. Nenhuma instalação, publicação, rollback,
 download, varredura real ou lançamento de emulador foi executado. A release
 observada permanece `2.0.0rc1-145cf9d44738`; captura da release instalada,
 controle físico e métricas de desempenho continuam não validados.
+
+## 2026-09-02 — Sessão: read model de armazenamento da emulação
+
+Workstream: `WS-2026-09-EMULATION-STORAGE-READMODEL`, branch
+`codex/ux-audit-platform-context-2026-09-02`. A área de Armazenamento deixou de
+publicar somente “Conteúdo compartilhado”: o workspace agora expõe volume,
+ROMs, emuladores, saves, mídia, cache e integridade com arquivos, bytes,
+estado e motivo de leitura. A varredura é limitada às raízes fornecidas, não
+segue symlinks e não altera dados. A UI recebe as ações já existentes para
+atualizar inventário, abrir/limpar cache órfão e reconciliar o índice.
+
+Provas: `12 passed` no recorte específico e `268 passed` na bateria ampla de
+emulação/dashboard; symlink e preservação de arquivos foram testados. Ruff,
+formatação, mypy, independência, boundaries e `make status-check` passaram. A
+suíte integral foi tentada após a mudança, repetiu a ausência de saída em 17%
+e foi interrompida; nenhum processo ou socket residual permaneceu, portanto a
+aprovação integral continua pendente.
+
+Mover diretórios, compactar ROMs e desinstalar emuladores não foram anunciados
+como concluídos: faltam contratos transacionais específicos, precondições,
+preview e rollback. Nenhuma instalação, publicação, rollback, download,
+varredura real ou lançamento de emulador foi executado. A release documentada
+permanece `2.0.0rc1-145cf9d44738`; captura instalada, controle físico e
+métricas de desempenho seguem não validados.

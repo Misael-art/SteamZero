@@ -7,7 +7,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 
 | ID | Arquivos no escopo | Evidencias | Aprovadas | Verificacao | Observacao |
 |---|---|---|---|---|---|
-| SZ-AGG-ADAPTERS | 109 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-ADAPTERS | 110 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-ASSETS | 10 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-CORE | 40 | 1 | 1 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-DOMAIN | 92 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
@@ -17,7 +17,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-PRIVILEGED | 7 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SCHEMAS | 49 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SERVICE-API | 11 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-TESTS | 374 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-TESTS | 376 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TOOLS | 39 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AURA-LAUNCHER | 109 | 17 | 13 | hw |  |
 | SZ-AURA-UI | 16 | 4 | 4 | unit |  |
@@ -29,6 +29,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-EMULATION-LONG-OPERATIONS | 28 | 17 | 11 | hw |  |
 | SZ-EMULATION-M10 | 6 | 3 | 2 | vm |  |
 | SZ-EMULATION-PLATFORM-CONTEXT | 3 | 4 | 2 | unit |  |
+| SZ-EMULATION-STORAGE-READMODEL | 6 | 4 | 3 | unit |  |
 | SZ-FRONTEND-ESDE | 2 | 5 | 2 | unit |  |
 | SZ-FRONTEND-ESDE-SYSTEMS | 3 | 1 | 1 | unit |  |
 | SZ-FRONTEND-LAUNCHBOX | 1 | 0 | 0 | none | sem evidencia registrada |
@@ -49,4 +50,4 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-UI-DESKTOP-AUDIT | 322 | 29 | 18 | dev |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 
-Arquivos em `src/`: **522**. Sob agregador apenas, sem item de capacidade: **296** (56%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
+Arquivos em `src/`: **523**. Sob agregador apenas, sem item de capacidade: **295** (56%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
