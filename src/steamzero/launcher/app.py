@@ -273,7 +273,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     context_path = args.context or _context_path()
     # Um contexto pendente significa que a sessão anterior lançou algo. Consumir
     # aqui evita que um retorno antigo posicione o foco de uma sessão nova.
-    consume_context(context_path)
+    restored_context = consume_context(context_path)
+    return_context = restored_context if isinstance(restored_context, Mapping) else None
 
     library = _read_library(args.library)
     catalog = catalog_games(library)
@@ -292,6 +293,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         context_path=context_path,
         on_launch=router.launch,
         accessibility=accessibility,
+        return_context=return_context,
     )
     return launch_launcher_ui(bridge)
 

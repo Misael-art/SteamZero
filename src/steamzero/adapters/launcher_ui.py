@@ -123,6 +123,7 @@ class LauncherBridge:
         titles: Mapping[str, str] | None = None,
         covers: Mapping[str, str] | None = None,
         accessibility: Mapping[str, Any] | None = None,
+        return_context: Mapping[str, Any] | None = None,
     ) -> None:
         self._sections = tuple(sections)
         self._titles = dict(titles or {})
@@ -130,6 +131,7 @@ class LauncherBridge:
         self._context_path = Path(context_path)
         self._on_launch = on_launch
         self._accessibility = dict(accessibility or {})
+        self._return_context = dict(return_context or {}) or None
         self.token = secrets.token_urlsafe(32)
         self._focus = resolve_home_focus(self._sections)
 
@@ -141,6 +143,10 @@ class LauncherBridge:
                 "reducedMotion": bool(self._accessibility.get("reducedMotion", False)),
             },
             "focusMap": self._focus.to_qml_object(),
+            # O processo consome o contexto antes de iniciar o QML. Publicá-lo
+            # aqui faz a restauração existir no entry point real, e não apenas
+            # no harness que injeta returnContext diretamente.
+            "returnContext": self._return_context,
             "sections": [
                 {
                     "id": section.id,

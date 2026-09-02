@@ -26,6 +26,10 @@ Item {
     property var returnContext: null
 
     readonly property string screen: gamePage !== null ? "game" : "home"
+    readonly property var launchStates: ["idle", "preparing", "launching",
+        "emulator-visible", "returning", "recovered", "failed"]
+    property string launchState: "idle"
+    property string launchError: ""
     property var gamePage: null
     property string homeFocus: _restoredFocus()
     // De onde o jogo foi aberto. É isto que a volta restaura.
@@ -35,6 +39,15 @@ Item {
     signal searchRequested()
     signal actionRequested(string actionId)
     signal feedbackRequested(string kind)
+    signal launchStateRequested(string state)
+
+    Timer {
+        id: launchTimeout
+        interval: 10000
+        repeat: false
+        running: shell.launchState === "launching"
+        onTriggered: shell.failLaunch("O lançamento demorou mais que o esperado.")
+    }
 
     function _restoredFocus() {
         const fallback = focusMap && focusMap.initial ? focusMap.initial : ""
@@ -64,19 +77,60 @@ Item {
     }
 
     function launchFocused() {
-        if (gamePage === null)
+        if (gamePage === null || (launchState !== "idle" && launchState !== "recovered"
+                                  && launchState !== "failed"))
             return false
+        launchError = ""
+        launchState = "preparing"
+        launchStateRequested("preparing")
+        launchState = "launching"
+        launchStateRequested("launching")
         // O foco de saída viaja junto: é ele que o contexto de retorno grava.
         shell.launchRequested(gamePage.gameId, exitFocus)
         return true
     }
 
+    function markEmulatorVisible() {
+        if (launchState !== "launching")
+            return false
+        launchState = "emulator-visible"
+        launchStateRequested("emulator-visible")
+        return true
+    }
+
+    function markReturning() {
+        if (launchState !== "emulator-visible")
+            return false
+        launchState = "returning"
+        launchStateRequested("returning")
+        return true
+    }
+
+    function recoverLaunch() {
+        launchError = ""
+        launchState = "recovered"
+        launchStateRequested("recovered")
+        return true
+    }
+
+    function failLaunch(reason) {
+        launchError = String(reason || "Não foi possível iniciar o jogo.")
+        launchState = "failed"
+        launchStateRequested("failed")
+        shell.feedbackRequested("launch-failed")
+        return false
+    }
+
     function back() {
         if (gamePage === null)
             return false
+        if (launchState === "emulator-visible")
+            markReturning()
         gamePage = null
         if (exitFocus !== "")
             homeFocus = exitFocus
+        if (launchState === "returning")
+            recoverLaunch()
         return true
     }
 
@@ -121,6 +175,73 @@ Item {
         onActivated: function(actionId) {
             if (actionId === "play")
                 shell.launchFocused()
+        }
+    }
+
+    Rectangle {
+        id: launchOverlay
+        anchors.fill: parent
+        z: 10
+        visible: shell.launchState === "preparing"
+            || shell.launchState === "launching" || shell.launchState === "failed"
+        color: "#071019ee"
+        opacity: visible ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation {
+                duration: shell.accessibility && shell.accessibility.reducedMotion ? 0 : 180
+            }
+        }
+        Accessible.name: shell.launchState === "failed"
+            ? qsTr("Falha ao iniciar o jogo") : qsTr("Preparando o jogo")
+        Accessible.description: shell.launchState === "failed"
+            ? shell.launchError : qsTr("Aguarde enquanto o jogo é iniciado")
+
+        Column {
+            anchors.centerIn: parent
+            width: Math.min(parent.width - 48, 520)
+            spacing: 16
+
+            Text {
+                width: parent.width
+                text: shell.launchState === "failed"
+                    ? shell.launchError
+                    : qsTr("Preparando %1…").arg(shell.gamePage
+                        ? shell.gamePage.title : qsTr("o jogo"))
+                color: "#f2f6fb"
+                font.pixelSize: 22
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.Wrap
+            }
+
+            Rectangle {
+                id: recoverButton
+                anchors.horizontalCenter: parent.horizontalCenter
+                visible: shell.launchState === "failed"
+                width: 220
+                height: 48
+                radius: 8
+                color: "#0b1622"
+                border.width: activeFocus ? 3 : 1
+                border.color: activeFocus ? "#55d8ff" : "#68839b"
+                focus: visible
+                Accessible.name: qsTr("Voltar para a página do jogo")
+                Accessible.role: Accessible.Button
+                Accessible.description: qsTr("Dispensar a falha e tentar novamente")
+                Text {
+                    anchors.centerIn: parent
+                    text: qsTr("Voltar e tentar")
+                    color: "#ffffff"
+                    font.pixelSize: 14
+                }
+                TapHandler { onTapped: shell.recoverLaunch() }
+                Keys.onPressed: function(event) {
+                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter
+                            || event.key === Qt.Key_Space) {
+                        shell.recoverLaunch()
+                        event.accepted = true
+                    }
+                }
+            }
         }
     }
 }

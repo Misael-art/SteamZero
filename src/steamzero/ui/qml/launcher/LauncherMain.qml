@@ -29,6 +29,21 @@ Window {
     property string searchQuery: ""
     property var searchResults: []
 
+    function _activeLauncherShell() {
+        return launcherLoader && launcherLoader.item ? launcherLoader.item : null
+    }
+
+    // The emulator owns the foreground window. When the Launcher becomes
+    // active again, that is the observable return edge and the shell restores
+    // the saved card without requiring a terminal or a second launch.
+    onActiveChanged: {
+        if (!active)
+            return
+        const shell = root._activeLauncherShell()
+        if (shell && shell.launchState === "emulator-visible")
+            shell.back()
+    }
+
     function _argument(name) {
         const args = Qt.application.arguments
         for (let i = 0; i < args.length - 1; ++i)
@@ -285,18 +300,27 @@ Window {
     }
 
     Loader {
+        id: launcherLoader
         anchors.fill: parent
         active: root.model !== null
         sourceComponent: Component {
             LauncherShell {
+                id: launcherShell
                 focusMap: root.model.focusMap
                 sections: root.model.sections
                 accessibility: root.accessibility
                 resolveGamePage: function(gameId) { return root._resolveGamePage(gameId) }
+                returnContext: root.model.returnContext || null
                 onLaunchRequested: function(gameId, focusId) {
                     root._request("POST", "/launch",
                                   {"gameId": gameId, "focusId": focusId},
-                                  function(status, text) {})
+                                  function(status, text) {
+                                      if (status === 204)
+                                          launcherShell.markEmulatorVisible()
+                                      else
+                                          launcherShell.failLaunch(
+                                              qsTr("O jogo não pôde ser iniciado (%1).").arg(status))
+                                  })
                 }
                 onSearchRequested: function() {
                     root.searching = true

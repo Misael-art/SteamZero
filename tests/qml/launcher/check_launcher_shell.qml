@@ -115,15 +115,26 @@ Item {
 
             // Lançar informa quem lançar e de onde, para o contexto ser salvo.
             harness.check(shell.launchFocused() === true, "lançar falhou")
+            harness.check(shell.launchState === "launching",
+                          "lançar precisa entrar no estado launching")
             harness.check(harness.launched.length === 1
                           && harness.launched[0] === "hades@continue:hades",
                           "o lançamento precisa levar o foco de saída junto")
+
+            harness.check(shell.markEmulatorVisible() === true,
+                          "o shell precisa aceitar a transição para emulador visível")
+            harness.check(shell.launchState === "emulator-visible",
+                          "o estado emulator-visible não foi publicado")
+            harness.check(shell.launchFocused() === false,
+                          "um segundo lançamento não pode acontecer durante a sessão")
 
             // Voltar: mesma tela e MESMO foco, não o topo da home.
             harness.check(shell.back() === true, "voltar falhou")
             harness.check(shell.screen === "home", "voltar não retornou à home")
             harness.check(shell.homeFocus === "continue:hades",
                           "o retorno precisa cair no foco de onde saiu")
+            harness.check(shell.launchState === "recovered",
+                          "o retorno precisa terminar no estado recovered")
 
             // Contexto salvo restaura o foco na inicialização.
             harness.check(returning.homeFocus === "continue:hades",

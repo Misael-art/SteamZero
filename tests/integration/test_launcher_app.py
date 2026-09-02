@@ -54,6 +54,20 @@ def test_the_bridge_serves_the_resolved_model_and_accepts_a_launch(tmp_path: Pat
     assert launched == [("celeste", "library:celeste")]
 
 
+def test_the_bridge_publishes_context_consumed_by_the_real_entry_point(tmp_path: Path) -> None:
+    """A restauração precisa atravessar bridge e QML, não só um harness do shell."""
+    bridge = LauncherBridge(
+        sections=build_sections([{"id": "celeste", "title": "Celeste", "section": "library"}]),
+        titles={"celeste": "Celeste"},
+        context_path=tmp_path / "return.json",
+        on_launch=lambda game, focus: None,
+        return_context={"gameId": "celeste", "focusId": "library:celeste"},
+    )
+    with bridge.serving() as base:
+        model = _get(f"{base}/model", bridge.token)
+    assert model["returnContext"] == {"gameId": "celeste", "focusId": "library:celeste"}
+
+
 def test_the_bridge_refuses_a_request_without_the_token(tmp_path: Path) -> None:
     """Sem token, qualquer processo local dispararia jogos na máquina do usuário."""
     bridge = LauncherBridge(
