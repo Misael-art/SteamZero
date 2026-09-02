@@ -26,6 +26,9 @@ Window {
     property string lastExportDestination: ""
     property string lastExportPlanId: ""
     property int exportApplyRequests: 0
+    property int metadataRequests: 0
+    property string lastMetadataField: ""
+    property string lastMetadataValue: ""
     property int appliedSignals: 0
 
     readonly property var auraColors: ({
@@ -109,6 +112,15 @@ Window {
             for (var k in payload.values)
                 merged.color[k] = payload.values[k]
             callback({"preview": previewObject(merged)})
+            return
+        }
+        if (actionId === "theme.editor.set-metadata") {
+            metadataRequests += 1
+            lastMetadataField = payload.field || ""
+            lastMetadataValue = payload.value || ""
+            var manifest = JSON.parse(JSON.stringify(editor.editorManifest))
+            manifest[payload.field] = payload.value
+            callback({"manifest": manifest})
             return
         }
         if (actionId === "theme.editor.cancel") {
@@ -220,6 +232,9 @@ Window {
                   "preview ao vivo deve aplicar o acento ciano AURA")
             check(String(editor._previewBridge.text) === "#e8ecf7",
                   "preview ao vivo deve aplicar o texto AURA")
+            editor.setMetadata("name", "Não deve alterar builtin")
+            check(metadataRequests === 0,
+                  "tema builtin somente leitura não deve despachar metadados")
             phase = 2
             return
         }
@@ -293,6 +308,13 @@ Window {
             return
         }
         if (phase === 6) {
+            editor.setMetadata("name", "Cópia editada")
+            check(metadataRequests === 1,
+                  "tema do usuário deve despachar edição de metadados")
+            check(lastMetadataField === "name" && lastMetadataValue === "Cópia editada",
+                  "set-metadata deve receber campo e valor editados")
+            check(editor.editorManifest.name === "Cópia editada",
+                  "manifesto do editor deve refletir metadado atualizado")
             check(editor.localPath("file:///tmp/theme.zip") === "/tmp/theme.zip",
                   "destino do FileDialog deve virar caminho local")
             editor.exportPlan = {"planId": "plan-theme-export-1",

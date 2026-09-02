@@ -162,6 +162,20 @@ Rectangle {
         return copy
     }
 
+    function setMetadata(field, value) {
+        if (panel.editorReadOnly || !panel.editorSessionId)
+            return
+        panel.requestAction("theme.editor.set-metadata", {
+            "sessionId": panel.editorSessionId,
+            "field": field,
+            "value": value
+        }, function(response) {
+            if (response.manifest)
+                panel.editorManifest = response.manifest
+            panel.editorDirty = true
+        })
+    }
+
     function _openEditor(sessionId, manifest, preview) {
         panel.editorSessionId = sessionId
         panel.editorManifest = manifest
@@ -669,6 +683,70 @@ Rectangle {
                     spacing: 0
 
                     Item { Layout.minimumHeight: 8 }
+
+                    Label {
+                        text: qsTr("Metadados do tema")
+                        color: panel.textColor
+                        font.pixelSize: 16
+                        font.weight: Font.Medium
+                        Layout.leftMargin: 12
+                        Layout.rightMargin: 12
+                        Layout.fillWidth: true
+                    }
+
+                    Label {
+                        text: qsTr("Nome, autoria e licença são preservados no pacote exportado.")
+                        color: panel.mutedColor
+                        font.pixelSize: 11
+                        wrapMode: Text.WordWrap
+                        Layout.leftMargin: 12
+                        Layout.rightMargin: 12
+                        Layout.fillWidth: true
+                    }
+
+                    Repeater {
+                        model: ["name", "author", "license", "description"]
+                        delegate: ColumnLayout {
+                            required property string modelData
+                            Layout.leftMargin: 12
+                            Layout.rightMargin: 12
+                            Layout.fillWidth: true
+                            spacing: 3
+
+                            Label {
+                                text: {
+                                    if (modelData === "name") return qsTr("Nome")
+                                    if (modelData === "author") return qsTr("Autoria")
+                                    if (modelData === "license") return qsTr("Licença SPDX")
+                                    return qsTr("Descrição")
+                                }
+                                color: panel.mutedColor
+                                font.pixelSize: 11
+                            }
+
+                            TextField {
+                                objectName: "themeMetadata_" + modelData
+                                text: panel.editorManifest[modelData] || ""
+                                enabled: !panel.editorReadOnly
+                                Layout.fillWidth: true
+                                Layout.minimumHeight: 36
+                                color: panel.textColor
+                                placeholderText: modelData === "license"
+                                    ? qsTr("Ex.: MIT ou GPL-3.0-or-later") : ""
+                                Accessible.name: parent.children[0].text
+                                background: Rectangle {
+                                    color: panel.surfaceColor
+                                    radius: 6
+                                    border.color: parent.activeFocus
+                                        ? panel.cyanColor : panel.borderColor
+                                    border.width: parent.activeFocus ? 2 : 1
+                                }
+                                onEditingFinished: panel.setMetadata(modelData, text.trim())
+                            }
+                        }
+                    }
+
+                    Item { Layout.minimumHeight: 16 }
 
                     CategorySection {
                         title: qsTr("Cores")
