@@ -15,7 +15,7 @@
     "tests/unit/test_theme_import_esde.py",
     "tests/qml/check_theme_editor_import.qml"
   ],
-  "scopeDigest": "604f82422e100dde00aa799d35e343a423e176498f494b878f848c4ac19e6a8f",
+  "scopeDigest": "4549b0dba161a684e3efdb988be14753cca0dd6a38770592221957efd8077634",
   "dependsOn": [
     "SZ-THEME-STUDIO"
   ],
@@ -25,8 +25,9 @@
   ],
   "acceptanceCriteria": [
     "A área Temas oferece entrada explícita para importar um tema ES-DE.",
+    "A área Temas oferece entrada para importar pacote SteamZero com inspeção prévia.",
     "Inspeção ocorre antes de qualquer escrita e apresenta esquemas e limitações.",
-    "Importação exige nome e esquema, trata erro/cancelamento e atualiza a lista.",
+    "Importação exige nome e esquema ou manifesto válido, trata erro/cancelamento e atualiza a lista.",
     "O fluxo não aplica automaticamente o tema importado e mantém o contrato de segurança."
   ],
   "evidence": [
@@ -71,9 +72,15 @@
       "reference": "tests/unit/test_theme_import_esde.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_import_esde.py -q",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_theme_editor_import.qml",
+      "command": "QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qml tests/qml/check_theme_editor_import.qml",
+      "result": "passed"
     }
   ],
-  "nextAction": "Validar a jornada na release instalada com uma pasta ES-DE real.",
+  "nextAction": "Validar a jornada na release instalada com uma pasta ES-DE e um pacote SteamZero reais.",
   "activeWorkstreams": [],
   "updatedAt": "2026-09-02",
   "notes": "O backend já implementa inspect/apply como tema editável. Esta frente fecha a descoberta e a jornada da superfície Temas sem duplicar o importador."

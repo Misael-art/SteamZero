@@ -9248,3 +9248,18 @@ Provas: `47 passed` em `test_theme_import_esde.py`; Ruff, formatação, mypy,
 independência e boundaries passaram. A suíte integral repetiu a parada em 17%
 e foi interrompida sem processos `pytest` ou `run_tests_isolated` residuais.
 Nenhuma instalação, publicação, push ou ação de host foi executada.
+
+## 2026-09-02 — Sessão: importação de pacote na área Temas
+
+Workstream: `WS-2026-09-THEME-IMPORT-SURFACE`, branch
+`codex/ux-audit-platform-context-2026-09-02`. A área Temas passou a expor a
+importação de pacotes SteamZero: seleção de `.zip`, inspeção do manifesto,
+visualização de nome/versão/autor/licença, bloqueio de sobrescrita implícita e
+instalação confirmada sem aplicar o tema automaticamente. O teste QML cobre a
+jornada de pacote novo; a compatibilidade ES-DE continua preservada.
+
+Provas: `qmllint`, os três harnesses QML do editor, `47 passed` do importador
+ES-DE, Ruff, formatação, mypy, independência e boundaries passaram. A suíte
+integral repetiu a parada em 17% e foi interrompida sem processos `pytest` ou
+`run_tests_isolated` residuais. Nenhuma instalação, publicação, push ou ação de
+host foi executada.

@@ -51,7 +51,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-ONLINE-P2P | 37 | 2 | 1 | none |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
 | SZ-THEME-ENGINE | 78 | 35 | 33 | hw |  |
-| SZ-THEME-IMPORT-SURFACE | 4 | 7 | 6 | unit |  |
+| SZ-THEME-IMPORT-SURFACE | 4 | 8 | 7 | unit |  |
 | SZ-THEME-STUDIO | 81 | 15 | 14 | hw |  |
 | SZ-UI-DESKTOP-AUDIT | 323 | 30 | 18 | dev |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
