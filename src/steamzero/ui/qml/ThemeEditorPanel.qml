@@ -55,6 +55,12 @@ Rectangle {
     property bool esdeImportBusy: false
     property string esdeImportNotice: ""
     property bool esdeImportNoticeIsError: false
+    property string packageImportSource: ""
+    property var packageImportPreview: null
+    property bool packageImportOverwrite: false
+    property bool packageImportBusy: false
+    property string packageImportNotice: ""
+    property bool packageImportNoticeIsError: false
     // Objeto QML completo do tema (themeId/themeVersion/resolved/effects), na
     // forma exata de ``to_theme_qml_object``. O ThemeBridge espera esse formato
     // em ``_source.resolved`` — alimentá-lo com o dicionário de tokens puro
@@ -225,6 +231,61 @@ Rectangle {
             panel.esdeImportBusy = false
             panel.esdeImportNotice = String(message || qsTr("Não foi possível importar o tema."))
             panel.esdeImportNoticeIsError = true
+        })
+    }
+
+    function resetPackageImport() {
+        panel.packageImportSource = ""
+        panel.packageImportPreview = null
+        panel.packageImportOverwrite = false
+        panel.packageImportBusy = false
+        panel.packageImportNotice = ""
+        panel.packageImportNoticeIsError = false
+    }
+
+    function inspectPackageImport() {
+        const source = panel.packageImportSource.trim()
+        if (source === "")
+            return
+        panel.packageImportBusy = true
+        panel.packageImportNotice = ""
+        panel.packageImportNoticeIsError = false
+        panel.requestAction("theme.import.package.inspect", {source: source},
+            function(response) {
+                panel.packageImportBusy = false
+                panel.packageImportPreview = response || null
+                panel.packageImportOverwrite = false
+                panel.packageImportNotice = response && response.alreadyInstalled
+                    ? qsTr("Este tema já está instalado. Marque substituir somente se deseja trocar a versão atual.")
+                    : qsTr("Pacote validado. Confirme para instalar; o tema ativo não será alterado.")
+                panel.packageImportNoticeIsError = false
+            },
+            function(message) {
+                panel.packageImportBusy = false
+                panel.packageImportPreview = null
+                panel.packageImportNotice = String(message || qsTr("Não foi possível examinar o pacote."))
+                panel.packageImportNoticeIsError = true
+            })
+    }
+
+    function applyPackageImport() {
+        if (!panel.packageImportPreview || panel.packageImportSource.trim() === "")
+            return
+        panel.packageImportBusy = true
+        panel.packageImportNotice = ""
+        panel.packageImportNoticeIsError = false
+        panel.requestAction("theme.import.package.apply", {
+            source: panel.packageImportSource.trim(),
+            overwrite: panel.packageImportOverwrite
+        }, function(_response) {
+            panel.packageImportBusy = false
+            panel.refreshThemeList()
+            panel.packageImportNotice = qsTr("Pacote importado. O tema ativo não foi alterado.")
+            panel.packageImportNoticeIsError = false
+        }, function(message) {
+            panel.packageImportBusy = false
+            panel.packageImportNotice = String(message || qsTr("Não foi possível importar o pacote."))
+            panel.packageImportNoticeIsError = true
         })
     }
 
@@ -430,6 +491,44 @@ Rectangle {
 
             Label {
                 text: qsTr("ES-DE → tema editável, sem aplicar automaticamente")
+                color: panel.mutedColor
+                font.pixelSize: 12
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+        }
+
+        RowLayout {
+            Layout.leftMargin: 20
+            Layout.rightMargin: 20
+            Layout.minimumHeight: 48
+            spacing: 12
+
+            Button {
+                objectName: "themeImportPackageButton"
+                text: qsTr("Importar pacote")
+                Layout.minimumHeight: 48
+                Layout.preferredWidth: 220
+                Accessible.name: text
+                Accessible.description: qsTr("Examina e instala um pacote de tema SteamZero")
+                onClicked: packageImportDialog.open()
+                background: Rectangle {
+                    color: parent.hovered ? panel.cyanColor : panel.surfaceColor
+                    radius: 8
+                    border.color: parent.activeFocus ? panel.textColor : panel.cyanColor
+                    border.width: parent.activeFocus ? 2 : 1
+                }
+                contentItem: Label {
+                    text: parent.text
+                    color: parent.hovered ? "#071019" : panel.cyanColor
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    font.weight: Font.Medium
+                }
+            }
+
+            Label {
+                text: qsTr("Pacote SteamZero → validação antes de instalar")
                 color: panel.mutedColor
                 font.pixelSize: 12
                 wrapMode: Text.WordWrap
@@ -790,6 +889,131 @@ Rectangle {
         id: esdeImportFolderDialog
         title: qsTr("Escolher pasta do tema ES-DE")
         onAccepted: panel.esdeImportSource = panel.localPath(selectedFolder)
+    }
+
+    FileDialog {
+        id: packageImportFileDialog
+        title: qsTr("Escolher pacote de tema SteamZero")
+        fileMode: FileDialog.OpenFile
+        nameFilters: [qsTr("Pacotes de tema (*.zip)"), qsTr("Todos os arquivos (*)")]
+        onAccepted: {
+            panel.packageImportSource = panel.localPath(selectedFile)
+            panel.inspectPackageImport()
+        }
+    }
+
+    Dialog {
+        id: packageImportDialog
+        objectName: "themeImportPackageDialog"
+        modal: true
+        closePolicy: Popup.CloseOnEscape
+        width: Math.min(panel.width - 24, 640)
+        height: Math.min(panel.height - 24, 500)
+        x: (panel.width - width) / 2
+        y: (panel.height - height) / 2
+        title: qsTr("Importar pacote de tema")
+        standardButtons: Dialog.NoButton
+        onOpened: packageImportChoose.forceActiveFocus()
+        onClosed: panel.resetPackageImport()
+
+        contentItem: ColumnLayout {
+            spacing: 10
+
+            Label {
+                text: qsTr("Examine o manifesto antes de instalar. O tema ativo só muda por uma ação separada de aplicar.")
+                color: panel.mutedColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                TextField {
+                    id: packageImportSourceField
+                    text: panel.packageImportSource
+                    placeholderText: qsTr("Arquivo .zip do tema")
+                    Accessible.name: qsTr("Arquivo do pacote de tema")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onTextChanged: panel.packageImportSource = text
+                }
+                Button {
+                    id: packageImportChoose
+                    text: qsTr("Escolher")
+                    Accessible.name: text
+                    Layout.minimumHeight: 48
+                    onClicked: packageImportFileDialog.open()
+                }
+                Button {
+                    text: qsTr("Examinar")
+                    enabled: !panel.packageImportBusy && panel.packageImportSource.trim() !== ""
+                    Accessible.name: text
+                    Accessible.description: qsTr("Lê o manifesto sem instalar o pacote")
+                    Layout.minimumHeight: 48
+                    onClicked: panel.inspectPackageImport()
+                }
+            }
+
+            Label {
+                visible: panel.packageImportPreview !== null
+                text: panel.packageImportPreview
+                    ? qsTr("%1 · v%2\nAutor: %3\nLicença: %4\nID: %5")
+                        .arg(panel.packageImportPreview.name || "Tema")
+                        .arg(panel.packageImportPreview.version || "—")
+                        .arg(panel.packageImportPreview.author || "—")
+                        .arg(panel.packageImportPreview.license || "—")
+                        .arg(panel.packageImportPreview.themeId || "—")
+                    : ""
+                color: panel.textColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
+            CheckBox {
+                visible: panel.packageImportPreview !== null
+                    && panel.packageImportPreview.alreadyInstalled === true
+                text: qsTr("Substituir o tema instalado")
+                checked: panel.packageImportOverwrite
+                Accessible.name: text
+                onToggled: panel.packageImportOverwrite = checked
+            }
+
+            Label {
+                text: panel.packageImportNotice
+                visible: panel.packageImportNotice !== ""
+                color: panel.packageImportNoticeIsError ? panel.redColor : panel.greenColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
+            Item { Layout.fillHeight: true }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Button {
+                    text: qsTr("Cancelar")
+                    Accessible.name: text
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onClicked: packageImportDialog.close()
+                }
+                Button {
+                    text: panel.packageImportBusy
+                        ? qsTr("Instalando…") : qsTr("Instalar pacote")
+                    enabled: !panel.packageImportBusy
+                        && panel.packageImportPreview !== null
+                        && (!panel.packageImportPreview.alreadyInstalled
+                            || panel.packageImportOverwrite)
+                    Accessible.name: text
+                    Accessible.description: enabled
+                        ? qsTr("Instala o pacote sem aplicar automaticamente o tema")
+                        : qsTr("Examine o pacote e confirme a substituição, se necessário")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onClicked: panel.applyPackageImport()
+                }
+            }
+        }
     }
 
     // =====================================================================

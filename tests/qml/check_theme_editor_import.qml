@@ -14,8 +14,11 @@ Window {
     property int failures: 0
     property int inspectRequests: 0
     property int applyRequests: 0
+    property int packageInspectRequests: 0
+    property int packageApplyRequests: 0
     property string lastScheme: ""
     property string lastName: ""
+    property bool lastPackageOverwrite: true
 
     function request(method, path, _payload, callback, _errorCallback) {
         if (method === "GET" && path === "/theme/list")
@@ -40,6 +43,24 @@ Window {
             lastScheme = payload.scheme || ""
             lastName = payload.name || ""
             callback({"themeId": "user.imported"})
+            return
+        }
+        if (actionId === "theme.import.package.inspect") {
+            packageInspectRequests += 1
+            callback({
+                "themeId": "org.example.imported",
+                "name": "Tema empacotado",
+                "version": "1.2.0",
+                "author": "Autor",
+                "license": "CC0-1.0",
+                "alreadyInstalled": false
+            })
+            return
+        }
+        if (actionId === "theme.import.package.apply") {
+            packageApplyRequests += 1
+            lastPackageOverwrite = payload.overwrite === true
+            callback({"themeId": "org.example.imported"})
         }
     }
 
@@ -75,7 +96,16 @@ Window {
         panel.inspectEsdeImport()
         check(panel.esdeImportNoticeIsError === true, "erro de inspeção deve ficar visível")
         check(panel.esdeImportBusy === false, "erro não pode deixar importação ocupada")
+        panel.packageImportSource = "/tmp/theme.zip"
+        panel.inspectPackageImport()
+        check(packageInspectRequests === 1, "examinar pacote deve chamar o contrato uma vez")
+        check(panel.packageImportPreview.themeId === "org.example.imported",
+              "inspeção deve publicar o manifesto do pacote")
+        check(panel.packageImportOverwrite === false,
+              "pacote novo não deve habilitar sobrescrita por padrão")
+        panel.applyPackageImport()
+        check(packageApplyRequests === 1, "instalar pacote deve chamar o contrato uma vez")
+        check(lastPackageOverwrite === false, "pacote novo não deve sobrescrever")
         Qt.exit(failures)
     }
 }
-
