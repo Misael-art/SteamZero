@@ -1445,6 +1445,7 @@ def test_library_root_read_model_open_scan_and_unregister_without_deleting_roms(
         "updates": 1,
         "dlcs": 1,
         "incompatible": 1,
+        "ignored": 0,
         "errors": 0,
     }
     actions = {action["label"]: action for action in row["actions"]}

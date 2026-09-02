@@ -24,7 +24,17 @@ Status = str
 # Só ``failed`` e ``blocked`` dizem que a operação não aconteceu.
 _FAILURE_STATUSES = frozenset({"failed", "blocked"})
 _SUCCESS_STATUSES = frozenset(
-    {"ok", "noop", "degraded", "ready", "rolled-back", "committed", "unchecked", "unverified"}
+    {
+        "ok",
+        "noop",
+        "degraded",
+        "ready",
+        "already-active",
+        "rolled-back",
+        "committed",
+        "unchecked",
+        "unverified",
+    }
 )
 KNOWN_STATUSES = _FAILURE_STATUSES | _SUCCESS_STATUSES
 
