@@ -4,6 +4,13 @@ Data da consolidação: 2026-09-02
 Base visual: captura fornecida pelo operador e reauditoria da release ativa registrada em `README.md`.  
 Base técnica: testes focados de contexto de plataforma, read model de armazenamento e gestão transacional.
 
+Atualização técnica de 2026-09-02: o lançamento agora resolve `systemId` para
+`systemCores` declarados no manifesto. Atari 2600/5200/7800/Lynx/Jaguar e Sega
+CD/32X deixaram de compartilhar silenciosamente um core incompatível; sem
+`systemId`, o core padrão explícito continua sendo usado. A prova atual é
+unitária na branch; release instalada e cobertura física dos cores ausentes
+continuam pendentes.
+
 ## Veredito
 
 O produto tem contratos de domínio suficientes para continuar a jornada, mas a

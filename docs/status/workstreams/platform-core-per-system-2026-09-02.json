@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-PLATFORM-CORE-PER-SYSTEM",
+  "item": "SZ-PLATFORM-CORE-PER-SYSTEM",
+  "branch": "codex/ux-audit-platform-context-2026-09-02",
+  "baseRef": "8d1aff1",
+  "owner": "codex-ux-audit",
+  "state": "closed",
+  "exclusivePaths": [
+    "src/steamzero/domain/launch_profile.py",
+    "src/steamzero/domain/platform_composer.py",
+    "src/steamzero/schemas/platform-manifest-v1.schema.json",
+    "src/steamzero/platform_manifests/15-atari-classics.platform.json",
+    "src/steamzero/platform_manifests/26-sega-cd-32x.platform.json",
+    "src/steamzero/adapters/emulation.py",
+    "tests/unit/test_launch_profile.py",
+    "tests/unit/test_platform_composer.py",
+    "tests/unit/test_emulation_controller.py"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Release física autorizada e cobertura dos adapters de cores ausentes permanecem pendentes.",
+  "updatedAt": "2026-09-02"
+}

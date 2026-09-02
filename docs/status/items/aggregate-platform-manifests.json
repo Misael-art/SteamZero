@@ -15,7 +15,6 @@
   "dependsOn": [],
   "knownGaps": [
     "GAP-PLATFORM-PS4-ABSENT",
-    "GAP-PLATFORM-CORE-PER-SYSTEM",
     "GAP-PLATFORM-VITA-ADAPTER-ABSENT",
     "GAP-FIRMWARE-SWITCH-ONLY"
   ],

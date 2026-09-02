@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-PLATFORM-CORE-PER-SYSTEM",
+  "title": "Core por sistema em plataformas agrupadas",
+  "domain": "platform",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/domain/launch_profile.py",
+    "src/steamzero/domain/platform_composer.py",
+    "src/steamzero/schemas/platform-manifest-v1.schema.json",
+    "src/steamzero/platform_manifests/15-atari-classics.platform.json",
+    "src/steamzero/platform_manifests/26-sega-cd-32x.platform.json",
+    "src/steamzero/adapters/emulation.py",
+    "tests/unit/test_launch_profile.py",
+    "tests/unit/test_platform_composer.py",
+    "tests/unit/test_emulation_controller.py",
+    "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun"
+  ],
+  "scopeDigest": "5763c6525e18e757a6e304b9a4f4a2f0a82479cf1d2433c1970111cea2c08951",
+  "dependsOn": [
+    "SZ-LIBRARY-CANONICAL",
+    "SZ-AGG-PLATFORM-MANIFESTS"
+  ],
+  "knownGaps": [
+    "GAP-PLATFORM-CORE-PER-SYSTEM-PHYSICAL-RELEASE",
+    "GAP-PLATFORM-CORE-ADAPTER-COVERAGE"
+  ],
+  "acceptanceCriteria": [
+    "Um perfil pode declarar core por systemId sem aceitar chaves fora de systems.",
+    "O preflight resolve o core do sistema identificado e recusa honestamente quando ele não existe.",
+    "Jogo sem systemId usa o core padrão declarado, sem adivinhar por extensão.",
+    "Atari 2600/5200/7800/Lynx/Jaguar e Sega CD/32X não compartilham silenciosamente um core incompatível.",
+    "A capacidade permanece navegável quando um core específico ainda não está instalado."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_launch_profile.py",
+      "command": "TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests/unit/test_launch_profile.py tests/unit/test_platform_composer.py tests/unit/test_emulation_workspace.py tests/unit/test_emulation_controller.py -q (203 passed)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_emulation_controller.py",
+      "command": "TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests/unit/test_emulation_controller.py -q (132 passed)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tools/project_status.py",
+      "command": "ruff check, ruff format --check, mypy src, make independence boundaries",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun/08-deep-functional-ux-audit.md",
+      "command": "Suíte integral isolada chegou a 17%, permaneceu sem avanço por 30s e foi interrompida; nenhum processo residual ficou ativo.",
+      "result": "partial"
+    }
+  ],
+  "nextAction": "Publicar/instalar release autorizada e provar no host Atari 5200/7800/Lynx/Jaguar e Sega 32X; cobrir adapters de cores ainda ausentes.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-09-02",
+  "notes": "Defeito reproduzido na auditoria: atari-classics agrupava sete systems sob stella, embora o catálogo editorial declare atari800/prosystem/beetle-lynx/virtual-jaguar para parte deles; sega-cd-32x também agrupava Sega CD e 32X sob genesis_plus_gx, embora 32X exija picodrive. systemId já é preservado no cache canônico; falta fazê-lo participar da escolha do core no lançamento. A correção não baixa nem instala cores: quando o core específico não estiver presente, o jogo fica bloqueado com a causa verificável."
+}

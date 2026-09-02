@@ -14,7 +14,7 @@
     "tests/unit/test_platform_composer.py",
     "tests/unit/test_workspace_composition.py"
   ],
-  "scopeDigest": "7a70b284ef470874241ffe95c241a499aaa9e9313ab229472cba686bc89f76c5",
+  "scopeDigest": "d25588cb63b3842ee5d437d9a23c1c7901b6df93718485147064307f8c9cca14",
   "dependsOn": [
     "SZ-AGG-PLATFORM-MANIFESTS",
     "SZ-LIBRARY-CANONICAL"

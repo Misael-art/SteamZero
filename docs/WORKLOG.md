@@ -9298,3 +9298,22 @@ biblioteca e matriz; JSON, schema, Ruff, formatação, mypy, independência,
 boundaries passaram. A suíte integral chegou a 17%, ficou sem saída por 30
 segundos e foi interrompida com código 130, sem processos residuais. Nenhuma
 instalação, publicação, push ou ação de host foi executada.
+
+## 2026-09-02 — Sessão: core por sistema em plataformas agrupadas
+
+Workstream: `WS-2026-09-PLATFORM-CORE-PER-SYSTEM`, branch
+`codex/ux-audit-platform-context-2026-09-02`. O perfil de lançamento passou a
+aceitar `systemCores`, validado contra os sistemas do manifesto. O preflight
+usa o `systemId` identificado no cache; sem essa identificação, conserva o
+core padrão declarado. Atari 2600/5200/7800/Lynx/Jaguar e Sega CD/32X agora
+possuem roteamento explícito em vez de compartilhar silenciosamente o core do
+grupo. A composição verifica todos os cores possíveis, sem curto-circuito, e
+publica a disponibilidade por sistema.
+
+Provas: `203 passed` no recorte de contrato, composição, workspace e controller;
+`132 passed` no controller isolado; Ruff, formatação, mypy, independência e
+boundaries passaram. A suíte integral chegou a 17%, ficou sem saída por 30
+segundos e foi interrompida de forma controlada, sem processos residuais. O
+commit funcional é `c47fb48`. Nenhuma instalação, publicação, push ou ação de
+host foi executada; a prova física e os adapters de cores ainda ausentes ficam
+pendentes.
