@@ -20,6 +20,7 @@ Window {
     property var cancelRequests: 0
     property string lastLoadId: ""
     property string lastApplyThemeId: ""
+    property int applyRequests: 0
     property string lastConfirmPlanId: ""
     property string lastCreateExtends: ""
     property int appliedSignals: 0
@@ -113,6 +114,7 @@ Window {
             return
         }
         if (actionId === "theme.apply") {
+            applyRequests += 1
             lastApplyThemeId = payload.themeId || ""
             callback({
                 "planId": "plan-theme-apply-1",
@@ -181,6 +183,9 @@ Window {
                   "default deve ser reconhecido como ativo")
             check(editor.isActiveTheme("org.steamzero.aura") === false,
                   "AURA não deve estar ativo no fixture")
+            editor.beginApply("org.steamzero.default")
+            check(applyRequests === 0, "tema ativo não deve abrir plano de aplicação")
+            check(editor.applyPlan === null, "tema ativo não deve criar confirmação")
             openAura()
             phase = 1
             return
@@ -250,6 +255,7 @@ Window {
             editor.beginApply("org.steamzero.aura")
             check(lastApplyThemeId === "org.steamzero.aura",
                   "Aplicar deve chamar theme.apply com themeId")
+            check(applyRequests === 1, "somente o tema não ativo deve pedir aplicação")
             check(editor.applyPlan !== null && editor.applyPlan.planId === "plan-theme-apply-1",
                   "theme.apply deve preencher applyPlan com planId")
             check(editor.applyPlan.confirmToken === "token-theme-1",

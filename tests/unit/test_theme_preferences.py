@@ -36,11 +36,11 @@ class TestThemePreferencePlan:
         plan = mgr.plan_activate("org.steamzero.steamdeck", "1.0.0", previous=previous)
         assert plan.plan_id
 
-    def test_plan_activate_same_theme_raises(self, tmp_path: Path) -> None:
+    def test_plan_activate_same_theme_is_informational_noop(self, tmp_path: Path) -> None:
         mgr = _make_manager(tmp_path)
         previous = {"schemaVersion": 1, "themeId": "org.steamzero.default", "themeVersion": "1.0.0"}
-        with pytest.raises(SteamZeroError, match=r"E-THEME-ACTIVE"):
-            mgr.plan_activate("org.steamzero.default", "1.0.0", previous=previous)
+        assert mgr.plan_activate("org.steamzero.default", "1.0.0", previous=previous) is None
+        assert not list((tmp_path / "state").glob("**/*"))
 
 
 class TestThemePreferenceApplyRollback:

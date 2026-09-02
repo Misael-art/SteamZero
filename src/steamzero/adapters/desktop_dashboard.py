@@ -1857,7 +1857,15 @@ class DesktopDashboard:
                 detail=f"tema {theme_id} não encontrado ou incompatível",
             )
         plan = self._theme_prefs.plan_activate(theme_id, version, previous=previous)
+        if plan is None:
+            return {
+                "status": "already-active",
+                "alreadyActive": True,
+                "themeId": theme_id,
+                "message": "Já está em uso",
+            }
         return {
+            "status": "ready",
             "planId": plan.plan_id,
             "confirmToken": plan.confirm_token,
             "preview": plan.preview,

@@ -185,6 +185,30 @@ def test_steam_input_opens_only_numeric_game_configuration() -> None:
         controller.open_controller_config("1091500;shutdown")
 
 
+def test_theme_apply_reports_active_theme_without_creating_plan(tmp_path: Path) -> None:
+    dashboard = DesktopDashboard()
+    dashboard._theme_prefs = module.ThemePreferenceManager(config_dir=tmp_path / "config")
+    dashboard._theme_catalog = MagicMock()
+    dashboard._theme_catalog.list_catalog.return_value = [
+        {"id": "org.steamzero.default", "version": "1.0.0", "compatible": True}
+    ]
+    preference_path = dashboard._theme_prefs._preference_path()
+    preference_path.parent.mkdir(parents=True, exist_ok=True)
+    preference_path.write_text(
+        '{"schemaVersion":1,"themeId":"org.steamzero.default","themeVersion":"1.0.0"}'
+    )
+
+    result = dashboard.plan_theme_apply("org.steamzero.default")
+
+    assert result == {
+        "status": "already-active",
+        "alreadyActive": True,
+        "themeId": "org.steamzero.default",
+        "message": "Já está em uso",
+    }
+    assert list((tmp_path / "config").glob("**/*")) == [preference_path]
+
+
 def test_steam_continue_uses_only_numeric_rungameid_uri() -> None:
     calls: list[tuple[str, ...]] = []
     controller = SteamDesktopController(

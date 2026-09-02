@@ -49,18 +49,16 @@ class ThemePreferenceManager:
 
     def plan_activate(
         self, theme_id: str, version: str, *, previous: dict[str, Any] | None = None
-    ) -> transaction.Plan:
+    ) -> transaction.Plan | None:
         """Cria um plano transacional para ativar um tema.
 
         Se *previous* for fornecido (preferencia atual lida pelo chamador),
-        valida que nao e o mesmo tema ja ativo.
+        retorna ``None`` quando o tema já está ativo. Essa é uma operação
+        informativa: não cria plano, não pede confirmação e não altera a
+        preferência persistida.
         """
         if previous and previous.get("themeId") == theme_id:
-            version_field = previous.get("themeVersion", "")
-            raise SteamZeroError(
-                "E-THEME-ACTIVE",
-                detail=f"tema {theme_id} versao {version_field} ja esta ativo",
-            )
+            return None
         content = self._serialize(theme_id, version, previous)
         target = self._preference_path()
         return transaction.plan_write_files(

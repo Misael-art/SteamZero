@@ -179,6 +179,10 @@ Rectangle {
         if (!themeId || panel.isActiveTheme(themeId))
             return
         panel.requestAction("theme.apply", {themeId: themeId}, function(r) {
+            if (r.alreadyActive === true) {
+                panel.applyPlan = null
+                return
+            }
             panel.applyPlan = {
                 "planId": r.planId,
                 "confirmToken": r.confirmToken,
@@ -379,7 +383,7 @@ Rectangle {
 
                                 Label {
                                     visible: themeCard.isActive
-                                    text: qsTr("Em uso")
+                                    text: qsTr("Já está em uso")
                                     color: panel.greenColor
                                     font.pixelSize: 12
                                     font.weight: Font.Medium

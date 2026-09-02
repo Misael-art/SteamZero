@@ -1988,7 +1988,20 @@ def _cmd_theme_plan(args: list[str], correlation_id: str) -> tuple[dict[str, Any
     else:
         raise SteamZeroError("E-THEME-NOT-FOUND", detail=f"tema {theme_id} não encontrado")
     plan = mgr.plan_activate(theme_id, version, previous=previous)
+    if plan is None:
+        data = {
+            "themeId": theme_id,
+            "alreadyActive": True,
+            "message": "Já está em uso",
+        }
+        return (
+            build_envelope(
+                "theme", "plan", status="already-active", data=data, correlation_id=correlation_id
+            ),
+            EXIT_OK,
+        )
     data = {
+        "status": "ready",
         "planId": plan.plan_id,
         "confirmToken": plan.confirm_token,
         "kind": plan.kind,
