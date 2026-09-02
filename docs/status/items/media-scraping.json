@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "824ea930748daa10dc89f0f741cdd0336d80312e0da123e4b03c36934fa0eaea",
+  "scopeDigest": "dce0507357d880512bdaefed4ba565580fa6d73897a74f152cf0acf444a71993",
   "scopePaths": [
     "src/steamzero/adapters/scraping",
     "docs/09-operations/evidence/2026-08-29-media-pipeline-installed",

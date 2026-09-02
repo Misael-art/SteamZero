@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-PLATFORM-VITA-CATALOG",
+  "title": "Catálogo de plataforma PlayStation Vita",
+  "domain": "platform",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/platform_manifests/47-playstation-vita.platform.json",
+    "src/steamzero/adapters/scraping/screenscraper.py",
+    "tests/unit/test_platform_vita_catalog.py",
+    "tests/unit/test_capability_matrix.py",
+    "docs/01-product/CAPABILITY-MATRIX.md"
+  ],
+  "scopeDigest": "5942d588f9c3671ffabed72ea860e52af422e0da3e3af521656bc45d332c9b12",
+  "dependsOn": [
+    "SZ-AGG-PLATFORM-MANIFESTS",
+    "SZ-PLATFORM-REQUIREMENT-SCOPE"
+  ],
+  "knownGaps": [
+    "GAP-PLATFORM-VITA-ADAPTER-ABSENT",
+    "GAP-FIRMWARE-VITA-STORE-NOT-WIRED"
+  ],
+  "acceptanceCriteria": [
+    "PlayStation Vita possui manifesto e sistemas de diretório declarados.",
+    "A plataforma publica Keys/Firmware como requisitos específicos, sem inventar presença.",
+    "Arquivos em roms/psvita deixam de ser classificados como plataforma desconhecida.",
+    "Nenhum runtime Vita3K é prometido sem adapter e fonte verificáveis."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_platform_vita_catalog.py",
+      "command": ".venv/bin/python -m pytest tests/unit/test_platform_vita_catalog.py tests/unit/test_library_rom_classify.py tests/unit/scraping/test_screenscraper.py tests/unit/test_capability_matrix.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": ".venv/bin/ruff check src tools tests; .venv/bin/ruff format --check src tools tests; .venv/bin/mypy src; make independence boundaries",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests -q; runner chegou a 17%, ficou sem saída por 30s e foi interrompido com código 130; sem processos pytest/run_tests_isolated residuais",
+      "result": "partial"
+    }
+  ],
+  "nextAction": "Criar adapter e store de requisitos do Vita; validar a plataforma em release instalada.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-09-02",
+  "notes": "Este recorte torna a plataforma observável e catalogável. Não equivale a suporte de execução: ainda falta adapter, store de firmware e validação física."
+}

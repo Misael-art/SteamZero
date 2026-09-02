@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-PLATFORM-VITA-CATALOG",
+  "item": "SZ-PLATFORM-VITA-CATALOG",
+  "branch": "codex/ux-audit-platform-context-2026-09-02",
+  "baseRef": "4e3dcda",
+  "owner": "codex-ux-audit",
+  "state": "closed",
+  "exclusivePaths": [
+    "src/steamzero/platform_manifests/47-playstation-vita.platform.json",
+    "src/steamzero/adapters/scraping/screenscraper.py",
+    "tests/unit/test_platform_vita_catalog.py",
+    "tests/unit/test_capability_matrix.py",
+    "docs/01-product/CAPABILITY-MATRIX.md"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Criar adapter e store de requisitos do Vita; validar a plataforma em release instalada.",
+  "updatedAt": "2026-09-02"
+}

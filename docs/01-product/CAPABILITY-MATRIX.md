@@ -17,8 +17,8 @@ host, que vive nos relatórios de certificação.
 |---|---|
 | adapters declarados | 33 |
 | adapters instaláveis pelo lifecycle | 33 de 33 |
-| plataformas declaradas | 61 |
-| plataformas com bloqueio | 24 de 61 |
+| plataformas declaradas | 62 |
+| plataformas com bloqueio | 25 de 62 |
 | cores libretro exigidos | 41 |
 | cores libretro com instalador | 17 |
 | ações de UI publicadas | 121 |
@@ -142,6 +142,7 @@ obrigatória, fica sem executor ou mantém fonte EOL.
 | pc-engine-supergrafx | retroarch | flatpak | beetle_sgx | — | core `beetle_sgx` sem instalador |
 | atari-st | retroarch | flatpak | hatari | — | core `hatari` sem instalador |
 | apple2 | retroarch | flatpak | applewin | — | core `applewin` sem instalador |
+| playstation-vita | — | — | — | — | **nenhum emulador declarado** |
 | bbc-micro | retroarch | flatpak | beebem | — | core `beebem` sem instalador |
 | coco | retroarch | flatpak | xroar | — | core `xroar` sem instalador |
 | ti99 | retroarch | flatpak | ti99 | — | core `ti99` sem instalador |

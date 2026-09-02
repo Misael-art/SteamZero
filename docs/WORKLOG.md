@@ -9281,3 +9281,20 @@ sem saída por 30 segundos e foi interrompida com código 130, sem processos
 residuais. Nenhuma instalação, publicação, push ou ação de host foi executada.
 Ficam abertos: remoção visual do fallback na QML compartilhada, ligação do
 store de firmware PS3 e manifesto PS Vita.
+
+## 2026-09-02 — Sessão: catálogo PlayStation Vita
+
+Workstream: `WS-2026-09-PLATFORM-VITA-CATALOG`, branch
+`codex/ux-audit-platform-context-2026-09-02`. Foi adicionado o manifesto
+`playstation-vita`, com os sistemas `psvita`, `playstation-vita` e `vita`,
+requisitos declarativos de Keys/Firmware, mídia digital e controles portáteis.
+O scraper declara a plataforma sem `systemeid` confirmado, e nenhum adapter
+Vita3K foi inventado: a plataforma aparece e classifica ROMs, mas permanece
+explicitamente não executável até existir fonte e lifecycle verificáveis. A
+matriz de capacidades foi regenerada de 61 para 62 plataformas.
+
+Provas: `116 passed` no recorte combinado; `72 passed` no recorte de catálogo,
+biblioteca e matriz; JSON, schema, Ruff, formatação, mypy, independência,
+boundaries passaram. A suíte integral chegou a 17%, ficou sem saída por 30
+segundos e foi interrompida com código 130, sem processos residuais. Nenhuma
+instalação, publicação, push ou ação de host foi executada.
