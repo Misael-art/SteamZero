@@ -8,7 +8,9 @@
   "owner": "codex-ux-audit",
   "state": "closed",
   "exclusivePaths": [
+    "src/steamzero/adapters/desktop_dashboard.py",
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+    "tests/unit/test_theme_import_esde.py",
     "tests/qml/check_theme_editor_import.qml"
   ],
   "sharedPaths": [

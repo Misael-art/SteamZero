@@ -10,10 +10,12 @@
   "operation": "degraded",
   "distribution": "not-packaged",
   "scopePaths": [
+    "src/steamzero/adapters/desktop_dashboard.py",
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+    "tests/unit/test_theme_import_esde.py",
     "tests/qml/check_theme_editor_import.qml"
   ],
-  "scopeDigest": "6df576e6bca7d181fa7e2263139ad080c673a8ef4e2e02a6e3f2d4b95e671785",
+  "scopeDigest": "604f82422e100dde00aa799d35e343a423e176498f494b878f848c4ac19e6a8f",
   "dependsOn": [
     "SZ-THEME-STUDIO"
   ],
@@ -63,6 +65,12 @@
       "reference": "tests",
       "command": "TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests -q; runner permaneceu sem saída em 17% e foi interrompido; nenhum processo ou socket residual",
       "result": "partial"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_theme_import_esde.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_import_esde.py -q",
+      "result": "passed"
     }
   ],
   "nextAction": "Validar a jornada na release instalada com uma pasta ES-DE real.",

@@ -9234,3 +9234,17 @@ independência e boundaries passaram. A suíte integral foi tentada com
 `TMPDIR=/tmp`, repetiu a parada em 17% e foi interrompida sem processos ou
 sockets residuais. Nenhuma instalação, publicação, push ou ação de host foi
 executada.
+
+## 2026-09-02 — Sessão: compatibilidade do esquema ES-DE
+
+Workstream: `WS-2026-09-THEME-IMPORT-SURFACE`, branch
+`codex/ux-audit-platform-context-2026-09-02`. A resposta de inspeção ES-DE
+passou a publicar `scheme` como campo canônico e também `id`/`name` como
+identidade compatível para os consumidores visuais. Isso corrige o diálogo
+existente que usava `chosen.id` sem quebrar a nova superfície Theme Studio,
+que continua enviando `selected.scheme`.
+
+Provas: `47 passed` em `test_theme_import_esde.py`; Ruff, formatação, mypy,
+independência e boundaries passaram. A suíte integral repetiu a parada em 17%
+e foi interrompida sem processos `pytest` ou `run_tests_isolated` residuais.
+Nenhuma instalação, publicação, push ou ação de host foi executada.

@@ -51,9 +51,9 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-ONLINE-P2P | 37 | 2 | 1 | none |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
 | SZ-THEME-ENGINE | 78 | 35 | 33 | hw |  |
-| SZ-THEME-IMPORT-SURFACE | 2 | 6 | 5 | unit |  |
+| SZ-THEME-IMPORT-SURFACE | 4 | 7 | 6 | unit |  |
 | SZ-THEME-STUDIO | 81 | 15 | 14 | hw |  |
 | SZ-UI-DESKTOP-AUDIT | 323 | 30 | 18 | dev |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 
-Arquivos em `src/`: **523**. Sob agregador apenas, sem item de capacidade: **294** (56%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
+Arquivos em `src/`: **523**. Sob agregador apenas, sem item de capacidade: **293** (56%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
