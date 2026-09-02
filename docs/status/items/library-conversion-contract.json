@@ -15,7 +15,7 @@
     "tests/integration/test_convert.py",
     "tests/integration/test_nsz_conversion.py"
   ],
-  "scopeDigest": "4be35f74ddc7d601a3503e0ffa52ad0321173d74fff43be5dcf8a1a33024056a",
+  "scopeDigest": "f2e0ce16e9dc200f59fbf19d64088f4829ec891d587c0f5192e851220e2b3841",
   "dependsOn": [
     "SZ-LIBRARY-CANONICAL"
   ],
@@ -24,6 +24,7 @@
     "A conversão recebe plataforma, natureza e formatos declarados antes de chamar a ferramenta.",
     "Formato de origem e destino fora do contrato da plataforma são recusados sem executar o conversor.",
     "O fluxo NSZ usa o manifesto Switch, preserva a conversão NSP↔NSZ e continua transacional."
+    ,"Um lote de conversões usa uma única confirmação e mantém rollback conjunto."
   ],
   "evidence": [
     {
@@ -39,8 +40,8 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Integrar a branch; a interface genérica de workspace por plataforma deve consumir este contrato, sem reaplicar a regra Switch fora do manifesto.",
+  "nextAction": "Integrar a branch; a interface de armazenamento deve consumir o atalho em lote sem reaplicar a regra Switch fora do manifesto.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-29",
-  "notes": "Baseline: ConversionManager.convert aceitava target_format apenas pela sintaxe e não recebia plataforma, natureza ou formatos; assim, uma chamada direta podia pedir CHD para .nes. Correção: ConversionPolicy recebe platformId, nature, formats, conversionTargets e preferredFormat declarados; ela recusa origem ou destino fora do contrato antes do staging/conversor. E-CONTENT-UNSUPPORTED já é registrado para conteúdo não suportado e o detail declara a plataforma, natureza e par recusado. O serviço NSZ constrói a política a partir do manifesto Switch, preservando NSP↔NSZ."
+  "notes": "Baseline: ConversionManager.convert aceitava target_format apenas pela sintaxe e não recebia plataforma, natureza ou formatos; assim, uma chamada direta podia pedir CHD para .nes. Correção: ConversionPolicy recebe platformId, nature, formats, conversionTargets e preferredFormat declarados; ela recusa origem ou destino fora do contrato antes do staging/conversor. O serviço NSZ constrói a política a partir do manifesto Switch, preservando NSP↔NSZ. A extensão em lote reutiliza o mesmo staging, hash, confirmação e rollback por arquivo sem substituir originais."
 }

@@ -17,6 +17,6 @@
     "docs/status/items/library-conversion-contract.json",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Commit funcional 95ebe11 criado; integrar após os gates documentais. A interface de workspace por plataforma continua o próximo consumidor deste contrato.",
+  "nextAction": "Fechado por extensão do contrato em lote; integração visual permanece consumidora deste contrato.",
   "updatedAt": "2026-08-29"
 }

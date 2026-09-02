@@ -9336,3 +9336,21 @@ residuais. O commit funcional é `11464fc`. Nenhuma instalação, publicação,
 push ou ação de host foi executada. A entrada visual na área Temas e a cópia de
 assets RetroFE continuam lacunas declaradas; a frente QML compartilhada é a
 responsável pelo primeiro ponto.
+
+## 2026-09-02 — Sessão: compactação NSZ em lote
+
+Workstreams: `WS-2026-09-EMULATION-STORAGE-MANAGEMENT` e
+`WS-2026-08-LIBRARY-CONVERSION-CONTRACT`, branch
+`codex/ux-audit-platform-context-2026-09-02`. O fluxo NSZ agora aceita lote de
+até 128 ROMs em um único plano e confirmação: cada entrada mantém hash,
+staging, destino confinado, preservação da origem e rollback conjunto. O
+read model de armazenamento publica o atalho quando existem múltiplas ROMs
+compatíveis; formatos e ferramentas continuam sujeitos ao manifesto Switch.
+
+Provas: `13 passed` em `test_nsz_conversion.py` e
+`test_emulation_storage_management.py`; Ruff, formatação, mypy,
+independência e boundaries passaram. A suíte integral chegou a 17%, ficou sem
+saída por 30 segundos e foi interrompida de forma controlada, sem processos
+residuais. O commit funcional é `3bf5e22`. Nenhuma instalação, publicação,
+push ou ação de host foi executada. A seleção visual de destino/lote continua
+pendente na frente QML compartilhada.

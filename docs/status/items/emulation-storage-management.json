@@ -13,18 +13,18 @@
     "src/steamzero/adapters/emulation.py",
     "tests/integration/test_emulation_storage_management.py"
   ],
-  "scopeDigest": "da1ba2cab2eee5797a4206a29b70e4c260f64bd1d2ba8fa27caf65f300f929b9",
+  "scopeDigest": "141a4dba5bc3e7b3ee1b1eb143cb981bb87ce5dce78fe34479f4387640f86f85",
   "dependsOn": [
     "SZ-EMULATION-STORAGE-READMODEL"
   ],
   "knownGaps": [
     "GAP-STORAGE-MOVE-UI-DESTINATION",
-    "GAP-STORAGE-BATCH-COMPRESSION",
     "GAP-EMULATION-PHYSICAL-LAUNCH"
   ],
   "acceptanceCriteria": [
     "Mover uma raiz registrada gera preview transacional, recusa colisões e atualiza o registro de raízes no mesmo plano.",
     "A conversão NSZ permanece acessível como atalho de compactação sem substituir a ROM original implicitamente.",
+    "Um lote de até 128 ROMs pode ser pré-visualizado, confirmado e revertido como uma única operação.",
     "A área de armazenamento referencia a desinstalação existente de emuladores, preservando confirmação e rollback.",
     "Mudança de origem depois do preview falha sem mover arquivos nem alterar a configuração.",
     "A operação deixa evidência de plano, confirmação, rollback e arquivos preservados."
@@ -49,8 +49,8 @@
       "result": "partial"
     }
   ],
-  "nextAction": "Integrar seletor visual de destino no frontend proprietário e validar a experiência na release instalada.",
+  "nextAction": "Integrar seletor visual de destino e seleção em lote no frontend proprietário e validar na release instalada.",
   "activeWorkstreams": [],
   "updatedAt": "2026-09-02",
-  "notes": "O read model de armazenamento já publica estatísticas, mas a captura ainda não oferece movimento de diretórios, compactação de ROMs ou um agrupamento de gestão. O backend já possui primitives transacionais de movimento e conversão; esta fatia as conecta ao controller sem executar operações no host."
+  "notes": "O read model de armazenamento já publica estatísticas e atalhos de gestão. A compactação NSZ agora possui caminho individual e lote transacional; o seletor visual de destino e a validação física continuam pendentes."
 }

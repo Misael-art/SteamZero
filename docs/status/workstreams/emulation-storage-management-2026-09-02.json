@@ -17,6 +17,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Integrar seletor visual de destino no frontend proprietário e validar a experiência na release instalada.",
+  "nextAction": "Fechado por implementação e testes; seletor visual de destino/seleção em lote e validação física continuam pendentes.",
   "updatedAt": "2026-09-02"
 }
