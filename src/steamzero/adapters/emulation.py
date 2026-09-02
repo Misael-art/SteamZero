@@ -4171,7 +4171,9 @@ class EmulationController:
             )
         ]
 
-    def _media_pipeline_summary(self, games: list[dict[str, Any]]) -> dict[str, Any]:
+    def _media_pipeline_summary(
+        self, games: list[dict[str, Any]], *, platform_id: str | None = None
+    ) -> dict[str, Any]:
         sources = {
             "custom": 0,
             "rom": 0,
@@ -4200,13 +4202,27 @@ class EmulationController:
                     provider_errors[str(provider)] = provider_errors.get(str(provider), 0) + 1
 
         cache_bytes = 0
-        media_root = paths.media_dir()
+        scoped_media_files: set[Path] = set()
+        scoped_game_ids = {str(game.get("id")) for game in games if game.get("id")}
         try:
-            if media_root.is_dir() and not media_root.is_symlink():
-                for candidate in media_root.rglob("*"):
-                    if candidate.is_file() and not candidate.is_symlink():
-                        cache_bytes += candidate.stat().st_size
-        except OSError:
+            with self._store_factory() as store:
+                store.migrate()
+                media_states = StateStoreGameMediaAdapter(store.adapter_connection()).list_all()
+            for state in media_states:
+                if state.game_id not in scoped_game_ids or not state.media_path:
+                    continue
+                candidate = Path(state.media_path)
+                if candidate.is_symlink() or any(
+                    parent.is_symlink() for parent in candidate.parents
+                ):
+                    continue
+                try:
+                    if candidate.is_file():
+                        scoped_media_files.add(candidate.resolve())
+                except OSError:
+                    continue
+            cache_bytes = sum(path.stat().st_size for path in scoped_media_files)
+        except (OSError, sqlite3.Error):
             cache_bytes = 0
 
         provider_details: dict[str, dict[str, Any]] = {}
@@ -4289,6 +4305,11 @@ class EmulationController:
             "lastAudit": last_audit,
             "lastScan": last_scan,
             "cacheBytes": cache_bytes,
+            "scope": {
+                "platformId": platform_id or "global",
+                "games": len(games),
+                "mediaFiles": len(scoped_media_files),
+            },
             "activeJobs": active_jobs,
             "overwriteDefault": False,
             "mediaKinds": [
@@ -4517,7 +4538,7 @@ class EmulationController:
                 None if keys["status"] == "ok" else "Importe prod.keys antes de converter com NSZ."
             )
         )
-        media_pipeline = self._media_pipeline_summary(games)
+        media_pipeline = self._media_pipeline_summary(games, platform_id="switch")
         library_root_rows = self._library_root_rows(games)
         scan_summary = self._library_scan_summary(games, unidentified, roots)
         storage_summary = collect_storage_summary(
