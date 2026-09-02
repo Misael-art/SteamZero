@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-THEME-ACTIVE-NOOP",
+  "item": "SZ-THEME-ENGINE",
+  "branch": "codex/ux-console-experience-p0-2026-09-02",
+  "baseRef": "7252246",
+  "owner": "codex-ux-console-experience",
+  "state": "closed",
+  "exclusivePaths": [
+    "src/steamzero/domain/theme_preferences.py",
+    "src/steamzero/adapters/desktop_dashboard.py",
+    "src/steamzero/cli/main.py",
+    "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+    "tests/unit/test_theme_preferences.py",
+    "tests/unit/test_desktop_dashboard.py",
+    "tests/qml/check_theme_editor_aura.qml"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Código e provas focadas concluídos; aguardar validação visual do AURA UI na próxima release instalada.",
+  "updatedAt": "2026-09-02"
+}

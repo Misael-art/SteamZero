@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "7d7d2bafe69f3dd716927e995331036cab44f878636eabb4a932c6bb32325cf1",
+  "scopeDigest": "7ca29c20b3ecb57242651becaa90e94a679897d44b1e043dcccc0ffa896753b0",
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun",
     "src/steamzero/domain/theme_editor.py",
@@ -113,5 +113,5 @@
   "nextAction": "Capturar o canvas do Studio na release ativa com acoes legiveis; depois avaliar edicao direta, mantendo o estado somente leitura ate existir persistencia segura.",
   "activeWorkstreams": [],
   "updatedAt": "2026-09-02",
-  "notes": "Estado permanece parcial. O canvas central deixou de ser placeholder: quando o no selecionado e um layout com cena resolvida, ele desenha usando o MESMO SceneRepeater que a interface usa — um renderizador proprio do Studio poderia divergir do que o usuario ve, e o preview mentiria para quem edita. O no de layout passou a declarar previewKey, entao o canvas acha a cena sem fatiar o id: se o formato do id mudasse, o desenho sumiria em silencio. No sem cena propria (binding, motion, efeito) mostra o rotulo e diz por que nao desenhou, em vez de exibir vazio. A arvore ja carrega depth e path, com irmaos de rotulo repetido desambiguados pela posicao. Falta ainda: edicao no canvas (hoje e so leitura) e evidencia fisica desta fatia na proxima release instalada."
+  "notes": "Estado permanece parcial. O canvas central deixou de ser placeholder: quando o no selecionado e um layout com cena resolvida, ele desenha usando o MESMO SceneRepeater que a interface usa — um renderizador proprio do Studio poderia divergir do que o usuario ve, e o preview mentiria para quem edita. O no de layout passou a declarar previewKey, entao o canvas acha a cena sem fatiar o id: se o formato do id mudasse, o desenho sumiria em silencio. No sem cena propria (binding, motion, efeito) mostra o rotulo e diz por que nao desenhou, em vez de exibir vazio. A arvore ja carrega depth e path, com irmaos de rotulo repetido desambiguados pela posicao. A lista agora comunica 'Já está em uso' e não cria plano de confirmação para o tema ativo. Falta ainda: edicao no canvas (hoje e so leitura) e evidencia fisica desta fatia na proxima release instalada."
 }

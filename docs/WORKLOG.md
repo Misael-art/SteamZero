@@ -8975,3 +8975,24 @@ Nenhuma instalação, publicação, rollback, download, varredura do acervo real
 ou lançamento de emulador foi executado. A release observada permanece
 `2.0.0rc1-145cf9d44738`; a captura PNG da release corrigida, o teste físico de
 controle → jogo → retorno e as métricas de desempenho continuam não validados.
+
+## 2026-09-02 — Sessão: ativação idempotente de tema ativo
+
+Workstream: `WS-2026-09-THEME-ACTIVE-NOOP`, branch
+`codex/ux-console-experience-p0-2026-09-02`. A ativação do tema já em uso
+lançava `E-THEME-ACTIVE`, embora esse código de erro pertença à remoção de tema
+ativo. A correção em `3f5c8b0` torna essa ativação um no-op informativo: o
+domínio não cria plano nem altera preferência; dashboard e CLI retornam
+`status=already-active`, `alreadyActive=true` e “Já está em uso”; o cartão QML
+mantém a ação desabilitada e comunica o estado.
+
+Provas focadas: `8 passed` em `test_theme_preferences.py`, `7 passed` em
+`test_theme_aura.py`, `1 passed` no cenário de dashboard e `2 passed` no
+harness QML de tema. Ruff, formatação, mypy, independência e boundaries
+passaram. A suíte integral isolada foi tentada novamente, chegou a 17% sem
+falhas reportadas e permaneceu sem progresso por 90 segundos no trecho do
+harness QML; o runner próprio foi interrompido, portanto não há alegação de
+aprovação integral.
+
+Nenhuma instalação, publicação, rollback ou mutação de host foi executada.
+Validação visual/hardware do AURA UI continua pendente para o operador.

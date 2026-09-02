@@ -33,7 +33,7 @@
     "docs/09-operations/evidence/2026-08-25-degraded-detail",
     "docs/09-operations/evidence/2026-08-25-melonds-smoke-install-fisico"
   ],
-  "scopeDigest": "b30357ba584319f902d9b7bb976d8eed9a77c56f9b93c5992463d00c74ab612b",
+    "scopeDigest": "03cfa50487c0354b2aad669cc9ed73abca0dc57227189be9e79ffcba8f644b01",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
