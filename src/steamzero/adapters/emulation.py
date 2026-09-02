@@ -1078,7 +1078,12 @@ class EmulationController:
             return None
         for emulator in platform.emulators:
             if emulator["adapterId"] == adapter_id:
-                return parse_launch(platform_id, adapter_id, emulator.get("launch"))
+                return parse_launch(
+                    platform_id,
+                    adapter_id,
+                    emulator.get("launch"),
+                    systems=platform.systems,
+                )
         return None
 
     def _emulator_source(self, emulator_id: str) -> tuple[str, str | None, Path | None]:
@@ -1364,15 +1369,25 @@ class EmulationController:
             raise SteamZeroError(
                 "E-COMPONENT-DEGRADED", detail=f"{emulator_id} já está em execução"
             )
+        system_id = str(game.get("systemId") or "") or None
         core_path: Path | None = None
         if profile.requires_core:
             # Core ausente → nunca "Jogar": o usuário precisa instalar/verificar
             # o core primeiro; não se oferece um botão que falha depois.
-            core_path = find_core(profile.core or "")
+            core = profile.core_for_system(system_id)
+            if core is None:
+                raise SteamZeroError(
+                    "E-CONTENT-UNSUPPORTED",
+                    detail=(
+                        f"o sistema {system_id or 'não identificado'} não possui core "
+                        f"declarado para {platform_id}"
+                    ),
+                )
+            core_path = find_core(core)
             if core_path is None:
                 raise SteamZeroError(
                     "E-CONTENT-UNSUPPORTED",
-                    detail=f"o core {profile.core} não está instalado no RetroArch; "
+                    detail=f"o core {core} não está instalado no RetroArch; "
                     "instale/verifique o core antes de jogar",
                 )
         return {

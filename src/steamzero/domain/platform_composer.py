@@ -200,14 +200,34 @@ def compose_platform(
         any_installed = any_installed or facts.installed
 
         try:
-            profile = parse_launch(manifest.id, adapter_id, emulator.get("launch"))
+            profile = parse_launch(
+                manifest.id,
+                adapter_id,
+                emulator.get("launch"),
+                systems=manifest.systems,
+            )
         except Exception:
             # Perfil de launch malformado invalida o lançamento desta plataforma,
             # não a listagem dela nem as demais.
             profile = None
         core_present: bool | None = None
+        system_core_presence: dict[str, bool] = {}
         if profile is not None and profile.requires_core and core_present_for is not None:
-            core_present = core_present_for(profile.core or "")
+            # Não usar `all(generator)`: o curto-circuito esconderia os demais
+            # cores ausentes e faria a sessão parecer mais pronta do que o
+            # diagnóstico realmente conseguiu verificar.
+            core_presence = {core: core_present_for(core) for core in profile.required_cores}
+            system_core_presence = {
+                system: core_presence[core]
+                for system, core in profile.system_cores
+                if core in core_presence
+            }
+            default_core = profile.core_for_system(None)
+            core_present = (
+                core_presence.get(default_core)
+                if default_core is not None
+                else all(core_presence.values())
+            )
 
         row = {
             "id": adapter_id,
@@ -233,6 +253,8 @@ def compose_platform(
             row["launch"] = profile.to_dict()
             if profile.requires_core:
                 row["coreInstalled"] = bool(core_present)
+                if profile.system_cores:
+                    row["systemCoreInstalled"] = system_core_presence
             if profile.requires_bios:
                 row["biosRequired"] = list(profile.requires_bios)
                 bios_present = _bios_presence(

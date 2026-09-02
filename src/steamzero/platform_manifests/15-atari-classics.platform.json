@@ -84,6 +84,15 @@
       "role": "multi-system",
       "launch": {
         "core": "stella",
+        "systemCores": {
+          "atari2600": "stella",
+          "atari5200": "atari800",
+          "atari7800": "prosystem",
+          "atarilynx": "handy",
+          "jaguar": "virtualjaguar",
+          "atarijaguar": "virtualjaguar",
+          "atarixe": "atari800"
+        },
         "openArgs": [],
         "gameArgs": [
           "-L",

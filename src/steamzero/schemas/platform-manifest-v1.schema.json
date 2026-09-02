@@ -287,6 +287,18 @@
               "pattern": "^[a-z0-9][a-z0-9_]*$",
               "description": "Core libretro exigido por esta plataforma. Um mesmo RetroArch instalado atende várias plataformas, cada uma com o seu core; a ausência do core é motivo legítimo para recusar Jogar."
             },
+            "systemCores": {
+              "type": "object",
+              "maxProperties": 16,
+              "propertyNames": {
+                "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"
+              },
+              "additionalProperties": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9_]*$"
+              },
+              "description": "Override de core por sistema declarado em systems. Quando o sistema não é identificado, core continua sendo o fallback explícito."
+            },
             "openArgs": {
               "type": "array",
               "items": {

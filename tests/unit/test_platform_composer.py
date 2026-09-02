@@ -91,6 +91,26 @@ class TestLaunchability:
         assert platform["launchable"] is False
         assert "snes9x" in platform["launchReason"]
 
+    def test_composition_checks_all_system_cores(self, registry: PlatformRegistry) -> None:
+        checked: list[str] = []
+
+        def only_stella(core: str) -> bool:
+            checked.append(core)
+            return core == "stella"
+
+        platform = compose_platform(
+            registry.get("atari-classics"),
+            facts_for=_installed,
+            core_present_for=only_stella,
+        )
+
+        assert platform["launchable"] is True
+        assert checked == ["stella", "atari800", "prosystem", "handy", "virtualjaguar"]
+        row = platform["emulators"][0]
+        assert row["coreInstalled"] is True
+        assert row["systemCoreInstalled"]["atari5200"] is False
+        assert row["launch"]["systemCores"]["atari7800"] == "prosystem"
+
     def test_not_installed_says_so(self, registry: PlatformRegistry) -> None:
         platform = compose_platform(
             registry.get("snes"), facts_for=_absent, core_present_for=lambda _c: True

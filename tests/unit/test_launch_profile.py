@@ -110,6 +110,30 @@ class TestContractIsClosed:
         """Ausência é estado legítimo e precisa ser visível, não um erro."""
         assert parse_launch("x", "y", None) is None
 
+    def test_system_core_requires_declared_system(self) -> None:
+        with pytest.raises(SteamZeroError, match="precisa declarar systems"):
+            parse_launch(
+                "atari-classics",
+                "retroarch",
+                {"core": "stella", "systemCores": {"lynx": "handy"}, "gameArgs": ["{rom}"]},
+            )
+
+    def test_system_core_resolves_override_and_explicit_fallback(self) -> None:
+        profile = parse_launch(
+            "atari-classics",
+            "retroarch",
+            {
+                "core": "stella",
+                "systemCores": {"atari2600": "stella", "atarilynx": "handy"},
+                "gameArgs": ["-L", "{core}", "{rom}"],
+            },
+            systems=("atari2600", "atarilynx"),
+        )
+        assert profile is not None
+        assert profile.core_for_system("atarilynx") == "handy"
+        assert profile.core_for_system("unknown") == "stella"
+        assert profile.required_cores == ("stella", "handy")
+
 
 class TestCoreIsRequiredBeforePlaying:
     def test_missing_core_refuses_launch(self) -> None:
@@ -157,7 +181,10 @@ class TestDeclaredPlatformsAreCoherent:
         for platform in self._platforms():
             for emulator in platform.get("emulators", []):
                 profile = parse_launch(
-                    platform["id"], emulator["adapterId"], emulator.get("launch")
+                    platform["id"],
+                    emulator["adapterId"],
+                    emulator.get("launch"),
+                    systems=platform["systems"],
                 )
                 if profile is not None:
                     parsed += 1
@@ -169,7 +196,12 @@ class TestDeclaredPlatformsAreCoherent:
             for emulator in platform.get("emulators", []):
                 if emulator["adapterId"] != "retroarch":
                     continue
-                profile = parse_launch(platform["id"], "retroarch", emulator.get("launch"))
+                profile = parse_launch(
+                    platform["id"],
+                    "retroarch",
+                    emulator.get("launch"),
+                    systems=platform["systems"],
+                )
                 if profile is None:
                     continue
                 assert profile.core, f"{platform['id']} usa RetroArch sem core declarado"
@@ -181,7 +213,12 @@ class TestDeclaredPlatformsAreCoherent:
             for emulator in platform.get("emulators", []):
                 if emulator["adapterId"] != "retroarch":
                     continue
-                profile = parse_launch(platform["id"], "retroarch", emulator.get("launch"))
+                profile = parse_launch(
+                    platform["id"],
+                    "retroarch",
+                    emulator.get("launch"),
+                    systems=platform["systems"],
+                )
                 if profile is not None and profile.core:
                     cores[platform["id"]] = profile.core
         assert len(cores) >= 23

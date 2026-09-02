@@ -18,7 +18,7 @@ stub, proibida pelo ``AGENTS.md``.
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -51,7 +51,7 @@ PLATFORM_CORES: dict[str, frozenset[str]] = {
     "master-system": frozenset({"genesis_plus_gx"}),
     "game-gear": frozenset({"genesis_plus_gx"}),
     "pc-engine-turbografx": frozenset({"mednafen_pce"}),
-    "atari-classics": frozenset({"stella"}),
+    "atari-classics": frozenset({"stella", "atari800", "prosystem", "handy", "virtualjaguar"}),
     "neo-geo-pocket": frozenset({"mednafen_ngp"}),
     "wonderswan": frozenset({"mednafen_wswan"}),
     "msx": frozenset({"bluemsx"}),
@@ -62,7 +62,7 @@ PLATFORM_CORES: dict[str, frozenset[str]] = {
     "intellivision": frozenset({"freeintv"}),
     "virtual-boy": frozenset({"mednafen_vb"}),
     "three-do": frozenset({"opera"}),
-    "sega-cd-32x": frozenset({"genesis_plus_gx"}),
+    "sega-cd-32x": frozenset({"genesis_plus_gx", "picodrive"}),
     "nintendo-64": frozenset({"mupen64plus_next"}),
     "playstation-2": frozenset({"pcsx2"}),
     "playstation-portable": frozenset({"ppsspp"}),
@@ -110,14 +110,30 @@ class LaunchProfile:
     game_args: tuple[str, ...]
     open_args: tuple[str, ...] = ()
     core: str | None = None
+    system_cores: tuple[tuple[str, str], ...] = field(default_factory=tuple)
     requires_bios: tuple[str, ...] = field(default_factory=tuple)
 
     @property
     def requires_core(self) -> bool:
-        return self.core is not None
+        return self.core is not None or bool(self.system_cores)
+
+    @property
+    def required_cores(self) -> tuple[str, ...]:
+        """Cores possíveis deste perfil, em ordem estável e sem duplicatas."""
+        return tuple(
+            dict.fromkeys(core for _system, core in (*self.system_cores, ("", self.core)) if core)
+        )
+
+    def core_for_system(self, system_id: str | None) -> str | None:
+        """Resolve o core do sistema, com fallback só quando declarado."""
+        if system_id:
+            for declared_system, core in self.system_cores:
+                if declared_system == system_id:
+                    return core
+        return self.core
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result: dict[str, Any] = {
             "platformId": self.platform_id,
             "adapterId": self.adapter_id,
             "core": self.core,
@@ -125,9 +141,18 @@ class LaunchProfile:
             "gameArgs": list(self.game_args),
             "requiresBios": list(self.requires_bios),
         }
+        if self.system_cores:
+            result["systemCores"] = dict(self.system_cores)
+        return result
 
 
-def parse_launch(platform_id: str, adapter_id: str, raw: Any) -> LaunchProfile | None:
+def parse_launch(
+    platform_id: str,
+    adapter_id: str,
+    raw: Any,
+    *,
+    systems: Sequence[str] | None = None,
+) -> LaunchProfile | None:
     """Lê o bloco ``launch`` de um emulador declarado numa plataforma.
 
     Ausência devolve ``None`` — plataforma sem perfil simplesmente não é
@@ -164,6 +189,39 @@ def parse_launch(platform_id: str, adapter_id: str, raw: Any) -> LaunchProfile |
                 ),
             )
 
+    system_cores = _string_map(raw.get("systemCores") or {}, platform_id, adapter_id, "systemCores")
+    if system_cores:
+        if systems is None:
+            raise SteamZeroError(
+                "E-API-SCHEMA",
+                detail=(
+                    f"{platform_id}/{adapter_id} precisa declarar systems para validar systemCores"
+                ),
+            )
+        unknown_systems = set(system_cores) - set(systems)
+        if unknown_systems:
+            raise SteamZeroError(
+                "E-API-SCHEMA",
+                detail=(
+                    f"systemCores de {platform_id}/{adapter_id} referencia systems ausentes: "
+                    f"{sorted(unknown_systems)}"
+                ),
+            )
+        sanctioned = PLATFORM_CORES.get(platform_id)
+        if sanctioned is None or any(value not in sanctioned for value in system_cores.values()):
+            raise SteamZeroError(
+                "E-API-SCHEMA",
+                detail=(
+                    f"systemCores de {platform_id}/{adapter_id} possui core não sancionado "
+                    f"(sancionados: {sorted(sanctioned) if sanctioned else 'nenhum'})"
+                ),
+            )
+    if CORE_PLACEHOLDER in " ".join(game_args) and core is None and not system_cores:
+        raise SteamZeroError(
+            "E-API-SCHEMA",
+            detail=f"{platform_id}/{adapter_id} usa {{core}} sem declarar core",
+        )
+
     for argument in (*game_args, *open_args):
         for placeholder in _PLACEHOLDER_RE.findall(argument):
             if placeholder not in ALLOWED_PLACEHOLDERS:
@@ -173,11 +231,6 @@ def parse_launch(platform_id: str, adapter_id: str, raw: Any) -> LaunchProfile |
                         f"placeholder não permitido em {platform_id}/{adapter_id}: {placeholder}"
                     ),
                 )
-    if CORE_PLACEHOLDER in " ".join(game_args) and core is None:
-        raise SteamZeroError(
-            "E-API-SCHEMA",
-            detail=f"{platform_id}/{adapter_id} usa {{core}} sem declarar core",
-        )
     if ROM_PLACEHOLDER not in game_args:
         # Exigir o placeholder SOZINHO num argumento garante que a ROM seja
         # atômica. "--rom={rom}" passaria numa checagem de substring e abriria
@@ -197,6 +250,7 @@ def parse_launch(platform_id: str, adapter_id: str, raw: Any) -> LaunchProfile |
         game_args=game_args,
         open_args=open_args,
         core=core,
+        system_cores=tuple(system_cores.items()),
         requires_bios=bios,
     )
 
@@ -211,6 +265,26 @@ def _string_list(value: Any, platform_id: str, adapter_id: str, field_name: str)
         if "\x00" in item:
             raise SteamZeroError("E-API-SCHEMA", detail=f"{field_name} de {platform_id} contém NUL")
     return tuple(value)
+
+
+def _string_map(value: Any, platform_id: str, adapter_id: str, field_name: str) -> dict[str, str]:
+    if not isinstance(value, Mapping) or any(
+        not isinstance(key, str) or not isinstance(item, str) for key, item in value.items()
+    ):
+        raise SteamZeroError(
+            "E-API-SCHEMA",
+            detail=f"{field_name} de {platform_id}/{adapter_id} precisa ser objeto de strings",
+        )
+    result: dict[str, str] = {}
+    for key, item in value.items():
+        if not re.fullmatch(r"^[a-z0-9][a-z0-9-]{0,62}$", key):
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail=f"sistema inválido em {field_name}: {key!r}"
+            )
+        if not _CORE_RE.fullmatch(item):
+            raise SteamZeroError("E-API-SCHEMA", detail=f"core inválido em {field_name}: {item!r}")
+        result[key] = item
+    return result
 
 
 def build_argv(
@@ -232,7 +306,10 @@ def build_argv(
     if profile.requires_core and core_path is None and rom is not None:
         raise SteamZeroError(
             "E-CONTENT-UNSUPPORTED",
-            detail=f"plataforma {profile.platform_id} exige o core {profile.core}",
+            detail=(
+                f"plataforma {profile.platform_id} exige o core "
+                f"{profile.core or 'específico do sistema'}"
+            ),
         )
 
     argv = [executable]
@@ -245,7 +322,9 @@ def build_argv(
             if core_path is None:
                 raise SteamZeroError(
                     "E-CONTENT-UNSUPPORTED",
-                    detail=f"core {profile.core} não encontrado no host",
+                    detail=(
+                        f"core {profile.core or 'específico do sistema'} não encontrado no host"
+                    ),
                 )
             argv.append(str(core_path))
         else:

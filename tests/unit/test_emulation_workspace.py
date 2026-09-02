@@ -60,7 +60,7 @@ def test_switch_workspace_matches_versioned_contract() -> None:
         ]
         == "nintendo-handheld"
     )
-    assert len(payload["platforms"]) == 61
+    assert len(payload["platforms"]) == 62
     assert payload["platforms"][1]["areas"][0]["id"] == "overview"
     cloud_platforms = [p for p in payload["platforms"] if p.get("cloud")]
     assert any(p["cloud"]["allowedHosts"] == ["luna.amazon.com"] for p in cloud_platforms)
@@ -88,8 +88,8 @@ def test_global_management_keeps_technical_and_editorial_counts_distinct() -> No
         media_providers=[],
     )
 
-    assert global_management["technicalPlatformCount"] == 61
-    assert global_management["editorialDestinationCount"] == 62
+    assert global_management["technicalPlatformCount"] == 62
+    assert global_management["editorialDestinationCount"] == 63
     assert global_management["editorialExperienceCount"] == 155
     assert global_management["editorialSource"]["id"] == "steam"
     assert global_management["platformCards"][0]["gameCount"] == 1

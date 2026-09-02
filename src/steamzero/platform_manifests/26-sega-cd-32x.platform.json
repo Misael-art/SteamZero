@@ -81,6 +81,12 @@
       "role": "multi-system",
       "launch": {
         "core": "genesis_plus_gx",
+        "systemCores": {
+          "segacd": "genesis_plus_gx",
+          "sega-cd": "genesis_plus_gx",
+          "sega32x": "picodrive",
+          "sega-32x": "picodrive"
+        },
         "openArgs": [],
         "gameArgs": [
           "-L",

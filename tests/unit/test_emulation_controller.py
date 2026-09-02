@@ -95,13 +95,13 @@ def test_snapshot_publishes_global_management_without_a_synthetic_platform(
     workspace = controller.snapshot({"context": {}})
     global_management = workspace["globalManagement"]
 
-    assert len(workspace["platforms"]) == 61
+    assert len(workspace["platforms"]) == 62
     assert global_management["id"] == "emulation-global"
-    assert global_management["technicalPlatformCount"] == 61
-    assert global_management["editorialDestinationCount"] == 62
+    assert global_management["technicalPlatformCount"] == 62
+    assert global_management["editorialDestinationCount"] == 63
     assert global_management["editorialExperienceCount"] == 155
     assert global_management["editorialSource"]["id"] == "steam"
-    assert len(global_management["platformCards"]) == 61
+    assert len(global_management["platformCards"]) == 62
     switch = next(card for card in global_management["platformCards"] if card["id"] == "switch")
     # Contrato alterado em 2026-08-13: com `which` devolvendo None, nenhum
     # emulador do Switch está instalado. O bloqueador do card é exatamente esse,
@@ -1349,6 +1349,48 @@ def test_launch_core_missing_refuses_jogar_before_spawn(monkeypatch, tmp_path: P
             rom=tmp_path / "Super (U).nes",
             core_path=None,
         )
+
+
+def test_launch_preflight_uses_core_for_identified_system(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    rom = tmp_path / "atari5200" / "jogo.a52"
+    rom.parent.mkdir()
+    rom.write_bytes(b"rom")
+    game = {
+        "id": "atari-game",
+        "name": "Jogo Atari 5200",
+        "path": str(rom),
+        "platformId": "atari-classics",
+        "systemId": "atari5200",
+        "format": "a52",
+        "contentKind": "base",
+    }
+    monkeypatch.setattr(controller, "_current_game", lambda _game_id: game)
+    monkeypatch.setattr(controller, "_load_game_settings", lambda strict=False: {})
+    monkeypatch.setattr(
+        controller,
+        "_settings_for_game_with_global",
+        lambda _game, _settings: {"emulatorId": "retroarch"},
+    )
+    monkeypatch.setattr(controller, "_require_launchable_emulator", lambda _id: None)
+    monkeypatch.setattr(
+        controller,
+        "_emulator_source",
+        lambda _id: ("flatpak", "org.libretro.RetroArch", None),
+    )
+    monkeypatch.setattr(controller, "_managed_process_groups", lambda _payload: set())
+    selected: list[str] = []
+
+    def fake_find_core(core: str) -> Path:
+        selected.append(core)
+        return tmp_path / f"{core}_libretro.so"
+
+    monkeypatch.setattr(emulation, "find_core", fake_find_core)
+
+    preflight = controller._launch_preflight("atari-game")  # type: ignore[attr-defined]
+
+    assert selected == ["atari800"]
+    assert preflight["core_path"] == tmp_path / "atari800_libretro.so"
 
 
 def test_runtime_prepare_mutes_interactive_update_checks(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
