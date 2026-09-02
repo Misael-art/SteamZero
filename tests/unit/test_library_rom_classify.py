@@ -34,18 +34,89 @@ def _mksiblings(*names: str) -> set[str]:
 # ── classify_rom: regras individuais ────────────────────────────────────────
 
 
-class TestZip7zAlwaysUnknown:
-    def test_zip_is_unknown(self, ext_map: dict[str, list[str]]) -> None:
-        plat, kind, ev = classify_rom("game.zip", {"game.zip"}, ext_map)
-        assert plat is None
-        assert kind == "unknown"
-        assert ev == "archived"
+class TestArchivePolicyDecidesInsteadOfABlanketVeto:
+    """Contrato alterado em 2026-09-01: quem decide é a plataforma.
 
-    def test_7z_is_unknown(self, ext_map: dict[str, list[str]]) -> None:
-        plat, kind, ev = classify_rom("game.7z", {"game.7z"}, ext_map)
+    Antes, `.zip`/`.7z` saíam do catálogo por uma lista fixa, antes de qualquer
+    pergunta — o veto vencia a declaração dos manifestos. Mas 45 dos 63
+    manifestos declaram `zip` entre as extensões e 22 declaram
+    `containerPolicy: native`, isto é, o container roda direto no emulador.
+    No acervo real do operador isso mantinha ~939 arquivos invisíveis.
+
+    O que NÃO mudou: sem declaração, o arquivo continua fora do catálogo. A
+    diferença é que agora o motivo é dito, e um palpite nunca substitui a
+    declaração ausente.
+    """
+
+    def test_an_undeclared_policy_still_keeps_the_archive_out(
+        self, ext_map: dict[str, list[str]]
+    ) -> None:
+        plat, kind, ev = classify_rom(
+            "game.zip", {"game.zip"}, ext_map, root_platform="nes-famicom"
+        )
         assert plat is None
         assert kind == "unknown"
-        assert ev == "archived"
+        assert ev == "archive-policy-undeclared"
+
+    def test_7z_follows_the_same_contract(self, ext_map: dict[str, list[str]]) -> None:
+        plat, kind, ev = classify_rom(
+            "game.7z",
+            {"game.7z"},
+            ext_map,
+            root_platform="nes-famicom",
+            container_policies={"nes-famicom": "native"},
+        )
+        assert plat == "nes-famicom"
+        assert kind == "base"
+        assert ev == "archive-native"
+
+    def test_a_native_container_becomes_a_playable_game(
+        self, ext_map: dict[str, list[str]]
+    ) -> None:
+        plat, kind, ev = classify_rom(
+            "game.zip",
+            {"game.zip"},
+            ext_map,
+            root_platform="nes-famicom",
+            container_policies={"nes-famicom": "native"},
+        )
+        assert plat == "nes-famicom"
+        assert kind == "base"
+        assert ev == "archive-native"
+
+    def test_an_extractable_container_says_so_instead_of_vanishing(
+        self, ext_map: dict[str, list[str]]
+    ) -> None:
+        """`extract` não é canonizável hoje, mas é outro problema que `native`.
+
+        O `archived` genérico misturava "precisa de trabalho" com "precisa de
+        declaração"; sem distinguir, não há como saber o que falta implementar.
+        """
+        plat, kind, ev = classify_rom(
+            "game.zip",
+            {"game.zip"},
+            ext_map,
+            root_platform="switch",
+            container_policies={"switch": "extract"},
+        )
+        assert plat is None
+        assert kind == "unknown"
+        assert ev == "archive-needs-extraction"
+
+    def test_an_ambiguous_extension_is_not_guessed(self, ext_map: dict[str, list[str]]) -> None:
+        """Sem raiz declarada, `.zip` pertence a dezenas de plataformas.
+
+        Escolher uma delas repetiria o defeito dos defaults de Switch corrigido
+        horas antes: um palpite silencioso que aponta para a plataforma errada.
+        """
+        plat, _kind, ev = classify_rom(
+            "game.zip",
+            {"game.zip"},
+            ext_map,
+            container_policies={"nes-famicom": "native", "snes": "native"},
+        )
+        assert plat is None
+        assert ev == "archive-platform-unknown"
 
 
 class TestCueBinPairing:
@@ -174,13 +245,21 @@ class TestRootWins:
         )
         assert plat == "nes-famicom"
 
-    def test_root_platform_does_not_override_archive(self, ext_map: dict[str, list[str]]) -> None:
+    def test_root_platform_alone_does_not_canonize_an_archive(
+        self, ext_map: dict[str, list[str]]
+    ) -> None:
+        """A raiz diz QUAL plataforma, não que o container roda nela.
+
+        Contrato alterado em 2026-09-01: a raiz deixou de ser irrelevante para
+        arquivos comprimidos, mas continua não bastando. Sem `containerPolicy`
+        declarada, o arquivo fica fora — a raiz não substitui a declaração.
+        """
         plat, kind, ev = classify_rom(
             "game.zip", {"game.zip"}, ext_map, root_platform="nintendo-console"
         )
         assert plat is None
         assert kind == "unknown"
-        assert ev == "archived"
+        assert ev == "archive-policy-undeclared"
 
     def test_root_platform_does_not_override_orphan_cue(
         self, ext_map: dict[str, list[str]]
@@ -275,14 +354,34 @@ class TestPlatformRomScanner:
         assert results["track02.bin"].platform is None
         assert results["track02.bin"].evidence == "bin-orphan"
 
-    def test_zip_is_unknown(self, tmp_path: Path, ext_map: dict[str, list[str]]) -> None:
+    def test_zip_without_a_declared_policy_is_unknown(
+        self, tmp_path: Path, ext_map: dict[str, list[str]]
+    ) -> None:
         (tmp_path / "rom.zip").write_text("")
         scanner = PlatformRomScanner(ext_map)
         results = list(scanner.inventory(tmp_path))
         assert len(results) == 1
         assert results[0].platform is None
         assert results[0].content_kind == "unknown"
-        assert results[0].evidence == "archived"
+        # Sem raiz declarada a ambiguidade aparece primeiro: `.zip` pertence a
+        # 45 plataformas, e nenhuma delas pode ser escolhida por eliminação.
+        assert results[0].evidence == "archive-platform-unknown"
+
+    def test_a_native_container_carries_the_container_as_its_format(
+        self, tmp_path: Path, ext_map: dict[str, list[str]]
+    ) -> None:
+        """Só `arcade` lista `zip` em `media.formats`.
+
+        Sem este ajuste o jogo entraria no catálogo com formato `unknown`, e o
+        formato é o que o caminho de lançamento entrega ao emulador.
+        """
+        (tmp_path / "rom.zip").write_text("")
+        scanner = PlatformRomScanner(ext_map, None, {"nes-famicom": "native"})
+        results = list(scanner.inventory(tmp_path, root_platform="nes-famicom"))
+        assert len(results) == 1
+        assert results[0].platform == "nes-famicom"
+        assert results[0].content_kind == "base"
+        assert results[0].format == "zip"
 
     def test_romcandidate_dataclass(self) -> None:
         c = RomCandidate(
@@ -560,10 +659,52 @@ class TestSyntheticRomFixtures:
             for rom_file in sys_dir.iterdir():
                 if not rom_file.is_file():
                     continue
-                # .zip is always "archived" (unknown) by design
+                # Arquivo comprimido segue a política de container da
+                # plataforma, coberta em TestArchivePolicyDecidesInsteadOfABlanketVeto;
+                # aqui o que se verifica é a dica de raiz.
                 if rom_file.suffix.lower() == ".zip":
                     continue
                 result = scanner.inventory(sys_dir, root_platform=sys_dir.name)
                 assert len(result) == 1
                 assert result[0].platform == sys_dir.name
                 assert result[0].evidence == "root-wins"
+
+
+class TestDirectoryInventoryNamesTheFormat:
+    """O inventário canônico entrava sem formato.
+
+    `detect_format` era chamado sem o mapa declarado pela plataforma, então
+    respondia `unknown` para tudo: 216 dos 231 jogos do acervo real do operador
+    estavam no catálogo com `format: "unknown"` (medido em 2026-09-01 na
+    release 2.0.0rc1-667789588f23). O formato é o que o caminho de lançamento
+    entrega ao emulador, e o scanner já carregava o mapa.
+    """
+
+    def _tree(self, root: Path) -> None:
+        nes = root / "nes"
+        nes.mkdir()
+        (nes / "Metroid.nes").write_bytes(b"NES\x1a" + b"0" * 32)
+        (nes / "Contra.zip").write_bytes(b"PK\x03\x04" + b"0" * 32)
+
+    def test_a_declared_extension_gets_its_declared_format(self, tmp_path: Path) -> None:
+        self._tree(tmp_path)
+        inventory = PlatformDirectoryInventory.from_registry(PlatformRegistry.bundled())
+        found = {
+            game.path.name: game
+            for directory in inventory.inventory(tmp_path)
+            for game in directory.selected_games
+        }
+        assert found["Metroid.nes"].format == "nes", (
+            "sem o mapa declarado o catálogo inteiro entrava com formato unknown"
+        )
+
+    def test_a_native_container_is_its_own_format(self, tmp_path: Path) -> None:
+        self._tree(tmp_path)
+        inventory = PlatformDirectoryInventory.from_registry(PlatformRegistry.bundled())
+        found = {
+            game.path.name: game
+            for directory in inventory.inventory(tmp_path)
+            for game in directory.selected_games
+        }
+        assert found["Contra.zip"].format == "zip"
+        assert found["Contra.zip"].evidence == "archive-native"

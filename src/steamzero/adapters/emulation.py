@@ -1677,9 +1677,15 @@ class EmulationController:
                 if candidate.is_symlink():
                     counts["errors"] += 1
                 elif candidate.is_file():
+                    # A reivindicação vem primeiro. Antes, qualquer arquivo com
+                    # sufixo comprimido era contado como incompatível mesmo
+                    # tendo sido canonizado, e um container nativo apareceria
+                    # ao mesmo tempo no catálogo e na conta de incompatíveis.
+                    if str(candidate) in discovered:
+                        continue
                     if candidate.suffix.casefold() in self._ARCHIVE_SUFFIXES:
                         counts["incompatible"] += 1
-                    elif str(candidate) not in discovered:
+                    else:
                         counts["ignored"] = counts.get("ignored", 0) + 1
         except OSError as exc:
             errors.append(f"{root}: {exc}")

@@ -47,6 +47,13 @@ def detect_format(name: str, formats: Mapping[str, Sequence[str]] | None = None)
 
 _ARCHIVE_EXTS = frozenset({".zip", ".7z"})
 
+# `containerPolicy` do manifesto: `native` = o container roda direto no
+# emulador; `extract` = o conteúdo precisa ser extraído antes do lançamento.
+# A ausência não é um terceiro valor com semântica: é falta de declaração, e
+# nesse caso o arquivo fica fora do catálogo em vez de virar um palpite.
+_CONTAINER_NATIVE = "native"
+_CONTAINER_EXTRACT = "extract"
+
 _M3U_RE = re.compile(r"\.m3u$", re.IGNORECASE)
 
 
@@ -109,11 +116,36 @@ def classify_rom(
     root_platform: str | None = None,
     header_platform: str | None = None,
     platform_formats: Mapping[str, Any] | None = None,
+    container_policies: Mapping[str, str] | None = None,
 ) -> tuple[str | None, str, str]:
     ext = Path(name).suffix.lower()
 
     if ext in _ARCHIVE_EXTS:
-        return None, "unknown", "archived"
+        # A lista de extensões comprimidas era um veto fixo: qualquer .zip/.7z
+        # saía do catálogo antes de qualquer pergunta. Mas 45 dos 63 manifestos
+        # declaram `zip` entre as extensões da plataforma, e 22 declaram
+        # `containerPolicy: native` — ou seja, o domínio já dizia que aquele
+        # container roda direto. O veto fixo vencia a declaração, e ~1000
+        # arquivos do acervo real ficavam invisíveis no Launcher.
+        #
+        # Quem decide agora é a plataforma. Sem plataforma resolvida não há
+        # política a consultar, e adivinhar aqui repetiria o erro que custou o
+        # ciclo dos defaults de Switch.
+        platform = root_platform
+        if platform is None:
+            candidates = ext_map.get(ext, [])
+            if len(candidates) != 1:
+                return None, "unknown", "archive-platform-unknown"
+            platform = candidates[0]
+        policy = (container_policies or {}).get(platform)
+        if policy == _CONTAINER_NATIVE:
+            return platform, "base", "archive-native"
+        if policy == _CONTAINER_EXTRACT:
+            # Fica fora do catálogo, mas com o motivo exato: é extraível, não
+            # incompatível. O genérico "archived" impedia distinguir o que
+            # precisa de trabalho do que precisa de declaração.
+            return None, "unknown", "archive-needs-extraction"
+        return None, "unknown", "archive-policy-undeclared"
 
     stem = Path(name).stem.lower()
     has_bin = any(
@@ -209,16 +241,29 @@ class PlatformRomScanner:
         self,
         ext_map: dict[str, list[str]],
         platform_formats: dict[str, dict[str, list[str]]] | None = None,
+        container_policies: dict[str, str] | None = None,
     ) -> None:
         self._ext_map = ext_map
         self._platform_formats = platform_formats or {}
+        self._container_policies = container_policies or {}
 
     @classmethod
     def from_manifests(cls, manifests: list[dict[str, Any]]) -> PlatformRomScanner:
         formats_by_platform = {
             str(m["id"]): dict(m.get("media", {}).get("formats") or {}) for m in manifests
         }
-        return cls(build_ext_map(manifests), formats_by_platform)
+        policies = {
+            str(m["id"]): str((m.get("media", {}) or {}).get("containerPolicy") or "")
+            for m in manifests
+            if (m.get("media", {}) or {}).get("containerPolicy")
+        }
+        return cls(build_ext_map(manifests), formats_by_platform, policies)
+
+    def container_policy_for(self, platform_id: str | None) -> str:
+        """Política de container declarada (vazio quando não declarada)."""
+        if platform_id is None:
+            return ""
+        return self._container_policies.get(platform_id, "")
 
     def formats_for(self, platform_id: str | None) -> dict[str, list[str]]:
         """Mapa formato->extensões declarado pela plataforma (vazio se não declarado)."""
@@ -239,6 +284,12 @@ class PlatformRomScanner:
             # O formato vem da DECLARAÇÃO da plataforma classificada (ou da
             # raiz, enquanto não classificado) — não de um mapa hardcoded.
             fmt = detect_format(path.name, self.formats_for(plat or root_platform) or None)
+            if fmt == "unknown" and ev == "archive-native":
+                # Um container nativo É o formato entregue ao emulador. Só um
+                # manifesto (arcade) lista `zip` em `media.formats`, então o
+                # mapa declarado devolveria "unknown" para os demais e o jogo
+                # entraria no catálogo sem formato nenhum.
+                fmt = path.suffix.lower().lstrip(".")
             results.append(
                 RomCandidate(
                     path=path,
@@ -264,6 +315,12 @@ class PlatformRomScanner:
             siblings,
             self._ext_map,
             root_platform=root_platform,
+            # `platform_formats` existia no scanner e nunca era repassado, então
+            # `_declares_format` respondia falso sempre e a desambiguação por
+            # formato declarado era código morto: todo .cue/.bin disputado caía
+            # em `ambiguous-*` sem consultar quem declarava o formato.
+            platform_formats=self._platform_formats,
+            container_policies=self._container_policies,
             header_platform=(
                 self._header_platform(path, root_platform=root_platform)
                 if path is not None
@@ -534,10 +591,19 @@ class PlatformDirectoryInventory:
                         ),
                         None,
                     )
+                    # `detect_format` sem o mapa declarado sempre devolvia
+                    # "unknown": 216 dos 231 jogos do acervo real entravam no
+                    # catálogo sem formato. O mapa da plataforma é exatamente o
+                    # que nomeia o conteúdo, e o scanner já o carrega.
+                    fmt = detect_format(
+                        filename, self._scanner.formats_for(platform or platform_id) or None
+                    )
+                    if fmt == "unknown" and evidence == "archive-native":
+                        fmt = path.suffix.lower().lstrip(".")
                     candidates.append(
                         RomCandidate(
                             path=path,
-                            format=detect_format(filename),
+                            format=fmt,
                             platform=platform,
                             content_kind=auxiliary_kind or kind,
                             evidence="manifest-auxiliary-directory" if auxiliary_kind else evidence,
