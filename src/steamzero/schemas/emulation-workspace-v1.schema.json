@@ -1410,6 +1410,10 @@
             "additionalProperties": true
           }
         },
+        "storageSummary": {
+          "type": "object",
+          "additionalProperties": true
+        },
         "providerCredentials": {
           "type": "array",
           "items": {

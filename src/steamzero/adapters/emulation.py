@@ -66,6 +66,7 @@ from steamzero.adapters.secret_service import SecretServiceStore
 from steamzero.adapters.state_store_media import StateStoreGameMediaAdapter
 from steamzero.adapters.state_store_provider_health import StateStoreProviderHealthAdapter
 from steamzero.adapters.steam_shortcuts import SteamShortcutManager
+from steamzero.adapters.storage_summary import collect_storage_summary
 from steamzero.api import contracts
 from steamzero.core import fs, ids, journal, paths, safezip, transaction
 from steamzero.core.errors import SteamZeroError, provider_error_category
@@ -4499,6 +4500,68 @@ class EmulationController:
         media_pipeline = self._media_pipeline_summary(games)
         library_root_rows = self._library_root_rows(games)
         scan_summary = self._library_scan_summary(games, unidentified, roots)
+        storage_summary = collect_storage_summary(
+            rom_roots=tuple(Path(root) for root in roots),
+            emulator_roots=(paths.data_home() / "components", paths.data_home() / "tools"),
+            saves_root=paths.saves_dir(),
+            media_root=paths.media_dir(),
+            cache_roots=(paths.data_home() / "cache", paths.data_home() / "catalog-cache"),
+            volume_root=paths.data_home(),
+        )
+        storage_cards: list[dict[str, Any]] = []
+        bucket_actions: dict[str, list[dict[str, Any]]] = {
+            "roms": [self._action("library.scan", "Atualizar inventário", confirmation=True)],
+            "cache": [
+                self._action("media.cache.open", "Abrir pasta"),
+                self._action(
+                    "media.cache.prune-orphans",
+                    "Limpar cache órfão",
+                    confirmation=True,
+                ),
+            ],
+        }
+        for bucket in storage_summary["buckets"]:
+            bucket_state = str(bucket["state"])
+            status_label = {
+                "ready": "Verificado",
+                "empty": "Vazio",
+                "missing": "Não encontrado",
+                "degraded": "Leitura parcial",
+            }.get(bucket_state, "Indisponível")
+            detail = f"{int(bucket['files'])} arquivo(s) · {int(bucket['bytes'])} byte(s)."
+            if bucket.get("error"):
+                detail += f" {bucket['error']}."
+            storage_cards.append(
+                self._card(
+                    f"storage-{bucket['id']}",
+                    str(bucket["label"]),
+                    detail,
+                    "ready" if bucket_state in {"ready", "empty"} else "attention",
+                    status_label,
+                    actions=bucket_actions.get(str(bucket["id"])),
+                )
+                | {"metric": f"{int(bucket['bytes'])} B"}
+            )
+        volume = storage_summary["volume"]
+        volume_detail = "Espaço do volume indisponível."
+        volume_metric = "—"
+        if volume["capacityBytes"] is not None and volume["freeBytes"] is not None:
+            volume_detail = (
+                f"{int(volume['freeBytes'])} byte(s) livres de "
+                f"{int(volume['capacityBytes'])} byte(s)."
+            )
+            volume_metric = f"{int(volume['freeBytes'])} B livres"
+        storage_cards.insert(
+            0,
+            self._card(
+                "storage-volume",
+                "Volume de dados",
+                volume_detail,
+                "ready" if volume["state"] == "ready" else "attention",
+                "Espaço disponível" if volume["state"] == "ready" else "Não verificado",
+            )
+            | {"metric": volume_metric},
+        )
         return {
             "overview": {
                 "cards": [
@@ -4884,6 +4947,7 @@ class EmulationController:
             },
             "storage": {
                 "cards": [
+                    *storage_cards,
                     self._card(
                         "integrity",
                         "Conteúdo compartilhado",
@@ -4893,11 +4957,12 @@ class EmulationController:
                         ),
                         "ready" if integrity["state"] == "ready" else "attention",
                         str(integrity["state"]),
-                    )
+                    ),
                 ],
                 "primaryAction": self._action(
                     "storage.recover", "Reconciliar índice", confirmation=True
                 ),
+                "storageSummary": storage_summary,
             },
             "advanced": {
                 "cards": [
