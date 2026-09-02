@@ -501,6 +501,8 @@ def handheld_ui_contracts() -> dict[str, Any]:
                 {
                     "actionId": {"type": "string"},
                     "path": {"type": "string"},
+                    "paths": {"type": "array", "items": {"type": "string"}},
+                    "targetFormat": {"type": "string"},
                     "titleId": {"type": "string"},
                     "emulatorId": {"type": "string"},
                     "version": {"type": "string"},

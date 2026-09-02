@@ -91,7 +91,9 @@ def test_storage_cards_expose_compression_and_uninstall_shortcuts(
 ) -> None:
     controller = _controller(tmp_path, monkeypatch)
     rom = tmp_path / "game.nsp"
+    second_rom = tmp_path / "second-game.nsp"
     rom.write_bytes(b"rom")
+    second_rom.write_bytes(b"rom-2")
     monkeypatch.setattr(controller._nsz, "status", lambda: {"available": True})  # type: ignore[attr-defined]
 
     area = controller._area_data(  # type: ignore[attr-defined]
@@ -114,7 +116,20 @@ def test_storage_cards_expose_compression_and_uninstall_shortcuts(
                 "mediaSource": "fallback",
                 "mediaCandidateCount": 0,
                 "mediaErrors": {},
-            }
+            },
+            {
+                "id": "switch-2",
+                "titleId": "0100ABCDEF123001",
+                "name": "Segundo jogo Switch",
+                "path": str(second_rom),
+                "platform": "switch",
+                "platformId": "switch",
+                "state": "ready",
+                "statusLabel": "Pronto",
+                "mediaSource": "fallback",
+                "mediaCandidateCount": 0,
+                "mediaErrors": {},
+            },
         ],
         0,
         [str(tmp_path)],
@@ -139,5 +154,12 @@ def test_storage_cards_expose_compression_and_uninstall_shortcuts(
         if action["id"] == "nsz.convert"
     )
     assert rom_action["path"] == str(rom)
+    batch_action = next(
+        action
+        for action in storage_cards["storage-roms"]["actions"]
+        if action["id"] == "nsz.convert.batch"
+    )
+    assert batch_action["targetFormat"] == "nsz"
+    assert batch_action["paths"] == [str(rom), str(second_rom)]
     management = storage_cards["storage-management"]
     assert management["actions"] == [{"id": "emulator.uninstall:eden", "label": "Desinstalar"}]

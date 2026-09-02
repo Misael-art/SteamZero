@@ -2613,6 +2613,10 @@ class EmulationController:
             source_format = source.suffix.lstrip(".").casefold()
             target_format = "nsp" if source_format == "nsz" else "nsz"
             plan = self._nsz_conversion().plan_convert(source, target_format)
+        elif action == "nsz.convert.batch":
+            sources = self._required_paths(payload, "paths")
+            target_format = self._required_string(payload, "targetFormat").casefold()
+            plan = self._nsz_conversion().plan_convert_batch(sources, target_format)
         elif action == "game.emulator.default":
             emulator_id = self._required_string(payload, "emulatorId")
             self._require_known_emulator(emulator_id)
@@ -4605,6 +4609,12 @@ class EmulationController:
             ),
             None,
         )
+        compressible_paths = [
+            str(game["path"])
+            for game in games
+            if isinstance(game.get("path"), str)
+            and Path(str(game["path"])).suffix.casefold() in {".nsp", ".xci", ".nro"}
+        ]
         if not nsz_ready:
             bucket_actions["roms"].append(
                 self._action("nsz.install", "Instalar compactador NSZ", confirmation=True)
@@ -4627,6 +4637,15 @@ class EmulationController:
                 )
                 | {"path": conversion_path},
             )
+            if len(compressible_paths) > 1:
+                bucket_actions["roms"].append(
+                    self._action(
+                        "nsz.convert.batch",
+                        "Compactar ROMs selecionadas para NSZ",
+                        confirmation=True,
+                    )
+                    | {"paths": compressible_paths, "targetFormat": "nsz"},
+                )
         for bucket in storage_summary["buckets"]:
             bucket_state = str(bucket["state"])
             status_label = {
@@ -8851,6 +8870,15 @@ class EmulationController:
         if not isinstance(value, str) or not value.strip() or len(value) > 4096:
             raise SteamZeroError("E-API-SCHEMA", detail=f"campo obrigatório: {key}")
         return value.strip()
+
+    @staticmethod
+    def _required_paths(payload: Mapping[str, Any], key: str) -> list[Path]:
+        value = payload.get(key)
+        if not isinstance(value, list) or not 1 <= len(value) <= 128:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"campo obrigatório: {key}")
+        if any(not isinstance(item, str) or not item.strip() or len(item) > 4096 for item in value):
+            raise SteamZeroError("E-API-SCHEMA", detail=f"campo inválido: {key}")
+        return [Path(item.strip()) for item in value]
 
     @staticmethod
     def _optional_string(payload: Mapping[str, Any], key: str) -> str | None:

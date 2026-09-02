@@ -115,6 +115,37 @@ def test_nsp_to_nsz_conversion_preserves_original(env: Path, nsz_tool: ToolManif
     assert fs.hash_file(src) == before
 
 
+def test_batch_conversion_has_one_confirmation_and_rolls_back_as_a_unit(
+    env: Path, nsz_tool: ToolManifest
+) -> None:
+    first = env / "first.nsp"
+    second = env / "second.nsp"
+    first.write_bytes(b"first-original")
+    second.write_bytes(b"second-original")
+    first_hash = fs.hash_file(first)
+    second_hash = fs.hash_file(second)
+    service = SwitchRomConversionService(
+        _registry(nsz_tool),
+        converter=NszConverter(
+            runner=_fake_runner(b"batch-compressed"), which=lambda _tool: "/bin/nsz"
+        ),
+    )
+
+    plan = service.plan_convert_batch([first, second], "nsz")
+
+    assert plan.requirements["batch"] is True
+    assert len(plan.requirements["inputs"]) == 2
+    assert len(plan.actions) == 2
+    applied = service.apply(plan.plan_id, plan.confirm_token)
+    assert (paths.roms_dir() / "converted" / "first.nsz").read_bytes() == b"batch-compressed"
+    assert (paths.roms_dir() / "converted" / "second.nsz").read_bytes() == b"batch-compressed"
+    assert fs.hash_file(first) == first_hash
+    assert fs.hash_file(second) == second_hash
+    service.rollback(applied.operation_id)
+    assert not (paths.roms_dir() / "converted" / "first.nsz").exists()
+    assert not (paths.roms_dir() / "converted" / "second.nsz").exists()
+
+
 def test_nsz_to_nsp_conversion_preserves_original(env: Path, nsz_tool: ToolManifest) -> None:
     src = env / "dump.nsz"
     src.write_bytes(b"compressed-nsz-bytes")

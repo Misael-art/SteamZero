@@ -456,6 +456,86 @@ class SwitchRomConversionService:
         dest_dir: Path | None = None,
         ttl_s: int = 3600,
     ) -> transaction.Plan:
+        destination_root = (dest_dir or (paths.roms_dir() / "converted")).resolve(strict=False)
+        preview_root = paths.staging_for(f"conversion-plan-{ids.new_ulid()}")
+        try:
+            source, source_hash, tool, converted = self._prepare_preview(
+                src, target_format, preview_root
+            )
+            destination = fs.resolve_within(
+                destination_root, destination_root / f"{source.stem}.{target_format}"
+            )
+            return transaction.plan_copy_files(
+                {converted: destination},
+                root=destination_root,
+                kind="library.convert",
+                ttl_s=ttl_s,
+                requirements_extra={
+                    "inputPath": str(source),
+                    "inputHash": source_hash,
+                    "tool": tool.id,
+                    "toolVersion": tool.expected_version,
+                    "previewRoot": str(preview_root),
+                },
+            )
+        except Exception:
+            fs.remove_tree(preview_root)
+            raise
+
+    def plan_convert_batch(
+        self,
+        sources: Sequence[Path],
+        target_format: str,
+        *,
+        dest_dir: Path | None = None,
+        ttl_s: int = 3600,
+    ) -> transaction.Plan:
+        """Planeja várias conversões em uma única confirmação transacional."""
+        if not sources or len(sources) > 128:
+            raise SteamZeroError("E-API-SCHEMA", detail="lote exige de 1 a 128 ROMs")
+        destination_root = (dest_dir or (paths.roms_dir() / "converted")).resolve(strict=False)
+        copies: dict[Path, Path] = {}
+        inputs: list[dict[str, str]] = []
+        preview_roots: list[Path] = []
+        try:
+            for src in sources:
+                preview_root = paths.staging_for(f"conversion-plan-{ids.new_ulid()}")
+                preview_roots.append(preview_root)
+                source, source_hash, tool, converted = self._prepare_preview(
+                    src, target_format, preview_root
+                )
+                destination = fs.resolve_within(
+                    destination_root, destination_root / f"{source.stem}.{target_format}"
+                )
+                copies[converted] = destination
+                inputs.append(
+                    {
+                        "path": str(source),
+                        "hash": source_hash,
+                        "tool": tool.id,
+                        "toolVersion": tool.expected_version,
+                    }
+                )
+            return transaction.plan_copy_files(
+                copies,
+                root=destination_root,
+                kind="library.convert",
+                ttl_s=ttl_s,
+                requirements_extra={
+                    "batch": True,
+                    "inputs": inputs,
+                    "previewRoots": [str(root) for root in preview_roots],
+                    "targetFormat": target_format,
+                },
+            )
+        except Exception:
+            for preview_root in preview_roots:
+                fs.remove_tree(preview_root)
+            raise
+
+    def _prepare_preview(
+        self, src: Path, target_format: str, preview_root: Path
+    ) -> tuple[Path, str, ToolManifest, Path]:
         from_fmt = src.suffix.lstrip(".").lower()
         tool = self._registry.converter_tool(from_fmt, target_format)
         if tool is None:
@@ -473,31 +553,10 @@ class SwitchRomConversionService:
             raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="origem não é arquivo regular")
         source = src.resolve(strict=True)
         source_hash = fs.hash_file(source)
-        destination_root = (dest_dir or (paths.roms_dir() / "converted")).resolve(strict=False)
-        destination = fs.resolve_within(
-            destination_root, destination_root / f"{source.stem}.{target_format}"
+        converted = ConversionManager(self._converter).convert(
+            source, target_format, policy=self._policy, dest_dir=preview_root
         )
-        preview_root = paths.staging_for(f"conversion-plan-{ids.new_ulid()}")
-        try:
-            converted = ConversionManager(self._converter).convert(
-                source, target_format, policy=self._policy, dest_dir=preview_root
-            )
-            return transaction.plan_copy_files(
-                {converted.dest: destination},
-                root=destination_root,
-                kind="library.convert",
-                ttl_s=ttl_s,
-                requirements_extra={
-                    "inputPath": str(source),
-                    "inputHash": source_hash,
-                    "tool": tool.id,
-                    "toolVersion": tool.expected_version,
-                    "previewRoot": str(preview_root),
-                },
-            )
-        except Exception:
-            fs.remove_tree(preview_root)
-            raise
+        return source, source_hash, tool, converted.dest
 
     @staticmethod
     def apply(plan_id: str, confirm_token: str) -> transaction.ApplyResult:
@@ -507,9 +566,22 @@ class SwitchRomConversionService:
         if datetime.now(UTC) > datetime.fromisoformat(plan.expires_at):
             SwitchRomConversionService.cancel(plan_id, confirm_token)
             raise SteamZeroError("E-TX-CONFIRM-REQUIRED", detail="confirmToken expirado")
-        source = Path(str(plan.requirements.get("inputPath", "")))
-        expected = str(plan.requirements.get("inputHash", ""))
-        if source.is_symlink() or not source.is_file() or fs.hash_file(source) != expected:
+        inputs = plan.requirements.get("inputs")
+        if isinstance(inputs, list):
+            valid = all(
+                isinstance(item, dict)
+                and (source := Path(str(item.get("path", "")))).is_file()
+                and not source.is_symlink()
+                and fs.hash_file(source) == str(item.get("hash", ""))
+                for item in inputs
+            )
+        else:
+            source = Path(str(plan.requirements.get("inputPath", "")))
+            expected = str(plan.requirements.get("inputHash", ""))
+            valid = (
+                source.is_file() and not source.is_symlink() and fs.hash_file(source) == expected
+            )
+        if not valid:
             SwitchRomConversionService.cancel(plan_id, confirm_token)
             raise SteamZeroError("E-TX-STALE-PLAN", detail="origem mudou desde o preview")
         result = transaction.apply(plan_id, confirm_token)
@@ -527,14 +599,19 @@ class SwitchRomConversionService:
 
     @staticmethod
     def _cleanup_preview(plan: transaction.Plan) -> None:
-        preview_root = Path(str(plan.requirements.get("previewRoot", "")))
         staging_root = paths.staging_dir().resolve(strict=False)
-        if not preview_root.name.startswith("conversion-plan-"):
-            raise SteamZeroError("E-TX-STALE-PLAN", detail="staging de conversão inválido")
-        confined = fs.resolve_within(staging_root, preview_root)
-        if confined.parent != staging_root:
-            raise SteamZeroError("E-TX-STALE-PLAN", detail="staging de conversão não é direto")
-        fs.remove_tree(confined)
+        raw_roots = plan.requirements.get("previewRoots")
+        roots = (
+            raw_roots if isinstance(raw_roots, list) else [plan.requirements.get("previewRoot", "")]
+        )
+        for raw_root in roots:
+            preview_root = Path(str(raw_root))
+            if not preview_root.name.startswith("conversion-plan-"):
+                raise SteamZeroError("E-TX-STALE-PLAN", detail="staging de conversão inválido")
+            confined = fs.resolve_within(staging_root, preview_root)
+            if confined.parent != staging_root:
+                raise SteamZeroError("E-TX-STALE-PLAN", detail="staging de conversão não é direto")
+            fs.remove_tree(confined)
 
     @staticmethod
     def rollback(operation_id: str) -> transaction.RollbackResult:
