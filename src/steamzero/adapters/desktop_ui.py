@@ -669,6 +669,28 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 self._required_string(payload, "source"),
                 overwrite=payload.get("overwrite") is True,
             )
+        if path == "/theme/catalog/list":
+            return self._dashboard().theme_catalog_list()
+        if path == "/theme/catalog/install":
+            # `overwrite` explícito e falso por omissão: reinstalar por cima de
+            # um tema já presente não pode acontecer por campo ausente.
+            return self._dashboard().theme_catalog_install(
+                self._required_string(payload, "themeId"),
+                overwrite=payload.get("overwrite") is True,
+            )
+        if path == "/theme/catalog/rollback":
+            return self._dashboard().theme_catalog_rollback(
+                self._required_string(payload, "themeId"),
+                self._required_string(payload, "operationId"),
+            )
+        if path == "/theme/catalog/uninstall":
+            return self._dashboard().theme_catalog_uninstall(
+                self._required_string(payload, "themeId"),
+            )
+        if path == "/theme/store/gc":
+            # `apply` explícito: a prévia é o padrão, e apagar blob do usuário
+            # exige pedido, não omissão.
+            return self._dashboard().theme_store_gc(apply=payload.get("apply") is True)
         if path == "/theme/import/esde/inspect":
             return self._dashboard().theme_import_esde_inspect(
                 self._required_string(payload, "source"),

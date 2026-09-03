@@ -38,13 +38,19 @@ from steamzero.adapters.registry import AdapterManifest, AdapterRegistry
 from steamzero.adapters.resource_probe import ResourceProbe
 from steamzero.adapters.steam_gameplay import SteamGameplayController
 from steamzero.adapters.theme_catalog import ThemeCatalog, validate_theme_directory
-from steamzero.core import log, transaction
+from steamzero.core import log, paths, transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.secret import Secret
 from steamzero.core.session_state import SESSION_OWNER
 from steamzero.core.state import StateStore
 from steamzero.diagnostics.doctor import run_doctor
-from steamzero.domain import theme_import_esde, theme_import_retrofe
+from steamzero.domain import (
+    theme_acquire,
+    theme_assets,
+    theme_import_esde,
+    theme_import_retrofe,
+    theme_sources,
+)
 from steamzero.domain.bios_sources import approved_bios_sources, resolve_approved_bios_source
 from steamzero.domain.collections import CollectionManager
 from steamzero.domain.emulation_workspace import build_emulation_workspace
@@ -1814,6 +1820,74 @@ class DesktopDashboard:
             "derived": list(imported.derived),
             "unsupportedSlots": theme_import_esde.unsupported_slots(),
         }
+
+    def theme_catalog_list(self) -> dict[str, Any]:
+        """Temas ES-DE curados, com o que está instalado marcado.
+
+        Publica também os EXCLUÍDOS, com o motivo. Um catálogo que só mostra o
+        que entrou faz a ausência parecer esquecimento; dizer "este tema existe e
+        não entrou porque não declara licença" é informação, não ruído.
+        """
+        catalog = theme_sources.bundled()
+        installed = {
+            manifest.get("id"): manifest
+            for manifest in theme_assets.load_installed_manifests(paths.themes_dir())
+        }
+        entries: list[dict[str, Any]] = []
+        for source in catalog.entries:
+            current = installed.get(source.id)
+            entry = source.to_dict()
+            entry["installed"] = current is not None
+            # A versão instalada pode não ser a do catálogo: é o que distingue
+            # "instalado" de "atualizado".
+            entry["installedVersion"] = str(current.get("version", "")) if current else ""
+            entry["upToDate"] = bool(current and current.get("version") == source.commit[:12])
+            entries.append(entry)
+        return {
+            "entries": entries,
+            "excluded": [item.to_dict() for item in catalog.excluded],
+            "storeUsage": self._theme_store().usage(),
+        }
+
+    def _theme_store(self) -> theme_assets.ThemeAssetStore:
+        return theme_assets.ThemeAssetStore(paths.theme_assets_dir())
+
+    def theme_catalog_install(self, theme_id: str, *, overwrite: bool = False) -> dict[str, Any]:
+        """Baixa e instala um tema curado, sem ativá-lo.
+
+        Não ativa por decisão: quem instala um tema quase sempre quer vê-lo
+        antes de trocar a aparência da central inteira, e trocar por conta
+        própria transformaria "instalar" numa mudança que ninguém pediu.
+        """
+        source = theme_sources.bundled().get(theme_id)
+        return theme_acquire.acquire_and_install(
+            source,
+            self._theme_store(),
+            paths.themes_dir(),
+            force=overwrite,
+        )
+
+    def theme_catalog_rollback(self, theme_id: str, operation_id: str) -> dict[str, Any]:
+        """Desfaz uma instalação, preservando os assets compartilhados."""
+        return theme_acquire.ThemeTransaction(paths.themes_dir(), self._theme_store()).rollback(
+            theme_id, operation_id
+        )
+
+    def theme_catalog_uninstall(self, theme_id: str) -> dict[str, Any]:
+        """Remove um tema instalado sem tocar nos blobs compartilhados."""
+        return theme_acquire.ThemeTransaction(paths.themes_dir(), self._theme_store()).uninstall(
+            theme_id
+        )
+
+    def theme_store_gc(self, *, apply: bool = False) -> dict[str, Any]:
+        """Recupera o espaço de blobs que nenhum tema instalado referencia.
+
+        O padrão é a prévia: apagar dado do usuário é ação a ser pedida, não
+        presumida, e o relatório permite conferir antes de confirmar.
+        """
+        store = self._theme_store()
+        live = theme_assets.live_digests(theme_assets.load_installed_manifests(paths.themes_dir()))
+        return store.collect_garbage(live, dry_run=not apply)
 
     def theme_import_retrofe_inspect(self, source: str) -> dict[str, Any]:
         """Inspeciona layouts RetroFE sem instalar ou ativar uma cena."""

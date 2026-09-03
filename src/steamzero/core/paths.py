@@ -94,6 +94,17 @@ def themes_dir() -> Path:
     return data_home() / "themes"
 
 
+def theme_assets_dir() -> Path:
+    """Store de assets de tema, endereçado por conteúdo.
+
+    Separado de ``themes_dir()`` de propósito: ali moram os manifestos, que são
+    a fonte de verdade do que está instalado, e aqui os blobs, que são cache
+    reconstruível e compartilhado. Misturá-los faria a remoção de um tema
+    parecer autorizada a apagar arte que outro ainda referencia.
+    """
+    return data_home() / "theme-assets"
+
+
 def scenes_dir() -> Path:
     """Cenas compiladas de frontends declarativos, separadas de theme.json."""
     return data_home() / "scenes"
