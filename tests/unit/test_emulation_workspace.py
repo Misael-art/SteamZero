@@ -70,7 +70,10 @@ def test_switch_workspace_matches_versioned_contract() -> None:
         if item["fallbackArtworkAsset"].endswith("/retroarch.svg")
     ]
     assert len(retroarch_artwork) == 41
-    assert len({item["fallbackArtworkAsset"] for item in payload["platforms"]}) == 21
+    # 21 -> 22 em 2026-09-02: PlayStation Vita ganhou arte própria em vez de
+    # reusar a do PSP. Arte distinta por plataforma é o que esta contagem
+    # protege — duas plataformas com o mesmo asset exibiriam o logo errado.
+    assert len({item["fallbackArtworkAsset"] for item in payload["platforms"]}) == 22
 
 
 def test_global_management_keeps_technical_and_editorial_counts_distinct() -> None:

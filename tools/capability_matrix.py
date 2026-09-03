@@ -144,7 +144,15 @@ def _platform_section(
             continue
         adapter_id = str(primary["adapterId"])
         route = routes.get(adapter_id)
-        profile = parse_launch(platform.id, adapter_id, primary.get("launch"))
+        # `systems` passou a ser exigido para validar `systemCores`; sem ele a
+        # matriz levantava E-API-SCHEMA em atari-classics. Mesmo argumento que
+        # o controller e o composer já passam.
+        profile = parse_launch(
+            platform.id,
+            adapter_id,
+            primary.get("launch"),
+            systems=platform.systems,
+        )
         core = profile.core if profile is not None else None
         if core:
             cores_needed.add(core)

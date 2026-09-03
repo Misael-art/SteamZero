@@ -115,7 +115,8 @@ def test_snapshot_publishes_global_management_without_a_synthetic_platform(
     # apresentáveis. Eles sempre estiveram declarados por PlayStation e
     # PlayStation 2, mas a tupla de ordem da UI também filtrava a membresia e os
     # deixava de fora — as duas plataformas ficavam sem emulador renderizável.
-    assert len(global_management["emulators"]) == 15
+    # 15 -> 16 em 2026-09-02 com a entrada de `vita3k` no registro.
+    assert len(global_management["emulators"]) == 16
     assert all("apiKey" not in provider for provider in global_management["mediaProviders"])
 
 
@@ -3760,7 +3761,10 @@ class TestPlatformSurvivesTheLibraryCache:
         del entry["platform"]
         self._cache(controller, tmp_path, entry)
         games, _ = controller._load_library_cache()  # type: ignore[attr-defined]
-        assert games[0]["platformId"] == "", "ausência não pode virar uma plataforma qualquer"
+        # Contrato refinado em 2026-09-02: a chave fica AUSENTE, não vazia.
+        # `""` não é id de plataforma — o schema do read model exige
+        # `^[a-z][a-z0-9-]*$` e a string vazia reprovava o workspace inteiro.
+        assert "platformId" not in games[0], "ausência não pode virar uma plataforma qualquer"
 
 
 class TestMediaSearchDoesNotGuessThePlatform:

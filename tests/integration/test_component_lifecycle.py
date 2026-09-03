@@ -554,12 +554,16 @@ class TestMetadataOnlyPlanning:
         assert plan.executor == "libretro"
         assert artifacts.requests == []
 
-    def test_all_33_bundled_components_plan_below_two_seconds_without_remote_io(
+    def test_all_bundled_components_plan_below_two_seconds_without_remote_io(
         self, store: state.StateStore
     ) -> None:
         registry = AdapterRegistry.bundled()
         manifests = registry.list()
-        assert len(manifests) == 33
+        # 33 -> 34 em 2026-09-02: `vita3k` entrou ao completar PlayStation
+        # Vita. O numero fica na asserção, não no nome do teste: um nome
+        # que crava o denominador envelhece a cada componente novo e passa
+        # a mentir antes de reprovar.
+        assert len(manifests) == 34
         artifacts = FakeArtifacts({})
         flatpak = FakeFlatpak()
         lifecycle = ComponentLifecycle(

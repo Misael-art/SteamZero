@@ -8644,7 +8644,16 @@ class EmulationController:
                 # e o default silencioso rio abaixo transformava todo jogo em
                 # Switch. Normalizar aqui mantém a tradução num lugar só, na
                 # fronteira onde o cache vira dado de domínio.
-                normalized["platformId"] = str(game.get("platformId") or game.get("platform") or "")
+                resolved_platform = str(game.get("platformId") or game.get("platform") or "")
+                if resolved_platform:
+                    normalized["platformId"] = resolved_platform
+                else:
+                    # AUSENTE, não vazio. `""` não é um id de plataforma: o
+                    # schema do read model exige `^[a-z][a-z0-9-]*$`, e publicar
+                    # a string vazia reprovava a validação do workspace inteiro.
+                    # Ausência já significa "não sei", e `launch_game` recusa
+                    # com motivo quando não encontra a chave.
+                    normalized.pop("platformId", None)
                 valid.append(normalized)
             resolved = max(0, unidentified)
             if key is not None:

@@ -122,7 +122,11 @@ class _PipelineFake:
     def unpublish_steam_plan(self, *_args: object, **_kwargs: object) -> transaction.Plan | None:
         return self.unpublish_plan
 
-    def audit(self) -> AuditReport:
+    def audit(self, platform_id: str | None = None) -> AuditReport:
+        # A produção ganhou `platform_id` quando o relatório passou a ser
+        # escopado por plataforma; o fake ficou para trás e quebrou a chamada.
+        # Fake que diverge da produção esconde defeito — o contrato do dublê
+        # precisa acompanhar o do original.
         return AuditReport(stats={"fixture": 1})
 
     def plan_prune_orphan_cache(self) -> transaction.Plan:

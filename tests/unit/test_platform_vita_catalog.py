@@ -11,12 +11,30 @@ from steamzero.domain.library import PlatformRomScanner
 from steamzero.domain.platforms import PlatformRegistry
 
 
-def test_vita_manifest_is_visible_but_does_not_promise_an_emulator() -> None:
+def test_vita_manifest_declares_a_real_emulator() -> None:
+    """Contrato alterado em 2026-09-02, por decisão explícita do operador.
+
+    A versão anterior catalogava a Vita SEM emulador (`emulators == ()`), para
+    classificar `roms/psvita` sem prometer lançamento. O desenho era
+    defensável, mas colidia com o contrato mais antigo de
+    `test_manifests_publish_all_capability_dimensions_and_safe_cloud_hosts`,
+    que exige emulador declarado em toda plataforma `kind: emulated` — esse
+    teste estava vermelho e ninguém viu, porque a suíte morria por disco cheio
+    antes de chegar nele.
+
+    Uma plataforma emulada visível e sem emulador é pior que a lacuna que
+    substitui: os arquivos passam a pertencer a algo que não roda. Resolvido a
+    favor do emulador real: `vita3k`, AppImage x86_64 fixado pelo SHA-256
+    publicado na API do GitHub (o upstream não publica no Flathub).
+    """
     manifest = PlatformRegistry.bundled().get("playstation-vita")
 
     assert manifest.systems == ("psvita", "playstation-vita", "vita")
     assert manifest.requirements == ("keys", "firmware")
-    assert manifest.emulators == ()
+    assert [emulator["adapterId"] for emulator in manifest.emulators] == ["vita3k"]
+    assert manifest.emulators[0]["role"] == "primary"
+    # Independente do emulador: o ScreenScraper não tem systemeID para a Vita,
+    # então a busca de mídia não pode filtrar por plataforma nesta.
     assert "playstation-vita" in _PLATFORMS_WITHOUT_SYSTEMEID
 
 

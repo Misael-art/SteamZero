@@ -75,7 +75,9 @@ def test_cloud_platforms_are_not_false_blocked_for_lacking_an_emulator() -> None
     assert "| geforce-now | serviço cloud | browser | — | — | nenhum |" in table
     assert "| xbox-cloud-gaming | serviço cloud | browser | — | — | nenhum |" in table
     assert "| amazon-luna | serviço cloud | browser | — | — | nenhum |" in table
-    assert blocked == 47
+    # 47 -> 46 em 2026-09-02: PlayStation Vita deixou de ser bloqueada ao
+    # ganhar `vita3k` como emulador primário declarado.
+    assert blocked == 46
 
 
 def test_every_active_emulator_declares_the_mandatory_lifecycle() -> None:
@@ -86,7 +88,10 @@ def test_every_active_emulator_declares_the_mandatory_lifecycle() -> None:
     routes = capability_matrix.lifecycle.routes_for(registry)
     _table, violations, active, _config = capability_matrix._action_matrix(registry, routes)
     assert violations == [], f"emulador ativo com ciclo incompleto: {violations}"
-    assert active == 15, "o denominador mudou; revise a matriz antes de seguir"
+    # 15 -> 16 em 2026-09-02: `vita3k` entrou com o ciclo completo, ao
+    # catalogar PlayStation Vita. `violations == []` acima prova que o novo
+    # adapter declara todas as capacidades obrigatórias.
+    assert active == 16, "o denominador mudou; revise a matriz antes de seguir"
 
 
 def test_the_gate_refuses_an_active_emulator_missing_a_mandatory_capability() -> None:

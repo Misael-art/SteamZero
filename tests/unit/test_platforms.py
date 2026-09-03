@@ -86,6 +86,10 @@ def test_bundled_registry_covers_required_platforms_with_unique_artwork() -> Non
         "pc-engine-supergrafx",
         "atari-st",
         "apple2",
+        # PS Vita catalogada em 2026-09-02: a plataforma existia como lacuna
+        # registrada e o acervo real tem arquivos em `roms/psvita` que a
+        # varredura marcava `archive-platform-unknown`.
+        "playstation-vita",
         "bbc-micro",
         "coco",
         "ti99",

@@ -117,6 +117,12 @@ def _plant_library(controller: EmulationController, tmp_path: Path, count: int) 
                 "path": str(rom),
                 "size": 2048,
                 "titleId": f"0100ABCDEF0{index:02d}000",
+                # A varredura real grava a plataforma; a fixture não gravava.
+                # Enquanto o read model de mídia era global isso não aparecia,
+                # mas ele passou a ser escopado por plataforma e um jogo sem
+                # plataforma deixa de pertencer a qualquer aba. Fixture que
+                # escreve menos que a produção esconde o comportamento real.
+                "platform": "switch",
             }
         )
     cache.write_text(

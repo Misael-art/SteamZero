@@ -101,6 +101,7 @@ def test_bundled_registry_loads_verified_emulation_adapters() -> None:
         "retroarch",
         "rpcs3",
         "ryubing",
+        "vita3k",
         "xemu",
         "xenia-canary",
     ]
@@ -152,6 +153,7 @@ def test_bundled_registry_is_locked_without_manifest_drift() -> None:
         "rpcs3",
         "ryubing",
         "sunshine",
+        "vita3k",
         "xemu",
         "xenia-canary",
     ]
