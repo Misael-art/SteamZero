@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "project-item",
   "id": "SZ-THEME-IMPORT-ESDE-LAYOUT",
-  "title": "Compilacao de layout ES-DE para o IR de cena, com store de assets compartilhado",
+  "title": "Temas ES-DE: compilacao de layout, aquisicao e instalacao transacional",
   "domain": "themes",
   "implementation": "partial",
   "integration": "feature-branch",
@@ -10,19 +10,25 @@
   "operation": "unknown",
   "distribution": "not-packaged",
   "scopePaths": [
+    "docs/09-operations/evidence/2026-09-03-esde-layout/README.md",
+    "src/steamzero/catalogs/esde-sources-v1.json",
+    "src/steamzero/core/safetar.py",
     "src/steamzero/domain/scene_esde.py",
+    "src/steamzero/domain/theme_acquire.py",
     "src/steamzero/domain/theme_assets.py",
     "src/steamzero/domain/theme_import_esde_layout.py",
+    "src/steamzero/domain/theme_sources.py",
     "tests/unit/test_scene_esde.py",
+    "tests/unit/test_theme_acquire.py",
     "tests/unit/test_theme_assets.py",
-    "tests/unit/test_theme_import_esde_layout.py"
+    "tests/unit/test_theme_import_esde_layout.py",
+    "tests/unit/test_theme_sources.py"
   ],
-  "scopeDigest": "f608ec22219c3a83064b6310fd317f2777a05f4767d27a48f70fd5b7721f5a2a",
+  "scopeDigest": "fe79d06bc0cf68c65f19337eacb538f7b16405b6191f25d555749aeb08df57e5",
   "dependsOn": [],
   "knownGaps": [
-    "GAP-THEME-ESDE-NO-ACQUISITION",
-    "GAP-THEME-ESDE-NO-TRANSACTIONAL-INSTALL",
-    "GAP-THEME-ESDE-ART-NOT-INGESTED"
+    "GAP-THEME-ESDE-NOT-WIRED-TO-UI",
+    "GAP-THEME-ESDE-NO-PHYSICAL-PROOF"
   ],
   "acceptanceCriteria": [
     "Um XML de tema ES-DE compila no mesmo IR de cena emitido por scene_retrofe, sem segundo renderizador.",
@@ -30,7 +36,11 @@
     "Nenhum tema de terceiros executa codigo: o caminho de asset e validado por forma e contencao antes de virar caminho.",
     "A arte por sistema e publicada como template com parametro validado, nunca como caminho literal com marcador.",
     "Dois temas que referenciam o mesmo arquivo compartilham um unico blob no store.",
-    "Remover um tema nunca torna invalido um asset que outro tema referencia."
+    "Remover um tema nunca torna invalido um asset que outro tema referencia.",
+    "A aquisicao busca o tarball do commit fixado e ingere cada membro direto no store, sem materializar a arvore.",
+    "Link, no de dispositivo e travessia no tarball sao recusados pelo cabecalho, antes de qualquer escrita.",
+    "Desfazer uma instalacao restaura o manifesto anterior e nao remove nenhum blob.",
+    "Um tema sem licenca declarada nao entra no catalogo curado."
   ],
   "evidence": [
     {
@@ -56,12 +66,18 @@
       "reference": "docs/09-operations/evidence/2026-09-03-esde-layout/README.md",
       "command": "compilacao do theme.xml real com include resolvido e system_id=snes: 58 elementos, 3 degradados, cobertura 0.9508, 13 assets literais e 1 template por sistema sobre 212 sistemas",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-03-esde-layout/README.md",
+      "command": "ingestao real de xmb-menu, nso-menu e de duas versoes do xmb-menu: blobs em comum entre temas DISTINTOS = 1; atualizar o xmb-menu reaproveita 62,1 MB de 66,2 MB (94%), custando 4,1 MB",
+      "result": "passed"
     }
   ],
-  "nextAction": "Construir a aquisicao dos cinco temas licenciados com extracao seletiva, a ingestao da arte por sistema no store e a instalacao transacional com rollback. Nenhum tema foi baixado ou instalado ate aqui, e a cobertura de 95% e de compilacao offline, nao de renderizacao em hardware.",
+  "nextAction": "Ligar catalogo, aquisicao e transacao a UI e provar na release instalada. Correcao de 2026-09-03: a premissa de assets compartilhados ENTRE temas distintos nao se confirmou - xmb-menu e nso-menu tem 1 blob em comum. A deduplicacao paga na ATUALIZACAO de um tema (94% reaproveitado) e em duplicatas internas do pacote. Ingestao seletiva por sistema deixou de ser a alavanca de economia: o peso esta em video e fonte, nao em arte por sistema.",
   "activeWorkstreams": [
     "WS-2026-09-TEMAS-ESDE"
   ],
   "updatedAt": "2026-09-03",
-  "notes": "Segundo emissor do IR, depois de scene_retrofe. As allowlists sairam de medicao em 130 XML reais dos cinco temas licenciados, nao de suposicao, e a medicao corrigiu quatro classificacoes erradas (itemMargin e itemSpacing sao pares; stationary e enum; scope aceita none). Zero dos 130 arquivos estava malformado, entao a maquinaria de reparo do scene_retrofe nao tem analogo aqui. O store nao tem contador de referencias por decisao: a posse e derivada dos manifestos instalados, o que torna a desinstalacao incapaz de quebrar um vizinho e dispensa restaurar blob no rollback. Quatro dos nove temas pedidos pelo operador ficaram de fora por nao declararem licenca."
+  "notes": "Segundo emissor do IR, depois de scene_retrofe. As allowlists sairam de medicao em 130 XML reais dos cinco temas licenciados, nao de suposicao, e a medicao corrigiu quatro classificacoes erradas (itemMargin e itemSpacing sao pares; stationary e enum; scope aceita none). Zero dos 130 arquivos estava malformado, entao a maquinaria de reparo do scene_retrofe nao tem analogo aqui. O store nao tem contador de referencias por decisao: a posse e derivada dos manifestos instalados, o que torna a desinstalacao incapaz de quebrar um vizinho e dispensa restaurar blob no rollback. Quatro dos nove temas pedidos pelo operador ficaram de fora por nao declararem licenca. Correcao de 2026-09-03: dois numeros reportados antes estavam errados. O '~92% de arte por sistema' generalizava uma medicao de XML-contra-o-resto (o xmb-menu e 74% video e 16% fonte; o nso-menu e 74 MB de imagem e nada de video). E os '6,1 MB deduplicados entre temas' eram repeticao interna do proprio nso-menu, porque um contador unico somava as duas causas; AcquisitionReport agora separa bytesRepeatedInPackage de bytesSharedWithInstalled, com teste."
 }

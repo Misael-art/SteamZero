@@ -54,10 +54,53 @@ As 3 degradações remanescentes são honestas e nomeadas: duas são uma variáv
 declarada numa variante não selecionada (`${backgroundGameArtType}`) e uma é o
 `gameselector`, que carrega apenas lógica de seleção e não desenha nada.
 
+## Onde está o peso de um tema — e a correção de um número errado
+
+Uma versão anterior deste documento afirmava que "~92% do peso é arte por
+sistema". **Isso estava errado**, e o erro veio de generalizar uma medição de
+XML-contra-o-resto como se o resto fosse arte por sistema. A distribuição real,
+por extensão:
+
+| | xmb-menu | nso-menu |
+|---|---:|---:|
+| Vídeo `.mp4` | 49,5 MB (74%) | 0 |
+| Fontes `.otf` | 10,8 MB | 6,0 MB |
+| Imagens `.png`/`.webp` | 1,1 MB | 74,0 MB |
+| XML | 4,3 MB | 3,2 MB |
+
+Um único `waves.mp4` responde por 45,8 MB do xmb-menu. Os dois temas têm perfis
+de peso completamente diferentes; não existe um "92%" que os descreva.
+
+## Deduplicação: onde ela paga e onde não paga
+
+A premissa de que temas compartilhariam assets **não se confirmou** para temas
+distintos. Comparando blob a blob xmb-menu e nso-menu:
+
+> Blobs em comum: **1** (`_inc/images/space.png`), essencialmente 0 MB.
+
+Temas ES-DE trazem a própria arte, as próprias fontes e o próprio fundo.
+
+Um relatório anterior afirmou "6,1 MB deduplicados entre temas". **Também estava
+errado**: eram 53 arquivos que o nso-menu repete dentro do próprio pacote. A
+causa foi um contador único que somava repetição interna e compartilhamento com
+outros temas. O `AcquisitionReport` agora separa `bytesRepeatedInPackage` de
+`bytesSharedWithInstalled`, e há teste impedindo a fusão de voltar.
+
+Onde a deduplicação **realmente** paga é na atualização de um tema. Ingerindo
+duas versões do xmb-menu (`1f83b66b` e `afe3b7b6`):
+
+| | arquivos | novo | compartilhado |
+|---|---:|---:|---:|
+| versão antiga | 592 | 62,1 MB | 0,0 MB |
+| versão nova | 596 | **4,1 MB** | **62,1 MB** |
+
+Atualizar custa 4,1 MB em vez de 66,2 MB — **94% reaproveitado** — e é isso que
+torna a atualização de temas barata e o rollback instantâneo, já que a versão
+anterior nunca é destruída.
+
 ## Arte por sistema
 
-Os ~92% do peso de um tema ES-DE (55 de 59,5 MB no xmb-menu) são arte por
-sistema, endereçada por um marcador de tempo de execução:
+A arte por sistema é endereçada por um marcador de tempo de execução:
 
 ```xml
 <path>${systemContentImagePath}/${system.theme}.png</path>
@@ -89,6 +132,8 @@ print(fidelity_report(scene), len(available_systems(root)))
 ```
 
 ## O que esta evidência NÃO prova
+
+- que temas ES-DE distintos compartilhem assets: medido, e não compartilham;
 
 - que algum tema esteja instalado ou disponível para download no produto;
 - que a cena compilada renderize corretamente em hardware;
