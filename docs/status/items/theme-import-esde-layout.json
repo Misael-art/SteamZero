@@ -6,12 +6,13 @@
   "domain": "themes",
   "implementation": "partial",
   "integration": "integrated",
-  "verification": "unit",
+  "verification": "hw",
   "operation": "degraded",
   "distribution": "not-packaged",
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-03-esde-catalogo-host/README.md",
     "docs/09-operations/evidence/2026-09-03-esde-layout/README.md",
+    "docs/09-operations/evidence/2026-09-03-tela-temas/README.md",
     "src/steamzero/adapters/desktop_contracts.py",
     "src/steamzero/adapters/desktop_dashboard.py",
     "src/steamzero/adapters/desktop_ui.py",
@@ -23,17 +24,21 @@
     "src/steamzero/domain/theme_assets.py",
     "src/steamzero/domain/theme_import_esde_layout.py",
     "src/steamzero/domain/theme_sources.py",
+    "src/steamzero/ui/qml/Main.qml",
+    "src/steamzero/ui/qml/ThemeCatalogPanel.qml",
+    "tests/integration/test_theme_catalog_panel_gestures.py",
     "tests/integration/test_theme_catalog_routes.py",
+    "tests/qml/capture_theme_catalog.qml",
+    "tests/qml/check_theme_catalog_panel.qml",
     "tests/unit/test_scene_esde.py",
     "tests/unit/test_theme_acquire.py",
     "tests/unit/test_theme_assets.py",
     "tests/unit/test_theme_import_esde_layout.py",
     "tests/unit/test_theme_sources.py"
   ],
-  "scopeDigest": "861c8d9ab10237037ac5a00efaa22357e97e364ede98b3780ad2c071c0373d6e",
+  "scopeDigest": "ad160eb98d9616ea7b634aad9d93064be88bb799e012869cb474b590c2f54f8c",
   "dependsOn": [],
   "knownGaps": [
-    "GAP-THEME-ESDE-NO-SCREEN",
     "GAP-THEME-ESDE-SCENE-NOT-RENDERED"
   ],
   "acceptanceCriteria": [
@@ -47,7 +52,8 @@
     "Link, no de dispositivo e travessia no tarball sao recusados pelo cabecalho, antes de qualquer escrita.",
     "Desfazer uma instalacao restaura o manifesto anterior e nao remove nenhum blob.",
     "Um tema sem licenca declarada nao entra no catalogo curado.",
-    "As acoes do catalogo estao no contrato da UI e cada uma produz efeito verificado no disco, com confirmacao explicita nas destrutivas."
+    "As acoes do catalogo estao no contrato da UI e cada uma produz efeito verificado no disco, com confirmacao explicita nas destrutivas.",
+    "A tela lista os curados com licenca e credito, distingue instalado de desatualizado, exige confirmacao para remover e mostra previa antes de recuperar espaco."
   ],
   "evidence": [
     {
@@ -91,9 +97,15 @@
       "reference": "docs/09-operations/evidence/2026-09-03-esde-catalogo-host/README.md",
       "command": "ciclo completo na release 2.0.0rc1-e571577faeda instalada: listar, instalar org.esde.xmb-menu (596 assets em 67s), gc com dono=0 orfaos, desinstalar preservando 474 blobs, gc aplicado recuperando 66,1 MB",
       "result": "passed"
+    },
+    {
+      "kind": "design",
+      "reference": "docs/09-operations/evidence/2026-09-03-tela-temas/README.md",
+      "command": "12 testes QML com clique real via qmltestrunner Qt 6.11.1 e quatro capturas do arco instalar/remover/recuperar",
+      "result": "passed"
     }
   ],
-  "nextAction": "Construir a tela de temas que consome as rotas e renderizar uma cena ES-DE compilada. O ciclo esta provado na release instalada, mas NAO existe superficie QML que o consuma: sem tela nao ha captura PNG e o recurso nao chegou ao usuario. A cobertura de 95% e de compilacao; nenhuma cena foi renderizada.",
+  "nextAction": "Renderizar uma cena ES-DE compilada: instalar um tema ainda nao muda a aparencia da central, e activated=false e deliberado. A cobertura de 95% e de compilacao, nao de renderizacao, e nada foi medido em desempenho no Deck.",
   "activeWorkstreams": [
     "WS-2026-09-TEMAS-ESDE"
   ],
