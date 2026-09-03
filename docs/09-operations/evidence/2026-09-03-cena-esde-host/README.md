@@ -40,13 +40,15 @@ são do código instalado.
 renderizador — os diretórios têm ULID de operação e horário das três
 instalações de tema deste ciclo.
 
-Causa raiz: `acquire_and_install` preserva o staging de propósito depois de uma
-instalação bem-sucedida, porque é ali que mora o `previous-theme.json` que
-torna o rollback possível. Numa instalação **nova** não há tema anterior, então
-nada é escrito ali e o diretório vazio fica órfão para sempre.
+Causa raiz — e a primeira que registrei aqui estava **errada**. Eu havia escrito
+que o staging era preservado para o rollback e ficava vazio em instalação nova.
+Lendo o código: é o staging do **download**, cujo `operation_id` é próprio e
+diferente do que `install` devolve. `acquire_and_install` apagava o tarball com
+`remove_file` e nunca o diretório, então vazava em **toda** instalação, não só
+nas novas. As três deste ciclo eram todas novas, o que fez a explicação errada
+parecer encaixar.
 
-Pertence a `SZ-THEME-IMPORT-ESDE-LAYOUT`, não a este item. Está registrado como
-achado, não corrigido aqui.
+Corrigido depois, em `SZ-THEME-IMPORT-ESDE-LAYOUT`, com `remove_tree`.
 
 ## O que esta evidência NÃO prova
 
