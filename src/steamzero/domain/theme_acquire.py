@@ -358,6 +358,10 @@ def acquire_and_install(
         transaction = ThemeTransaction(themes_root, store)
         result = transaction.install(source, report, force=force)
     finally:
-        # O tarball já não é necessário depois da ingestão, com ou sem sucesso.
-        fs.remove_file(archive)
+        # O tarball já não é necessário depois da ingestão, com ou sem sucesso,
+        # e o DIRETÓRIO dele também não: este `operation_id` é o do download, e
+        # não o que `install` devolve para o rollback. Apagar só o arquivo
+        # deixava uma árvore vazia por instalação, que o doctor conta como
+        # staging órfã — três instalações, três órfãs, medido no host.
+        fs.remove_tree(paths.staging_for(operation_id))
     return {**result, "acquisition": report.to_dict()}

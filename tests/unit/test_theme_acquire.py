@@ -266,7 +266,50 @@ def test_acquire_and_install_cleans_the_archive_but_keeps_the_undo(
 
     assert result["assetCount"] == 1
     assert not captured["archive"].exists()
+    # O DIRETÓRIO também: apagar só o arquivo deixava uma árvore vazia por
+    # instalação, que o doctor conta como staging órfã. Este teste antes
+    # conferia apenas o arquivo, e foi por essa fresta que o vazamento passou.
+    assert not captured["archive"].parent.exists(), "o staging do download ficou para trás"
     assert (themes / "org.esde.demo" / "theme.json").is_file()
+
+
+def test_a_fresh_install_leaves_no_staging_behind_and_still_rolls_back(
+    store: ThemeAssetStore, themes: Path, tmp_path: Path
+) -> None:
+    """Instalar sem tema anterior não pode deixar rastro, e ainda assim desfaz.
+
+    O staging do download tem `operation_id` PRÓPRIO, diferente do que
+    ``install`` devolve para o rollback. Confundir os dois foi o que fez a
+    limpeza parecer perigosa quando não era: sem `previous-theme.json`, desfazer
+    é voltar a não ter o tema, e isso não depende de diretório nenhum.
+    """
+    from steamzero.core import fs, paths
+
+    prepared = _tarball(tmp_path / "src.tar.gz", {"theme.xml": b"<theme/>"})
+
+    def fake_download(source: ThemeSource, *, operation_id: str, **_: object) -> Path:
+        return fs.stage_bytes(operation_id, "theme.tar.gz", prepared.read_bytes())
+
+    staging_root = paths.staging_dir()
+
+    def snapshot() -> set[Path]:
+        # Instantâneo antes/depois em vez de "o staging está vazio": o diretório
+        # de estado é compartilhado na sessão de teste, e uma asserção global
+        # mediria sujeira de outro teste em vez do que ESTA chamada deixou.
+        return set(staging_root.iterdir()) if staging_root.exists() else set()
+
+    before = snapshot()
+    result = acquire_and_install(_source(), store, themes, download=fake_download)
+
+    assert result["replaced"] is False
+    assert result["undoPath"] == ""
+    left_behind = snapshot() - before
+    assert left_behind == set(), f"staging deixado pela instalação: {left_behind}"
+
+    undone = ThemeTransaction(themes, store).rollback("org.esde.demo", result["operationId"])
+    assert undone["restoredPrevious"] is False
+    assert not (themes / "org.esde.demo" / "theme.json").exists()
+    assert undone["assetsPreserved"] is True
 
 
 def test_theme_id_cannot_escape_the_themes_directory(store: ThemeAssetStore, themes: Path) -> None:
