@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-THEME-IMPORT-ESDE-LAYOUT",
+  "title": "Compilacao de layout ES-DE para o IR de cena, com store de assets compartilhado",
+  "domain": "themes",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/domain/scene_esde.py",
+    "src/steamzero/domain/theme_assets.py",
+    "src/steamzero/domain/theme_import_esde_layout.py",
+    "tests/unit/test_scene_esde.py",
+    "tests/unit/test_theme_assets.py",
+    "tests/unit/test_theme_import_esde_layout.py"
+  ],
+  "scopeDigest": "f608ec22219c3a83064b6310fd317f2777a05f4767d27a48f70fd5b7721f5a2a",
+  "dependsOn": [],
+  "knownGaps": [
+    "GAP-THEME-ESDE-NO-ACQUISITION",
+    "GAP-THEME-ESDE-NO-TRANSACTIONAL-INSTALL",
+    "GAP-THEME-ESDE-ART-NOT-INGESTED"
+  ],
+  "acceptanceCriteria": [
+    "Um XML de tema ES-DE compila no mesmo IR de cena emitido por scene_retrofe, sem segundo renderizador.",
+    "Elemento, propriedade ou valor nao compreendido degrada com razao registrada e nunca e inventado.",
+    "Nenhum tema de terceiros executa codigo: o caminho de asset e validado por forma e contencao antes de virar caminho.",
+    "A arte por sistema e publicada como template com parametro validado, nunca como caminho literal com marcador.",
+    "Dois temas que referenciam o mesmo arquivo compartilham um unico blob no store.",
+    "Remover um tema nunca torna invalido um asset que outro tema referencia."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_scene_esde.py",
+      "command": "rtk .venv/bin/python -m pytest tests/unit/test_scene_esde.py tests/unit/test_theme_assets.py tests/unit/test_theme_import_esde_layout.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "rtk .venv/bin/python tools/run_tests_isolated.py tests -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "rtk .venv/bin/ruff check src tools tests; rtk .venv/bin/ruff format --check src tools tests; rtk .venv/bin/mypy src; rtk make independence boundaries",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-03-esde-layout/README.md",
+      "command": "compilacao do theme.xml real com include resolvido e system_id=snes: 58 elementos, 3 degradados, cobertura 0.9508, 13 assets literais e 1 template por sistema sobre 212 sistemas",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Construir a aquisicao dos cinco temas licenciados com extracao seletiva, a ingestao da arte por sistema no store e a instalacao transacional com rollback. Nenhum tema foi baixado ou instalado ate aqui, e a cobertura de 95% e de compilacao offline, nao de renderizacao em hardware.",
+  "activeWorkstreams": [
+    "WS-2026-09-TEMAS-ESDE"
+  ],
+  "updatedAt": "2026-09-03",
+  "notes": "Segundo emissor do IR, depois de scene_retrofe. As allowlists sairam de medicao em 130 XML reais dos cinco temas licenciados, nao de suposicao, e a medicao corrigiu quatro classificacoes erradas (itemMargin e itemSpacing sao pares; stationary e enum; scope aceita none). Zero dos 130 arquivos estava malformado, entao a maquinaria de reparo do scene_retrofe nao tem analogo aqui. O store nao tem contador de referencias por decisao: a posse e derivada dos manifestos instalados, o que torna a desinstalacao incapaz de quebrar um vizinho e dispensa restaurar blob no rollback. Quatro dos nove temas pedidos pelo operador ficaram de fora por nao declararem licenca."
+}

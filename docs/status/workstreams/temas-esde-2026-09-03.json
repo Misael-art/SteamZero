@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-TEMAS-ESDE",
+  "item": "SZ-THEME-IMPORT-ESDE-LAYOUT",
+  "branch": "codex/temas-esde-2026-09-03",
+  "baseRef": "8a6bb071b8ba2f5199eb55ce8e2aeab46b135059",
+  "owner": "temas-esde-agent",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/domain/scene_esde.py",
+    "src/steamzero/domain/theme_assets.py",
+    "src/steamzero/domain/theme_import_esde_layout.py",
+    "tests/unit/test_scene_esde.py",
+    "tests/unit/test_theme_assets.py",
+    "tests/unit/test_theme_import_esde_layout.py"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/WORKLOG.md",
+    "src/steamzero/adapters/desktop_dashboard.py",
+    "src/steamzero/adapters/desktop_contracts.py",
+    "src/steamzero/adapters/desktop_ui.py",
+    "src/steamzero/core/paths.py"
+  ],
+  "nextAction": "Fechada a compilacao e o store. Faltam: catalogo curado dos cinco temas licenciados, aquisicao com extracao seletiva, instalacao transacional com rollback e ingestao da arte por sistema no store. Nenhum tema foi baixado nem instalado ate aqui.",
+  "updatedAt": "2026-09-03"
+}
