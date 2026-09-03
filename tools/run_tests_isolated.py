@@ -328,6 +328,23 @@ def isolated_environment(root: Path, environ: Mapping[str, str]) -> dict[str, st
         target.mkdir(mode=0o700, parents=True, exist_ok=True)
         target.chmod(0o700)
         child_env[variable] = str(target)
+    # O `tmp_path` do pytest nasce em `TMPDIR`, não em HOME nem nas XDG. Sem
+    # isolar esta variável, cada execução deixava ~470 MB em
+    # `/tmp/pytest-of-<user>/pytest-N` que ninguém removia: medido em
+    # 2026-09-02, 18 diretórios somavam 6,8 GB e encheram um tmpfs de 7,3 GB.
+    #
+    # O disco cheio não falha dizendo "disco cheio": a suíte morre no meio e
+    # parece deadlock (foi diagnosticada como travamento aos 17% e aos 29%), e
+    # a instalação governada estoura o timeout sem criar release, o que parece
+    # falha de autenticação. Duas causas-raiz erradas saíram daqui.
+    #
+    # Dentro do root temporário, o diretório morre junto com a execução e o
+    # isolamento passa a ser também de espaço, não só de estado.
+    temporary_dir = root / "tmp"
+    temporary_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    temporary_dir.chmod(0o700)
+    for variable in ("TMPDIR", "TEMP", "TMP"):
+        child_env[variable] = str(temporary_dir)
     child_env[_TEST_ROOT_ENV] = str(root)
     return child_env
 

@@ -973,3 +973,26 @@ def test_scan_ignores_unrelated_and_foreign_state_homes(
         )
         == {}
     )
+
+
+def test_isolated_environment_contains_pytest_temp_files(tmp_path: Path) -> None:
+    """`TMPDIR` fora do isolamento faz cada execução vazar centenas de MB.
+
+    O `tmp_path` do pytest nasce em `TMPDIR`, não em HOME nem nas XDG. Sem
+    isolar, cada execução deixa ~470 MB em `/tmp/pytest-of-<user>/pytest-N` que
+    ninguém remove. Medido em 2026-09-02: 18 diretórios somavam 6,8 GB e
+    encheram um tmpfs de 7,3 GB.
+
+    O disco cheio não se anuncia: a suíte morre no meio e parece deadlock, e a
+    instalação governada estoura o timeout sem criar release, o que parece
+    falha de autenticação. Duas causas-raiz erradas nasceram daí.
+    """
+    root = tmp_path / "iso"
+    result = isolated_environment(root, {"PATH": "/usr/bin"})
+    for variable in ("TMPDIR", "TEMP", "TMP"):
+        assert variable in result, f"{variable} precisa ser isolado"
+        target = Path(result[variable])
+        assert target.is_relative_to(root), (
+            f"{variable} aponta para fora do root temporário: {target}"
+        )
+        assert target.is_dir(), f"{variable} precisa existir antes do pytest iniciar"
