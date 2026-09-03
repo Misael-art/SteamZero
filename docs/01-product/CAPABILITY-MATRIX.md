@@ -15,13 +15,13 @@ host, que vive nos relatórios de certificação.
 
 | dimensão | valor |
 |---|---|
-| adapters declarados | 33 |
-| adapters instaláveis pelo lifecycle | 33 de 33 |
+| adapters declarados | 34 |
+| adapters instaláveis pelo lifecycle | 34 de 34 |
 | plataformas declaradas | 62 |
-| plataformas com bloqueio | 25 de 62 |
+| plataformas com bloqueio | 24 de 62 |
 | cores libretro exigidos | 41 |
 | cores libretro com instalador | 17 |
-| ações de UI publicadas | 121 |
+| ações de UI publicadas | 123 |
 | ações declaradas indisponíveis | 6 |
 
 ## Adapters e roteamento de lifecycle
@@ -62,6 +62,7 @@ Capacidade declarada no manifesto não implica execução verificada: a coluna
 | rpcs3 | emulator | flatpak | não | flatpak | sim | 10 | — |
 | ryubing | emulator | appimage | não | engine | sim | 10 | — |
 | sunshine | tool | native | não | engine | sim | 2 | — |
+| vita3k | emulator | appimage | não | engine | sim | 10 | — |
 | xemu | emulator | flatpak | não | flatpak | sim | 10 | — |
 | xenia-canary | emulator | appimage | não | engine | sim | 10 | — |
 
@@ -86,10 +87,11 @@ obrigatória, fica sem executor ou mantém fonte EOL.
 | retroarch | ativo | flatpak | sim | sim | sim | sim | sim | sim | sim | sim | n/d | **não** | não | — |
 | rpcs3 | ativo | flatpak | sim | sim | sim | sim | sim | sim | sim | sim | n/d | **não** | não | — |
 | ryubing | ativo | engine | sim | sim | sim | sim | sim | sim | sim | sim | sim | **não** | não | — |
+| vita3k | ativo | engine | sim | sim | sim | sim | sim | sim | sim | sim | sim | **não** | não | — |
 | xemu | ativo | flatpak | sim | sim | sim | sim | sim | sim | sim | sim | n/d | **não** | não | — |
 | xenia-canary | ativo | engine | sim | sim | sim | sim | sim | sim | sim | sim | sim | **não** | não | — |
 
-**15 emuladores ativos** · obrigatórias: detect, status, install, update, verify, repair, uninstall · `open-config` declarado em **0 de 15**.
+**16 emuladores ativos** · obrigatórias: detect, status, install, update, verify, repair, uninstall · `open-config` declarado em **0 de 16**.
 
 `open-config` não é obrigatório ainda porque nenhum manifesto declara o argv: emuladores não compartilham forma de abrir configuração, e inventar um produziria botão que abre a coisa errada. A lacuna fica contada aqui até que o argv de cada upstream seja verificado.
 
@@ -142,7 +144,7 @@ obrigatória, fica sem executor ou mantém fonte EOL.
 | pc-engine-supergrafx | retroarch | flatpak | beetle_sgx | — | core `beetle_sgx` sem instalador |
 | atari-st | retroarch | flatpak | hatari | — | core `hatari` sem instalador |
 | apple2 | retroarch | flatpak | applewin | — | core `applewin` sem instalador |
-| playstation-vita | — | — | — | — | **nenhum emulador declarado** |
+| playstation-vita | vita3k | engine | — | — | nenhum |
 | bbc-micro | retroarch | flatpak | beebem | — | core `beebem` sem instalador |
 | coco | retroarch | flatpak | xroar | — | core `xroar` sem instalador |
 | ti99 | retroarch | flatpak | ti99 | — | core `ti99` sem instalador |

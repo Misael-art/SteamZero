@@ -16,7 +16,7 @@
     "tests/unit/test_capability_matrix.py",
     "docs/01-product/CAPABILITY-MATRIX.md"
   ],
-  "scopeDigest": "5942d588f9c3671ffabed72ea860e52af422e0da3e3af521656bc45d332c9b12",
+  "scopeDigest": "a9ce30ab6174bfb7dffeae2c71e10cae4ba7849130b68c3f17afea0d56965bc3",
   "dependsOn": [
     "SZ-AGG-PLATFORM-MANIFESTS",
     "SZ-PLATFORM-REQUIREMENT-SCOPE"
@@ -54,5 +54,5 @@
   "nextAction": "Criar adapter e store de requisitos do Vita; validar a plataforma em release instalada.",
   "activeWorkstreams": [],
   "updatedAt": "2026-09-02",
-  "notes": "Este recorte torna a plataforma observável e catalogável. Não equivale a suporte de execução: ainda falta adapter, store de firmware e validação física."
+  "notes": "Este recorte torna a plataforma observável e catalogável. Não equivale a suporte de execução: ainda falta adapter, store de firmware e validação física. Completada em 2026-09-02: a plataforma estava catalogada sem emulador (`emulators: []`) e com a arte do PSP, violando dois contratos — a Vita apareceria na UI sem poder lancar nada e com o logo errado, pior que a lacuna que substituiu. Agora declara `vita3k` como primary, com AppImage x86_64 fixado pelo SHA-256 publicado na API do GitHub (verificado: o upstream NAO publica no Flathub). Arte propria em `assets/playstation-vita.svg`, no mesmo estilo autoral dos outros 26 (nenhum asset do projeto e logo oficial: marca registrada nao e redistribuivel sob GPL). Perfil de controle `vita-handheld` proprio, com analogico direito — reusar o do PSP declararia controle que o aparelho nao tem. Lockfile de componente e matriz de capacidades regravados; denominadores 15->16 ativos e 47->46 bloqueadas. NAO instalado no host."
 }

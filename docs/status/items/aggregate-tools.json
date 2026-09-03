@@ -21,6 +21,6 @@
   "evidence": [],
   "nextAction": "Separar o harness de VM e o instalador de host em itens proprios, que ja tem contrato e consequencia de host.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-08-11",
-  "notes": "Item AGREGADOR: existe para que nenhum arquivo fique sem custodia declarada, nao para alegar capacidade verificada. Onde um item de capacidade especifico cobre o mesmo caminho, ELE prevalece — o agregador responde apenas pelo resto da arvore. Promover um recorte a item proprio, com aceitacao e evidencia, e o caminho normal; o agregador encolhe quando isso acontece."
+  "updatedAt": "2026-09-02",
+  "notes": "Item AGREGADOR: existe para que nenhum arquivo fique sem custodia declarada, nao para alegar capacidade verificada. Onde um item de capacidade especifico cobre o mesmo caminho, ELE prevalece — o agregador responde apenas pelo resto da arvore. Promover um recorte a item proprio, com aceitacao e evidencia, e o caminho normal; o agregador encolhe quando isso acontece. `run_tests_isolated` isolava HOME e as XDG, mas nao `TMPDIR`. O `tmp_path` do pytest nasce ali, escapava do isolamento e nunca era removido: medido em 2026-09-02, 18 diretorios em `/tmp/pytest-of-<user>` somavam 6,8 GB e encheram um tmpfs de 7,3 GB. Disco cheio nao se anuncia — a suite morre no meio e parece deadlock (foi diagnosticada como travamento aos 17% e aos 29%, por dois agentes), e a instalacao governada estoura o timeout sem criar release, o que parece falha de autenticacao. Duas causas-raiz erradas nasceram daqui. Corrigido: TMPDIR/TEMP/TMP passam a viver dentro do root temporario e morrem com a execucao; o isolamento passa a ser tambem de espaco, nao so de estado."
 }
