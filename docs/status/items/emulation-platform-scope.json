@@ -13,7 +13,7 @@
     "src/steamzero/adapters/emulation.py",
     "tests/integration/test_emulation_platform_scope.py"
   ],
-  "scopeDigest": "ee9f6c2e8b795cdb7de05ad8b5c0aabe9d29d2f27ec6ee3e840ba77196505892",
+  "scopeDigest": "062a6bd2e0ebcaf385d27c1b1cc3f14dbe5b4d6bb45eb16ab2072c19f04e8c6d",
   "dependsOn": [
     "SZ-LIBRARY-CANONICAL"
   ],
@@ -62,6 +62,6 @@
   ],
   "nextAction": "Validar a experiência na release instalada; a execução física do jogo e a correção QML dos cards Keys/Firmware continuam nas frentes proprietárias.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-02",
-  "notes": "A área de emulação do Switch recebia a lista mista retornada pelo cache canônico. Isso fazia Saves e mídia apresentarem jogos de NES/PSP e o botão Atualizar todas varrer o acervo inteiro. A correção mantém Gestão geral/editorial separadas e restringe a área operacional ao contexto da plataforma."
+  "updatedAt": "2026-09-03",
+  "notes": "A área de emulação do Switch recebia a lista mista retornada pelo cache canônico. Isso fazia Saves e mídia apresentarem jogos de NES/PSP e o botão Atualizar todas varrer o acervo inteiro. A correção mantém Gestão geral/editorial separadas e restringe a área operacional ao contexto da plataforma. Correcao em 2026-09-03: `test_global_media_job_processes_only_switch_games` construia o controlador SEM `secret_store`, caindo no `SecretServiceStore` real, que shela para o `secret-tool` do host. Passava em toda maquina com chaveiro e reprovava no CI nas tres versoes de Python — o job de midia constroi os providers a partir do cofre, a chamada estourava e o job terminava `rolled-back` em vez de `completed`. Reproduzido localmente removendo `secret-tool` do PATH. Conferido que os outros 7 arquivos de teste sem `secret_store` nao alcancam esse caminho (38 passed na mesma condicao)."
 }

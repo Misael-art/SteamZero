@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from steamzero.adapters.emulation import EmulationController
+from steamzero.adapters.emulation import EmulationController, SessionSecretStore
 from steamzero.core.state import StateStore
 from steamzero.jobs.manager import JobManager
 
@@ -56,6 +56,10 @@ def test_switch_area_excludes_other_platform_games(
         store_factory=lambda: StateStore(tmp_path / "state.db"),
         which=lambda _command: None,
         spawn=lambda _argv: None,
+        # Sem isto o controlador cai no `SecretServiceStore` real, que shela
+        # para o `secret-tool` do host: o teste passa em maquina com chaveiro e
+        # reprova onde o binario nao existe.
+        secret_store=SessionSecretStore(),
     )
     mixed = [
         _raw_game("switch-1", "switch", "Jogo Switch"),
@@ -99,6 +103,11 @@ def test_global_media_job_processes_only_switch_games(
         which=lambda _command: None,
         spawn=lambda _argv: None,
         job_manager=manager,
+        # O job de midia constroi os providers a partir do cofre. Com o store
+        # real, `secret-tool` ausente derruba o job e ele termina `rolled-back`
+        # em vez de `completed` — exatamente a falha vista no CI nas tres
+        # versoes de Python, enquanto passava em toda maquina de desenvolvimento.
+        secret_store=SessionSecretStore(),
     )
     monkeypatch.setattr(
         controller,
