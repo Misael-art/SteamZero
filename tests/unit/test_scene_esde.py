@@ -16,6 +16,7 @@ from steamzero.domain.scene_esde import (
     compile_theme,
     fidelity_report,
     interpolate,
+    resolve_asset_template,
 )
 
 _THEME = """
@@ -284,3 +285,98 @@ def test_fidelity_report_declares_coverage_and_assets() -> None:
     assert sorted(report["views"]) == ["gamelist", "system"]
     assert report["assets"] == ["art/background.webp"]
     assert 0.0 < report["coverage"] <= 1.0
+
+
+def test_per_system_art_becomes_a_template_not_a_rejected_path() -> None:
+    """Os ~92% da arte de um tema ES-DE passam por aqui.
+
+    `${system.theme}` é marcador de tempo de execução: só se sabe o valor quando
+    há um sistema em foco. A primeira versão tratava o caminho como literal e o
+    recusava por conter `${}`, o que descartava a arte por sistema inteira.
+    """
+    xml = """
+    <theme>
+      <variables><base>_inc/systems/physical-media</base></variables>
+      <view name="system">
+        <image name="capa"><pos>0 0</pos><path>${base}/${system.theme}.png</path></image>
+      </view>
+    </theme>
+    """
+    scene = compile_theme(xml, theme_id="d")
+    element = _elements(scene, "system")[0]
+
+    assert "asset" not in element
+    assert element["assetTemplate"] == {
+        "pattern": "_inc/systems/physical-media/{system}.png",
+        "parameter": "system",
+    }
+
+
+def test_asset_template_resolves_only_for_a_valid_system_id() -> None:
+    """O ponto onde um identificador externo vira caminho: a fronteira é aqui."""
+    pattern = "_inc/systems/physical-media/{system}.png"
+
+    assert resolve_asset_template(pattern, "snes") == "_inc/systems/physical-media/snes.png"
+
+    for hostile in ("../../etc/passwd", "a/b", "SNES", ""):
+        with pytest.raises(SteamZeroError) as excinfo:
+            resolve_asset_template(pattern, hostile)
+        assert excinfo.value.code == "E-THEME-UNSAFE"
+
+
+def test_template_that_would_escape_the_theme_is_refused() -> None:
+    xml = """
+    <theme><view name="system">
+      <image name="x"><pos>0 0</pos><path>../${system.theme}.png</path></image>
+    </view></theme>
+    """
+    scene = compile_theme(xml, theme_id="d")
+
+    assert "assetTemplate" not in _elements(scene, "system")[0]
+    assert any("asset recusado" in entry["reason"] for entry in scene["degraded"])
+
+
+def test_unknown_runtime_placeholder_degrades_instead_of_becoming_a_path() -> None:
+    xml = """
+    <theme><view name="system">
+      <image name="x"><pos>0 0</pos><path>art/${algo.inventado}.png</path></image>
+    </view></theme>
+    """
+    scene = compile_theme(xml, theme_id="d")
+
+    assert "assetTemplate" not in _elements(scene, "system")[0]
+    assert any("tempo de execução" in entry["reason"] for entry in scene["degraded"])
+
+
+def test_view_named_all_applies_to_every_view() -> None:
+    xml = '<theme><view name="all"><image name="x"><pos>0 0</pos></image></view></theme>'
+    scene = compile_theme(xml, theme_id="d")
+
+    assert {view["id"] for view in scene["views"]} == {"system", "gamelist", "menu"}
+    assert not any("view desconhecida" in e["reason"] for e in scene.get("degraded", []))
+
+
+def test_image_type_none_is_an_asked_for_absence_not_a_failure() -> None:
+    xml = """
+    <theme><view name="system">
+      <video name="v"><pos>0 0</pos><imageType>none</imageType></video>
+    </view></theme>
+    """
+    scene = compile_theme(xml, theme_id="d")
+
+    assert "binding" not in _elements(scene, "system")[0]
+    assert not any("slot de mídia" in e["reason"] for e in scene.get("degraded", []))
+
+
+def test_playtime_metadata_is_mapped() -> None:
+    xml = (
+        '<theme><view name="gamelist">'
+        '<text name="t"><metadata>playtime</metadata></text>'
+        "</view></theme>"
+    )
+    scene = compile_theme(xml, theme_id="d")
+
+    assert _elements(scene, "gamelist")[0]["binding"] == {
+        "source": "metadata",
+        "field": "playTime",
+    }

@@ -199,12 +199,32 @@ _METADATA_FIELDS = {
     "systemFullname": "platform",
     "sourceSystemName": "platform",
     "sourceSystemFullname": "platform",
+    # Tempo acumulado de jogo. Medido em uso real (`game-playtime` no xmb-menu).
+    "playtime": "playTime",
 }
 
+#: Marcadores que o ES-DE resolve em TEMPO DE EXECUÇÃO, conforme o sistema em
+#: foco — não são variáveis de tema e não têm valor durante a compilação.
+#: Medidos no xmb-menu: ``${system.fullName}`` (18 usos) e ``${system.theme}``
+#: (3 usos), e é por ``system.theme`` que passam os ~92% de arte por sistema.
+_RUNTIME_PLACEHOLDERS = {
+    "system.theme": "system",
+    "system.fullName": "systemFullName",
+}
+
+#: ``<view name="all">`` é o curinga do ES-DE: vale para todas as views.
+_VIEW_WILDCARD = "all"
 _VIEW_NAMES = frozenset({"system", "gamelist", "menu"})
 _ID_SAFE = re.compile(r"[^a-zA-Z0-9_-]")
 _HEX_COLOR = re.compile(r"^[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$")
+#: Variável de tema. O ponto NÃO entra: ``${system.theme}`` é marcador de tempo
+#: de execução e é tratado à parte, senão viraria "variável não declarada".
 _VARIABLE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
+_RUNTIME_VARIABLE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+)\}")
+#: Um identificador de sistema aceitável como substituição do template. Validado
+#: contra os 214 nomes reais de ``_inc/systems/_metadata-global/`` do xmb-menu:
+#: todos casam, nenhuma exceção. É o que impede ``{system}`` de virar travessia.
+SYSTEM_ID = re.compile(r"^[a-z0-9_][a-z0-9_-]*$")
 #: Caminhos de asset dentro do tema. Travessia, caminho absoluto e esquema são
 #: recusados à parte; aqui limitamos a forma e a extensão.
 _ASSET_SAFE = re.compile(
@@ -381,6 +401,11 @@ def _color(raw: str, degraded: _Degraded, where: str) -> str | None:
     return f"#{value.lower()}"
 
 
+def _reject_escaping(value: str) -> bool:
+    """Travessia, caminho absoluto e esquema de URL — as três formas de sair."""
+    return ".." in value or value.startswith("/") or "://" in value or "\\" in value
+
+
 def _asset(raw: str, degraded: _Degraded, where: str) -> str | None:
     """Aceita um caminho de asset relativo ao tema, recusando tudo que escapa.
 
@@ -392,7 +417,7 @@ def _asset(raw: str, degraded: _Degraded, where: str) -> str | None:
     value = raw.strip()
     if not value:
         return None
-    if ".." in value or value.startswith("/") or "://" in value or "\\" in value:
+    if _reject_escaping(value):
         degraded.add(where, f"caminho de asset recusado: {value!r}")
         return None
     value = value.removeprefix("./")
@@ -400,6 +425,62 @@ def _asset(raw: str, degraded: _Degraded, where: str) -> str | None:
         degraded.add(where, f"caminho de asset recusado: {value!r}")
         return None
     return value
+
+
+def asset_template(raw: str, degraded: _Degraded, where: str) -> dict[str, str] | None:
+    """Reconhece um caminho de arte POR SISTEMA e o publica como template.
+
+    ``${systemContentImagePath}/${system.theme}.png`` resolve, depois das
+    variáveis do tema, para ``_inc/systems/physical-media/${system.theme}.png``.
+    O ``${system.theme}`` só tem valor em tempo de execução, quando se sabe qual
+    sistema está em foco — e é por esse caminho que passam os ~92% da arte de um
+    tema ES-DE (medido: 55 de 59,5 MB no xmb-menu).
+
+    Tratar isso como caminho literal descartaria a arte por sistema inteira, que
+    foi o que a primeira versão fez. Emitir o template preserva a intenção e
+    mantém a fronteira: o renderizador só pode substituir por um identificador
+    que casa com ``SYSTEM_ID``, nunca por texto arbitrário.
+    """
+    value = raw.strip()
+    if not value:
+        return None
+    placeholders = _RUNTIME_VARIABLE.findall(value)
+    if not placeholders:
+        return None
+    unknown = [name for name in placeholders if name not in _RUNTIME_PLACEHOLDERS]
+    if unknown:
+        degraded.add(where, f"marcador de tempo de execução desconhecido: {sorted(set(unknown))}")
+        return None
+
+    pattern = _RUNTIME_VARIABLE.sub(
+        lambda match: "{" + _RUNTIME_PLACEHOLDERS[match.group(1)] + "}", value
+    )
+    if _reject_escaping(pattern):
+        degraded.add(where, f"caminho de asset recusado: {value!r}")
+        return None
+    pattern = pattern.removeprefix("./")
+    # A forma é validada com o marcador já substituído por um nome plausível:
+    # o que precisa ser seguro é o caminho FINAL, não o template.
+    probe = pattern.format(**dict.fromkeys(_RUNTIME_PLACEHOLDERS.values(), "sistema"))
+    if _reject_escaping(probe) or not _ASSET_SAFE.match(probe):
+        degraded.add(where, f"caminho de asset recusado: {value!r}")
+        return None
+    return {"pattern": pattern, "parameter": "system"}
+
+
+def resolve_asset_template(pattern: str, system_id: str) -> str:
+    """Substitui o marcador por um sistema concreto, recusando o que não casa.
+
+    Este é o ponto onde um identificador vindo de fora vira caminho. Validar
+    contra ``SYSTEM_ID`` aqui — e não confiar em quem chamou — é o que impede que
+    o template vire travessia.
+    """
+    if not SYSTEM_ID.match(system_id):
+        raise SteamZeroError(
+            "E-THEME-UNSAFE",
+            detail=f"identificador de sistema inválido: {system_id!r}",
+        )
+    return pattern.format(**dict.fromkeys(_RUNTIME_PLACEHOLDERS.values(), system_id))
 
 
 def _property(  # um ramo por família de propriedade; achatar esconderia o mapa
@@ -460,6 +541,9 @@ def _binding(node: ET.Element, tag: str, degraded: _Degraded, where: str) -> dic
         return {"source": "metadata", "field": target}
 
     image_type = (node.findtext("imageType") or "").strip()
+    if image_type.casefold() == "none":
+        # Declaração explícita de "sem mídia aqui" — ausência pedida, não falha.
+        return None
     if image_type:
         # ES-DE aceita lista de fallback: "cover,screenshot,miximage". O IR
         # guarda o primeiro que soubermos traduzir, que é a intenção primária.
@@ -522,9 +606,18 @@ def _element(
         raw_path = (node.findtext("path") or node.findtext("staticImage") or "").strip()
         if raw_path:
             resolved, unresolved = interpolate(raw_path, variables)
-            asset = None if unresolved else _asset(resolved, degraded, f"{where}/path")
-            if asset:
-                element["asset"] = asset
+            if not unresolved:
+                # Template ANTES de caminho literal: `${system.theme}` sobrevive à
+                # interpolação de variáveis e só aqui ganha significado. Testar
+                # literal primeiro o recusaria como caminho inseguro, que foi o
+                # que descartou a arte por sistema na primeira versão.
+                template = asset_template(resolved, degraded, f"{where}/path")
+                if template is not None:
+                    element["assetTemplate"] = template
+                else:
+                    asset = _asset(resolved, degraded, f"{where}/path")
+                    if asset:
+                        element["asset"] = asset
 
     binding = _binding(node, node.tag, degraded, where)
     if binding:
@@ -540,7 +633,10 @@ def _element(
     # Um elemento sem asset, sem vínculo, sem texto e sem layout não descreve
     # nada renderizável. Emiti-lo encheria a cena de nós vazios e inflaria a
     # cobertura declarada com elementos que não desenham um pixel.
-    if not any(key in element for key in ("layout", "asset", "binding", "text", "appearance")):
+    if not any(
+        key in element
+        for key in ("layout", "asset", "assetTemplate", "binding", "text", "appearance")
+    ):
         degraded.add(where, "elemento sem propriedade compreendida")
         return None
     return element
@@ -577,9 +673,13 @@ def _views(
     order: list[str] = []
     for view_node in view_nodes:
         names = [part.strip() for part in (view_node.get("name") or "").split(",")]
-        targets = [name for name in names if name in _VIEW_NAMES]
-        for unknown in (name for name in names if name and name not in _VIEW_NAMES):
-            degraded.add(f"view[{unknown}]", "view desconhecida no contrato ES-DE")
+        if _VIEW_WILDCARD in names:
+            # `<view name="all">` vale para todas as views do contrato.
+            targets = sorted(_VIEW_NAMES)
+        else:
+            targets = [name for name in names if name in _VIEW_NAMES]
+            for unknown in (name for name in names if name and name not in _VIEW_NAMES):
+                degraded.add(f"view[{unknown}]", "view desconhecida no contrato ES-DE")
         if not targets:
             continue
         elements: list[dict[str, Any]] = []
