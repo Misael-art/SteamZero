@@ -5,11 +5,12 @@
   "title": "Temas ES-DE: compilacao de layout, aquisicao e instalacao transacional",
   "domain": "themes",
   "implementation": "partial",
-  "integration": "feature-branch",
+  "integration": "integrated",
   "verification": "unit",
-  "operation": "unknown",
+  "operation": "degraded",
   "distribution": "not-packaged",
   "scopePaths": [
+    "docs/09-operations/evidence/2026-09-03-esde-catalogo-host/README.md",
     "docs/09-operations/evidence/2026-09-03-esde-layout/README.md",
     "src/steamzero/adapters/desktop_contracts.py",
     "src/steamzero/adapters/desktop_dashboard.py",
@@ -29,10 +30,11 @@
     "tests/unit/test_theme_import_esde_layout.py",
     "tests/unit/test_theme_sources.py"
   ],
-  "scopeDigest": "51c64500febc7f4aa783e7e120df37f986739a72abab8c019abc976400e66630",
+  "scopeDigest": "861c8d9ab10237037ac5a00efaa22357e97e364ede98b3780ad2c071c0373d6e",
   "dependsOn": [],
   "knownGaps": [
-    "GAP-THEME-ESDE-NO-PHYSICAL-PROOF"
+    "GAP-THEME-ESDE-NO-SCREEN",
+    "GAP-THEME-ESDE-SCENE-NOT-RENDERED"
   ],
   "acceptanceCriteria": [
     "Um XML de tema ES-DE compila no mesmo IR de cena emitido por scene_retrofe, sem segundo renderizador.",
@@ -83,9 +85,15 @@
       "reference": "tests/integration/test_theme_catalog_routes.py",
       "command": "rtk .venv/bin/python -m pytest tests/integration/test_theme_catalog_routes.py -q",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-03-esde-catalogo-host/README.md",
+      "command": "ciclo completo na release 2.0.0rc1-e571577faeda instalada: listar, instalar org.esde.xmb-menu (596 assets em 67s), gc com dono=0 orfaos, desinstalar preservando 474 blobs, gc aplicado recuperando 66,1 MB",
+      "result": "passed"
     }
   ],
-  "nextAction": "Provar na release instalada: listar o catalogo, instalar um tema real, desfazer e coletar o lixo, com captura PNG por etapa. As rotas estao ligadas e provadas por efeito em teste, mas nenhum tema foi instalado no host e nenhuma cena foi renderizada.",
+  "nextAction": "Construir a tela de temas que consome as rotas e renderizar uma cena ES-DE compilada. O ciclo esta provado na release instalada, mas NAO existe superficie QML que o consuma: sem tela nao ha captura PNG e o recurso nao chegou ao usuario. A cobertura de 95% e de compilacao; nenhuma cena foi renderizada.",
   "activeWorkstreams": [
     "WS-2026-09-TEMAS-ESDE"
   ],
