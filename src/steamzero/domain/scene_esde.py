@@ -267,6 +267,12 @@ class Selection:
     color_scheme: str = ""
     font_size: str = ""
     language: str = ""
+    #: A proporção é a dimensão que carrega a GEOMETRIA. Os temas medidos põem
+    #: ``<pos>``/``<size>`` dentro de ``<aspectRatio>``, um bloco por formato de
+    #: tela. Compilar sem escolher uma produzia cena com cobertura alta e dois
+    #: elementos posicionados: os demais existiam no IR sem nada que os
+    #: colocasse na tela, e nenhum renderizador consegue desenhar isso.
+    aspect_ratio: str = ""
 
     def to_dict(self) -> dict[str, str]:
         return {
@@ -276,6 +282,7 @@ class Selection:
                 ("colorScheme", self.color_scheme),
                 ("fontSize", self.font_size),
                 ("language", self.language),
+                ("aspectRatio", self.aspect_ratio),
             )
             if value
         }
@@ -283,6 +290,7 @@ class Selection:
 
 #: Blocos de seleção → atributo da ``Selection`` que os escolhe.
 _SELECTION_BLOCKS = (
+    ("aspectRatio", "aspect_ratio"),
     ("colorScheme", "color_scheme"),
     ("fontSize", "font_size"),
     ("language", "language"),
@@ -651,12 +659,21 @@ def _view_nodes(root: ET.Element, selection: Selection) -> list[ET.Element]:
     variante existe para expressar.
     """
     nodes = list(root.findall("view"))
-    if selection.variant:
-        for block in root.iter("variant"):
+    for tag, attribute in (("variant", "variant"), ("aspectRatio", "aspect_ratio")):
+        chosen = getattr(selection, attribute)
+        if not chosen:
+            continue
+        for block in root.iter(tag):
             names = {part.strip() for part in (block.get("name") or "").split(",")}
-            # ``all`` é o curinga do ES-DE: vale para qualquer variante escolhida.
-            if selection.variant in names or "all" in names:
+            # ``all`` é o curinga do ES-DE: vale para qualquer escolha.
+            if chosen in names or "all" in names:
                 nodes.extend(block.findall("view"))
+                # ``<aspectRatio>`` aninha ``<variant>`` nos temas medidos, e é
+                # nesse nível que a geometria específica de cada combinação mora.
+                for nested in block.iter("variant"):
+                    nested_names = {part.strip() for part in (nested.get("name") or "").split(",")}
+                    if not selection.variant or selection.variant in nested_names:
+                        nodes.extend(nested.findall("view"))
     return nodes
 
 
@@ -694,12 +711,42 @@ def _views(
                 order.append(target)
             bucket = collected[target]
             for compiled in elements:
+                existing = _find_element(bucket, compiled["id"])
+                if existing is not None:
+                    _merge_element(existing, compiled)
+                    continue
                 if len(bucket) >= MAX_ELEMENTS_PER_VIEW:
                     degraded.add(f"view[{target}]", f"limite de {MAX_ELEMENTS_PER_VIEW} elementos")
                     break
                 bucket.append(compiled)
 
     return [{"id": name, "elements": collected[name]} for name in order[:MAX_VIEWS]]
+
+
+def _find_element(bucket: list[dict[str, Any]], element_id: str) -> dict[str, Any] | None:
+    for candidate in bucket:
+        if candidate["id"] == element_id:
+            return candidate
+    return None
+
+
+def _merge_element(into: dict[str, Any], extra: dict[str, Any]) -> None:
+    """Funde duas declarações do MESMO elemento, a posterior vencendo empate.
+
+    Um tema ES-DE parte o elemento entre arquivos: ``theme.xml`` diz qual arte
+    ele usa e ``aspect-ratio-16-10.xml`` diz onde ele fica. São o mesmo
+    ``<image name="system-content">``, e o ES-DE os funde por nome dentro da
+    view. Empilhá-los como dois elementos produzia exatamente o que a medição
+    mostrou: um com arte e sem posição, outro com posição e sem arte, e nenhum
+    dos dois desenhável.
+    """
+    for key, value in extra.items():
+        if key in {"layout", "appearance"} and isinstance(value, dict):
+            merged = dict(into.get(key) or {})
+            merged.update(value)
+            into[key] = merged
+        elif key not in {"id", "kind"}:
+            into[key] = value
 
 
 def compile_theme(

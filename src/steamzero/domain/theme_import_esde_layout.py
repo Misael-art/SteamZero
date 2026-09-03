@@ -43,6 +43,33 @@ MAX_FILE_BYTES = 8 * 1024 * 1024
 #: O marcador de sistema, como aparece no XML de origem.
 _SYSTEM_TOKEN = "${system.theme}"  # noqa: S105 - marcador de template, não credencial
 
+#: Blocos de seleção que podem envolver um ``<include>``. O atributo de
+#: ``Selection`` que decide cada um vem junto: sem isso não dá para saber se o
+#: bloco foi escolhido, e seguir todos misturaria as sete proporções de tela.
+_SELECTION_TAGS = {
+    "aspectRatio": "aspect_ratio",
+    "colorScheme": "color_scheme",
+    "fontSize": "font_size",
+    "language": "language",
+    "variant": "variant",
+}
+
+
+def _selection_matches(block: ET.Element, selection: Selection | None) -> bool | None:
+    """O bloco casa com a seleção? ``None`` quando não há escolha a fazer.
+
+    Sem seleção para a dimensão, o bloco é seguido: recusá-lo descartaria o
+    tema inteiro de quem não escolheu nada, e o ES-DE também cai no primeiro
+    declarado. Com seleção, só o bloco nomeado entra — é o que impede a
+    geometria de 4:3 vazar sobre a de 16:10.
+    """
+    attribute = _SELECTION_TAGS[block.tag]
+    chosen = getattr(selection, attribute, "") if selection is not None else ""
+    if not chosen:
+        return None
+    names = {part.strip() for part in (block.get("name") or "").split(",")}
+    return chosen in names or "all" in names
+
 
 @dataclass
 class IncludeResult:
@@ -57,6 +84,11 @@ class IncludeResult:
     #: define. NÃO é o mesmo que "arquivo ausente", e confundir os dois faz o
     #: relatório culpar um arquivo inexistente em vez da seleção que falta.
     unresolved: list[str] = field(default_factory=list)
+    #: Includes que existem e NÃO foram seguidos porque pertencem a um bloco de
+    #: seleção diferente do escolhido — as outras seis proporções de tela, por
+    #: exemplo. É estado normal, e listar separado impede que a ausência deles
+    #: seja lida como arquivo faltando.
+    deselected: list[str] = field(default_factory=list)
 
     def report(self) -> dict[str, Any]:
         return {
@@ -66,6 +98,7 @@ class IncludeResult:
             "refused": list(self.refused),
             "systemIncludes": list(self.system_includes),
             "unresolved": list(self.unresolved),
+            "deselected": list(self.deselected),
         }
 
 
@@ -159,8 +192,36 @@ def resolve_includes(
         # que é a ordem em que o ES-DE as lê.
         variables.update(collect_variables(parsed, selection))
 
+        return expand(parsed, path, depth)
+
+    def expand(node: ET.Element, path: Path, depth: int) -> list[ET.Element]:
+        """Segue os ``<include>`` deste nível, inclusive dentro de seleção.
+
+        Um ``<include>`` aninhado num bloco de seleção não é caso raro: é como
+        o tema publica a geometria, uma proporção de tela por bloco
+        (``<aspectRatio name="16:10"><include>…</include></aspectRatio>``).
+        Tratar só o nível de topo preservava o bloco na árvore e nunca abria o
+        arquivo, e o resultado era cena com cobertura alta e quase nada
+        posicionado — elementos existiam no IR sem nada que os pusesse na tela.
+        """
         collected: list[ET.Element] = []
-        for child in parsed:
+        for child in node:
+            if child.tag in _SELECTION_TAGS:
+                matched = _selection_matches(child, selection)
+                if matched is False:
+                    for nested in child.iter("include"):
+                        target = (nested.text or "").strip()
+                        if target:
+                            result.deselected.append(f"{child.tag}={child.get('name')}: {target}")
+                    collected.append(child)
+                    continue
+                # Bloco escolhido (ou sem seleção declarada): o conteúdo entra
+                # com os includes já resolvidos, preservando a tag para que o
+                # compilador ainda saiba de qual seleção ele veio.
+                block = ET.Element(child.tag, dict(child.attrib))
+                block.extend(expand(child, path, depth))
+                collected.append(block)
+                continue
             if child.tag != "include":
                 collected.append(child)
                 continue
