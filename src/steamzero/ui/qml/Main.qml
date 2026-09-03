@@ -5885,7 +5885,71 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                            // Temas
+                            // Temas. Uma seção só, com duas abas: obter um tema e
+                            // editar a aparência são capacidades independentes
+                            // (AGENTS §10), mas pertencem ao mesmo lugar na
+                            // cabeça de quem usa. Abas, e não uma seção nova,
+                            // porque o índice do StackLayout vem da ordem de
+                            // `navigationSections` — inserir página aqui
+                            // deslocaria todas as seções seguintes.
+                            ColumnLayout {
+                                spacing: 0
+
+                                TabBar {
+                                    id: themeTabs
+                                    objectName: "themeTabs"
+                                    Layout.fillWidth: true
+                                    TabButton {
+                                        objectName: "themeCatalogTab"
+                                        text: qsTr("Obter temas")
+                                        Accessible.name: text
+                                        implicitHeight: 48
+                                    }
+                                    TabButton {
+                                        objectName: "themeEditorTab"
+                                        text: qsTr("Editar aparência")
+                                        Accessible.name: text
+                                        implicitHeight: 48
+                                    }
+                                }
+
+                                StackLayout {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    currentIndex: themeTabs.currentIndex
+
+                                    ScrollView {
+                                        id: themeCatalogScroll
+                                        clip: true
+                                        contentWidth: availableWidth
+                                        bottomPadding: root.bottomSafeInset
+                                        ThemeCatalogPanel {
+                                            id: themeCatalogPanel
+                                            objectName: "themeCatalogPanel"
+                                            width: Math.min(themeCatalogScroll.availableWidth,
+                                                            root.contentMaxWidth)
+                                            height: Math.max(themeCatalogScroll.availableHeight,
+                                                             implicitHeight)
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            backgroundColor: root.backgroundColor
+                                            surfaceColor: root.surfaceColor
+                                            raisedColor: root.raisedColor
+                                            borderColor: root.borderColor
+                                            textColor: root.textColor
+                                            mutedColor: root.mutedColor
+                                            cyanColor: root.cyanColor
+                                            cyanDarkColor: root.cyanDarkColor
+                                            greenColor: root.greenColor
+                                            amberColor: root.amberColor
+                                            redColor: root.redColor
+                                            compactLayout: root.compactLayout
+                                            requestAction: root.requestAction
+                                            onNotified: function(message, isError) {
+                                                root.notify(message, isError)
+                                            }
+                                        }
+                                    }
+
                             ScrollView {
                                 id: themeEditorScroll
                                 clip: true
@@ -5920,6 +5984,8 @@ ApplicationWindow {
                                         : (root._themeBridge.themeId || "")
                                     onApplied: root.refreshStatus(qsTr("Tema aplicado"))
                                     onExported: root.notify(qsTr("Tema exportado"), false)
+                                }
+                            }
                                 }
                             }
                             // Biblioteca editorial: usa somente os read models já
