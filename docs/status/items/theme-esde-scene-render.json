@@ -6,10 +6,12 @@
   "domain": "themes",
   "implementation": "partial",
   "integration": "integrated",
-  "verification": "dev",
-  "operation": "unknown",
-  "distribution": "not-packaged",
+  "verification": "hw",
+  "operation": "degraded",
+  "distribution": "installed",
   "scopePaths": [
+    "docs/09-operations/evidence/2026-09-03-cena-esde-host/01-cena-na-release-instalada.png",
+    "docs/09-operations/evidence/2026-09-03-cena-esde-host/README.md",
     "docs/09-operations/evidence/2026-09-03-cena-esde/01-cena-gamelist.png",
     "docs/09-operations/evidence/2026-09-03-cena-esde/02-cena-system-esparsa.png",
     "docs/09-operations/evidence/2026-09-03-cena-esde/README.md",
@@ -27,7 +29,7 @@
     "tests/qml/check_theme_scene_preview.qml",
     "tests/unit/test_theme_scene.py"
   ],
-  "scopeDigest": "beba83ab927a9df54636bf958e3bc1844bdf9a8d67d0d2f68106433c43dc8756",
+  "scopeDigest": "1e8943623f18b6e7dbe122a50f7ef780aa18cbe42165545177ab1a304ac6edb1",
   "dependsOn": [
     "SZ-THEME-IMPORT-ESDE-LAYOUT"
   ],
@@ -74,12 +76,18 @@
       "reference": "docs/09-operations/evidence/2026-09-03-cena-esde/01-cena-gamelist.png",
       "command": "gamelist do xmb-menu em 16:10 com geometria do tema e icones do pacote; rodape declara 8 de 28 desenhados e 31 assets resolvidos",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-03-cena-esde-host/README.md",
+      "command": "theme.scene.render na release 2.0.0rc1-51f6a5d7db49 instalada, sobre o xmb-menu ja no host: 31 assets resolvidos e 0 faltando, gamelist com 8 de 28 desenhaveis, e captura do QML instalado com sha256 identico ao de /opt/steamzero/current",
+      "result": "passed"
     }
   ],
-  "nextAction": "Desenhar os tipos que carregam o peso visual (carousel, video, helpSystem, textList, badges, rating) e substituir de fato a aparencia da central. Hoje a cena aparece numa previa sob demanda e nada foi ativado; nada foi medido em FPS, GPU ou memoria, e nada foi validado na release instalada.",
+  "nextAction": "Desenhar os tipos que carregam o peso visual (carousel, video, helpSystem, textList, badges, rating) e substituir de fato a aparencia da central. Corrigir tambem o vazamento de staging em acquire_and_install, que hoje deixa um diretorio vazio por instalacao nova.",
   "activeWorkstreams": [
     "WS-2026-09-CENA-ESDE"
   ],
   "updatedAt": "2026-09-03",
-  "notes": "Dois defeitos impediam qualquer renderizacao, e nenhum estava no renderizador. (1) resolve_includes so seguia include no topo do arquivo, e a geometria dos temas mora em <aspectRatio><include>: o bloco ficava na arvore e o arquivo nunca era aberto. (2) o mesmo elemento declarado em dois arquivos virava dois elementos, um com arte e sem posicao e outro com posicao e sem arte. Correcao de metrica junto: os 95,08% de cobertura reportados antes contavam elementos compilados, e os que carregam pos/size nunca eram visitados — dava para ter 95% e tela em branco. Selection ganhou aspect_ratio, a dimensao que a propria docstring ja listava e que a implementacao nao tinha. A primeira versao do renderizador desenhava elemento sem geometria no tamanho natural na origem, o que produzia captura impressionante e layout inventado; hoje ele nao desenha e declara o motivo."
+  "notes": "Dois defeitos impediam qualquer renderizacao, e nenhum estava no renderizador. (1) resolve_includes so seguia include no topo do arquivo, e a geometria dos temas mora em <aspectRatio><include>: o bloco ficava na arvore e o arquivo nunca era aberto. (2) o mesmo elemento declarado em dois arquivos virava dois elementos, um com arte e sem posicao e outro com posicao e sem arte. Correcao de metrica junto: os 95,08% de cobertura reportados antes contavam elementos compilados, e os que carregam pos/size nunca eram visitados — dava para ter 95% e tela em branco. Selection ganhou aspect_ratio, a dimensao que a propria docstring ja listava e que a implementacao nao tinha. A primeira versao do renderizador desenhava elemento sem geometria no tamanho natural na origem, o que produzia captura impressionante e layout inventado; hoje ele nao desenha e declara o motivo. Validado no host em 2026-09-03 na release 2.0.0rc1-51f6a5d7db49: os numeros batem com os do checkout, confirmando que as duas correcoes viajaram para a release. A validacao revelou um defeito VIZINHO: doctor passou de 1 para 4 arvores de staging orfas porque acquire_and_install preserva o staging apos sucesso (e onde mora o previous-theme.json do rollback) e numa instalacao NOVA nao ha tema anterior, entao o diretorio vazio fica orfao. Pertence a SZ-THEME-IMPORT-ESDE-LAYOUT e nao foi corrigido aqui."
 }
