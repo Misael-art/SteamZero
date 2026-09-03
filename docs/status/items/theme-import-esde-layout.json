@@ -12,6 +12,12 @@
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-03-esde-catalogo-host/README.md",
     "docs/09-operations/evidence/2026-09-03-esde-layout/README.md",
+    "docs/09-operations/evidence/2026-09-03-tela-temas-host/01-catalogo-no-host.png",
+    "docs/09-operations/evidence/2026-09-03-tela-temas-host/README.md",
+    "docs/09-operations/evidence/2026-09-03-tela-temas/01-catalogo.png",
+    "docs/09-operations/evidence/2026-09-03-tela-temas/02-instalado.png",
+    "docs/09-operations/evidence/2026-09-03-tela-temas/03-remocao-preserva.png",
+    "docs/09-operations/evidence/2026-09-03-tela-temas/04-espaco-recuperado.png",
     "docs/09-operations/evidence/2026-09-03-tela-temas/README.md",
     "src/steamzero/adapters/desktop_contracts.py",
     "src/steamzero/adapters/desktop_dashboard.py",
@@ -36,7 +42,7 @@
     "tests/unit/test_theme_import_esde_layout.py",
     "tests/unit/test_theme_sources.py"
   ],
-  "scopeDigest": "ad160eb98d9616ea7b634aad9d93064be88bb799e012869cb474b590c2f54f8c",
+  "scopeDigest": "7d6f9b8f791d634b7cc7dbdd3dae1e7eb0b3aa9244f7412887e4c22c354f63c1",
   "dependsOn": [],
   "knownGaps": [
     "GAP-THEME-ESDE-SCENE-NOT-RENDERED"
@@ -99,6 +105,12 @@
       "result": "passed"
     },
     {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-03-tela-temas-host/README.md",
+      "command": "ciclo na release 2.0.0rc1-603c36fdfaec instalada: instalar iconic (1906 assets, 143,1 MB) e playstation-x (1552 assets, 303,4 MB), desinstalar preservando 3030 blobs, gc recuperando 303,4 MB, store.verify sem faltante nem corrompido e 0 referencias quebradas no vizinho",
+      "result": "passed"
+    },
+    {
       "kind": "design",
       "reference": "docs/09-operations/evidence/2026-09-03-tela-temas/README.md",
       "command": "12 testes QML com clique real via qmltestrunner Qt 6.11.1 e quatro capturas do arco instalar/remover/recuperar",
@@ -110,5 +122,5 @@
     "WS-2026-09-TEMAS-ESDE"
   ],
   "updatedAt": "2026-09-03",
-  "notes": "Segundo emissor do IR, depois de scene_retrofe. As allowlists sairam de medicao em 130 XML reais dos cinco temas licenciados, nao de suposicao, e a medicao corrigiu quatro classificacoes erradas (itemMargin e itemSpacing sao pares; stationary e enum; scope aceita none). Zero dos 130 arquivos estava malformado, entao a maquinaria de reparo do scene_retrofe nao tem analogo aqui. O store nao tem contador de referencias por decisao: a posse e derivada dos manifestos instalados, o que torna a desinstalacao incapaz de quebrar um vizinho e dispensa restaurar blob no rollback. Quatro dos nove temas pedidos pelo operador ficaram de fora por nao declararem licenca. Correcao de 2026-09-03: dois numeros reportados antes estavam errados. O '~92% de arte por sistema' generalizava uma medicao de XML-contra-o-resto (o xmb-menu e 74% video e 16% fonte; o nso-menu e 74 MB de imagem e nada de video). E os '6,1 MB deduplicados entre temas' eram repeticao interna do proprio nso-menu, porque um contador unico somava as duas causas; AcquisitionReport agora separa bytesRepeatedInPackage de bytesSharedWithInstalled, com teste."
+  "notes": "Segundo emissor do IR, depois de scene_retrofe. As allowlists sairam de medicao em 130 XML reais dos cinco temas licenciados, nao de suposicao, e a medicao corrigiu quatro classificacoes erradas (itemMargin e itemSpacing sao pares; stationary e enum; scope aceita none). Zero dos 130 arquivos estava malformado, entao a maquinaria de reparo do scene_retrofe nao tem analogo aqui. O store nao tem contador de referencias por decisao: a posse e derivada dos manifestos instalados, o que torna a desinstalacao incapaz de quebrar um vizinho e dispensa restaurar blob no rollback. Quatro dos nove temas pedidos pelo operador ficaram de fora por nao declararem licenca. Correcao de 2026-09-03: dois numeros reportados antes estavam errados. O '~92% de arte por sistema' generalizava uma medicao de XML-contra-o-resto (o xmb-menu e 74% video e 16% fonte; o nso-menu e 74 MB de imagem e nada de video). E os '6,1 MB deduplicados entre temas' eram repeticao interna do proprio nso-menu, porque um contador unico somava as duas causas; AcquisitionReport agora separa bytesRepeatedInPackage de bytesSharedWithInstalled, com teste. A medicao no host em 2026-09-03 confirmou a correcao e enfraqueceu a premissa original do pedido: entre temas DISTINTOS o playstation-x compartilhou 18,7 KB em 303 MB (0,006%), enquanto a repeticao interna ao proprio pacote foi de 27,1 MB nele e 52,2 MB no iconic. O store paga pela dedup interna e pela atualizacao do mesmo tema, nao por arte comum entre temas."
 }
