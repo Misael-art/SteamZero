@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-CENA-ESDE",
+  "item": "SZ-THEME-ESDE-SCENE-RENDER",
+  "branch": "codex/cena-esde-2026-09-03",
+  "baseRef": "9a78475f2e0f39e3a4b41b5bd1e2b0ba3f1a5c8d",
+  "owner": "cena-esde-agent",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/domain/theme_scene.py",
+    "src/steamzero/ui/qml/SceneEsdeView.qml",
+    "src/steamzero/ui/qml/ThemeScenePreview.qml",
+    "tests/integration/test_scene_esde_view.py",
+    "tests/qml/check_scene_esde_view.qml",
+    "tests/qml/check_theme_scene_preview.qml",
+    "tests/unit/test_theme_scene.py"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/WORKLOG.md",
+    "src/steamzero/adapters/desktop_contracts.py",
+    "src/steamzero/adapters/desktop_dashboard.py",
+    "src/steamzero/adapters/desktop_ui.py",
+    "src/steamzero/domain/scene_esde.py",
+    "src/steamzero/domain/theme_import_esde_layout.py",
+    "src/steamzero/ui/qml/ThemeCatalogPanel.qml"
+  ],
+  "nextAction": "A cena desenha numa previa e nao substitui a aparencia da central. Faltam os tipos que carregam o peso visual (carousel, video, helpsystem, textlist, badges, rating) e a ativacao real do tema.",
+  "updatedAt": "2026-09-03"
+}

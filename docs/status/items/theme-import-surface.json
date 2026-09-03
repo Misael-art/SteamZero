@@ -15,7 +15,7 @@
     "tests/unit/test_theme_import_esde.py",
     "tests/qml/check_theme_editor_import.qml"
   ],
-  "scopeDigest": "96fbcbead8c55549f20ebc6717b8f78dbcd10adb8771e1a5858b213c141ce721",
+  "scopeDigest": "51b3ba990a93fac296bbe871a83cf41c08058ab1a01d261193f14f3b450ef555",
   "dependsOn": [
     "SZ-THEME-STUDIO"
   ],
@@ -82,5 +82,5 @@
   "nextAction": "Validar a jornada na release instalada com uma pasta ES-DE e um pacote SteamZero reais.",
   "activeWorkstreams": [],
   "updatedAt": "2026-09-03",
-  "notes": "O backend já implementa inspect/apply como tema editável. Esta frente fecha a descoberta e a jornada da superfície Temas sem duplicar o importador."
+  "notes": "O backend já implementa inspect/apply como tema editável. Esta frente fecha a descoberta e a jornada da superfície Temas sem duplicar o importador. 2026-09-03: scopeDigest renovado por mudanca da frente WS-2026-09-CENA-ESDE (rota theme.scene.render e o botao de previa). A evidencia NAO foi carimbada: foi reexecutada e passou (117 testes de contrato, dashboard e import)."
 }

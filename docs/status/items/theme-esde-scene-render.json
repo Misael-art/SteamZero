@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-THEME-ESDE-SCENE-RENDER",
+  "title": "Temas ES-DE: renderizacao da cena compilada",
+  "domain": "themes",
+  "implementation": "partial",
+  "integration": "integrated",
+  "verification": "dev",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "docs/09-operations/evidence/2026-09-03-cena-esde/01-cena-gamelist.png",
+    "docs/09-operations/evidence/2026-09-03-cena-esde/02-cena-system-esparsa.png",
+    "docs/09-operations/evidence/2026-09-03-cena-esde/README.md",
+    "src/steamzero/adapters/desktop_contracts.py",
+    "src/steamzero/adapters/desktop_dashboard.py",
+    "src/steamzero/adapters/desktop_ui.py",
+    "src/steamzero/domain/scene_esde.py",
+    "src/steamzero/domain/theme_import_esde_layout.py",
+    "src/steamzero/domain/theme_scene.py",
+    "src/steamzero/ui/qml/SceneEsdeView.qml",
+    "src/steamzero/ui/qml/ThemeCatalogPanel.qml",
+    "src/steamzero/ui/qml/ThemeScenePreview.qml",
+    "tests/integration/test_scene_esde_view.py",
+    "tests/qml/check_scene_esde_view.qml",
+    "tests/qml/check_theme_scene_preview.qml",
+    "tests/unit/test_theme_scene.py"
+  ],
+  "scopeDigest": "beba83ab927a9df54636bf958e3bc1844bdf9a8d67d0d2f68106433c43dc8756",
+  "dependsOn": [
+    "SZ-THEME-IMPORT-ESDE-LAYOUT"
+  ],
+  "knownGaps": [
+    "GAP-THEME-ESDE-SCENE-NOT-RENDERED"
+  ],
+  "acceptanceCriteria": [
+    "Um tema instalado compila a partir dos blobs do store, sem materializar a arvore de arte.",
+    "O include aninhado num bloco de selecao escolhido e seguido; o dos blocos nao escolhidos e registrado como nao selecionado, nunca como arquivo ausente.",
+    "Duas declaracoes do mesmo elemento em arquivos diferentes viram um elemento com arte e posicao.",
+    "Elemento sem geometria declarada nao e desenhado: posicao e tamanho nunca sao inventados.",
+    "Cor com alfa do ES-DE e reordenada para a ordem que o QML le.",
+    "Asset que nao resolve no store e reportado, nunca omitido da cena.",
+    "A tela distingue elementos compilados de elementos desenhados e nomeia o motivo de cada um que nao desenhou.",
+    "Toda dimensao de selecao escolhida na tela chega a rota que compila a cena."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_theme_scene.py",
+      "command": "rtk .venv/bin/python -m pytest tests/unit/test_theme_scene.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_scene_esde_view.py",
+      "command": "rtk .venv/bin/python -m pytest tests/integration/test_scene_esde_view.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-03-cena-esde/README.md",
+      "command": "medicao no xmb-menu instalado: seguir o include aninhado levou os elementos posicionados de 2 para 27, e a mesclagem por nome levou o gamelist de 1 para 8 elementos desenhados",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-03-cena-esde/README.md",
+      "command": "regressao provada por ausencia: com scene_esde.py e theme_import_esde_layout.py revertidos por git stash, o teste da mesclagem falha com dois elementos, um com asset e outro com layout",
+      "result": "passed"
+    },
+    {
+      "kind": "design",
+      "reference": "docs/09-operations/evidence/2026-09-03-cena-esde/01-cena-gamelist.png",
+      "command": "gamelist do xmb-menu em 16:10 com geometria do tema e icones do pacote; rodape declara 8 de 28 desenhados e 31 assets resolvidos",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Desenhar os tipos que carregam o peso visual (carousel, video, helpSystem, textList, badges, rating) e substituir de fato a aparencia da central. Hoje a cena aparece numa previa sob demanda e nada foi ativado; nada foi medido em FPS, GPU ou memoria, e nada foi validado na release instalada.",
+  "activeWorkstreams": [
+    "WS-2026-09-CENA-ESDE"
+  ],
+  "updatedAt": "2026-09-03",
+  "notes": "Dois defeitos impediam qualquer renderizacao, e nenhum estava no renderizador. (1) resolve_includes so seguia include no topo do arquivo, e a geometria dos temas mora em <aspectRatio><include>: o bloco ficava na arvore e o arquivo nunca era aberto. (2) o mesmo elemento declarado em dois arquivos virava dois elementos, um com arte e sem posicao e outro com posicao e sem arte. Correcao de metrica junto: os 95,08% de cobertura reportados antes contavam elementos compilados, e os que carregam pos/size nunca eram visitados — dava para ter 95% e tela em branco. Selection ganhou aspect_ratio, a dimensao que a propria docstring ja listava e que a implementacao nao tinha. A primeira versao do renderizador desenhava elemento sem geometria no tamanho natural na origem, o que produzia captura impressionante e layout inventado; hoje ele nao desenha e declara o motivo."
+}
