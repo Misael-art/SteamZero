@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "kind": "steamzero-theme-sources-v1",
+  "entries": [
+    {
+      "id": "org.esde.iconic",
+      "name": "Iconic",
+      "family": "esde",
+      "author": "Siddy212",
+      "credits": [
+        "Siddy212"
+      ],
+      "license": "CC0-1.0",
+      "licenseSource": "LICENSE",
+      "homepage": "https://github.com/Siddy212/iconic-es-de",
+      "source": {
+        "forge": "github",
+        "repo": "Siddy212/iconic-es-de",
+        "commit": "0a549ffbe5a392bd818ee4c11a7175b2372591e4"
+      }
+    },
+    {
+      "id": "org.esde.playstation-x",
+      "name": "PlayStation-X",
+      "family": "esde",
+      "author": "RobZombie9043",
+      "credits": [
+        "RobZombie9043",
+        "pajarorrojo (tema original para EmulationStation)"
+      ],
+      "license": "CC-BY-NC-SA-4.0",
+      "licenseSource": "README.md",
+      "homepage": "https://github.com/RobZombie9043/playstation-x-es-de",
+      "source": {
+        "forge": "github",
+        "repo": "RobZombie9043/playstation-x-es-de",
+        "commit": "78a6517bc75502951182442b136e0dc50b0ec432"
+      }
+    },
+    {
+      "id": "org.esde.nso-menu",
+      "name": "NSO Menu Interpreted",
+      "family": "esde",
+      "author": "anthonycaccese",
+      "credits": [
+        "anthonycaccese",
+        "rogs123"
+      ],
+      "license": "CC-BY-NC-SA-2.0",
+      "licenseSource": "README.md",
+      "homepage": "https://github.com/anthonycaccese/nso-menu-interpreted-es-de",
+      "source": {
+        "forge": "github",
+        "repo": "anthonycaccese/nso-menu-interpreted-es-de",
+        "commit": "fdf8858fce9792f5f4380e50f3c4c0907817b16c"
+      }
+    },
+    {
+      "id": "org.esde.xmb-menu",
+      "name": "XMB Menu",
+      "family": "esde",
+      "author": "anthonycaccese",
+      "credits": [
+        "anthonycaccese",
+        "InitialDin (XML original)"
+      ],
+      "license": "CC-BY-NC-SA-2.0",
+      "licenseSource": "README.md",
+      "homepage": "https://github.com/anthonycaccese/xmb-menu-es-de",
+      "source": {
+        "forge": "github",
+        "repo": "anthonycaccese/xmb-menu-es-de",
+        "commit": "afe3b7b61cb245609e9d0ef905033914baf7675d"
+      }
+    },
+    {
+      "id": "org.esde.modern",
+      "name": "Modern",
+      "family": "esde",
+      "author": "ES-DE",
+      "credits": [
+        "ES-DE"
+      ],
+      "license": "CC-BY-NC-SA-4.0",
+      "licenseSource": "LICENSE",
+      "homepage": "https://gitlab.com/es-de/themes/modern-es-de",
+      "source": {
+        "forge": "gitlab",
+        "repo": "es-de/themes/modern-es-de",
+        "commit": "692eb3672998d011a26373093de8319e43ae13f7"
+      }
+    }
+  ],
+  "excluded": [
+    {
+      "repo": "RobZombie9043/shinretro-revisited-es-de",
+      "reason": "não declara licença"
+    },
+    {
+      "repo": "Weestuarty-es-de/slick-es-de",
+      "reason": "não declara licença"
+    },
+    {
+      "repo": "VictorUnlocked/iisu-interpreted-es-de",
+      "reason": "não declara licença"
+    },
+    {
+      "repo": "anthonycaccese/retrofix-revisited-es-de",
+      "reason": "não declara licença"
+    }
+  ]
+}
