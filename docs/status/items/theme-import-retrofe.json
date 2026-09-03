@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "not-packaged",
-  "scopeDigest": "1b204003a6f93489fb40d5316a5cd421cf37c48456480d034729daa04ff3943c",
+  "scopeDigest": "b045d171f06e0a8bc58d0d7dba90c8699b7e92e951192d71b03c7e87a1652b9d",
   "scopePaths": [
     "src/steamzero/adapters/desktop_contracts.py",
     "src/steamzero/adapters/desktop_dashboard.py",
@@ -18,7 +18,9 @@
     "src/steamzero/domain/theme_import_retrofe.py",
     "tests/unit/test_theme_import_retrofe.py"
   ],
-  "dependsOn": ["SZ-THEME-ENGINE"],
+  "dependsOn": [
+    "SZ-THEME-ENGINE"
+  ],
   "knownGaps": [
     "GAP-THEME-RETROFE-QML-ENTRY",
     "GAP-THEME-RETROFE-ASSET-COPY"
@@ -58,6 +60,6 @@
   ],
   "nextAction": "Conectar a entrada visual na área Temas e copiar assets RetroFE somente após contrato de ativos e validação de licença.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-02",
+  "updatedAt": "2026-09-03",
   "notes": "A rota backend agora inspeciona e publica IR validado sem ativação automática. A entrada visual depende da frente QML compartilhada; assets não são copiados silenciosamente e a cena continua separada de theme.json."
 }

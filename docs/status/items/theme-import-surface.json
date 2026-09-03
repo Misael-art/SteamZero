@@ -15,7 +15,7 @@
     "tests/unit/test_theme_import_esde.py",
     "tests/qml/check_theme_editor_import.qml"
   ],
-  "scopeDigest": "77f0f0c0fc62311a9a7b220262046a0504928c1c0cb4c11b6a6488cc02c671fd",
+  "scopeDigest": "96fbcbead8c55549f20ebc6717b8f78dbcd10adb8771e1a5858b213c141ce721",
   "dependsOn": [
     "SZ-THEME-STUDIO"
   ],
@@ -81,6 +81,6 @@
   ],
   "nextAction": "Validar a jornada na release instalada com uma pasta ES-DE e um pacote SteamZero reais.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-02",
+  "updatedAt": "2026-09-03",
   "notes": "O backend já implementa inspect/apply como tema editável. Esta frente fecha a descoberta e a jornada da superfície Temas sem duplicar o importador."
 }

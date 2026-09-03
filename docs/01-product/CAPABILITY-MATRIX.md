@@ -21,7 +21,7 @@ host, que vive nos relatórios de certificação.
 | plataformas com bloqueio | 24 de 62 |
 | cores libretro exigidos | 41 |
 | cores libretro com instalador | 17 |
-| ações de UI publicadas | 123 |
+| ações de UI publicadas | 128 |
 | ações declaradas indisponíveis | 6 |
 
 ## Adapters e roteamento de lifecycle
