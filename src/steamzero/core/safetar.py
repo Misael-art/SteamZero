@@ -7,12 +7,13 @@ exige: ele sabe descrever **hardlinks** e **nós de dispositivo**, que o zip nã
 sabe. Um tar hostil que declare ``/dev/sda`` ou um hardlink para
 ``/etc/shadow`` precisa ser recusado no cabeçalho, antes de qualquer escrita.
 
-**Por que em fluxo.** Um tema ES-DE tem de 60 a 150 MB e ~92% disso é arte por
-sistema. Extrair para uma árvore temporária e só então ingerir gastaria o dobro
-do espaço e perderia a deduplicação: dois temas com o mesmo ícone escreveriam o
-arquivo duas vezes antes de alguém notar que é o mesmo. Aqui cada membro é
-entregue como bytes ao chamador, que decide o destino — e o chamador é o store
-endereçado por conteúdo, que grava uma vez só.
+**Por que em fluxo.** Um tema ES-DE tem de 60 a 150 MB, quase tudo em assets
+binários — e o perfil varia muito entre temas: o xmb-menu é 74% vídeo e 16%
+fonte, enquanto o nso-menu é 74 MB de imagem e nada de vídeo. Extrair para uma
+árvore temporária e só então ingerir gastaria o dobro do espaço e escreveria
+duas vezes um arquivo que o pacote repete. Aqui cada membro é entregue como
+bytes ao chamador, que decide o destino — e o chamador é o store endereçado por
+conteúdo, que grava uma vez só.
 
 Nada é escrito por este módulo. Ele lê, valida e entrega.
 """

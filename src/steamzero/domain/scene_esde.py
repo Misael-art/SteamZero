@@ -206,7 +206,7 @@ _METADATA_FIELDS = {
 #: Marcadores que o ES-DE resolve em TEMPO DE EXECUÇÃO, conforme o sistema em
 #: foco — não são variáveis de tema e não têm valor durante a compilação.
 #: Medidos no xmb-menu: ``${system.fullName}`` (18 usos) e ``${system.theme}``
-#: (3 usos), e é por ``system.theme`` que passam os ~92% de arte por sistema.
+#: (3 usos), e é por ``system.theme`` que passa toda a arte por sistema.
 _RUNTIME_PLACEHOLDERS = {
     "system.theme": "system",
     "system.fullName": "systemFullName",
@@ -433,8 +433,9 @@ def asset_template(raw: str, degraded: _Degraded, where: str) -> dict[str, str] 
     ``${systemContentImagePath}/${system.theme}.png`` resolve, depois das
     variáveis do tema, para ``_inc/systems/physical-media/${system.theme}.png``.
     O ``${system.theme}`` só tem valor em tempo de execução, quando se sabe qual
-    sistema está em foco — e é por esse caminho que passam os ~92% da arte de um
-    tema ES-DE (medido: 55 de 59,5 MB no xmb-menu).
+    sistema está em foco — e é por esse caminho que passa a arte por sistema, que
+    um tema publica para as centenas de consoles que conhece (223 nomes
+    distintos no xmb-menu).
 
     Tratar isso como caminho literal descartaria a arte por sistema inteira, que
     foi o que a primeira versão fez. Emitir o template preserva a intenção e

@@ -20,10 +20,17 @@ Um contador de referências teria feito o rollback ter que desfazer incrementos,
 e um incremento perdido no meio de uma queda corromperia a contabilidade
 silenciosamente. É a razão de ele não existir.
 
-**Ingestão em fluxo.** O tarball tem de 60 a 150 MB e ~92% é arte por sistema.
-Cada membro vai do tar direto ao store, sem materializar a árvore: gasta metade
-do espaço e deduplica na entrada, em vez de descobrir depois que dois temas
-gravaram o mesmo ícone.
+**Ingestão em fluxo.** O tarball tem de 60 a 150 MB, quase tudo binário. Cada
+membro vai do tar direto ao store, sem materializar a árvore: gasta metade do
+espaço e unifica na entrada o que o próprio pacote repete.
+
+**Sobre a economia, com o número medido.** Entre xmb-menu e nso-menu, dois temas
+ES-DE reais, os blobs em comum foram **um**. Temas ES-DE trazem a própria arte,
+as próprias fontes e o próprio fundo; eles não dividem acervo. A deduplicação
+paga em dois casos que existem de verdade — duplicatas dentro do mesmo pacote
+(6,1 MB de 80 MB no nso-menu) e duas versões do mesmo tema, onde a maior parte
+dos arquivos é idêntica — mas prometer economia entre temas distintos seria
+contrariar a medição.
 """
 
 from __future__ import annotations
@@ -56,12 +63,31 @@ _INGEST_LIMITS = SafeTarLimits(
 
 @dataclass
 class AcquisitionReport:
-    """O que entrou, o que já existia e o que foi recusado."""
+    """O que entrou, o que já existia e o que foi recusado.
+
+    A economia é contada em DUAS colunas separadas, e a separação foi paga com
+    uma conclusão errada: um único contador de "deduplicado" fez o nso-menu
+    parecer ter reaproveitado 6,1 MB do xmb-menu já instalado. Medindo blob a
+    blob depois, os dois temas compartilhavam **um** arquivo. Os 6,1 MB eram o
+    nso deduplicando contra si mesmo — 53 arquivos repetidos dentro do próprio
+    pacote.
+
+    As duas economias são reais e têm causas diferentes:
+
+    - ``bytes_repeated_in_package``: o pacote traz o mesmo arquivo mais de uma
+      vez. Acontece sempre, é interno e não diz nada sobre outros temas.
+    - ``bytes_shared_with_installed``: o arquivo já estava no store por causa de
+      OUTRO tema. É esta que sustenta a promessa de compartilhamento, e é a que
+      precisa ser olhada antes de afirmar que dois temas dividem assets.
+
+    Somá-las num número só é o que transforma uma medição em alegação errada.
+    """
 
     theme_id: str
     files: int = 0
     bytes_ingested: int = 0
-    bytes_deduplicated: int = 0
+    bytes_repeated_in_package: int = 0
+    bytes_shared_with_installed: int = 0
     skipped: int = 0
     assets: dict[str, str] = field(default_factory=dict)
 
@@ -70,7 +96,8 @@ class AcquisitionReport:
             "themeId": self.theme_id,
             "files": self.files,
             "bytesIngested": self.bytes_ingested,
-            "bytesDeduplicated": self.bytes_deduplicated,
+            "bytesRepeatedInPackage": self.bytes_repeated_in_package,
+            "bytesSharedWithInstalled": self.bytes_shared_with_installed,
             "skipped": self.skipped,
             "assetCount": len(self.assets),
         }
@@ -83,11 +110,17 @@ def ingest_archive(
 ) -> AcquisitionReport:
     """Move o conteúdo do tarball para o store, um membro por vez.
 
-    Devolve o mapa ``caminho lógico -> digest`` que vira o manifesto do tema. O
-    que já estava no store conta como deduplicado em vez de ingerido — é esse
-    número que mostra a economia real quando o segundo tema chega.
+    Devolve o mapa ``caminho lógico -> digest`` que vira o manifesto do tema.
+
+    O que já estava no store é classificado por ORIGEM: se este mesmo pacote já
+    o trouxe, é repetição interna; se não, veio de outro tema. Sem separar as
+    duas, um pacote com muitas duplicatas próprias parece estar reaproveitando
+    o acervo alheio — foi exatamente o erro cometido em 2026-09-03.
     """
     report = AcquisitionReport(theme_id=source.id)
+    # Digests que ESTE pacote já entregou, para distinguir repetição interna de
+    # compartilhamento com o que já estava instalado.
+    seen_in_package: set[str] = set()
     for member in iter_members(
         archive,
         limits=_INGEST_LIMITS,
@@ -95,7 +128,8 @@ def ingest_archive(
         allowed_suffixes=ALLOWED_SUFFIXES,
     ):
         digest = digest_bytes(member.payload)
-        already = store.has(digest)
+        already_stored = store.has(digest)
+        repeated_here = digest in seen_in_package
         try:
             stored = store.put(member.path, member.payload)
         except SteamZeroError as exc:
@@ -105,10 +139,13 @@ def ingest_archive(
             # mantém visível que algo do pacote não entrou.
             report.skipped += 1
             continue
+        seen_in_package.add(stored.digest)
         report.assets[member.path] = stored.digest
         report.files += 1
-        if already:
-            report.bytes_deduplicated += member.size
+        if repeated_here:
+            report.bytes_repeated_in_package += member.size
+        elif already_stored:
+            report.bytes_shared_with_installed += member.size
         else:
             report.bytes_ingested += member.size
     if not report.assets:

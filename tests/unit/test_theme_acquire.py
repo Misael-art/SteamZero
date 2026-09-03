@@ -91,10 +91,12 @@ def test_second_theme_with_identical_art_pays_only_for_what_is_new(
     report_a = ingest_archive(first, _source("org.esde.a"), store)
     report_b = ingest_archive(second, _source("org.esde.b"), store)
 
-    assert report_a.bytes_deduplicated == 0
+    assert report_a.bytes_shared_with_installed == 0
     assert report_a.bytes_ingested == len(shared) + len(b"<theme>a</theme>")
-    # O segundo tema paga so pelo que e dele.
-    assert report_b.bytes_deduplicated == len(shared)
+    # O segundo tema paga so pelo que e dele, e o reaproveitado e contado na
+    # coluna de COMPARTILHAMENTO, nao na de repeticao interna.
+    assert report_b.bytes_shared_with_installed == len(shared)
+    assert report_b.bytes_repeated_in_package == 0
     assert report_b.bytes_ingested == len(b"<theme>bb</theme>")
     # Tres blobs, nao quatro: o compartilhado tem um so.
     assert store.usage()["blobs"] == 3
@@ -299,3 +301,53 @@ def test_installed_manifest_is_valid_json_with_sorted_assets(
 
     assert list(manifest["assets"]) == sorted(manifest["assets"])
     assert manifest["kind"] == "steamzero-theme-v1"
+
+
+def test_internal_repetition_is_not_counted_as_sharing_with_other_themes(
+    store: ThemeAssetStore, tmp_path: Path
+) -> None:
+    """A distinção foi paga com uma conclusão errada, em 2026-09-03.
+
+    Um contador único de "deduplicado" fez o nso-menu parecer ter reaproveitado
+    6,1 MB do xmb-menu já instalado. Medindo blob a blob, os dois temas
+    compartilhavam UM arquivo: os 6,1 MB eram o nso deduplicando contra si
+    mesmo, 53 arquivos repetidos dentro do próprio pacote.
+
+    Somar as duas causas num número só é o que transforma uma medição numa
+    alegação errada, e é isto que este teste impede de voltar.
+    """
+    repetido = b"o mesmo icone em dois caminhos do proprio pacote" * 16
+    archive = _tarball(
+        tmp_path / "t.tar.gz",
+        {"a/icone.png": repetido, "b/icone.png": repetido, "theme.xml": b"<theme/>"},
+    )
+
+    report = ingest_archive(archive, _source(), store)
+
+    # Nenhum outro tema estava instalado: compartilhamento tem de ser zero.
+    assert report.bytes_shared_with_installed == 0
+    assert report.bytes_repeated_in_package == len(repetido)
+    assert report.files == 3
+    # Dois blobs para tres arquivos: o repetido entrou uma vez.
+    assert store.usage()["blobs"] == 2
+
+
+def test_the_two_savings_columns_are_reported_separately(
+    store: ThemeAssetStore, tmp_path: Path
+) -> None:
+    """Um pacote pode ter as DUAS economias ao mesmo tempo, e elas não se
+    misturam: cada uma responde a uma pergunta diferente."""
+    compartilhado = b"veio do tema ja instalado" * 8
+    proprio = b"repetido dentro deste pacote" * 8
+    primeiro = _tarball(tmp_path / "1.tar.gz", {"s.png": compartilhado, "x.xml": b"<a/>"})
+    ingest_archive(primeiro, _source("org.esde.primeiro"), store)
+
+    segundo = _tarball(
+        tmp_path / "2.tar.gz",
+        {"s.png": compartilhado, "p1.png": proprio, "p2.png": proprio, "y.xml": b"<b/>"},
+    )
+    report = ingest_archive(segundo, _source("org.esde.segundo"), store)
+
+    assert report.bytes_shared_with_installed == len(compartilhado)
+    assert report.bytes_repeated_in_package == len(proprio)
+    assert report.bytes_ingested == len(proprio) + len(b"<b/>")
