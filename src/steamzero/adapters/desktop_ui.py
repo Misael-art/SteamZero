@@ -691,6 +691,17 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             # `apply` explícito: a prévia é o padrão, e apagar blob do usuário
             # exige pedido, não omissão.
             return self._dashboard().theme_store_gc(apply=payload.get("apply") is True)
+        if path == "/theme/scene/render":
+            # Seleção por campo nomeado, nunca posicional: trocar variante por
+            # esquema de cor compilaria um tema diferente sem erro nenhum.
+            return self._dashboard().theme_scene_render(
+                self._required_string(payload, "themeId"),
+                system_id=payload.get("systemId") or None,
+                variant=str(payload.get("variant") or ""),
+                color_scheme=str(payload.get("colorScheme") or ""),
+                font_size=str(payload.get("fontSize") or ""),
+                aspect_ratio=str(payload.get("aspectRatio") or ""),
+            )
         if path == "/theme/import/esde/inspect":
             return self._dashboard().theme_import_esde_inspect(
                 self._required_string(payload, "source"),

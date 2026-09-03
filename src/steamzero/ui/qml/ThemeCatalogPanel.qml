@@ -312,6 +312,19 @@ Rectangle {
                                     Accessible.name: text
                                     onClicked: panel.rollbackTheme(modelData.id)
                                 }
+                                DarkButton {
+                                    objectName: "previewButton_" + modelData.id
+                                    // Só para tema instalado: a cena é compilada
+                                    // dos arquivos no store, que só existem
+                                    // depois da instalação.
+                                    visible: modelData.installed === true
+                                    text: qsTr("Ver cena")
+                                    enabled: panel.busyThemeId === ""
+                                    Layout.minimumHeight: 48
+                                    Accessible.name: text + " " + (modelData.name || modelData.id)
+                                    onClicked: previewDialog.show(modelData.id,
+                                                                  modelData.name || modelData.id)
+                                }
                                 Item { Layout.fillWidth: true }
                                 DarkButton {
                                     objectName: "uninstallButton_" + modelData.id
@@ -478,5 +491,37 @@ Rectangle {
             wrapMode: Text.WordWrap
         }
         onAccepted: panel.applyGarbage()
+    }
+
+    // Prévia da cena. Não é confirmação: abre grande porque o que se avalia
+    // aqui é layout, e um retângulo pequeno não deixaria julgar posição.
+    Dialog {
+        id: previewDialog
+        objectName: "previewDialog"
+        anchors.centerIn: parent
+        modal: true
+        width: Math.min(panel.width - 32, 1100)
+        height: Math.min(panel.height - 32, 780)
+        standardButtons: Dialog.Close
+        title: qsTr("Cena de %1").arg(previewDialog.themeName)
+
+        property string themeId: ""
+        property string themeName: ""
+
+        function show(identifier, name) {
+            previewDialog.themeId = identifier
+            previewDialog.themeName = name
+            previewDialog.open()
+        }
+
+        contentItem: ThemeScenePreview {
+            objectName: "scenePreview"
+            requestAction: panel.requestAction
+            themeId: previewDialog.themeId
+            surfaceColor: panel.surfaceColor
+            borderColor: panel.borderColor
+            textColor: panel.textColor
+            mutedColor: panel.mutedColor
+        }
     }
 }

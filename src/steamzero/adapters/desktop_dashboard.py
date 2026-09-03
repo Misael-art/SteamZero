@@ -45,10 +45,12 @@ from steamzero.core.session_state import SESSION_OWNER
 from steamzero.core.state import StateStore
 from steamzero.diagnostics.doctor import run_doctor
 from steamzero.domain import (
+    scene_esde,
     theme_acquire,
     theme_assets,
     theme_import_esde,
     theme_import_retrofe,
+    theme_scene,
     theme_sources,
 )
 from steamzero.domain.bios_sources import approved_bios_sources, resolve_approved_bios_source
@@ -1888,6 +1890,36 @@ class DesktopDashboard:
         store = self._theme_store()
         live = theme_assets.live_digests(theme_assets.load_installed_manifests(paths.themes_dir()))
         return store.collect_garbage(live, dry_run=not apply)
+
+    def theme_scene_render(
+        self,
+        theme_id: str,
+        *,
+        system_id: str | None = None,
+        variant: str = "",
+        color_scheme: str = "",
+        font_size: str = "",
+        aspect_ratio: str = "",
+    ) -> dict[str, Any]:
+        """Compila o tema instalado e devolve a cena com os assets resolvidos.
+
+        As quatro dimensões de seleção não são refinamento: a proporção carrega
+        a GEOMETRIA e o esquema de cor carrega as variáveis de fundo. Sem
+        escolhê-las o tema compila e não desenha — foi o que a medição no
+        xmb-menu mostrou, com 2 de 27 elementos posicionados.
+        """
+        rendered = theme_scene.render_scene(
+            theme_id,
+            system_id=system_id,
+            selection=scene_esde.Selection(
+                variant=variant,
+                color_scheme=color_scheme,
+                font_size=font_size,
+                aspect_ratio=aspect_ratio,
+            ),
+        )
+        rendered["selections"] = theme_scene.available_selections_for(theme_id)
+        return rendered
 
     def theme_import_retrofe_inspect(self, source: str) -> dict[str, Any]:
         """Inspeciona layouts RetroFE sem instalar ou ativar uma cena."""

@@ -1328,6 +1328,23 @@ def handheld_ui_contracts() -> dict[str, Any]:
             schema=_schema(apply="boolean"),
         ),
         _action(
+            "theme.scene.render",
+            "Renderizar a cena do tema instalado",
+            "/theme/scene/render",
+            service="system",
+            screen="system",
+            control="theme-scene-render",
+            schema=_schema(
+                "themeId",
+                themeId="string",
+                systemId="string",
+                variant="string",
+                colorScheme="string",
+                fontSize="string",
+                aspectRatio="string",
+            ),
+        ),
+        _action(
             "theme.import.esde.inspect",
             "Examinar tema ES-DE antes de importar",
             "/theme/import/esde/inspect",
