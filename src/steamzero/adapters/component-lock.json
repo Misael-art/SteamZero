@@ -343,6 +343,17 @@
       }
     },
     {
+      "id": "vita3k",
+      "manifestHash": "8f293b91f1a78a968554a7938745f20b20800250fc3611c02da3d50ef749e4ae",
+      "source": {
+        "type": "appimage",
+        "version": "continuous-2026-09-02",
+        "priority": 1,
+        "url": "https://github.com/Vita3K/Vita3K/releases/download/continuous/Vita3K-x86_64.AppImage",
+        "sha256": "bf05f9b9a69507b7806fb8fc892761da4cbf0565d409d5b87b515bd297ce9f8c"
+      }
+    },
+    {
       "id": "xemu",
       "manifestHash": "91a3a57c39b2f035323fd2d749cd4f44280da4f4c3985228fd1bf302d435865a",
       "source": {

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "vita3k",
+  "kind": "emulator",
+  "presentation": {
+    "displayName": "Vita3K",
+    "iconAsset": "../assets/playstation-vita.svg"
+  },
+  "platforms": [
+    "playstation-vita"
+  ],
+  "capabilities": [
+    "detect",
+    "status",
+    "install",
+    "update",
+    "uninstall",
+    "configure",
+    "verify",
+    "repair",
+    "backup",
+    "restore"
+  ],
+  "sources": [
+    {
+      "type": "appimage",
+      "version": "continuous-2026-09-02",
+      "priority": 1,
+      "url": "https://github.com/Vita3K/Vita3K/releases/download/continuous/Vita3K-x86_64.AppImage",
+      "sha256": "bf05f9b9a69507b7806fb8fc892761da4cbf0565d409d5b87b515bd297ce9f8c"
+    }
+  ],
+  "configFormat": "none",
+  "verify": {
+    "smokeTest": [
+      "--appimage-version"
+    ]
+  },
+  "license": "GPL-2.0-or-later",
+  "upstream": "https://github.com/Vita3K/Vita3K",
+  "notes": "AppImage x86_64 do release 'continuous', fixado pelo SHA-256 publicado na API do GitHub em 2026-09-02. O upstream nao publica no Flathub (verificado: ref org.vita3k.Vita3K ausente) e usa release rolante, entao o hash fixado envelhece: a verificacao de integridade recusa o download quando o upstream troca o binario, e a atualizacao do pin e deliberada, nao automatica. O Vita3K usa config YAML, formato que o schema de adapter ainda nao lista; `none` declara que o produto NAO edita a configuracao dele, em vez de afirmar um formato que o contrato nao suporta. NAO declara `requiresFirmware`: a verificacao de firmware do produto e Switch-only (`list_firmware_key_items(\"switch\")`, lacuna GAP-FIRMWARE-SWITCH-ONLY), entao declarar aqui prometeria uma checagem que nao existe. O manifesto da plataforma segue publicando `requirements: [keys, firmware]` como informacao ao usuario."
+}

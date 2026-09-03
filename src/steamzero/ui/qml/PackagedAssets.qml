@@ -40,6 +40,7 @@ QtObject {
         "playstation-2.svg",
         "playstation-3.svg",
         "playstation-portable.svg",
+        "playstation-vita.svg",
         "playstation.svg",
         "retroarch.svg",
         "ryubing.png",
