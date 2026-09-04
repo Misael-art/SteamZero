@@ -35,12 +35,29 @@ def _write_manifest(steamapps: Path, app_id: str, name: str) -> None:
     )
 
 
+#: Tipos declarados no `appinfo.vdf`, como o host os publica. `Game` com
+#: maiúscula e `game` minúscula convivem na MESMA leitura do acervo real.
+_TYPES = {
+    "620": "Game",
+    "1145360": "game",
+    "3311720": "Demo",
+    "1493710": "Tool",
+    "431960": "Application",
+    _LSFG_APP_ID: "Application",
+}
+
+
 @pytest.fixture
 def steam_root(tmp_path: Path) -> Path:
     steamapps = tmp_path / "Steam" / "steamapps"
     steamapps.mkdir(parents=True)
     _write_manifest(steamapps, "620", "Portal 2")
     _write_manifest(steamapps, "1145360", "Hades")
+    _write_manifest(steamapps, "3311720", "Gimmick! 2 Demo")
+    # Ferramentas instaladas junto: o appmanifest delas é indistinguível do de
+    # um jogo, e por isso o acervo publicado trazia Proton e runtimes.
+    _write_manifest(steamapps, "1493710", "Proton Experimental")
+    _write_manifest(steamapps, "431960", "Wallpaper Engine")
     # O LSFG não é um jogo do usuário: é a ferramenta que o próprio projeto
     # instala. Contá-lo aqui reintroduziria a diferença que este teste fecha.
     _write_manifest(steamapps, _LSFG_APP_ID, "Lossless Scaling")
@@ -48,10 +65,10 @@ def steam_root(tmp_path: Path) -> Path:
 
 
 def test_the_steam_library_reaches_the_launcher_catalog(steam_root: Path) -> None:
-    games = steam_catalog_games(roots=(steam_root,))
+    games = steam_catalog_games(roots=(steam_root,), types=_TYPES)
 
     identifiers = {game.id for game in games}
-    assert identifiers == {"620", "1145360"}, (
+    assert identifiers == {"620", "1145360", "3311720"}, (
         "os jogos Steam instalados precisam chegar ao acervo do Launcher; sem "
         "isso eles ficam inalcançáveis em Game Mode, onde não há desktop"
     )
@@ -64,12 +81,40 @@ def test_the_steam_library_reaches_the_launcher_catalog(steam_root: Path) -> Non
         "e chamar `emulation launch --game-id 620` passaria um AppID a um "
         "contrato que espera id canônico de emulação"
     )
-    assert {game.title for game in games} == {"Portal 2", "Hades"}
+    assert {game.title for game in games} == {"Portal 2", "Hades", "Gimmick! 2 Demo"}
+
+
+def test_tools_and_runtimes_never_reach_the_game_grid(steam_root: Path) -> None:
+    """Proton e runtimes têm o mesmo appmanifest de um jogo; só o tipo separa.
+
+    No host, dos 15 apps instalados apenas 7 eram jogos. Publicar os 15 faria a
+    contagem bater com a central — e colocaria `Proton Experimental` como cartão
+    na grade do usuário em Game Mode. O número certo pelo motivo errado.
+    """
+    identifiers = {game.id for game in steam_catalog_games(roots=(steam_root,), types=_TYPES)}
+
+    assert "1493710" not in identifiers, "Proton Experimental não é jogo"
+    assert "431960" not in identifiers, "Wallpaper Engine é aplicativo, não jogo"
+
+
+def test_without_the_classifier_the_library_still_shows_up(steam_root: Path) -> None:
+    """Sem `appinfo.vdf` não dá para separar; esconder o acervo é pior.
+
+    A degradação escolhida publica tudo: o usuário vê seus jogos com algumas
+    ferramentas juntas, em vez de uma home Steam vazia (AGENTS.md §8).
+    """
+    identifiers = {game.id for game in steam_catalog_games(roots=(steam_root,), types={})}
+
+    assert {"620", "1145360", "3311720"} <= identifiers
+    assert "1493710" in identifiers, (
+        "sem classificação não se pode afirmar que é ferramenta; omitir seria "
+        "esconder o que talvez seja jogo do usuário"
+    )
 
 
 def test_the_home_gets_a_steam_section(steam_root: Path) -> None:
     emulation = (CatalogGame(id="celeste", title="Celeste", platform="nes-famicom"),)
-    catalog = (*emulation, *steam_catalog_games(roots=(steam_root,)))
+    catalog = (*emulation, *steam_catalog_games(roots=(steam_root,), types=_TYPES))
 
     sections = _sections_from_catalog(catalog)
     by_id = {section.id: section for section in sections}
@@ -78,7 +123,7 @@ def test_the_home_gets_a_steam_section(steam_root: Path) -> None:
         "a home agrupa por sistema; sem uma seção Steam os jogos entrariam em "
         "`outros` ou sumiriam da navegação por controle"
     )
-    assert set(by_id["steam"].items) == {"620", "1145360"}
+    assert set(by_id["steam"].items) == {"620", "1145360", "3311720"}
 
 
 def test_the_published_count_stops_diverging_from_the_central(steam_root: Path) -> None:
@@ -86,12 +131,12 @@ def test_the_published_count_stops_diverging_from_the_central(steam_root: Path) 
         CatalogGame(id=f"g{index}", title=f"Jogo {index}", platform="nes-famicom")
         for index in range(3)
     )
-    steam = steam_catalog_games(roots=(steam_root,))
+    steam = steam_catalog_games(roots=(steam_root,), types=_TYPES)
     catalog = (*emulation, *steam)
 
     summary = catalog_summary(None, catalog, [])
 
-    assert summary["games"] == len(emulation) + len(steam) == 5, (
+    assert summary["games"] == len(emulation) + len(steam) == 6, (
         "o rodapé do Launcher precisa contar o mesmo acervo que a central "
         "publica; enquanto contar só emulação, os dois números discordam sem "
         "dizer de que escopo cada um fala"

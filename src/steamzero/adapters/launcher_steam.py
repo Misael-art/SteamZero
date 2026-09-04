@@ -18,11 +18,12 @@ defeito que este módulo fecha.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from steamzero.adapters.launcher_catalog import CatalogGame
 from steamzero.adapters.lsfg import LSFG_APP_ID
+from steamzero.adapters.steam_appinfo import PLAYABLE_APP_TYPES, app_types
 from steamzero.adapters.steam_gameplay import (
     default_steam_roots,
     library_roots,
@@ -34,17 +35,28 @@ from steamzero.adapters.steam_gameplay import (
 STEAM_SECTION = "steam"
 
 
-def steam_catalog_games(*, roots: Sequence[Path] | None = None) -> tuple[CatalogGame, ...]:
+def steam_catalog_games(
+    *,
+    roots: Sequence[Path] | None = None,
+    types: Mapping[str, str] | None = None,
+) -> tuple[CatalogGame, ...]:
     """Jogos Steam instalados, prontos para entrar na home.
 
-    O LSFG fica de fora: é a ferramenta que o próprio projeto instala, não um
-    jogo do usuário. Incluí-lo recriaria a divergência de contagem pelo outro
-    lado — a central já o exclui em ``steam_gameplay``.
+    O ``appmanifest`` de um runtime é indistinguível do de um jogo, então o tipo
+    vem do ``appinfo.vdf``. Sem essa classificação o acervo publicado sai com
+    Proton e runtimes no meio — foi o que o host mostrou em 2026-09-04.
+
+    Quando o classificador não está disponível, publica tudo: esconder o acervo
+    seria pior que mostrá-lo com algumas ferramentas juntas (AGENTS.md §8).
+
+    O LSFG fica de fora sempre: é a ferramenta que o próprio projeto instala,
+    não um jogo do usuário. A central já o exclui em ``steam_gameplay``.
 
     Biblioteca ilegível não levanta: devolve o que conseguiu ler. Um disco
-    externo desmontado não pode impedir o Launcher de abrir (AGENTS.md §8).
+    externo desmontado não pode impedir o Launcher de abrir.
     """
     resolved = tuple(roots) if roots is not None else default_steam_roots()
+    declared = {key: str(value).strip().lower() for key, value in (types or app_types()).items()}
     games: dict[str, CatalogGame] = {}
     for root in library_roots(resolved):
         steamapps = root / "steamapps"
@@ -58,6 +70,9 @@ def steam_catalog_games(*, roots: Sequence[Path] | None = None) -> tuple[Catalog
                 continue
             app_id, name = parsed
             if app_id == LSFG_APP_ID:
+                continue
+            kind = declared.get(app_id)
+            if kind is not None and kind not in PLAYABLE_APP_TYPES:
                 continue
             games[app_id] = CatalogGame(
                 id=app_id,

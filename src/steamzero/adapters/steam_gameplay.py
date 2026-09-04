@@ -25,6 +25,7 @@ from typing import Any
 from steamzero.adapters.gamemode_probe import GameModeProbe
 from steamzero.adapters.host_preparation import snapshot as host_preparation_snapshot
 from steamzero.adapters.lsfg import LSFG_APP_ID, LsfgInstaller
+from steamzero.adapters.steam_appinfo import PLAYABLE_APP_TYPES, app_types
 from steamzero.adapters.steam_launch_options import SteamLaunchOptionsManager
 from steamzero.adapters.steam_launcher import SteamGameLauncher
 from steamzero.adapters.steam_maintenance import SteamMaintenance
@@ -693,6 +694,13 @@ class SteamGameplayController:
 
     def _games(self) -> list[dict[str, Any]]:
         roots = self._library_roots()
+        # O `appmanifest` de um runtime é idêntico ao de um jogo; só o
+        # `appinfo.vdf` diz o tipo. Sem esta filtragem a central publicava
+        # Proton, quatro Steam Linux Runtimes e redistribuíveis como "títulos"
+        # — 8 dos 15 apps do host em 2026-09-04. Sem classificador disponível
+        # o comportamento anterior é preservado: mostrar tudo é melhor que
+        # esconder o acervo do usuário.
+        declared = app_types()
         games: dict[str, dict[str, Any]] = {}
         for root in roots:
             steamapps = root / "steamapps"
@@ -706,6 +714,9 @@ class SteamGameplayController:
                     continue
                 app_id, name = parsed
                 if app_id == LSFG_APP_ID:
+                    continue
+                kind = declared.get(app_id)
+                if kind is not None and kind not in PLAYABLE_APP_TYPES:
                     continue
                 games[app_id] = {
                     "id": app_id,
