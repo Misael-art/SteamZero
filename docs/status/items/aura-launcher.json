@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopeDigest": "a04d1e453100b4a3983017353373e99e85547181d60da9bbbc0c96af967f43c1",
+  "scopeDigest": "7c65cdbf36bb0a90a3529c65087590c6273b1384ec1f444da971c4680c4b3325",
   "scopePaths": [
     "docs/00-vision/PROJECT-VISION.md",
     "docs/00-vision/NON-GOALS.md",
@@ -40,7 +40,8 @@
     "src/steamzero/ui/qml/launcher/LauncherMain.qml",
     "docs/09-operations/evidence/2026-09-04-launcher-foco-inicial",
     "tests/integration/test_launcher_child_lifetime.py",
-    "docs/09-operations/evidence/2026-09-04-launcher-qml-orfao"
+    "docs/09-operations/evidence/2026-09-04-launcher-qml-orfao",
+    "docs/09-operations/evidence/2026-09-04-release-cf9c47e7"
   ],
   "dependsOn": [
     "SZ-AURA-UI",
@@ -190,6 +191,12 @@
       "kind": "test",
       "reference": "tests/integration/test_launcher_child_lifetime.py",
       "command": "Correcao de harness apos reprovacao do CI nas tres versoes do Python. A mensagem acusava a producao ('a cena QML de mentira nao chegou a subir'); o defeito era do teste. O wrapper roda em outro processo e sys.path nao atravessa processo -- so PYTHONPATH; o CI nunca instala o pacote, entao o filho morria em ModuleNotFoundError antes de chegar ao qml6 de mentira. Passava localmente por acidente: o venv tem o pacote instalado. Reproduzido com o python do sistema (mesmas duas falhas do CI) e, com a correcao, o ModuleNotFoundError de steamzero nao reaparece. O caminho vem de steamzero.__file__, nao de um 'src' fixo, para o filho usar o mesmo pacote que o teste importou mesmo rodando de worktree.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-04-release-cf9c47e7/README.md",
+      "command": "Release 2.0.0rc1-cf9c47e7b55b instalada pelo fluxo governado (run de CI verde 33898677854). Janela resolvida por PID (517655) e foco conferido antes e depois. A primeira seta depois de abrir, SEM nenhum clique de mouse, moveu 9012 pixels e levou o anel do cartao 1 ao cartao 2; antes da correcao a mesma medicao dava zero. O qml6 nasce em grupo proprio (pgid 517655, nao o 517638 do wrapper) e morre com o SIGTERM do wrapper, sem deixar janela. Os dois defeitos estao corrigidos NO ARTEFATO INSTALADO, nao so na arvore. Continua nao provado o ciclo selecionar->jogar->sair->voltar ao mesmo cartao.",
       "result": "passed"
     }
   ],

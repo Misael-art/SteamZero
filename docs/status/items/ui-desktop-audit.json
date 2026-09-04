@@ -43,9 +43,10 @@
     "tools/ui_control_inventory.py",
     "tools/ui_control_probe.qml",
     "tools/ui_dialog_probe.qml",
-    "tools/ui_scenario_fixtures.py"
+    "tools/ui_scenario_fixtures.py",
+    "docs/09-operations/evidence/2026-09-04-release-cf9c47e7"
   ],
-  "scopeDigest": "204e4de33b75d4d6182ebe15e247f4298c11e106233a6934f8d27b4b3dd6519b",
+  "scopeDigest": "6034a107fca1f4c389e9b9266b8b6a741e36a15e2cf5e0f81b877cdb77228c9b",
   "dependsOn": [],
   "knownGaps": [
     "GAP-UI-CONTRAST-MEASUREMENT",
@@ -272,6 +273,12 @@
       "reference": "src/steamzero/ui/qml/PackagedAssets.qml",
       "command": "Digest derivado porque o escopo declara o diretorio src/steamzero/ui e a frente de assets acrescentou 27 icones oficiais e o allowlist correspondente. Revalidacao de escopo, nao carimbo: a capacidade dos icones passou a ter item proprio (SZ-UI-PACKAGED-ICONS), que ate entao nao existia. Nenhuma sonda de UI, inventario de controles ou medicao de contraste foi reexecutada; GAP-UI-LIVE-LAUNCHER-ROUTING segue aberto.",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-04-release-cf9c47e7/README.md",
+      "command": "Sonda comportamental no botao de menu da central, release 2.0.0rc1-cf9c47e7b55b, com o canal provado vivo e o foco no proprio botao: Enter = 0 pixels, Space = 913959 pixels (o menu abre), Tab = 5193 pixels (controle positivo). O mesmo controle responde a um gesto e ignora o outro. Clique de mouse tambem nao produziu efeito mensuravel nesta janela, o que fica como observacao separada e NAO confirmada -- pode ser o canal de ponteiro do ydotool e nao o produto.",
+      "result": "partial"
     }
   ],
   "nextAction": "Corrigir a ativacao live do Launcher antes de certificar jogos. Em paralelo, fechar os artefatos de contraste/truncamento do tema claro, tornar Emulacao e Temas navegaveis por controle e repetir a matriz em lote sem travamento do harness QML.",

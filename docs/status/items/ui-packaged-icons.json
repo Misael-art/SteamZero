@@ -13,9 +13,10 @@
     "src/steamzero/ui/assets",
     "src/steamzero/ui/assets/ATTRIBUTION.md",
     "src/steamzero/ui/qml/PackagedAssets.qml",
-    "tests/unit/test_packaged_assets.py"
+    "tests/unit/test_packaged_assets.py",
+    "docs/09-operations/evidence/2026-09-04-release-cf9c47e7"
   ],
-  "scopeDigest": "ea1aa697c246904ac8c58c1d463415122e2c74a2f089d90c6bcd2dc9e69f1eda",
+  "scopeDigest": "650ea8845d7362e95331e77303a5f93fde6f9801799ef9b571b2831157a75bba",
   "dependsOn": [
     "SZ-UI-DESKTOP-AUDIT"
   ],
@@ -48,6 +49,12 @@
       "reference": "src/steamzero/ui/qml/PackagedAssets.qml",
       "command": "Escopo deliberadamente NAO entregue, conforme decidido pela frente de assets: (a) compositos para cores libretro — 12 dos 17 cores nao publicam logo proprio (Stella, VICE, PUAE, Fuse, blueMSX, Opera, Mednafen-*, Mupen64Plus); compor retroarch+arte do sistema usaria a marca do console, nao a do core, e deixaria a lista inconsistente, entao todos seguem com retroarch.svg; (b) Arcade nao tem marca unica; (c) 3DS, Wii U e PS Vita tem fonte confirmada mas o download parou em rate-limit 429 do upload.wikimedia.org — bloqueio externo; (d) GameCube/Wii sem logo localizado. As cinco plataformas seguem no fallback geometrico.",
       "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-04-release-cf9c47e7/README.md",
+      "command": "Empacotamento verificado na release instalada: os 41 assets estao em site-packages/steamzero/ui/assets e ../assets/pcsx2.png resolve a partir de qml/Emulation.qml. Mas NAO observei os icones renderizando: na tela de Emulacao, PCSX2 e Vita3K -- ambos com logo oficial empacotado, e PCSX2 em PNG, portanto sem depender do plugin SVG -- aparecem sem logotipo. Nao afirmo que estao quebrados (pode ser recorte de layout, posicao de rolagem ou o modelo desta view nao carregar iconAsset); afirmo que a evidencia visual continua ausente e a causa em aberto. Achado de leitura: Main.qml:44 declara que caminho de manifesto nunca vai direto para Image.source e oferece assetSource() para resolver pela allowlist, mas essa funcao nao e chamada em lugar nenhum e Emulation.qml:3471 usa modelData.iconAsset diretamente como Image.source.",
+      "result": "partial"
     }
   ],
   "nextAction": "Capturar evidencia visual dos icones no Launcher instalado. Depende de instalacao autorizada e do plugin SVG do Qt, ausente neste runtime — o harness check_packaged_assets.qml fica skip sem ele. Sem essa captura, a troca esta provada como empacotamento, nao como aparencia na tela.",
