@@ -3,7 +3,7 @@
   "components": [
     {
       "id": "azahar",
-      "manifestHash": "96913a02c545f7526fe9afe532cb9e2503ba126ef548e8629ca072f77a78f21d",
+      "manifestHash": "a37721fc2ff7b231a145bf451bc59ca8f011003c3fcf61a5d1230f49c6bf6fc4",
       "source": {
         "type": "flatpak",
         "version": "fd0b3050e4da6a7df8915f63fb8c1d551c7ca8c684568dc62c1681fd316a288c",
@@ -14,7 +14,7 @@
     },
     {
       "id": "cemu",
-      "manifestHash": "e264cc56e95a20731ded46dbd73d9a6c461e53b521cb45d812e4576ce33a39bc",
+      "manifestHash": "6a6592ec1a0c84a7a9d50908f1d4866b56721c4c2e071414921e9cd6cd18bfc2",
       "source": {
         "type": "flatpak",
         "version": "cbadbabac58e89f72a9dbd18b93ed19dbadf678f44412ffc8edb98e630ddec1f",
@@ -69,7 +69,7 @@
     },
     {
       "id": "flycast",
-      "manifestHash": "42adb15ef896b8e71a34ae98609860ea1c44acd34643777dd4209776126eca3c",
+      "manifestHash": "01f67f31a3f4eecbb49fd7748cec63de8649928c31065a637fc85cb5efd40bd5",
       "source": {
         "type": "flatpak",
         "version": "5bb79aad0d2f5e28c44c6a66c320f5a2609abe349755913a286da3b9ff1949dc",
@@ -267,7 +267,7 @@
     },
     {
       "id": "melonds",
-      "manifestHash": "1329d3075f4fe1298546f47bc38245cbddd650ca10893ed26c51d2b6a9dd402e",
+      "manifestHash": "375a1d7b2b3be066941d342661ba1fa02546058b5642527acb06d67a753f31d2",
       "source": {
         "type": "flatpak",
         "version": "66752a190012baa6d929936577818db9f70ab178a3651f4bc86a5b02d2d350d7",
@@ -278,7 +278,7 @@
     },
     {
       "id": "pcsx2",
-      "manifestHash": "dce64dfc1ac77a5e3f43c24b7030fd31672f131ae50130193c7cd89859cfcbb0",
+      "manifestHash": "111c652686e48c30088cd8e28e18ae8e7142cd64d9cf915e7a3ef1e458848b14",
       "source": {
         "type": "flatpak",
         "version": "31307c3e9fa0fda4275433c053169dd231a7f921bb80bb51dd67b2ef95638f28",
@@ -289,7 +289,7 @@
     },
     {
       "id": "ppsspp",
-      "manifestHash": "b6c07885c2145b16f6b9eaf44f66f766771addcf9b282a78b019cbec24309c52",
+      "manifestHash": "58aee701e389cd3536fcc41b2e916476565119574cb3b330ab0dfaf98c234dbf",
       "source": {
         "type": "flatpak",
         "version": "193bbe95656ed696c8e5a5e42831ee8017d53514e9e0e0acaa3e1235e22089d3",
@@ -311,7 +311,7 @@
     },
     {
       "id": "rpcs3",
-      "manifestHash": "ba4f30b5e5c6d31a0a35f28eed751dc433f2c6e92890e0aee4e079b8ba163986",
+      "manifestHash": "78b90d23264eb1c52d162f19d70a65713239ef3363fb488895196c1fd49ed1a9",
       "source": {
         "type": "flatpak",
         "version": "27d554ca9d260afe9a702ed8a2d0029505bf82e2201b28b6a797096e8463c4d4",
@@ -333,7 +333,7 @@
     },
     {
       "id": "sunshine",
-      "manifestHash": "63bde7d92c90a24739ce762ee75cd506a330c9139966662ef137f69907f4bd2f",
+      "manifestHash": "65b076f8b1c9f2ca47a761589cba023e0ce6e1603b7366f741c7033ef2f8c5fe",
       "source": {
         "type": "native",
         "version": "2026.516.143833",
@@ -344,7 +344,7 @@
     },
     {
       "id": "vita3k",
-      "manifestHash": "8f293b91f1a78a968554a7938745f20b20800250fc3611c02da3d50ef749e4ae",
+      "manifestHash": "31e7408dcc7267085c33507a228b217fab397b8a2c53c660fe4d12fc0c3a964f",
       "source": {
         "type": "appimage",
         "version": "continuous-2026-09-02",
@@ -355,7 +355,7 @@
     },
     {
       "id": "xemu",
-      "manifestHash": "91a3a57c39b2f035323fd2d749cd4f44280da4f4c3985228fd1bf302d435865a",
+      "manifestHash": "9094db429f2e43da62d70d1f01691eda621686c67ff6cf14bdac5f1d24d7678f",
       "source": {
         "type": "flatpak",
         "version": "2f8b8889edcf69fb2ba2a8691371a7bb49febeba360e9c87555379c50ba946e9",
@@ -366,7 +366,7 @@
     },
     {
       "id": "xenia-canary",
-      "manifestHash": "edfc179ea64550edda0490594ff35d92314250a78c7a3fab83c7c0b09d739aaf",
+      "manifestHash": "1501455ba41692977eeca96c2997cde9a62c1f41581e81f1a88ba62cc485d98e",
       "source": {
         "type": "appimage",
         "version": "8f55b4a",

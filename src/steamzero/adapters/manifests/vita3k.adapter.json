@@ -4,7 +4,7 @@
   "kind": "emulator",
   "presentation": {
     "displayName": "Vita3K",
-    "iconAsset": "../assets/playstation-vita.svg"
+    "iconAsset": "../assets/vita3k.svg"
   },
   "platforms": [
     "playstation-vita"

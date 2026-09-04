@@ -4,7 +4,7 @@
   "kind": "emulator",
   "presentation": {
     "displayName": "melonDS",
-    "iconAsset": "../assets/nintendo-ds.svg"
+    "iconAsset": "../assets/melonds.svg"
   },
   "platforms": [
     "nintendo-ds"

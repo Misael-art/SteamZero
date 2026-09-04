@@ -4,7 +4,7 @@
   "kind": "emulator",
   "presentation": {
     "displayName": "PCSX2",
-    "iconAsset": "../assets/playstation-2.svg"
+    "iconAsset": "../assets/pcsx2.png"
   },
   "platforms": [
     "playstation-2"

@@ -4,7 +4,7 @@
   "kind": "emulator",
   "presentation": {
     "displayName": "PPSSPP",
-    "iconAsset": "../assets/playstation-portable.svg"
+    "iconAsset": "../assets/ppsspp.svg"
   },
   "platforms": [
     "playstation-portable"
