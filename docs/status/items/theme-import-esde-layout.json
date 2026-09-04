@@ -12,6 +12,7 @@
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-03-esde-catalogo-host/README.md",
     "docs/09-operations/evidence/2026-09-03-esde-layout/README.md",
+    "docs/09-operations/evidence/2026-09-03-staging-registro/README.md",
     "docs/09-operations/evidence/2026-09-03-tela-temas-host/01-catalogo-no-host.png",
     "docs/09-operations/evidence/2026-09-03-tela-temas-host/README.md",
     "docs/09-operations/evidence/2026-09-03-tela-temas/01-catalogo.png",
@@ -42,7 +43,7 @@
     "tests/unit/test_theme_import_esde_layout.py",
     "tests/unit/test_theme_sources.py"
   ],
-  "scopeDigest": "29daa4eea8b5b4435c938b7f989abff5a77fb812a0032d1a2a243bc59bd2d572",
+  "scopeDigest": "503e4379a4c8d16bbcdf5c47e9b3c1d5ad726af6d706fde191add24a8879b585",
   "dependsOn": [],
   "knownGaps": [
     "GAP-THEME-ESDE-SCENE-NOT-RENDERED"
@@ -114,6 +115,12 @@
       "kind": "design",
       "reference": "docs/09-operations/evidence/2026-09-03-tela-temas/README.md",
       "command": "12 testes QML com clique real via qmltestrunner Qt 6.11.1 e quatro capturas do arco instalar/remover/recuperar",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-03-staging-registro/README.md",
+      "command": "ciclo na release 2.0.0rc1-ba79eaae8d82 instalada: reinstalar nso-menu criou staging registrado e o cleanup-plan NAO o lista (baseline antes da correcao: 1 item de 122349 bytes de rollback vivo); o residuo criado sob o codigo velho continua listado, como esperado; rollback restaurou o manifesto, removeu o staging e preservou os assets",
       "result": "passed"
     }
   ],
