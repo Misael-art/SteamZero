@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopeDigest": "7c65cdbf36bb0a90a3529c65087590c6273b1384ec1f444da971c4680c4b3325",
+  "scopeDigest": "053205011453c72ca4bd5deaee015e07165316d09d2ed753f210ab75c27e8a60",
   "scopePaths": [
     "docs/00-vision/PROJECT-VISION.md",
     "docs/00-vision/NON-GOALS.md",
@@ -41,7 +41,12 @@
     "docs/09-operations/evidence/2026-09-04-launcher-foco-inicial",
     "tests/integration/test_launcher_child_lifetime.py",
     "docs/09-operations/evidence/2026-09-04-launcher-qml-orfao",
-    "docs/09-operations/evidence/2026-09-04-release-cf9c47e7"
+    "docs/09-operations/evidence/2026-09-04-release-cf9c47e7",
+    "src/steamzero/adapters/launcher_steam.py",
+    "src/steamzero/adapters/steam_appinfo.py",
+    "tests/integration/test_launcher_steam_catalog.py",
+    "tests/integration/test_launcher_return_cycle.py",
+    "src/steamzero/adapters/steam_shortcuts.py"
   ],
   "dependsOn": [
     "SZ-AURA-UI",
@@ -50,7 +55,8 @@
   "knownGaps": [
     "GAP-LAUNCHER-REAL-CATALOG-PHYSICAL",
     "GAP-LAUNCHER-HOME-ACTIVATION-PHYSICAL",
-    "GAP-LAUNCHER-RETURN-FADES-PHYSICAL"
+    "GAP-LAUNCHER-RETURN-FADES-PHYSICAL",
+    "GAP-LAUNCHER-STEAM-SHORTCUT-BYPASS"
   ],
   "acceptanceCriteria": [
     "Home fullscreen, biblioteca, busca, colecoes e pagina de jogo funcionam por controle.",
@@ -198,6 +204,30 @@
       "reference": "docs/09-operations/evidence/2026-09-04-release-cf9c47e7/README.md",
       "command": "Release 2.0.0rc1-cf9c47e7b55b instalada pelo fluxo governado (run de CI verde 33898677854). Janela resolvida por PID (517655) e foco conferido antes e depois. A primeira seta depois de abrir, SEM nenhum clique de mouse, moveu 9012 pixels e levou o anel do cartao 1 ao cartao 2; antes da correcao a mesma medicao dava zero. O qml6 nasce em grupo proprio (pgid 517655, nao o 517638 do wrapper) e morre com o SIGTERM do wrapper, sem deixar janela. Os dois defeitos estao corrigidos NO ARTEFATO INSTALADO, nao so na arvore. Continua nao provado o ciclo selecionar->jogar->sair->voltar ao mesmo cartao.",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_launcher_steam_catalog.py",
+      "command": "O acervo Steam do usuario passou a existir na home. A central somava Steam + emulacao (1134) e o Launcher contava so emulacao (1119); os 15 de diferenca sao os appmanifest do host menos o LSFG. O numero era o sintoma: em Game Mode, sem mouse nem desktop, os jogos Steam eram INALCANCAVEIS. Corrigir o rotulo teria escondido isso. Lancamento roteado por kind do registro, nunca pelo formato do id -- 63% dos ids canonicos de emulacao comecam por digito. Sem cliente Steam, E-COMPONENT-DEGRADED em vez de spawn vazio.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "src/steamzero/adapters/steam_appinfo.py",
+      "command": "Convergir em 1134 estava ERRADO: dos 15 apps instalados, 8 nao sao jogos (Proton x2, quatro Steam Linux Runtimes, redistribuiveis, Wallpaper Engine). A central ja os contava como titulos publicados. O appmanifest nao carrega o tipo -- conferido campo a campo entre um runtime e um jogo no host. A fonte e o appinfo.vdf; a primeira tentativa concluiu que o tipo 'nao estava la' porque procurou a string no binario, e a partir da v29 as chaves sao indices para uma tabela de strings. Parser le so common/type, sem sensibilidade a caixa (o acervo real traz 'Game' e 'game' juntos). Central e Launcher publicam agora 7 jogos Steam: 1119 + 7 = 1126 nas duas. Sem appinfo.vdf legivel, ambas mostram tudo.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_launcher_return_cycle.py",
+      "command": "Ciclo selecionar->jogar->sair->voltar provado pelo caminho real: contexto gravado em disco pelo lancamento e relido por uma sessao nova, com o acervo remontado do zero. Os testes anteriores provavam so o dominio (restore_context com payload em memoria). Verificado por mutacao, e a primeira versao NAO passou: com consume_context devolvendo None, tres dos quatro reprovavam e o quarto passava por acaso, porque so havia duas secoes e o fallback generico caia na mesma secao do jogo. Fixture ganhou uma terceira secao antes das outras; agora os quatro reprovam com o mutante. Nenhum defeito de produto: o ciclo ja estava correto, faltava prova no nivel que importa.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "src/steamzero/adapters/steam_shortcuts.py",
+      "command": "GAP-LAUNCHER-STEAM-SHORTCUT-BYPASS, aberto por decisao do operador em 2026-09-04 (registrar em vez de corrigir agora). `steam.shortcuts.sync` publica jogos locais na biblioteca da Steam gravando Exe=<binario steamzero>, LaunchOptions='emulation launch --game-id <id>' e ShortcutPath='steamzero://switch/<id>'. O ponto do atalho nao e o comando -- e ONDE o processo nasce: lancado pela Steam ele roda dentro da arvore de processos dela, e e isso que da overlay, configuracao de controle, tempo jogado e LSFG. O roteamento por kind introduzido nesta frente distingue emulacao de app Steam, mas NAO distingue um jogo de emulacao COM atalho publicado: ele continua com kind='emulation' e o Launcher chama `emulation launch` direto, fora da arvore da Steam. O jogo abre, entao a falha nao e ruidosa -- entrega menos do que o usuario pediu ao marcar, em silencio. A correcao seria um terceiro caminho: atalho publicado -> steam://rungameid/<id do atalho>, com o id vindo de shortcut_app_id(exe, nome), que o proprio adapter ja calcula. NAO ESTA PROVADO que a marcacao funciona a partir do Launcher; o que esta provado e que ela nao muda a rota.",
+      "result": "recorded"
     }
   ],
   "nextAction": "Publicar/instalar uma release autorizada e provar fisicamente ativação, lançamento, fade-in, encerramento, fade-out e retorno ao foco; a implementação e o resumo canônico já estão isolados.",

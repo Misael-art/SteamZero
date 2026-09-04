@@ -85,7 +85,7 @@ def scenario(tmp_path: Path):
 
 
 def test_the_cycle_returns_to_the_same_emulation_card(scenario) -> None:
-    library, steam_root, catalog, context_path = scenario
+    _, _, catalog, context_path = scenario
     spawned: list[tuple[str, ...]] = []
     router = LaunchRouter(
         on_spawn=lambda argv: (spawned.append(tuple(argv)), 4242)[1],
@@ -111,7 +111,7 @@ def test_the_cycle_returns_to_the_same_emulation_card(scenario) -> None:
 
 def test_the_cycle_returns_to_the_same_steam_card(scenario) -> None:
     """O acervo Steam é novo na home; o retorno precisa valer para ele também."""
-    library, steam_root, catalog, context_path = scenario
+    _, _, catalog, context_path = scenario
     router = LaunchRouter(
         on_spawn=lambda argv: 4242,
         context_path=context_path,
@@ -131,7 +131,7 @@ def test_the_context_is_consumed_so_an_old_return_does_not_hijack_a_new_session(
     scenario,
 ) -> None:
     """Contexto é de uso único: sobrando, ele sequestra o foco da sessão seguinte."""
-    library, steam_root, catalog, context_path = scenario
+    _, _, catalog, context_path = scenario
     router = LaunchRouter(
         on_spawn=lambda argv: 4242,
         context_path=context_path,
