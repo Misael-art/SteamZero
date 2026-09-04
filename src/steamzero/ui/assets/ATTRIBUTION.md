@@ -11,10 +11,8 @@
   `arcade.svg`, `dreamcast.svg`, `nintendo-ds.svg`, `nintendo-3ds.svg`,
   `playstation.svg`,
   `playstation-2.svg`,
-  `playstation-3.svg`, `playstation-portable.svg`, `wii-u.svg`, `xbox.svg`,
-  `xbox-360.svg`,
-  `geforce-now.svg`,
-  `xbox-cloud-gaming.svg` e `amazon-luna.svg`: fallbacks geométricos originais
+  `playstation-3.svg`, `playstation-portable.svg`, `wii-u.svg`, `xbox.svg`
+  e `xbox-360.svg`: fallbacks geométricos originais
   do SteamZero, distribuídos sob GPL-3.0-or-later; não reproduzem artwork nem
   logotipos oficiais de terceiros.
 - `eden.svg`: ícone oficial em
@@ -61,5 +59,15 @@
 - `xenia.png`: ícone oficial em
   [`xenia-canary/xenia-canary`](https://github.com/xenia-canary/xenia-canary),
   arquivo `assets/icon/icon.ico`, distribuído com o projeto BSD-2-Clause.
+- `geforce-now.svg`: logo oficial da NVIDIA GeForce NOW (2022),
+  [`Wikimedia Commons`](https://commons.wikimedia.org/wiki/File:GeForce_Now_logo_(2022).svg),
+  domínio público (textlogo); usado para identificação do produto.
+- `amazon-luna.svg`: logo oficial da Amazon Luna (2025),
+  [`Wikimedia Commons`](https://commons.wikimedia.org/wiki/File:Amazon_Luna_logo_2025.svg),
+  CC0-1.0.
+- `xbox-cloud-gaming.svg`: logo oficial do Xbox Cloud Gaming,
+  [`Wikimedia Commons`](https://commons.wikimedia.org/wiki/File:Xbox_Cloud_Gaming_logo.png),
+  domínio público (textlogo); empacotado como SVG auto-contido para
+  identificação do produto.
 
 Os nomes e logotipos de produtos permanecem marcas de seus respectivos titulares.
