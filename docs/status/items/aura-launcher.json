@@ -212,7 +212,7 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Aguardar autorização explícita de instalação na thread; depois publicar/instalar uma release e provar fisicamente ativação, lançamento, encerramento e retorno ao foco.",
+  "nextAction": "Bloqueio externo: aguardando autorização de instalação na thread; depois publicar/instalar uma release e provar fisicamente ativação, lançamento, encerramento e retorno ao foco. Nenhuma release foi tocada neste ciclo.",
   "activeWorkstreams": [
     "WS-2026-08-AURA-LAUNCHER",
     "WS-2026-09-LAUNCHER-P0-ACTIVATION",

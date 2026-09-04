@@ -13,6 +13,6 @@
   "sharedPaths": [
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Registrar baseline somente leitura; aguardar autorização explícita para publicar/instalar e então provar o ciclo físico selecionar-jogar-sair-retornar.",
+  "nextAction": "Bloqueio externo: aguardando autorização de instalação na thread; depois publicar/instalar e provar o ciclo físico selecionar-jogar-sair-retornar. Nenhuma release foi tocada.",
   "updatedAt": "2026-09-04"
 }
