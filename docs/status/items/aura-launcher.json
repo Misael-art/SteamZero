@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopeDigest": "bede0ac2305c72b8c16271e9a1f8a1153c0421cfeb2d6f2ccd52f384676b5ad3",
+  "scopeDigest": "a04d1e453100b4a3983017353373e99e85547181d60da9bbbc0c96af967f43c1",
   "scopePaths": [
     "docs/00-vision/PROJECT-VISION.md",
     "docs/00-vision/NON-GOALS.md",
@@ -184,6 +184,12 @@
       "kind": "hardware",
       "reference": "docs/09-operations/evidence/2026-09-04-launcher-qml-orfao/README.md",
       "command": "A/B no compositor Wayland real do host, mesmo daemon steamzero-core (PID 2821424), release 2.0.0rc1-a44f52964b3e instalada. A (sem a correcao): kill -TERM no wrapper 3770127 deixou o qml6 3770181 vivo, reparentado ao PID 1764, segurando a janela {7c3a5e60} de titulo SteamZero que renderiza a biblioteca inteira sem a ponte HTTP - a janela-fantasma que causou dois diagnosticos errados neste item. B (arvore corrigida, origem do src impressa em tempo de execucao para nao medir o checkout principal): o qml6 3776276 nasce em grupo proprio e morre com o mesmo SIGTERM; nenhuma janela SteamZero resta. NAO provado: SIGKILL no proprio wrapper (fora de alcance de qualquer codigo) e a correcao na release instalada.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_launcher_child_lifetime.py",
+      "command": "Correcao de harness apos reprovacao do CI nas tres versoes do Python. A mensagem acusava a producao ('a cena QML de mentira nao chegou a subir'); o defeito era do teste. O wrapper roda em outro processo e sys.path nao atravessa processo -- so PYTHONPATH; o CI nunca instala o pacote, entao o filho morria em ModuleNotFoundError antes de chegar ao qml6 de mentira. Passava localmente por acidente: o venv tem o pacote instalado. Reproduzido com o python do sistema (mesmas duas falhas do CI) e, com a correcao, o ModuleNotFoundError de steamzero nao reaparece. O caminho vem de steamzero.__file__, nao de um 'src' fixo, para o filho usar o mesmo pacote que o teste importou mesmo rodando de worktree.",
       "result": "passed"
     }
   ],
