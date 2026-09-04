@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopeDigest": "528185dae167b39cdaf6800137d79fc024483603b8c1e74809cab1261c8943d1",
+  "scopeDigest": "e10e0792fda0e32737653db5d1162f3bf047cd86e8d04e32774a3aa34251ea41",
   "scopePaths": [
     "docs/00-vision/PROJECT-VISION.md",
     "docs/00-vision/NON-GOALS.md",
@@ -35,7 +35,8 @@
     "tests/unit/test_launcher_catalog.py",
     "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun",
     "docs/09-operations/evidence/2026-09-02-ux-console-experience",
-    "tests/integration/test_launcher_child_lifetime.py"
+    "tests/integration/test_launcher_child_lifetime.py",
+    "docs/09-operations/evidence/2026-09-04-launcher-qml-orfao"
   ],
   "dependsOn": [
     "SZ-AURA-UI",
@@ -161,6 +162,12 @@
       "kind": "test",
       "reference": "tests/integration/test_launcher_child_lifetime.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_launcher_child_lifetime.py -q (sobe o caminho real de launch_launcher_ui com um qml6 de mentira no PATH, mata o wrapper com SIGTERM e com SIGINT e exige que nenhum qml6 sobreviva; reprova nos dois sinais sem a supervisao)",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-04-launcher-qml-orfao/README.md",
+      "command": "A/B no compositor Wayland real do host, mesmo daemon steamzero-core (PID 2821424), release 2.0.0rc1-a44f52964b3e instalada. A (sem a correcao): kill -TERM no wrapper 3770127 deixou o qml6 3770181 vivo, reparentado ao PID 1764, segurando a janela {7c3a5e60} de titulo SteamZero que renderiza a biblioteca inteira sem a ponte HTTP - a janela-fantasma que causou dois diagnosticos errados neste item. B (arvore corrigida, origem do src impressa em tempo de execucao para nao medir o checkout principal): o qml6 3776276 nasce em grupo proprio e morre com o mesmo SIGTERM; nenhuma janela SteamZero resta. NAO provado: SIGKILL no proprio wrapper (fora de alcance de qualquer codigo) e a correcao na release instalada.",
       "result": "passed"
     }
   ],
