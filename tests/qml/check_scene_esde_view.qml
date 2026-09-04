@@ -30,7 +30,17 @@ Item {
                  "layout": {"x": 0.1, "y": 0.7, "width": 0.3, "height": 0.05},
                  "binding": {"field": "title"}},
                 {"id": "carrossel", "kind": "carousel", "name": "car",
-                 "layout": {"x": 0.0, "y": 0.0, "width": 1.0, "height": 1.0}}
+                 "layout": {"x": 0.0, "y": 0.0, "width": 1.0, "height": 1.0,
+                            "itemWidth": 0.1, "itemHeight": 0.15, "maxItemCount": 4}},
+                {"id": "menu-only", "kind": "helpSystem", "name": "help-menu",
+                 "layout": {"x": 0.5, "y": 0.98, "width": 0.3, "height": 0.04,
+                            "scope": "menu"}},
+                {"id": "medalhas", "kind": "badges", "name": "bg",
+                 "layout": {"x": 0.5, "y": 0.5, "width": 0.2, "height": 0.1}},
+                {"id": "escondido", "kind": "image", "name": "oculto",
+                 "layout": {"x": 0.1, "y": 0.1, "width": 0.2, "height": 0.2},
+                 "appearance": {"visible": false},
+                 "source": "qrc:/inexistente.png"}
             ]
         })
     }
@@ -48,13 +58,40 @@ Item {
         }
 
         function test_a_kind_without_a_renderer_says_so_instead_of_vanishing() {
+            // `carousel` passou a desenhar; `badges` ainda não. O caso precisa
+            // continuar coberto, senão o caminho de degradação fica sem prova.
+            const badges = view.notDrawn.filter(function(e) { return e.id === "medalhas" })
+            compare(badges.length, 1)
+            verify(badges[0].reason.indexOf("tipo ainda nao desenhado") === 0)
+        }
+
+        function test_a_data_driven_kind_draws_its_structure() {
+            // O conteúdo do carrossel vem do runtime, mas a MOLDURA e os
+            // compartimentos são do tema, e o tema pediu que aparecessem.
             const carousel = view.notDrawn.filter(function(e) { return e.id === "carrossel" })
-            compare(carousel.length, 1)
-            verify(carousel[0].reason.indexOf("tipo ainda nao desenhado") === 0)
+            compare(carousel.length, 0)
+        }
+
+        function test_a_menu_scoped_element_stays_out_of_the_base_view() {
+            // `scope: menu` descreve o elemento COM UM MENU ABERTO. Desenhá-lo
+            // na base empilhava um segundo helpsystem sobre o do tema, com
+            // outra posição e outra cor, disputando o rodapé.
+            const scoped = view.notDrawn.filter(function(e) { return e.id === "menu-only" })
+            compare(scoped.length, 1)
+            verify(scoped[0].reason.indexOf("escopo \'menu\'") === 0)
+        }
+
+        function test_an_element_the_theme_hides_is_not_counted_as_drawn() {
+            // `visible: false` é escolha do tema. Contá-lo inflaria a fidelidade
+            // com um elemento que o próprio tema manda esconder.
+            const hidden = view.notDrawn.filter(function(e) { return e.id === "escondido" })
+            compare(hidden.length, 1)
+            compare(hidden[0].reason, "o tema declara invisivel")
         }
 
         function test_text_and_binding_both_count_as_drawable() {
-            compare(view.drawnCount, 3)
+            // 2 textos + o carrossel. `badges` e o oculto ficam de fora.
+            compare(view.drawnCount, 4)
         }
 
         function test_a_binding_shows_the_field_instead_of_inventing_a_title() {

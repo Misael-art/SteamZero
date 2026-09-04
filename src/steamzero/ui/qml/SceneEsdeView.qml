@@ -8,6 +8,8 @@
 // O ES-DE descreve posição e tamanho em fração da tela, e `origin` diz qual
 // ponto do elemento cai sobre `pos`. Tratar `pos` como canto superior esquerdo
 // desalinharia todo elemento centrado — que é a maioria dos que importam.
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 
@@ -32,15 +34,34 @@ Item {
     function hasGeometry(element) {
         const lay = element.layout
         if (!lay) return false
-        return ["x", "y", "width", "height", "maxWidth", "maxHeight"]
+        // `cropWidth`/`cropHeight` entram porque é assim que o vídeo declara
+        // tamanho nos temas medidos; sem eles um vídeo em (0,0) com recorte
+        // 0.28x0.33 seria lido como "sem geometria" e sumiria da cena.
+        return ["x", "y", "width", "height", "maxWidth", "maxHeight",
+                "cropWidth", "cropHeight", "itemWidth", "itemHeight"]
             .some(function(key) { return Number(lay[key]) > 0 })
     }
 
+    // Tipos cuja geometria o tema declara mas cujo CONTEÚDO vem do runtime:
+    // a lista de sistemas, o vídeo do jogo, os atalhos do controle. A superfície
+    // desenha a estrutura e marca o conteúdo como vindo de dados, em vez de
+    // inventar títulos e capas que o tema nunca prometeu.
+    readonly property var dataDrivenKinds: ["carousel", "helpSystem"]
+
     function isDrawable(element) {
         if (!view.hasGeometry(element)) return false
+        // `visible: false` é escolha do tema, não falha nossa. Contá-lo como
+        // desenhado inflaria a fidelidade com um elemento que o próprio tema
+        // manda esconder.
+        if (element.appearance && element.appearance.visible === false) return false
+        // `scope: menu` descreve o elemento COM UM MENU ABERTO. Desenhá-lo na
+        // view base empilhava um segundo helpsystem sobre o do tema, com outra
+        // posição e outra cor — dois conjuntos de atalhos disputando o rodapé.
+        if (element.layout && element.layout.scope === "menu") return false
         if (element.kind === "image") return !!element.source
         if (element.kind === "text") return !!(element.text || element.binding)
-        return false
+        if (element.kind === "video") return !!element.source
+        return view.dataDrivenKinds.indexOf(element.kind) !== -1
     }
 
     // Um elemento sem `source` resolvido e sem texto não desenha pixel. Contar
@@ -61,9 +82,13 @@ Item {
             if (view.isDrawable(e)) continue
             const reason = !view.hasGeometry(e)
                 ? "sem geometria declarada"
-                : (e.kind !== "image" && e.kind !== "text")
-                    ? "tipo ainda nao desenhado: " + e.kind
-                    : "sem asset resolvido"
+                : (e.appearance && e.appearance.visible === false)
+                    ? "o tema declara invisivel"
+                    : (e.layout && e.layout.scope === "menu")
+                        ? "escopo 'menu': so aparece com menu aberto"
+                    : (["image", "text", "video"].indexOf(e.kind) === -1)
+                        ? "tipo ainda nao desenhado: " + e.kind
+                        : "sem asset resolvido"
             out.push({"id": e.id, "kind": e.kind, "reason": reason})
         }
         return out
@@ -110,10 +135,12 @@ Item {
             // cair para zero apagaria o elemento. Deriva-se do maxSize quando há.
             readonly property real pw: fw > 0
                 ? fw * view.width
-                : view.numberOr(lay, "maxWidth", 0) * view.width
+                : (view.numberOr(lay, "maxWidth", 0)
+                   || view.numberOr(lay, "cropWidth", 0)) * view.width
             readonly property real ph: fh > 0
                 ? fh * view.height
-                : view.numberOr(lay, "maxHeight", 0) * view.height
+                : (view.numberOr(lay, "maxHeight", 0)
+                   || view.numberOr(lay, "cropHeight", 0)) * view.height
 
             x: fx * view.width - ox * width
             y: fy * view.height - oy * height
@@ -126,7 +153,11 @@ Item {
             sourceComponent: {
                 if (!view.isDrawable(modelData))
                     return null
-                return modelData.kind === "image" ? imageComponent : textComponent
+                if (modelData.kind === "image") return imageComponent
+                if (modelData.kind === "text") return textComponent
+                if (modelData.kind === "video") return videoComponent
+                if (modelData.kind === "carousel") return carouselComponent
+                return helpComponent
             }
 
             Component {
@@ -139,6 +170,125 @@ Item {
                     asynchronous: true
                     cache: true
                     smooth: true
+                }
+            }
+
+
+            // O carrossel é dirigido por dados: os itens são os sistemas ou os
+            // jogos, que esta superfície não tem. Desenhar a ESTRUTURA — moldura
+            // e os `maxItemCount` compartimentos no tamanho declarado — mostra o
+            // layout que o tema pediu sem inventar capas que ele nunca prometeu.
+            Component {
+                id: carouselComponent
+                Item {
+                    readonly property int slots: Math.max(
+                        1, Math.min(12, Math.round(view.numberOr(lay, "maxItemCount", 3))))
+                    readonly property real slotW: view.numberOr(lay, "itemWidth", 0.12) * view.width
+                    readonly property real slotH: view.numberOr(lay, "itemHeight", 0.18)
+                        * view.height
+                    readonly property real gap: Math.max(
+                        4, view.numberOr(lay, "itemMarginX", 0.01) * view.width)
+
+                    Rectangle {
+                        anchors.fill: parent
+                        color: view.esdeColor(app.color, "#00000000")
+                    }
+                    Row {
+                        anchors.centerIn: parent
+                        spacing: parent.gap
+                        Repeater {
+                            model: parent.parent.slots
+                            delegate: Rectangle {
+                                width: slotW
+                                height: slotH
+                                radius: view.numberOr(lay, "imageCornerRadius", 0) * view.width
+                                color: "#14212e"
+                                border.color: view.esdeColor(app.textColor, "#3a4c5e")
+                                border.width: 1
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "{item}"
+                                    color: view.esdeColor(app.textColor, "#9eabba")
+                                    font.pixelSize: Math.max(
+                                        10, view.numberOr(lay, "fontSize", 0.02) * view.height)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // O vídeo entra por Loader dinâmico, e não por `import QtMultimedia`
+            // no topo: um host sem o módulo faria a CENA INTEIRA falhar ao
+            // carregar, e a regra é que falha degrada e nunca trava. Sem o
+            // módulo, o quadro fica com a cor declarada e o motivo aparece.
+            Component {
+                id: videoComponent
+                Item {
+                    id: videoHost
+                    property bool multimediaReady: false
+
+                    Rectangle {
+                        anchors.fill: parent
+                        color: view.esdeColor(app.color, "#0b1118")
+                        visible: !videoHost.multimediaReady
+                        Text {
+                            anchors.centerIn: parent
+                            text: qsTr("vídeo indisponível")
+                            color: "#9eabba"
+                            font.pixelSize: 12
+                        }
+                    }
+
+                    Component.onCompleted: {
+                        const source = 'import QtQuick; import QtMultimedia; Item {'
+                            + ' property url clip; anchors.fill: parent;'
+                            + ' MediaPlayer { id: mp; source: parent.clip; loops: MediaPlayer.Infinite;'
+                            + ' videoOutput: out; Component.onCompleted: play() }'
+                            + ' VideoOutput { id: out; anchors.fill: parent;'
+                            + ' fillMode: VideoOutput.PreserveAspectCrop } }'
+                        try {
+                            const item = Qt.createQmlObject(source, videoHost, "esdeVideo")
+                            item.clip = modelData.source
+                            videoHost.multimediaReady = true
+                        } catch (error) {
+                            // Sem QtMultimedia: o quadro degradado acima fica.
+                            videoHost.multimediaReady = false
+                        }
+                    }
+                }
+            }
+
+            // Os atalhos vêm do runtime (quais botões valem naquela tela), então
+            // a superfície desenha as ENTRADAS com o espaçamento e a cor do tema
+            // e marca o conteúdo como dado. Escrever "A: Selecionar" aqui seria
+            // afirmar um mapeamento que o tema não declara.
+            Component {
+                id: helpComponent
+                Row {
+                    spacing: Math.max(6, view.numberOr(lay, "entrySpacing", 0.01) * view.width)
+                    Repeater {
+                        model: 3
+                        delegate: Row {
+                            spacing: Math.max(
+                                3, view.numberOr(lay, "iconTextSpacing", 0.004) * view.width)
+                            Rectangle {
+                                width: helpText.font.pixelSize
+                                height: width
+                                radius: width / 2
+                                color: view.esdeColor(app.iconColor, "#cccccc")
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                            Text {
+                                id: helpText
+                                text: "{ação}"
+                                color: view.esdeColor(app.textColor, "#cccccc")
+                                font.pixelSize: Math.max(
+                                    10, view.numberOr(lay, "fontSize", 0.03) * view.height
+                                        * view.numberOr(lay, "entryRelativeScale", 1))
+                            }
+                        }
+                    }
                 }
             }
 
