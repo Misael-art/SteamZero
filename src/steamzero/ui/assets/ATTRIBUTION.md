@@ -5,14 +5,7 @@
   versão `26.05.05-0223` distribuída pelo BigLinux.
 - `steamzero-mark.png`: marca original gerada para o SteamZero em 2026-07-16,
   distribuída sob a mesma licença GPL-3.0 do projeto.
-- `switch.svg`: fallback de plataforma original do SteamZero, distribuído sob
-  GPL-3.0-or-later; não contém artwork de terceiros.
-- `nintendo-handheld.svg`, `nes-famicom.svg`, `snes.svg`, `mega-drive.svg`,
-  `arcade.svg`, `dreamcast.svg`, `nintendo-ds.svg`, `nintendo-3ds.svg`,
-  `playstation.svg`,
-  `playstation-2.svg`,
-  `playstation-3.svg`, `playstation-portable.svg`, `wii-u.svg`, `xbox.svg`
-  e `xbox-360.svg`: fallbacks geométricos originais
+- `arcade.svg`, `nintendo-3ds.svg` e `wii-u.svg`: fallbacks geométricos originais
   do SteamZero, distribuídos sob GPL-3.0-or-later; não reproduzem artwork nem
   logotipos oficiais de terceiros.
 - `eden.svg`: ícone oficial em
@@ -69,5 +62,46 @@
   [`Wikimedia Commons`](https://commons.wikimedia.org/wiki/File:Xbox_Cloud_Gaming_logo.png),
   domínio público (textlogo); empacotado como SVG auto-contido para
   identificação do produto.
+- `switch.svg`: logo oficial do Nintendo Switch,
+  [`Wikimedia Commons`](https://commons.wikimedia.org/wiki/File:Nintendo_Switch_logo.svg),
+  domínio público (textlogo).
+- `nintendo-handheld.svg`: logo oficial do Game Boy Advance,
+  [`Wikimedia Commons`](https://commons.wikimedia.org/wiki/File:Game_Boy_Advance_logo.svg),
+  domínio público (textlogo); plataforma Game Boy / Color / Advance.
+- `nes-famicom.svg`: logo oficial do Nintendo Entertainment System,
+  [`Wikimedia Commons`](https://commons.wikimedia.org/wiki/File:NES_logo.svg),
+  domínio público (textlogo).
+- `snes.svg`: logo oficial do Super Nintendo Entertainment System,
+  [`Wikimedia Commons`](https://commons.wikimedia.org/wiki/File:Super_Nintendo_Entertainment_System_logo.svg),
+  domínio público (textlogo).
+- `mega-drive.svg`: logo oficial do Sega Mega Drive,
+  [`Wikimedia Commons`](https://commons.wikimedia.org/wiki/File:MegaDriveJPLogo.svg),
+  domínio público (textlogo).
+- `playstation.svg`: wordmark da PlayStation (1994-2009),
+  [`Wikimedia Commons`](https://commons.wikimedia.org/wiki/File:PlayStation_wordmark_(1994-2009).svg),
+  domínio público (textlogo).
+- `playstation-2.svg`: logo oficial da PlayStation 2,
+  [`Wikimedia Commons`](https://commons.wikimedia.org/wiki/File:PlayStation_2_logo.svg),
+  domínio público (textlogo).
+- `playstation-portable.svg`: logo oficial da PlayStation Portable,
+  [`Wikimedia Commons`](https://commons.wikimedia.org/wiki/File:Playstation_portable_logo.png),
+  CC0-1.0.
+- `dreamcast.svg`: logo oficial do Sega Dreamcast,
+  [`Wikimedia Commons`](https://commons.wikimedia.org/wiki/File:Dreamcast_logo_NTSC.svg),
+  domínio público (textlogo).
+- `playstation-3.svg`: logo oficial da PlayStation 3 (2009),
+  [`Wikimedia Commons`](https://commons.wikimedia.org/wiki/File:PlayStation_3_logo_(2009).svg),
+  domínio público (textlogo).
+- `nintendo-ds.svg`: logo oficial do Nintendo DS,
+  [`Wikimedia Commons`](https://commons.wikimedia.org/wiki/File:Nintendo_DS_Logo.svg),
+  marca registrada da Nintendo; usado exclusivamente para identificação do
+  produto.
+- `xbox.svg`: logo oficial do Xbox,
+  [`Wikimedia Commons`](https://commons.wikimedia.org/wiki/File:Xbox.svg),
+  marca registrada da Microsoft; usado exclusivamente para identificação do
+  produto.
+- `xbox-360.svg`: logo oficial do Xbox 360,
+  [`Wikimedia Commons`](https://commons.wikimedia.org/wiki/File:Xbox_360_wordmark.svg),
+  domínio público (textlogo).
 
 Os nomes e logotipos de produtos permanecem marcas de seus respectivos titulares.
