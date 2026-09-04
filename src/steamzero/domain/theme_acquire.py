@@ -209,6 +209,29 @@ def build_manifest(source: ThemeSource, report: AcquisitionReport) -> dict[str, 
     }
 
 
+#: Assinatura do gravador de operação: ``(operation_id, state)``.
+OperationRecorder = Callable[[str, str], None]
+
+
+def record_operation_state(operation_id: str, state: str) -> None:
+    """Espelha a operação de tema no State Store.
+
+    Sem esta linha o diretório de staging que guarda o ``previous-theme.json``
+    fica sem dono: ``state_audit`` o classifica como órfão, o doctor avisa e o
+    ``state cleanup`` o coloca em quarentena — apagando o único artefato que
+    torna a reinstalação reversível. Medido no host em 2026-09-03, onde o plano
+    de limpeza listava 122 KB de dado de rollback vivo.
+
+    Não há journal nem backup nesta transação: ela cobre um arquivo só, e
+    declarar caminhos que não existem seria pior que declarar nenhum.
+    """
+    from steamzero.core.state import StateStore
+
+    with StateStore() as store:
+        store.migrate()
+        store.save_operation(operation_id, state=state)
+
+
 class ThemeTransaction:
     """Instalação e remoção de tema com desfazer completo.
 
@@ -220,9 +243,21 @@ class ThemeTransaction:
     exatamente onde um contador de referências erra.
     """
 
-    def __init__(self, themes_root: Path, store: ThemeAssetStore) -> None:
+    def __init__(
+        self,
+        themes_root: Path,
+        store: ThemeAssetStore,
+        *,
+        record_operation: OperationRecorder | None = None,
+    ) -> None:
         self._root = themes_root
         self._store = store
+        # O registro é padrão, e não algo que o adaptador liga: uma operação que
+        # deixa dado de rollback em disco SEM linha no banco parece órfã para o
+        # resto do sistema — o doctor a acusa e o `state cleanup` a coloca em
+        # quarentena, destruindo justamente o que torna a reinstalação
+        # reversível. Injetável só para o teste poder observar a chamada.
+        self._record = record_operation or record_operation_state
 
     def _manifest_path(self, theme_id: str) -> Path:
         directory = self._root / theme_id
@@ -269,6 +304,11 @@ class ThemeTransaction:
         undo_path: Path | None = None
         if previous is not None:
             undo_path = fs.stage_bytes(operation_id, "previous-theme.json", previous)
+            # Registrar ANTES de publicar o manifesto novo: se o processo morrer
+            # entre as duas escritas, o staging já tem dono no banco e sobrevive
+            # à limpeza. Registrar depois deixaria uma janela em que o rollback
+            # existe em disco e é indistinguível de lixo.
+            self._record(operation_id, "active")
 
         fs.write_atomic_text(
             manifest_path, json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
@@ -304,6 +344,11 @@ class ThemeTransaction:
             # Não havia versão anterior: desfazer é voltar a não ter o tema.
             fs.remove_file(manifest_path)
             restored = False
+
+        # O desfazer foi consumido: o staging vira lixo agora, e mantê-lo faria
+        # a próxima auditoria acusar como órfão algo que já cumpriu sua função.
+        fs.remove_tree(paths.staging_for(operation_id))
+        self._record(operation_id, "rolled-back")
         return {
             "themeId": theme_id,
             "operationId": operation_id,
@@ -337,13 +382,13 @@ def acquire_and_install(
     http_client: HttpClient | None = None,
     expected_sha256: str | None = None,
     download: Callable[..., Path] | None = None,
+    record_operation: OperationRecorder | None = None,
 ) -> dict[str, Any]:
     """Fluxo completo: baixa, ingere em fluxo e publica o manifesto.
 
-    O staging é limpo em qualquer desfecho MENOS quando a instalação venceu: o
-    ``previous-theme.json`` guardado ali é o que permite o rollback, e apagá-lo
-    junto com o tarball tornaria a operação irreversível no exato momento em que
-    ela passa a precisar ser reversível.
+    O staging do DOWNLOAD é sempre limpo. O da instalação, quando existe, guarda
+    o ``previous-theme.json`` que permite o rollback e fica — registrado no
+    banco, para que a auditoria saiba que tem dono.
     """
     operation_id = ids.new_ulid()
     fetch = download or download_archive
@@ -355,7 +400,7 @@ def acquire_and_install(
     )
     try:
         report = ingest_archive(archive, source, store)
-        transaction = ThemeTransaction(themes_root, store)
+        transaction = ThemeTransaction(themes_root, store, record_operation=record_operation)
         result = transaction.install(source, report, force=force)
     finally:
         # O tarball já não é necessário depois da ingestão, com ou sem sucesso,

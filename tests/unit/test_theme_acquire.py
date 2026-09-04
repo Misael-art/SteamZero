@@ -394,3 +394,111 @@ def test_the_two_savings_columns_are_reported_separately(
     assert report.bytes_shared_with_installed == len(compartilhado)
     assert report.bytes_repeated_in_package == len(proprio)
     assert report.bytes_ingested == len(proprio) + len(b"<b/>")
+
+
+def test_a_replacement_registers_its_operation_so_the_rollback_has_an_owner(
+    store: ThemeAssetStore, themes: Path, tmp_path: Path
+) -> None:
+    """Staging com dado de rollback PRECISA de linha no banco.
+
+    Sem ela, `state_audit` classifica o diretório como órfão, o doctor avisa e o
+    `state cleanup` o coloca em quarentena — apagando o único artefato que torna
+    a reinstalação reversível. Medido no host em 2026-09-03: o plano de limpeza
+    listava 122 KB de dado de rollback vivo.
+    """
+    prepared = _tarball(tmp_path / "src.tar.gz", {"theme.xml": b"<theme/>"})
+    recorded: list[tuple[str, str]] = []
+
+    def fake_download(source: ThemeSource, *, operation_id: str, **_: object) -> Path:
+        from steamzero.core import fs
+
+        return fs.stage_bytes(operation_id, "theme.tar.gz", prepared.read_bytes())
+
+    def recorder(operation_id: str, state: str) -> None:
+        recorded.append((operation_id, state))
+
+    first = acquire_and_install(
+        _source(), store, themes, download=fake_download, record_operation=recorder
+    )
+    assert recorded == [], "instalação nova não deixa rollback e não precisa de registro"
+
+    second = acquire_and_install(
+        _source(),
+        store,
+        themes,
+        force=True,
+        download=fake_download,
+        record_operation=recorder,
+    )
+
+    assert second["replaced"] is True
+    assert first["operationId"] != second["operationId"]
+    assert recorded == [(second["operationId"], "active")]
+
+
+def test_undoing_a_replacement_clears_its_staging_and_closes_the_operation(
+    store: ThemeAssetStore, themes: Path, tmp_path: Path
+) -> None:
+    """Consumido o desfazer, o staging vira lixo e a operação fecha.
+
+    Mantê-lo faria a auditoria seguinte acusar como órfão algo que já cumpriu a
+    função — o mesmo falso positivo, só que uma etapa depois.
+    """
+    from steamzero.core import paths
+
+    prepared = _tarball(tmp_path / "src.tar.gz", {"theme.xml": b"<theme/>"})
+    recorded: list[tuple[str, str]] = []
+
+    def fake_download(source: ThemeSource, *, operation_id: str, **_: object) -> Path:
+        from steamzero.core import fs
+
+        return fs.stage_bytes(operation_id, "theme.tar.gz", prepared.read_bytes())
+
+    def recorder(operation_id: str, state: str) -> None:
+        recorded.append((operation_id, state))
+
+    acquire_and_install(_source(), store, themes, download=fake_download, record_operation=recorder)
+    replacement = acquire_and_install(
+        _source(), store, themes, force=True, download=fake_download, record_operation=recorder
+    )
+    operation_id = replacement["operationId"]
+    assert paths.staging_for(operation_id).is_dir()
+
+    undone = ThemeTransaction(themes, store, record_operation=recorder).rollback(
+        "org.esde.demo", operation_id
+    )
+
+    assert undone["restoredPrevious"] is True
+    assert not paths.staging_for(operation_id).exists(), "staging sobrou depois do desfazer"
+    assert recorded[-1] == (operation_id, "rolled-back")
+
+
+def test_the_state_audit_no_longer_calls_live_rollback_data_an_orphan(
+    store: ThemeAssetStore, themes: Path, tmp_path: Path
+) -> None:
+    """A prova de ponta: com o gravador REAL, a auditoria não acusa.
+
+    Os testes acima observam a chamada; este observa a CONSEQUÊNCIA. Sem ele,
+    trocar o estado gravado por um que a auditoria não reconhece passaria
+    despercebido, e o defeito voltaria com os testes verdes.
+    """
+    from steamzero.core.state import StateStore
+    from steamzero.domain import state_audit
+
+    prepared = _tarball(tmp_path / "src.tar.gz", {"theme.xml": b"<theme/>"})
+
+    def fake_download(source: ThemeSource, *, operation_id: str, **_: object) -> Path:
+        from steamzero.core import fs
+
+        return fs.stage_bytes(operation_id, "theme.tar.gz", prepared.read_bytes())
+
+    acquire_and_install(_source(), store, themes, download=fake_download)
+    replacement = acquire_and_install(_source(), store, themes, force=True, download=fake_download)
+
+    with StateStore() as state:
+        state.migrate()
+        report = state_audit.audit(state)
+
+    assert replacement["operationId"] not in report.orphan_staging, (
+        "o staging do rollback continua sem dono para a auditoria"
+    )
