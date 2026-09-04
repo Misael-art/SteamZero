@@ -26,7 +26,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-COMPONENT-LIFECYCLE | 23 | 12 | 10 | hw |  |
 | SZ-CONTROLS-INPUT-PROFILES | 16 | 8 | 4 | hw |  |
 | SZ-EMULATION-ENHANCEMENTS | 24 | 9 | 9 | unit |  |
-| SZ-EMULATION-LONG-OPERATIONS | 28 | 17 | 11 | hw |  |
+| SZ-EMULATION-LONG-OPERATIONS | 28 | 18 | 12 | hw |  |
 | SZ-EMULATION-M10 | 6 | 3 | 2 | vm |  |
 | SZ-EMULATION-PLATFORM-CONTEXT | 3 | 4 | 2 | unit |  |
 | SZ-EMULATION-PLATFORM-SCOPE | 2 | 5 | 4 | unit |  |
@@ -60,7 +60,8 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-THEME-IMPORT-RETROFE | 6 | 4 | 3 | unit |  |
 | SZ-THEME-IMPORT-SURFACE | 4 | 8 | 7 | unit |  |
 | SZ-THEME-STUDIO | 81 | 15 | 14 | hw |  |
-| SZ-UI-DESKTOP-AUDIT | 327 | 32 | 20 | dev |  |
+| SZ-UI-DESKTOP-AUDIT | 338 | 33 | 21 | dev |  |
+| SZ-UI-PACKAGED-ICONS | 44 | 3 | 2 | unit |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 
-Arquivos em `src/`: **539**. Sob agregador apenas, sem item de capacidade: **285** (52%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
+Arquivos em `src/`: **550**. Sob agregador apenas, sem item de capacidade: **285** (51%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.

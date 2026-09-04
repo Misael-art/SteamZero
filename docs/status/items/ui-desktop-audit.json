@@ -1,275 +1,281 @@
 {
-    "schemaVersion": 1,
-    "kind": "project-item",
-    "id": "SZ-UI-DESKTOP-AUDIT",
-    "title": "UI Desktop — auditoria visual e jornadas P0/P1",
-    "domain": "ui",
-    "implementation": "partial",
-    "integration": "feature-branch",
-    "verification": "dev",
-    "operation": "degraded",
-    "distribution": "not-packaged",
-    "scopePaths": [
-        "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun",
-        "docs/09-operations/evidence/2026-08-11-ui-audit",
-        "src/steamzero/ui",
-        "src/steamzero/ui/qml/SteamGameplay.qml",
-        "tests/integration/test_qml_handheld_offscreen.py",
-        "tests/integration/test_ui_action_inventory.py",
-        "tests/integration/test_ui_combobox_gestures.py",
-        "tests/integration/test_ui_confirm_job_recovery_e2e.py",
-        "tests/integration/test_ui_control_identity.py",
-        "tests/integration/test_ui_control_matrix.py",
-        "tests/integration/test_ui_credential_journey_e2e.py",
-        "tests/integration/test_ui_dialog_coverage.py",
-        "tests/integration/test_ui_dialog_journeys.py",
-        "tests/integration/test_ui_dialog_keys.py",
-        "tests/qml/check_combobox_gestures.qml",
-        "tests/qml/check_confirm_job_recovery_e2e.qml",
-        "tests/qml/check_credential_journey_e2e.qml",
-        "tests/qml/check_dialog_keys.qml",
-        "tests/qml/check_editorial_library.qml",
-        "tests/qml/check_emulation.qml",
-        "tests/qml/check_main_emulation.qml",
-        "tests/qml/check_theme_editor_aura.qml",
-        "tests/unit/test_ui_audit_runner.py",
-        "tests/unit/test_ui_selected_label_contrast.py",
-        "tools/ui_action_inventory.py",
-        "tools/ui_action_probe.qml",
-        "tools/ui_audit_capture.qml",
-        "tools/ui_audit_runner.py",
-        "tools/ui_contrast_inventory.py",
-        "tools/ui_contrast_probe.qml",
-        "tools/ui_control_inventory.py",
-        "tools/ui_control_probe.qml",
-        "tools/ui_dialog_probe.qml",
-        "tools/ui_scenario_fixtures.py"
-    ],
-    "scopeDigest": "2cdf4ce3dc976465457e92d9c31c9a2f539c7d79dc2f4935fe8b2ffab043aade",
-    "dependsOn": [],
-    "knownGaps": [
-        "GAP-UI-CONTRAST-MEASUREMENT",
-        "GAP-UI-ORPHAN-GATE-INERTE",
-        "GAP-UI-LIVE-LAUNCHER-ROUTING",
-        "GAP-UI-THEME-PLAN-ACTIVE-SEMANTICS"
-    ],
-    "acceptanceCriteria": [
-        "Instalar emulador nao e no-op silencioso.",
-        "DarkButton legivel no tema claro.",
-        "Tema aplica via plan+confirm na UI.",
-        "Harnesses QML de dispatch/tema/biblioteca verdes.",
-        "Todo controle acionavel visivel anuncia Accessible.name.",
-        "Todo alvo acionavel tem ao menos 48x48.",
-        "A matriz roda todos os cenarios declarados e funde por identidade estavel.",
-        "Identidade explicita nao carrega rotulo nem posicao.",
-        "A matriz publica quanto da identidade repousa no fallback estrutural.",
-        "Fechar modal por Escape nao deixa plano pendurado.",
-        "Fechar modal devolve o foco ao originador.",
-        "Modal recebe o foco ao abrir (verificado com abertura programatica).",
-        "Escape e Tab reais provados por evento de teclado do Qt 6 (fechado).",
-        "Provas que exigem runtime QML rodam no gate visual, que reprova quando o Qt falta, nunca puladas.",
-        "Todo modal do shell tem jornada na sonda ou exclusao registrada com motivo; o denominador dos modais nao encolhe em silencio.",
-        "ComboBox e exercitado por tecla real e observa activated; bloqueado explica o motivo.",
-        "Enfeite e provado por ativacao, nao presumido pela forma; controle que age sem se anunciar reprova como unnamed-actionable.",
-        "O shell pinta o proprio fundo num Item capturavel, em vez de depender da cor da janela.",
-        "O rotulo do item selecionado e legivel em todo tema empacotado, com a cor escolhida por contraste."
-    ],
-    "evidence": [
-        {
-            "kind": "test",
-            "reference": "tests/integration/test_qml_handheld_offscreen.py",
-            "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_qml_handheld_offscreen.py -q",
-            "result": "passed"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/integration/test_ui_action_inventory.py",
-            "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_action_inventory.py -q",
-            "result": "passed"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/unit/test_ui_audit_runner.py",
-            "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_ui_audit_runner.py -q",
-            "result": "passed"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/integration/test_ui_control_matrix.py",
-            "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_control_matrix.py -q",
-            "result": "passed"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/integration/test_ui_control_identity.py",
-            "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_control_identity.py -q",
-            "result": "passed"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/integration/test_ui_dialog_journeys.py",
-            "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_dialog_journeys.py -q",
-            "result": "passed"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/integration/test_ui_dialog_keys.py",
-            "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_dialog_keys.py -v -rs -q (2 passed, 0 skipped; qmltestrunner Qt 6.11.1: 7 passed, 0 failed, 0 skipped)",
-            "result": "passed"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/qml/check_editorial_library.qml",
-            "command": "QT_QPA_PLATFORM=offscreen qml6 -I src/steamzero/ui/qml tests/qml/{check_editorial_library,check_emulation,check_main_emulation,check_theme_editor_aura}.qml (rc=0 nos quatro)",
-            "result": "passed"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/integration/test_ui_dialog_keys.py",
-            "command": "roteamento do gate visual: -m 'not visual' -> 1 passed, 3 deselected (a guarda de codigo roda onde o Qt NAO esta); -m visual -> 3 passed (as provas Qt 6 rodam onde o runtime esta)",
-            "result": "passed"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/integration/test_ui_dialog_coverage.py",
-            "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_dialog_coverage.py -q (2 passed; 14 de 15 modais com jornada, 1 excluido com motivo)",
-            "result": "passed"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/integration/test_ui_dialog_journeys.py",
-            "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_dialog_journeys.py -q (6 passed com 14 modais sondados; antes da correcao os 8 novos reprovavam em test_opening_a_dialog_moves_focus_into_it)",
-            "result": "passed"
-        },
-        {
-            "kind": "diagnostic",
-            "reference": "tools/ui_control_inventory.py",
-            "command": "matriz de controles medida em 2026-08-24: 250 controles em 12 superficies, 0 falhas (silent-no-op/unrouted/blocked-silent), 38 not-probed = 31 icones decorativos + 5 comboboxes + 2 aberturas de FileDialog nativo; 6 superficies sem pendencia (handheld-drawer, library, overview, sync, task-drawer, themes); identidade 45 explicitas / 205 fallback / 0 colisoes",
-            "result": "recorded"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/qml/check_combobox_gestures.qml",
-            "command": "QT_QPA_PLATFORM=offscreen qmltestrunner Qt 6.11.1 -input tests/qml/check_combobox_gestures.qml (5 passed; denominador fechado: 10 ComboBox visiveis = 4 exercitados por tecla real + 6 bloqueados com motivo, distribuidos em steam/performance 4, steam/controls 2, steam/library 2, steam/desktop 0, profiles 1, cast 1)",
-            "result": "passed"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/integration/test_ui_combobox_gestures.py",
-            "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_combobox_gestures.py -q (2 passed; roteamento conferido: -m 'not visual' 1 passed 1 deselected, -m visual 1 passed 1 deselected)",
-            "result": "passed"
-        },
-        {
-            "kind": "diagnostic",
-            "reference": "tools/ui_control_inventory.py",
-            "command": "matriz apos a prova comportamental de decoracao: 250 controles em 12 superficies, 0 falhas, not-probed caiu de 38 para 7, decorative=31 (todos provaram inercia; ZERO unnamed-actionable), 8 superficies sem pendencia (emulators, handheld-drawer, library, overview, sidebar, sync, task-drawer, themes)",
-            "result": "recorded"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/integration/test_ui_control_matrix.py",
-            "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_control_matrix.py -q (21 passed, incluindo os dois gates novos: nenhum controle age sem se anunciar, e decoracao e medida e nao presumida)",
-            "result": "passed"
-        },
-        {
-            "kind": "diagnostic",
-            "reference": "tools/ui_control_probe.qml",
-            "command": "sondagem exploratoria de contraste (NAO promovida a gate): nenhuma parte do projeto calcula razao WCAG; check_high_contrast.qml so prova que a preferencia do host TROCA as cores, nunca se o tema padrao e legivel. Uma sonda de tentativa mediu ~200 textos da arvore viva, mas o heuristico de 'fundo = ancestral opaco mais proximo' produziu uma classe sistematica de falso positivo (razao exatamente 1,0 em rotulos de seletor que aparecem simultaneamente com razao 13,69). A medicao foi descartada em vez de publicada.",
-            "result": "recorded"
-        },
-        {
-            "kind": "diagnostic",
-            "reference": "tools/ui_contrast_inventory.py",
-            "command": "medicao de contraste por pixel renderizado: sonda captura 9/9 secoes com zero nao medidas e o alinhamento das caixas foi conferido A OLHO num recorte; o analisador ainda NAO e confiavel porque a captura da pagina nao e deterministica (mesmo steam.png saiu RGBA numa execucao e RGB com fundo preto opaco na seguinte). Numeros nao publicados como acusacao.",
-            "result": "recorded"
-        },
-        {
-            "kind": "test",
-            "reference": "src/steamzero/ui/qml/Main.qml",
-            "command": "superficie do shell extraida (shellSurfaceControl): git diff -w mostra 17 insercoes e ZERO remocoes, o resto do diff e indentacao; harnesses contra o Main modificado verdes — check_dialog_keys 7 passed, check_combobox_gestures 5 passed, e check_emulation/check_main_emulation/check_editorial_library/check_theme_editor_aura/check_handheld_layout_focus/check_high_contrast com rc=0; qmllint limpo",
-            "result": "passed"
-        },
-        {
-            "kind": "diagnostic",
-            "reference": "tools/ui_contrast_probe.qml",
-            "command": "com a superficie explicita a captura virou DETERMINISTICA: 9 secoes, todas RGB opaco 1280x800 com o fundo real do tema, conferidas a olho ('Prontidao do jogo' navy sobre claro; 'Global' escuro sobre teal #005471). Deteccao de clipping removeu 7 falsos (150 -> 143 textos). Restam caixas caindo em area vazia por causa nao coberta pela checagem de clip, entao NENHUMA contagem foi publicada.",
-            "result": "recorded"
-        },
-        {
-            "kind": "diagnostic",
-            "reference": "tools/ui_contrast_probe.qml",
-            "command": "correcao do proprio check de clipping: a versao anterior mapeava o ancestral INTERMEDIARIO para o Flickable, e o contentItem de um Flickable comeca em (0,0) e cabe sempre — o texto la dentro podia estar rolado muito abaixo do viewport e passava. 'Clock da GPU', em y=709 dentro de um Flickable de 456 de altura, era medido contra area vazia. Passou a mapear o ITEM ORIGINAL: 143 -> 127 textos, 30 -> 24 candidatos.",
-            "result": "passed"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/unit/test_ui_selected_label_contrast.py",
-            "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_ui_selected_label_contrast.py -q (5 passed: os 4 temas empacotados mais a guarda de que nenhuma cor fixa serviria)",
-            "result": "passed"
-        },
-        {
-            "kind": "diagnostic",
-            "reference": "tools/ui_contrast_inventory.py",
-            "command": "GAP-UI-CHECKED-TAB-CONTRAST FECHADO e provado por medicao antes/depois: 'Por jogo' e 'Controles' saltaram de 1,95:1 para 7,02:1; recorte conferido a olho mostra 'Global' em texto claro legivel sobre o teal, onde antes era navy escuro. Candidatos abaixo do limite caíram de 24 para 21.",
-            "result": "passed"
-        },
-        {
-            "kind": "diagnostic",
-            "reference": "tools/ui_contrast_probe.qml",
-            "command": "sonda passou a INTERSECTAR a caixa com o viewport de cada ancestral que recorta, e a descartar revelacao parcial abaixo de 60% da area. Diagnosticado no concreto: 'Parar transmissao' tem 48px de altura e a borda do ScrollView deixava 12 visiveis, acima dos glifos — media 1,19 contra branco vazio. Candidatos: 24 -> 21 -> 18 -> 17. Ainda restam artefatos conhecidos ('Restaurar perfil seguro' x2), entao a contagem continua NAO publicada como acusacao.",
-            "result": "recorded"
-        },
-        {
-            "kind": "diagnostic",
-            "reference": "tools/ui_action_inventory.py",
-            "command": "o gate de contrato orfao NUNCA dispara. ui_action_inventory publica orphanContracts so quando a cobertura de superficies e completa — decisao certa, porque auditoria parcial acusaria 117 contratos de telas que nem abriu. Mas a ferramenta nao tem suporte a cenario NENHUM, ao contrario do ui_control_inventory que ganhou 15, entao a cobertura fica presa em 1/17 e o ramo e inerte na pratica. Medido em 2026-08-24: 1/17 superficies, 117 contratos publicados como notCoveredContracts.",
-            "result": "recorded"
-        },
-        {
-            "kind": "diagnostic",
-            "reference": "src/steamzero/ui/qml/launcher/LauncherHome.qml",
-            "command": "2026-08-27: scopeDigest renovado por mudanca ALHEIA a este item. A frente WS-2026-08-AURA-LAUNCHER corrigiu transbordo de texto em LauncherHome.qml (anchors.fill + wrapMode + elide), arquivo que cai no escopo amplo de QML deste item. A renovacao NAO atesta nada sobre o trabalho pendente daqui — contraste, escalas, movimento reduzido e prova na release instalada continuam abertos exatamente como antes. Registrado para que o digest novo nao seja lido como reatestacao das evidencias deste item.",
-            "result": "recorded"
-        },
-        {
-            "kind": "hardware",
-            "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun/README.md",
-            "command": "ui_audit_runner --on-screen: 55 capturas live, bridge-live, QML returncode 0; Launcher real nao ativou o cartao; central mostrou banner/footer de baixo contraste, Theme Studio com acoes truncadas e drawer Emulacao desabilitado.",
-            "result": "partial"
-        },
-        {
-            "kind": "diagnostic",
-            "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun/theme-review.txt",
-            "command": "theme list/status/plan somente leitura: 4 temas compativeis; tema ativo asset-recipes-demo; tres planos alternativos ok; plan do ativo recusado com E-THEME-ACTIVE.",
-            "result": "recorded"
-        },
-        {
-            "kind": "diagnostic",
-            "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun/verification.txt",
-            "command": "lote focado interrompido por timeout apos oito casos em captura QML; nao promovido como aprovado. Nenhum processo residual.",
-            "result": "partial"
-        },
-        {
-            "kind": "diagnostic",
-            "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun/08-deep-functional-ux-audit.md",
-            "command": "matriz consolidada UX-01..UX-16 com severidade, evidência, estado e critério de aceite; backend de escopo/armazenamento distinguido dos gaps de QML e validação física",
-            "result": "recorded"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/integration/test_ui_control_matrix.py",
-            "command": "2026-09-03: scopeDigest renovado por mudanca da frente WS-2026-09-TEMAS-ESDE em Main.qml (secao Temas virou abas). A matriz NAO foi carimbada: foi reexecutada e reprovou o painel novo com dois alvos de 80x44; corrigido para 48 e test_every_actionable_target_is_at_least_48px voltou a passar",
-            "result": "passed"
-        },
-        {
-            "kind": "test",
-            "reference": "src/steamzero/ui/qml/launcher/LauncherMain.qml",
-            "command": "2026-09-04: digest revalidado, nao carimbado. O escopo deste item inclui o diretorio src/steamzero/ui, entao a correcao de foco inicial do Launcher (SZ-AURA-LAUNCHER, `Loader` sem `focus: true`) o derivou. A suite integral (.venv/bin/python tools/run_tests_isolated.py tests -q) fechou com codigo 0 APOS a mudanca, cobrindo os testes de UI listados no escopo. A mudanca e uma unica propriedade de foco na cena raiz do Launcher e nao toca nenhuma superficie da central desktop. GAP-UI-LIVE-LAUNCHER-ROUTING permanece aberto: o roteamento vivo continua sem prova.",
-            "result": "passed"
-        }
-    ],
-    "nextAction": "Corrigir a ativacao live do Launcher antes de certificar jogos. Em paralelo, fechar os artefatos de contraste/truncamento do tema claro, tornar Emulacao e Temas navegaveis por controle e repetir a matriz em lote sem travamento do harness QML.",
-    "activeWorkstreams": [],
-    "updatedAt": "2026-09-04",
-    "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45 e reconciliada em codex/v2-harmonized-functional-release: a limpeza automatica dos marcadores de conflito havia descartado escopo, criterios e seis evidencias do lado f92734b, todos restaurados aqui. QML-KEY-INJECTION-001 esta FECHADO: o commit ff0b80e trocou o qmltestrunner do qt5-declarative pelo executor Qt 6 (/usr/lib/qt6/bin/qmltestrunner) com raiz Item, e tests/integration/test_ui_dialog_keys.py exige o runner (sem skip), returncode 0 e ausencia de FAIL. Por isso o criterio de Escape/Tab deixou de ser PENDENTE — a troca foi verificada re-executando o harness em 2026-08-24 (Qt 6.11.1, 7 passed / 0 skipped). Continua fora de prova: confirmacao com bridge alem da abertura, clique repetido, drawers e P0 visuais na release instalada. 2026-08-24: o CI (run 32726720427) reprovou em 3.11/3.12/3.14 porque tres provas portadas que exigem qmltestrunner Qt 6 estavam no job 'Testes e cobertura', que nao provisiona Qt. Elas foram marcadas 'visual', que ROTEIA para o job qml-visual-linux e nao dispensa — o gate visual reprova quando o Qt falta. A guarda de codigo de test_ui_dialog_keys.py ficou SEM marcador de proposito: ela existe para rodar justamente onde o runtime nao esta. 2026-08-24, ampliacao do denominador: a sonda de jornadas percorria 6 dos 15 modais do shell e NADA apontava a diferenca. Ao registrar os 8 restantes (o 15o e um FileDialog nativo, excluido com motivo), a auditoria encontrou um defeito real de acessibilidade: os OITO abriam sem receber o foco, deixando quem navega por teclado ou controle do lado de fora. Faltava a linha onOpened: root.focusDialogContent(...) que os seis ja sondados tinham desde 1bcb564 — a correcao anterior so alcancou o que estava no denominador. Um gate estatico novo impede o denominador de encolher de novo. 2026-08-24, ComboBox: a sonda de controles so clica, e clicar num ComboBox nao seleciona nada — por isso todos ficavam not-probed. A prova foi para um harness QuickTest com tecla REAL, nao para uma emissao de activated() na mao, que seria a mesma troca ja rejeitada quando close() fazia as vezes de Escape. O harness exige as duas coisas: que o indice mude E que activated seja emitido com o indice novo, porque currentIndex tambem muda por atribuicao. Percorrer as quatro areas da tela Steam revelou 10 ComboBox visiveis, nao os 5 que a matriz via, e DOIS deles estavam desabilitados SEM motivo (controllerLayoutPicker e mediaAccountPicker): cinzas e mudos, indistinguiveis de defeito para leitor de tela. Ambos ganharam Accessible.description condicional. 2026-08-24, decoracao: a sonda declarava 'icone decorativo' pela FORMA — sem rotulo, sem nome acessivel e desabilitado. Isso e hipotese, e classificar acao por forma ja produziu falso positivo neste projeto. O candidato passou a ser ATIVADO: inercia medida vira 'decorative', e qualquer efeito vira 'unnamed-actionable', que entra em FAILING_VERDICTS porque o controle existiria para quem enxerga e nao para quem usa leitor de tela. Resultado: os 31 provaram inercia, ZERO unnamed-actionable, e not-probed caiu de 38 para 7. Dois gates novos impedem a volta do atalho. 2026-08-24, contraste: medi e NAO entreguei. A sonda de tentativa acusaria varios textos abaixo de 4,5:1, mas o mesmo rotulo aparecia duas vezes — uma com 13,69 e outra com exatamente 1,0 — o que denuncia erro do heuristico, nao defeito do produto. Publicar essa contagem repetiria o padrao de falso positivo que esta sonda ja teve. Fica como GAP-UI-CONTRAST-MEASUREMENT com o caminho certo escrito: medir pixel renderizado. 2026-08-24, contraste (segunda tentativa): a sonda por PIXEL foi construida e captura as 9 secoes, com alinhamento de caixa conferido a olho. Tres vieses meus foram encontrados e corrigidos no caminho — adivinhar fundo pelo ancestral opaco, cortar candidatos por FRACAO de pixels (vies de largura em Label com fillWidth) e compor alpha sobre preto. O bloqueio que sobrou nao e vies e sim nao-determinismo da captura, e por isso a ferramenta fica registrada como medicao, NAO como gate: nenhuma contagem foi publicada como acusacao. 2026-08-24, superficie do shell: nenhum Item do Main pintava o fundo — quem pintava era a `color` da ApplicationWindow, que grabToImage de Item nenhum captura. O appShell passou a ficar dentro de um Rectangle que pinta root.backgroundColor, exposto como shellSurfaceControl. Isso torna o conteudo do shell capturavel e embutivel e serve a qualquer auditoria visual futura, nao so ao contraste. 2026-08-24, contraste do item selecionado CORRIGIDO: medi os dois temas com o resolvedor real e nenhuma cor fixa servia — no claro `text` da 1,95 e `background` da 7,02; no escuro e o inverso (4,53 contra 3,53). O QML passou a escolher entre as duas a que contrasta mais com o fundo selecionado, em seis delegates. Um teste prova a regra contra os tokens reais de cada tema empacotado, e um segundo reprova se algum dia UMA cor fixa passar em todos, para que simplificar nao reintroduza o defeito. Biblioteca e home editoriais passaram a declarar o tamanho de desenho das capas (LOD) em vez de decodificar a arte inteira, com decode assincrono. O harness check_editorial_library deixou de assumir Image.Ready no mesmo tick e passou a esperar pelo carregamento com orcamento limitado, de modo que uma capa que nunca carrega continua reprovando. Sem certificacao visual neste ciclo: o efeito foi verificado por gate offscreen, nao por captura no host. Varredura dos quatro usos do MediaEffectLayer: o backdrop contextual da biblioteca nao declarava teto e foi corrigido. Era exatamente o caso que o required existe para pegar. 2026-09-03: scopeDigest renovado por mudanca da frente WS-2026-09-CENA-ESDE (rota theme.scene.render e o botao de previa). A evidencia NAO foi carimbada: foi reexecutada e passou (matriz de controles 21 passed e gestos de ComboBox 13 passed, com os 5 seletores novos da previa). 2026-09-03: scopeDigest renovado por WS-2026-09-CENA-ESDE (SceneEsdeView ganhou os renderizadores de carousel, video e helpSystem). A evidencia NAO foi carimbada: foi reexecutada e passou (matriz de controles e gestos de ComboBox, 23 testes). 2026-09-04: scopeDigest renovado pela correcao do video em SceneEsdeView. A matriz NAO foi carimbada: foi reexecutada e passou (21 testes)."
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-UI-DESKTOP-AUDIT",
+  "title": "UI Desktop — auditoria visual e jornadas P0/P1",
+  "domain": "ui",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "dev",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun",
+    "docs/09-operations/evidence/2026-08-11-ui-audit",
+    "src/steamzero/ui",
+    "src/steamzero/ui/qml/SteamGameplay.qml",
+    "tests/integration/test_qml_handheld_offscreen.py",
+    "tests/integration/test_ui_action_inventory.py",
+    "tests/integration/test_ui_combobox_gestures.py",
+    "tests/integration/test_ui_confirm_job_recovery_e2e.py",
+    "tests/integration/test_ui_control_identity.py",
+    "tests/integration/test_ui_control_matrix.py",
+    "tests/integration/test_ui_credential_journey_e2e.py",
+    "tests/integration/test_ui_dialog_coverage.py",
+    "tests/integration/test_ui_dialog_journeys.py",
+    "tests/integration/test_ui_dialog_keys.py",
+    "tests/qml/check_combobox_gestures.qml",
+    "tests/qml/check_confirm_job_recovery_e2e.qml",
+    "tests/qml/check_credential_journey_e2e.qml",
+    "tests/qml/check_dialog_keys.qml",
+    "tests/qml/check_editorial_library.qml",
+    "tests/qml/check_emulation.qml",
+    "tests/qml/check_main_emulation.qml",
+    "tests/qml/check_theme_editor_aura.qml",
+    "tests/unit/test_ui_audit_runner.py",
+    "tests/unit/test_ui_selected_label_contrast.py",
+    "tools/ui_action_inventory.py",
+    "tools/ui_action_probe.qml",
+    "tools/ui_audit_capture.qml",
+    "tools/ui_audit_runner.py",
+    "tools/ui_contrast_inventory.py",
+    "tools/ui_contrast_probe.qml",
+    "tools/ui_control_inventory.py",
+    "tools/ui_control_probe.qml",
+    "tools/ui_dialog_probe.qml",
+    "tools/ui_scenario_fixtures.py"
+  ],
+  "scopeDigest": "204e4de33b75d4d6182ebe15e247f4298c11e106233a6934f8d27b4b3dd6519b",
+  "dependsOn": [],
+  "knownGaps": [
+    "GAP-UI-CONTRAST-MEASUREMENT",
+    "GAP-UI-ORPHAN-GATE-INERTE",
+    "GAP-UI-LIVE-LAUNCHER-ROUTING",
+    "GAP-UI-THEME-PLAN-ACTIVE-SEMANTICS"
+  ],
+  "acceptanceCriteria": [
+    "Instalar emulador nao e no-op silencioso.",
+    "DarkButton legivel no tema claro.",
+    "Tema aplica via plan+confirm na UI.",
+    "Harnesses QML de dispatch/tema/biblioteca verdes.",
+    "Todo controle acionavel visivel anuncia Accessible.name.",
+    "Todo alvo acionavel tem ao menos 48x48.",
+    "A matriz roda todos os cenarios declarados e funde por identidade estavel.",
+    "Identidade explicita nao carrega rotulo nem posicao.",
+    "A matriz publica quanto da identidade repousa no fallback estrutural.",
+    "Fechar modal por Escape nao deixa plano pendurado.",
+    "Fechar modal devolve o foco ao originador.",
+    "Modal recebe o foco ao abrir (verificado com abertura programatica).",
+    "Escape e Tab reais provados por evento de teclado do Qt 6 (fechado).",
+    "Provas que exigem runtime QML rodam no gate visual, que reprova quando o Qt falta, nunca puladas.",
+    "Todo modal do shell tem jornada na sonda ou exclusao registrada com motivo; o denominador dos modais nao encolhe em silencio.",
+    "ComboBox e exercitado por tecla real e observa activated; bloqueado explica o motivo.",
+    "Enfeite e provado por ativacao, nao presumido pela forma; controle que age sem se anunciar reprova como unnamed-actionable.",
+    "O shell pinta o proprio fundo num Item capturavel, em vez de depender da cor da janela.",
+    "O rotulo do item selecionado e legivel em todo tema empacotado, com a cor escolhida por contraste."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_qml_handheld_offscreen.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_qml_handheld_offscreen.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_action_inventory.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_action_inventory.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_ui_audit_runner.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_ui_audit_runner.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_control_matrix.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_control_matrix.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_control_identity.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_control_identity.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_dialog_journeys.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_dialog_journeys.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_dialog_keys.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_dialog_keys.py -v -rs -q (2 passed, 0 skipped; qmltestrunner Qt 6.11.1: 7 passed, 0 failed, 0 skipped)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_editorial_library.qml",
+      "command": "QT_QPA_PLATFORM=offscreen qml6 -I src/steamzero/ui/qml tests/qml/{check_editorial_library,check_emulation,check_main_emulation,check_theme_editor_aura}.qml (rc=0 nos quatro)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_dialog_keys.py",
+      "command": "roteamento do gate visual: -m 'not visual' -> 1 passed, 3 deselected (a guarda de codigo roda onde o Qt NAO esta); -m visual -> 3 passed (as provas Qt 6 rodam onde o runtime esta)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_dialog_coverage.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_dialog_coverage.py -q (2 passed; 14 de 15 modais com jornada, 1 excluido com motivo)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_dialog_journeys.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_dialog_journeys.py -q (6 passed com 14 modais sondados; antes da correcao os 8 novos reprovavam em test_opening_a_dialog_moves_focus_into_it)",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tools/ui_control_inventory.py",
+      "command": "matriz de controles medida em 2026-08-24: 250 controles em 12 superficies, 0 falhas (silent-no-op/unrouted/blocked-silent), 38 not-probed = 31 icones decorativos + 5 comboboxes + 2 aberturas de FileDialog nativo; 6 superficies sem pendencia (handheld-drawer, library, overview, sync, task-drawer, themes); identidade 45 explicitas / 205 fallback / 0 colisoes",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_combobox_gestures.qml",
+      "command": "QT_QPA_PLATFORM=offscreen qmltestrunner Qt 6.11.1 -input tests/qml/check_combobox_gestures.qml (5 passed; denominador fechado: 10 ComboBox visiveis = 4 exercitados por tecla real + 6 bloqueados com motivo, distribuidos em steam/performance 4, steam/controls 2, steam/library 2, steam/desktop 0, profiles 1, cast 1)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_combobox_gestures.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_combobox_gestures.py -q (2 passed; roteamento conferido: -m 'not visual' 1 passed 1 deselected, -m visual 1 passed 1 deselected)",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tools/ui_control_inventory.py",
+      "command": "matriz apos a prova comportamental de decoracao: 250 controles em 12 superficies, 0 falhas, not-probed caiu de 38 para 7, decorative=31 (todos provaram inercia; ZERO unnamed-actionable), 8 superficies sem pendencia (emulators, handheld-drawer, library, overview, sidebar, sync, task-drawer, themes)",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_control_matrix.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_control_matrix.py -q (21 passed, incluindo os dois gates novos: nenhum controle age sem se anunciar, e decoracao e medida e nao presumida)",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tools/ui_control_probe.qml",
+      "command": "sondagem exploratoria de contraste (NAO promovida a gate): nenhuma parte do projeto calcula razao WCAG; check_high_contrast.qml so prova que a preferencia do host TROCA as cores, nunca se o tema padrao e legivel. Uma sonda de tentativa mediu ~200 textos da arvore viva, mas o heuristico de 'fundo = ancestral opaco mais proximo' produziu uma classe sistematica de falso positivo (razao exatamente 1,0 em rotulos de seletor que aparecem simultaneamente com razao 13,69). A medicao foi descartada em vez de publicada.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tools/ui_contrast_inventory.py",
+      "command": "medicao de contraste por pixel renderizado: sonda captura 9/9 secoes com zero nao medidas e o alinhamento das caixas foi conferido A OLHO num recorte; o analisador ainda NAO e confiavel porque a captura da pagina nao e deterministica (mesmo steam.png saiu RGBA numa execucao e RGB com fundo preto opaco na seguinte). Numeros nao publicados como acusacao.",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "src/steamzero/ui/qml/Main.qml",
+      "command": "superficie do shell extraida (shellSurfaceControl): git diff -w mostra 17 insercoes e ZERO remocoes, o resto do diff e indentacao; harnesses contra o Main modificado verdes — check_dialog_keys 7 passed, check_combobox_gestures 5 passed, e check_emulation/check_main_emulation/check_editorial_library/check_theme_editor_aura/check_handheld_layout_focus/check_high_contrast com rc=0; qmllint limpo",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tools/ui_contrast_probe.qml",
+      "command": "com a superficie explicita a captura virou DETERMINISTICA: 9 secoes, todas RGB opaco 1280x800 com o fundo real do tema, conferidas a olho ('Prontidao do jogo' navy sobre claro; 'Global' escuro sobre teal #005471). Deteccao de clipping removeu 7 falsos (150 -> 143 textos). Restam caixas caindo em area vazia por causa nao coberta pela checagem de clip, entao NENHUMA contagem foi publicada.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tools/ui_contrast_probe.qml",
+      "command": "correcao do proprio check de clipping: a versao anterior mapeava o ancestral INTERMEDIARIO para o Flickable, e o contentItem de um Flickable comeca em (0,0) e cabe sempre — o texto la dentro podia estar rolado muito abaixo do viewport e passava. 'Clock da GPU', em y=709 dentro de um Flickable de 456 de altura, era medido contra area vazia. Passou a mapear o ITEM ORIGINAL: 143 -> 127 textos, 30 -> 24 candidatos.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_ui_selected_label_contrast.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_ui_selected_label_contrast.py -q (5 passed: os 4 temas empacotados mais a guarda de que nenhuma cor fixa serviria)",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tools/ui_contrast_inventory.py",
+      "command": "GAP-UI-CHECKED-TAB-CONTRAST FECHADO e provado por medicao antes/depois: 'Por jogo' e 'Controles' saltaram de 1,95:1 para 7,02:1; recorte conferido a olho mostra 'Global' em texto claro legivel sobre o teal, onde antes era navy escuro. Candidatos abaixo do limite caíram de 24 para 21.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tools/ui_contrast_probe.qml",
+      "command": "sonda passou a INTERSECTAR a caixa com o viewport de cada ancestral que recorta, e a descartar revelacao parcial abaixo de 60% da area. Diagnosticado no concreto: 'Parar transmissao' tem 48px de altura e a borda do ScrollView deixava 12 visiveis, acima dos glifos — media 1,19 contra branco vazio. Candidatos: 24 -> 21 -> 18 -> 17. Ainda restam artefatos conhecidos ('Restaurar perfil seguro' x2), entao a contagem continua NAO publicada como acusacao.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tools/ui_action_inventory.py",
+      "command": "o gate de contrato orfao NUNCA dispara. ui_action_inventory publica orphanContracts so quando a cobertura de superficies e completa — decisao certa, porque auditoria parcial acusaria 117 contratos de telas que nem abriu. Mas a ferramenta nao tem suporte a cenario NENHUM, ao contrario do ui_control_inventory que ganhou 15, entao a cobertura fica presa em 1/17 e o ramo e inerte na pratica. Medido em 2026-08-24: 1/17 superficies, 117 contratos publicados como notCoveredContracts.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "src/steamzero/ui/qml/launcher/LauncherHome.qml",
+      "command": "2026-08-27: scopeDigest renovado por mudanca ALHEIA a este item. A frente WS-2026-08-AURA-LAUNCHER corrigiu transbordo de texto em LauncherHome.qml (anchors.fill + wrapMode + elide), arquivo que cai no escopo amplo de QML deste item. A renovacao NAO atesta nada sobre o trabalho pendente daqui — contraste, escalas, movimento reduzido e prova na release instalada continuam abertos exatamente como antes. Registrado para que o digest novo nao seja lido como reatestacao das evidencias deste item.",
+      "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun/README.md",
+      "command": "ui_audit_runner --on-screen: 55 capturas live, bridge-live, QML returncode 0; Launcher real nao ativou o cartao; central mostrou banner/footer de baixo contraste, Theme Studio com acoes truncadas e drawer Emulacao desabilitado.",
+      "result": "partial"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun/theme-review.txt",
+      "command": "theme list/status/plan somente leitura: 4 temas compativeis; tema ativo asset-recipes-demo; tres planos alternativos ok; plan do ativo recusado com E-THEME-ACTIVE.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun/verification.txt",
+      "command": "lote focado interrompido por timeout apos oito casos em captura QML; nao promovido como aprovado. Nenhum processo residual.",
+      "result": "partial"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun/08-deep-functional-ux-audit.md",
+      "command": "matriz consolidada UX-01..UX-16 com severidade, evidência, estado e critério de aceite; backend de escopo/armazenamento distinguido dos gaps de QML e validação física",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_control_matrix.py",
+      "command": "2026-09-03: scopeDigest renovado por mudanca da frente WS-2026-09-TEMAS-ESDE em Main.qml (secao Temas virou abas). A matriz NAO foi carimbada: foi reexecutada e reprovou o painel novo com dois alvos de 80x44; corrigido para 48 e test_every_actionable_target_is_at_least_48px voltou a passar",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "src/steamzero/ui/qml/launcher/LauncherMain.qml",
+      "command": "2026-09-04: digest revalidado, nao carimbado. O escopo deste item inclui o diretorio src/steamzero/ui, entao a correcao de foco inicial do Launcher (SZ-AURA-LAUNCHER, `Loader` sem `focus: true`) o derivou. A suite integral (.venv/bin/python tools/run_tests_isolated.py tests -q) fechou com codigo 0 APOS a mudanca, cobrindo os testes de UI listados no escopo. A mudanca e uma unica propriedade de foco na cena raiz do Launcher e nao toca nenhuma superficie da central desktop. GAP-UI-LIVE-LAUNCHER-ROUTING permanece aberto: o roteamento vivo continua sem prova.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "src/steamzero/ui/qml/PackagedAssets.qml",
+      "command": "Digest derivado porque o escopo declara o diretorio src/steamzero/ui e a frente de assets acrescentou 27 icones oficiais e o allowlist correspondente. Revalidacao de escopo, nao carimbo: a capacidade dos icones passou a ter item proprio (SZ-UI-PACKAGED-ICONS), que ate entao nao existia. Nenhuma sonda de UI, inventario de controles ou medicao de contraste foi reexecutada; GAP-UI-LIVE-LAUNCHER-ROUTING segue aberto.",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Corrigir a ativacao live do Launcher antes de certificar jogos. Em paralelo, fechar os artefatos de contraste/truncamento do tema claro, tornar Emulacao e Temas navegaveis por controle e repetir a matriz em lote sem travamento do harness QML.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-09-04",
+  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45 e reconciliada em codex/v2-harmonized-functional-release: a limpeza automatica dos marcadores de conflito havia descartado escopo, criterios e seis evidencias do lado f92734b, todos restaurados aqui. QML-KEY-INJECTION-001 esta FECHADO: o commit ff0b80e trocou o qmltestrunner do qt5-declarative pelo executor Qt 6 (/usr/lib/qt6/bin/qmltestrunner) com raiz Item, e tests/integration/test_ui_dialog_keys.py exige o runner (sem skip), returncode 0 e ausencia de FAIL. Por isso o criterio de Escape/Tab deixou de ser PENDENTE — a troca foi verificada re-executando o harness em 2026-08-24 (Qt 6.11.1, 7 passed / 0 skipped). Continua fora de prova: confirmacao com bridge alem da abertura, clique repetido, drawers e P0 visuais na release instalada. 2026-08-24: o CI (run 32726720427) reprovou em 3.11/3.12/3.14 porque tres provas portadas que exigem qmltestrunner Qt 6 estavam no job 'Testes e cobertura', que nao provisiona Qt. Elas foram marcadas 'visual', que ROTEIA para o job qml-visual-linux e nao dispensa — o gate visual reprova quando o Qt falta. A guarda de codigo de test_ui_dialog_keys.py ficou SEM marcador de proposito: ela existe para rodar justamente onde o runtime nao esta. 2026-08-24, ampliacao do denominador: a sonda de jornadas percorria 6 dos 15 modais do shell e NADA apontava a diferenca. Ao registrar os 8 restantes (o 15o e um FileDialog nativo, excluido com motivo), a auditoria encontrou um defeito real de acessibilidade: os OITO abriam sem receber o foco, deixando quem navega por teclado ou controle do lado de fora. Faltava a linha onOpened: root.focusDialogContent(...) que os seis ja sondados tinham desde 1bcb564 — a correcao anterior so alcancou o que estava no denominador. Um gate estatico novo impede o denominador de encolher de novo. 2026-08-24, ComboBox: a sonda de controles so clica, e clicar num ComboBox nao seleciona nada — por isso todos ficavam not-probed. A prova foi para um harness QuickTest com tecla REAL, nao para uma emissao de activated() na mao, que seria a mesma troca ja rejeitada quando close() fazia as vezes de Escape. O harness exige as duas coisas: que o indice mude E que activated seja emitido com o indice novo, porque currentIndex tambem muda por atribuicao. Percorrer as quatro areas da tela Steam revelou 10 ComboBox visiveis, nao os 5 que a matriz via, e DOIS deles estavam desabilitados SEM motivo (controllerLayoutPicker e mediaAccountPicker): cinzas e mudos, indistinguiveis de defeito para leitor de tela. Ambos ganharam Accessible.description condicional. 2026-08-24, decoracao: a sonda declarava 'icone decorativo' pela FORMA — sem rotulo, sem nome acessivel e desabilitado. Isso e hipotese, e classificar acao por forma ja produziu falso positivo neste projeto. O candidato passou a ser ATIVADO: inercia medida vira 'decorative', e qualquer efeito vira 'unnamed-actionable', que entra em FAILING_VERDICTS porque o controle existiria para quem enxerga e nao para quem usa leitor de tela. Resultado: os 31 provaram inercia, ZERO unnamed-actionable, e not-probed caiu de 38 para 7. Dois gates novos impedem a volta do atalho. 2026-08-24, contraste: medi e NAO entreguei. A sonda de tentativa acusaria varios textos abaixo de 4,5:1, mas o mesmo rotulo aparecia duas vezes — uma com 13,69 e outra com exatamente 1,0 — o que denuncia erro do heuristico, nao defeito do produto. Publicar essa contagem repetiria o padrao de falso positivo que esta sonda ja teve. Fica como GAP-UI-CONTRAST-MEASUREMENT com o caminho certo escrito: medir pixel renderizado. 2026-08-24, contraste (segunda tentativa): a sonda por PIXEL foi construida e captura as 9 secoes, com alinhamento de caixa conferido a olho. Tres vieses meus foram encontrados e corrigidos no caminho — adivinhar fundo pelo ancestral opaco, cortar candidatos por FRACAO de pixels (vies de largura em Label com fillWidth) e compor alpha sobre preto. O bloqueio que sobrou nao e vies e sim nao-determinismo da captura, e por isso a ferramenta fica registrada como medicao, NAO como gate: nenhuma contagem foi publicada como acusacao. 2026-08-24, superficie do shell: nenhum Item do Main pintava o fundo — quem pintava era a `color` da ApplicationWindow, que grabToImage de Item nenhum captura. O appShell passou a ficar dentro de um Rectangle que pinta root.backgroundColor, exposto como shellSurfaceControl. Isso torna o conteudo do shell capturavel e embutivel e serve a qualquer auditoria visual futura, nao so ao contraste. 2026-08-24, contraste do item selecionado CORRIGIDO: medi os dois temas com o resolvedor real e nenhuma cor fixa servia — no claro `text` da 1,95 e `background` da 7,02; no escuro e o inverso (4,53 contra 3,53). O QML passou a escolher entre as duas a que contrasta mais com o fundo selecionado, em seis delegates. Um teste prova a regra contra os tokens reais de cada tema empacotado, e um segundo reprova se algum dia UMA cor fixa passar em todos, para que simplificar nao reintroduza o defeito. Biblioteca e home editoriais passaram a declarar o tamanho de desenho das capas (LOD) em vez de decodificar a arte inteira, com decode assincrono. O harness check_editorial_library deixou de assumir Image.Ready no mesmo tick e passou a esperar pelo carregamento com orcamento limitado, de modo que uma capa que nunca carrega continua reprovando. Sem certificacao visual neste ciclo: o efeito foi verificado por gate offscreen, nao por captura no host. Varredura dos quatro usos do MediaEffectLayer: o backdrop contextual da biblioteca nao declarava teto e foi corrigido. Era exatamente o caso que o required existe para pegar. 2026-09-03: scopeDigest renovado por mudanca da frente WS-2026-09-CENA-ESDE (rota theme.scene.render e o botao de previa). A evidencia NAO foi carimbada: foi reexecutada e passou (matriz de controles 21 passed e gestos de ComboBox 13 passed, com os 5 seletores novos da previa). 2026-09-03: scopeDigest renovado por WS-2026-09-CENA-ESDE (SceneEsdeView ganhou os renderizadores de carousel, video e helpSystem). A evidencia NAO foi carimbada: foi reexecutada e passou (matriz de controles e gestos de ComboBox, 23 testes). 2026-09-04: scopeDigest renovado pela correcao do video em SceneEsdeView. A matriz NAO foi carimbada: foi reexecutada e passou (21 testes)."
 }

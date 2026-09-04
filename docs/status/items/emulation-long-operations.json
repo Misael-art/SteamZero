@@ -33,7 +33,7 @@
     "docs/09-operations/evidence/2026-08-25-degraded-detail",
     "docs/09-operations/evidence/2026-08-25-melonds-smoke-install-fisico"
   ],
-  "scopeDigest": "3a3b38af45cdd2ce7cc53db93f254ac882839b1fe3602cdb92a1d1a96da9110f",
+  "scopeDigest": "0b738fb6c7a5553de55c2519ad2956112e82b6fd49eeaca7966e63c10c37ab81",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -146,12 +146,18 @@
       "reference": "tests/unit/test_service_core.py",
       "command": "Revalidacao de digest apos compressao negociada do transporte (frente WS-2026-08-LIBRARY-CANONICAL-FULLSCAN editou service/client.py e service/core.py com sobreposicao registrada): run_tests_isolated.py tests/unit/test_service_core.py tests/unit/test_service_methods.py -q (51 passed) e tests/integration/test_component_lifecycle.py tests/integration/test_core_service.py -q (97 passed) no conteudo novo",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "src/steamzero/adapters/manifests/flycast.adapter.json",
+      "command": "Digest derivado pela troca de icones (a5245cdb), NAO por mudanca de comportamento: em flycast e melonds mudou so presentation.iconAsset (../assets/dreamcast.svg -> ../assets/flycast.png) e os hashes correspondentes em component-lock.json. Nenhum campo de ciclo de vida, runtime, permissao ou operacao longa foi tocado. Revalidacao de escopo; as operacoes longas deste item NAO foram reexecutadas nesta integracao.",
+      "result": "passed"
     }
   ],
   "nextAction": "Item fechado em ready: matriz LOCAL (33), causa registrada em degradados e smoke flatpak-info do melonDS provados no host. Pendente fora deste item, elegivel como proximo trabalho do dominio: alinhar dolphin e retroarch ao alvo fixado pelo update governado (hoje 'degraded' com causa registrada) para zerar drift da matriz.",
   "activeWorkstreams": [
     "WS-2026-08-EMULATION-LONG-OPERATIONS"
   ],
-  "updatedAt": "2026-08-28",
+  "updatedAt": "2026-09-04",
   "notes": "A release 0.1.0a46-73dd7f5ad3c1 confirmou limite explícito de 1 900 s, execução persistida e rollback sem deployment parcial. A validação do Cemu revelou primeiro AF_NETLINK bloqueado pela unit; a release 0.1.0a46-2bfa55f05007 corrigiu essa allowlist e expôs a segunda fronteira: submontagens protegidas em /proc impedem Bubblewrap de montar a procfs do Flatpak. A release 0.1.0a46-54f2fc4da9b7 executa somente argv Flatpak validados num serviço transitório do user manager, mantendo o daemon endurecido: Cemu e RPCS3 chegaram a committed com rollback disponível. Flycast não aceita --version, mas a release 0.1.0a46-bd598c516bce substituiu esse smoke por leitura do commit Flatpak fixado e o instalou com sucesso. melonDS revelou o mesmo contrato inválido; a transação foi revertida sem deployment parcial. Reconciliacao 2026-08-24: o porte v2 alterou flatpak.py, lifecycle.py, cli/main.py e install_host.py dentro deste escopo, e a re-execucao das evidencias mostrou UMA reprovacao real (contrato do plano v3). O digest foi renovado com esse resultado registrado como 'failed', nao para silenciar o gate. 2026-08-24: matriz local fechada nos 33. Seis causas reais removidas e DUAS retificacoes minhas: o update de core era defeito de produto e nao de fixture, e o sunshine nao era anomalia e sim componente de streaming cobrado por capacidades que declara nao ter. 2026-08-25: matriz FISICA fechada na release 2.0.0rc1-92d91d631b80, o que promoveu verification de dev para hw e operation de blocked para degraded. Degradado e nao pronto porque o smoke flatpak-info do melonDS continua pendente de install fisico; a promocao cobre a causa registrada em componente degradado, nao o item inteiro. Nao ha captura de GUI: o campo detail nao e renderizado em superficie QML alguma, entao a unica superficie observavel desta correcao e o CLI, e os PNGs sao renderizacoes de stdout real, nao capturas de tela. 2026-08-25: install fisico do melonDS na release instalada fechou a ultima pendencia que mantinha operation=degraded; job rodou no daemon com allowlist de rede (b34213d) e o verify flatpak-info conferiu o commit fixado. Promocao de degraded para ready cobre este item; dolphin/retroarch continuam 'degraded' COM causa registrada e sao trabalho proprio de update, nao reabertura deste."
 }

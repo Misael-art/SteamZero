@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-UI-PACKAGED-ICONS",
+  "title": "Ícones oficiais empacotados de emuladores, serviços e plataformas",
+  "domain": "ui",
+  "implementation": "partial",
+  "integration": "integrated",
+  "verification": "unit",
+  "operation": "unknown",
+  "distribution": "packaged",
+  "scopePaths": [
+    "src/steamzero/ui/assets",
+    "src/steamzero/ui/assets/ATTRIBUTION.md",
+    "src/steamzero/ui/qml/PackagedAssets.qml",
+    "tests/unit/test_packaged_assets.py"
+  ],
+  "scopeDigest": "ea1aa697c246904ac8c58c1d463415122e2c74a2f089d90c6bcd2dc9e69f1eda",
+  "dependsOn": [
+    "SZ-UI-DESKTOP-AUDIT"
+  ],
+  "knownGaps": [
+    "GAP-ICONS-LIBRETRO-CORES-SEM-LOGO",
+    "GAP-ICONS-PLATAFORMAS-EM-FALLBACK",
+    "GAP-ICONS-SEM-EVIDENCIA-VISUAL"
+  ],
+  "acceptanceCriteria": [
+    "Cada ícone declarado no allowlist existe como arquivo empacotado e decodifica.",
+    "As três listas (PackagedAssets.qml, component-lock.json, ATTRIBUTION.md) permanecem sincronizadas.",
+    "Nenhum ícone é prometido sem fonte e licença registradas no ATTRIBUTION.md.",
+    "Plataforma sem logo oficial permanece no fallback geométrico, sem substituir por arte de sistema."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_packaged_assets.py",
+      "command": "PYTHONPATH=src .venv/bin/python tools/run_tests_isolated.py tests/unit/test_packaged_assets.py -q => 88 passed. Reexecutado por esta frente no tip de codex/official-assets-icons (abf0b4cd) em worktree isolado e no merge: 88 nos dois. O relatorio da frente de assets declarou '100 passed' para 26701bfa e abf0b4cd; esse numero NAO reproduz. O arquivo de teste e identico nos tres commits (17 funcoes parametrizadas), os 41 assets e o PackagedAssets.qml sao identicos entre o tip e o merge, entao nada se perdeu na integracao — a divergencia esta no relatorio, nao na arvore.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "src/steamzero/ui/assets/ATTRIBUTION.md",
+      "command": "27 icones oficiais: 11 emuladores standalone (a5245cdb), 3 servicos de cloud (26701bfa) e 13 plataformas de console (abf0b4cd). SVG onde existe vetor; PNG com lado minimo de 241px. Fonte e licenca de cada um no ATTRIBUTION.md.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "src/steamzero/ui/qml/PackagedAssets.qml",
+      "command": "Escopo deliberadamente NAO entregue, conforme decidido pela frente de assets: (a) compositos para cores libretro — 12 dos 17 cores nao publicam logo proprio (Stella, VICE, PUAE, Fuse, blueMSX, Opera, Mednafen-*, Mupen64Plus); compor retroarch+arte do sistema usaria a marca do console, nao a do core, e deixaria a lista inconsistente, entao todos seguem com retroarch.svg; (b) Arcade nao tem marca unica; (c) 3DS, Wii U e PS Vita tem fonte confirmada mas o download parou em rate-limit 429 do upload.wikimedia.org — bloqueio externo; (d) GameCube/Wii sem logo localizado. As cinco plataformas seguem no fallback geometrico.",
+      "result": "recorded"
+    }
+  ],
+  "nextAction": "Capturar evidencia visual dos icones no Launcher instalado. Depende de instalacao autorizada e do plugin SVG do Qt, ausente neste runtime — o harness check_packaged_assets.qml fica skip sem ele. Sem essa captura, a troca esta provada como empacotamento, nao como aparencia na tela.",
+  "notes": "Item aberto pela frente de integracao para dar dono de status a uma capacidade que nao tinha nenhum: nenhum item declarava src/steamzero/ui/assets nem PackagedAssets.qml, que so eram cobertos de forma transitiva pelo diretorio src/steamzero/ui de SZ-UI-DESKTOP-AUDIT. O teste guarda a sincronia das tres listas, que e o defeito provavel aqui: trocar o arquivo e esquecer o hash ou a atribuicao. O que este item NAO prova e o que o usuario ve — nenhuma captura do Launcher com os icones novos existe, e por isso a verificacao para em 'unit'.",
+  "updatedAt": "2026-09-04",
+  "activeWorkstreams": []
+}
