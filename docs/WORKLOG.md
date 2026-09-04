@@ -9371,3 +9371,26 @@ formatação, mypy, independência, boundaries e `make status-check` passaram. A
 suíte integral chegou a 17%, ficou sem saída por 30 segundos e foi interrompida
 de forma controlada, sem processos residuais. O commit funcional é `23d498e`.
 Nenhuma instalação, publicação, push ou ação de host foi executada.
+
+## 2026-09-04 — Sessão: a cena QML órfã do Launcher
+
+Item `SZ-AURA-LAUNCHER`, branch `claude/launcher-qml-orphan`. O
+`steamzero-launcher` esperava o `qml6` com `wait()` e mais nada; morrendo o
+wrapper, a cena sobrevivia como órfã, com o mesmo título ("SteamZero") e a
+mesma classe ("org.qt-project.qml") da sessão viva, já sem a ponte HTTP, que
+morre junto. Essa janela já produziu dois diagnósticos errados registrados no
+próprio item: as duas janelas coexistindo em 2026-08-27 e, em 2026-09-04,
+injeções de teclado entregues à órfã. A cena passa a nascer sob supervisão —
+grupo próprio, SIGTERM com prazo antes do SIGKILL — cobrindo retorno, exceção
+e sinal (SIGTERM do systemd, SIGINT do terminal); o `finally` continua valendo
+quando o handler não pode ser instalado. SIGKILL no próprio launcher segue
+fora do alcance de qualquer processo. Morte por sinal virava código de saída
+inválido e agora sai como 128+sinal.
+
+Provas: `tests/integration/test_launcher_child_lifetime.py` reprova nos dois
+sinais sem a correção e passa com ela; suíte integral `5543 passed, 44
+skipped` com a única falha sendo o `status-check` do próprio item, resolvida
+no commit documental; Ruff, formatação, mypy, independência e boundaries
+passaram. Commit funcional `854c0d09`. Nada foi provado no host: nenhuma
+instalação, publicação, push ou ação privilegiada foi executada, e a validação
+física do item continua pendente.

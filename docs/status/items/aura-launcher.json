@@ -1,167 +1,174 @@
 {
-    "schemaVersion": 1,
-    "kind": "project-item",
-    "id": "SZ-AURA-LAUNCHER",
-    "title": "AURA Launcher — biblioteca fullscreen e lancamento",
-    "domain": "ui",
-    "implementation": "partial",
-    "integration": "isolated",
-    "verification": "hw",
-    "operation": "unknown",
-    "distribution": "not-packaged",
-  "scopeDigest": "53dfce89c8df8a41bcdf53e656289401d2ae58d9084044bb357f2eb3e32693fd",
-    "scopePaths": [
-        "docs/00-vision/PROJECT-VISION.md",
-        "docs/00-vision/NON-GOALS.md",
-        "docs/01-product/AURA-SURFACES.md",
-        "docs/01-product/PRD.md",
-        "docs/01-product/FEATURE-CATALOG.md",
-        "docs/01-product/ACCEPTANCE-CRITERIA.md",
-        "docs/12-roadmap/IMPLEMENTATION-ROADMAP.md",
-        "docs/12-roadmap/MILESTONES.md",
-        "docs/12-roadmap/STEAM-SESSION-ROADMAP.md",
-        "src/steamzero/launcher",
-        "tests/unit/test_launcher_navigation.py",
-        "src/steamzero/ui/qml/launcher",
-        "tests/qml/launcher",
-        "tests/unit/test_launcher_session.py",
-        "src/steamzero/adapters/launcher_process.py",
-        "tests/integration/test_launcher_launch.py",
-        "src/steamzero/adapters/launcher_ui.py",
-        "tests/integration/test_launcher_app.py",
-        "docs/09-operations/evidence/2026-08-26-aura-launcher-fisico",
-        "src/steamzero/ui/qml/launcher/LauncherHome.qml",
-        "src/steamzero/adapters/launcher_catalog.py",
-        "tests/unit/test_launcher_catalog.py",
-        "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun",
-        "docs/09-operations/evidence/2026-09-02-ux-console-experience"
-    ],
-    "dependsOn": [
-        "SZ-AURA-UI",
-        "SZ-THEME-ENGINE"
-    ],
-    "knownGaps": [
-        "GAP-LAUNCHER-REAL-CATALOG-PHYSICAL",
-        "GAP-LAUNCHER-HOME-ACTIVATION-PHYSICAL",
-        "GAP-LAUNCHER-RETURN-FADES-PHYSICAL"
-    ],
-    "acceptanceCriteria": [
-        "Home fullscreen, biblioteca, busca, colecoes e pagina de jogo funcionam por controle.",
-        "Um jogo real e iniciado e retorna ao mesmo contexto do launcher sem encerrar a sessao indevidamente.",
-        "Reiniciar o launcher nao derruba o jogo ativo nem corrompe dados ou operacoes.",
-        "Steam, ES-DE, RetroFE e outros frontends permanecem opcionais e inalterados sem plano proprio.",
-        "Instalacao e certificacao exigem capturas da release ativa e ciclo fisico controle-jogo-retorno.",
-        "O Launcher encontra a biblioteca canonica sozinho, sem depender de --library."
-    ],
-    "evidence": [
-        {
-            "kind": "test",
-            "reference": "tests/unit/test_launcher_navigation.py",
-            "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_launcher_navigation.py -q (foco da home: conectividade ao no inicial a partir de qualquer no, volta da linha nos dois sentidos, home vazia com acao focavel; contratos verificados por mutacao)",
-            "result": "passed"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/unit/test_launcher_navigation.py",
-            "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_launcher_navigation.py -q (foco da home: conectividade ao no inicial a partir de qualquer no, volta da linha nos dois sentidos, home vazia com acao focavel; contratos verificados por mutacao)",
-            "result": "passed"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/qml/launcher/check_launcher_home.qml",
-            "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/launcher/check_launcher_home.qml (o foco anda pelo mapa resolvido; direcao sem destino mantem o foco; 60 movimentos nao tiram o foco do mapa; um unico item destacado por vez). Mutantes que quebram a chave do no e o movimento reprovam.",
-            "result": "passed"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/unit/test_launcher_session.py",
-            "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_launcher_session.py -q; QT_QPA_PLATFORM=offscreen qml6 tests/qml/launcher/check_launcher_game_page.qml (pagina de jogo com acao bloqueada e motivo; contexto de retorno atravessa processos e degrada para a mesma secao quando o item sumiu). Mutantes reprovam.",
-            "result": "passed"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/integration/test_launcher_launch.py",
-            "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_launcher_launch.py -q (processo real: o jogo sobrevive ao SIGKILL no grupo do launcher; contexto gravado antes do spawn e consumido uma vez). Mutante sem start_new_session reprova.",
-            "result": "passed"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/qml/launcher/check_launcher_shell.qml",
-            "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/launcher/check_launcher_shell.qml (home e pagina no mesmo processo; a volta cai no foco de saida; contexto de retorno posiciona o foco e contexto invalido cai no inicial). Tres mutantes reprovam.",
-            "result": "passed"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/integration/test_launcher_app.py",
-            "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_launcher_app.py -q (a ponte serve o modelo resolvido, recusa requisicao sem token com 403, abre com home vazia acionavel e devolve codigo quando falta runtime Qt)",
-            "result": "passed"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/integration/test_launcher_app.py",
-            "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_launcher_app.py tests/integration/test_launcher_launch.py tests/unit/test_launcher_navigation.py tests/unit/test_launcher_session.py -q (27 passed). Prova negativa: com a biblioteca canonica cheia e sem --library, _read_library devolvia [] — a home abria vazia para quem usa o entry point.",
-            "result": "passed"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/integration/test_launcher_app.py",
-            "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_launcher_app.py tests/integration/test_launcher_launch.py -q (15 passed). test_launch_route_is_emulation_launch_not_steam_wrapper prova a rota de produto (steamzero emulation launch --game-id, nao o wrapper Steam binario inexistente); test_failed_spawn_does_not_leave_a_pending_return prova que spawn falho remove o return.json. 33 passed no total da frente.",
-            "result": "passed"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/qml/launcher/check_launcher_activation.qml",
-            "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/launcher/check_launcher_activation.qml (cartao focado: acessibilidade, estado pressed, toque/clique, Return/Enter/Space pela rota comum, feedback unico, bloqueio de duplo disparo, home -> pagina de jogo e estado vazio/retry)",
-            "result": "passed"
-        },
-        {
-            "kind": "hardware",
-            "reference": "src/steamzero/adapters/launcher_catalog.py",
-            "command": "release 2.0.0rc1-920ec79e875a instalada: catalog_games da biblioteca canonica devolve 231 jogos base em 13 plataformas, 0 titulos caindo no hash (home agrupa por sistema, nunca exibe o id). Rota steamzero emulation launch --game-id processa jogo base e degrada com E-CONTENT-KEYS-INCOMPAT (diagnostico acionavel, nao crash). Prova 'jogar -> voltar' pende de keys sincronizadas + interacao humana.",
-            "result": "passed"
-        },
-        {
-            "kind": "hardware",
-            "reference": "docs/09-operations/evidence/2026-08-26-aura-launcher-fisico",
-            "command": "2026-08-26, release 2.0.0rc1-720928250e1a instalada, host Valve Jupiter. PRIMEIRA evidencia fisica do Launcher, e ela achou defeito: a home exibia identificadores em hash no lugar dos titulos (ae18c7e53583298461a0edea em vez de '1969 (Homebrew) (SMS)'). A biblioteca estava corretamente ligada — cartoes existem, foco funciona, secao populada; falhava o rotulo. Isolado por comparacao: a central desktop no MESMO host e release exibe titulos sem dificuldade. CAUSA RAIZ: a biblioteca canonica publica o rotulo em 'name' e nao existe chave 'title' no acervo real (medido: 23 chaves por jogo, com name e sem title); build_titles lia game.get('title') or identifier, entao o fallback para o id disparava em TODO o acervo, nao em caso de borda. CORRIGIDO: le name, com title mantido como alias. Validado contra o acervo real: 80 jogos, 80 titulos resolvidos, 0 caindo no id. PROVA NEGATIVA: revertendo para ler so title, 2 dos 4 testes novos reprovam. NAO PROVADO: a captura com titulos corretos exige uma release com esta correcao; a atual carrega o defeito. Navegacao por controle, lancamento, sessao e retorno seguem pendentes de interacao humana (sem automacao de clique/tecla neste host).",
-            "result": "partial"
-        },
-        {
-            "kind": "hardware",
-            "reference": "docs/09-operations/evidence/2026-08-26-aura-launcher-fisico",
-            "command": "2026-08-27, secao 6. Correcao de build_titles CONFIRMADA na release instalada 2.0.0rc1-3b296a949316: os titulos aparecem ('1969 (Homebrew) (SMS)', 'Alex Kidd in Shinobi World (Hack) (Graphics Restoration) (SMS)'). FALSO NEGATIVO EVITADO: a primeira recaptura mostrou os mesmos hashes e eu quase reabri o item; o id da janela era identico ao anterior porque o Launcher da release ANTIGA (pid 1857729, 2.0.0rc1-720928250e1a, rodando ha 6h36m) ainda era dono dela, enquanto o novo (pid 2838588) tinha 39s. Duas janelas SteamZero coexistiam. Licao: identidade de janela nao e identidade de release. SEGUNDO DEFEITO revelado pela correcao: os titulos TRANSBORDAM o cartao de 180px e se sobrepoem aos vizinhos, uma linha atravessando tres cartoes — o defeito sempre existiu, mas hash de 24 caracteres cabia e titulo real nao. Causa: LauncherHome.qml usava anchors.centerIn sem largura, sem wrapMode e sem elide. Corrigido com anchors.fill + margem, wrapMode Text.Wrap, maximumLineCount 4 e elide ElideRight. FRONTEIRA: a captura 02 e da release instalada; a 03, do layout corrigido, e da ARVORE — confirmar o layout na release exige mais um ciclo de publicacao.",
-            "result": "partial"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/unit/test_launcher_navigation.py",
-            "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_launcher_navigation.py tests/unit/test_launcher_session.py tests/unit/test_launcher_catalog.py tests/unit/test_launcher_collections.py tests/integration/test_launcher_app.py -q",
-            "result": "passed"
-        },
-        {
-            "kind": "hardware",
-            "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun/launcher-journey.txt",
-            "command": "release 2.0.0rc1-145cf9d44738: Launcher real abriu com ROM .sms e titulo legivel, mas Return, clique, Down e F nao ativaram o cartao; before/after identicos por SHA-256; nenhum emulador nasceu; Alt+F4 limpou a janela.",
-            "result": "failed"
-        },
-        {
-            "kind": "diagnostic",
-            "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun/rom-catalog.txt",
-            "command": "leitura somente leitura do acervo: 8.016 arquivos fisicos contra 231 jogos canonicos em 13 plataformas; ZIP/7Z fisicos nao foram lancados por bypass.",
-            "result": "recorded"
-        },
-        {
-            "kind": "test",
-            "reference": "tests/integration/test_launcher_app.py",
-            "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_launcher_app.py tests/integration/test_handheld_production_journey.py tests/unit/test_library_rom_classify.py tests/unit/test_switch_roots.py -q (73 passed; o Launcher publica o resumo canônico e a varredura preserva motivos de containers não promovidos)",
-            "result": "passed"
-        }
-    ],
-    "nextAction": "Publicar/instalar uma release autorizada e provar fisicamente ativação, lançamento, fade-in, encerramento, fade-out e retorno ao foco; a implementação e o resumo canônico já estão isolados.",
-    "activeWorkstreams": [
-        "WS-2026-08-AURA-LAUNCHER",
-        "WS-2026-09-LAUNCHER-P0-ACTIVATION"
-    ],
-    "updatedAt": "2026-09-02",
-    "notes": "Baseline registrado antes de comecar: zero artefatos. src/steamzero/launcher, src/steamzero/ui/qml/launcher e tests/qml/launcher nao existiam, e o escopo do item declarava os tres — o digest nem podia ser calculado. Os dois que seguem sem artefato sairam do escopo e voltam quando existirem. Primeiro slice do vertical: o modelo de foco da home, no dominio. Num launcher por controle nao ha mouse para resgatar o usuario, entao o contrato nao e 'todo no tem saida' e sim conectividade: de qualquer no o direcional devolve ao foco inicial. Home vazia cai num no de acao com LAUNCHER-FOCUS-EMPTY-001 em vez de ficar sem foco; secao sem itens nao vira linha alcancavel; linha de um item so recusa a volta horizontal, que pareceria movimento sem mover. Um teste de mutacao mostrou que a volta a esquerda nao estava coberta, e a lacuna foi fechada. Segundo slice: a home renderiza as secoes e move o foco aplicando o mapa — o QML nao escolhe vizinho, nao deduz coluna e nao inventa destino, senao a garantia de 'sem becos' provada no dominio nao valeria para o que o usuario navega. Direcao sem destino mantem o foco onde esta, porque mover para destino nulo apagaria o foco. Um erro proprio ficou registrado no componente: o indice de itens era um array preenchido por push no Component.onCompleted e zerava quando outro binding passava a le-lo; agora e derivado das secoes. Terceiro slice: pagina de jogo e o contrato de retorno. Acao bloqueada continua visivel com o motivo — esconder faria procurar o que nao existe, e mostrar sem explicar faria apertar sem entender o silencio; o foco nunca comeca nem para numa acao desabilitada. O contexto de lancamento atravessa processos, porque o item 5 da DoD exige reiniciar o launcher sem derrubar o jogo. Como a biblioteca muda enquanto o jogo roda, o foco salvo pode nao existir na volta: cai no vizinho da mesma secao com LAUNCHER-RETURN-MISSING-001, em vez de voltar ao topo da home e perder o lugar do usuario. Contexto corrompido nao derruba o retorno. Quarto slice: lancamento real e retorno. O jogo nasce em sessao propria, entao um sinal dirigido ao grupo do launcher — Ctrl+C no terminal ou o systemd encerrando o escopo — nao o leva junto; isso e o item 5 da DoD e so se prova com processo de verdade. O contexto vai para disco ANTES do spawn: gravar depois abriria uma janela em que o jogo ja roda e o lugar do usuario ainda nao foi salvo. O primeiro teste desse contrato nao provava nada: matava so o processo pai, e no Linux o filho e reparentado ao init e sobrevive de qualquer jeito. Passou a derrubar o grupo, e ai o mutante sem start_new_session reprova. A primeira versao do modulo tambem fazia I/O e subprocess a mao; o gate de fronteiras recusou com razao — a escrita atomica ja existia em core.fs e subprocess pertence aos adapters, entao o spawn virou adapters/launcher_process.py e o dominio recebe por injecao. Quinto slice: o shell costura home e pagina de jogo no mesmo processo. Ele guarda de onde o usuario saiu e devolve exatamente ali na volta — cair no topo da home depois de fechar um jogo obrigaria a percorrer a biblioteca de novo a cada partida. O foco de saida viaja junto no pedido de lancamento, porque e ele que o contexto grava. Contexto apontando para item que sumiu cai no foco inicial em vez de deixar o shell sem foco. O shell nao resolve foco nem decide acoes: a home aplica o mapa do dominio e a pagina recebe as acoes ja decididas; aqui so ha a costura e o contexto. Sexto slice: o entry point steamzero-launcher. Segue o desenho ja usado pela central — servidor em loopback, token por execucao e o QML como processo separado. O token nao e formalidade: sem ele qualquer processo local dispararia jogos na maquina do usuario. A fonte da biblioteca e injetada por --library. A varredura real do acervo roda por jobs assincronos e liga-la aqui seria integracao de fachada; sem biblioteca o Launcher abre assim mesmo, com a home vazia acionavel que o dominio resolve, porque primeira execucao sem acervo e o caso comum e nao erro. Runtime Qt ausente vira codigo de saida, nao traceback. O item permanece planned: falta ligar a biblioteca real, instalar a release e capturar a primeira evidencia fisica com jogo lancado de verdade. Nada aqui promove AURA UI ou Theme Engine. 2026-08-24: fonte da biblioteca ligada ao entry point. Eram DOIS defeitos empilhados: o Launcher so lia o arquivo de --library, e quem abre pelo entry point nao passa argumento; e _read_library so aceitava lista crua, entao apontar --library para a propria biblioteca canonica, que e {'games': [...]}, devolvia vazio do mesmo jeito. O segundo estava escondido atras do primeiro. P0 corrigido: o contrato de identificador exigia letra inicial e recusava 147 dos 231 jogos do acervo real (ids hex de 24 chars, 63% comecando por digito), fazendo steamzero-launcher encerrar antes da home. Dois defeitos somados: o contrato estreito e, em _sections_from_catalog, um except que presumia culpa da secao e repetia fora do try, transformando um registro invalido em queda da home inteira. O contrato estava duplicado em cinco regexes e tres modulos, o que garantiria correcao parcial; agora mora em launcher/identifiers.py. A fixture existente usava um id hex iniciado por letra, e por isso nenhum teste pegou o defeito. Segundo P0, exposto pela correcao do primeiro: resolve_home_focus levantava ValueError acima de MAX_SECTIONS=12 e o acervo real tem 13 plataformas — o projeto empacota 61 manifests, ou seja, a salvaguarda estava uma ordem de grandeza abaixo do proprio dominio. Duas correcoes: o teto passou a cobrir os manifests com folga para colecoes, e estourar o teto agora corta com LAUNCHER-FOCUS-TRUNCATED-001 em vez de levantar, porque o numero de secoes vem do acervo do usuario e nenhum dado dele pode impedir o Launcher de abrir (secao 8). A verificacao anterior deste agente parou em _sections_from_catalog e afirmou que 231 jogos chegavam a home; a home so existe depois do mapa de foco, e la ela nao montava. A fronteira de verificacao era conveniente, nao a real. Validação independente em 2026-09-02: o harness `check_launcher_activation.qml` chama `card.activate()`/`home.activateCurrent()` diretamente e NÃO envia gesto. Removendo os `Keys.onPressed` do cartão e da home ele continuava passando — o mesmo ponto cego do defeito original, em que `openGame()` existia e o gesto não chegava. Acrescentado `check_launcher_gestures.qml` (QtTest), que envia Return, Space e clique reais e reprova nos quatro cenários sem os handlers. O resumo do acervo publicado à home deixou de inventar `filesFound`."
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AURA-LAUNCHER",
+  "title": "AURA Launcher — biblioteca fullscreen e lancamento",
+  "domain": "ui",
+  "implementation": "partial",
+  "integration": "isolated",
+  "verification": "hw",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopeDigest": "528185dae167b39cdaf6800137d79fc024483603b8c1e74809cab1261c8943d1",
+  "scopePaths": [
+    "docs/00-vision/PROJECT-VISION.md",
+    "docs/00-vision/NON-GOALS.md",
+    "docs/01-product/AURA-SURFACES.md",
+    "docs/01-product/PRD.md",
+    "docs/01-product/FEATURE-CATALOG.md",
+    "docs/01-product/ACCEPTANCE-CRITERIA.md",
+    "docs/12-roadmap/IMPLEMENTATION-ROADMAP.md",
+    "docs/12-roadmap/MILESTONES.md",
+    "docs/12-roadmap/STEAM-SESSION-ROADMAP.md",
+    "src/steamzero/launcher",
+    "tests/unit/test_launcher_navigation.py",
+    "src/steamzero/ui/qml/launcher",
+    "tests/qml/launcher",
+    "tests/unit/test_launcher_session.py",
+    "src/steamzero/adapters/launcher_process.py",
+    "tests/integration/test_launcher_launch.py",
+    "src/steamzero/adapters/launcher_ui.py",
+    "tests/integration/test_launcher_app.py",
+    "docs/09-operations/evidence/2026-08-26-aura-launcher-fisico",
+    "src/steamzero/ui/qml/launcher/LauncherHome.qml",
+    "src/steamzero/adapters/launcher_catalog.py",
+    "tests/unit/test_launcher_catalog.py",
+    "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun",
+    "docs/09-operations/evidence/2026-09-02-ux-console-experience",
+    "tests/integration/test_launcher_child_lifetime.py"
+  ],
+  "dependsOn": [
+    "SZ-AURA-UI",
+    "SZ-THEME-ENGINE"
+  ],
+  "knownGaps": [
+    "GAP-LAUNCHER-REAL-CATALOG-PHYSICAL",
+    "GAP-LAUNCHER-HOME-ACTIVATION-PHYSICAL",
+    "GAP-LAUNCHER-RETURN-FADES-PHYSICAL"
+  ],
+  "acceptanceCriteria": [
+    "Home fullscreen, biblioteca, busca, colecoes e pagina de jogo funcionam por controle.",
+    "Um jogo real e iniciado e retorna ao mesmo contexto do launcher sem encerrar a sessao indevidamente.",
+    "Reiniciar o launcher nao derruba o jogo ativo nem corrompe dados ou operacoes.",
+    "Steam, ES-DE, RetroFE e outros frontends permanecem opcionais e inalterados sem plano proprio.",
+    "Instalacao e certificacao exigem capturas da release ativa e ciclo fisico controle-jogo-retorno.",
+    "O Launcher encontra a biblioteca canonica sozinho, sem depender de --library."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_launcher_navigation.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_launcher_navigation.py -q (foco da home: conectividade ao no inicial a partir de qualquer no, volta da linha nos dois sentidos, home vazia com acao focavel; contratos verificados por mutacao)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_launcher_navigation.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_launcher_navigation.py -q (foco da home: conectividade ao no inicial a partir de qualquer no, volta da linha nos dois sentidos, home vazia com acao focavel; contratos verificados por mutacao)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/launcher/check_launcher_home.qml",
+      "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/launcher/check_launcher_home.qml (o foco anda pelo mapa resolvido; direcao sem destino mantem o foco; 60 movimentos nao tiram o foco do mapa; um unico item destacado por vez). Mutantes que quebram a chave do no e o movimento reprovam.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_launcher_session.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_launcher_session.py -q; QT_QPA_PLATFORM=offscreen qml6 tests/qml/launcher/check_launcher_game_page.qml (pagina de jogo com acao bloqueada e motivo; contexto de retorno atravessa processos e degrada para a mesma secao quando o item sumiu). Mutantes reprovam.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_launcher_launch.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_launcher_launch.py -q (processo real: o jogo sobrevive ao SIGKILL no grupo do launcher; contexto gravado antes do spawn e consumido uma vez). Mutante sem start_new_session reprova.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/launcher/check_launcher_shell.qml",
+      "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/launcher/check_launcher_shell.qml (home e pagina no mesmo processo; a volta cai no foco de saida; contexto de retorno posiciona o foco e contexto invalido cai no inicial). Tres mutantes reprovam.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_launcher_app.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_launcher_app.py -q (a ponte serve o modelo resolvido, recusa requisicao sem token com 403, abre com home vazia acionavel e devolve codigo quando falta runtime Qt)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_launcher_app.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_launcher_app.py tests/integration/test_launcher_launch.py tests/unit/test_launcher_navigation.py tests/unit/test_launcher_session.py -q (27 passed). Prova negativa: com a biblioteca canonica cheia e sem --library, _read_library devolvia [] — a home abria vazia para quem usa o entry point.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_launcher_app.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_launcher_app.py tests/integration/test_launcher_launch.py -q (15 passed). test_launch_route_is_emulation_launch_not_steam_wrapper prova a rota de produto (steamzero emulation launch --game-id, nao o wrapper Steam binario inexistente); test_failed_spawn_does_not_leave_a_pending_return prova que spawn falho remove o return.json. 33 passed no total da frente.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/launcher/check_launcher_activation.qml",
+      "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/launcher/check_launcher_activation.qml (cartao focado: acessibilidade, estado pressed, toque/clique, Return/Enter/Space pela rota comum, feedback unico, bloqueio de duplo disparo, home -> pagina de jogo e estado vazio/retry)",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "src/steamzero/adapters/launcher_catalog.py",
+      "command": "release 2.0.0rc1-920ec79e875a instalada: catalog_games da biblioteca canonica devolve 231 jogos base em 13 plataformas, 0 titulos caindo no hash (home agrupa por sistema, nunca exibe o id). Rota steamzero emulation launch --game-id processa jogo base e degrada com E-CONTENT-KEYS-INCOMPAT (diagnostico acionavel, nao crash). Prova 'jogar -> voltar' pende de keys sincronizadas + interacao humana.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-26-aura-launcher-fisico",
+      "command": "2026-08-26, release 2.0.0rc1-720928250e1a instalada, host Valve Jupiter. PRIMEIRA evidencia fisica do Launcher, e ela achou defeito: a home exibia identificadores em hash no lugar dos titulos (ae18c7e53583298461a0edea em vez de '1969 (Homebrew) (SMS)'). A biblioteca estava corretamente ligada — cartoes existem, foco funciona, secao populada; falhava o rotulo. Isolado por comparacao: a central desktop no MESMO host e release exibe titulos sem dificuldade. CAUSA RAIZ: a biblioteca canonica publica o rotulo em 'name' e nao existe chave 'title' no acervo real (medido: 23 chaves por jogo, com name e sem title); build_titles lia game.get('title') or identifier, entao o fallback para o id disparava em TODO o acervo, nao em caso de borda. CORRIGIDO: le name, com title mantido como alias. Validado contra o acervo real: 80 jogos, 80 titulos resolvidos, 0 caindo no id. PROVA NEGATIVA: revertendo para ler so title, 2 dos 4 testes novos reprovam. NAO PROVADO: a captura com titulos corretos exige uma release com esta correcao; a atual carrega o defeito. Navegacao por controle, lancamento, sessao e retorno seguem pendentes de interacao humana (sem automacao de clique/tecla neste host).",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-26-aura-launcher-fisico",
+      "command": "2026-08-27, secao 6. Correcao de build_titles CONFIRMADA na release instalada 2.0.0rc1-3b296a949316: os titulos aparecem ('1969 (Homebrew) (SMS)', 'Alex Kidd in Shinobi World (Hack) (Graphics Restoration) (SMS)'). FALSO NEGATIVO EVITADO: a primeira recaptura mostrou os mesmos hashes e eu quase reabri o item; o id da janela era identico ao anterior porque o Launcher da release ANTIGA (pid 1857729, 2.0.0rc1-720928250e1a, rodando ha 6h36m) ainda era dono dela, enquanto o novo (pid 2838588) tinha 39s. Duas janelas SteamZero coexistiam. Licao: identidade de janela nao e identidade de release. SEGUNDO DEFEITO revelado pela correcao: os titulos TRANSBORDAM o cartao de 180px e se sobrepoem aos vizinhos, uma linha atravessando tres cartoes — o defeito sempre existiu, mas hash de 24 caracteres cabia e titulo real nao. Causa: LauncherHome.qml usava anchors.centerIn sem largura, sem wrapMode e sem elide. Corrigido com anchors.fill + margem, wrapMode Text.Wrap, maximumLineCount 4 e elide ElideRight. FRONTEIRA: a captura 02 e da release instalada; a 03, do layout corrigido, e da ARVORE — confirmar o layout na release exige mais um ciclo de publicacao.",
+      "result": "partial"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_launcher_navigation.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_launcher_navigation.py tests/unit/test_launcher_session.py tests/unit/test_launcher_catalog.py tests/unit/test_launcher_collections.py tests/integration/test_launcher_app.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun/launcher-journey.txt",
+      "command": "release 2.0.0rc1-145cf9d44738: Launcher real abriu com ROM .sms e titulo legivel, mas Return, clique, Down e F nao ativaram o cartao; before/after identicos por SHA-256; nenhum emulador nasceu; Alt+F4 limpou a janela.",
+      "result": "failed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun/rom-catalog.txt",
+      "command": "leitura somente leitura do acervo: 8.016 arquivos fisicos contra 231 jogos canonicos em 13 plataformas; ZIP/7Z fisicos nao foram lancados por bypass.",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_launcher_app.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_launcher_app.py tests/integration/test_handheld_production_journey.py tests/unit/test_library_rom_classify.py tests/unit/test_switch_roots.py -q (73 passed; o Launcher publica o resumo canônico e a varredura preserva motivos de containers não promovidos)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_launcher_child_lifetime.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_launcher_child_lifetime.py -q (sobe o caminho real de launch_launcher_ui com um qml6 de mentira no PATH, mata o wrapper com SIGTERM e com SIGINT e exige que nenhum qml6 sobreviva; reprova nos dois sinais sem a supervisao)",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Publicar/instalar uma release autorizada e provar fisicamente ativação, lançamento, fade-in, encerramento, fade-out e retorno ao foco; a implementação e o resumo canônico já estão isolados.",
+  "activeWorkstreams": [
+    "WS-2026-08-AURA-LAUNCHER",
+    "WS-2026-09-LAUNCHER-P0-ACTIVATION"
+  ],
+  "updatedAt": "2026-09-04",
+  "notes": "Baseline registrado antes de comecar: zero artefatos. src/steamzero/launcher, src/steamzero/ui/qml/launcher e tests/qml/launcher nao existiam, e o escopo do item declarava os tres — o digest nem podia ser calculado. Os dois que seguem sem artefato sairam do escopo e voltam quando existirem. Primeiro slice do vertical: o modelo de foco da home, no dominio. Num launcher por controle nao ha mouse para resgatar o usuario, entao o contrato nao e 'todo no tem saida' e sim conectividade: de qualquer no o direcional devolve ao foco inicial. Home vazia cai num no de acao com LAUNCHER-FOCUS-EMPTY-001 em vez de ficar sem foco; secao sem itens nao vira linha alcancavel; linha de um item so recusa a volta horizontal, que pareceria movimento sem mover. Um teste de mutacao mostrou que a volta a esquerda nao estava coberta, e a lacuna foi fechada. Segundo slice: a home renderiza as secoes e move o foco aplicando o mapa — o QML nao escolhe vizinho, nao deduz coluna e nao inventa destino, senao a garantia de 'sem becos' provada no dominio nao valeria para o que o usuario navega. Direcao sem destino mantem o foco onde esta, porque mover para destino nulo apagaria o foco. Um erro proprio ficou registrado no componente: o indice de itens era um array preenchido por push no Component.onCompleted e zerava quando outro binding passava a le-lo; agora e derivado das secoes. Terceiro slice: pagina de jogo e o contrato de retorno. Acao bloqueada continua visivel com o motivo — esconder faria procurar o que nao existe, e mostrar sem explicar faria apertar sem entender o silencio; o foco nunca comeca nem para numa acao desabilitada. O contexto de lancamento atravessa processos, porque o item 5 da DoD exige reiniciar o launcher sem derrubar o jogo. Como a biblioteca muda enquanto o jogo roda, o foco salvo pode nao existir na volta: cai no vizinho da mesma secao com LAUNCHER-RETURN-MISSING-001, em vez de voltar ao topo da home e perder o lugar do usuario. Contexto corrompido nao derruba o retorno. Quarto slice: lancamento real e retorno. O jogo nasce em sessao propria, entao um sinal dirigido ao grupo do launcher — Ctrl+C no terminal ou o systemd encerrando o escopo — nao o leva junto; isso e o item 5 da DoD e so se prova com processo de verdade. O contexto vai para disco ANTES do spawn: gravar depois abriria uma janela em que o jogo ja roda e o lugar do usuario ainda nao foi salvo. O primeiro teste desse contrato nao provava nada: matava so o processo pai, e no Linux o filho e reparentado ao init e sobrevive de qualquer jeito. Passou a derrubar o grupo, e ai o mutante sem start_new_session reprova. A primeira versao do modulo tambem fazia I/O e subprocess a mao; o gate de fronteiras recusou com razao — a escrita atomica ja existia em core.fs e subprocess pertence aos adapters, entao o spawn virou adapters/launcher_process.py e o dominio recebe por injecao. Quinto slice: o shell costura home e pagina de jogo no mesmo processo. Ele guarda de onde o usuario saiu e devolve exatamente ali na volta — cair no topo da home depois de fechar um jogo obrigaria a percorrer a biblioteca de novo a cada partida. O foco de saida viaja junto no pedido de lancamento, porque e ele que o contexto grava. Contexto apontando para item que sumiu cai no foco inicial em vez de deixar o shell sem foco. O shell nao resolve foco nem decide acoes: a home aplica o mapa do dominio e a pagina recebe as acoes ja decididas; aqui so ha a costura e o contexto. Sexto slice: o entry point steamzero-launcher. Segue o desenho ja usado pela central — servidor em loopback, token por execucao e o QML como processo separado. O token nao e formalidade: sem ele qualquer processo local dispararia jogos na maquina do usuario. A fonte da biblioteca e injetada por --library. A varredura real do acervo roda por jobs assincronos e liga-la aqui seria integracao de fachada; sem biblioteca o Launcher abre assim mesmo, com a home vazia acionavel que o dominio resolve, porque primeira execucao sem acervo e o caso comum e nao erro. Runtime Qt ausente vira codigo de saida, nao traceback. O item permanece planned: falta ligar a biblioteca real, instalar a release e capturar a primeira evidencia fisica com jogo lancado de verdade. Nada aqui promove AURA UI ou Theme Engine. 2026-08-24: fonte da biblioteca ligada ao entry point. Eram DOIS defeitos empilhados: o Launcher so lia o arquivo de --library, e quem abre pelo entry point nao passa argumento; e _read_library so aceitava lista crua, entao apontar --library para a propria biblioteca canonica, que e {'games': [...]}, devolvia vazio do mesmo jeito. O segundo estava escondido atras do primeiro. P0 corrigido: o contrato de identificador exigia letra inicial e recusava 147 dos 231 jogos do acervo real (ids hex de 24 chars, 63% comecando por digito), fazendo steamzero-launcher encerrar antes da home. Dois defeitos somados: o contrato estreito e, em _sections_from_catalog, um except que presumia culpa da secao e repetia fora do try, transformando um registro invalido em queda da home inteira. O contrato estava duplicado em cinco regexes e tres modulos, o que garantiria correcao parcial; agora mora em launcher/identifiers.py. A fixture existente usava um id hex iniciado por letra, e por isso nenhum teste pegou o defeito. Segundo P0, exposto pela correcao do primeiro: resolve_home_focus levantava ValueError acima de MAX_SECTIONS=12 e o acervo real tem 13 plataformas — o projeto empacota 61 manifests, ou seja, a salvaguarda estava uma ordem de grandeza abaixo do proprio dominio. Duas correcoes: o teto passou a cobrir os manifests com folga para colecoes, e estourar o teto agora corta com LAUNCHER-FOCUS-TRUNCATED-001 em vez de levantar, porque o numero de secoes vem do acervo do usuario e nenhum dado dele pode impedir o Launcher de abrir (secao 8). A verificacao anterior deste agente parou em _sections_from_catalog e afirmou que 231 jogos chegavam a home; a home so existe depois do mapa de foco, e la ela nao montava. A fronteira de verificacao era conveniente, nao a real. Validação independente em 2026-09-02: o harness `check_launcher_activation.qml` chama `card.activate()`/`home.activateCurrent()` diretamente e NÃO envia gesto. Removendo os `Keys.onPressed` do cartão e da home ele continuava passando — o mesmo ponto cego do defeito original, em que `openGame()` existia e o gesto não chegava. Acrescentado `check_launcher_gestures.qml` (QtTest), que envia Return, Space e clique reais e reprova nos quatro cenários sem os handlers. O resumo do acervo publicado à home deixou de inventar `filesFound`. Defeito de processo corrigido em 2026-09-04: o wrapper esperava o qml6 com wait() e mais nada, entao morrendo o wrapper a cena sobrevivia como orfa — janela Wayland com o mesmo titulo (\"SteamZero\") e a mesma classe (\"org.qt-project.qml\") da sessao viva, ja sem a ponte HTTP, que morre junto. Nao foi hipotese: essa janela produziu DOIS diagnosticos errados deste proprio item — as duas janelas coexistindo em 2026-08-27 (\"identidade de janela nao e identidade de release\") e, em 2026-09-04, injecoes de teclado entregues a orfa em vez da sessao. A cena agora nasce sob supervisao com grupo proprio e SIGTERM com prazo antes do SIGKILL, cobrindo retorno, excecao e sinal (SIGTERM do systemd, SIGINT do terminal); SIGKILL no launcher continua fora do alcance de qualquer processo, e nesse caso a orfa some ao fechar a janela. Consequencia para quem for certificar este item: uma janela com titulo e classe corretos deixa de ser evidencia ambigua, mas a validacao fisica do item segue pendente — nada aqui foi provado no host."
 }
