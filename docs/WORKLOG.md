@@ -9394,3 +9394,25 @@ no commit documental; Ruff, formatação, mypy, independência e boundaries
 passaram. Commit funcional `854c0d09`. Nada foi provado no host: nenhuma
 instalação, publicação, push ou ação privilegiada foi executada, e a validação
 física do item continua pendente.
+
+## 2026-09-04 — Sessão: loop P0 do Launcher e triagem dos gaps de UI
+
+Workstream `WS-2026-09-LAUNCHER-P0-LOOP`, branch
+`codex/launcher-p0-loop-2026-09-04`. O Launcher passou a unir o catálogo de
+emulação ao catálogo Steam publicado, filtrar ferramentas/runtimes via
+`appinfo.vdf`, encaminhar jogos Steam ao cliente correto e preservar o retorno
+ao mesmo cartão após reinício. Ações de emulação continuam passando por
+plano/confirmação; cliente Steam ausente e catálogo inválido degradam com erro
+estruturado. A triagem confirmou que A0/A1/A2 e a jornada B5 já estão na base
+atual; não foi criada uma segunda implementação sobre esses itens.
+
+Provas: `11 passed` no recorte Launcher; duas mutações intencionais falharam
+com 4 e 2 testes, respectivamente; a execução por diretórios fechou em
+`5573 passed, 44 skipped`; Ruff, formatação, mypy, independência, boundaries e
+`make status-check` passaram. Commits funcionais `bf23fd7d` e documental
+`741e0d78`, ambos enviados à branch autorizada. Nenhuma instalação, publicação
+ou mutação de host foi executada. O portão físico permanece aberto: aguarda
+autorização explícita de instalação na thread e, depois, teste do ciclo
+selecionar-jogar-sair-retornar com evidência PNG na release instalada. Os
+próximos P0 visuais têm implementação ou custódia em workstreams ativos; não
+há outro subescopo seguro para assumir nesta sessão.
