@@ -76,6 +76,60 @@ def _default_roots() -> tuple[Path, ...]:
     )
 
 
+def library_roots(roots: Sequence[Path]) -> tuple[Path, ...]:
+    """Bibliotecas Steam alcançáveis a partir das raízes dadas.
+
+    Nível de módulo, e não método, porque o Launcher precisa do MESMO
+    resultado: duas leituras independentes do acervo divergiriam, e foi
+    exatamente uma divergência de contagem (1134 na central contra 1119 no
+    Launcher) que expôs o acervo Steam ausente em Game Mode.
+    """
+    found: dict[str, Path] = {}
+    for root in roots:
+        if root.is_dir():
+            found[str(root.resolve())] = root.resolve()
+        file = root / "steamapps/libraryfolders.vdf"
+        try:
+            lines = file.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            match = _LIBRARY_PATH.match(line)
+            if match:
+                value = match.group("value").replace("\\\\", "\\")
+                path = Path(value).expanduser()
+                if path.is_dir():
+                    found[str(path.resolve())] = path.resolve()
+    return tuple(found.values())
+
+
+def parse_app_manifest(path: Path) -> tuple[str, str] | None:
+    """``(appid, nome)`` de um ``appmanifest_*.acf``, ou ``None`` se ilegível.
+
+    Registro corrompido devolve ``None`` em vez de levantar: um arquivo ruim na
+    biblioteca do usuário não pode esvaziar a home.
+    """
+    values: dict[str, str] = {}
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return None
+    for line in lines[:300]:
+        match = _ACF_FIELD.match(line)
+        if match:
+            values[match.group("key")] = match.group("value")
+    app_id = values.get("appid", "")
+    name = values.get("name", "").strip()
+    if not app_id.isdigit() or not name:
+        return None
+    return app_id, name[:160]
+
+
+def default_steam_roots() -> tuple[Path, ...]:
+    """Raízes padrão do Steam, para quem não recebe as raízes por injeção."""
+    return _default_roots()
+
+
 def _file_url(path: Path | None) -> str:
     if path is None:
         return ""
@@ -684,40 +738,11 @@ class SteamGameplayController:
         return False
 
     def _library_roots(self) -> tuple[Path, ...]:
-        found: dict[str, Path] = {}
-        for root in self._roots:
-            if root.is_dir():
-                found[str(root.resolve())] = root.resolve()
-            file = root / "steamapps/libraryfolders.vdf"
-            try:
-                lines = file.read_text(encoding="utf-8", errors="replace").splitlines()
-            except OSError:
-                continue
-            for line in lines:
-                match = _LIBRARY_PATH.match(line)
-                if match:
-                    value = match.group("value").replace("\\\\", "\\")
-                    path = Path(value).expanduser()
-                    if path.is_dir():
-                        found[str(path.resolve())] = path.resolve()
-        return tuple(found.values())
+        return library_roots(self._roots)
 
     @staticmethod
     def _parse_manifest(path: Path) -> tuple[str, str] | None:
-        values: dict[str, str] = {}
-        try:
-            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
-        except OSError:
-            return None
-        for line in lines[:300]:
-            match = _ACF_FIELD.match(line)
-            if match:
-                values[match.group("key")] = match.group("value")
-        app_id = values.get("appid", "")
-        name = values.get("name", "").strip()
-        if not app_id.isdigit() or not name:
-            return None
-        return app_id, name[:160]
+        return parse_app_manifest(path)
 
     @staticmethod
     def _cover(root: Path, app_id: str) -> Path | None:

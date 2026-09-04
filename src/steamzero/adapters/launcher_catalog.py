@@ -43,6 +43,12 @@ class CatalogGame:
     title: str
     platform: str
     cover_url: str = ""
+    #: Que rota lança este jogo. ``emulation`` resolve emulador, chaves e
+    #: sessão; ``steam`` entrega o AppID ao cliente Steam. A discriminação é
+    #: por registro, nunca por formato do id: passar um AppID à rota de
+    #: emulação repetiria o defeito já registrado em SZ-AURA-LAUNCHER, em que
+    #: um id foi dado a um comando cujo contrato era outro.
+    kind: str = "emulation"
 
     def to_dict(self) -> dict[str, str]:
         # A seção é a plataforma: a home agrupa por sistema.

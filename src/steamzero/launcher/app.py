@@ -23,6 +23,7 @@ from typing import Any
 
 from steamzero.adapters.launcher_catalog import CatalogGame, catalog_games, catalog_summary
 from steamzero.core import paths
+from steamzero.core.errors import SteamZeroError
 from steamzero.launcher.launch import LaunchPlan, Spawn, consume_context, launch_detached
 from steamzero.launcher.navigation import HomeSection
 
@@ -125,10 +126,14 @@ def _context_path() -> Path:
 class LaunchRouter:
     """Decide a rota de lançamento de cada jogo e delega o spawn ao adapter.
 
-    A home do Launcher é da biblioteca canônica de emulação, então cada item é
-    lançado pela rota de produto ``emulation launch --game-id``. A rota por tipo
-    de jogo é uma discriminação futura (Steam AppID → wrapper Steam), feita aqui
-    pelo ``kind`` do registro — nunca pela mesma chamada genérica.
+    A home mistura dois acervos: a biblioteca canônica de emulação e os jogos
+    Steam instalados. Cada um tem sua rota — ``emulation launch --game-id``
+    resolve emulador, chaves e sessão; o AppID Steam vai para o cliente Steam.
+
+    A discriminação é pelo ``kind`` do registro, nunca pelo formato do id.
+    Deduzir "só dígitos, logo é Steam" quebraria no acervo real, onde 63% dos
+    ids canônicos de emulação começam por dígito — o mesmo engano que já fez
+    ``steamzero-launcher`` recusar 147 dos 231 jogos do host.
     """
 
     def __init__(
@@ -137,17 +142,24 @@ class LaunchRouter:
         on_spawn: Spawn,
         context_path: Path,
         executable: Callable[[], str] | None = None,
+        kinds: Mapping[str, str] | None = None,
+        steam_executable: Callable[[], str | None] | None = None,
     ) -> None:
         self._spawn = on_spawn
         self._context_path = Path(context_path)
         self._executable = executable or _steamzero_executable
+        self._kinds = dict(kinds or {})
+        self._steam_executable = steam_executable or _steam_executable
 
     def launch(self, game_id: str, focus_id: str = "") -> None:
-        # O antigo `steamzero-launch <game_id>` era o wrapper de jogo Steam
-        # (`--appid APPID -- %command%`) e não existe como binário publicado;
-        # passava o id canônico de emulação a um comando cujo contrato é outro.
-        executable = self._executable()
-        argv = (executable, "emulation", "launch", "--game-id", game_id)
+        if self._kinds.get(game_id) == "steam":
+            argv = self._steam_argv(game_id)
+        else:
+            # O antigo `steamzero-launch <game_id>` era o wrapper de jogo Steam
+            # (`--appid APPID -- %command%`) e não existe como binário
+            # publicado; passava o id canônico de emulação a um comando cujo
+            # contrato é outro.
+            argv = (self._executable(), "emulation", "launch", "--game-id", game_id)
         plan = LaunchPlan(
             game_id=game_id,
             argv=argv,
@@ -155,6 +167,39 @@ class LaunchRouter:
             context_path=self._context_path,
         )
         launch_detached(plan, spawn=self._spawn)
+
+    def _steam_argv(self, app_id: str) -> tuple[str, ...]:
+        """Entrega o AppID ao cliente Steam, ou falha dizendo o porquê.
+
+        Mesma rota que a central usa (``steam://rungameid/``). Sem o cliente
+        instalado não há lançamento possível: erro com causa é melhor que um
+        spawn que "deu certo" e não abriu nada (AGENTS.md §8).
+        """
+        if not app_id.isdigit() or len(app_id) > 32:
+            raise SteamZeroError("E-API-SCHEMA", detail="AppID Steam inválido")
+        executable = self._steam_executable()
+        if executable is None:
+            raise SteamZeroError("E-COMPONENT-DEGRADED", detail="cliente Steam não encontrado")
+        return (executable, f"steam://rungameid/{app_id}")
+
+
+def _steam_executable() -> str | None:
+    return shutil.which("steam")
+
+
+def _steam_catalog() -> tuple[CatalogGame, ...]:
+    """Acervo Steam instalado, ou vazio se a leitura falhar.
+
+    Máquina sem Steam é caso comum, não erro: o Launcher abre com a emulação e
+    o rodapé publica o que existe. Uma falha de leitura aqui não pode impedir a
+    home de montar (AGENTS.md §8).
+    """
+    try:
+        from steamzero.adapters.launcher_steam import steam_catalog_games
+
+        return steam_catalog_games()
+    except Exception:
+        return ()
 
 
 def _steamzero_executable() -> str:
@@ -284,12 +329,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     return_context = restored_context if isinstance(restored_context, Mapping) else None
 
     library, payload = _read_library_payload(args.library)
-    catalog = catalog_games(library)
-    sections = _sections_from_catalog(catalog) + _sections_from_collections(catalog)
+    emulation = catalog_games(library)
+    # O acervo Steam entra na MESMA home. Sem isto, em Game Mode — onde não há
+    # mouse nem desktop — os jogos Steam do usuário ficam inalcançáveis, e o
+    # rodapé publica um total menor que o da central sem dizer de que escopo
+    # fala.
+    catalog = (*emulation, *_steam_catalog())
+    sections = _sections_from_catalog(catalog) + _sections_from_collections(emulation)
     titles = {game.id: game.title for game in catalog}
     covers = {game.id: game.cover_url for game in catalog if game.cover_url}
 
-    router = LaunchRouter(on_spawn=spawn_detached, context_path=context_path)
+    router = LaunchRouter(
+        on_spawn=spawn_detached,
+        context_path=context_path,
+        kinds={game.id: game.kind for game in catalog},
+    )
 
     accessibility = _host_accessibility()
 
