@@ -29,7 +29,7 @@
     "tests/qml/check_theme_scene_preview.qml",
     "tests/unit/test_theme_scene.py"
   ],
-  "scopeDigest": "b2e32992876298354ba52fc07c42a84861c487e65df2cbc10fe73266cbb47d69",
+  "scopeDigest": "5e2a67a780f9eb1811ebc28378bcbc75bfaf522f57ffd230ed8a4ad1f60ccdb9",
   "dependsOn": [
     "SZ-THEME-IMPORT-ESDE-LAYOUT"
   ],
@@ -44,7 +44,11 @@
     "Cor com alfa do ES-DE e reordenada para a ordem que o QML le.",
     "Asset que nao resolve no store e reportado, nunca omitido da cena.",
     "A tela distingue elementos compilados de elementos desenhados e nomeia o motivo de cada um que nao desenhou.",
-    "Toda dimensao de selecao escolhida na tela chega a rota que compila a cena."
+    "Toda dimensao de selecao escolhida na tela chega a rota que compila a cena.",
+    "Nome de elemento agrupado por virgula vira um elemento por nome, herdando as propriedades comuns.",
+    "Elemento com scope 'menu' nao desenha na view base, e o motivo aparece.",
+    "Carousel e helpSystem desenham a ESTRUTURA declarada pelo tema; o conteudo, que vem do runtime, e marcado como dado e nunca inventado.",
+    "Video degrada para um quadro com motivo quando o modulo de multimidia falta, sem impedir o resto da cena de carregar."
   ],
   "evidence": [
     {
@@ -84,10 +88,10 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Desenhar os tipos que carregam o peso visual (carousel, video, helpSystem, textList, badges, rating) e substituir de fato a aparencia da central. Corrigir tambem o vazamento de staging em acquire_and_install, que hoje deixa um diretorio vazio por instalacao nova.",
+  "nextAction": "Desenhar textList, badges e rating, e substituir de fato a aparencia da central. A previa continua sob demanda e nada foi ativado; nada foi medido em FPS, GPU ou memoria.",
   "activeWorkstreams": [
     "WS-2026-09-CENA-ESDE"
   ],
   "updatedAt": "2026-09-03",
-  "notes": "Dois defeitos impediam qualquer renderizacao, e nenhum estava no renderizador. (1) resolve_includes so seguia include no topo do arquivo, e a geometria dos temas mora em <aspectRatio><include>: o bloco ficava na arvore e o arquivo nunca era aberto. (2) o mesmo elemento declarado em dois arquivos virava dois elementos, um com arte e sem posicao e outro com posicao e sem arte. Correcao de metrica junto: os 95,08% de cobertura reportados antes contavam elementos compilados, e os que carregam pos/size nunca eram visitados — dava para ter 95% e tela em branco. Selection ganhou aspect_ratio, a dimensao que a propria docstring ja listava e que a implementacao nao tinha. A primeira versao do renderizador desenhava elemento sem geometria no tamanho natural na origem, o que produzia captura impressionante e layout inventado; hoje ele nao desenha e declara o motivo. Validado no host em 2026-09-03 na release 2.0.0rc1-51f6a5d7db49: os numeros batem com os do checkout, confirmando que as duas correcoes viajaram para a release. A validacao revelou um defeito VIZINHO: doctor passou de 1 para 4 arvores de staging orfas porque acquire_and_install preserva o staging apos sucesso (e onde mora o previous-theme.json do rollback) e numa instalacao NOVA nao ha tema anterior, entao o diretorio vazio fica orfao. Pertence a SZ-THEME-IMPORT-ESDE-LAYOUT e nao foi corrigido aqui."
+  "notes": "Dois defeitos impediam qualquer renderizacao, e nenhum estava no renderizador. (1) resolve_includes so seguia include no topo do arquivo, e a geometria dos temas mora em <aspectRatio><include>: o bloco ficava na arvore e o arquivo nunca era aberto. (2) o mesmo elemento declarado em dois arquivos virava dois elementos, um com arte e sem posicao e outro com posicao e sem arte. Correcao de metrica junto: os 95,08% de cobertura reportados antes contavam elementos compilados, e os que carregam pos/size nunca eram visitados — dava para ter 95% e tela em branco. Selection ganhou aspect_ratio, a dimensao que a propria docstring ja listava e que a implementacao nao tinha. A primeira versao do renderizador desenhava elemento sem geometria no tamanho natural na origem, o que produzia captura impressionante e layout inventado; hoje ele nao desenha e declara o motivo. Validado no host em 2026-09-03 na release 2.0.0rc1-51f6a5d7db49: os numeros batem com os do checkout, confirmando que as duas correcoes viajaram para a release. A validacao revelou um defeito VIZINHO: doctor passou de 1 para 4 arvores de staging orfas porque acquire_and_install preserva o staging apos sucesso (e onde mora o previous-theme.json do rollback) e numa instalacao NOVA nao ha tema anterior, entao o diretorio vazio fica orfao. Pertence a SZ-THEME-IMPORT-ESDE-LAYOUT e nao foi corrigido aqui. Terceiro defeito da mesma familia, achado ao renderizar helpSystem: nome de elemento agrupado por virgula (name='help-left,help-right') nao era expandido, entao o bloco comum virava um terceiro elemento sem posicao e os dois nomeados ficavam sem cor nem fonte — tres elementos, nenhum desenhavel. E o mesmo defeito do elemento partido entre arquivos, agora no NOME. O video entra por Loader dinamico e nao por import no topo: um host sem QtMultimedia faria a CENA INTEIRA falhar ao carregar, e a regra e que falha degrada e nunca trava. O qmllint acusava 75 avisos de acesso nao qualificado contra 0 a 7 dos arquivos vizinhos; a pragma ComponentBehavior: Bound baixou para 29, com render byte-identico."
 }
