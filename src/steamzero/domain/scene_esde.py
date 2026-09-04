@@ -704,7 +704,7 @@ def _views(
         for index, node in enumerate(list(view_node)):
             compiled = _element(node, index, variables, degraded)
             if compiled is not None:
-                elements.append(compiled)
+                elements.extend(_expand_element_names(compiled, node.tag))
         for target in targets:
             if target not in collected:
                 collected[target] = []
@@ -721,6 +721,33 @@ def _views(
                 bucket.append(compiled)
 
     return [{"id": name, "elements": collected[name]} for name in order[:MAX_VIEWS]]
+
+
+def _expand_element_names(element: dict[str, Any], tag: str) -> list[dict[str, Any]]:
+    """``<helpsystem name="help-left,help-right">`` descreve DOIS elementos.
+
+    A vírgula no nome é o mesmo agrupamento que ``<view name="system,gamelist">``
+    usa, e os temas medidos a usam para dar propriedades comuns a um par que
+    depois recebe posições próprias. Mantendo o nome composto, o bloco comum
+    virava um terceiro elemento sem posição e os dois nomeados ficavam sem cor
+    nem fonte — três elementos, nenhum desenhável, exatamente o mesmo defeito
+    do elemento partido entre arquivos, só que no NOME.
+    """
+    raw = str(element.get("name", ""))
+    if "," not in raw:
+        return [element]
+    names = [part.strip() for part in raw.split(",") if part.strip()]
+    if len(names) < 2:
+        return [element]
+    expanded: list[dict[str, Any]] = []
+    for name in names:
+        clone = {key: value for key, value in element.items() if key not in {"id", "name"}}
+        clone["id"] = _ID_SAFE.sub("_", f"{tag}-{name}")[:64]
+        clone["name"] = name[:64]
+        # Ordem: id e kind primeiro, como no elemento original, para o consumidor
+        # não depender da ordem de inserção.
+        expanded.append({"id": clone["id"], "kind": element["kind"], **clone})
+    return expanded
 
 
 def _find_element(bucket: list[dict[str, Any]], element_id: str) -> dict[str, Any] | None:

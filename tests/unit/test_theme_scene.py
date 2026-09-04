@@ -207,3 +207,36 @@ def test_a_theme_that_is_not_installed_fails_closed(tmp_path: Path) -> None:
             store=theme_assets.ThemeAssetStore(tmp_path / "blobs"),
             workspace=tmp_path / "work",
         )
+
+
+def test_an_element_named_for_two_targets_becomes_two_elements(tmp_path: Path) -> None:
+    """``name="help-left,help-right"`` descreve DOIS elementos.
+
+    É o mesmo agrupamento por vírgula que ``<view name="system,gamelist">`` usa.
+    Mantendo o nome composto, o bloco comum virava um terceiro elemento sem
+    posição e os dois nomeados ficavam sem cor nem fonte: três elementos e
+    nenhum desenhável.
+    """
+    files = {
+        "theme.xml": (
+            "<theme><view name='system'>"
+            "<helpsystem name='help-left,help-right'><fontSize>0.04</fontSize>"
+            "<textColor>ffffff</textColor></helpsystem>"
+            "<helpsystem name='help-left'><pos>0.01 0.97</pos></helpsystem>"
+            "<helpsystem name='help-right'><pos>0.99 0.97</pos></helpsystem>"
+            "</view></theme>"
+        ),
+    }
+    store = _install(tmp_path / "themes", tmp_path / "blobs", files)
+
+    rendered = theme_scene.render_scene(
+        THEME_ID, themes_root=tmp_path / "themes", store=store, workspace=tmp_path / "work"
+    )
+
+    elements = rendered["scene"]["views"][0]["elements"]
+    by_name = {element["name"]: element for element in elements}
+    assert set(by_name) == {"help-left", "help-right"}, "o nome composto sobrou como elemento"
+    for name, x in (("help-left", 0.01), ("help-right", 0.99)):
+        assert by_name[name]["layout"]["x"] == pytest.approx(x)
+        assert by_name[name]["layout"]["fontSize"] == pytest.approx(0.04)
+        assert by_name[name]["appearance"]["textColor"] == "#ffffff"
