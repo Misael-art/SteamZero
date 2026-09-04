@@ -4,7 +4,7 @@
   "kind": "emulator",
   "presentation": {
     "displayName": "RPCS3",
-    "iconAsset": "../assets/playstation-3.svg"
+    "iconAsset": "../assets/rpcs3.png"
   },
   "platforms": [
     "playstation-3"

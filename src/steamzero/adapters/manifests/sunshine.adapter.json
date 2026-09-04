@@ -4,7 +4,7 @@
   "kind": "tool",
   "presentation": {
     "displayName": "Sunshine",
-    "iconAsset": "../assets/steam.svg"
+    "iconAsset": "../assets/sunshine.svg"
   },
   "platforms": [
     "linux"

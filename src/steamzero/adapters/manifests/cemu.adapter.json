@@ -4,7 +4,7 @@
   "kind": "emulator",
   "presentation": {
     "displayName": "Cemu",
-    "iconAsset": "../assets/wii-u.svg"
+    "iconAsset": "../assets/cemu.png"
   },
   "platforms": [
     "wii-u"

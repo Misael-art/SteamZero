@@ -4,7 +4,7 @@
   "kind": "emulator",
   "presentation": {
     "displayName": "Xenia Canary",
-    "iconAsset": "../assets/xbox-360.svg"
+    "iconAsset": "../assets/xenia.png"
   },
   "platforms": [
     "xbox-360"

@@ -4,7 +4,7 @@
   "kind": "emulator",
   "presentation": {
     "displayName": "Flycast",
-    "iconAsset": "../assets/dreamcast.svg"
+    "iconAsset": "../assets/flycast.png"
   },
   "platforms": [
     "dreamcast"
