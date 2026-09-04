@@ -52,6 +52,31 @@ def test_the_renderer_never_reaches_outside_the_scene_it_was_given() -> None:
     assert "source: modelData.source" in source, "a imagem deve vir do IR já resolvido"
 
 
+def test_the_dynamic_video_binds_to_the_root_id_not_to_parent() -> None:
+    """`MediaPlayer` não é item visual: `parent` não resolve para o Item.
+
+    Com `parent.clip` a fonte ficava vazia, o vídeo nunca carregava e o quadro
+    degradado dizia a verdade sobre um defeito que era nosso, não do host. O
+    erro cabia numa palavra, então a guarda também é de uma palavra.
+    """
+    source = VIEW.read_text(encoding="utf-8")
+
+    assert "parent.clip" not in source, "MediaPlayer nao enxerga `parent`; use o id da raiz"
+    assert "root.clip" in source
+
+
+def test_the_video_fallback_watches_playback_not_object_creation() -> None:
+    """Criar o componente não é reproduzir.
+
+    Marcar pronto na criação fazia uma falha silenciosa virar retângulo em
+    branco sem explicação — pior que o fallback escrito para esse caso.
+    """
+    source = VIEW.read_text(encoding="utf-8")
+
+    assert "mp.mediaStatus >= MediaPlayer.LoadedMedia" in source
+    assert "player !== null && player.ready" in source
+
+
 def test_geometry_is_required_before_drawing() -> None:
     """Sem geometria o elemento não desenha — inventá-la cobria a cena."""
     source = VIEW.read_text(encoding="utf-8")

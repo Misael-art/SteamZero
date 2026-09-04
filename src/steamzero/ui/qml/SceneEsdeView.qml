@@ -226,7 +226,8 @@ Item {
                 id: videoComponent
                 Item {
                     id: videoHost
-                    property bool multimediaReady: false
+                    property var player: null
+                    readonly property bool multimediaReady: player !== null && player.ready
 
                     Rectangle {
                         anchors.fill: parent
@@ -234,26 +235,40 @@ Item {
                         visible: !videoHost.multimediaReady
                         Text {
                             anchors.centerIn: parent
-                            text: qsTr("vídeo indisponível")
+                            text: videoHost.player === null
+                                ? qsTr("vídeo indisponível")
+                                : qsTr("vídeo não reproduziu")
                             color: "#9eabba"
                             font.pixelSize: 12
                         }
                     }
 
                     Component.onCompleted: {
+                        // `ready` observa a REPRODUCAO, nao a criacao do objeto:
+                        // marcar pronto so porque o componente instanciou fazia o
+                        // quadro degradado nunca aparecer, e uma falha silenciosa
+                        // virava retangulo em branco sem explicacao nenhuma.
+                        // A fonte vem do id da raiz. MediaPlayer nao e item visual,
+                        // entao o encadeamento por hierarquia nao resolve para o Item
+                        // que o contem: a fonte ficava vazia e o video nunca
+                        // carregava, com o quadro degradado dizendo a verdade sobre um
+                        // defeito que era nosso, nao do host.
                         const source = 'import QtQuick; import QtMultimedia; Item {'
-                            + ' property url clip; anchors.fill: parent;'
-                            + ' MediaPlayer { id: mp; source: parent.clip; loops: MediaPlayer.Infinite;'
+                            + ' id: root; property url clip;'
+                            + ' readonly property bool ready: mp.error === MediaPlayer.NoError'
+                            + ' && mp.mediaStatus >= MediaPlayer.LoadedMedia;'
+                            + ' anchors.fill: parent;'
+                            + ' MediaPlayer { id: mp; source: root.clip; loops: MediaPlayer.Infinite;'
                             + ' videoOutput: out; Component.onCompleted: play() }'
                             + ' VideoOutput { id: out; anchors.fill: parent;'
                             + ' fillMode: VideoOutput.PreserveAspectCrop } }'
                         try {
                             const item = Qt.createQmlObject(source, videoHost, "esdeVideo")
                             item.clip = modelData.source
-                            videoHost.multimediaReady = true
+                            videoHost.player = item
                         } catch (error) {
                             // Sem QtMultimedia: o quadro degradado acima fica.
-                            videoHost.multimediaReady = false
+                            videoHost.player = null
                         }
                     }
                 }
