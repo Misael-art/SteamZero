@@ -55,7 +55,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
 | SZ-SYSTEM-DIAGNOSTICS-GUIDANCE | 2 | 3 | 2 | unit |  |
 | SZ-THEME-ENGINE | 78 | 35 | 33 | hw |  |
-| SZ-THEME-ESDE-SCENE-RENDER | 18 | 6 | 6 | hw |  |
+| SZ-THEME-ESDE-SCENE-RENDER | 18 | 7 | 7 | hw |  |
 | SZ-THEME-IMPORT-ESDE-LAYOUT | 32 | 10 | 10 | hw |  |
 | SZ-THEME-IMPORT-RETROFE | 6 | 4 | 3 | unit |  |
 | SZ-THEME-IMPORT-SURFACE | 4 | 8 | 7 | unit |  |

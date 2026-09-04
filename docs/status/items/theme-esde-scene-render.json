@@ -29,7 +29,7 @@
     "tests/qml/check_theme_scene_preview.qml",
     "tests/unit/test_theme_scene.py"
   ],
-  "scopeDigest": "5e2a67a780f9eb1811ebc28378bcbc75bfaf522f57ffd230ed8a4ad1f60ccdb9",
+  "scopeDigest": "a5eb10b47543635fdb261a67cd04c40f572229ff10b050310129110019e3c94d",
   "dependsOn": [
     "SZ-THEME-IMPORT-ESDE-LAYOUT"
   ],
@@ -48,7 +48,7 @@
     "Nome de elemento agrupado por virgula vira um elemento por nome, herdando as propriedades comuns.",
     "Elemento com scope 'menu' nao desenha na view base, e o motivo aparece.",
     "Carousel e helpSystem desenham a ESTRUTURA declarada pelo tema; o conteudo, que vem do runtime, e marcado como dado e nunca inventado.",
-    "Video degrada para um quadro com motivo quando o modulo de multimidia falta, sem impedir o resto da cena de carregar."
+    "Video degrada para um quadro com motivo sempre que a reproducao nao acontece — modulo ausente OU midia que nao carrega — sem impedir o resto da cena de carregar."
   ],
   "evidence": [
     {
@@ -86,12 +86,18 @@
       "reference": "docs/09-operations/evidence/2026-09-03-cena-esde-host/README.md",
       "command": "theme.scene.render na release 2.0.0rc1-51f6a5d7db49 instalada, sobre o xmb-menu ja no host: 31 assets resolvidos e 0 faltando, gamelist com 8 de 28 desenhaveis, e captura do QML instalado com sha256 identico ao de /opt/steamzero/current",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-03-cena-esde/README.md",
+      "command": "sondas no host: no compositor Wayland real o video do componente nao reproduzia, enquanto MediaPlayer e VideoOutput puros com o mesmo blob reproduziam (playbackState=Playing) — isolando o defeito no componente e nao no host; depois da correcao o item reporta ready=true com o mp4 real",
+      "result": "passed"
     }
   ],
   "nextAction": "Desenhar textList, badges e rating, e substituir de fato a aparencia da central. A previa continua sob demanda e nada foi ativado; nada foi medido em FPS, GPU ou memoria.",
   "activeWorkstreams": [
     "WS-2026-09-CENA-ESDE"
   ],
-  "updatedAt": "2026-09-03",
-  "notes": "Dois defeitos impediam qualquer renderizacao, e nenhum estava no renderizador. (1) resolve_includes so seguia include no topo do arquivo, e a geometria dos temas mora em <aspectRatio><include>: o bloco ficava na arvore e o arquivo nunca era aberto. (2) o mesmo elemento declarado em dois arquivos virava dois elementos, um com arte e sem posicao e outro com posicao e sem arte. Correcao de metrica junto: os 95,08% de cobertura reportados antes contavam elementos compilados, e os que carregam pos/size nunca eram visitados — dava para ter 95% e tela em branco. Selection ganhou aspect_ratio, a dimensao que a propria docstring ja listava e que a implementacao nao tinha. A primeira versao do renderizador desenhava elemento sem geometria no tamanho natural na origem, o que produzia captura impressionante e layout inventado; hoje ele nao desenha e declara o motivo. Validado no host em 2026-09-03 na release 2.0.0rc1-51f6a5d7db49: os numeros batem com os do checkout, confirmando que as duas correcoes viajaram para a release. A validacao revelou um defeito VIZINHO: doctor passou de 1 para 4 arvores de staging orfas porque acquire_and_install preserva o staging apos sucesso (e onde mora o previous-theme.json do rollback) e numa instalacao NOVA nao ha tema anterior, entao o diretorio vazio fica orfao. Pertence a SZ-THEME-IMPORT-ESDE-LAYOUT e nao foi corrigido aqui. Terceiro defeito da mesma familia, achado ao renderizar helpSystem: nome de elemento agrupado por virgula (name='help-left,help-right') nao era expandido, entao o bloco comum virava um terceiro elemento sem posicao e os dois nomeados ficavam sem cor nem fonte — tres elementos, nenhum desenhavel. E o mesmo defeito do elemento partido entre arquivos, agora no NOME. O video entra por Loader dinamico e nao por import no topo: um host sem QtMultimedia faria a CENA INTEIRA falhar ao carregar, e a regra e que falha degrada e nunca trava. O qmllint acusava 75 avisos de acesso nao qualificado contra 0 a 7 dos arquivos vizinhos; a pragma ComponentBehavior: Bound baixou para 29, com render byte-identico."
+  "updatedAt": "2026-09-04",
+  "notes": "Dois defeitos impediam qualquer renderizacao, e nenhum estava no renderizador. (1) resolve_includes so seguia include no topo do arquivo, e a geometria dos temas mora em <aspectRatio><include>: o bloco ficava na arvore e o arquivo nunca era aberto. (2) o mesmo elemento declarado em dois arquivos virava dois elementos, um com arte e sem posicao e outro com posicao e sem arte. Correcao de metrica junto: os 95,08% de cobertura reportados antes contavam elementos compilados, e os que carregam pos/size nunca eram visitados — dava para ter 95% e tela em branco. Selection ganhou aspect_ratio, a dimensao que a propria docstring ja listava e que a implementacao nao tinha. A primeira versao do renderizador desenhava elemento sem geometria no tamanho natural na origem, o que produzia captura impressionante e layout inventado; hoje ele nao desenha e declara o motivo. Validado no host em 2026-09-03 na release 2.0.0rc1-51f6a5d7db49: os numeros batem com os do checkout, confirmando que as duas correcoes viajaram para a release. A validacao revelou um defeito VIZINHO: doctor passou de 1 para 4 arvores de staging orfas porque acquire_and_install preserva o staging apos sucesso (e onde mora o previous-theme.json do rollback) e numa instalacao NOVA nao ha tema anterior, entao o diretorio vazio fica orfao. Pertence a SZ-THEME-IMPORT-ESDE-LAYOUT e nao foi corrigido aqui. Terceiro defeito da mesma familia, achado ao renderizar helpSystem: nome de elemento agrupado por virgula (name='help-left,help-right') nao era expandido, entao o bloco comum virava um terceiro elemento sem posicao e os dois nomeados ficavam sem cor nem fonte — tres elementos, nenhum desenhavel. E o mesmo defeito do elemento partido entre arquivos, agora no NOME. O video entra por Loader dinamico e nao por import no topo: um host sem QtMultimedia faria a CENA INTEIRA falhar ao carregar, e a regra e que falha degrada e nunca trava. O qmllint acusava 75 avisos de acesso nao qualificado contra 0 a 7 dos arquivos vizinhos; a pragma ComponentBehavior: Bound baixou para 29, com render byte-identico. Validacao no host encontrou dois defeitos no video, e o segundo escondia o primeiro. MediaPlayer nao e item visual, entao o encadeamento por hierarquia nao resolvia para o Item que o contem e a fonte ficava vazia: o video nunca carregava. E multimediaReady era marcado na CRIACAO do objeto, o que fazia a falha virar retangulo branco mudo com o quadro degradado nunca aparecendo; ligado ao estado do player, o aviso surgiu e denunciou o binding. RESSALVA sobre o que esta provado: o player carrega e reporta ready=true no compositor real, mas NAO ha confirmacao visual do quadro DENTRO da cena — grabToImage do conteiner devolve branco uniforme enquanto a captura direta do VideoOutput mostra o video, e a causa dessa diferenca continua hipotese. Concluir 'video entregue' a partir do ready verde seria a mesma classe de erro que me fez dizer, durante a sessao, que o fundo ondulado era o video tocando quando era waves.png, um elemento de imagem."
 }
