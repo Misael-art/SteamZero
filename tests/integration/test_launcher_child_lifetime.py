@@ -30,6 +30,17 @@ from pathlib import Path
 
 import pytest
 
+import steamzero
+
+# O wrapper roda em OUTRO processo, e `sys.path` não atravessa processo — só
+# `PYTHONPATH`. Onde o pacote é importável apenas pelo caminho que o pytest
+# monta (src-layout sem instalação), o filho morria em ModuleNotFoundError e o
+# teste acusava "a cena não subiu", culpando o código de produção por um defeito
+# do próprio harness. Derivar do módulo já importado, em vez de fixar "src",
+# garante que o filho use exatamente o mesmo `steamzero` do teste — inclusive
+# quando o teste roda de um worktree e o venv aponta para outro checkout.
+_PACKAGE_ROOT = str(Path(steamzero.__file__).resolve().parents[1])
+
 _WRAPPER = textwrap.dedent(
     """
     import sys
@@ -100,6 +111,9 @@ def test_the_qml_child_dies_with_the_launcher_wrapper(
     environment = {
         **os.environ,
         "PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}",
+        "PYTHONPATH": os.pathsep.join(
+            p for p in (_PACKAGE_ROOT, os.environ.get("PYTHONPATH", "")) if p
+        ),
         "STEAMZERO_TEST_PIDFILE": str(pidfile),
     }
     wrapper = subprocess.Popen(  # argv fixo: interpretador do teste + script gerado aqui
