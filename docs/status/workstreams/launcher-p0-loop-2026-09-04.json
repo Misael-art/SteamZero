@@ -13,6 +13,6 @@
   "sharedPaths": [
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Bloqueio externo: aguardando autorização de instalação na thread; depois publicar/instalar e provar o ciclo físico selecionar-jogar-sair-retornar. Nenhuma release foi tocada.",
+  "nextAction": "Bloqueio de preflight CI: autorização concedida para bf23fd7d, mas a branch autorizada não aciona o workflow push e não existe bundle canônico/run verde desse SHA. Não fabricar bundle local nem instalar outro commit; aguardar ref candidato compatível ou promoção pela CI, depois registrar rollback, instalar e provar selecionar-jogar-sair-retornar.",
   "updatedAt": "2026-09-04"
 }

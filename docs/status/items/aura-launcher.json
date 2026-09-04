@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopeDigest": "47f08a6d18f6f0a0f8f1a8605eaca6d44f39d92efadb21059ee00ee71c70a79f",
+  "scopeDigest": "f3cfd5ebbd97f825df01965c20b1b7c7b0273e8f2efa53e26f91ed308bdf5a69",
   "scopePaths": [
     "docs/00-vision/PROJECT-VISION.md",
     "docs/00-vision/NON-GOALS.md",
@@ -29,6 +29,9 @@
     "tests/integration/test_launcher_launch.py",
     "src/steamzero/adapters/launcher_ui.py",
     "tests/integration/test_launcher_app.py",
+    "tests/integration/test_launcher_steam_catalog.py",
+    "tests/integration/test_launcher_return_cycle.py",
+    "tools/release_host.py",
     "docs/09-operations/evidence/2026-08-26-aura-launcher-fisico",
     "src/steamzero/ui/qml/launcher/LauncherHome.qml",
     "src/steamzero/adapters/launcher_catalog.py",
@@ -210,9 +213,27 @@
       "reference": "tests/integration/test_launcher_return_cycle.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_launcher_return_cycle.py -q (4 passed). O ciclo atravessa biblioteca em arquivo, contexto persistido antes do spawn, consumo de uso único, catálogo Steam e resolução do foco numa nova sessão; remoção do jogo cai na mesma seção com diagnóstico.",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_launcher_app.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests -q (5574 passed, 44 skipped em 32m38s; TMPDIR=/tmp; estado de usuário inalterado)",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tools/release_host.py",
+      "command": "ruff check; ruff format --check; mypy src; make independence boundaries; make status-check (todos verdes no código idêntico ao commit funcional bf23fd7d)",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tools/release_host.py",
+      "command": ".venv/bin/python tools/release_host.py prepare --commit bf23fd7dd62f3c161e9375b7ccf253b933834605 --output /tmp/steamzero-release-bf23fd7d",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Bloqueio externo: aguardando autorização de instalação na thread; depois publicar/instalar uma release e provar fisicamente ativação, lançamento, encerramento e retorno ao foco. Nenhuma release foi tocada neste ciclo.",
+  "nextAction": "Bloqueio de preflight CI: autorização de instalação concedida para bf23fd7d, mas não existe bundle canônico; a CI só aciona push em main/codex/*release-candidate* e não há run push verde para o SHA. Não contornar com wheel local ou outro commit. O operador precisa autorizar um ref candidato compatível ou promover o commit pela CI; depois preparar bundle, registrar rollback, instalar e provar fisicamente ativação, lançamento, encerramento e retorno ao foco.",
   "activeWorkstreams": [
     "WS-2026-08-AURA-LAUNCHER",
     "WS-2026-09-LAUNCHER-P0-ACTIVATION",

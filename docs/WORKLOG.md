@@ -9416,3 +9416,24 @@ autorização explícita de instalação na thread e, depois, teste do ciclo
 selecionar-jogar-sair-retornar com evidência PNG na release instalada. Os
 próximos P0 visuais têm implementação ou custódia em workstreams ativos; não
 há outro subescopo seguro para assumir nesta sessão.
+
+## 2026-09-04 — Sessão: preflight autorizado e bloqueio de proveniência
+
+A autorização de instalação foi concedida para a branch
+`codex/launcher-p0-loop-2026-09-04`, commit funcional `bf23fd7d`. A árvore de
+`src`, `tools` e `tests` permaneceu idêntica a esse commit; os commits
+posteriores são somente documentação. O baseline read-only continua na
+release `2.0.0rc1-cf9c47e7b55b`, com daemon convergente.
+
+Provas: suíte integral `.venv/bin/python tools/run_tests_isolated.py tests -q`
+com `TMPDIR=/tmp`: `5574 passed, 44 skipped` em 32m38s, sem alteração no
+estado do usuário; Ruff, formatação, mypy, independência, boundaries e
+`make status-check` passaram. O `release_host.py prepare` recusou antes de
+baixar qualquer bundle porque o checkout atual está em `8d601435`, enquanto a
+autorização exige `bf23fd7d`; além disso, `gh run list` encontrou zero run
+`push` verde para o SHA e a CI só dispara push em `main` ou
+`codex/*release-candidate*`. Nenhum wheel local, bundle manual, publicação,
+instalação, rollback ou mutação de host foi executado. O item permanece aberto
+até o operador autorizar um ref de candidato compatível ou promover o commit
+pela CI; só então será possível registrar rollback, instalar e produzir as
+três evidências PNG.
