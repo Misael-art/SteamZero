@@ -303,6 +303,14 @@ Window {
         id: launcherLoader
         anchors.fill: parent
         active: root.model !== null
+        // Um `Loader` só repassa foco ao item carregado se ele próprio o tiver.
+        // Sem isto o shell nascia sem foco de teclado e nenhuma tecla chegava
+        // aos handlers — só um clique de mouse destravava. No Game Mode do Deck
+        // não existe mouse, então o Launcher abria inoperável.
+        // A condição espelha os outros dois pretendentes a foco desta cena (o
+        // botão de retry e o painel de busca) para que nenhum roube o do outro.
+        focus: root.model !== null && !root.searching
+               && root.loadState !== "offline" && root.loadState !== "error"
         sourceComponent: Component {
             LauncherShell {
                 id: launcherShell
