@@ -17,7 +17,6 @@ import json
 import os
 import secrets
 import shutil
-import subprocess
 import threading
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
@@ -25,6 +24,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any
 
+from steamzero.adapters.launcher_process import supervised_child
 from steamzero.launcher.navigation import HomeSection, resolve_home_focus
 
 LaunchCallback = Callable[[str, str], None]
@@ -217,21 +217,25 @@ def launch_launcher_ui(bridge: LauncherBridge) -> int:
         return 3
     resource = importlib.resources.files("steamzero.ui").joinpath("qml/launcher/LauncherMain.qml")
     with bridge.serving() as base, importlib.resources.as_file(resource) as scene:
-        process = subprocess.Popen(  # noqa: S603 - argv fixo, scene do próprio pacote
-            [
-                executable,
-                str(scene),
-                "--",
-                "--steamzero-api",
-                base,
-                "--steamzero-token",
-                bridge.token,
-            ],
-            stdin=subprocess.DEVNULL,
-            env={
-                **os.environ,
-                "QT_QUICK_BACKEND": _QT_QUICK_BACKEND,
-                "STEAMZERO_CLASS": "launcher",
-            },
+        argv = (
+            executable,
+            str(scene),
+            "--",
+            "--steamzero-api",
+            base,
+            "--steamzero-token",
+            bridge.token,
         )
-        return int(process.wait() or 0)
+        environment = {
+            **os.environ,
+            "QT_QUICK_BACKEND": _QT_QUICK_BACKEND,
+            "STEAMZERO_CLASS": "launcher",
+        }
+        # A cena vive sob supervisão: quando este processo acabar — por retorno,
+        # exceção ou sinal — o `qml6` acaba junto. Sobrevivendo, ele mantinha uma
+        # janela com o título e a classe da sessão viva, já sem a ponte HTTP.
+        with supervised_child(argv, env=environment) as process:
+            status = process.wait()
+    # Morte por sinal chega como código negativo, que não é código de saída
+    # válido; a convenção de shell (128+sinal) preserva a causa.
+    return 128 - status if status < 0 else int(status)
