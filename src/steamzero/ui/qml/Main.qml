@@ -5943,6 +5943,9 @@ ApplicationWindow {
                                             amberColor: root.amberColor
                                             redColor: root.redColor
                                             compactLayout: root.compactLayout
+                                            contractsReady: root.uiContracts
+                                                && root.uiContracts.byId
+                                                && root.uiContracts.byId["theme.catalog.list"] !== undefined
                                             requestAction: root.requestAction
                                             onNotified: function(message, isError) {
                                                 root.notify(message, isError)

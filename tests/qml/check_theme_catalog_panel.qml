@@ -102,6 +102,24 @@ Item {
             compare(panel.storeUsage.blobs, 474)
         }
 
+        function test_waits_for_the_bridge_contract_during_bootstrap() {
+            harness.calls = []
+            panel.contractsReady = false
+            panel.refresh()
+            compare(harness.calls.length, 0)
+
+            const refresh = harness.locate(panel, "refreshButton")
+            verify(refresh !== null)
+            verify(!refresh.enabled)
+            verify(String(refresh.Accessible.description).length > 0)
+
+            panel.contractsReady = true
+            tryVerify(function() {
+                return harness.calls.filter(c => c.id === "theme.catalog.list").length === 1
+            })
+            compare(panel.entries.length, 3)
+        }
+
         function test_install_button_actually_calls_the_route() {
             const button = harness.locate(panel, "installButton_org.esde.iconic")
             verify(button !== null, "botão de instalar não encontrado")
