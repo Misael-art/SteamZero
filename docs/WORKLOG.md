@@ -9475,3 +9475,29 @@ pronto para o operador fazer o reboot físico e provar selecionar → jogar →
 encerrar → retornar ao mesmo foco; esse reboot e a certificação física final
 continuam fora da autonomia do agente. Publicação final da release permanece
 dependente dessa certificação.
+
+## 2026-09-05 — Sessão: prova física do ciclo Launcher
+
+Após a ativação, o Launcher foi executado pelo binário instalado em
+`/opt/steamzero/releases/2.0.0rc1-bf23fd7dd62f/venv/bin/steamzero-launcher`,
+na sessão Wayland real do host `misael-jupiter`. A janela foi identificada por
+PID; `ydotoold` estava vivo em `/tmp/.ydotool_socket`. Sem clique de mouse,
+`KEY_RIGHT` moveu o foco do cartão `3D Alien Maze (Homebrew) (SMS) 1.0` para
+`Aladdin (Europe) (Translated PtBr)`. `KEY_ENTER` abriu a página do jogo,
+outro `KEY_ENTER` iniciou o processo RetroArch real e `ALT+F4` encerrou o
+emulador. O Launcher retornou ao mesmo cartão, com o foco preservado, e não
+restaram processos do teste.
+
+As capturas físicas foram preservadas em
+`docs/09-operations/evidence/2026-09-05-launcher-p0-loop/` como
+`01-baseline.png`, `02-entrega-funcional.png` e `03-recuperacao.png`, com
+hashes e detalhes em `PHYSICAL-VALIDATION.json`. Uma captura intermediária
+continha um endereço de e-mail exibido pelo aviso do emulador; foi removida e
+substituída por uma imagem segura da página do jogo. A verificação de texto da
+pasta não encontrou segredo ou dado pessoal.
+
+O ciclo de sucesso, encerramento e recuperação está provado nesta release.
+Permanece fora da autonomia do agente o reboot físico reservado ao operador.
+A publicação final ainda requer promoção do commit para `refs/heads/main`,
+porque o `release_host.py publish` recusa bundles cuja proveniência é de branch
+candidata; Steam real e fade de retorno continuam lacunas declaradas.

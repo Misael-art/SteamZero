@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "ready",
   "distribution": "installed",
-  "scopeDigest": "a87086602656b7540d7eb3fb9c2f1c9aad162c834b9a447d78533a19063a7b10",
+  "scopeDigest": "a3f6ddaa770fde7a9d005daab61a798d853a3887e01a09cebee4a6943bd18fa0",
   "scopePaths": [
     "docs/00-vision/PROJECT-VISION.md",
     "docs/00-vision/NON-GOALS.md",
@@ -242,11 +242,17 @@
     {
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-09-05-launcher-p0-loop/README.md",
-      "command": "55 capturas live da release/commit autorizados; 01-baseline.png (Steam indisponivel controlado), 02-entrega-funcional.png (acervo publicado), 03-recuperacao.png (retorno em grade); erro de worktree recusado sem chamada privilegiada e fluxo valido recuperado.",
+      "command": "55 capturas QML live da release/commit autorizados; erro de preflight recusado sem chamada privilegiada e fluxo valido recuperado.",
       "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-05-launcher-p0-loop/PHYSICAL-VALIDATION.json",
+      "command": "Compositor Wayland real na release 2.0.0rc1-bf23fd7dd62f: ydotoold enviou KEY_RIGHT/KEY_ENTER/KEY_ENTER/ALT+F4 sem mouse; o foco moveu um cartao, a pagina abriu, RetroArch iniciou a ROM real, encerrou e o Launcher retornou ao mesmo cartao; nenhum processo residual. Capturas 01-baseline.png, 02-entrega-funcional.png e 03-recuperacao.png, hashes no JSON.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Host pronto para o operador reiniciar fisicamente e provar no hardware o ciclo selecionar -> jogar Steam/emulacao -> encerrar -> retornar ao mesmo foco; depois registrar certificacao fisica para liberar a publicacao final. Release ativa e rollback governado estao disponiveis.",
+  "nextAction": "Ciclo fisico do Launcher provado na release com emulacao. Falta ao operador o reboot reservado e, para publicacao final, a promocao do commit para refs/heads/main exigida pelo publish; Steam real e fade de retorno permanecem lacunas declaradas.",
   "activeWorkstreams": [
     "WS-2026-08-AURA-LAUNCHER",
     "WS-2026-09-LAUNCHER-P0-ACTIVATION",

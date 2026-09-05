@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "release": "2.0.0rc1-bf23fd7dd62f",
+  "sourceCommit": "bf23fd7dd62f3c161e9375b7ccf253b933834605",
+  "host": "misael-jupiter",
+  "display": "Wayland",
+  "launcherExecutable": "/opt/steamzero/releases/2.0.0rc1-bf23fd7dd62f/venv/bin/steamzero-launcher",
+  "input": {
+    "provider": "ydotoold",
+    "socket": "/tmp/.ydotool_socket",
+    "mouseClicks": 0,
+    "keys": ["KEY_RIGHT", "KEY_ENTER", "KEY_ENTER", "ALT+F4"]
+  },
+  "window": {
+    "launcherId": "0c1a69fe-c127-455b-8570-bdf81e89f60d",
+    "retroArchObserved": true,
+    "residualProcessesAfterCleanup": false
+  },
+  "journey": {
+    "baseline": "3D Alien Maze (Homebrew) (SMS) 1.0 focused",
+    "right": "focus moved one card right to Aladdin (Europe) (Translated PtBr)",
+    "enter": "game page opened with Jogar focused",
+    "play": "RetroArch process started for the selected ROM",
+    "exit": "Alt+F4 closed RetroArch",
+    "recovery": "Launcher returned to the same Aladdin card with focus"
+  },
+  "captures": {
+    "01-baseline.png": "789f1ebc0e723a675b42793d828830a8ae9dcdff1ed93a912b190d56f25417ac",
+    "02-entrega-funcional.png": "b2f1b36c25efa66c270e23db488969423fbc396ceca0181a01d54a8d219b569f",
+    "03-recuperacao.png": "d3983d776ad148308d8993e7028d97d1c6dab30bfe463a34052296e17456831b"
+  },
+  "operatorReboot": "not performed; remains operator-owned"
+}

@@ -7,16 +7,18 @@ preservação do estado do usuário.
 
 ## Evidências ordenadas
 
-- `01-baseline.png`: estado degradado controlado, com Steam indisponível e ação
-  de diagnóstico visível.
-- `02-entrega-funcional.png`: biblioteca editorial com acervo publicado e
-  navegação Steam/emulação renderizada pela release ativa.
-- `03-recuperacao.png`: retorno à biblioteca em grade após a navegação, sem
-  travamento ou janela preta.
+- `01-baseline.png`: abertura física da home, com o foco no cartão real
+  `3D Alien Maze (Homebrew) (SMS) 1.0`.
+- `02-entrega-funcional.png`: página física do jogo real, aberta com Enter e
+  com a ação `Jogar` focada.
+- `03-recuperacao.png`: retorno físico à home após encerrar o emulador, com o
+  mesmo cartão ainda focado.
 
-As três imagens são recortes nomeados de capturas live do mesmo ciclo; o
-manifesto `MANIFEST.json` contém o contexto QML, hashes, commit, origem live e
-snapshot do host para as 55 capturas geradas.
+As três imagens principais são capturas do compositor real, feitas sem clique
+de mouse. O arquivo `PHYSICAL-VALIDATION.json` registra PID/janela, hashes e
+as teclas enviadas. O manifesto `MANIFEST.json` também contém o contexto QML,
+hashes, commit, origem live e snapshot do host para as 55 capturas offscreen
+complementares. Nenhuma imagem persistida contém tokens ou dados pessoais.
 
 ## Provas complementares
 
@@ -33,10 +35,16 @@ snapshot do host para as 55 capturas geradas.
   os avisos já existentes são `orphanStaging=1` e `bootDirect=unknown` por
   permissão de inspeção.
 
+- `PHYSICAL-VALIDATION.json`: Enter abriu a página do jogo, Enter iniciou o
+  RetroArch real, Alt+F4 encerrou-o e o Launcher retornou ao mesmo cartão; não
+  restaram processos do teste.
+
 ## Erro controlado e recuperação
 
 Uma tentativa de atualização com o checkout sujo pela própria pasta de
 evidências foi recusada de forma controlada (`update recusa worktree suja`), sem
 chamada privilegiada. Depois, o fluxo válido concluiu a ativação, convergência
-idempotente, smoke offscreen e preservação de estado. Não foi feito reboot:
-essa ação continua exclusiva do operador.
+idempotente, smoke offscreen e preservação de estado. A validação física
+confirmou sucesso e retorno; o aviso de Steam indisponível continua coberto por
+`steam-area-library.png`. Não foi feito reboot: essa ação continua exclusiva
+do operador.

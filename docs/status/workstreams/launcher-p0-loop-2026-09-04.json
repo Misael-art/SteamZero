@@ -14,6 +14,6 @@
   "sharedPaths": [
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Host pronto para o operador fazer reboot físico e provar selecionar-jogar-sair-retornar no hardware; depois registrar certificacao fisica para liberar a publicacao final. Release ativa 2.0.0rc1-bf23fd7dd62f e rollback 2.0.0rc1-cf9c47e7b55b estao verificaveis.",
+  "nextAction": "Ciclo fisico de emulacao provado na release ativa, com retorno ao mesmo foco e sem processos residuais. Aguardar reboot reservado ao operador; publicacao final exige promocao para refs/heads/main, e Steam real/fade de retorno continuam lacunas declaradas.",
   "updatedAt": "2026-09-05"
 }
