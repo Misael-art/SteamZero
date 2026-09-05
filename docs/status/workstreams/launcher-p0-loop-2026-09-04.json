@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-LAUNCHER-P0-LOOP",
+  "item": "SZ-AURA-LAUNCHER",
+  "branch": "codex/launcher-p0-loop-2026-09-04",
+  "baseRef": "aad7787040467d7481d8d7a0ab87c888a8aa4d39",
+  "owner": "codex-launcher-p0-loop",
+  "state": "active",
+  "exclusivePaths": [
+    "docs/09-operations/evidence/2026-09-04-launcher-p0-loop",
+    "docs/09-operations/evidence/2026-09-05-launcher-p0-loop"
+  ],
+  "sharedPaths": [
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Ciclo fisico de emulacao provado na release ativa, com retorno ao mesmo foco e sem processos residuais. Reboot do operador concluido; PR #111 e CI run 33968777286 estao verdes. Publicacao final exige merge para refs/heads/main, e Steam real/fade de retorno continuam lacunas declaradas.",
+  "updatedAt": "2026-09-05"
+}

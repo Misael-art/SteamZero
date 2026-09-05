@@ -9394,3 +9394,156 @@ no commit documental; Ruff, formatação, mypy, independência e boundaries
 passaram. Commit funcional `854c0d09`. Nada foi provado no host: nenhuma
 instalação, publicação, push ou ação privilegiada foi executada, e a validação
 física do item continua pendente.
+
+## 2026-09-04 — Sessão: loop P0 do Launcher e triagem dos gaps de UI
+
+Workstream `WS-2026-09-LAUNCHER-P0-LOOP`, branch
+`codex/launcher-p0-loop-2026-09-04`. O Launcher passou a unir o catálogo de
+emulação ao catálogo Steam publicado, filtrar ferramentas/runtimes via
+`appinfo.vdf`, encaminhar jogos Steam ao cliente correto e preservar o retorno
+ao mesmo cartão após reinício. Ações de emulação continuam passando por
+plano/confirmação; cliente Steam ausente e catálogo inválido degradam com erro
+estruturado. A triagem confirmou que A0/A1/A2 e a jornada B5 já estão na base
+atual; não foi criada uma segunda implementação sobre esses itens.
+
+Provas: `11 passed` no recorte Launcher; duas mutações intencionais falharam
+com 4 e 2 testes, respectivamente; a execução por diretórios fechou em
+`5573 passed, 44 skipped`; Ruff, formatação, mypy, independência, boundaries e
+`make status-check` passaram. Commits funcionais `bf23fd7d` e documental
+`741e0d78`, ambos enviados à branch autorizada. Nenhuma instalação, publicação
+ou mutação de host foi executada. O portão físico permanece aberto: aguarda
+autorização explícita de instalação na thread e, depois, teste do ciclo
+selecionar-jogar-sair-retornar com evidência PNG na release instalada. Os
+próximos P0 visuais têm implementação ou custódia em workstreams ativos; não
+há outro subescopo seguro para assumir nesta sessão.
+
+## 2026-09-04 — Sessão: preflight autorizado e bloqueio de proveniência
+
+A autorização de instalação foi concedida para a branch
+`codex/launcher-p0-loop-2026-09-04`, commit funcional `bf23fd7d`. A árvore de
+`src`, `tools` e `tests` permaneceu idêntica a esse commit; os commits
+posteriores são somente documentação. O baseline read-only continua na
+release `2.0.0rc1-cf9c47e7b55b`, com daemon convergente.
+
+Provas: suíte integral `.venv/bin/python tools/run_tests_isolated.py tests -q`
+com `TMPDIR=/tmp`: `5574 passed, 44 skipped` em 32m38s, sem alteração no
+estado do usuário; Ruff, formatação, mypy, independência, boundaries e
+`make status-check` passaram. O `release_host.py prepare` recusou antes de
+baixar qualquer bundle porque o checkout atual está em `8d601435`, enquanto a
+autorização exige `bf23fd7d`; além disso, `gh run list` encontrou zero run
+`push` verde para o SHA e a CI só dispara push em `main` ou
+`codex/*release-candidate*`. Nenhum wheel local, bundle manual, publicação,
+instalação, rollback ou mutação de host foi executado. O item permanece aberto
+até o operador autorizar um ref de candidato compatível ou promover o commit
+pela CI; só então será possível registrar rollback, instalar e produzir as
+três evidências PNG.
+
+## 2026-09-05 — Sessão: ativação governada do Launcher P0
+
+A autorização foi reiterada para continuar até a entrega. Para cumprir o
+preflight sem fabricar artefato, foi publicado o ref de pipeline
+`codex/launcher-p0-loop-2026-09-04-release-candidate`, apontando somente para
+o commit funcional autorizado `bf23fd7dd62f3c161e9375b7ccf253b933834605`.
+O run `33964880293` terminou verde nos oito jobs: matriz Python 3.11/3.12/3.14,
+visual QML, wheel/supply chain e smoke Ubuntu/Manjaro/Arch.
+
+O plano `release_host.py update --plan` registrou antes da ativação o bundle,
+hash do wheel `38569e16028d83b03cd16fb5b48bd3674dd5294b0dc529ff298e899a1d2e7dce`,
+rollback `2.0.0rc1-cf9c47e7b55b`, boot inalterado e estado do usuário preservado.
+A ativação foi feita pelo fluxo governado; a única chamada privilegiada foi
+`bigsudo /usr/bin/python3 tools/install_host.py install` com os caminhos e
+hashes do bundle. A transação
+`bf23fd7dd62f-1788610658586285208.json` terminou `deploymentHealthy=true`,
+com `activated`, convergência `converged`, segunda convergência idempotente
+(`attempts=0`) e smokes aprovados.
+
+Validação read-only: release ativa `2.0.0rc1-bf23fd7dd62f`, CLI `2.0.0rc1`,
+`steamzero-core.socket` e `steamzero-core.service` ativos, Doctor sem
+operações pendentes (`pendingOperations=0`, `staleJobs=0`) e `deckInputKeys=true`.
+Os únicos avisos observados são os já conhecidos: uma árvore de staging órfã e
+`bootDirect=unknown` por permissão de inspeção. A captura live QML gerou 55
+PNG com conteúdo/contexto e zero warnings próprios; foram nomeadas as provas
+`01-baseline.png`, `02-entrega-funcional.png` e `03-recuperacao.png` em
+`docs/09-operations/evidence/2026-09-05-launcher-p0-loop`, com manifesto e
+`ACTIVE-RELEASE.json`. Uma tentativa com worktree suja foi recusada de forma
+controlada antes de qualquer chamada privilegiada; o fluxo válido recuperou e
+concluiu a ativação.
+
+Gates locais já aprovados no mesmo código: `5574 passed, 44 skipped`, Ruff,
+formatação, mypy, independência, boundaries e `make status-check`. O host está
+pronto para o operador fazer o reboot físico e provar selecionar → jogar →
+encerrar → retornar ao mesmo foco; esse reboot e a certificação física final
+continuam fora da autonomia do agente. Publicação final da release permanece
+dependente dessa certificação.
+
+## 2026-09-05 — Sessão: prova física do ciclo Launcher
+
+Após a ativação, o Launcher foi executado pelo binário instalado em
+`/opt/steamzero/releases/2.0.0rc1-bf23fd7dd62f/venv/bin/steamzero-launcher`,
+na sessão Wayland real do host `misael-jupiter`. A janela foi identificada por
+PID; `ydotoold` estava vivo em `/tmp/.ydotool_socket`. Sem clique de mouse,
+`KEY_RIGHT` moveu o foco do cartão `3D Alien Maze (Homebrew) (SMS) 1.0` para
+`Aladdin (Europe) (Translated PtBr)`. `KEY_ENTER` abriu a página do jogo,
+outro `KEY_ENTER` iniciou o processo RetroArch real e `ALT+F4` encerrou o
+emulador. O Launcher retornou ao mesmo cartão, com o foco preservado, e não
+restaram processos do teste.
+
+As capturas físicas foram preservadas em
+`docs/09-operations/evidence/2026-09-05-launcher-p0-loop/` como
+`01-baseline.png`, `02-entrega-funcional.png` e `03-recuperacao.png`, com
+hashes e detalhes em `PHYSICAL-VALIDATION.json`. Uma captura intermediária
+continha um endereço de e-mail exibido pelo aviso do emulador; foi removida e
+substituída por uma imagem segura da página do jogo. A verificação de texto da
+pasta não encontrou segredo ou dado pessoal.
+
+O ciclo de sucesso, encerramento e recuperação está provado nesta release.
+Permanece fora da autonomia do agente o reboot físico reservado ao operador.
+A publicação final ainda requer promoção do commit para `refs/heads/main`,
+porque o `release_host.py publish` recusa bundles cuja proveniência é de branch
+candidata; Steam real e fade de retorno continuam lacunas declaradas.
+
+## 2026-09-05 — Sessão: reboot físico do operador e validação pós-boot
+
+O operador reiniciou fisicamente o host com sucesso. O boot retornou em
+`2026-09-05 09:52:49`; a release ativa permaneceu
+`2.0.0rc1-bf23fd7dd62f`, com `steamzero --version` em `2.0.0rc1`. A validação
+read-only confirmou `steamzero-core.socket` e `steamzero-core.service` ativos,
+daemon convergente, `pendingOperations=0`, `staleJobs=0`,
+`deckInputKeys=true` e zero blockers. O Doctor continua `degraded` somente
+pelos avisos conhecidos `bootDirect=unknown` (permissão) e
+`orphanStaging=1`; nenhuma mutação manual foi executada.
+
+O host está pronto para o teste físico de boot do operador. A publicação final
+continua bloqueada pelo preflight legítimo de `release_host.py publish`, que
+exige proveniência em `refs/heads/main`; o commit autorizado permanece apenas
+na branch `codex/launcher-p0-loop-2026-09-04`. Steam real e fade de retorno
+continuam fora do escopo comprovado deste ciclo.
+
+## 2026-09-05 — Sessão: PR e gates remotos
+
+Com a autorização ampliada para PR, foi aberto o
+[PR #111](https://github.com/Misael-art/SteamZero/pull/111) de
+`codex/launcher-p0-loop-2026-09-04` para `main`. O run de CI
+`33968162946` terminou verde nos oito jobs: gate visual QML, três smokes,
+wheel/supply chain e Python 3.11, 3.12 e 3.14. O PR está mergeable e aguarda
+merge; não foi feita mutação em `main` nesta sessão.
+
+A release instalada continua `2.0.0rc1-bf23fd7dd62f`, com rollback
+`2.0.0rc1-cf9c47e7b55b` disponível. Como o artefato instalado é o mesmo commit
+funcional já validado fisicamente, nenhuma nova instalação privilegiada foi
+repetida.
+
+## 2026-09-05 — Sessão: conferência final do CI e do estado entregue
+
+O run final do PR #111, `33968777286`, terminou verde nos oito jobs obrigatórios,
+incluindo Python 3.11/3.12/3.14, gate visual QML, wheel/supply chain e smokes
+Ubuntu/Manjaro/Arch; CodeRabbit e Sourcery também reportaram sucesso. A branch
+`codex/launcher-p0-loop-2026-09-04` permaneceu limpa em `97e4b77a` e o PR segue
+aberto e mergeable para `main`.
+
+Nova inspeção read-only confirmou a release ativa
+`2.0.0rc1-bf23fd7dd62f`, versão `2.0.0rc1`, socket e serviço ativos e rollback
+`2.0.0rc1-cf9c47e7b55b` disponível. Nenhuma instalação foi repetida. A
+publicação canônica continua corretamente impedida pelo preflight de
+proveniência enquanto o PR não for promovido para `refs/heads/main`; não houve
+mutação em `main`.

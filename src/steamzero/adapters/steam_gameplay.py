@@ -25,6 +25,7 @@ from typing import Any
 from steamzero.adapters.gamemode_probe import GameModeProbe
 from steamzero.adapters.host_preparation import snapshot as host_preparation_snapshot
 from steamzero.adapters.lsfg import LSFG_APP_ID, LsfgInstaller
+from steamzero.adapters.steam_appinfo import PLAYABLE_APP_TYPES, app_types
 from steamzero.adapters.steam_launch_options import SteamLaunchOptionsManager
 from steamzero.adapters.steam_launcher import SteamGameLauncher
 from steamzero.adapters.steam_maintenance import SteamMaintenance
@@ -74,6 +75,50 @@ def _default_roots() -> tuple[Path, ...]:
         home / ".steam/steam",
         home / ".var/app/com.valvesoftware.Steam/.local/share/Steam",
     )
+
+
+def library_roots(roots: Sequence[Path]) -> tuple[Path, ...]:
+    """Bibliotecas Steam alcançáveis a partir das raízes dadas."""
+    found: dict[str, Path] = {}
+    for root in roots:
+        if root.is_dir():
+            found[str(root.resolve())] = root.resolve()
+        file = root / "steamapps/libraryfolders.vdf"
+        try:
+            lines = file.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            match = _LIBRARY_PATH.match(line)
+            if match:
+                value = match.group("value").replace("\\\\", "\\")
+                path = Path(value).expanduser()
+                if path.is_dir():
+                    found[str(path.resolve())] = path.resolve()
+    return tuple(found.values())
+
+
+def parse_app_manifest(path: Path) -> tuple[str, str] | None:
+    """Extrai ``(appid, nome)`` de um manifesto ACF legível."""
+    values: dict[str, str] = {}
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return None
+    for line in lines[:300]:
+        match = _ACF_FIELD.match(line)
+        if match:
+            values[match.group("key")] = match.group("value")
+    app_id = values.get("appid", "")
+    name = values.get("name", "").strip()
+    if not app_id.isdigit() or not name:
+        return None
+    return app_id, name[:160]
+
+
+def default_steam_roots() -> tuple[Path, ...]:
+    """Raízes padrão do Steam para consumidores fora do controller."""
+    return _default_roots()
 
 
 def _file_url(path: Path | None) -> str:
@@ -639,6 +684,7 @@ class SteamGameplayController:
 
     def _games(self) -> list[dict[str, Any]]:
         roots = self._library_roots()
+        declared = app_types()
         games: dict[str, dict[str, Any]] = {}
         for root in roots:
             steamapps = root / "steamapps"
@@ -652,6 +698,9 @@ class SteamGameplayController:
                     continue
                 app_id, name = parsed
                 if app_id == LSFG_APP_ID:
+                    continue
+                kind = declared.get(app_id)
+                if kind is not None and kind not in PLAYABLE_APP_TYPES:
                     continue
                 games[app_id] = {
                     "id": app_id,
@@ -684,40 +733,11 @@ class SteamGameplayController:
         return False
 
     def _library_roots(self) -> tuple[Path, ...]:
-        found: dict[str, Path] = {}
-        for root in self._roots:
-            if root.is_dir():
-                found[str(root.resolve())] = root.resolve()
-            file = root / "steamapps/libraryfolders.vdf"
-            try:
-                lines = file.read_text(encoding="utf-8", errors="replace").splitlines()
-            except OSError:
-                continue
-            for line in lines:
-                match = _LIBRARY_PATH.match(line)
-                if match:
-                    value = match.group("value").replace("\\\\", "\\")
-                    path = Path(value).expanduser()
-                    if path.is_dir():
-                        found[str(path.resolve())] = path.resolve()
-        return tuple(found.values())
+        return library_roots(self._roots)
 
     @staticmethod
     def _parse_manifest(path: Path) -> tuple[str, str] | None:
-        values: dict[str, str] = {}
-        try:
-            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
-        except OSError:
-            return None
-        for line in lines[:300]:
-            match = _ACF_FIELD.match(line)
-            if match:
-                values[match.group("key")] = match.group("value")
-        app_id = values.get("appid", "")
-        name = values.get("name", "").strip()
-        if not app_id.isdigit() or not name:
-            return None
-        return app_id, name[:160]
+        return parse_app_manifest(path)
 
     @staticmethod
     def _cover(root: Path, app_id: str) -> Path | None:

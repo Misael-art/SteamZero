@@ -43,6 +43,10 @@ class CatalogGame:
     title: str
     platform: str
     cover_url: str = ""
+    #: Rota de lançamento: emulation resolve executor/sessão; steam entrega o
+    #: AppID ao cliente Steam. A discriminação é por registro, não pelo formato
+    #: do id, porque ids canônicos de emulação também podem ser numéricos.
+    kind: str = "emulation"
 
     def to_dict(self) -> dict[str, str]:
         # A seção é a plataforma: a home agrupa por sistema.
