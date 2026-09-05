@@ -9604,3 +9604,30 @@ terminou com 5.573 passados, 44 ignorados e uma falha ambiental de caminho Unix
 (`AF_UNIX path too long`); o teste afetado passou isoladamente com diretório
 temporário curto. O runner confirmou que as escritas no state home real vieram
 dos processos legítimos já ativos, não da suíte.
+
+## 2026-09-05 — Sessão: correção, merge e prova instalada do catálogo de temas
+
+Foi identificada e corrigida a causa raiz do falso erro da aba Temas:
+`ThemeCatalogPanel` consultava a bridge no `Component.onCompleted`, antes de
+`Main.qml` receber de `/status` o mapa real de contratos. O painel passou a
+aguardar explicitamente `theme.catalog.list`, desabilitar Atualizar com
+descrição acessível durante o bootstrap e repetir a consulta exatamente quando
+o contrato chega. O teste QML novo cobre o estado transitório, o controle
+desabilitado e a única chamada após a publicação.
+
+Os gates locais fecharam com 5.574 testes passados e 44 ignorados; ruff,
+formatação, mypy, independência/fronteiras, QML visual (48/48) e status-check
+passaram. O PR #113 foi mergeado em `main` no commit
+`ca9ab317fc3cefdd4088add8cb58a55dc67f7cd2`, cujo CI push terminou verde.
+
+O `release_host.py update` instalou a release `2.0.0rc1-ca9ab317fc3c`,
+preservou `2.0.0rc1-085169f47186` como rollback, convergiu o daemon e repetiu
+a convergência de forma idempotente. A prova física em
+`docs/09-operations/evidence/2026-09-05-ux-gap-closure/` capturou o vazio
+transitório e, depois, a Central real exibindo 5 temas e 4.125 arquivos; a
+bridge confirmou `error=null`. Nenhum reboot, logout, encerramento ou
+finalização da sessão KDE foi executado; o launcher existente permaneceu ativo.
+
+Os quatro gaps restantes do item (contraste por pixel, gate de órfãos efetivo,
+roteamento live-launcher e semântica do tema ativo) continuam registrados como
+abertos e não foram promovidos por esta prova.

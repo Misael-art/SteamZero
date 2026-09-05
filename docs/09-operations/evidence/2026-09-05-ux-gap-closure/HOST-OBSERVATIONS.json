@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "kind": "steamzero-ux-gap-closure",
+  "date": "2026-09-05",
+  "release": "2.0.0rc1-ca9ab317fc3c",
+  "sourceCommit": "ca9ab317fc3cefdd4088add8cb58a55dc67f7cd2",
+  "rollbackRelease": "2.0.0rc1-085169f47186",
+  "deploymentHealthy": true,
+  "daemonConvergence": {
+    "first": "converged",
+    "idempotent": "converged",
+    "idempotentRestarted": false
+  },
+  "themeCatalog": {
+    "entries": 5,
+    "excluded": 4,
+    "storeUsageBlobs": 4125,
+    "storeUsageBytes": 594819462,
+    "error": null
+  },
+  "physicalEvidence": {
+    "transientEmptyState": "01-installed-central-themes.png",
+    "installedThemesBeforeBootstrap": "02-installed-central-themes.png",
+    "installedThemesAfterBootstrap": "03-installed-central-themes-after-bootstrap.png",
+    "kdeSessionRestarted": false,
+    "rebooted": false,
+    "launcherTerminated": false
+  }
+}

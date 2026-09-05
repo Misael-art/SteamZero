@@ -45,9 +45,10 @@
     "tools/ui_dialog_probe.qml",
     "tools/ui_scenario_fixtures.py",
     "docs/09-operations/evidence/2026-09-04-release-cf9c47e7",
-    "docs/09-operations/evidence/2026-09-05-ux-audit"
+    "docs/09-operations/evidence/2026-09-05-ux-audit",
+    "docs/09-operations/evidence/2026-09-05-ux-gap-closure"
   ],
-  "scopeDigest": "e4c62c6885b875a83aa30a8f52bc20f1f638c041a9e338ddd8f2d466195cd421",
+  "scopeDigest": "4336224edd0da18cd60524cf46ad00ce3db4da5c3f66c08ec7addbb951679b3f",
   "dependsOn": [],
   "knownGaps": [
     "GAP-UI-CONTRAST-MEASUREMENT",
@@ -285,6 +286,12 @@
       "kind": "test",
       "reference": "tests/qml/check_theme_catalog_panel.qml",
       "command": "2026-09-05: qmltestrunner Qt 6.11.1 com 13 testes, incluindo bootstrap sem contrato: o botao Atualizar fica desabilitado com descricao acessivel enquanto /status nao publica theme.catalog.list; ao publicar o contrato, a consulta e disparada uma unica vez e carrega 3 entradas.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-05-ux-gap-closure/README.md",
+      "command": "2026-09-05: release 2.0.0rc1-ca9ab317fc3c instalada pelo update governado; a Central iniciou em estado transitório sem contratos e, após /status, exibiu 5 temas, 567,3 MB em 4.125 arquivos e nenhum toast de bridge. Primeira e segunda convergência passaram; KDE não foi reiniciado nem encerrado.",
       "result": "passed"
     }
   ],

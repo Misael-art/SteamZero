@@ -6,7 +6,7 @@
   "branch": "codex/ux-gap-closure-2026-09-05",
   "baseRef": "69f11773381ff8e8684c801153196ae09e6cc447",
   "owner": "codex-ux-gap-closure",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/ui/qml/ThemeCatalogPanel.qml",
     "tests/qml/check_theme_catalog_panel.qml"
@@ -15,6 +15,6 @@
     "src/steamzero/ui/qml/Main.qml",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Corrigir a corrida de bootstrap entre /status e ThemeCatalogPanel; provar catálogo publicado na Central instalada sem falso erro de bridge.",
+  "nextAction": "Fechamento comprovado na release instalada; manter abertos os quatro gaps de UX restantes do item.",
   "updatedAt": "2026-09-05"
 }
