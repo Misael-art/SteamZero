@@ -134,8 +134,8 @@
       "result": "partial"
     }
   ],
-  "nextAction": "Publicar/instalar uma release autorizada e capturar canvas, metadados e exportação do Studio; edição direta no canvas continua pendente até existir persistência segura.",
+  "nextAction": "Publicar/instalar uma release autorizada e capturar canvas, metadados e exportação do Studio; a auditoria confirmou canvas somente de preview e edição direta pendente até existir persistência segura.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-02",
+  "updatedAt": "2026-09-05",
   "notes": "Estado permanece parcial. O canvas central deixou de ser placeholder: quando o no selecionado e um layout com cena resolvida, ele desenha usando o MESMO SceneRepeater que a interface usa — um renderizador proprio do Studio poderia divergir do que o usuario ve, e o preview mentiria para quem edita. O no de layout passou a declarar previewKey, entao o canvas acha a cena sem fatiar o id: se o formato do id mudasse, o desenho sumiria em silencio. No sem cena propria (binding, motion, efeito) mostra o rotulo e diz por que nao desenhou, em vez de exibir vazio. A arvore ja carrega depth e path, com irmaos de rotulo repetido desambiguados pela posicao. O painel agora permite editar name, author, license e description de temas de usuario via set-metadata; temas builtin permanecem read-only. A exportacao agora percorre FileDialog → plano com precondicoes → confirmacao → ZIP, sem escrita direta pelo QML. Falta ainda: edicao no canvas (hoje e so leitura) e evidencia fisica desta fatia na proxima release instalada."
 }

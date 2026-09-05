@@ -45,8 +45,8 @@
       "result": "partial"
     }
   ],
-  "nextAction": "Integrar guidance à hierarquia visual da tela Sistema e validar foco, ação e recuperação na release instalada; isso pertence à custódia QML posterior.",
+  "nextAction": "Integrar guidance à hierarquia visual da tela Sistema e validar foco, ação e recuperação na release 2.0.0rc1-085169f47186; a auditoria confirmou causa na CLI, mas recuperação QML ausente.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-02",
+  "updatedAt": "2026-09-05",
   "notes": "A tela Sistema atualmente lista checks técnicos em sequência, mas jobs.stale e artefatos órfãos não diziam o impacto nem ofereciam caminho seguro. O Doctor agora publica guidance estruturado compatível com name/status/message, aponta somente navegação read-only existente e deixa boot/ações sem rota como orientação explícita ao operador. A hierarquia visual, foco, progresso e execução das ações continuam fora do escopo por pertencerem à integração QML posterior."
 }

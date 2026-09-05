@@ -9580,3 +9580,27 @@ processo residual. Capturas e hashes estão em
 Permanecem fora deste fechamento a cobertura física integral do catálogo e o
 fade de retorno; o reboot físico já foi executado com sucesso pelo operador e
 nenhuma nova reinicialização foi feita.
+
+## 2026-09-05 — Sessão: auditoria consultiva UX de Theme e Big Picture
+
+Foi realizada auditoria observacional da release ativa
+`2.0.0rc1-085169f47186`, sem instalar, publicar, reiniciar o host ou encerrar a
+sessão do KDE. A evidência está em
+`docs/09-operations/evidence/2026-09-05-ux-audit/`, incluindo Launcher,
+Central, tema, sistema e biblioteca. O inventário contém 44 itens funcionais
+não agregados (e não 43 como indicado no pedido); cada item foi confrontado
+com contrato, estado físico atual e próxima ação.
+
+Os bloqueios prioritários observados foram a ponte sem publicação do catálogo
+de temas, placeholders/arte ausente no Launcher, contraste insuficiente do
+alerta de perfil na Central e ausência de prova física Big Picture/Steam
+interface. A auditoria também registra H1–H15, quick wins, comparação de
+mercado e a ordem recomendada bridge→catalog→activation→render antes de novas
+promessas visuais. Nenhum código de produto foi alterado.
+
+Os gates estáticos passaram: `ruff check`, `ruff format --check`, `mypy`,
+`make independence boundaries` e `make status-check`. A suíte integral
+terminou com 5.573 passados, 44 ignorados e uma falha ambiental de caminho Unix
+(`AF_UNIX path too long`); o teste afetado passou isoladamente com diretório
+temporário curto. O runner confirmou que as escritas no state home real vieram
+dos processos legítimos já ativos, não da suíte.

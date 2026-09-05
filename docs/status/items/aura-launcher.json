@@ -269,7 +269,7 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Release v2.0.0rc1 publicada a partir de refs/heads/main e instalada/verificada no host. Ciclos emulacao e Steam real foram provados com retorno e sem processo residual; permanecem a cobertura fisica integral do catalogo e o fade de retorno, e o teste fisico de boot continua sendo responsabilidade do operador.",
+  "nextAction": "Auditoria UX de 2026-09-05 confirmou busca/launch/return na release 2.0.0rc1-085169f47186; permanecem cobertura física integral do catálogo, fade de retorno e teste físico de boot do operador.",
   "activeWorkstreams": [
     "WS-2026-08-AURA-LAUNCHER",
     "WS-2026-09-LAUNCHER-P0-ACTIVATION",

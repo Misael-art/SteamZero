@@ -48,8 +48,8 @@
       "result": "partial"
     }
   ],
-  "nextAction": "Integrar escopo, denominador e fases na superfície visual e validar na release instalada.",
+  "nextAction": "Integrar escopo, denominador, fases e quota na superfície visual e validar na release 2.0.0rc1-085169f47186; a auditoria confirmou que a UI ainda não explica o pipeline.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-02",
+  "updatedAt": "2026-09-05",
   "notes": "A lista de jogos já é filtrada por plataforma, mas a métrica cacheBytes ainda varria media_dir inteiro. Esta frente torna a estatística coerente com o catálogo contextual."
 }
