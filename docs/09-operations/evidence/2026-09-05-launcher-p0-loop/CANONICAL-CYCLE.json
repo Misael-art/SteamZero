@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "release": "2.0.0rc1-085169f47186",
+  "sourceCommit": "085169f471866fbb61530c777d368729002b6868",
+  "ciRunId": "33972409839",
+  "wheelSha256": "37c5cd666da6c2d28f8da68da0a3825c345686ae63d65843b05afc05ba6e5c37",
+  "rollback": {
+    "from": "2.0.0rc1-085169f47186",
+    "to": "2.0.0rc1-bf23fd7dd62f",
+    "result": "converged",
+    "idempotent": true,
+    "evidence": "/home/misael/.local/state/steamzero/release-automation/2.0.0rc1-bf23fd7dd62f.json"
+  },
+  "rollForward": {
+    "from": "2.0.0rc1-bf23fd7dd62f",
+    "to": "2.0.0rc1-085169f47186",
+    "result": "converged",
+    "idempotent": true,
+    "evidence": "/home/misael/.local/state/steamzero/release-automation/2.0.0rc1-085169f47186.json"
+  },
+  "statePreserved": true,
+  "hostReadOnlyAfterRollForward": {
+    "version": "2.0.0rc1",
+    "socket": "active",
+    "service": "active",
+    "doctorPendingOperations": 0,
+    "doctorStaleJobs": 0,
+    "doctorStatus": "degraded-with-known-warnings"
+  }
+}

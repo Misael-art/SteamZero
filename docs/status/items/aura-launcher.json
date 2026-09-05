@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "ready",
   "distribution": "installed",
-  "scopeDigest": "71bfc45930b1ba565099a5d52513bc03b13263a61d4ef17e06bc584e927d0caa",
+  "scopeDigest": "8b56dc0adf4f498ee7576ee3c01c8b61ef051c058dcf220d2d6238e04c8138a1",
   "scopePaths": [
     "docs/00-vision/PROJECT-VISION.md",
     "docs/00-vision/NON-GOALS.md",
@@ -53,7 +53,6 @@
   ],
   "knownGaps": [
     "GAP-LAUNCHER-REAL-CATALOG-PHYSICAL",
-    "GAP-LAUNCHER-HOME-ACTIVATION-PHYSICAL",
     "GAP-LAUNCHER-RETURN-FADES-PHYSICAL"
   ],
   "acceptanceCriteria": [
@@ -250,9 +249,27 @@
       "reference": "docs/09-operations/evidence/2026-09-05-launcher-p0-loop/PHYSICAL-VALIDATION.json",
       "command": "Compositor Wayland real na release 2.0.0rc1-bf23fd7dd62f: ydotoold enviou KEY_RIGHT/KEY_ENTER/KEY_ENTER/ALT+F4 sem mouse; o foco moveu um cartao, a pagina abriu, RetroArch iniciou a ROM real, encerrou e o Launcher retornou ao mesmo cartao; nenhum processo residual. Capturas 01-baseline.png, 02-entrega-funcional.png e 03-recuperacao.png, hashes no JSON.",
       "result": "passed"
+    },
+    {
+      "kind": "release",
+      "reference": "docs/09-operations/evidence/2026-09-05-launcher-p0-loop/CANONICAL-CYCLE.json",
+      "command": "PR #111 mergeado em 085169f471866fbb61530c777d368729002b6868; release v2.0.0rc1 publicada com 10 assets verificados. Rollback governado para 2.0.0rc1-bf23fd7dd62f e roll-forward governado para 2.0.0rc1-085169f47186 convergiram; segunda convergencia foi idempotente e statePreserved=true.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-05-launcher-p0-loop/CANONICAL-PHYSICAL-VALIDATION.json",
+      "command": "Release canônica 2.0.0rc1-085169f47186 no compositor real: teclado F abriu busca, Shovel Knight: Treasure Trove apareceu, Enter iniciou o executável Steam real, Alt+F4 encerrou e o Launcher retornou ao mesmo contexto; zero cliques e nenhum processo do jogo residual. Capturas 04 a 07 e hashes no JSON.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-05-launcher-p0-loop/CANONICAL-CERTIFICATION.json",
+      "command": "Certificação canônica aprovada: machineCycle=true, physicalUi=true, canonicalRomLaunch=true e statePreserved=true; versão CLI 2.0.0rc1, socket/service active, doctor sem operações pendentes nem jobs stale.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Ciclo fisico do Launcher provado na release com emulacao e reboot do operador concluido; PR #111 aberto para main e CI run 33968777286 verde nos oito jobs. Publicacao final aguarda merge em refs/heads/main para satisfazer o preflight; Steam real e fade de retorno permanecem lacunas declaradas.",
+  "nextAction": "Release v2.0.0rc1 publicada a partir de refs/heads/main e instalada/verificada no host. Ciclos emulacao e Steam real foram provados com retorno e sem processo residual; permanecem a cobertura fisica integral do catalogo e o fade de retorno, e o teste fisico de boot continua sendo responsabilidade do operador.",
   "activeWorkstreams": [
     "WS-2026-08-AURA-LAUNCHER",
     "WS-2026-09-LAUNCHER-P0-ACTIVATION",

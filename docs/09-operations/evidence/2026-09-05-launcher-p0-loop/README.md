@@ -51,3 +51,23 @@ idempotente, smoke offscreen e preservação de estado. A validação física
 confirmou sucesso e retorno; o aviso de Steam indisponível continua coberto por
 `steam-area-library.png`. O reboot foi executado pelo operador e validado
 read-only com a mesma release ativa.
+
+## Validação canônica pós-publicação
+
+Após o merge do PR #111 (`085169f471866fbb61530c777d368729002b6868`) e a
+publicação de `v2.0.0rc1`, a release ativa foi confirmada como
+`2.0.0rc1-085169f47186`; o launcher fotografado tinha PID `507008` e executava
+`/opt/steamzero/releases/2.0.0rc1-085169f47186/venv/bin/steamzero-launcher`.
+
+- `04-canonical-baseline.png`: home real, antes do gesto de busca.
+- `05-canonical-steam-search.png`: tecla `F` e texto injetado por teclado
+  mostraram `Shovel Knight: Treasure Trove`.
+- `06-canonical-steam-launch.png`: Enter abriu o jogo Steam real, com a tela
+  funcional do jogo visível.
+- `07-canonical-steam-recovery.png`: Alt+F4 encerrou o jogo e o Launcher
+  retornou ao contexto de busca; não restou processo do jogo.
+
+As hashes e comandos estão em `CANONICAL-PHYSICAL-VALIDATION.json`. O ciclo de
+rollback para `2.0.0rc1-bf23fd7dd62f` e roll-forward ao canônico, ambos
+convergentes e idempotentes, está em `CANONICAL-CYCLE.json`. A certificação
+exigida pelo publicador está em `CANONICAL-CERTIFICATION.json`.

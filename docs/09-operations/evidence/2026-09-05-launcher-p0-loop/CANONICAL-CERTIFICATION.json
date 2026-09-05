@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "release": "2.0.0rc1-085169f47186",
+  "sourceCommit": "085169f471866fbb61530c777d368729002b6868",
+  "verdict": "approved",
+  "requiredGates": {
+    "machineCycle": true,
+    "physicalUi": true,
+    "canonicalRomLaunch": true,
+    "statePreserved": true
+  }
+}

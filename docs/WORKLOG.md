@@ -9547,3 +9547,36 @@ Nova inspeção read-only confirmou a release ativa
 publicação canônica continua corretamente impedida pelo preflight de
 proveniência enquanto o PR não for promovido para `refs/heads/main`; não houve
 mutação em `main`.
+
+## 2026-09-05 — Sessão: merge, ciclo governado e publicação canônica
+
+Com a autorização explícita do operador, o PR #111 foi mergeado em `main` no
+commit `085169f471866fbb61530c777d368729002b6868`. O CI do merge (`33972409839`)
+terminou verde nos oito jobs obrigatórios. O bundle canônico foi preparado com
+sourceRef `refs/heads/main`, release `2.0.0rc1-085169f47186` e wheel SHA-256
+`37c5cd666da6c2d28f8da68da0a3825c345686ae63d65843b05afc05ba6e5c37`.
+
+Antes da ativação, o plano de rollback foi registrado. O host foi revertido pelo
+fluxo governado para `2.0.0rc1-bf23fd7dd62f` e depois reinstalado pelo comando
+governado `release_host.py install` no canônico. Ambos os ciclos convergiram,
+foram idempotentes na segunda verificação e preservaram o estado; o launcher
+ativo aponta para a árvore canônica, com socket/service ativos e Doctor sem
+operações pendentes ou jobs stale. O Doctor permanece `degraded` apenas pelos
+avisos conhecidos de uma árvore de staging órfã e inspeção de boot direto sem
+permissão.
+
+A release `v2.0.0rc1` foi publicada e verificada pelo `release_host.py publish`
+com 10 assets e digests correspondentes. O primeiro upload atingiu timeout e
+deixou um draft parcial; a recuperação enviou somente os dois assets ausentes,
+promoveu o draft e a verificação final passou. A certificação canônica registra
+`machineCycle`, `physicalUi`, `canonicalRomLaunch` e `statePreserved` como
+verdadeiros.
+
+No artefato canônico, a validação física keyboard-only encontrou o jogo Steam
+`Shovel Knight: Treasure Trove`, abriu o executável real, capturou a tela do
+jogo, encerrou com Alt+F4 e retornou ao contexto de busca do Launcher sem
+processo residual. Capturas e hashes estão em
+`docs/09-operations/evidence/2026-09-05-launcher-p0-loop/` nos arquivos 04 a 07.
+Permanecem fora deste fechamento a cobertura física integral do catálogo e o
+fade de retorno; o reboot físico já foi executado com sucesso pelo operador e
+nenhuma nova reinicialização foi feita.
