@@ -9501,3 +9501,20 @@ Permanece fora da autonomia do agente o reboot físico reservado ao operador.
 A publicação final ainda requer promoção do commit para `refs/heads/main`,
 porque o `release_host.py publish` recusa bundles cuja proveniência é de branch
 candidata; Steam real e fade de retorno continuam lacunas declaradas.
+
+## 2026-09-05 — Sessão: reboot físico do operador e validação pós-boot
+
+O operador reiniciou fisicamente o host com sucesso. O boot retornou em
+`2026-09-05 09:52:49`; a release ativa permaneceu
+`2.0.0rc1-bf23fd7dd62f`, com `steamzero --version` em `2.0.0rc1`. A validação
+read-only confirmou `steamzero-core.socket` e `steamzero-core.service` ativos,
+daemon convergente, `pendingOperations=0`, `staleJobs=0`,
+`deckInputKeys=true` e zero blockers. O Doctor continua `degraded` somente
+pelos avisos conhecidos `bootDirect=unknown` (permissão) e
+`orphanStaging=1`; nenhuma mutação manual foi executada.
+
+O host está pronto para o teste físico de boot do operador. A publicação final
+continua bloqueada pelo preflight legítimo de `release_host.py publish`, que
+exige proveniência em `refs/heads/main`; o commit autorizado permanece apenas
+na branch `codex/launcher-p0-loop-2026-09-04`. Steam real e fade de retorno
+continuam fora do escopo comprovado deste ciclo.

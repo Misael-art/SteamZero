@@ -29,5 +29,14 @@
     "02-entrega-funcional.png": "b2f1b36c25efa66c270e23db488969423fbc396ceca0181a01d54a8d219b569f",
     "03-recuperacao.png": "d3983d776ad148308d8993e7028d97d1c6dab30bfe463a34052296e17456831b"
   },
-  "operatorReboot": "not performed; remains operator-owned"
+  "operatorReboot": {
+    "status": "performed-successfully",
+    "observedAt": "2026-09-05T10:01:33-03:00",
+    "uptimeSince": "2026-09-05 09:52:49",
+    "version": "2.0.0rc1",
+    "release": "2.0.0rc1-bf23fd7dd62f",
+    "socket": "active",
+    "service": "active",
+    "doctor": "degraded; blockers=0; pendingOperations=0; staleJobs=0; bootDirect=unknown; orphanStaging=1"
+  }
 }

@@ -34,6 +34,9 @@ complementares. Nenhuma imagem persistida contém tokens ou dados pessoais.
 - Doctor read-only: `pendingOperations=0`, `staleJobs=0`, `deckInputKeys=true`;
   os avisos já existentes são `orphanStaging=1` e `bootDirect=unknown` por
   permissão de inspeção.
+- Reboot físico do operador concluído com sucesso: após o boot, a versão
+  permaneceu `2.0.0rc1`, o socket e o serviço ficaram `active`, e o Doctor
+  confirmou `blockers=0`, `pendingOperations=0` e `staleJobs=0`.
 
 - `PHYSICAL-VALIDATION.json`: Enter abriu a página do jogo, Enter iniciou o
   RetroArch real, Alt+F4 encerrou-o e o Launcher retornou ao mesmo cartão; não
@@ -46,5 +49,5 @@ evidências foi recusada de forma controlada (`update recusa worktree suja`), se
 chamada privilegiada. Depois, o fluxo válido concluiu a ativação, convergência
 idempotente, smoke offscreen e preservação de estado. A validação física
 confirmou sucesso e retorno; o aviso de Steam indisponível continua coberto por
-`steam-area-library.png`. Não foi feito reboot: essa ação continua exclusiva
-do operador.
+`steam-area-library.png`. O reboot foi executado pelo operador e validado
+read-only com a mesma release ativa.

@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "ready",
   "distribution": "installed",
-  "scopeDigest": "a3f6ddaa770fde7a9d005daab61a798d853a3887e01a09cebee4a6943bd18fa0",
+  "scopeDigest": "71bfc45930b1ba565099a5d52513bc03b13263a61d4ef17e06bc584e927d0caa",
   "scopePaths": [
     "docs/00-vision/PROJECT-VISION.md",
     "docs/00-vision/NON-GOALS.md",
@@ -252,7 +252,7 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Ciclo fisico do Launcher provado na release com emulacao. Falta ao operador o reboot reservado e, para publicacao final, a promocao do commit para refs/heads/main exigida pelo publish; Steam real e fade de retorno permanecem lacunas declaradas.",
+  "nextAction": "Ciclo fisico do Launcher provado na release com emulacao e reboot do operador concluido; validacao pos-reboot read-only confirmou versao, socket, servico e Doctor sem blockers. Publicacao final permanece bloqueada pelo preflight que exige promocao para refs/heads/main; Steam real e fade de retorno permanecem lacunas declaradas.",
   "activeWorkstreams": [
     "WS-2026-08-AURA-LAUNCHER",
     "WS-2026-09-LAUNCHER-P0-ACTIVATION",
