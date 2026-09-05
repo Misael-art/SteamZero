@@ -37,6 +37,11 @@ Rectangle {
     property color redColor: "#ff6b73"
 
     property var requestAction: function(_id, _payload, _cb, _ecb) {}
+    // A Central nasce com um status fallback. O catálogo não pode consultar a
+    // bridge nesse instante: os contratos reais só chegam na primeira resposta
+    // de /status. O valor true preserva o uso standalone do painel nos harnesses;
+    // Main.qml o liga ao contrato publicado pela sessão.
+    property bool contractsReady: true
     property bool compactLayout: false
 
     signal notified(string message, bool isError)
@@ -70,6 +75,8 @@ Rectangle {
     }
 
     function refresh() {
+        if (!panel.contractsReady)
+            return false
         panel.loading = true
         panel.errorText = ""
         panel.requestAction("theme.catalog.list", {}, function(response) {
@@ -83,6 +90,7 @@ Rectangle {
             // lista vazia seria indistinguível de "nenhum tema disponível".
             panel.errorText = String((error && (error.detail || error.message)) || error || "")
         })
+        return true
     }
 
     function installTheme(themeId, overwrite) {
@@ -160,7 +168,15 @@ Rectangle {
         })
     }
 
-    Component.onCompleted: panel.refresh()
+    onContractsReadyChanged: {
+        if (panel.contractsReady)
+            Qt.callLater(panel.refresh)
+    }
+
+    Component.onCompleted: {
+        if (panel.contractsReady)
+            panel.refresh()
+    }
 
     // -- corpo --------------------------------------------------------------
     ColumnLayout {
@@ -191,9 +207,12 @@ Rectangle {
             DarkButton {
                 objectName: "refreshButton"
                 text: qsTr("Atualizar")
-                enabled: !panel.loading
+                enabled: !panel.loading && panel.contractsReady
                 Layout.minimumHeight: 48
                 Accessible.name: text
+                Accessible.description: panel.contractsReady
+                    ? qsTr("Atualiza o catálogo de temas publicado pela bridge local.")
+                    : qsTr("Aguardando a bridge local publicar os contratos.")
                 onClicked: panel.refresh()
             }
         }

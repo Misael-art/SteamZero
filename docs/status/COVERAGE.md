@@ -60,7 +60,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-THEME-IMPORT-RETROFE | 6 | 4 | 3 | unit |  |
 | SZ-THEME-IMPORT-SURFACE | 4 | 8 | 7 | unit |  |
 | SZ-THEME-STUDIO | 81 | 15 | 14 | hw |  |
-| SZ-UI-DESKTOP-AUDIT | 345 | 34 | 21 | dev |  |
+| SZ-UI-DESKTOP-AUDIT | 356 | 35 | 22 | dev |  |
 | SZ-UI-PACKAGED-ICONS | 51 | 4 | 2 | unit |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 
