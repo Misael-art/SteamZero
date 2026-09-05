@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "release": "2.0.0rc1-bf23fd7dd62f",
+  "packageVersion": "2.0.0rc1",
+  "sourceCommit": "bf23fd7dd62f3c161e9375b7ccf253b933834605",
+  "ciRunId": "33964880293",
+  "rollbackRelease": "2.0.0rc1-cf9c47e7b55b",
+  "wheelSha256": "38569e16028d83b03cd16fb5b48bd3674dd5294b0dc529ff298e899a1d2e7dce",
+  "statePreserved": true,
+  "convergence": {
+    "first": "converged",
+    "second": "converged",
+    "secondAttempts": 0,
+    "daemonCommit": "bf23fd7dd62f3c161e9375b7ccf253b933834605"
+  },
+  "readOnlyValidation": {
+    "cliVersion": "2.0.0rc1",
+    "socket": "active",
+    "service": "active",
+    "doctor": "degraded-with-known-warnings",
+    "pendingOperations": 0,
+    "staleJobs": 0,
+    "deckInputKeys": true,
+    "orphanStaging": 1,
+    "bootDirect": "unknown-permission"
+  },
+  "evidence": {
+    "baseline": "01-baseline.png",
+    "functional": "02-entrega-funcional.png",
+    "recovery": "03-recuperacao.png",
+    "manifest": "MANIFEST.json"
+  },
+  "controlledError": "update recusa worktree suja",
+  "reboot": "operator-required"
+}

@@ -9437,3 +9437,41 @@ instalação, rollback ou mutação de host foi executado. O item permanece aber
 até o operador autorizar um ref de candidato compatível ou promover o commit
 pela CI; só então será possível registrar rollback, instalar e produzir as
 três evidências PNG.
+
+## 2026-09-05 — Sessão: ativação governada do Launcher P0
+
+A autorização foi reiterada para continuar até a entrega. Para cumprir o
+preflight sem fabricar artefato, foi publicado o ref de pipeline
+`codex/launcher-p0-loop-2026-09-04-release-candidate`, apontando somente para
+o commit funcional autorizado `bf23fd7dd62f3c161e9375b7ccf253b933834605`.
+O run `33964880293` terminou verde nos oito jobs: matriz Python 3.11/3.12/3.14,
+visual QML, wheel/supply chain e smoke Ubuntu/Manjaro/Arch.
+
+O plano `release_host.py update --plan` registrou antes da ativação o bundle,
+hash do wheel `38569e16028d83b03cd16fb5b48bd3674dd5294b0dc529ff298e899a1d2e7dce`,
+rollback `2.0.0rc1-cf9c47e7b55b`, boot inalterado e estado do usuário preservado.
+A ativação foi feita pelo fluxo governado; a única chamada privilegiada foi
+`bigsudo /usr/bin/python3 tools/install_host.py install` com os caminhos e
+hashes do bundle. A transação
+`bf23fd7dd62f-1788610658586285208.json` terminou `deploymentHealthy=true`,
+com `activated`, convergência `converged`, segunda convergência idempotente
+(`attempts=0`) e smokes aprovados.
+
+Validação read-only: release ativa `2.0.0rc1-bf23fd7dd62f`, CLI `2.0.0rc1`,
+`steamzero-core.socket` e `steamzero-core.service` ativos, Doctor sem
+operações pendentes (`pendingOperations=0`, `staleJobs=0`) e `deckInputKeys=true`.
+Os únicos avisos observados são os já conhecidos: uma árvore de staging órfã e
+`bootDirect=unknown` por permissão de inspeção. A captura live QML gerou 55
+PNG com conteúdo/contexto e zero warnings próprios; foram nomeadas as provas
+`01-baseline.png`, `02-entrega-funcional.png` e `03-recuperacao.png` em
+`docs/09-operations/evidence/2026-09-05-launcher-p0-loop`, com manifesto e
+`ACTIVE-RELEASE.json`. Uma tentativa com worktree suja foi recusada de forma
+controlada antes de qualquer chamada privilegiada; o fluxo válido recuperou e
+concluiu a ativação.
+
+Gates locais já aprovados no mesmo código: `5574 passed, 44 skipped`, Ruff,
+formatação, mypy, independência, boundaries e `make status-check`. O host está
+pronto para o operador fazer o reboot físico e provar selecionar → jogar →
+encerrar → retornar ao mesmo foco; esse reboot e a certificação física final
+continuam fora da autonomia do agente. Publicação final da release permanece
+dependente dessa certificação.

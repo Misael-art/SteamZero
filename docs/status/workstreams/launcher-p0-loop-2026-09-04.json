@@ -8,11 +8,12 @@
   "owner": "codex-launcher-p0-loop",
   "state": "active",
   "exclusivePaths": [
-    "docs/09-operations/evidence/2026-09-04-launcher-p0-loop"
+    "docs/09-operations/evidence/2026-09-04-launcher-p0-loop",
+    "docs/09-operations/evidence/2026-09-05-launcher-p0-loop"
   ],
   "sharedPaths": [
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Bloqueio de preflight CI: autorização concedida para bf23fd7d, mas a branch autorizada não aciona o workflow push e não existe bundle canônico/run verde desse SHA. Não fabricar bundle local nem instalar outro commit; aguardar ref candidato compatível ou promoção pela CI, depois registrar rollback, instalar e provar selecionar-jogar-sair-retornar.",
-  "updatedAt": "2026-09-04"
+  "nextAction": "Host pronto para o operador fazer reboot físico e provar selecionar-jogar-sair-retornar no hardware; depois registrar certificacao fisica para liberar a publicacao final. Release ativa 2.0.0rc1-bf23fd7dd62f e rollback 2.0.0rc1-cf9c47e7b55b estao verificaveis.",
+  "updatedAt": "2026-09-05"
 }
