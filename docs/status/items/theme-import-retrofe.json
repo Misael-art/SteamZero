@@ -58,8 +58,8 @@
       "result": "partial"
     }
   ],
-  "nextAction": "Conectar a entrada visual na área Temas e copiar assets RetroFE somente após contrato de ativos e validação de licença.",
+  "nextAction": "Conectar a entrada visual na área Temas e copiar assets RetroFE somente após contrato de ativos e validação de licença; a auditoria 2026-09-05 confirmou backend sem rota QML nem cópia de assets.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-03",
+  "updatedAt": "2026-09-05",
   "notes": "A rota backend agora inspeciona e publica IR validado sem ativação automática. A entrada visual depende da frente QML compartilhada; assets não são copiados silenciosamente e a cena continua separada de theme.json. 2026-09-03: scopeDigest renovado por mudanca da frente WS-2026-09-CENA-ESDE (rota theme.scene.render e o botao de previa). A evidencia NAO foi carimbada: foi reexecutada e passou (117 testes de contrato, dashboard e import)."
 }

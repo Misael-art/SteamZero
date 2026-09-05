@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "release": "2.0.0rc1-085169f47186",
+  "sourceCommit": "085169f471866fbb61530c777d368729002b6868",
+  "launcherExecutable": "/opt/steamzero/releases/2.0.0rc1-085169f47186/venv/bin/steamzero-launcher",
+  "launcherPid": 507008,
+  "input": {
+    "provider": "ydotoold",
+    "socket": "/tmp/.ydotool_socket",
+    "mouseClicks": 0,
+    "keys": ["F", "type: Shovel Knight", "ENTER", "ALT+F4"]
+  },
+  "journey": {
+    "baseline": "launcher home rendered with a focused card",
+    "search": "Shovel Knight: Treasure Trove appeared in the launcher search result",
+    "launch": "Steam route opened the installed Shovel Knight executable",
+    "recovery": "Alt+F4 closed the game and the launcher returned with the search context preserved",
+    "residualGameProcess": false
+  },
+  "captures": {
+    "04-canonical-baseline.png": "8650e80be3f097a89260461335a38ad7b2a4391843c06203e8cb62844769386c",
+    "05-canonical-steam-search.png": "ebdc9187517f81c28e842c15cc0ca0bb6c596659865661084646fbe2fc689911",
+    "06-canonical-steam-launch.png": "5674414d742390a062a2279798a1b6db0c129ff8014c3616ebe662ac5feb2a52",
+    "07-canonical-steam-recovery.png": "84761a955022db9afa9c9ebcc252c5ac58388b7d28bfcd1b2d0d95e0c2e871a6"
+  },
+  "readOnlyChecks": {
+    "cliVersion": "2.0.0rc1",
+    "socket": "active",
+    "service": "active",
+    "activeRelease": "2.0.0rc1-085169f47186"
+  }
+}

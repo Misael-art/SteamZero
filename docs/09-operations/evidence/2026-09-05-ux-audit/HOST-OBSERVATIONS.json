@@ -1,0 +1,27 @@
+{
+  "date": "2026-09-05",
+  "release": "2.0.0rc1-085169f47186",
+  "sourceCommit": "085169f471866fbb61530c777d368729002b6868",
+  "session": {"desktop": "KDE", "type": "wayland", "display": ":0", "waylandDisplay": "wayland-0"},
+  "device": {"kind": "deck-lcd", "internalMode": "800x1280", "scale": 1.35},
+  "processes": {"daemonPid": 493371, "launcherPid": 507008, "launcherQmlPid": 507023},
+  "observations": {
+    "doctor": "degraded",
+    "doctorWarnings": ["1 árvore de staging órfã", "boot.direct unknown por permissão"],
+    "service": "converged",
+    "daemonRelease": "2.0.0rc1-085169f47186",
+    "daemonCommit": "085169f471866fbb61530c777d368729002b6868",
+    "libraryScanGames": 231,
+    "technicalPlatforms": 62,
+    "components": {"total": 34, "installed": 31, "degraded": 1, "missing": 2},
+    "missingComponents": ["sunshine", "vita3k"],
+    "themeActive": "org.steamzero.asset-recipes-demo",
+    "themeVersion": "1.0.0",
+    "themeRecipeDiagnostics": 1,
+    "frontends": {"srm": "missing", "esde": "missing"},
+    "stateAudit": {"clean": false, "orphanStaging": ["01M1MVR99JYX492AC41HAES91A"], "staleJobs": [], "orphanBackups": [], "orphanJournals": []},
+    "physicalInput": {"provider": "ydotoold", "mouseClicks": 0, "keyboard": true},
+    "kdeSessionPreserved": true,
+    "rebooted": false
+  }
+}

@@ -9547,3 +9547,60 @@ Nova inspeção read-only confirmou a release ativa
 publicação canônica continua corretamente impedida pelo preflight de
 proveniência enquanto o PR não for promovido para `refs/heads/main`; não houve
 mutação em `main`.
+
+## 2026-09-05 — Sessão: merge, ciclo governado e publicação canônica
+
+Com a autorização explícita do operador, o PR #111 foi mergeado em `main` no
+commit `085169f471866fbb61530c777d368729002b6868`. O CI do merge (`33972409839`)
+terminou verde nos oito jobs obrigatórios. O bundle canônico foi preparado com
+sourceRef `refs/heads/main`, release `2.0.0rc1-085169f47186` e wheel SHA-256
+`37c5cd666da6c2d28f8da68da0a3825c345686ae63d65843b05afc05ba6e5c37`.
+
+Antes da ativação, o plano de rollback foi registrado. O host foi revertido pelo
+fluxo governado para `2.0.0rc1-bf23fd7dd62f` e depois reinstalado pelo comando
+governado `release_host.py install` no canônico. Ambos os ciclos convergiram,
+foram idempotentes na segunda verificação e preservaram o estado; o launcher
+ativo aponta para a árvore canônica, com socket/service ativos e Doctor sem
+operações pendentes ou jobs stale. O Doctor permanece `degraded` apenas pelos
+avisos conhecidos de uma árvore de staging órfã e inspeção de boot direto sem
+permissão.
+
+A release `v2.0.0rc1` foi publicada e verificada pelo `release_host.py publish`
+com 10 assets e digests correspondentes. O primeiro upload atingiu timeout e
+deixou um draft parcial; a recuperação enviou somente os dois assets ausentes,
+promoveu o draft e a verificação final passou. A certificação canônica registra
+`machineCycle`, `physicalUi`, `canonicalRomLaunch` e `statePreserved` como
+verdadeiros.
+
+No artefato canônico, a validação física keyboard-only encontrou o jogo Steam
+`Shovel Knight: Treasure Trove`, abriu o executável real, capturou a tela do
+jogo, encerrou com Alt+F4 e retornou ao contexto de busca do Launcher sem
+processo residual. Capturas e hashes estão em
+`docs/09-operations/evidence/2026-09-05-launcher-p0-loop/` nos arquivos 04 a 07.
+Permanecem fora deste fechamento a cobertura física integral do catálogo e o
+fade de retorno; o reboot físico já foi executado com sucesso pelo operador e
+nenhuma nova reinicialização foi feita.
+
+## 2026-09-05 — Sessão: auditoria consultiva UX de Theme e Big Picture
+
+Foi realizada auditoria observacional da release ativa
+`2.0.0rc1-085169f47186`, sem instalar, publicar, reiniciar o host ou encerrar a
+sessão do KDE. A evidência está em
+`docs/09-operations/evidence/2026-09-05-ux-audit/`, incluindo Launcher,
+Central, tema, sistema e biblioteca. O inventário contém 44 itens funcionais
+não agregados (e não 43 como indicado no pedido); cada item foi confrontado
+com contrato, estado físico atual e próxima ação.
+
+Os bloqueios prioritários observados foram a ponte sem publicação do catálogo
+de temas, placeholders/arte ausente no Launcher, contraste insuficiente do
+alerta de perfil na Central e ausência de prova física Big Picture/Steam
+interface. A auditoria também registra H1–H15, quick wins, comparação de
+mercado e a ordem recomendada bridge→catalog→activation→render antes de novas
+promessas visuais. Nenhum código de produto foi alterado.
+
+Os gates estáticos passaram: `ruff check`, `ruff format --check`, `mypy`,
+`make independence boundaries` e `make status-check`. A suíte integral
+terminou com 5.573 passados, 44 ignorados e uma falha ambiental de caminho Unix
+(`AF_UNIX path too long`); o teste afetado passou isoladamente com diretório
+temporário curto. O runner confirmou que as escritas no state home real vieram
+dos processos legítimos já ativos, não da suíte.

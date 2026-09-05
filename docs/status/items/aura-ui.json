@@ -57,8 +57,8 @@
             "result": "passed"
         }
     ],
-    "nextAction": "Validar visualmente AURA UI na central real, sem confundir essa prova com o AURA Launcher.",
+    "nextAction": "Corrigir a publicação bridge do catálogo e repetir a validação visual AURA UI na central real; o alerta de perfil e o contraste foram observados em 2026-09-05 sem promover o AURA Launcher.",
     "activeWorkstreams": [],
-    "updatedAt": "2026-09-02",
+    "updatedAt": "2026-09-05",
     "notes": "Renomeado de SZ-THEME-AURA para eliminar ambiguidade. AURA UI e o tema/sistema visual instalado na central; nao e a experiencia fullscreen de biblioteca. O digest foi renovado porque o escopo compartilhado de temas recebeu a fixture de layouts; testes AURA e QML permaneceram verdes, sem promocao de estado. Nao ha certificacao visual/hardware deste item. Digest renovado porque o harness QML compartilhado passou a exercitar o caminho avancado de midia (--steamzero-qtquick-effects); nenhum estado do AURA UI foi promovido. Digest renovado por mudança compartilhada de reconciliação do catálogo; nenhuma capacidade visual foi promovida. Ativação do tema já ativo agora é no-op informativo, sem plano, confirmação ou emissão de E-THEME-ACTIVE."
 }
