@@ -14,6 +14,6 @@
   "sharedPaths": [
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Ciclo fisico de emulacao provado na release ativa, com retorno ao mesmo foco e sem processos residuais. Reboot do operador concluido; validacao pos-reboot read-only passou. Publicacao final exige promocao para refs/heads/main, e Steam real/fade de retorno continuam lacunas declaradas.",
+  "nextAction": "Ciclo fisico de emulacao provado na release ativa, com retorno ao mesmo foco e sem processos residuais. Reboot do operador concluido; PR #111 e CI run 33968162946 estao verdes. Publicacao final exige merge para refs/heads/main, e Steam real/fade de retorno continuam lacunas declaradas.",
   "updatedAt": "2026-09-05"
 }

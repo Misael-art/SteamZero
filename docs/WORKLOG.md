@@ -9518,3 +9518,17 @@ continua bloqueada pelo preflight legítimo de `release_host.py publish`, que
 exige proveniência em `refs/heads/main`; o commit autorizado permanece apenas
 na branch `codex/launcher-p0-loop-2026-09-04`. Steam real e fade de retorno
 continuam fora do escopo comprovado deste ciclo.
+
+## 2026-09-05 — Sessão: PR e gates remotos
+
+Com a autorização ampliada para PR, foi aberto o
+[PR #111](https://github.com/Misael-art/SteamZero/pull/111) de
+`codex/launcher-p0-loop-2026-09-04` para `main`. O run de CI
+`33968162946` terminou verde nos oito jobs: gate visual QML, três smokes,
+wheel/supply chain e Python 3.11, 3.12 e 3.14. O PR está mergeable e aguarda
+merge; não foi feita mutação em `main` nesta sessão.
+
+A release instalada continua `2.0.0rc1-bf23fd7dd62f`, com rollback
+`2.0.0rc1-cf9c47e7b55b` disponível. Como o artefato instalado é o mesmo commit
+funcional já validado fisicamente, nenhuma nova instalação privilegiada foi
+repetida.
