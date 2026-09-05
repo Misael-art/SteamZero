@@ -252,7 +252,7 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Ciclo fisico do Launcher provado na release com emulacao e reboot do operador concluido; PR #111 aberto para main e CI run 33968162946 verde nos oito jobs. Publicacao final aguarda merge em refs/heads/main para satisfazer o preflight; Steam real e fade de retorno permanecem lacunas declaradas.",
+  "nextAction": "Ciclo fisico do Launcher provado na release com emulacao e reboot do operador concluido; PR #111 aberto para main e CI run 33968777286 verde nos oito jobs. Publicacao final aguarda merge em refs/heads/main para satisfazer o preflight; Steam real e fade de retorno permanecem lacunas declaradas.",
   "activeWorkstreams": [
     "WS-2026-08-AURA-LAUNCHER",
     "WS-2026-09-LAUNCHER-P0-ACTIVATION",

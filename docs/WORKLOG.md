@@ -9532,3 +9532,18 @@ A release instalada continua `2.0.0rc1-bf23fd7dd62f`, com rollback
 `2.0.0rc1-cf9c47e7b55b` disponível. Como o artefato instalado é o mesmo commit
 funcional já validado fisicamente, nenhuma nova instalação privilegiada foi
 repetida.
+
+## 2026-09-05 — Sessão: conferência final do CI e do estado entregue
+
+O run final do PR #111, `33968777286`, terminou verde nos oito jobs obrigatórios,
+incluindo Python 3.11/3.12/3.14, gate visual QML, wheel/supply chain e smokes
+Ubuntu/Manjaro/Arch; CodeRabbit e Sourcery também reportaram sucesso. A branch
+`codex/launcher-p0-loop-2026-09-04` permaneceu limpa em `97e4b77a` e o PR segue
+aberto e mergeable para `main`.
+
+Nova inspeção read-only confirmou a release ativa
+`2.0.0rc1-bf23fd7dd62f`, versão `2.0.0rc1`, socket e serviço ativos e rollback
+`2.0.0rc1-cf9c47e7b55b` disponível. Nenhuma instalação foi repetida. A
+publicação canônica continua corretamente impedida pelo preflight de
+proveniência enquanto o PR não for promovido para `refs/heads/main`; não houve
+mutação em `main`.
