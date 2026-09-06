@@ -6,7 +6,7 @@
   "branch": "codex/ui-contrast-footer-evidence-2026-09-06",
   "baseRef": "3cb57f4c1d593915036e8b9eebea5b1f3f79db07",
   "owner": "codex-ui-contrast-footer-evidence",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "tests/unit/test_ui_footer_contrast.py",
     "docs/09-operations/evidence/2026-09-06-ui-contrast-footer-physical"
@@ -16,6 +16,6 @@
     "docs/status/items/ui-desktop-audit.json",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Obter autenticação Polkit para ativar 2.0.0rc1-3cb57f4c1d59, recapturar o rodapé corrigido e fechar a prova física; baseline já está preservado.",
+  "nextAction": "Nenhuma; baseline e after físicos preservados. O gap live-launcher permanece em workstream separado.",
   "updatedAt": "2026-09-06"
 }
