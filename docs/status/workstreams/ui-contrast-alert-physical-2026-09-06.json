@@ -6,7 +6,7 @@
   "branch": "codex/ui-contrast-alert-physical-2026-09-06",
   "baseRef": "2efd3500854ae66a9ba0068ad2ab4bf354f81bbc",
   "owner": "codex-ui-contrast-alert-physical",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "tests/unit/test_ui_contrast_inventory.py",
     "docs/09-operations/evidence/2026-09-06-ui-contrast-alert-physical"
@@ -16,6 +16,6 @@
     "docs/status/items/ui-desktop-audit.json",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Corrigir o banner de estado do Desktop para escolher texto e iconografia com contraste contra a superfície escura, provar o contrato em teste e recapturar a release instalada.",
+  "nextAction": "Fechada: o banner físico foi recapturado na release 2.0.0rc1-d556f7f5c89b com texto, ícone e ações legíveis; a captura também abriu a frente independente do rodapé handheld.",
   "updatedAt": "2026-09-06"
 }
