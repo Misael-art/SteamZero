@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-THEME-ACTIVE-PHYSICAL",
+  "item": "SZ-UI-DESKTOP-AUDIT",
+  "branch": "codex/theme-active-physical-2026-09-06",
+  "baseRef": "2996d64f1ca36242fb03bc1d5c4d14156c856688",
+  "owner": "codex-theme-active-physical",
+  "state": "closed",
+  "exclusivePaths": [
+    "docs/09-operations/evidence/2026-09-06-theme-active-physical"
+  ],
+  "sharedPaths": [
+    "docs/status/items/ui-desktop-audit.json",
+    "docs/status/items/aura-ui.json",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Nenhuma; evidência física e status do gap foram fechados. O próximo workstream deve tratar contraste por pixel ou roteamento live-launcher.",
+  "updatedAt": "2026-09-06"
+}
