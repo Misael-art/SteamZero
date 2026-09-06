@@ -43,7 +43,7 @@ def test_sanitizer_removes_secret_email_home_and_rom_path(
 ) -> None:
     _service(tmp_path, monkeypatch)
     raw = {
-        "token": "abc",
+        "token": "diagnostic-token-should-not-leak",
         "nested": {
             "email": "person@example.com",
             "path": str(Path.home() / "Games" / "Private.nsp"),
@@ -51,7 +51,7 @@ def test_sanitizer_removes_secret_email_home_and_rom_path(
         "title": "Private Game",
     }
     serialized = json.dumps(sanitize_payload(raw), sort_keys=True)
-    assert "abc" not in serialized
+    assert "diagnostic-token-should-not-leak" not in serialized
     assert "person@example.com" not in serialized
     assert str(Path.home()) not in serialized
     assert "Private.nsp" not in serialized
