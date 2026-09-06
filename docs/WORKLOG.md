@@ -9677,3 +9677,27 @@ O gap `GAP-UI-THEME-PLAN-ACTIVE-SEMANTICS` foi removido do item
 fechado e os documentos de status foram regenerados. Permanecem abertos apenas
 contraste por pixel e roteamento live-launcher. O launcher preexistente não foi
 encerrado nem tocado.
+
+## 2026-09-06 — Sessão: fechamento físico do contraste do rodapé handheld
+
+A captura baseline em `2.0.0rc1-d556f7f5c89b` mostrou os rótulos do rodapé
+quase pretos sobre `#080d13`, embora o banner de perfil já estivesse legível.
+O contrato de contraste e a correção dos cinco rótulos foram mergeados no PR
+#118. A PR #119 preservou o baseline e foi mergeada em `main` no commit
+`5d2e617cc4c31a46ba5712701fe555e79bb5e9bb`.
+
+Após a retomada governada da transação, a release
+`2.0.0rc1-3cb57f4c1d59` foi instalada com source commit
+`3cb57f4c1d593915036e8b9eebea5b1f3f79db07`, rollback
+`2.0.0rc1-d556f7f5c89b`, `deploymentHealthy=true`, doctor ok, zero operações
+pendentes e convergência idempotente (`restarted:false`). A captura
+`docs/09-operations/evidence/2026-09-06-ui-contrast-footer-physical/02-footer-fixed.png`
+foi obtida na janela PID `333301`; os rótulos ficaram legíveis. O gap
+`GAP-UI-CONTRAST-MEASUREMENT` foi removido do item
+`SZ-UI-DESKTOP-AUDIT`, e o workstream do rodapé foi fechado.
+
+As tentativas iniciais de ativação falharam apenas por autenticação Polkit; a
+retomada posterior foi autenticada. Nenhum reboot, logout, encerramento da
+sessão KDE ou encerramento do launcher do usuário foi executado. O gap
+`GAP-UI-LIVE-LAUNCHER-ROUTING` continua aberto porque o gesto físico não foi
+validável sem `ydotoold`; harness QML não foi promovido a prova de usuário.

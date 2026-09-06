@@ -7,11 +7,10 @@
 pendentes. A janela fotografada foi iniciada pelo próprio agente e identificada
 por PID antes da captura; a janela do Launcher do usuário não foi tocada.
 
-## Ativação pendente
+## Ativação concluída
 
 O plano governado para `2.0.0rc1-3cb57f4c1d59` passou bundle, CI, preflight e
-rollback. Três tentativas chegaram a `install-started` e o Polkit registrou
-falha de autenticação; nenhuma ativação parcial foi observada. O próximo passo
-é repetir o mesmo token depois que a autenticação gráfica do KDE for atendida,
-capturar `02-footer-fixed.png` e então verificar convergência, idempotência e
-rollback. A sessão KDE não deve ser reiniciada nem encerrada.
+rollback. A retomada autenticada ativou a release, confirmou convergência na
+primeira chamada e `restarted:false` na segunda, com `pendingOperations=0`.
+O rollback disponível é `2.0.0rc1-d556f7f5c89b`. A sessão KDE não foi
+reiniciada nem encerrada.
