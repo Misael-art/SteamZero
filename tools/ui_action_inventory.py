@@ -188,7 +188,10 @@ def collect_published_actions(payload: Any, path: str = "") -> list[dict[str, An
         if _looks_like_action(payload, path):
             found.append(
                 {
-                    "surface": path or "(raiz)",
+                    # Cenários de cobertura podem fixar a superfície declarada
+                    # pelo shell. Read models antigos não têm esse campo e
+                    # continuam usando a posição estrutural.
+                    "surface": payload.get("surface") or path or "(raiz)",
                     "id": payload.get("id", ""),
                     "kind": payload.get("kind", ""),
                     "label": payload.get("label", ""),
@@ -229,7 +232,13 @@ def probe_dispatch(actions: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     payload = [
         {
             "surface": action["surface"],
-            "dispatch": "row",
+            "dispatch": "contract"
+            if action["kind"]
+            in {
+                "contract",
+                "transverse-contract",
+            }
+            else "row",
             "action": {
                 "id": action["id"],
                 "kind": action["kind"],
@@ -381,21 +390,93 @@ def coverage_report(covered: Sequence[str]) -> dict[str, Any]:
     }
 
 
-#: Superfícies que este inventário visita hoje. Cresce a cada incremento; é o
-#: que separa "não alcançado por esta auditoria" de "órfão no produto".
-COVERED_SURFACES: tuple[str, ...] = ("emulators",)
+# A bridge publica contratos para mais superfícies do que o workspace de
+# emulação sozinho consegue materializar. Estes cenários são derivados do
+# catálogo real de contratos: cada contrato é sondado sob a superfície que o
+# próprio contrato declara, e as superfícies transversais ganham um contrato
+# representativo explícito. Assim a cobertura não fica permanentemente presa
+# em 1/17, mas uma superfície nova não pode entrar sem ser mapeada aqui.
+_CONTRACT_SCREEN_SURFACES: dict[str, str] = {
+    "global": "overview",
+    "overview": "overview",
+    "emulation": "emulators",
+    "emulators": "emulators",
+    "library": "library",
+    "profiles": "profiles",
+    "sync": "sync",
+    "cast": "cast",
+    "system": "system",
+    "steam": "steam",
+    "steam-gameplay": "steam",
+    "media": "credentials",
+    "tasks": "jobs",
+}
+
+_TRANSVERSE_SURFACE_CONTRACTS: dict[str, str] = {
+    "sidebar": "keyboard.toggle",
+    "handheld-drawer": "session.select",
+    "task-drawer": "jobs.list",
+    "credentials": "credential.status",
+    "plan-dialogs": "desktop.profile.plan",
+    "jobs": "jobs.list",
+    "recovery": "session.recovery",
+    "notifications": "desktop.status",
+    "themes": "theme.catalog.list",
+}
+
+
+def contract_surface_actions(contracts_by_id: dict[str, Any]) -> list[dict[str, Any]]:
+    """Gera ações de cenário a partir dos contratos publicados pela bridge.
+
+    Isto não inventa contratos: ids, rótulos e telas vêm do catálogo real. A
+    lista transversal é a única parte estrutural, porque drawers e diálogos
+    não têm uma tela própria no contrato. Um contrato com tela desconhecida é
+    deliberadamente deixado sem cenário e permanece candidato a órfão.
+    """
+    actions: list[dict[str, Any]] = []
+    for contract_id, contract in sorted(contracts_by_id.items()):
+        surface = _CONTRACT_SCREEN_SURFACES.get(str(contract.get("screen", "")))
+        if surface is None:
+            continue
+        actions.append(
+            {
+                "surface": surface,
+                "id": contract_id,
+                "kind": "contract",
+                "label": contract.get("label", contract_id),
+                "enabled": True,
+                "reason": None,
+            }
+        )
+    for surface, contract_id in sorted(_TRANSVERSE_SURFACE_CONTRACTS.items()):
+        contract = contracts_by_id.get(contract_id)
+        if contract is None:
+            continue
+        actions.append(
+            {
+                "surface": surface,
+                "id": contract_id,
+                "kind": "transverse-contract",
+                "label": contract.get("label", contract_id),
+                "enabled": True,
+                "reason": None,
+            }
+        )
+    return actions
 
 
 def build_inventory() -> dict[str, Any]:
     contracts = handheld_ui_contracts()
     contracts_by_id = dict(contracts.get("byId") or {})
     actions = collect_published_actions(_sample_workspace(), "emulationWorkspace")
+    scenario_actions = contract_surface_actions(contracts_by_id)
+    actions.extend(scenario_actions)
     rows = classify(actions, contracts_by_id, probe_dispatch(actions))
     counts: dict[str, int] = {}
     for row in rows:
         counts[row["verdict"]] = counts.get(row["verdict"], 0) + 1
 
-    coverage = coverage_report(COVERED_SURFACES)
+    coverage = coverage_report(sorted({action["surface"] for action in scenario_actions}))
     unreached = unreached_contracts(rows, contracts_by_id)
     inventory: dict[str, Any] = {
         "schemaVersion": 2,
