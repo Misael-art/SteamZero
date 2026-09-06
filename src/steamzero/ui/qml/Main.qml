@@ -3512,7 +3512,7 @@ ApplicationWindow {
                                 ToolButton {
                                     enabled: false
                                     icon.name: "dialog-warning"
-                                    icon.color: root.amberColor
+                                    icon.color: root._contrastTextColor("#24180b")
                                     icon.width: root.compactLayout ? 22 : 30
                                     icon.height: root.compactLayout ? 22 : 30
                                     background: Item {}
@@ -3529,7 +3529,7 @@ ApplicationWindow {
                                                     : root.desktopStatus.truthState === "unapplied"
                                                         ? qsTr("Nenhum perfil foi aplicado")
                                                         : qsTr("Observação do Desktop degradada")
-                                            color: root.amberColor
+                                            color: root._contrastTextColor("#24180b")
                                             font.pixelSize: root.compactLayout ? 14 : 17
                                             font.bold: true
                                         }
@@ -3537,7 +3537,7 @@ ApplicationWindow {
                                             visible: !root.compactLayout
                                             text: root.hasConflicts ? "E-DESKTOP-OWNER-CONFLICT"
                                                 : root.truthStateLabel(root.desktopStatus.truthState).toUpperCase()
-                                            color: "#d5b47d"
+                                            color: root._contrastTextColor("#24180b")
                                             font.pixelSize: 11
                                         }
                                     }
@@ -3547,7 +3547,7 @@ ApplicationWindow {
                                             : (root.desktopStatus.statusReasons || []).length > 0
                                                 ? root.desktopStatus.statusReasons[0]
                                                 : qsTr("Revise o perfil desejado, aplicado e observado.")
-                                        color: root.textColor
+                                        color: root._contrastTextColor("#24180b")
                                         font.pixelSize: root.compactLayout ? 11 : 13
                                         elide: Text.ElideRight
                                         maximumLineCount: 1
@@ -3558,7 +3558,8 @@ ApplicationWindow {
                                     text: root.hasConflicts ? qsTr("Resolver agora")
                                         : root.desktopStatus.truthState === "degraded"
                                             ? qsTr("Ver diagnóstico") : qsTr("Revisar perfis")
-                                    palette.buttonText: root.textColor
+                                    palette.buttonText: root._contrastTextColor(
+                                        resolveBannerButton.activeFocus ? "#3b2b18" : "#201a13")
                                     icon.name: "go-next"
                                     Layout.minimumHeight: 48
                                     Accessible.name: text
@@ -3578,7 +3579,7 @@ ApplicationWindow {
                                 DarkButton {
                                     visible: !root.hasConflicts
                                     text: qsTr("Dispensar")
-                                    palette.buttonText: root.mutedColor
+                                    palette.buttonText: root._contrastTextColor("#24180b")
                                     Layout.minimumHeight: 48
                                     Accessible.name: qsTr("Dispensar alerta nesta sessão")
                                     Accessible.description: qsTr("O estado real permanece; só oculta o banner até o próximo conflito.")
