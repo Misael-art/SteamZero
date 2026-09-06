@@ -109,7 +109,11 @@ def flatten(image: Image.Image, background: tuple[int, int, int]) -> Image.Image
     return canvas
 
 
-def measure(image: Image.Image, box: tuple[int, int, int, int]) -> dict[str, Any] | None:
+def measure(
+    image: Image.Image,
+    box: tuple[int, int, int, int],
+    declared_foreground: tuple[int, int, int] | None = None,
+) -> dict[str, Any] | None:
     """Mede fundo e frente dentro da caixa, ou devolve ``None`` se nao der.
 
     Devolver ``None`` e deliberado: caixa de um pixel so, ou preenchida por uma
@@ -120,22 +124,31 @@ def measure(image: Image.Image, box: tuple[int, int, int, int]) -> dict[str, Any
     if w <= 0 or h <= 0:
         return None
     crop = image.crop((x, y, x + w, y + h))
-    pixels = list(crop.getdata())
+    pixels = list(crop.get_flattened_data())
     if not pixels:
         return None
     counts = Counter(pixels)
     background, _ = counts.most_common(1)[0]
-    candidates = [
-        (color, count)
-        for color, count in counts.items()
-        if color != background and count >= _MIN_PIXELS
-    ]
-    if not candidates:
+    if declared_foreground is not None:
+        # A full control box also contains its border and icons.  The QML probe
+        # supplies the Label's own color so those pixels cannot masquerade as
+        # the text foreground (the source of the historical #fff/#fefefe
+        # false positives).
+        foreground = declared_foreground
+    else:
+        candidates = [
+            (color, count)
+            for color, count in counts.items()
+            if color != background and count >= _MIN_PIXELS
+        ]
+        if not candidates:
+            return None
+        foreground = max(
+            candidates,
+            key=lambda item: abs(relative_luminance(item[0]) - relative_luminance(background)),
+        )[0]
+    if foreground == background:
         return None
-    foreground = max(
-        candidates,
-        key=lambda item: abs(relative_luminance(item[0]) - relative_luminance(background)),
-    )[0]
     return {
         "background": _hex(background),
         "foreground": _hex(foreground),
@@ -200,7 +213,11 @@ def build_inventory(out_dir: Path = CAPTURE_DIR) -> dict[str, Any]:
     images: dict[str, Image.Image] = {}
     measured: list[dict[str, Any]] = []
     skipped = 0
+    disabled = 0
     for row in rows:
+        if row.get("enabled") is False:
+            disabled += 1
+            continue
         name = str(row["image"])
         if name not in images:
             path = out_dir / name
@@ -208,7 +225,12 @@ def build_inventory(out_dir: Path = CAPTURE_DIR) -> dict[str, Any]:
                 skipped += 1
                 continue
             images[name] = flatten(Image.open(path), background)
-        result = measure(images[name], (int(row["x"]), int(row["y"]), int(row["w"]), int(row["h"])))
+        declared_foreground = _parse_color(str(row["textColor"])) if row.get("textColor") else None
+        result = measure(
+            images[name],
+            (int(row["x"]), int(row["y"]), int(row["w"]), int(row["h"])),
+            declared_foreground,
+        )
         if result is None:
             skipped += 1
             continue
@@ -235,6 +257,7 @@ def build_inventory(out_dir: Path = CAPTURE_DIR) -> dict[str, Any]:
         "textsFound": len(rows),
         "measuredCount": len(measured),
         "skippedCount": skipped,
+        "disabledCount": disabled,
         "unmeasuredSections": unmeasured,
         "failingCount": len(failures),
         "bySection": by_section,

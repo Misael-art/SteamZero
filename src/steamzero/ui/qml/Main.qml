@@ -982,6 +982,29 @@ ApplicationWindow {
         return mutedColor
     }
 
+    function _channelLuminance(value) {
+        return value <= 0.03928 ? value / 12.92
+                                : Math.pow((value + 0.055) / 1.055, 2.4)
+    }
+
+    function _relativeLuminance(value) {
+        return 0.2126 * _channelLuminance(value.r)
+             + 0.7152 * _channelLuminance(value.g)
+             + 0.0722 * _channelLuminance(value.b)
+    }
+
+    function _contrastRatio(first, second) {
+        const a = _relativeLuminance(first)
+        const b = _relativeLuminance(second)
+        return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
+    }
+
+    function _contrastTextColor(surface) {
+        return _contrastRatio(textColor, surface)
+            >= _contrastRatio(backgroundColor, surface)
+            ? textColor : backgroundColor
+    }
+
     function stateIcon(state) {
         if (["installed", "available", "running", "healthy"].indexOf(state) >= 0)
             return "dialog-ok-apply"
@@ -4754,7 +4777,7 @@ ApplicationWindow {
                                                 }
                                                 background: Rectangle {
                                                     radius: 10
-                                                    color: parent.checked ? "#183044" : root.surfaceColor
+                                                    color: parent.checked ? root.cyanDarkColor : root.surfaceColor
                                                     border.color: parent.checked || parent.activeFocus
                                                         ? root.cyanColor : root.borderColor
                                                     border.width: parent.checked || parent.activeFocus ? 2 : 1
@@ -4765,7 +4788,9 @@ ApplicationWindow {
                                                         Layout.fillWidth: true
                                                         Label {
                                                             text: modelData.label
-                                                            color: root.textColor
+                                                            color: root.selectedProfile === modelData.id
+                                                                ? root._contrastTextColor(root.cyanDarkColor)
+                                                                : root.textColor
                                                             font.bold: true
                                                             font.pixelSize: 17
                                                             Layout.fillWidth: true
@@ -4784,13 +4809,17 @@ ApplicationWindow {
                                                                     || modelData.id === "auto"
                                                                 )
                                                             text: qsTr("Recomendado")
-                                                            color: root.cyanColor
+                                                            color: root.selectedProfile === modelData.id
+                                                                ? root._contrastTextColor(root.cyanDarkColor)
+                                                                : root.cyanColor
                                                             font.pixelSize: 11
                                                         }
                                                     }
                                                     Label {
                                                         text: modelData.detail
-                                                        color: root.mutedColor
+                                                        color: root.selectedProfile === modelData.id
+                                                            ? root._contrastTextColor(root.cyanDarkColor)
+                                                            : root.mutedColor
                                                         wrapMode: Text.WordWrap
                                                         Layout.fillWidth: true
                                                         font.pixelSize: 12
@@ -4818,7 +4847,9 @@ ApplicationWindow {
                                                                 tags.push(qsTr("Observado"))
                                                             return tags.length > 0 ? tags.join(" · ") : qsTr("Não verificado neste host")
                                                         }
-                                                        color: root.amberColor
+                                                        color: root.selectedProfile === modelData.id
+                                                            ? root._contrastTextColor(root.cyanDarkColor)
+                                                            : root.amberColor
                                                         font.pixelSize: 11
                                                     }
                                                 }
@@ -5382,7 +5413,7 @@ ApplicationWindow {
                                             anchors.margins: 18
                                             ColumnLayout {
                                                 Layout.fillWidth: true
-                                                Label { text: qsTr("Conflito de controle do sistema"); color: root.amberColor; font.pixelSize: 18; font.bold: true }
+                                                Label { text: qsTr("Conflito de controle do sistema"); color: root._contrastTextColor("#24180b"); font.pixelSize: 18; font.bold: true }
                                                 Label { text: "E-DESKTOP-OWNER-CONFLICT"; color: root.mutedColor; font.pixelSize: 12 }
                                             }
                                             Button { text: qsTr("Resolver conflito"); Layout.minimumHeight: 48; Accessible.name: text; onClicked: root.beginConflictResolution() }
@@ -5575,7 +5606,7 @@ ApplicationWindow {
                                             }
                                             Label {
                                                 text: qsTr("Leitura parcial do sistema: o consumo pode estar incompleto.")
-                                                color: root.amberColor
+                                                color: root._contrastTextColor("#24180b")
                                                 wrapMode: Text.WordWrap
                                                 Layout.fillWidth: true
                                             }
