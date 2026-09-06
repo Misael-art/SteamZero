@@ -3,9 +3,9 @@
   "kind": "workstream",
   "id": "WS-2026-09-UI-CONTRAST-FOOTER-PHYSICAL",
   "item": "SZ-UI-DESKTOP-AUDIT",
-  "branch": "codex/ui-contrast-footer-physical-2026-09-06",
-  "baseRef": "d556f7f5c89ba78cd274d1147ddac2bbee04fc4a",
-  "owner": "codex-ui-contrast-footer-physical",
+  "branch": "codex/ui-contrast-footer-evidence-2026-09-06",
+  "baseRef": "3cb57f4c1d593915036e8b9eebea5b1f3f79db07",
+  "owner": "codex-ui-contrast-footer-evidence",
   "state": "active",
   "exclusivePaths": [
     "tests/unit/test_ui_footer_contrast.py",
@@ -16,6 +16,6 @@
     "docs/status/items/ui-desktop-audit.json",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Corrigir todos os rótulos do rodapé handheld para escolher foreground com contraste contra #080d13, provar o contrato e recapturar a release instalada.",
+  "nextAction": "Obter autenticação Polkit para ativar 2.0.0rc1-3cb57f4c1d59, recapturar o rodapé corrigido e fechar a prova física; baseline já está preservado.",
   "updatedAt": "2026-09-06"
 }
