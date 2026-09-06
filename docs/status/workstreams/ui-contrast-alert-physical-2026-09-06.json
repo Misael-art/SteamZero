@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-UI-CONTRAST-ALERT-PHYSICAL",
+  "item": "SZ-UI-DESKTOP-AUDIT",
+  "branch": "codex/ui-contrast-alert-physical-2026-09-06",
+  "baseRef": "2efd3500854ae66a9ba0068ad2ab4bf354f81bbc",
+  "owner": "codex-ui-contrast-alert-physical",
+  "state": "active",
+  "exclusivePaths": [
+    "tests/unit/test_ui_contrast_inventory.py",
+    "docs/09-operations/evidence/2026-09-06-ui-contrast-alert-physical"
+  ],
+  "sharedPaths": [
+    "src/steamzero/ui/qml/Main.qml",
+    "docs/status/items/ui-desktop-audit.json",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Corrigir o banner de estado do Desktop para escolher texto e iconografia com contraste contra a superfície escura, provar o contrato em teste e recapturar a release instalada.",
+  "updatedAt": "2026-09-06"
+}
