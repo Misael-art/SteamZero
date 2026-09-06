@@ -6089,12 +6089,12 @@ ApplicationWindow {
                     anchors.leftMargin: root.compactLayout ? 12 : 20
                     anchors.rightMargin: root.compactLayout ? 12 : 20
                     spacing: root.compactLayout ? 12 : 24
-                    Label { text: qsTr("STEAM  MENU"); color: root.mutedColor; font.bold: true }
+                    Label { text: qsTr("STEAM  MENU"); color: root._contrastTextColor("#080d13"); font.bold: true }
                     Item { Layout.fillWidth: true }
-                    Label { visible: !root.compactLayout; text: qsTr("D-PAD  NAVEGAR"); color: root.mutedColor }
-                    Label { text: qsTr("A  SELECIONAR"); color: root.textColor }
-                    Label { visible: !root.compactLayout; text: qsTr("X  AÇÃO DE CONTEXTO"); color: root.textColor }
-                    Label { text: qsTr("B  VOLTAR"); color: root.textColor }
+                    Label { visible: !root.compactLayout; text: qsTr("D-PAD  NAVEGAR"); color: root._contrastTextColor("#080d13") }
+                    Label { text: qsTr("A  SELECIONAR"); color: root._contrastTextColor("#080d13") }
+                    Label { visible: !root.compactLayout; text: qsTr("X  AÇÃO DE CONTEXTO"); color: root._contrastTextColor("#080d13") }
+                    Label { text: qsTr("B  VOLTAR"); color: root._contrastTextColor("#080d13") }
                 }
             }
         }

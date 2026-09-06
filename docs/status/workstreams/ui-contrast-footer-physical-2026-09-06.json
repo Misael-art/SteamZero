@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-UI-CONTRAST-FOOTER-PHYSICAL",
+  "item": "SZ-UI-DESKTOP-AUDIT",
+  "branch": "codex/ui-contrast-footer-physical-2026-09-06",
+  "baseRef": "d556f7f5c89ba78cd274d1147ddac2bbee04fc4a",
+  "owner": "codex-ui-contrast-footer-physical",
+  "state": "active",
+  "exclusivePaths": [
+    "tests/unit/test_ui_footer_contrast.py",
+    "docs/09-operations/evidence/2026-09-06-ui-contrast-footer-physical"
+  ],
+  "sharedPaths": [
+    "src/steamzero/ui/qml/Main.qml",
+    "docs/status/items/ui-desktop-audit.json",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Corrigir todos os rótulos do rodapé handheld para escolher foreground com contraste contra #080d13, provar o contrato e recapturar a release instalada.",
+  "updatedAt": "2026-09-06"
+}
