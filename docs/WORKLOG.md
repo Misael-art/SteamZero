@@ -9631,3 +9631,29 @@ finalização da sessão KDE foi executado; o launcher existente permaneceu ativ
 Os quatro gaps restantes do item (contraste por pixel, gate de órfãos efetivo,
 roteamento live-launcher e semântica do tema ativo) continuam registrados como
 abertos e não foram promovidos por esta prova.
+
+## 2026-09-05 — Sessão: tornar efetivo o gate de contratos órfãos
+
+O inventário de ações da UI deixou de depender de `COVERED_SURFACES` fixo em
+`emulators`. Ele agora deriva cenários das telas declaradas pelos contratos da
+bridge, registra explicitamente as superfícies transversais (sidebar, drawers,
+jobs, recovery, notifications e temas), despacha contratos pelo probe QML e
+recusa silenciosamente cobrir uma tela desconhecida. A matriz real passou de
+1/17 para 17/17 superfícies; `orphanContracts` passou a existir somente após a
+cobertura completa e ficou em zero, com zero no-op silencioso, zero ação sem
+rota e zero bloqueio sem motivo.
+
+O gate negativo também foi provado: um contrato com `screen: new-surface` não
+entra em cenário por acidente e permanece candidato não alcançado. O catálogo
+de status foi regenerado, o `scopeDigest` foi atualizado e o workstream
+`WS-2026-09-UI-ORPHAN-GATE` foi fechado. O gap
+`GAP-UI-ORPHAN-GATE-INERTE` foi removido; contraste por pixel, roteamento
+live-launcher e semântica do tema ativo permanecem abertos.
+
+Verificação: suíte integral `5576 passed, 44 skipped`; ruff check, ruff
+format-check, mypy, independence/boundaries, QML visual (48/48),
+`make status-check` e `git diff --check` passaram. Houve uma falha flutuante
+isolada do teste de sessão órfã em um ciclo; três execuções focadas passaram e
+o ciclo integral seguinte fechou verde. Nenhuma instalação, reboot, logout,
+encerramento do launcher ou finalização da sessão KDE foi feita nesta frente;
+a release ativa permaneceu `2.0.0rc1-ca9ab317fc3c`.

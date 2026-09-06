@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-UI-ORPHAN-GATE",
+  "item": "SZ-UI-DESKTOP-AUDIT",
+  "branch": "codex/ux-orphan-gate-2026-09-05",
+  "baseRef": "860bd06873a93066715d117409176f90d13d0e14",
+  "owner": "codex-ux-orphan-gate",
+  "state": "closed",
+  "exclusivePaths": [
+    "tools/ui_action_inventory.py",
+    "tools/ui_action_probe.qml",
+    "tests/integration/test_ui_action_inventory.py"
+  ],
+  "sharedPaths": [
+    "docs/status/items/ui-desktop-audit.json",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Gate fechado com cobertura declarada 17/17 e cenário negativo para telas novas; seguir para os três gaps restantes do item.",
+  "updatedAt": "2026-09-05"
+}

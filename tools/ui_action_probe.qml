@@ -88,7 +88,9 @@ Main {
 
         const action = entry.action
         const before = observableState()
-        if (entry.dispatch === "emulation")
+        if (entry.dispatch === "contract")
+            requestAction(action.id, {}, function(_response) {}, function(_error) {})
+        else if (entry.dispatch === "emulation")
             performEmulationAction(action)
         else
             performRowAction({"id": entry.rowId || "probe", "name": entry.rowName || "Probe",

@@ -127,3 +127,26 @@ def test_coverage_report_only_claims_completeness_when_nothing_is_missing() -> N
     whole = inventory.coverage_report(inventory.DECLARED_SURFACES)
     assert whole["complete"] is True
     assert whole["missing"] == []
+
+
+def test_contract_scenarios_cover_every_declared_surface(matrix: dict) -> None:
+    """A cobertura completa precisa vir de cenários, não de um booleano fixo."""
+    assert matrix["coverage"]["complete"] is True
+    assert matrix["coverage"]["covered"] == sorted(inventory.DECLARED_SURFACES)
+    assert matrix["orphanContracts"] == []
+
+
+def test_unknown_contract_screen_is_not_silently_covered() -> None:
+    """Contrato de tela nova fica candidato a órfão até ganhar um cenário."""
+    contracts = {
+        "known": {"screen": "overview", "label": "Conhecido"},
+        "future.contract": {"screen": "new-surface", "label": "Futuro"},
+    }
+    actions = inventory.contract_surface_actions(contracts)
+    reached = {action["id"] for action in actions}
+    assert "known" in reached
+    assert "future.contract" not in reached
+    assert inventory.unreached_contracts([], contracts) == [
+        {"contract": "future.contract", "label": "Futuro", "screen": "new-surface"},
+        {"contract": "known", "label": "Conhecido", "screen": "overview"},
+    ]
