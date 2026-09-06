@@ -40,7 +40,12 @@ Main {
     property var unmeasured: []
 
     function isText(item) {
-        return item.text !== undefined && item.font !== undefined
+        const type = String(item)
+        // QQuickIconLabel is a control wrapper and its box includes the icon;
+        // QQuickMnemonicLabel/Label are the actual rendered text nodes.
+        return (type.indexOf("Label") >= 0 || type.indexOf("Text") >= 0)
+            && type.indexOf("IconLabel") < 0
+            && item.text !== undefined && item.font !== undefined
             && item.color !== undefined && String(item.text).trim().length > 0
     }
 
@@ -100,6 +105,9 @@ Main {
                 out.push({
                     "section": section,
                     "text": String(item.text).substring(0, 40),
+                    "qmlType": String(item).substring(0, 80),
+                    "textColor": String(item.color),
+                    "enabled": item.enabled !== false,
                     "pixelSize": item.font.pixelSize || 0,
                     "bold": item.font.bold === true,
                     "x": Math.round(p.x), "y": Math.round(p.y),
@@ -147,9 +155,9 @@ Main {
         // Offscreen a cena só fica suja quando algo pede desenho, e contar
         // `afterRendering` deixava sete das nove seções sem frame nenhum. O
         // próprio `grabToImage` agenda um passe de render e chama de volta
-        // quando ele fecha, então é ele que dirige a captura. Os dois
-        // `callLater` dão ao layout a chance de assentar antes.
-        Qt.callLater(function() { Qt.callLater(window.captureCurrent) })
+        // quando ele fecha, então é ele que dirige a captura. O timer curto
+        // abaixo deixa o layout assentar antes de capturar.
+        settleTimer.restart()
     }
 
     // Offscreen, `afterRendering` só dispara com a cena suja. Se um frame não
@@ -171,6 +179,16 @@ Main {
             window.busy = false
             Qt.callLater(window.advance)
         }
+    }
+
+    // Uma mudança de seção pode deixar o StackLayout um turno à frente dos
+    // filhos. Sem esta janela, caixas de texto do estado anterior eram
+    // comparadas com pixels do estado seguinte.
+    Timer {
+        id: settleTimer
+        interval: 250
+        repeat: false
+        onTriggered: window.captureCurrent()
     }
 
     function captureCurrent() {

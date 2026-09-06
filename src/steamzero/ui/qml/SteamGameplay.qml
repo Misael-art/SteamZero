@@ -47,6 +47,11 @@ Item {
         const b = _relativeLuminance(second)
         return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
     }
+    function contrastTextColor(surface) {
+        return contrastRatio(textColor, surface)
+            >= contrastRatio(backgroundColor, surface)
+            ? textColor : backgroundColor
+    }
     readonly property color selectedLabelColor:
         contrastRatio(textColor, cyanDarkColor)
             >= contrastRatio(backgroundColor, cyanDarkColor)
@@ -1074,10 +1079,10 @@ Item {
                 RowLayout {
                     anchors.fill: parent
                     anchors.margins: page.compactLayout ? 10 : 16
-                    Label {
-                        text: page.gameplay && page.gameplay.readiness
-                            ? page.gameplay.readiness.percent + "%" : "—"
-                        color: page.greenColor
+                        Label {
+                            text: page.gameplay && page.gameplay.readiness
+                                ? page.gameplay.readiness.percent + "%" : "—"
+                            color: page.contrastTextColor("#0c2a21")
                         font.pixelSize: page.compactLayout ? 21 : 25
                         font.bold: true
                     }
@@ -1087,14 +1092,14 @@ Item {
                         Label {
                             text: page.gameplay && page.gameplay.readiness
                                 ? page.gameplay.readiness.title : qsTr("Verificando ambiente")
-                            color: page.greenColor
+                            color: page.contrastTextColor("#0c2a21")
                             font.pixelSize: page.compactLayout ? 15 : 18
                             font.bold: true
                         }
                         Label {
                             text: page.gameplay && page.gameplay.readiness
                                 ? String(page.gameplay.readiness.detail || "") : ""
-                            color: page.mutedColor
+                            color: page.contrastTextColor("#0c2a21")
                         }
                     }
                     ProgressBar {

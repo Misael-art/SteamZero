@@ -49,7 +49,7 @@
     "docs/09-operations/evidence/2026-09-05-ux-gap-closure",
     "docs/09-operations/evidence/2026-09-06-theme-active-physical"
   ],
-  "scopeDigest": "719a974b97d29ced9dfe754aa2171d9d91bf02d2c6333572ad92ad8447f58ecb",
+  "scopeDigest": "b1709aced5e67df40a221041fb2c71d037ca941277e58425accdf79a0d7f2678",
   "dependsOn": [],
   "knownGaps": [
     "GAP-UI-CONTRAST-MEASUREMENT",
