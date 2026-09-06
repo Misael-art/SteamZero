@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-06",
+  "release": {
+    "version": "2.0.0rc1",
+    "releaseId": "2.0.0rc1-ca9ab317fc3c",
+    "sourceCommit": "ca9ab317fc3cefdd4088add8cb58a55dc67f7cd2"
+  },
+  "theme": {
+    "initialActiveId": "org.steamzero.asset-recipes-demo",
+    "initialActiveVersion": "1.0.0",
+    "sameThemePlan": {
+      "result": "already-active",
+      "alreadyActive": true,
+      "planCreated": false,
+      "confirmationRequested": false
+    },
+    "alternateThemeId": "org.steamzero.default",
+    "alternateThemeVersion": "1.1.0",
+    "alternateJourney": ["plan-ready", "apply-confirmed", "rolled-back"],
+    "finalActiveId": "org.steamzero.asset-recipes-demo",
+    "finalActiveVersion": "1.0.0"
+  },
+  "doctor": {
+    "version": "2.0.0rc1",
+    "pendingOperations": 0,
+    "orphanStaging": 1
+  },
+  "windows": {
+    "catalog": {"pid": 3023267, "screenshot": "01-central-theme-catalog.png"},
+    "editor": {"pid": 3076035, "screenshot": "02-theme-editor-active.png"}
+  },
+  "artifacts": {
+    "01-central-theme-catalog.png": {
+      "sha256": "640e0c36318e12b1dde57b0ffd3fb1a9ce93b6137e79b735de30d7e703afa435"
+    },
+    "02-theme-editor-active.png": {
+      "sha256": "5526dd02298e07448f739a2058e3a8d5e2a52be0a2267ec3afadffc721404794"
+    }
+  },
+  "sessionSafety": {
+    "kdeRestarted": false,
+    "kdeSessionEnded": false,
+    "preexistingLauncherTouched": false,
+    "tokensPersisted": false
+  }
+}

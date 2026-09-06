@@ -9657,3 +9657,23 @@ isolada do teste de sessão órfã em um ciclo; três execuções focadas passar
 o ciclo integral seguinte fechou verde. Nenhuma instalação, reboot, logout,
 encerramento do launcher ou finalização da sessão KDE foi feita nesta frente;
 a release ativa permaneceu `2.0.0rc1-ca9ab317fc3c`.
+
+## 2026-09-06 — Sessão: prova física da semântica de tema ativo
+
+Na release instalada `2.0.0rc1-ca9ab317fc3c`, a Central real foi aberta sem
+reiniciar, deslogar ou finalizar a sessão KDE. A aba **Editar aparência** foi
+capturada em `docs/09-operations/evidence/2026-09-06-theme-active-physical/`:
+`Theme Engine — asset único` aparece com `Já está em uso`, enquanto os temas
+alternativos exibem `Aplicar`.
+
+`steamzero theme plan --theme-id org.steamzero.asset-recipes-demo` retornou
+`already-active`, sem criar plano ou pedir confirmação. Para não provar apenas
+o no-op, um tema alternativo percorreu plan→confirm→rollback e o status final
+voltou a `org.steamzero.asset-recipes-demo` v1.0.0. O doctor terminou com
+`pendingOperations=0`; tokens de confirmação não foram registrados.
+
+O gap `GAP-UI-THEME-PLAN-ACTIVE-SEMANTICS` foi removido do item
+`SZ-UI-DESKTOP-AUDIT`, o workstream `WS-2026-09-THEME-ACTIVE-PHYSICAL` foi
+fechado e os documentos de status foram regenerados. Permanecem abertos apenas
+contraste por pixel e roteamento live-launcher. O launcher preexistente não foi
+encerrado nem tocado.
