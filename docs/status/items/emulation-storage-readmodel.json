@@ -24,7 +24,6 @@
   "knownGaps": [
     "GAP-STORAGE-MOVE-DIRECTORY",
     "GAP-STORAGE-ROM-COMPRESSION",
-    "GAP-STORAGE-EMULATOR-UNINSTALL",
     "GAP-EMULATION-PHYSICAL-LAUNCH"
   ],
   "acceptanceCriteria": [
@@ -39,6 +38,12 @@
       "kind": "test",
       "reference": "tests/unit/test_storage_summary.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_storage_summary.py tests/integration/test_emulation_storage.py tests/integration/test_preservation_controller.py tests/integration/test_cli_emulation.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_flatpak_executor.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_flatpak_executor.py tests/integration/test_component_lifecycle.py -q",
       "result": "passed"
     },
     {
@@ -66,8 +71,8 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Criar contratos transacionais para mover diretórios, compactar ROMs e desinstalar emuladores; depois validar a superfície física na release.",
+  "nextAction": "Validar a superfície física dos contratos restantes na release: destino para mover raiz, seleção/lote de compressão e ciclo de lançamento.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-02",
-  "notes": "A captura do usuário mostra Armazenamento compartilhado com apenas 0 registro(s), sem visão de ROMs, saves, mídia, cache ou espaço do volume. Esta fatia entrega observabilidade read-only por categoria, volume e integridade, com ações existentes de inventário/reconciliação/limpeza de cache. Mover diretórios, compactar ROMs e desinstalar emuladores continuam fora desta capacidade até haver contratos transacionais próprios."
+  "updatedAt": "2026-09-06",
+  "notes": "O read model entrega observabilidade read-only por categoria, volume e integridade. Mover raiz e compactar ROMs possuem contratos transacionais e testes, mas ainda não têm seletor/jornada visual provados na release. O uninstall também é exposto no cartão de gerenciamento e preserva ROMs, saves e mídia: o executor Flatpak remove somente o deployment, sem --delete-data, com evidência em tests/integration/test_flatpak_executor.py e test_component_lifecycle.py. O ciclo físico de lançamento permanece separado."
 }
