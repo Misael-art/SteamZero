@@ -1755,6 +1755,10 @@ Rectangle {
                             // A mesma cena resolvida que a interface desenha:
                             // o canvas do Studio não recebe uma versão própria.
                             scene: panel._previewBridge.sceneLayoutPreview
+                            inspectorTextColor: panel.textColor
+                            inspectorMutedColor: panel.mutedColor
+                            inspectorSuccessColor: panel.greenColor
+                            inspectorWarningColor: panel.amberColor
                         }
                     }
 
