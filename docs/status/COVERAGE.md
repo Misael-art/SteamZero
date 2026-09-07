@@ -59,7 +59,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-THEME-IMPORT-ESDE-LAYOUT | 32 | 10 | 10 | hw |  |
 | SZ-THEME-IMPORT-RETROFE | 6 | 4 | 3 | unit |  |
 | SZ-THEME-IMPORT-SURFACE | 4 | 8 | 7 | unit |  |
-| SZ-THEME-STUDIO | 81 | 16 | 15 | hw |  |
+| SZ-THEME-STUDIO | 85 | 17 | 15 | hw |  |
 | SZ-UI-DESKTOP-AUDIT | 369 | 39 | 26 | dev |  |
 | SZ-UI-PACKAGED-ICONS | 51 | 4 | 2 | unit |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |

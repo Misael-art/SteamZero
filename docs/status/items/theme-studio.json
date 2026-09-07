@@ -9,9 +9,10 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "78eceb68da09a8fbe7557a07149231f8eb72fc4862d4a7ac8615063a23a54859",
+  "scopeDigest": "661b72006cf6c72ae3cbef5c87771a80859f39de46bb597c6103fbd6002ff50c",
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun",
+    "docs/09-operations/evidence/2026-09-07-theme-studio-contrast",
     "src/steamzero/domain/theme_editor.py",
     "src/steamzero/domain/theme_marketplace.py",
     "src/steamzero/domain/studio_graph.py",
@@ -137,10 +138,16 @@
       "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun/theme-review.txt",
       "command": "release 2.0.0rc1-145cf9d44738: studio-themes.png capturada em bridge-live; Editor de Temas aparece, mas acoes truncam e edicao direta continua somente leitura.",
       "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-07-theme-studio-contrast/02-entrega-funcional.png",
+      "command": "release 2.0.0rc1-b09908a58261 instalada; canvas live com layout.previewTitles, arvore, SpinBoxes e inspector claro; status/convergencia/version verificados sem reboot ou logout",
+      "result": "partial"
     }
   ],
-  "nextAction": "Publicar/instalar uma release autorizada e capturar o canvas editável do Studio no host; a edição declarativa já tem validação, preview e persistência automatizados.",
+  "nextAction": "Obter injetor de input Wayland autorizado/disponível e provar no host a mutação de um SpinBox, persistência ao salvar e reabertura; a superfície visual instalada e o contraste do inspector já estão comprovados.",
   "activeWorkstreams": [],
   "updatedAt": "2026-09-07",
-  "notes": "Estado permanece parcial pela evidencia fisica. O canvas central deixou de ser placeholder: quando o no selecionado e um layout com cena resolvida, ele desenha usando o MESMO SceneRepeater que a interface usa — um renderizador proprio do Studio poderia divergir do que o usuario ve, e o preview mentiria para quem edita. O no de layout passou a declarar previewKey, entao o canvas acha a cena sem fatiar o id: se o formato do id mudasse, o desenho sumiria em silencio. No sem cena propria (binding, motion, efeito) mostra o rotulo e diz por que nao desenhou, em vez de exibir vazio. A arvore ja carrega depth e path, com irmaos de rotulo repetido desambiguados pela posicao. O painel permite editar metadados e, agora, propriedades declarativas de layout (colunas, gap, largura e altura do item) no inspector; cada alteracao passa por LayoutRecipeBook, atualiza o preview e so e gravada ao salvar o tema. Temas builtin permanecem read-only. A exportacao percorre FileDialog → plano com precondicoes → confirmacao → ZIP, sem escrita direta pelo QML. Falta ainda a captura fisica desta fatia na proxima release instalada."
+  "notes": "Estado permanece parcial pela prova de interação física. O canvas central deixou de ser placeholder: quando o no selecionado e um layout com cena resolvida, ele desenha usando o MESMO SceneRepeater que a interface usa — um renderizador proprio do Studio poderia divergir do que o usuario ve, e o preview mentiria para quem edita. O no de layout passou a declarar previewKey, entao o canvas acha a cena sem fatiar o id: se o formato do id mudasse, o desenho sumiria em silencio. No sem cena propria (binding, motion, efeito) mostra o rotulo e diz por que nao desenhou, em vez de exibir vazio. A arvore ja carrega depth e path, com irmaos de rotulo repetido desambiguados pela posicao. O painel permite editar metadados e propriedades declarativas de layout (colunas, gap, largura e altura do item) no inspector; cada alteracao passa por LayoutRecipeBook, atualiza o preview e so e gravada ao salvar o tema. Temas builtin permanecem read-only. A exportacao percorre FileDialog → plano com precondicoes → confirmacao → ZIP, sem escrita direta pelo QML. A release 2.0.0rc1-b09908a58261 prova visualmente o canvas instalado e o contraste derivado do tema; falta provar a mutacao por input fisico."
 }

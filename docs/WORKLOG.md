@@ -9731,3 +9731,25 @@ A evidência automatizada passou: 116 testes de editor/grafo/dashboard/contratos
 independência, fronteiras, `git diff --check` e `STATUS-CHECK`. A captura física
 do canvas ainda não foi feita; por isso `GAP-THEME-STUDIO-PHYSICAL-CANVAS`
 permanece aberto. Nenhum host, reboot, logout ou sessão KDE foi encerrado.
+
+## 2026-09-07 — Sessão: prova instalada do canvas e contraste do Theme Studio
+
+O PR #123 corrigiu o contraste do inspector do `ThemeStudioCanvas`: a paleta
+agora deriva do tema/painel, mantendo as cores do canvas escuro e tornando
+labels, propriedades, constraints e profiler legíveis no painel claro. O CI
+pós-merge `34142341383` concluiu os oito gates verdes no commit
+`b09908a5826174b8ff8d02fbf09f7dcef288edd9`.
+
+A release canônica `2.0.0rc1-b09908a58261` foi preparada e instalada com
+rollback `2.0.0rc1-c1419ddbdddb`; `install_host.py status`, convergência
+idempotente e `steamzero --version` confirmaram a release ativa. A evidência
+em `docs/09-operations/evidence/2026-09-07-theme-studio-contrast/` contém
+baseline e entrega: o canvas live mostra `layout.previewTitles`, árvore,
+SpinBoxes e inspector com contraste corrigido. Nenhum reboot, logout,
+encerramento do KDE ou toque no launcher preexistente foi feito.
+
+O visual instalado foi comprovado, mas a lacuna
+`GAP-THEME-STUDIO-PHYSICAL-CANVAS` permanece aberta para provar a mutação por
+input físico, persistência e reabertura; não há injetor Wayland utilizável nesta
+sessão. Status regenerado, `STATUS-CHECK`, lint, formatação, mypy,
+independência, fronteiras e `git diff --check` passaram.
