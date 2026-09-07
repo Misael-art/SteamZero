@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "042f41d3cb840c68b441ece601e47a0fcff429cbc1bba409ede407881ab30c25",
+  "scopeDigest": "4eb66c73d505f040d60e267bfd4989dfa414f04d6f329312b23646cb5644c9d6",
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun",
     "src/steamzero/domain/theme_editor.py",
@@ -29,8 +29,7 @@
     "SZ-THEME-ENGINE"
   ],
   "knownGaps": [
-    "GAP-THEME-STUDIO-PHYSICAL-CANVAS",
-    "GAP-THEME-STUDIO-DIRECT-EDITING"
+    "GAP-THEME-STUDIO-PHYSICAL-CANVAS"
   ],
   "acceptanceCriteria": [
     "Edicao de tokens, metadados e catalogo possui contratos e testes unitarios.",
@@ -47,6 +46,12 @@
       "kind": "test",
       "reference": "tests/unit/test_theme_editor.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_editor.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_theme_editor.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_editor.py tests/unit/test_studio_graph.py tests/unit/test_desktop_contracts.py tests/unit/test_desktop_dashboard.py -q",
       "result": "passed"
     },
     {
@@ -134,8 +139,8 @@
       "result": "partial"
     }
   ],
-  "nextAction": "Publicar/instalar uma release autorizada e capturar canvas, metadados e exportação do Studio; a auditoria confirmou canvas somente de preview e edição direta pendente até existir persistência segura.",
+  "nextAction": "Publicar/instalar uma release autorizada e capturar o canvas editável do Studio no host; a edição declarativa já tem validação, preview e persistência automatizados.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-05",
-  "notes": "Estado permanece parcial. O canvas central deixou de ser placeholder: quando o no selecionado e um layout com cena resolvida, ele desenha usando o MESMO SceneRepeater que a interface usa — um renderizador proprio do Studio poderia divergir do que o usuario ve, e o preview mentiria para quem edita. O no de layout passou a declarar previewKey, entao o canvas acha a cena sem fatiar o id: se o formato do id mudasse, o desenho sumiria em silencio. No sem cena propria (binding, motion, efeito) mostra o rotulo e diz por que nao desenhou, em vez de exibir vazio. A arvore ja carrega depth e path, com irmaos de rotulo repetido desambiguados pela posicao. O painel agora permite editar name, author, license e description de temas de usuario via set-metadata; temas builtin permanecem read-only. A exportacao agora percorre FileDialog → plano com precondicoes → confirmacao → ZIP, sem escrita direta pelo QML. Falta ainda: edicao no canvas (hoje e so leitura) e evidencia fisica desta fatia na proxima release instalada."
+  "updatedAt": "2026-09-07",
+  "notes": "Estado permanece parcial pela evidencia fisica. O canvas central deixou de ser placeholder: quando o no selecionado e um layout com cena resolvida, ele desenha usando o MESMO SceneRepeater que a interface usa — um renderizador proprio do Studio poderia divergir do que o usuario ve, e o preview mentiria para quem edita. O no de layout passou a declarar previewKey, entao o canvas acha a cena sem fatiar o id: se o formato do id mudasse, o desenho sumiria em silencio. No sem cena propria (binding, motion, efeito) mostra o rotulo e diz por que nao desenhou, em vez de exibir vazio. A arvore ja carrega depth e path, com irmaos de rotulo repetido desambiguados pela posicao. O painel permite editar metadados e, agora, propriedades declarativas de layout (colunas, gap, largura e altura do item) no inspector; cada alteracao passa por LayoutRecipeBook, atualiza o preview e so e gravada ao salvar o tema. Temas builtin permanecem read-only. A exportacao percorre FileDialog → plano com precondicoes → confirmacao → ZIP, sem escrita direta pelo QML. Falta ainda a captura fisica desta fatia na proxima release instalada."
 }

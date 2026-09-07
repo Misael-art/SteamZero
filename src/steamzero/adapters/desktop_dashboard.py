@@ -1965,6 +1965,11 @@ class DesktopDashboard:
     ) -> dict[str, object]:
         return self._theme_editor.set_metadata(session_id, meta_field, value)
 
+    def editor_set_layout(
+        self, session_id: str, layout_id: str, field: str, value: object
+    ) -> dict[str, object]:
+        return self._theme_editor.set_layout(session_id, layout_id, field, value)
+
     def editor_preview(
         self, session_id: str, *, high_contrast: bool = False, reduced_motion: bool = False
     ) -> dict[str, object]:

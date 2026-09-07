@@ -8,6 +8,7 @@ import io
 import json
 import re
 import zipfile
+from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -17,7 +18,7 @@ from steamzero.core.errors import SteamZeroError
 from steamzero.domain.dynamic_palette import extract_dynamic_palette
 from steamzero.domain.glass_panels import resolve_glass_panels
 from steamzero.domain.scene_containers import ContainerBounds, resolve_scene_containers
-from steamzero.domain.scene_layout import LayoutBounds, resolve_scene_layouts
+from steamzero.domain.scene_layout import LayoutBounds, LayoutRecipeBook, resolve_scene_layouts
 from steamzero.domain.scene_motion import resolve_scene_motion
 from steamzero.domain.scene_surfaces import resolve_scene_surfaces
 from steamzero.domain.studio_graph import build_studio_graph
@@ -461,6 +462,45 @@ class ThemeEditorManager:
         session.manifest[meta_field] = value
         session.dirty = True
         return {"manifest": dict(session.manifest)}
+
+    def set_layout(
+        self, session_id: str, layout_id: str, field: str, value: object
+    ) -> dict[str, object]:
+        """Edita uma propriedade declarativa de layout e devolve o preview novo.
+
+        O Studio só pode alterar campos de geometria allowlisted. A receita
+        inteira é revalidada antes de tocar na sessão, então um valor inválido
+        não deixa um rascunho parcialmente mutado nem alcança o pacote.
+        """
+        session = self._get_session(session_id)
+        raw_book = session.manifest.get("sceneLayouts")
+        if not isinstance(raw_book, dict):
+            raise SteamZeroError("E-API-SCHEMA", detail="tema não possui sceneLayouts editável")
+        raw_layouts = raw_book.get("layouts")
+        if not isinstance(raw_layouts, dict) or layout_id not in raw_layouts:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"layout não encontrado: {layout_id}")
+        editable = {"columns", "gap", "maxItems", "selected", "item.width", "item.height"}
+        if field not in editable:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"campo de layout não editável: {field}")
+
+        candidate = deepcopy(raw_book)
+        layout = candidate["layouts"][layout_id]
+        if not isinstance(layout, dict):
+            raise SteamZeroError("E-API-SCHEMA", detail=f"layout inválido: {layout_id}")
+        if field.startswith("item."):
+            item = layout.get("item")
+            if not isinstance(item, dict):
+                raise SteamZeroError("E-API-SCHEMA", detail="layout.item inválido")
+            item[field.split(".", 1)[1]] = value
+        else:
+            layout[field] = value
+        try:
+            parsed = LayoutRecipeBook.from_dict(candidate)
+        except (TypeError, ValueError) as exc:
+            raise SteamZeroError("E-API-SCHEMA", detail=str(exc)) from exc
+        session.manifest["sceneLayouts"] = parsed.to_dict()
+        session.dirty = True
+        return {"preview": self._preview(session), "layout": parsed.layouts[layout_id].to_dict()}
 
     def set_asset(
         self, session_id: str, slot: str, data: bytes, filename: str

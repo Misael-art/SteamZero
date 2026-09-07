@@ -743,6 +743,13 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 self._required_string(payload, "field"),
                 payload.get("value"),
             )
+        if path == "/theme/editor/set-layout":
+            return self._dashboard().editor_set_layout(
+                self._required_string(payload, "sessionId"),
+                self._required_string(payload, "layoutId"),
+                self._required_string(payload, "field"),
+                payload.get("value"),
+            )
         if path == "/theme/editor/preview":
             sid = self._required_string(payload, "sessionId")
             hc = bool(payload.get("highContrast", False))

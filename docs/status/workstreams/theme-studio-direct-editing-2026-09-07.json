@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-THEME-STUDIO-DIRECT-EDITING",
+  "item": "SZ-THEME-STUDIO",
+  "branch": "codex/theme-studio-direct-editing-2026-09-07",
+  "baseRef": "794a8b75",
+  "owner": "codex-theme-studio-direct-editing",
+  "state": "closed",
+  "exclusivePaths": [
+    "src/steamzero/domain/theme_editor.py",
+    "src/steamzero/adapters/desktop_dashboard.py",
+    "src/steamzero/adapters/desktop_contracts.py",
+    "src/steamzero/adapters/desktop_ui.py",
+    "src/steamzero/ui/qml/ThemeStudioCanvas.qml",
+    "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+    "tests/unit/test_theme_editor.py",
+    "tests/qml/check_theme_studio_canvas.qml",
+    "docs/status/items/theme-studio.json",
+    "docs/status/workstreams/theme-studio-direct-editing-2026-09-07.json"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Subgap fechado; capturar o canvas editável no host e manter a prova física separada.",
+  "updatedAt": "2026-09-07"
+}

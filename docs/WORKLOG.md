@@ -9716,3 +9716,18 @@ raízes, seleção/lote de compressão e o ciclo físico de lançamento permanec
 abertos; não foram promovidos por teste de backend.
 
 Nenhuma ação privilegiada, reboot, logout ou encerramento do KDE foi executado.
+
+## 2026-09-07 — Sessão: fechamento da edição declarativa do Theme Studio
+
+A lacuna `GAP-THEME-STUDIO-DIRECT-EDITING` foi tratada sem permitir que o QML
+escreva no pacote diretamente. O inspector do `ThemeStudioCanvas` agora permite
+editar colunas, gap, largura e altura do item de um layout; a ponte envia um
+pedido `theme.editor.set-layout`, o `ThemeEditorManager` revalida a receita
+inteira com `LayoutRecipeBook`, atualiza o preview e só persiste no `save`.
+Campos fora da allowlist e valores inválidos falham sem mutar a sessão.
+
+A evidência automatizada passou: 116 testes de editor/grafo/dashboard/contratos,
+45 cenários handheld/QML, `ruff check`, `ruff format --check`, `mypy`,
+independência, fronteiras, `git diff --check` e `STATUS-CHECK`. A captura física
+do canvas ainda não foi feita; por isso `GAP-THEME-STUDIO-PHYSICAL-CANVAS`
+permanece aberto. Nenhum host, reboot, logout ou sessão KDE foi encerrado.

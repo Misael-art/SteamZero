@@ -1422,6 +1422,23 @@ def handheld_ui_contracts() -> dict[str, Any]:
             schema=_schema("sessionId", sessionId="string", field="string"),
         ),
         _action(
+            "theme.editor.set-layout",
+            "Alterar geometria declarativa do tema",
+            "/theme/editor/set-layout",
+            service="system",
+            screen="system",
+            control="theme-editor-set-layout",
+            schema=_schema(
+                "sessionId",
+                "layoutId",
+                "field",
+                "value",
+                sessionId="string",
+                layoutId="string",
+                field="string",
+            ),
+        ),
+        _action(
             "theme.editor.preview",
             "Preview ao vivo do tema editado",
             "/theme/editor/preview",
