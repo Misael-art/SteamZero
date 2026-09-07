@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-THEME-STUDIO-CONTRAST",
+  "item": "SZ-THEME-STUDIO",
+  "branch": "codex/theme-studio-contrast-2026-09-07",
+  "baseRef": "c1419ddbdddb16746ee8c3962f8b4ef1abd677c7",
+  "owner": "codex-theme-studio-contrast",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/ui/qml/ThemeStudioCanvas.qml",
+    "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+    "tests/qml/check_theme_studio_canvas.qml",
+    "docs/status/items/theme-studio.json",
+    "docs/status/workstreams/theme-studio-contrast-2026-09-07.json"
+  ],
+  "sharedPaths": ["docs/status", "docs/WORKLOG.md"],
+  "nextAction": "Adicionar paleta de inspector derivada do tema, rodar gates, capturar novamente e integrar se aprovado.",
+  "updatedAt": "2026-09-07"
+}

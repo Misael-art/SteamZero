@@ -50,7 +50,7 @@
     "docs/09-operations/evidence/2026-09-06-theme-active-physical",
     "docs/09-operations/evidence/2026-09-06-ui-contrast-footer-physical"
   ],
-  "scopeDigest": "c12c8f6a9114f033378509023643d7930887bd26706d84b92e948f7637af176d",
+  "scopeDigest": "ff36fc65a75d12630300b0418a62c6001cae66f8d14540e4a2fbe4a467c6af14",
   "dependsOn": [],
   "knownGaps": [
     "GAP-UI-LIVE-LAUNCHER-ROUTING"
