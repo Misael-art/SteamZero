@@ -106,10 +106,10 @@ Item {
         repeat: false
         onTriggered: {
             harness.check(canvas.nodeCount === 8, "canvas não recebeu a árvore")
-            harness.check(canvas.inspectorTextColor === "#102030"
-                          && canvas.inspectorMutedColor === "#304050"
-                          && canvas.inspectorSuccessColor === "#205020"
-                          && canvas.inspectorWarningColor === "#704000",
+            harness.check(Qt.colorEqual(canvas.inspectorTextColor, "#102030")
+                          && Qt.colorEqual(canvas.inspectorMutedColor, "#304050")
+                          && Qt.colorEqual(canvas.inspectorSuccessColor, "#205020")
+                          && Qt.colorEqual(canvas.inspectorWarningColor, "#704000"),
                           "paleta do inspector precisa ser configurável pelo tema")
             harness.check(canvas.select("layout.previewTitles") === true, "seleção falhou")
             harness.check(canvas.selectedKind === "layout", "inspector não acompanhou o nó")
