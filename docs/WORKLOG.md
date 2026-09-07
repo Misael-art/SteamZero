@@ -9701,3 +9701,18 @@ retomada posterior foi autenticada. Nenhum reboot, logout, encerramento da
 sessão KDE ou encerramento do launcher do usuário foi executado. O gap
 `GAP-UI-LIVE-LAUNCHER-ROUTING` continua aberto porque o gesto físico não foi
 validável sem `ydotoold`; harness QML não foi promovido a prova de usuário.
+## 2026-09-06 — Sessão: fechamento do subgap de uninstall no read model de armazenamento
+
+Na release canônica `2.0.0rc1-c632fb59da65`, a frente de armazenamento foi
+revalidada contra os contratos já presentes na `main`. A suíte focada
+`test_emulation_storage_management.py`, `test_nsz_conversion.py`,
+`test_flatpak_executor.py` e `test_component_lifecycle.py` passou com 123 testes.
+
+O executor Flatpak remove somente o deployment, sem `--delete-data`, e a área de
+armazenamento referencia a ação de desinstalação com a mensagem de preservação de
+ROMs, saves e mídia. Com essa evidência, `GAP-STORAGE-EMULATOR-UNINSTALL` foi
+removido de `SZ-EMULATION-STORAGE-READMODEL`. Os gaps de seletor visual para mover
+raízes, seleção/lote de compressão e o ciclo físico de lançamento permanecem
+abertos; não foram promovidos por teste de backend.
+
+Nenhuma ação privilegiada, reboot, logout ou encerramento do KDE foi executado.

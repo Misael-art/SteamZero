@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-STORAGE-UNINSTALL-STATUS",
+  "item": "SZ-EMULATION-STORAGE-READMODEL",
+  "branch": "codex/storage-contracts-status-2026-09-06",
+  "baseRef": "c632fb59da6501176b0ae239b5a75ae09d2653e4",
+  "owner": "codex-storage-contracts-status",
+  "state": "closed",
+  "exclusivePaths": [
+    "docs/status/items/emulation-storage-readmodel.json",
+    "docs/status/workstreams/storage-uninstall-status-2026-09-06.json"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Subgap fechado; manter mover/comprimir pela UI e ciclo fisico abertos em frentes proprias.",
+  "updatedAt": "2026-09-06"
+}

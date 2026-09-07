@@ -32,7 +32,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-EMULATION-PLATFORM-SCOPE | 2 | 5 | 4 | unit |  |
 | SZ-EMULATION-STORAGE-MANAGEMENT | 2 | 3 | 2 | unit |  |
 | SZ-EMULATION-STORAGE-PLATFORM-SCOPE | 5 | 3 | 2 | unit |  |
-| SZ-EMULATION-STORAGE-READMODEL | 6 | 5 | 4 | unit |  |
+| SZ-EMULATION-STORAGE-READMODEL | 6 | 6 | 5 | unit |  |
 | SZ-FRONTEND-ESDE | 2 | 5 | 2 | unit |  |
 | SZ-FRONTEND-ESDE-SYSTEMS | 3 | 1 | 1 | unit |  |
 | SZ-FRONTEND-LAUNCHBOX | 1 | 0 | 0 | none | sem evidencia registrada |
