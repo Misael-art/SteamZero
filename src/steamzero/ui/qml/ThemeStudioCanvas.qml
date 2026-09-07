@@ -12,6 +12,13 @@ Item {
 
     required property var graph
     property bool readOnly: true
+    // O canvas é escuro, mas árvore e inspector vivem na superfície do painel.
+    // A paleta do inspector vem do tema para continuar legível em superfícies
+    // claras e escuras, sem alterar o contraste deliberado da cena preview.
+    property color inspectorTextColor: "#1c2933"
+    property color inspectorMutedColor: "#516574"
+    property color inspectorSuccessColor: "#17803d"
+    property color inspectorWarningColor: "#8a5a00"
     signal layoutEditRequested(string layoutId, string field, var value)
     property string selectedId: graph && graph.selectedId ? graph.selectedId : "scene"
 
@@ -198,7 +205,7 @@ Item {
             spacing: 4
             Text {
                 text: studio.selectedKind
-                color: "#8b93a8"
+                color: studio.inspectorMutedColor
                 font.pixelSize: 11
             }
             // Onde o nó está na cena. Sem isto, dois irmãos de mesmo rótulo
@@ -208,7 +215,7 @@ Item {
                 width: inspector.width
                 wrapMode: Text.Wrap
                 text: studio.selectedPath
-                color: "#5f6b85"
+                color: studio.inspectorMutedColor
                 font.pixelSize: 10
             }
             Column {
@@ -218,7 +225,7 @@ Item {
                 spacing: 3
                 Text {
                     text: qsTr("Edição declarativa")
-                    color: "#8b93a8"
+                    color: studio.inspectorMutedColor
                     font.pixelSize: 11
                 }
                 SpinBox {
@@ -273,7 +280,7 @@ Item {
                     required property string modelData
                     width: inspector.width
                     wrapMode: Text.Wrap
-                    color: "#e8ecf7"
+                    color: studio.inspectorTextColor
                     font.pixelSize: 12
                     text: modelData + ": " + studio.selectedNode.properties[modelData]
                 }
@@ -286,7 +293,7 @@ Item {
                     objectName: "studioConstraint"
                     width: inspector.width
                     wrapMode: Text.Wrap
-                    color: "#ffc400"
+                    color: studio.inspectorWarningColor
                     font.pixelSize: 12
                     text: modelData.code + ": " + modelData.reason
                 }
@@ -297,23 +304,24 @@ Item {
                 width: inspector.width
                 spacing: 2
                 Text {
-                    color: "#8b93a8"
+                    color: studio.inspectorMutedColor
                     font.pixelSize: 11
                     text: qsTr("Profiler declarado")
                 }
                 Text {
-                    color: "#e8ecf7"
+                    color: studio.inspectorTextColor
                     font.pixelSize: 12
                     text: qsTr("custo %1").arg(studio.declaredCost)
                 }
                 Text {
-                    color: studio.withinBudget ? "#59d35d" : "#ffc400"
+                    color: studio.withinBudget
+                        ? studio.inspectorSuccessColor : studio.inspectorWarningColor
                     font.pixelSize: 12
                     text: studio.withinBudget ? qsTr("dentro do orçamento") : qsTr("orçamento excedido")
                 }
                 Text {
                     visible: !studio.budgetMeasured
-                    color: "#8b93a8"
+                    color: studio.inspectorMutedColor
                     font.pixelSize: 11
                     text: qsTr("sem medição física")
                 }
