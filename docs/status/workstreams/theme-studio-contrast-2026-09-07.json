@@ -3,10 +3,10 @@
   "kind": "workstream",
   "id": "WS-2026-09-THEME-STUDIO-CONTRAST",
   "item": "SZ-THEME-STUDIO",
-  "branch": "codex/theme-studio-contrast-2026-09-07",
+  "branch": "codex/theme-studio-contrast-evidence-2026-09-07",
   "baseRef": "c1419ddbdddb16746ee8c3962f8b4ef1abd677c7",
   "owner": "codex-theme-studio-contrast",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/ui/qml/ThemeStudioCanvas.qml",
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
@@ -15,6 +15,6 @@
     "docs/status/workstreams/theme-studio-contrast-2026-09-07.json"
   ],
   "sharedPaths": ["docs/status", "docs/WORKLOG.md"],
-  "nextAction": "Adicionar paleta de inspector derivada do tema, rodar gates, capturar novamente e integrar se aprovado.",
+  "nextAction": "Subgap de contraste fechado e evidência visual instalada registrada; a prova de mutação por input físico permanece em GAP-THEME-STUDIO-PHYSICAL-CANVAS.",
   "updatedAt": "2026-09-07"
 }
