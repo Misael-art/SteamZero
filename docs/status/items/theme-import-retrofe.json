@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "not-packaged",
-  "scopeDigest": "9a93e69dedea892b1f8789b1342925496d27dcd01343727d8962908608cf2c52",
+  "scopeDigest": "f784c00ce1dde0e5f4469af516c572b2447f3f13c5d84a62e7d0c65f1f1c7d72",
   "scopePaths": [
     "src/steamzero/adapters/desktop_contracts.py",
     "src/steamzero/adapters/desktop_dashboard.py",

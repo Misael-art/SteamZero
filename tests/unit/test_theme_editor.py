@@ -133,6 +133,81 @@ class TestEditorSetMetadata:
             mgr.set_metadata(sid, "banana", "x")
 
 
+class TestEditorSetLayout:
+    def test_layout_geometry_updates_preview_and_survives_save(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        manifest = dict(_VALID_MANIFEST)
+        manifest["sceneLayouts"] = {
+            "schemaVersion": 1,
+            "layouts": {
+                "previewTitles": {
+                    "source": "preview.items",
+                    "kind": "grid",
+                    "item": {"width": 120, "height": 64},
+                    "template": {
+                        "kind": "text",
+                        "id": "title",
+                        "properties": {"text": {"binding": "item.title", "fallback": "Sem título"}},
+                    },
+                    "gap": 8,
+                    "maxItems": 16,
+                    "columns": 2,
+                }
+            },
+        }
+        _write_theme(tmp_path / "steamzero" / "themes", manifest)
+        mgr = ThemeEditorManager()
+        sid = mgr.load("org.test.editme")["sessionId"]
+
+        result = mgr.set_layout(sid, "previewTitles", "columns", 4)
+        preview = result["preview"]
+        assert preview["sceneLayoutPreview"]["layouts"]["previewTitles"]["columns"] == 4
+        assert preview["studioGraph"]["nodes"][1]["properties"]["columns"] == 4
+
+        mgr.set_layout(sid, "previewTitles", "item.width", 180)
+        saved = mgr.save(sid, overwrite=True)
+        saved_manifest = json.loads((Path(saved["path"]) / "theme.json").read_text())
+        recipe = saved_manifest["sceneLayouts"]["layouts"]["previewTitles"]
+        assert recipe["columns"] == 4
+        assert recipe["item"]["width"] == 180
+
+    def test_invalid_layout_edit_is_rejected_without_mutating_session(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        manifest = dict(_VALID_MANIFEST)
+        manifest["sceneLayouts"] = {
+            "schemaVersion": 1,
+            "layouts": {
+                "main": {
+                    "source": "preview.items",
+                    "kind": "grid",
+                    "item": {"width": 120, "height": 64},
+                    "template": {"kind": "text", "id": "title", "properties": {}},
+                    "columns": 2,
+                }
+            },
+        }
+        _write_theme(tmp_path / "steamzero" / "themes", manifest)
+        mgr = ThemeEditorManager()
+        sid = mgr.load("org.test.editme")["sessionId"]
+        with pytest.raises(SteamZeroError, match=r"E-API-SCHEMA"):
+            mgr.set_layout(sid, "main", "columns", 0)
+        preview = mgr.preview(sid)["preview"]
+        assert preview["sceneLayoutPreview"]["layouts"]["main"]["columns"] == 2
+
+    def test_layout_edit_requires_allowlisted_field(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        mgr = ThemeEditorManager()
+        sid = mgr.create("Test")["sessionId"]
+        with pytest.raises(SteamZeroError, match=r"E-API-SCHEMA"):
+            mgr.set_layout(sid, "main", "qml", "evil")
+
+
 class TestEditorSave:
     def test_save_new_theme(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))

@@ -11,6 +11,8 @@ Item {
     id: studio
 
     required property var graph
+    property bool readOnly: true
+    signal layoutEditRequested(string layoutId, string field, var value)
     property string selectedId: graph && graph.selectedId ? graph.selectedId : "scene"
 
     readonly property var nodes: graph && graph.nodes ? graph.nodes : []
@@ -25,6 +27,9 @@ Item {
     readonly property string selectedLabel: selectedNode ? selectedNode.label : ""
     readonly property string selectedPath: selectedNode && selectedNode.path !== undefined
         ? String(selectedNode.path) : selectedLabel
+    readonly property string selectedLayoutId: selectedNode && selectedNode.id
+        && String(selectedNode.id).startsWith("layout.")
+        ? String(selectedNode.id).slice(7) : ""
 
     // Cena já resolvida pela engine, indexada por chave de layout. Sem isto o
     // canvas não desenha — e diz que não desenhou, em vez de mostrar vazio.
@@ -205,6 +210,61 @@ Item {
                 text: studio.selectedPath
                 color: "#5f6b85"
                 font.pixelSize: 10
+            }
+            Column {
+                objectName: "studioLayoutEditor"
+                visible: studio.selectedKind === "layout" && !studio.readOnly
+                width: inspector.width
+                spacing: 3
+                Text {
+                    text: qsTr("Edição declarativa")
+                    color: "#8b93a8"
+                    font.pixelSize: 11
+                }
+                SpinBox {
+                    objectName: "studioLayoutColumns"
+                    from: 1
+                    to: 16
+                    value: studio.selectedNode && studio.selectedNode.properties
+                        ? Number(studio.selectedNode.properties.columns) || 1 : 1
+                    enabled: studio.selectedKind === "layout" && !studio.readOnly
+                    onValueModified: studio.layoutEditRequested(
+                        studio.selectedLayoutId, "columns", value)
+                    Accessible.name: qsTr("Colunas do layout")
+                }
+                SpinBox {
+                    objectName: "studioLayoutGap"
+                    from: 0
+                    to: 256
+                    value: studio.selectedNode && studio.selectedNode.properties
+                        ? Number(studio.selectedNode.properties.gap) || 0 : 0
+                    enabled: studio.selectedKind === "layout" && !studio.readOnly
+                    onValueModified: studio.layoutEditRequested(
+                        studio.selectedLayoutId, "gap", value)
+                    Accessible.name: qsTr("Espaço do layout")
+                }
+                SpinBox {
+                    objectName: "studioLayoutItemWidth"
+                    from: 1
+                    to: 2048
+                    value: studio.selectedNode && studio.selectedNode.properties
+                        ? Number(studio.selectedNode.properties.itemWidth) || 1 : 1
+                    enabled: studio.selectedKind === "layout" && !studio.readOnly
+                    onValueModified: studio.layoutEditRequested(
+                        studio.selectedLayoutId, "item.width", value)
+                    Accessible.name: qsTr("Largura do item")
+                }
+                SpinBox {
+                    objectName: "studioLayoutItemHeight"
+                    from: 1
+                    to: 2048
+                    value: studio.selectedNode && studio.selectedNode.properties
+                        ? Number(studio.selectedNode.properties.itemHeight) || 1 : 1
+                    enabled: studio.selectedKind === "layout" && !studio.readOnly
+                    onValueModified: studio.layoutEditRequested(
+                        studio.selectedLayoutId, "item.height", value)
+                    Accessible.name: qsTr("Altura do item")
+                }
             }
             Repeater {
                 model: studio.selectedNode && studio.selectedNode.properties

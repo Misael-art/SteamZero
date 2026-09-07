@@ -7,6 +7,7 @@ Item {
     width: 520
     height: 180
     property int failures: 0
+    property var editRequests: []
     function check(condition, message) {
         if (!condition) {
             failures += 1
@@ -17,6 +18,10 @@ Item {
     ThemeStudioCanvas {
         id: canvas
         anchors.fill: parent
+        readOnly: false
+        onLayoutEditRequested: function(layoutId, field, value) {
+            harness.editRequests.push([layoutId, field, value])
+        }
         scene: ({
             "layouts": {
                 "previewTitles": {
@@ -52,7 +57,9 @@ Item {
                  "depth": 0, "path": "Cena"},
                 {"id": "layout.previewTitles", "kind": "layout", "label": "previewTitles",
                  "parent": "scene", "children": [],
-                 "properties": {"kind": "grid", "columns": 4, "entries": 4,
+                 "properties": {"kind": "grid", "columns": 4, "gap": 8,
+                                "maxItems": 16, "itemWidth": 120, "itemHeight": 64,
+                                "entries": 4,
                                 "previewKey": "previewTitles"},
                  "depth": 1, "path": "Cena / previewTitles"},
                 {"id": "effect.focusedCover", "kind": "effect", "label": "focusedCover",
@@ -97,6 +104,13 @@ Item {
             harness.check(canvas.nodeCount === 8, "canvas não recebeu a árvore")
             harness.check(canvas.select("layout.previewTitles") === true, "seleção falhou")
             harness.check(canvas.selectedKind === "layout", "inspector não acompanhou o nó")
+            harness.check(canvas.selectedLayoutId === "previewTitles",
+                          "editor precisa expor o id declarativo do layout")
+            canvas.layoutEditRequested("previewTitles", "columns", 6)
+            harness.check(harness.editRequests.length === 1
+                          && harness.editRequests[0][1] === "columns"
+                          && harness.editRequests[0][2] === 6,
+                          "edição do layout precisa emitir um pedido seguro")
             harness.check(canvas.select("effect.focusedCover.0") === true, "efeito não selecionou")
             harness.check(canvas.selectedKind === "effect", "inspector não acompanhou o efeito")
             harness.check(canvas.select("layout.previewTitles") === true,

@@ -1737,6 +1737,21 @@ Rectangle {
                             anchors.margins: 12
                             anchors.topMargin: 32
                             graph: panel.studioGraph
+                            readOnly: panel.editorReadOnly
+                            onLayoutEditRequested: function(layoutId, field, value) {
+                                panel.editorDirty = true
+                                panel.requestAction("theme.editor.set-layout", {
+                                    sessionId: panel.editorSessionId,
+                                    layoutId: layoutId,
+                                    field: field,
+                                    value: value
+                                }, function(r) {
+                                    if (r.preview) {
+                                        panel.editorPreviewObject = r.preview
+                                        panel.editorTokens = r.preview.resolved || {}
+                                    }
+                                })
+                            }
                             // A mesma cena resolvida que a interface desenha:
                             // o canvas do Studio não recebe uma versão própria.
                             scene: panel._previewBridge.sceneLayoutPreview

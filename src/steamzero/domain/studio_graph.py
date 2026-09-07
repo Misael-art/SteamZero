@@ -359,9 +359,15 @@ def _layout_nodes(preview: Mapping[str, Any], children: list[str]) -> list[Studi
         return []
     nodes: list[StudioNode] = []
     diagnostics = layouts.get("diagnostics")
+    declared_recipes = preview.get("sceneLayouts")
+    declared_layouts = (
+        declared_recipes.get("layouts") if isinstance(declared_recipes, Mapping) else None
+    )
     for name, layout in declared.items():
         if not isinstance(layout, Mapping):
             continue
+        recipe = declared_layouts.get(name) if isinstance(declared_layouts, Mapping) else None
+        item = recipe.get("item") if isinstance(recipe, Mapping) else None
         node_id = f"layout.{name}"
         children.append(node_id)
         entries = layout.get("entries")
@@ -376,6 +382,10 @@ def _layout_nodes(preview: Mapping[str, Any], children: list[str]) -> list[Studi
                     "kind": layout.get("kind"),
                     "columns": layout.get("columns"),
                     "entries": count,
+                    "gap": recipe.get("gap") if isinstance(recipe, Mapping) else None,
+                    "maxItems": recipe.get("maxItems") if isinstance(recipe, Mapping) else None,
+                    "itemWidth": item.get("width") if isinstance(item, Mapping) else None,
+                    "itemHeight": item.get("height") if isinstance(item, Mapping) else None,
                     # Chave da cena deste nó dentro de `sceneLayoutPreview`. O
                     # canvas desenha a partir daqui em vez de fatiar o id: se o
                     # formato do id mudasse, o desenho sumiria em silêncio.
