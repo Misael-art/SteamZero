@@ -68,6 +68,72 @@ class TestRetrofeImport:
             "license": "CC0-1.0",
         }
 
+    def test_apply_copies_referenced_assets_to_content_store(self, tmp_path, monkeypatch):  # type: ignore[no-untyped-def]
+        dashboard = _dashboard(tmp_path, monkeypatch)
+        source = tmp_path / "retrofe"
+        (source / "assets").mkdir(parents=True)
+        (source / "layout.xml").write_text(
+            '<layout><image src="logo.png" /></layout>', encoding="utf-8"
+        )
+        (source / "assets" / "logo.png").write_bytes(b"synthetic licensed asset")
+
+        result = dashboard.theme_import_retrofe_apply(
+            str(source),
+            "layout",
+            "org.example.retrofe-assets",
+            "RetroFE com assets",
+            "Autor",
+            "CC0-1.0",
+        )
+
+        assert result["assets"]["count"] == 1
+        manifest = Path(result["assets"]["manifestPath"])
+        assert manifest.is_file()
+        stored = next(iter(result["assets"]["files"].values()))
+        blob = (
+            tmp_path
+            / "data"
+            / "steamzero"
+            / "theme-assets"
+            / "blobs"
+            / stored["digest"][:2]
+            / stored["digest"]
+        )
+        assert blob.read_bytes() == b"synthetic licensed asset"
+
+    def test_apply_refuses_missing_referenced_asset(self, tmp_path, monkeypatch):  # type: ignore[no-untyped-def]
+        dashboard = _dashboard(tmp_path, monkeypatch)
+        source = tmp_path / "retrofe"
+        source.mkdir()
+        (source / "layout.xml").write_text(
+            '<layout><image src="missing.png" /></layout>', encoding="utf-8"
+        )
+
+        with pytest.raises(SteamZeroError, match="assets RetroFE"):
+            dashboard.theme_import_retrofe_apply(
+                str(source),
+                "layout",
+                "org.example.retrofe-missing",
+                "RetroFE",
+                "Autor",
+                "MIT",
+            )
+        assert not (
+            tmp_path / "data" / "steamzero" / "scenes" / "org.example.retrofe-missing.json"
+        ).exists()
+
+    def test_apply_validates_license_identifier(self, tmp_path, monkeypatch):  # type: ignore[no-untyped-def]
+        dashboard = _dashboard(tmp_path, monkeypatch)
+        with pytest.raises(SteamZeroError, match="licença inválida"):
+            dashboard.theme_import_retrofe_apply(
+                str(FIXTURE),
+                "vs04_positive",
+                "org.example.retrofe-license",
+                "RetroFE",
+                "Autor",
+                "MIT license",
+            )
+
     def test_overwrite_requires_explicit_confirmation(self, tmp_path, monkeypatch):  # type: ignore[no-untyped-def]
         dashboard = _dashboard(tmp_path, monkeypatch)
         args = (

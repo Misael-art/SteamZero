@@ -61,6 +61,17 @@ Rectangle {
     property bool packageImportBusy: false
     property string packageImportNotice: ""
     property bool packageImportNoticeIsError: false
+    property string retrofeImportSource: ""
+    property var retrofeImportLayouts: []
+    property int retrofeImportLayoutIndex: -1
+    property string retrofeImportSceneId: ""
+    property string retrofeImportName: ""
+    property string retrofeImportAuthor: ""
+    property string retrofeImportLicense: ""
+    property bool retrofeImportOverwrite: false
+    property bool retrofeImportBusy: false
+    property string retrofeImportNotice: ""
+    property bool retrofeImportNoticeIsError: false
     // Objeto QML completo do tema (themeId/themeVersion/resolved/effects), na
     // forma exata de ``to_theme_qml_object``. O ThemeBridge espera esse formato
     // em ``_source.resolved`` — alimentá-lo com o dicionário de tokens puro
@@ -289,6 +300,81 @@ Rectangle {
         })
     }
 
+    function resetRetrofeImport() {
+        panel.retrofeImportSource = ""
+        panel.retrofeImportLayouts = []
+        panel.retrofeImportLayoutIndex = -1
+        panel.retrofeImportSceneId = ""
+        panel.retrofeImportName = ""
+        panel.retrofeImportAuthor = ""
+        panel.retrofeImportLicense = ""
+        panel.retrofeImportOverwrite = false
+        panel.retrofeImportBusy = false
+        panel.retrofeImportNotice = ""
+        panel.retrofeImportNoticeIsError = false
+    }
+
+    function inspectRetrofeImport() {
+        const source = panel.retrofeImportSource.trim()
+        if (source === "")
+            return
+        panel.retrofeImportBusy = true
+        panel.retrofeImportNotice = ""
+        panel.retrofeImportNoticeIsError = false
+        panel.requestAction("theme.import.retrofe.inspect", {source: source},
+            function(response) {
+                panel.retrofeImportBusy = false
+                panel.retrofeImportLayouts = response && response.layouts
+                    ? response.layouts : []
+                panel.retrofeImportLayoutIndex = panel.retrofeImportLayouts.length > 0 ? 0 : -1
+                panel.retrofeImportNotice = panel.retrofeImportLayouts.length > 0
+                    ? qsTr("Escolha um layout e confirme os créditos antes de publicar a cena.")
+                    : qsTr("Nenhum layout RetroFE importável foi encontrado.")
+                panel.retrofeImportNoticeIsError = panel.retrofeImportLayouts.length === 0
+            },
+            function(message) {
+                panel.retrofeImportBusy = false
+                panel.retrofeImportLayouts = []
+                panel.retrofeImportLayoutIndex = -1
+                panel.retrofeImportNotice = String(message || qsTr("Não foi possível examinar a cena RetroFE."))
+                panel.retrofeImportNoticeIsError = true
+            })
+    }
+
+    function applyRetrofeImport() {
+        if (panel.retrofeImportLayoutIndex < 0
+                || panel.retrofeImportSceneId.trim() === ""
+                || panel.retrofeImportName.trim() === ""
+                || panel.retrofeImportAuthor.trim() === ""
+                || panel.retrofeImportLicense.trim() === "")
+            return
+        const selected = panel.retrofeImportLayouts[panel.retrofeImportLayoutIndex]
+        const layout = selected && selected.id ? String(selected.id) : ""
+        if (layout === "")
+            return
+        panel.retrofeImportBusy = true
+        panel.retrofeImportNotice = ""
+        panel.retrofeImportNoticeIsError = false
+        panel.requestAction("theme.import.retrofe.apply", {
+            source: panel.retrofeImportSource.trim(),
+            layout: layout,
+            sceneId: panel.retrofeImportSceneId.trim(),
+            name: panel.retrofeImportName.trim(),
+            author: panel.retrofeImportAuthor.trim(),
+            license: panel.retrofeImportLicense.trim(),
+            overwrite: panel.retrofeImportOverwrite
+        }, function(_response) {
+            panel.retrofeImportBusy = false
+            panel.retrofeImportNotice = qsTr("Cena RetroFE publicada com assets validados; ela ainda não foi ativada.")
+            panel.retrofeImportNoticeIsError = false
+            panel.refreshThemeList()
+        }, function(message) {
+            panel.retrofeImportBusy = false
+            panel.retrofeImportNotice = String(message || qsTr("Não foi possível importar a cena RetroFE."))
+            panel.retrofeImportNoticeIsError = true
+        })
+    }
+
     function _mergeTokens(category, values) {
         var copy = JSON.parse(JSON.stringify(panel.editorTokens))
         if (!copy[category]) copy[category] = {}
@@ -491,6 +577,44 @@ Rectangle {
 
             Label {
                 text: qsTr("ES-DE → tema editável, sem aplicar automaticamente")
+                color: panel.mutedColor
+                font.pixelSize: 12
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+        }
+
+        RowLayout {
+            Layout.leftMargin: 20
+            Layout.rightMargin: 20
+            Layout.minimumHeight: 48
+            spacing: 12
+
+            Button {
+                objectName: "themeImportRetrofeButton"
+                text: qsTr("Importar cena RetroFE")
+                Layout.minimumHeight: 48
+                Layout.preferredWidth: 220
+                Accessible.name: text
+                Accessible.description: qsTr("Examina um layout RetroFE e publica uma cena com assets validados")
+                onClicked: retrofeImportDialog.open()
+                background: Rectangle {
+                    color: parent.hovered ? panel.cyanColor : panel.surfaceColor
+                    radius: 8
+                    border.color: parent.activeFocus ? panel.textColor : panel.cyanColor
+                    border.width: parent.activeFocus ? 2 : 1
+                }
+                contentItem: Label {
+                    text: parent.text
+                    color: parent.hovered ? "#071019" : panel.cyanColor
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    font.weight: Font.Medium
+                }
+            }
+
+            Label {
+                text: qsTr("RetroFE → cena IR, créditos e assets verificados antes de publicar")
                 color: panel.mutedColor
                 font.pixelSize: 12
                 wrapMode: Text.WordWrap
@@ -885,10 +1009,246 @@ Rectangle {
         }
     }
 
+    Dialog {
+        id: retrofeImportDialog
+        objectName: "themeImportRetrofeDialog"
+        modal: true
+        closePolicy: Popup.CloseOnEscape
+        width: Math.min(panel.width - 24, 700)
+        height: Math.min(panel.height - 24, 650)
+        x: (panel.width - width) / 2
+        y: (panel.height - height) / 2
+        title: qsTr("Importar cena RetroFE")
+        standardButtons: Dialog.NoButton
+        onOpened: retrofeImportSourceField.forceActiveFocus()
+        onClosed: panel.resetRetrofeImport()
+
+        contentItem: ColumnLayout {
+            spacing: 10
+
+            Label {
+                text: qsTr("Examine primeiro. A cena é compilada para o IR comum, assets são copiados para o store por conteúdo e nada é ativado automaticamente.")
+                color: panel.mutedColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                TextField {
+                    id: retrofeImportSourceField
+                    objectName: "themeImportRetrofeSource"
+                    text: panel.retrofeImportSource
+                    placeholderText: qsTr("Pasta ou layout XML do RetroFE")
+                    Accessible.name: qsTr("Pasta ou layout XML do RetroFE")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 44
+                    onTextChanged: panel.retrofeImportSource = text
+                }
+                Button {
+                    objectName: "themeImportRetrofeBrowseFolder"
+                    text: qsTr("Pasta")
+                    Accessible.name: text
+                    Layout.minimumHeight: 44
+                    onClicked: retrofeImportFolderDialog.open()
+                }
+                Button {
+                    objectName: "themeImportRetrofeBrowseFile"
+                    text: qsTr("XML")
+                    Accessible.name: text
+                    Layout.minimumHeight: 44
+                    onClicked: retrofeImportFileDialog.open()
+                }
+                Button {
+                    objectName: "themeImportRetrofeInspect"
+                    text: qsTr("Examinar")
+                    enabled: !panel.retrofeImportBusy && panel.retrofeImportSource.trim() !== ""
+                    Accessible.name: text
+                    Accessible.description: enabled
+                        ? qsTr("Compila a prévia sem gravar arquivos")
+                        : qsTr("Informe a origem antes de examinar")
+                    Layout.minimumHeight: 44
+                    onClicked: panel.inspectRetrofeImport()
+                }
+            }
+
+            Label {
+                text: panel.retrofeImportNotice
+                visible: panel.retrofeImportNotice !== ""
+                color: panel.retrofeImportNoticeIsError ? panel.redColor : panel.greenColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
+            Label {
+                text: qsTr("Layouts encontrados")
+                visible: panel.retrofeImportLayouts.length > 0
+                color: panel.textColor
+                font.weight: Font.Medium
+            }
+
+            ScrollView {
+                visible: panel.retrofeImportLayouts.length > 0
+                Layout.fillWidth: true
+                Layout.preferredHeight: 150
+                clip: true
+                contentWidth: availableWidth
+                ColumnLayout {
+                    width: parent.availableWidth
+                    spacing: 4
+                    Repeater {
+                        model: panel.retrofeImportLayouts
+                        delegate: RowLayout {
+                            required property int index
+                            required property var modelData
+                            Layout.fillWidth: true
+                            Layout.minimumHeight: 44
+                            RadioButton {
+                                text: modelData && modelData.name
+                                    ? String(modelData.name) : qsTr("Layout")
+                                checked: panel.retrofeImportLayoutIndex === index
+                                Accessible.name: qsTr("Layout %1").arg(text)
+                                onClicked: panel.retrofeImportLayoutIndex = index
+                            }
+                            Label {
+                                text: modelData && modelData.report
+                                    ? qsTr("%1 elementos · %2 degradados").arg(modelData.report.elements)
+                                        .arg(modelData.report.degraded)
+                                    : qsTr("relatório indisponível")
+                                color: panel.mutedColor
+                                font.pixelSize: 11
+                                Layout.fillWidth: true
+                                elide: Text.ElideRight
+                            }
+                        }
+                    }
+                }
+            }
+
+            Label {
+                readonly property var selectedLayout: panel.retrofeImportLayoutIndex >= 0
+                    ? panel.retrofeImportLayouts[panel.retrofeImportLayoutIndex] : null
+                text: selectedLayout && selectedLayout.assets
+                    ? (selectedLayout.assets.ready
+                        ? qsTr("Assets prontos: %1").arg(selectedLayout.assets.available.length)
+                        : qsTr("Assets ausentes/recusados: %1").arg(
+                            selectedLayout.assets.missing.length + selectedLayout.assets.refused.length))
+                    : ""
+                visible: text !== ""
+                color: selectedLayout && selectedLayout.assets && selectedLayout.assets.ready
+                    ? panel.greenColor : panel.amberColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
+            GridLayout {
+                columns: 2
+                visible: panel.retrofeImportLayouts.length > 0
+                Layout.fillWidth: true
+                columnSpacing: 10
+                rowSpacing: 8
+
+                Label { text: qsTr("ID da cena"); color: panel.mutedColor }
+                TextField {
+                    id: retrofeImportSceneIdField
+                    objectName: "themeImportRetrofeSceneId"
+                    text: panel.retrofeImportSceneId
+                    placeholderText: qsTr("org.exemplo.retrofe")
+                    Accessible.name: qsTr("ID da cena RetroFE")
+                    Layout.fillWidth: true
+                    onTextChanged: panel.retrofeImportSceneId = text
+                }
+                Label { text: qsTr("Nome"); color: panel.mutedColor }
+                TextField {
+                    id: retrofeImportNameField
+                    objectName: "themeImportRetrofeName"
+                    text: panel.retrofeImportName
+                    placeholderText: qsTr("Nome da cena")
+                    Accessible.name: qsTr("Nome da cena RetroFE")
+                    Layout.fillWidth: true
+                    onTextChanged: panel.retrofeImportName = text
+                }
+                Label { text: qsTr("Autor"); color: panel.mutedColor }
+                TextField {
+                    id: retrofeImportAuthorField
+                    objectName: "themeImportRetrofeAuthor"
+                    text: panel.retrofeImportAuthor
+                    placeholderText: qsTr("Autor do tema")
+                    Accessible.name: qsTr("Autor do tema RetroFE")
+                    Layout.fillWidth: true
+                    onTextChanged: panel.retrofeImportAuthor = text
+                }
+                Label { text: qsTr("Licença"); color: panel.mutedColor }
+                TextField {
+                    id: retrofeImportLicenseField
+                    objectName: "themeImportRetrofeLicense"
+                    text: panel.retrofeImportLicense
+                    placeholderText: qsTr("SPDX, por exemplo CC0-1.0")
+                    Accessible.name: qsTr("Licença do tema RetroFE")
+                    Layout.fillWidth: true
+                    onTextChanged: panel.retrofeImportLicense = text
+                }
+            }
+
+            CheckBox {
+                objectName: "themeImportRetrofeOverwrite"
+                text: qsTr("Substituir uma cena existente explicitamente")
+                checked: panel.retrofeImportOverwrite
+                visible: panel.retrofeImportLayouts.length > 0
+                Accessible.name: text
+                onToggled: panel.retrofeImportOverwrite = checked
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Button {
+                    text: qsTr("Cancelar")
+                    Accessible.name: text
+                    Layout.minimumHeight: 44
+                    onClicked: retrofeImportDialog.close()
+                }
+                Item { Layout.fillWidth: true }
+                Button {
+                    objectName: "themeImportRetrofeApply"
+                    text: panel.retrofeImportBusy ? qsTr("Importando…") : qsTr("Publicar cena")
+                    enabled: !panel.retrofeImportBusy
+                        && panel.retrofeImportLayoutIndex >= 0
+                        && panel.retrofeImportSceneId.trim() !== ""
+                        && panel.retrofeImportName.trim() !== ""
+                        && panel.retrofeImportAuthor.trim() !== ""
+                        && panel.retrofeImportLicense.trim() !== ""
+                    Accessible.name: text
+                    Accessible.description: enabled
+                        ? qsTr("Grava a cena e seus assets no armazenamento gerenciado sem ativar")
+                        : qsTr("Examine um layout e informe ID, nome, autor e licença")
+                    Layout.minimumHeight: 44
+                    onClicked: panel.applyRetrofeImport()
+                }
+            }
+        }
+    }
+
     FolderDialog {
         id: esdeImportFolderDialog
         title: qsTr("Escolher pasta do tema ES-DE")
         onAccepted: panel.esdeImportSource = panel.localPath(selectedFolder)
+    }
+
+    FolderDialog {
+        id: retrofeImportFolderDialog
+        title: qsTr("Escolher pasta do tema RetroFE")
+        onAccepted: panel.retrofeImportSource = panel.localPath(selectedFolder)
+    }
+
+    FileDialog {
+        id: retrofeImportFileDialog
+        title: qsTr("Escolher layout XML RetroFE")
+        fileMode: FileDialog.OpenFile
+        nameFilters: [qsTr("Layouts RetroFE (*.xml)"), qsTr("Todos os arquivos (*)")]
+        onAccepted: {
+            panel.retrofeImportSource = panel.localPath(selectedFile)
+            panel.inspectRetrofeImport()
+        }
     }
 
     FileDialog {
