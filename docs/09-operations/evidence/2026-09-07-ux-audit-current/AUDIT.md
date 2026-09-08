@@ -12,7 +12,9 @@ de jogos pronta: o acervo fullscreen não tem artwork suficiente, a central
 mostra perfil desatualizado com contraste fraco, e a aba Temas perde o catálogo
 na bridge embora a CLI conheça os temas.
 
-O escopo permanece a matriz completa dos 43 itens não agregados. As linhas
+O escopo permanece a matriz completa dos 44 itens não agregados atuais. O prompt
+e o relatório anterior mencionavam 43; a discrepância está registrada na fonte
+de observações, não omitida silenciosamente. As linhas
 abaixo preservam as confirmações históricas quando nenhum código correspondente
 mudou; a atualização desta release está destacada no Theme Studio e na prova de
 contraste. `N` continua significando não validado, nunca sucesso presumido.

@@ -9768,3 +9768,13 @@ O documento registra a Central com zero títulos publicados nesta sessão, não
 transformando harness sintético em prova de Launcher/arte. `make status-render`,
 `make status-check` e `git diff --check` passaram. Nenhum reboot, logout ou
 encerramento da sessão KDE foi executado.
+
+## 2026-09-07 — Sessão: correção da contagem do catálogo da reauditoria
+
+Uma checagem posterior do checkout atual contou 56 itens JSON em
+`docs/status/items/`: 12 agregados e 44 não agregados. O número 43 usado no
+prompt e no fechamento anterior não corresponde ao catálogo presente; a
+reauditoria foi corrigida para declarar os 44 itens e a discrepância ficou
+registrada explicitamente, sem omissão silenciosa. `make status-check` foi
+reexecutado após a correção. Nenhum host, reboot, logout ou sessão KDE foi
+encerrado.
