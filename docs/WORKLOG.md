@@ -9825,3 +9825,32 @@ encerramento da sessão KDE. A matriz registrou 56 JSONs, 12 agregados e 44
 itens não agregados; a diferença para os 43 itens citados no prompt foi
 preservada como achado de governança. `make status-render`, `make status-check`
 e `git diff --check` passaram.
+
+## 2026-09-08 — Sessão: parecer e plano AURA fullscreen/plataforma
+
+O parecer de prontidão do SteamZero foi registrado em
+`docs/12-roadmap/AURA-FULLSCREEN-PLATFORM-EXECUTION-PLAN.md`. O documento
+classifica o produto como RC técnica/beta interna: a fundação transacional e a
+fatia do AURA Launcher são reais, mas a experiência de consumidor ainda não
+atinge Big Picture/console por lacunas de integração física, artwork,
+onboarding, operações longas e acabamento visual.
+
+Foi tomada a decisão de produto de usar o **AURA Cinema** como tema fullscreen
+default: implementação independente inspirada na direção cinematográfica do
+Aura/RetroFE/BigBox, com arte em primeiro plano, fanart blur, capa central,
+paleta adaptativa, tiers low/balanced/cinematic, fallback seguro, high contrast
+e reduced motion. A decisão não copia código, assets, marca ou formato de
+terceiros.
+
+A especificação anexada foi decomposta em 18 capacidades AURA-01..AURA-18,
+seis ondas de execução e 15 papéis multiagente A0..A14, cada um com escopo
+exclusivo, dependências, entregáveis, testes e proibições. O novo item
+`SZ-AURA-PLATFORM-EXECUTION-PLAN` foi adicionado ao catálogo como `planned`,
+sem promover qualquer capacidade existente.
+
+Validação: `STATUS-CHECK`, Ruff, formatação, mypy em 256 módulos, fronteiras e
+independência passaram; o teste focado de service core passou 43/43 com
+`TMPDIR=/tmp`. A suíte integral terminou com 5.585 passados, 44 skips e uma
+falha ambiental `AF_UNIX path too long` causada pelo diretório temporário longo
+do Codex; o daemon ativo também escreveu logs/estado real, conforme o aviso do
+harness. Nenhum código de produção, host, release ou instalação foi alterado.
