@@ -14,16 +14,18 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from steamzero.core import fs, paths
 from steamzero.core.errors import SteamZeroError
+from steamzero.domain import theme_assets
 from steamzero.domain.scene_retrofe import compile_layout, fidelity_report
 
 MAX_LAYOUT_BYTES = 8 * 1024 * 1024
 MAX_LAYOUTS = 64
 SCENE_ID = re.compile(r"^[a-z0-9]+(?:[.-][a-z0-9]+)*$")
+LICENSE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9+.-]{0,63}$")
 
 
 @dataclass(frozen=True)
@@ -127,8 +129,77 @@ def _read_layout(layout: LayoutSource) -> str:
         ) from exc
 
 
+def _asset_references(scene: dict[str, Any]) -> list[str]:
+    """Collect package-relative asset references from a compiled scene."""
+    found: set[str] = set()
+
+    def visit(value: Any) -> None:
+        if isinstance(value, dict):
+            asset = value.get("asset")
+            if isinstance(asset, str):
+                found.add(asset)
+            for child in value.values():
+                visit(child)
+        elif isinstance(value, list):
+            for child in value:
+                visit(child)
+
+    visit(scene)
+    return sorted(found)
+
+
+def _asset_path(root: Path, logical_path: str) -> Path:
+    """Resolve one asset without following a source-tree symlink."""
+    prefix = "assets/"
+    if not logical_path.startswith(prefix):
+        raise SteamZeroError("E-THEME-UNSAFE", detail=f"asset fora do pacote: {logical_path!r}")
+    relative = PurePosixPath(logical_path)
+    if relative.is_absolute() or ".." in relative.parts or not relative.parts:
+        raise SteamZeroError(
+            "E-THEME-UNSAFE", detail=f"caminho de asset inválido: {logical_path!r}"
+        )
+    candidate = root.joinpath(*relative.parts)
+    if any(part.is_symlink() for part in (root, *candidate.parents, candidate)):
+        raise SteamZeroError("E-THEME-UNSAFE", detail=f"asset é symlink: {logical_path!r}")
+    try:
+        candidate.relative_to(root)
+    except ValueError as exc:
+        raise SteamZeroError(
+            "E-THEME-UNSAFE", detail=f"asset fora da origem: {logical_path!r}"
+        ) from exc
+    if not candidate.is_file():
+        raise SteamZeroError("E-THEME-NOT-FOUND", detail=f"asset ausente: {logical_path!r}")
+    return candidate
+
+
+def _asset_report(root: Path, scene: dict[str, Any]) -> dict[str, Any]:
+    """Inspect asset custody without writing to the managed store."""
+    references = _asset_references(scene)
+    available: list[str] = []
+    missing: list[str] = []
+    refused: list[str] = []
+    for logical_path in references:
+        try:
+            _asset_path(root, logical_path)
+        except SteamZeroError as exc:
+            if exc.code == "E-THEME-NOT-FOUND":
+                missing.append(logical_path)
+            else:
+                refused.append(logical_path)
+            continue
+        available.append(logical_path)
+    return {
+        "referenced": references,
+        "available": available,
+        "missing": missing,
+        "refused": refused,
+        "ready": not missing and not refused,
+    }
+
+
 def inspect(source: str) -> dict[str, Any]:
     """Compila os layouts e devolve a prévia completa, sem escrever."""
+    root, _target = _source_root(source)
     layouts: list[dict[str, Any]] = []
     for layout in discover_layouts(source):
         scene = compile_layout(
@@ -139,6 +210,7 @@ def inspect(source: str) -> dict[str, Any]:
             {
                 **layout.to_dict(),
                 "report": report,
+                "assets": _asset_report(root, scene),
                 "degraded": list(scene.get("degraded", [])),
                 "scene": scene,
             }
@@ -150,6 +222,13 @@ def inspect(source: str) -> dict[str, Any]:
         "layoutCount": len(layouts),
         "totalElements": sum(int(item["report"]["elements"]) for item in layouts),
         "totalDegraded": sum(int(item["report"]["degraded"]) for item in layouts),
+        "assets": {
+            "referenced": sorted(
+                {asset for item in layouts for asset in item["assets"]["referenced"]}
+            ),
+            "missing": sorted({asset for item in layouts for asset in item["assets"]["missing"]}),
+            "refused": sorted({asset for item in layouts for asset in item["assets"]["refused"]}),
+        },
     }
 
 
@@ -192,6 +271,9 @@ def apply(
         raise SteamZeroError("E-THEME-MANIFEST", detail=f"id de cena inválido: {scene_id!r}")
     if not name.strip() or not author.strip() or not license_id.strip():
         raise SteamZeroError("E-THEME-MANIFEST", detail="nome, autor e licença são obrigatórios")
+    if not LICENSE_ID.fullmatch(license_id.strip()):
+        raise SteamZeroError("E-THEME-MANIFEST", detail=f"licença inválida: {license_id!r}")
+    root, _target = _source_root(source)
     selected = _select_layout(source, layout)
     scene = compile_layout(
         _read_layout(selected),
@@ -201,6 +283,13 @@ def apply(
         license_id=license_id.strip(),
         view_id=selected.layout_id,
     )
+    asset_report = _asset_report(root, scene)
+    if not asset_report["ready"]:
+        missing = asset_report["missing"] + asset_report["refused"]
+        raise SteamZeroError(
+            "E-CONTENT-INCOMPLETE",
+            detail=f"assets RetroFE indisponíveis ou recusados: {', '.join(missing[:8])}",
+        )
     target = paths.scenes_dir() / f"{scene_id}.json"
     if target.exists() and not overwrite:
         raise SteamZeroError(
@@ -209,7 +298,33 @@ def apply(
         )
     if target.is_symlink():
         raise SteamZeroError("E-THEME-UNSAFE", detail="destino de cena é symlink")
+    asset_manifest = paths.scenes_dir() / f"{scene_id}.assets.json"
+    if asset_manifest.is_symlink():
+        raise SteamZeroError("E-THEME-UNSAFE", detail="manifesto de assets é symlink")
+    store = theme_assets.ThemeAssetStore(paths.theme_assets_dir())
+    stored_assets = {}
+    for logical_path in asset_report["available"]:
+        stored = store.put(logical_path, _asset_path(root, logical_path).read_bytes())
+        stored_assets[logical_path] = stored.to_dict()
     fs.write_atomic_text(target, json.dumps(scene, ensure_ascii=False, indent=2) + "\n")
+    fs.write_atomic_text(
+        asset_manifest,
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "sceneId": scene_id,
+                "origin": {
+                    "family": "retrofe",
+                    "author": author.strip(),
+                    "license": license_id.strip(),
+                },
+                "assets": stored_assets,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+    )
     return {
         "sceneId": scene_id,
         "path": str(target),
@@ -217,5 +332,10 @@ def apply(
         "family": "retrofe",
         "report": fidelity_report(scene),
         "degraded": list(scene.get("degraded", [])),
+        "assets": {
+            "count": len(stored_assets),
+            "manifestPath": str(asset_manifest),
+            "files": stored_assets,
+        },
         "activated": False,
     }

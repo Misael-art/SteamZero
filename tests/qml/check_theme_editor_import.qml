@@ -16,9 +16,14 @@ Window {
     property int applyRequests: 0
     property int packageInspectRequests: 0
     property int packageApplyRequests: 0
+    property int retrofeInspectRequests: 0
+    property int retrofeApplyRequests: 0
     property string lastScheme: ""
     property string lastName: ""
     property bool lastPackageOverwrite: true
+    property string lastRetrofeLayout: ""
+    property string lastRetrofeSceneId: ""
+    property bool lastRetrofeOverwrite: true
 
     function request(method, path, _payload, callback, _errorCallback) {
         if (method === "GET" && path === "/theme/list")
@@ -61,6 +66,22 @@ Window {
             packageApplyRequests += 1
             lastPackageOverwrite = payload.overwrite === true
             callback({"themeId": "org.example.imported"})
+            return
+        }
+        if (actionId === "theme.import.retrofe.inspect") {
+            retrofeInspectRequests += 1
+            callback({"layouts": [
+                {"id": "main", "name": "Main", "report": {"elements": 8, "degraded": 1},
+                    "assets": {"available": ["assets/logo.png"], "missing": [], "refused": [], "ready": true}}
+            ]})
+            return
+        }
+        if (actionId === "theme.import.retrofe.apply") {
+            retrofeApplyRequests += 1
+            lastRetrofeLayout = payload.layout || ""
+            lastRetrofeSceneId = payload.sceneId || ""
+            lastRetrofeOverwrite = payload.overwrite === true
+            callback({"sceneId": lastRetrofeSceneId, "activated": false})
         }
     }
 
@@ -106,6 +127,20 @@ Window {
         panel.applyPackageImport()
         check(packageApplyRequests === 1, "instalar pacote deve chamar o contrato uma vez")
         check(lastPackageOverwrite === false, "pacote novo não deve sobrescrever")
+        panel.retrofeImportSource = "/tmp/retrofe"
+        panel.inspectRetrofeImport()
+        check(retrofeInspectRequests === 1, "examinar RetroFE deve chamar o contrato uma vez")
+        check(panel.retrofeImportLayouts.length === 1, "examinar RetroFE deve publicar os layouts")
+        check(panel.retrofeImportLayoutIndex === 0, "o primeiro layout deve receber foco lógico")
+        panel.retrofeImportSceneId = "org.example.retrofe"
+        panel.retrofeImportName = "Cena RetroFE"
+        panel.retrofeImportAuthor = "Autor RetroFE"
+        panel.retrofeImportLicense = "CC0-1.0"
+        panel.applyRetrofeImport()
+        check(retrofeApplyRequests === 1, "publicar RetroFE deve chamar o contrato uma vez")
+        check(lastRetrofeLayout === "main", "publicar RetroFE deve enviar o id do layout")
+        check(lastRetrofeSceneId === "org.example.retrofe", "publicar RetroFE deve enviar o id da cena")
+        check(lastRetrofeOverwrite === false, "RetroFE novo não deve sobrescrever por padrão")
         Qt.exit(failures)
     }
 }
