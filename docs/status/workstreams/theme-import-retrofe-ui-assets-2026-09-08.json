@@ -6,7 +6,7 @@
   "branch": "codex/theme-import-retrofe-ui-assets-2026-09-08",
   "baseRef": "21c3bf2",
   "owner": "codex-theme-import-retrofe",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
     "tests/qml/check_theme_editor_import.qml",
@@ -20,6 +20,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Adicionar entrada QML RetroFE, materializar assets aprovados no store gerenciado e provar inspeção, aplicação e degradação segura.",
+  "nextAction": "Fechado: implementação, CI, release governada, instalação e captura funcional concluídos.",
   "updatedAt": "2026-09-08"
 }
