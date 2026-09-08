@@ -6,7 +6,9 @@ Release observada: `2.0.0rc1-b09908a58261`, commit de origem
 `b09908a5826174b8ff8d02fbf09f7dcef288edd9`, com CI pós-merge
 `34142341383` verde. A fonte de verdade foi relida em
 `docs/status/items/*.json` e nos documentos AURA; o relatório mantém a matriz
-dos 43 itens não agregados e as hipóteses H1–H15.
+dos 44 itens não agregados atualmente presentes (56 itens JSON, 12 agregados) e
+as hipóteses H1–H15. O número 43 do prompt/relatório anterior não reproduz o
+catálogo atual e fica registrado como discrepância, não como item omitido.
 
 ## Resultado desta rodada
 

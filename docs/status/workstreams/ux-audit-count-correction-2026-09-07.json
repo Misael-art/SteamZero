@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-UX-AUDIT-COUNT-CORRECTION",
+  "item": "SZ-GOVERNANCE-STATUS",
+  "branch": "codex/ux-audit-count-correction-2026-09-07",
+  "baseRef": "e8df29c14b4874b9571235e947bb526ff91140fb",
+  "owner": "codex-ux-audit-count-correction",
+  "state": "closed",
+  "exclusivePaths": [
+    "docs/09-operations/evidence/2026-09-07-ux-audit-current",
+    "docs/status/items/ui-desktop-audit.json",
+    "docs/status/workstreams/ux-audit-count-correction-2026-09-07.json"
+  ],
+  "sharedPaths": ["docs/status", "docs/WORKLOG.md"],
+  "nextAction": "Contagem corrigida para 44 itens não agregados atuais; discrepância histórica 43×44 registrada e status revalidado.",
+  "updatedAt": "2026-09-07"
+}
