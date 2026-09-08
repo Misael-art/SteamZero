@@ -6,7 +6,7 @@
   "branch": "codex/ux-audit-2026-09-08",
   "baseRef": "6e52c14f",
   "owner": "codex-ux-audit",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "docs/09-operations/evidence/2026-09-08-ux-audit"
   ],
@@ -23,6 +23,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Publicar a radiografia consultiva baseada na release ativa, anexar capturas sem segredos e atualizar os itens confirmados sem promover harness a prova física.",
+  "nextAction": "Radiografia publicada e integrada no PR #129; lacunas de produto e validações físicas não alcançadas permanecem explicitamente registradas nos itens responsáveis.",
   "updatedAt": "2026-09-08"
 }
