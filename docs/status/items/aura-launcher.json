@@ -267,9 +267,15 @@
       "reference": "docs/09-operations/evidence/2026-09-05-launcher-p0-loop/CANONICAL-CERTIFICATION.json",
       "command": "Certificação canônica aprovada: machineCycle=true, physicalUi=true, canonicalRomLaunch=true e statePreserved=true; versão CLI 2.0.0rc1, socket/service active, doctor sem operações pendentes nem jobs stale.",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-08-ux-audit/README.md",
+      "command": "Release 2.0.0rc1-435f9108eeb7: Return/Enter lançou ROM real e o jogo sobreviveu ao encerramento do Launcher; 30 setas para direita e F não alteraram a home. PID Launcher 1702338, capturas 11–15.",
+      "result": "partial"
     }
   ],
-  "nextAction": "Auditoria UX de 2026-09-05 confirmou busca/launch/return na release 2.0.0rc1-085169f47186; permanecem cobertura física integral do catálogo, fade de retorno e teste físico de boot do operador.",
+  "nextAction": "Corrigir e provar o roteamento físico de setas/busca na release 2.0.0rc1-435f9108eeb7; cobertura integral do catálogo, fade de retorno e teste físico de boot continuam abertos.",
   "activeWorkstreams": [
     "WS-2026-08-AURA-LAUNCHER",
     "WS-2026-09-LAUNCHER-P0-ACTIVATION",

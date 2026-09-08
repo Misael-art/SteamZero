@@ -86,9 +86,15 @@
       "reference": "docs/09-operations/evidence/2026-09-08-theme-retrofe-ui/02-entrega-funcional.png",
       "command": "janela QML da release instalada carregada de /opt/steamzero/current; captura da entrada e do diálogo de inspeção RetroFE",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-08-ux-audit/README.md",
+      "command": "Auditoria confirmou a entrada/inspeção RetroFE no release 2.0.0rc1-435f9108eeb7 e separou o resultado da ausência de ativação automática da cena.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Continuar a auditoria pelo próximo item elegível; esta capacidade está instalada e sem lacunas conhecidas.",
+  "nextAction": "Manter a entrada RetroFE instalada e documentar explicitamente que inspeção/importação não promove ativação automática da cena.",
   "activeWorkstreams": [],
   "updatedAt": "2026-09-08",
   "notes": "A rota QML RetroFE oferece origem por pasta/XML, inspeção de layouts, relatório de cobertura/degradação, créditos/licença e confirmação explícita. A aplicação valida a licença, recusa assets ausentes ou symlinkados, grava blobs por conteúdo e publica sidecar de custódia junto ao IR; a cena continua sem ativação automática. A release 2.0.0rc1-435f9108eeb7 foi instalada e convergida no host, com rollback 2.0.0rc1-b09908a58261."

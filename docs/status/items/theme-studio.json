@@ -144,9 +144,15 @@
       "reference": "docs/09-operations/evidence/2026-09-07-theme-studio-contrast/02-entrega-funcional.png",
       "command": "release 2.0.0rc1-b09908a58261 instalada; canvas live com layout.previewTitles, arvore, SpinBoxes e inspector claro; status/convergencia/version verificados sem reboot ou logout",
       "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-08-ux-audit/README.md",
+      "command": "Na release 2.0.0rc1-435f9108eeb7 a aba Editar aparência não foi alcançada por input físico confiável; o QML mantém o canvas declarativo read-only para builtin e a limitação foi registrada como não validada.",
+      "result": "partial"
     }
   ],
-  "nextAction": "Obter injetor de input Wayland autorizado/disponível e provar no host a mutação de um SpinBox, persistência ao salvar e reabertura; a superfície visual instalada e o contraste do inspector já estão comprovados.",
+  "nextAction": "Obter input físico confiável e provar na release 2.0.0rc1-435f9108eeb7 a mutação de SpinBox, persistência e reabertura; não promover harness a prova de usuário.",
   "activeWorkstreams": [],
   "updatedAt": "2026-09-07",
   "notes": "Estado permanece parcial pela prova de interação física. O canvas central deixou de ser placeholder: quando o no selecionado e um layout com cena resolvida, ele desenha usando o MESMO SceneRepeater que a interface usa — um renderizador proprio do Studio poderia divergir do que o usuario ve, e o preview mentiria para quem edita. O no de layout passou a declarar previewKey, entao o canvas acha a cena sem fatiar o id: se o formato do id mudasse, o desenho sumiria em silencio. No sem cena propria (binding, motion, efeito) mostra o rotulo e diz por que nao desenhou, em vez de exibir vazio. A arvore ja carrega depth e path, com irmaos de rotulo repetido desambiguados pela posicao. O painel permite editar metadados e propriedades declarativas de layout (colunas, gap, largura e altura do item) no inspector; cada alteracao passa por LayoutRecipeBook, atualiza o preview e so e gravada ao salvar o tema. Temas builtin permanecem read-only. A exportacao percorre FileDialog → plano com precondicoes → confirmacao → ZIP, sem escrita direta pelo QML. A release 2.0.0rc1-b09908a58261 prova visualmente o canvas instalado e o contraste derivado do tema; falta provar a mutacao por input fisico."
