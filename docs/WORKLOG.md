@@ -9800,3 +9800,28 @@ inspeção do layout, o relatório de degradação, o asset pronto e a indicaç�
 que a cena não é ativada automaticamente. O Doctor retornou `ok=true`, sem
 operações pendentes; os avisos existentes de staging órfão e permissão de
 inspeção do boot continuam registrados, sem relação com esta capacidade.
+
+## 2026-09-08 — Sessão: auditoria UX consultiva completa da release ativa
+
+A auditoria da release `2.0.0rc1-435f9108eeb7` percorreu a Central (visão
+geral, Emulação, Steam, Perfis, Saves/Sync, Casting, Sistema, Biblioteca e
+Temas) e o AURA Launcher. Foram anexadas 15 capturas em
+`docs/09-operations/evidence/2026-09-08-ux-audit/`, todas identificadas por
+PID e release no README e sem tokens, chaves ou dados pessoais.
+
+O ciclo físico de jogar foi confirmado: Return/Enter abriu uma ROM real,
+RetroArch/Mesen iniciou, o Launcher voltou ao contexto e o jogo sobreviveu ao
+encerramento do Launcher. A prova adicional de navegação registrou 30 setas e
+F sem alteração observável na home; H1 ficou parcial e a lacuna de input do
+Launcher permaneceu aberta. A aba de edição de temas não foi promovida por
+input físico: o teclado foi confiável em rotas selecionadas, enquanto o mouse
+não foi confiável nesta sessão. O Theme Studio continua independente da AURA UI,
+do AURA Launcher e da Theme Engine.
+
+O estado read-only confirmou daemon PID 807844 convergente, 0 operações/jobs
+pendentes, 1 staging órfão, frontends SRM/ES-DE ausentes e `bootDirect=unknown`.
+Não houve install, rollback, apply de tema/frontend, reboot, logout ou
+encerramento da sessão KDE. A matriz registrou 56 JSONs, 12 agregados e 44
+itens não agregados; a diferença para os 43 itens citados no prompt foi
+preservada como achado de governança. `make status-render`, `make status-check`
+e `git diff --check` passaram.

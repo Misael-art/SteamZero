@@ -92,6 +92,12 @@
       "reference": "docs/09-operations/evidence/2026-09-03-cena-esde/README.md",
       "command": "sondas no host: no compositor Wayland real o video do componente nao reproduzia, enquanto MediaPlayer e VideoOutput puros com o mesmo blob reproduziam (playbackState=Playing) — isolando o defeito no componente e nao no host; depois da correcao o item reporta ready=true com o mp4 real",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-08-ux-audit/README.md",
+      "command": "Inspeção da release instalada confirmou que a cena ES-DE permanece preview separado; SceneEsdeView.qml não possui handler de foco/teclas/movimento e a navegação interna não foi promovida.",
+      "result": "partial"
     }
   ],
   "nextAction": "Desenhar textList, badges e rating e ligar a cena à aparência/navegação real; a auditoria 2026-09-05 confirmou que a central não é substituída e não houve nova medição física de FPS/GPU/memória.",

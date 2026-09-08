@@ -19,8 +19,8 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-SERVICE-API | 11 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TESTS | 405 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TOOLS | 39 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AURA-LAUNCHER | 204 | 34 | 27 | hw |  |
-| SZ-AURA-UI | 16 | 4 | 4 | unit |  |
+| SZ-AURA-LAUNCHER | 204 | 35 | 27 | hw |  |
+| SZ-AURA-UI | 16 | 5 | 4 | unit |  |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
 | SZ-COMPONENT-LIFECYCLE | 23 | 12 | 10 | hw |  |
@@ -54,13 +54,13 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-PLATFORM-VITA-CATALOG | 5 | 3 | 2 | unit |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
 | SZ-SYSTEM-DIAGNOSTICS-GUIDANCE | 2 | 3 | 2 | unit |  |
-| SZ-THEME-ENGINE | 78 | 35 | 33 | hw |  |
-| SZ-THEME-ESDE-SCENE-RENDER | 18 | 7 | 7 | hw |  |
+| SZ-THEME-ENGINE | 78 | 36 | 33 | hw |  |
+| SZ-THEME-ESDE-SCENE-RENDER | 18 | 8 | 7 | hw |  |
 | SZ-THEME-IMPORT-ESDE-LAYOUT | 32 | 10 | 10 | hw |  |
-| SZ-THEME-IMPORT-RETROFE | 10 | 9 | 8 | hw |  |
+| SZ-THEME-IMPORT-RETROFE | 10 | 10 | 9 | hw |  |
 | SZ-THEME-IMPORT-SURFACE | 4 | 8 | 7 | unit |  |
-| SZ-THEME-STUDIO | 85 | 17 | 15 | hw |  |
-| SZ-UI-DESKTOP-AUDIT | 372 | 40 | 26 | dev |  |
+| SZ-THEME-STUDIO | 85 | 18 | 15 | hw |  |
+| SZ-UI-DESKTOP-AUDIT | 388 | 41 | 26 | dev |  |
 | SZ-UI-PACKAGED-ICONS | 51 | 4 | 2 | unit |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 

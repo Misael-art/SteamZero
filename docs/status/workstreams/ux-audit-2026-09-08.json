@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-UX-AUDIT",
+  "item": "SZ-UI-DESKTOP-AUDIT",
+  "branch": "codex/ux-audit-2026-09-08",
+  "baseRef": "6e52c14f",
+  "owner": "codex-ux-audit",
+  "state": "active",
+  "exclusivePaths": [
+    "docs/09-operations/evidence/2026-09-08-ux-audit"
+  ],
+  "sharedPaths": [
+    "docs/status/items/ui-desktop-audit.json",
+    "docs/status/items/aura-launcher.json",
+    "docs/status/items/aura-ui.json",
+    "docs/status/items/theme-engine.json",
+    "docs/status/items/theme-esde-scene-render.json",
+    "docs/status/items/theme-studio.json",
+    "docs/status/items/theme-import-retrofe.json",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Publicar a radiografia consultiva baseada na release ativa, anexar capturas sem segredos e atualizar os itens confirmados sem promover harness a prova física.",
+  "updatedAt": "2026-09-08"
+}
