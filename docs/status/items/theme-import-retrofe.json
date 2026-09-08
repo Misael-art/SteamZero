@@ -4,27 +4,27 @@
   "id": "SZ-THEME-IMPORT-RETROFE",
   "title": "Importação segura de cenas RetroFE",
   "domain": "themes",
-  "implementation": "partial",
+  "implementation": "complete",
   "integration": "feature-branch",
   "verification": "unit",
   "operation": "degraded",
   "distribution": "not-packaged",
-  "scopeDigest": "f784c00ce1dde0e5f4469af516c572b2447f3f13c5d84a62e7d0c65f1f1c7d72",
+  "scopeDigest": "52c2e8d968c346c89b5055d503cc9bf7258b3382584b79453d54d5c27a765bec",
   "scopePaths": [
     "src/steamzero/adapters/desktop_contracts.py",
     "src/steamzero/adapters/desktop_dashboard.py",
     "src/steamzero/adapters/desktop_ui.py",
     "src/steamzero/core/paths.py",
     "src/steamzero/domain/theme_import_retrofe.py",
-    "tests/unit/test_theme_import_retrofe.py"
+    "tests/unit/test_theme_import_retrofe.py",
+    "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+    "tests/qml/check_theme_editor_import.qml",
+    "docs/09-operations/evidence/2026-09-08-theme-retrofe-ui"
   ],
   "dependsOn": [
     "SZ-THEME-ENGINE"
   ],
-  "knownGaps": [
-    "GAP-THEME-RETROFE-QML-ENTRY",
-    "GAP-THEME-RETROFE-ASSET-COPY"
-  ],
+  "knownGaps": [],
   "acceptanceCriteria": [
     "A central consegue inspecionar uma pasta ou layout RetroFE local sem escrever nada.",
     "A inspeção mostra layouts, cobertura, perdas e reparos antes da aplicação.",
@@ -56,10 +56,30 @@
       "reference": "tests",
       "command": "TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests -q; runner permaneceu sem saída em 17% e foi interrompido; nenhum processo residual",
       "result": "partial"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_theme_editor_import.qml",
+      "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_theme_editor_import.qml",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_retrofe_vertical_slice.py",
+      "command": "TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests/integration/test_retrofe_vertical_slice.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_theme_import_retrofe.py",
+      "command": "TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_import_retrofe.py -q",
+      "result": "passed"
     }
   ],
-  "nextAction": "Conectar a entrada visual na área Temas e copiar assets RetroFE somente após contrato de ativos e validação de licença; a auditoria 2026-09-05 confirmou backend sem rota QML nem cópia de assets.",
-  "activeWorkstreams": [],
-  "updatedAt": "2026-09-05",
-  "notes": "A rota backend agora inspeciona e publica IR validado sem ativação automática. A entrada visual depende da frente QML compartilhada; assets não são copiados silenciosamente e a cena continua separada de theme.json. 2026-09-03: scopeDigest renovado por mudanca da frente WS-2026-09-CENA-ESDE (rota theme.scene.render e o botao de previa). A evidencia NAO foi carimbada: foi reexecutada e passou (117 testes de contrato, dashboard e import)."
+  "nextAction": "Integrar na linha principal, publicar release governada e validar a entrada instalada sem reiniciar ou encerrar o KDE.",
+  "activeWorkstreams": [
+    "WS-2026-09-THEME-IMPORT-RETROFE-UI-ASSETS"
+  ],
+  "updatedAt": "2026-09-08",
+  "notes": "A rota QML RetroFE agora oferece origem por pasta/XML, inspeção de layouts, relatório de cobertura/degradação, créditos/licença e confirmação explícita. A aplicação valida a licença, recusa assets ausentes ou symlinkados, grava blobs por conteúdo e publica sidecar de custódia junto ao IR; a cena continua sem ativação automática. A prova de host instalado ainda depende do merge e da release governada."
 }

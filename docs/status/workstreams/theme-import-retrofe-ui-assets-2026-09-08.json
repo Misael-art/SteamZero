@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-THEME-IMPORT-RETROFE-UI-ASSETS",
+  "item": "SZ-THEME-IMPORT-RETROFE",
+  "branch": "codex/theme-import-retrofe-ui-assets-2026-09-08",
+  "baseRef": "21c3bf2",
+  "owner": "codex-theme-import-retrofe",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+    "tests/qml/check_theme_editor_import.qml",
+    "src/steamzero/domain/theme_import_retrofe.py",
+    "tests/unit/test_theme_import_retrofe.py",
+    "docs/09-operations/evidence/2026-09-08-theme-retrofe-ui"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Adicionar entrada QML RetroFE, materializar assets aprovados no store gerenciado e provar inspeção, aplicação e degradação segura.",
+  "updatedAt": "2026-09-08"
+}
