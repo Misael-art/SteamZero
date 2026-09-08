@@ -5,11 +5,11 @@
   "title": "Importação segura de cenas RetroFE",
   "domain": "themes",
   "implementation": "complete",
-  "integration": "feature-branch",
-  "verification": "unit",
-  "operation": "degraded",
-  "distribution": "not-packaged",
-  "scopeDigest": "52c2e8d968c346c89b5055d503cc9bf7258b3382584b79453d54d5c27a765bec",
+  "integration": "integrated",
+  "verification": "hw",
+  "operation": "ready",
+  "distribution": "installed",
+  "scopeDigest": "0632a70757bbf33f6eb0db8bfd23dc82f406c4c90f1d98252cdd85fd296d8dce",
   "scopePaths": [
     "src/steamzero/adapters/desktop_contracts.py",
     "src/steamzero/adapters/desktop_dashboard.py",
@@ -74,12 +74,22 @@
       "reference": "tests/unit/test_theme_import_retrofe.py",
       "command": "TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_import_retrofe.py -q",
       "result": "passed"
+    },
+    {
+      "kind": "release",
+      "reference": "docs/09-operations/evidence/2026-09-08-theme-retrofe-ui/README.md",
+      "command": "release_host.py prepare/verify-bundle; install governado com rollback 2.0.0rc1-b09908a58261; steamzero-host converge --expect-release 2.0.0rc1-435f9108eeb7; steamzero --version",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-08-theme-retrofe-ui/02-entrega-funcional.png",
+      "command": "janela QML da release instalada carregada de /opt/steamzero/current; captura da entrada e do diálogo de inspeção RetroFE",
+      "result": "passed"
     }
   ],
-  "nextAction": "Integrar na linha principal, publicar release governada e validar a entrada instalada sem reiniciar ou encerrar o KDE.",
-  "activeWorkstreams": [
-    "WS-2026-09-THEME-IMPORT-RETROFE-UI-ASSETS"
-  ],
+  "nextAction": "Continuar a auditoria pelo próximo item elegível; esta capacidade está instalada e sem lacunas conhecidas.",
+  "activeWorkstreams": [],
   "updatedAt": "2026-09-08",
-  "notes": "A rota QML RetroFE agora oferece origem por pasta/XML, inspeção de layouts, relatório de cobertura/degradação, créditos/licença e confirmação explícita. A aplicação valida a licença, recusa assets ausentes ou symlinkados, grava blobs por conteúdo e publica sidecar de custódia junto ao IR; a cena continua sem ativação automática. A prova de host instalado ainda depende do merge e da release governada."
+  "notes": "A rota QML RetroFE oferece origem por pasta/XML, inspeção de layouts, relatório de cobertura/degradação, créditos/licença e confirmação explícita. A aplicação valida a licença, recusa assets ausentes ou symlinkados, grava blobs por conteúdo e publica sidecar de custódia junto ao IR; a cena continua sem ativação automática. A release 2.0.0rc1-435f9108eeb7 foi instalada e convergida no host, com rollback 2.0.0rc1-b09908a58261."
 }

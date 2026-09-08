@@ -9778,3 +9778,25 @@ reauditoria foi corrigida para declarar os 44 itens e a discrepância ficou
 registrada explicitamente, sem omissão silenciosa. `make status-check` foi
 reexecutado após a correção. Nenhum host, reboot, logout ou sessão KDE foi
 encerrado.
+
+## 2026-09-08 — Sessão: instalação física da importação RetroFE
+
+O PR #127 foi mergeado no commit `435f9108eeb7b4adf1d84b87d9d2e70c692eead1`; o
+CI pós-merge `34188062445` terminou verde em todos os gates. O bundle canônico
+foi preparado e verificado para a release `2.0.0rc1-435f9108eeb7`, com wheel
+SHA-256 `85e1a5b4dea86c392bad8c674fe12715a0d215875b3b537001e14eff330759e0`.
+
+Com autorização explícita do operador, a release foi instalada pelo fluxo
+`tools/release_host.py install`, usando rollback
+`2.0.0rc1-b09908a58261`. O host confirmou `sourceTreeState=clean`, serviço e
+socket ativos, `steamzero --version` = `2.0.0rc1`, e convergência idempotente
+com `restarted=false` na segunda leitura. O instalador reiniciou somente o
+daemon necessário para trocar a geração; não houve reboot, logout ou
+encerramento da sessão KDE.
+
+A captura `docs/09-operations/evidence/2026-09-08-theme-retrofe-ui/02-entrega-funcional.png`
+mostra a janela da release instalada com a entrada de importação RetroFE, a
+inspeção do layout, o relatório de degradação, o asset pronto e a indicação de
+que a cena não é ativada automaticamente. O Doctor retornou `ok=true`, sem
+operações pendentes; os avisos existentes de staging órfão e permissão de
+inspeção do boot continuam registrados, sem relação com esta capacidade.
