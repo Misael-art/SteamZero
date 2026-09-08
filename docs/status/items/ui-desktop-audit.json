@@ -46,11 +46,12 @@
     "tools/ui_scenario_fixtures.py",
     "docs/09-operations/evidence/2026-09-04-release-cf9c47e7",
     "docs/09-operations/evidence/2026-09-05-ux-audit",
+    "docs/09-operations/evidence/2026-09-07-ux-audit-current",
     "docs/09-operations/evidence/2026-09-05-ux-gap-closure",
     "docs/09-operations/evidence/2026-09-06-theme-active-physical",
     "docs/09-operations/evidence/2026-09-06-ui-contrast-footer-physical"
   ],
-  "scopeDigest": "ff36fc65a75d12630300b0418a62c6001cae66f8d14540e4a2fbe4a467c6af14",
+  "scopeDigest": "b744d6b8a2235f49ffa4c37995f906c58b8f8fcdbc3c324ae4032d4ae05c892e",
   "dependsOn": [],
   "knownGaps": [
     "GAP-UI-LIVE-LAUNCHER-ROUTING"
@@ -148,6 +149,12 @@
       "reference": "tools/ui_control_inventory.py",
       "command": "matriz de controles medida em 2026-08-24: 250 controles em 12 superficies, 0 falhas (silent-no-op/unrouted/blocked-silent), 38 not-probed = 31 icones decorativos + 5 comboboxes + 2 aberturas de FileDialog nativo; 6 superficies sem pendencia (handheld-drawer, library, overview, sync, task-drawer, themes); identidade 45 explicitas / 205 fallback / 0 colisoes",
       "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-07-ux-audit-current/AUDIT.md",
+      "command": "reauditoria consultiva dos 43 itens nao agregados e hipoteses H1-H15 contra a release 2.0.0rc1-b09908a58261; estado atual, gaps e dependencias fisicas distinguidos por evidencia",
+      "result": "partial"
     },
     {
       "kind": "test",

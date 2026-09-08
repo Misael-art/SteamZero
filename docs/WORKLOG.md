@@ -9753,3 +9753,18 @@ O visual instalado foi comprovado, mas a lacuna
 input físico, persistência e reabertura; não há injetor Wayland utilizável nesta
 sessão. Status regenerado, `STATUS-CHECK`, lint, formatação, mypy,
 independência, fronteiras e `git diff --check` passaram.
+
+## 2026-09-07 — Sessão: reauditoria consultiva contra a release ativa
+
+A radiografia consultiva foi atualizada em
+`docs/09-operations/evidence/2026-09-07-ux-audit-current/`, relendo os 43
+itens funcionais não agregados, seus critérios/gaps e as hipóteses H1–H15
+contra `2.0.0rc1-b09908a58261`. A edição declarativa e o contraste do
+Theme Studio foram promovidos somente ao estado que a captura instalada prova;
+input físico, persistência/reabertura, catálogo real e demais jornadas sem
+alvo continuam como parciais ou não validados.
+
+O documento registra a Central com zero títulos publicados nesta sessão, não
+transformando harness sintético em prova de Launcher/arte. `make status-render`,
+`make status-check` e `git diff --check` passaram. Nenhum reboot, logout ou
+encerramento da sessão KDE foi executado.

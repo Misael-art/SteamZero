@@ -13,7 +13,8 @@ governado após o CI pós-merge `34142341383` concluir os oito gates verdes.
   inadequadas para o painel claro.
 - `02-entrega-funcional.png`: canvas instalado da release atual, com a cena
   `layout.previewTitles`, árvore, SpinBoxes e inspector legíveis; o cabeçalho
-  da captura identifica a release ativa.
+  da captura identifica a release ativa. A janela fotografada era o PID
+  `1605120`.
 
 O preview foi materializado a partir do tema builtin
 `org.steamzero.asset-recipes-demo` via bridge live. O painel claro mostra

@@ -13,7 +13,12 @@
     "selectedLayoutId": "layout.previewTitles",
     "surface": "canvas-tree-inspector",
     "visualContrast": "passed",
-    "physicalInputMutation": "not-proven-no-wayland-injector"
+    "physicalInputMutation": "not-proven-no-wayland-injector",
+    "window": {
+      "pid": 1605120,
+      "screenshot": "02-entrega-funcional.png",
+      "release": "2.0.0rc1-b09908a58261"
+    }
   },
   "health": {
     "hostStatus": "ok",

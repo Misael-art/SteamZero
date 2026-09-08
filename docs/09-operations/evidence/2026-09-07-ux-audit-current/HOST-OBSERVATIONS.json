@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-07",
+  "release": {
+    "version": "2.0.0rc1",
+    "releaseId": "2.0.0rc1-b09908a58261",
+    "sourceCommit": "b09908a5826174b8ff8d02fbf09f7dcef288edd9",
+    "ciRun": "34142341383"
+  },
+  "audit": {
+    "functionalItems": 43,
+    "aggregateItemsExcluded": true,
+    "hypothesesReviewed": 15,
+    "themeStudioContrast": "visually-proven-installed",
+    "physicalWaylandInput": "not-validated-no-usable-injector",
+    "centralEmptyCatalog": "observed-zero-published-titles",
+    "themeStudioWindowPid": 1605120,
+    "themeStudioScreenshot": "docs/09-operations/evidence/2026-09-07-theme-studio-contrast/02-entrega-funcional.png"
+  },
+  "health": {
+    "hostStatus": "ok",
+    "daemonConvergence": "idempotent",
+    "pendingOperations": 0,
+    "kdeRestarted": false,
+    "kdeSessionEnded": false,
+    "preexistingLauncherTouched": false
+  },
+  "evidence": [
+    "docs/09-operations/evidence/2026-09-07-theme-studio-contrast/02-entrega-funcional.png",
+    "docs/09-operations/evidence/2026-09-05-ux-audit/AUDIT.md"
+  ]
+}
