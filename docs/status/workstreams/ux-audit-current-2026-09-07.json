@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-UX-AUDIT-CURRENT",
+  "item": "SZ-UI-DESKTOP-AUDIT",
+  "branch": "codex/ux-audit-current-2026-09-07",
+  "baseRef": "b60c3c6abf507be9b58e19f0b04fe742d6840452",
+  "owner": "codex-ux-audit-current",
+  "state": "closed",
+  "exclusivePaths": [
+    "docs/09-operations/evidence/2026-09-07-ux-audit-current",
+    "docs/status/workstreams/ux-audit-current-2026-09-07.json"
+  ],
+  "sharedPaths": ["docs/status", "docs/WORKLOG.md"],
+  "nextAction": "Reauditoria dos 43 itens e hipóteses H1–H15 registrada contra a release ativa; próximos avanços devem tratar os gaps individuais sem promover evidência indireta.",
+  "updatedAt": "2026-09-07"
+}
