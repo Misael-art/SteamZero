@@ -8,7 +8,7 @@
   "integration": "isolated",
   "verification": "unit",
   "operation": "unknown",
-  "distribution": "not-packaged",
+  "distribution": "installed",
   "scopeDigest": "f015605723bb032c0b07b32f83cebeeb6ce0794a7a7d6ffa087b50ae9363231d",
   "scopePaths": [
     "docs/adr/0028-aura-cinema-tema-default.md",
@@ -44,9 +44,15 @@
       "reference": "tests/unit/test_enhancement_entry_contract.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_enhancement_entry_contract.py -q",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-09-aura-a0-release-instalada/02-entrega-funcional.png",
+      "command": ".venv/bin/python tools/release_host.py install --bundle <bundle> --rollback-release 2.0.0rc1-435f9108eeb7 --confirm-install INSTALAR-2.0.0rc1-e2b333678882",
+      "result": "passed"
     }
   ],
-  "nextAction": "Frente A0 mergeada em main (PR #131, merge 0baeb6f6). Abrir A1 (modelo canonico de dominio + importadores ES-DE, RetroFE, Pegasus, LaunchBox, Playnite, Steam, RetroArch) e A2 (image pipeline declarativo), que consomem estes contratos. GAP-AURA-CONTRACTS-CONSUMER permanece aberto ate existir consumidor real: schema validado nao e importador nem pipeline.",
+  "nextAction": "Release 2.0.0rc1-e2b333678882 (commit e2b33367) instalada e ativa no host; daemon confirmado na release nova por doctor service.generation. Rollback disponivel para 2.0.0rc1-435f9108eeb7, plano conhecido e NAO exercitado nesta sessao. Falta o operador: reboot fisico para validar boot direto (doctor reporta boot.direct unknown por falta de permissao). Abrir A1 (modelo canonico + importadores) e A2 (image pipeline), que consomem estes contratos.",
   "activeWorkstreams": [],
   "updatedAt": "2026-09-09",
   "notes": "Frente A0 do plano docs/12-roadmap/AURA-FULLSCREEN-PLATFORM-EXECUTION-PLAN.md. Congela contratos e fixtures da Onda 0 sem editar shell QML, daemon, importadores ou pipeline. Modelo Python de domínio, importadores e consumo pertencem às frentes seguintes (A1, A2)."
