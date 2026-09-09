@@ -35,9 +35,7 @@
     }
   ],
   "nextAction": "Buracos fechados e provados por mutacao (16 dos 28 testes reprovam sem a correcao). O restante do pipeline da frente A2 (crop deterministico, mipmap/atlas, tiers de cache medidos) permanece aberto e depende de theme_assets.py, hoje reivindicado por WS-2026-09-TEMAS-ESDE ativo — exige coordenacao, nao codigo.",
-  "activeWorkstreams": [
-    "WS-2026-09-AURA-A2-SVG"
-  ],
+  "activeWorkstreams": [],
   "updatedAt": "2026-09-09",
   "notes": "Frente A2. NAO e o pipeline completo do plano: asset_recipes.py ja tinha receitas, cache, resolver e validacao de fonte antes desta sessao. A contribuicao e estreita e verificada: seis vetores que o plano exige recusar (URL externa em href/xlink:href/use/url(), @import, file:// e caminho absoluto) estavam ACEITOS, provados por sonda antes da correcao. Tres SVGs do projeto (mega-drive, nintendo-handheld, playstation-3) ja eram recusados ANTES desta mudanca por conterem <!DOCTYPE; nao passam pelo validador em producao porque este valida pacote de tema de terceiro, nao icone first-party do QML.",
   "scopeDigest": "e95d8b3c37fa5e99def3666ad9bb25f578bb706e0f1423a0e0f89c462edcdb9c"
