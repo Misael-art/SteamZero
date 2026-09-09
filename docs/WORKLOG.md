@@ -10128,3 +10128,39 @@ Launcher em produção segue lendo `emulation-library-cache-v1.json`; ligar os d
 passa por arquivos de dois workstreams ativos. A frente A2 não está completa
 pelo mesmo motivo: `theme_assets.py` pertence a `WS-2026-09-TEMAS-ESDE`. Ambos
 exigem coordenação, não código.
+
+## 2026-09-09 — Harmonização da main e registro dos aprendizados
+
+Verificação de coesão da `main` em `bd829cd4`, não carimbo: suíte isolada
+integral **5.870 passados / 44 skips / 0 falhas**, ruff check e format --check
+limpos em 590 arquivos, mypy sem issues em 265 módulos, independência,
+fronteiras e status-check OK.
+
+**Incoerência de estado encontrada e corrigida.** `SZ-AURA-CONTRACTS` ainda
+declarava `GAP-AURA-CONTRACTS-CONSUMER` inteiro, mas o gap deixou de ser
+verdadeiro no PR #135: `domain/game_record.py` carrega e aplica
+`game-record-v1.schema.json` em runtime e alimenta cinco adapters e a projeção
+para a home. O gap foi **estreitado**, não apagado — vira
+`GAP-AURA-ENHANCEMENT-ENTRY-CONSUMER`, porque `enhancement-entry-v1.schema.json`
+segue sem nenhum leitor e só fecha quando a frente A9 existir.
+
+`integration` permanece `isolated` **por decisão, não por desatualização**: a
+cadeia schema → modelo → adapters → projeção está ligada a código de produto,
+mas ainda não é alcançável a partir do entry point do Launcher, que lê
+`emulation-library-cache-v1.json`. Promover o enum sugeriria que a capacidade
+chegou ao usuário, e é exatamente o tipo de promoção indevida que a governança
+deste repo existe para impedir.
+
+Registrado e não resolvido: 20 branches locais já mergeadas, 10 delas desta
+sessão. Não foram removidas — metade pertence a outras frentes e não é deste
+agente para apagar.
+
+Aprendizados da sessão persistidos na memória do projeto, com o caso concreto
+que originou cada um: validação de schema não é validação semântica (o `rating`
+85% que virou 8.5 e passou por schema, 30 testes e CI); `status-check` não roda
+na CI e ignora arquivo untracked, então dá verde antes do commit e vermelho
+depois; fixture sintética prova a suposição de quem a escreveu, não o formato —
+só arquivo real prova (56 arquivos reais do Pegasus, 2524 registros); os fios
+que fariam o AURA aparecer na tela pertencem a workstreams ativos de outras
+frentes; e workstream deve ser fechado no mesmo fôlego do merge, senão
+`ACTIVE-WORK` manda o próximo agente violar a §2.

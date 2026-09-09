@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-HARMONIZACAO",
+  "item": "SZ-AURA-CONTRACTS",
+  "branch": "codex/aura-harmonizacao-2026-09-09",
+  "baseRef": "bd829cd4",
+  "owner": "codex-aura-harmonizacao",
+  "state": "closed",
+  "exclusivePaths": [
+    "docs/status/items/aura-contracts.json"
+  ],
+  "sharedPaths": [
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Harmonizacao concluida: GAP-AURA-CONTRACTS-CONSUMER estreitado para GAP-AURA-ENHANCEMENT-ENTRY-CONSUMER, que so fecha com a frente A9. main verificada coesa e funcional (5870 passed, 44 skipped, exit 0) e os cinco gates verdes.",
+  "updatedAt": "2026-09-09"
+}
