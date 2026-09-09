@@ -9891,3 +9891,42 @@ frente (`src/steamzero/adapters/game_stream.py`: SSRF; `reference/linuxtoys`
 e `reference/EmuDeck`: path traversal, material de pesquisa). A entrega A0
 permanece staged; o commit, o push e o PR seguem para o operador, conforme o
 fluxo já validado. As frentes A1 e A2 aguardam a base commitada.
+
+## 2026-09-09 — Fechamento da frente A0 (contratos AURA): commit, CI e merge
+
+Sessão de fechamento da entrega A0 descrita na sessão anterior. O bloqueio ali
+registrado não se confirmou: o gate Mimosa L3 **não** interrompeu o commit desta
+vez, e nada foi contornado — nenhum `--no-verify`, nenhuma alteração no gate.
+Vale tratar aquele diagnóstico como não confirmado: o bloqueio do harness não é
+permanente e deve ser testado antes de ser assumido.
+
+Defeito encontrado na entrega staged, corrigido antes do commit: a matriz
+`docs/12-roadmap/AURA-CAPABILITY-MATRIX.md` constava como entregue no relatório,
+mas estava **fora do índice** — `.gitignore:14` ignora `docs/12-roadmap/` por
+inteiro. Um commit cego no índice descrito como "exato" teria mergeado a Onda 0
+sem a entrega nº 4, e a ausência só apareceria quando A1 fosse procurar os
+critérios P0/P1/P2. Recuperada com `git add -f`, seguindo o precedente de
+`b37455f0`, que fez o mesmo com o plano de execução irmão. O commit final tem 42
+arquivos, não 41.
+
+Gates da seção 6 reexecutados nesta sessão, **não herdados do relatório**: suíte
+isolada 5.617 passados / 44 skips / 0 falhas (42 min); ruff check e
+`format --check` limpos em 571 arquivos; mypy sem issues em 256 módulos;
+independência e fronteiras OK; STATUS-CHECK OK. CI remota verde nos 8 jobs,
+incluindo Python 3.11 (12m42s), historicamente o mais frágil neste repo.
+
+Entrega: commit `38ecd2c1`, PR #131, merge `0baeb6f6` em `main`.
+
+Estado registrado sem promoção indevida: `SZ-AURA-CONTRACTS` permanece
+`integration: isolated`, `verification: unit`, `distribution: not-packaged`, e
+`GAP-AURA-CONTRACTS-CONSUMER` continua aberto. Schema validado não é importador
+nem pipeline; o merge move os contratos para `main`, não a capacidade para o
+usuário. A certificação física do AURA segue pendente do operador.
+
+Fora de escopo, por decisão explícita: as frentes A1..A14 do plano não foram
+executadas. O plano as sequencia (A1/A2 dependem de A0 mergeada, A4 espera
+A1+A3, A14 integra por último) e cada P0 exige certificação física no host.
+Declará-las entregues nesta sessão exigiria fabricar evidência. A0 mergeada é
+o que de fato destrava A1 e A2.
+
+Nenhum artefato de release foi construído, publicado ou instalado.
