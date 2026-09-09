@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-A1-METADATA",
+  "item": "SZ-AURA-METADATA",
+  "branch": "codex/aura-a1-metadata-2026-09-09",
+  "baseRef": "dc71710d",
+  "owner": "codex-aura-a1",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/domain/game_record.py",
+    "src/steamzero/domain/metadata_import",
+    "tests/unit/test_game_record_model.py",
+    "tests/unit/test_metadata_import_esde.py",
+    "docs/status/items/aura-metadata.json"
+  ],
+  "sharedPaths": [
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md",
+    "docs/status/items/aura-contracts.json"
+  ],
+  "nextAction": "Implementar o modelo canonico Python do GameRecord ancorado no schema da frente A0 e o primeiro adapter de importacao (ES-DE gamelist.xml), com provenance, confianca e politica de conflito explicita. Nao edita library.py, shell QML nem daemon.",
+  "updatedAt": "2026-09-09"
+}

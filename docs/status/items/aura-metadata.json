@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AURA-METADATA",
+  "title": "Modelo canônico GameRecord e importadores de metadados (frente A1)",
+  "domain": "frontends",
+  "implementation": "partial",
+  "integration": "isolated",
+  "verification": "unit",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/domain/game_record.py",
+    "src/steamzero/domain/metadata_import",
+    "tests/unit/test_game_record_model.py",
+    "tests/unit/test_metadata_import_esde.py"
+  ],
+  "dependsOn": [
+    "SZ-AURA-CONTRACTS"
+  ],
+  "knownGaps": [
+    "GAP-AURA-METADATA-ADAPTERS",
+    "GAP-AURA-METADATA-CONSUMER"
+  ],
+  "acceptanceCriteria": [
+    "O modelo Python valida contra o schema de A0 em vez de reescrever as regras: não há segunda fonte de verdade que possa divergir em silêncio.",
+    "Campo desconhecido de formato externo sobrevive ao round-trip; este código não trunca um formato mais novo que ele.",
+    "Fonte mais pobre não apaga informação mais rica: a fusão respeita a política de conflito declarada na proveniência.",
+    "Conflito sem resolução automática vira estado explícito em warnings, com código legível por máquina, nunca escolha silenciosa.",
+    "O adapter ES-DE recusa caminho que escape da raiz do sistema e XML com DTD ou entidade, e registra o motivo de cada entrada descartada.",
+    "Campo ausente na origem permanece ausente no registro: o adapter não inventa dado para preencher tela."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_game_record_model.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_game_record_model.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_metadata_import_esde.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_metadata_import_esde.py -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Implementar os adapters restantes previstos pelo plano (RetroFE, Pegasus, LaunchBox, Playnite, Steam, RetroArch) sobre o mesmo contrato de tradução, e depois o export plan/preview/backup. Nenhum consumidor real usa o modelo ainda: GAP-AURA-METADATA-CONSUMER só fecha quando a biblioteca ou o Launcher passarem a ler GameRecord.",
+  "activeWorkstreams": [
+    "WS-2026-09-AURA-A1-METADATA"
+  ],
+  "updatedAt": "2026-09-09",
+  "notes": "Frente A1 do plano AURA. Entrega PARCIAL por decisão explícita: o modelo canônico e um adapter (ES-DE) provam o contrato de tradução ponta a ponta; seis adapters previstos pelo plano continuam por fazer. Um adapter completo e provado vale mais que sete parsers rasos. O módulo é domínio puro — não lê disco, não acessa rede, não importa adapters — e não toca library.py, shell QML nem daemon.",
+  "scopeDigest": "36bc6b31288f329d8ceb6be023c99265a7c7557c58f3246de1a5db9dd28c0e9c"
+}
