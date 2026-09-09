@@ -24,7 +24,7 @@
     "SZ-AURA-PLATFORM-EXECUTION-PLAN"
   ],
   "knownGaps": [
-    "GAP-AURA-CONTRACTS-CONSUMER"
+    "GAP-AURA-ENHANCEMENT-ENTRY-CONSUMER"
   ],
   "acceptanceCriteria": [
     "O ADR do AURA Cinema registra inspiração, independência, licença, composição com fallback obrigatório, tiers, acessibilidade e budget de desempenho.",
@@ -53,7 +53,7 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Release 2.0.0rc1-e2b333678882 (commit e2b33367) instalada e ativa no host; daemon confirmado na release nova por doctor service.generation. Rollback disponivel para 2.0.0rc1-435f9108eeb7, plano conhecido e NAO exercitado nesta sessao. Falta o operador: reboot fisico para validar boot direto (doctor reporta boot.direct unknown por falta de permissao). Abrir A1 (modelo canonico + importadores) e A2 (image pipeline), que consomem estes contratos.",
+  "nextAction": "O contrato GameRecord tem consumidor real desde o PR #135: src/steamzero/domain/game_record.py carrega e aplica game-record-v1.schema.json em runtime, e alimenta cinco adapters de importacao e a projecao para a home (prova ponta a ponta em tests/integration/test_metadata_to_catalog_pipeline.py). O gap remanescente e estreito e nomeado: enhancement-entry-v1.schema.json continua SEM leitor — nenhum codigo o carrega, e ele so fecha quando a frente A9 (enhancement registry) existir. integration permanece 'isolated' de proposito e nao por desatualizacao: a cadeia schema -> modelo -> adapters -> projecao esta ligada a codigo de produto, mas ainda NAO e alcancavel a partir do entry point do Launcher, que le emulation-library-cache-v1.json. Promover o enum sugeriria que a capacidade chegou ao usuario. Estado fisico: release 2.0.0rc1-e2b333678882 ativa no host, daemon confirmado por doctor service.generation; rollback para 2.0.0rc1-435f9108eeb7 disponivel, plano conhecido e NAO exercitado; boot.direct segue unknown e o reboot fisico e do operador.",
   "activeWorkstreams": [],
   "updatedAt": "2026-09-09",
   "notes": "Frente A0 do plano docs/12-roadmap/AURA-FULLSCREEN-PLATFORM-EXECUTION-PLAN.md. Congela contratos e fixtures da Onda 0 sem editar shell QML, daemon, importadores ou pipeline. Modelo Python de domínio, importadores e consumo pertencem às frentes seguintes (A1, A2)."
