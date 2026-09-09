@@ -9981,3 +9981,45 @@ Limites honestos desta entrega:
   operador**; o host está pronto para o teste de boot direto.
 - `publish` NÃO foi executado: o próprio comando exige evidência de certificação
   separada e aprovada, e a certificação do AURA é justamente o que falta.
+
+## 2026-09-09 — Frente A1: modelo canônico GameRecord e adapter ES-DE
+
+Primeira entrega que **consome** os contratos congelados em A0. Parcial por
+decisão explícita: o plano prevê sete adapters e este ciclo entregou um. Um
+adapter completo e provado vale mais que sete parsers rasos — e o item registra
+`implementation: partial`, não frente fechada.
+
+Entregue em `80762c97`, mergeado em `main` pelo PR #135 (merge `01039acc`):
+modelo canônico validando contra o schema de A0 (nunca reescrevendo as regras,
+para não criar segunda fonte de verdade), fusão que respeita a política de
+conflito da proveniência, e o adapter ES-DE de `gamelist.xml`.
+
+Três defeitos que os testes pegaram durante o desenvolvimento, todos meus:
+
+1. **O schema de A0 estava certo duas vezes contra mim.** `warnings` é lista de
+   códigos para máquina (`^[a-z0-9][a-z0-9-]{1,63}$`), não frase para humano; e
+   `provenance` exige `minProperties: 1`, então gravar mapa vazio era inválido.
+   Contrato bem escrito pega implementação preguiçosa.
+2. **Prova de mutação revelou código morto disfarçado de defesa.** A guarda
+   interna de `..` em `_resolve_path` não era load-bearing: mutei-a e nenhum
+   teste caiu, porque a checagem final de contenção já cobria tudo. Removida —
+   duas defesas onde uma é morta enganam quem lê depois.
+3. **A contenção usava `startswith`**, que aceitaria `/roms/psx-mal` como
+   interno a `/roms/psx`. Trocada por comparação de `parents`, e a correção foi
+   verificada reintroduzindo `startswith` e vendo o teste novo reprovar.
+
+Também removido `EsdeImportResult.warnings`, que nunca era preenchido: API
+sempre vazia promete algo que não entrega.
+
+Gates: suíte isolada 5.681 passados / 44 skips / 0 falhas, contra baseline de
+5.617 — os 64 novos são exatamente os desta frente. ruff check e format --check
+limpos em 576 arquivos, mypy sem issues em 259 módulos, independência,
+fronteiras e status-check OK. CI remota verde nos 10 checks.
+
+Limite honesto: **nada consome o modelo ainda.** `GAP-AURA-METADATA-CONSUMER`
+segue aberto e só fecha quando a biblioteca ou o Launcher lerem `GameRecord`.
+O modelo existe em `main`, mas não move nada para o usuário; a frente A1 não
+entregou capacidade de produto, entregou a base que A2 e A4 vão consumir.
+
+O workstream foi fechado junto: a branch está mergeada e a §2 proíbe voltar a
+commitar nela. Continuar a frente exige workstream e branch novos.
