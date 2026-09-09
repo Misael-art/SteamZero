@@ -42,7 +42,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-FRONTEND-RETROFE | 5 | 2 | 1 | dev |  |
 | SZ-FRONTEND-SRM | 3 | 1 | 1 | unit |  |
 | SZ-FRONTEND-STEAM-SHORTCUTS | 2 | 1 | 1 | unit |  |
-| SZ-GOVERNANCE-STATUS | 22 | 7 | 5 | dev |  |
+| SZ-GOVERNANCE-STATUS | 22 | 9 | 7 | dev |  |
 | SZ-HOST-UPDATE-TRANSACTIONAL | 18 | 12 | 9 | hw |  |
 | SZ-LIBRARY-CANONICAL | 89 | 10 | 7 | dev |  |
 | SZ-LIBRARY-CONVERSION-CONTRACT | 4 | 2 | 2 | unit |  |

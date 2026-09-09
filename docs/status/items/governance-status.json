@@ -33,7 +33,7 @@
     "pyproject.toml",
     "docs/09-operations/HANDOFF-2026-08-27.md"
   ],
-  "scopeDigest": "ec13e87623b343daee71ac1974e8e8c94f4006dc0913e892cbc513a372e9f137",
+  "scopeDigest": "9113c65802f54e5c5f542b009eeec42b0c6bc91a9d31f664e10a79fa615fa870",
   "dependsOn": [],
   "knownGaps": [
     "DEBT-CI-VISUAL-IMAGE-SEM-SVG"
@@ -86,12 +86,24 @@
       "reference": "tests/unit/test_project_status.py",
       "command": "Revalidacao de digest apos renders das frentes library/transport (docs/status e escopo deste item): run_tests_isolated.py tests/unit/test_project_status.py -q no conteudo novo (9 passed + este gate de consistencia verde apos o digest)",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": ".github/workflows/ci.yml",
+      "command": "status-check nao era executado por nenhum workflow: grep -rn 'status-check\\|project_status' .github/workflows/*.yml nao retornava nada. O PR #133 fechou com 10 checks verdes e deixou main reprovando (dois PNGs de evidencia sem scopePaths), corrigido so no PR #134. O gate passou a rodar no job quality, junto de ruff/mypy/boundaries/independence.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_project_status.py",
+      "command": "Adicionar o step com fetch-depth default deixaria o gate verde para sempre: _changed_paths compara HEAD^..HEAD e descartava em silencio a falha do clone raso. Medido no commit 99be1ee8, que reprova com historico completo e passa em git clone --depth 1 do MESMO commit. check_history_depth passou a reprovar o caso e o checkout usa fetch-depth: 2. Controle positivo em clone --depth 2: commit adicionando src/steamzero/bogus/orfao.py reprova com 'arquivo alterado sem item de status responsavel'.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Manter status-check e WORKLOG append-only verdes apos harmonizacao a45.",
+  "nextAction": "Confirmar no primeiro PR que o step 'Estado do projeto' reprova antes do merge.",
   "activeWorkstreams": [
-    "WS-2026-08-HARMONIZE-A45"
+    "WS-2026-09-STATUS-CHECK-CI"
   ],
-  "updatedAt": "2026-09-03",
-  "notes": "WORKLOG e historico append-only e nao entra no digest funcional; check_worklog_append_only reprova reescrita de sessoes anteriores. G38 doctor service.generation usa observe(). Digest renovado apos tornar execucao autonoma, evidencia fisica e taxonomia AURA/Theme Engine/Theme Studio regras normativas do AGENTS.md; teste focado de project_status preserva a consistencia do catalogo. Em 2026-08-20 o gate acusou pyproject.toml alterado sem item responsavel: ninguem o declarava, embora ele defina entry points, dependencias e empacotamento. Passou para este item, que ja governa ci.yml, AGENTS.md e Makefile. 2026-08-24: KNOWN-GAPS.md corrigido na linha G40, que afirmava que a tabela platform_slug->systemeid 'nao existe no repositorio' quando ela existe como _PLATFORM_MAP. Documento de lacunas que envelhece sem ser conferido vira o oposto do que promete: manda reimplementar o que ja esta feito. G42 REABERTA em 2026-08-24: fora marcada fechada por 'quatro rotas na ponte HTTP', mas o enunciado dela e 'o motor existe, o caminho de usuario nao' — rota na ponte ainda e motor. Zero QML alcanca os 12 contratos theme.import. 2026-08-25: versao elevada de 0.1.0a46 para 2.0.0rc1 (pre-release, nao 2.0.0 final). O bump entra ANTES do merge porque release_host.prepare exige que o commit seja o tip de origin/main, entao a versao precisa estar na linha principal para a release 2.0.0 poder ser construida. Forma canonica PEP 440 sem hifen: RELEASE_RE monta <versao>-<12 hex>, entao 2.0.0-rc1 produziria id com dois hifens e leitura ambigua; 2.0.0rc1 nao. 2026-09-03: scopeDigest renovado por documento GERADO (COVERAGE.md e STATUS.md) apos a rota theme.scene.render entrar no contrato, em WS-2026-09-CENA-ESDE. Regerado pela ferramenta, nao editado a mao."
+  "updatedAt": "2026-09-09",
+  "notes": "WORKLOG e historico append-only e nao entra no digest funcional; check_worklog_append_only reprova reescrita de sessoes anteriores. G38 doctor service.generation usa observe(). Digest renovado apos tornar execucao autonoma, evidencia fisica e taxonomia AURA/Theme Engine/Theme Studio regras normativas do AGENTS.md; teste focado de project_status preserva a consistencia do catalogo. Em 2026-08-20 o gate acusou pyproject.toml alterado sem item responsavel: ninguem o declarava, embora ele defina entry points, dependencias e empacotamento. Passou para este item, que ja governa ci.yml, AGENTS.md e Makefile. 2026-08-24: KNOWN-GAPS.md corrigido na linha G40, que afirmava que a tabela platform_slug->systemeid 'nao existe no repositorio' quando ela existe como _PLATFORM_MAP. Documento de lacunas que envelhece sem ser conferido vira o oposto do que promete: manda reimplementar o que ja esta feito. G42 REABERTA em 2026-08-24: fora marcada fechada por 'quatro rotas na ponte HTTP', mas o enunciado dela e 'o motor existe, o caminho de usuario nao' — rota na ponte ainda e motor. Zero QML alcanca os 12 contratos theme.import. 2026-08-25: versao elevada de 0.1.0a46 para 2.0.0rc1 (pre-release, nao 2.0.0 final). O bump entra ANTES do merge porque release_host.prepare exige que o commit seja o tip de origin/main, entao a versao precisa estar na linha principal para a release 2.0.0 poder ser construida. Forma canonica PEP 440 sem hifen: RELEASE_RE monta <versao>-<12 hex>, entao 2.0.0-rc1 produziria id com dois hifens e leitura ambigua; 2.0.0rc1 nao. 2026-09-03: scopeDigest renovado por documento GERADO (COVERAGE.md e STATUS.md) apos a rota theme.scene.render entrar no contrato, em WS-2026-09-CENA-ESDE. Regerado pela ferramenta, nao editado a mao. 2026-09-09: status-check entrou no CI. Ele nao era executado por workflow nenhum, e por isso o PR #133 mergeou verde deixando main vermelha no gate. Duas armadilhas registradas: (a) enquanto o arquivo esta untracked o check o ignora, entao rodar o gate imediatamente antes do commit da verde e o vermelho so aparece depois — gate verde pre-commit nao prova nada sobre arquivo novo; (b) no fetch-depth default do actions/checkout o HEAD^ nao existe, o diff falhava, o erro era descartado e o gate passava com qualquer conteudo. A segunda foi medida, nao inferida."
 }
