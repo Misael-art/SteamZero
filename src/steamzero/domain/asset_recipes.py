@@ -633,6 +633,50 @@ class AssetRecipeCache:
         return prepared
 
 
+#: Tipos ``data:`` aceitos dentro de um SVG. ``image/svg+xml`` fica de fora de
+#: propósito: um SVG aninhado num data URI não passa por esta validação e seria
+#: a porta de entrada exata que ela fecha.
+_ALLOWED_DATA_PREFIXES = (
+    b"data:image/png;",
+    b"data:image/jpeg;",
+    b"data:image/webp;",
+    b"data:image/gif;",
+)
+
+#: Referências que um SVG de terceiro pode fazer. Tudo o mais é recusado: o
+#: allowlist é sobre o que o tema PODE alcançar, não sobre o que sabemos ser
+#: perigoso — a lista de esquemas perigosos nunca termina.
+_REFERENCE = re.compile(rb"""(?:xlink:href|href|src)\s*=\s*["']([^"']*)["']""", re.IGNORECASE)
+_CSS_URL = re.compile(rb"""url\(\s*['"]?([^)'"]*)['"]?\s*\)""", re.IGNORECASE)
+_CSS_IMPORT = re.compile(rb"@import", re.IGNORECASE)
+
+
+def _reject_external_reference(lowered: bytes) -> None:
+    """Recusa referência que saia do próprio arquivo.
+
+    Um tema de terceiro não alcança rede nem disco (AGENTS.md §10). Sem isto,
+    ``<image href="https://rastreador/">`` vaza uma requisição do host do
+    usuário ao renderizar, e ``file:///etc/passwd`` tenta ler arquivo local.
+
+    Só duas formas passam, que são as que o próprio projeto usa: fragmento
+    interno (``#id``) e imagem embutida (``data:image/...``). Caminho relativo
+    também é recusado — ele dependeria de uma âncora que o asset não declara,
+    e ``../`` a transformaria em travessia.
+    """
+    if _CSS_IMPORT.search(lowered):
+        raise ValueError("asset SVG contém @import externo")
+
+    for match in (*_REFERENCE.finditer(lowered), *_CSS_URL.finditer(lowered)):
+        target = match.group(1).strip()
+        if not target or target.startswith(b"#"):
+            continue
+        if target.startswith(b"data:"):
+            if not target.startswith(_ALLOWED_DATA_PREFIXES):
+                raise ValueError("asset SVG referencia data URI de tipo não permitido")
+            continue
+        raise ValueError("asset SVG referencia recurso externo ou caminho absoluto")
+
+
 def validate_asset_source(source: bytes) -> None:
     """Valida a fonte antes que catálogo, cache ou renderer a consumam."""
     if not source or len(source) > 16 * 1024 * 1024:
@@ -652,6 +696,7 @@ def validate_asset_source(source: bytes) -> None:
             raise ValueError("asset SVG contém conteúdo ativo")
         if re.search(rb"\bon[a-z]+\s*=", lowered):
             raise ValueError("asset SVG contém event handler")
+        _reject_external_reference(lowered)
         return
     # PNG, JPEG, WebP e AVIF são validados pelo loader confiável do Qt/Pillow
     # no adapter. O domínio ao menos rejeita conteúdo sem assinatura conhecida.
