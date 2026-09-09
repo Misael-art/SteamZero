@@ -244,3 +244,39 @@ def test_worklog_append_only_accepts_suffix_and_rejects_rewrite(tmp_path) -> Non
     errors = project_status.check_worklog_append_only(root)
     assert errors
     assert "reescrita" in errors[0]
+
+
+def _git(root: Path, *args: str) -> None:
+    import subprocess
+
+    subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+
+def test_history_depth_rejects_shallow_clone_without_parent(tmp_path) -> None:
+    """Clone raso sem HEAD^ reprova em vez de passar em silencio.
+
+    A comparacao de arquivos alterados usa HEAD^..HEAD. Num clone raso esse
+    diff falha e o conjunto de alterados fica vazio, de modo que o gate passa
+    com QUALQUER conteudo — foi assim que ele ficaria se o CI o executasse no
+    fetch-depth default. Um clone com profundidade 2 tem o pai e nao reprova.
+    """
+    origin = tmp_path / "origin"
+    origin.mkdir()
+    _git(origin, "init")
+    _git(origin, "config", "user.email", "test@example.com")
+    _git(origin, "config", "user.name", "test")
+    for index in range(3):
+        (origin / f"arquivo-{index}.txt").write_text(f"{index}\n", encoding="utf-8")
+        _git(origin, "add", "-A")
+        _git(origin, "commit", "-m", f"commit {index}")
+
+    assert project_status.check_history_depth(origin) == []
+
+    raso = tmp_path / "raso"
+    _git(tmp_path, "clone", "--depth", "1", "--no-local", origin.as_uri(), str(raso))
+    errors = project_status.check_history_depth(raso)
+    assert errors and "fetch-depth" in errors[0]
+
+    fundo = tmp_path / "fundo"
+    _git(tmp_path, "clone", "--depth", "2", "--no-local", origin.as_uri(), str(fundo))
+    assert project_status.check_history_depth(fundo) == []

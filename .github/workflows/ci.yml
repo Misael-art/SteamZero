@@ -36,6 +36,14 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+          # `project_status.py check` compara HEAD^..HEAD para achar arquivo
+          # alterado sem item de status responsavel. No default (fetch-depth 1)
+          # HEAD^ nao existe, o diff falha e o conjunto de alterados fica
+          # vazio: o gate passaria sempre. Medido no commit 99be1ee8, que
+          # reprova com historico completo e passa num clone --depth 1 do mesmo
+          # commit. `check_history_depth` hoje reprova esse caso em vez de
+          # imitar sucesso; este fetch-depth e o que faz o gate ter o que ler.
+          fetch-depth: 2
       - name: Python ${{ matrix.python-version }}
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
@@ -52,6 +60,15 @@ jobs:
         run: python tools/lint_boundaries.py --root src
       - name: Independência do PhaseZero
         run: python tools/check_independence.py
+      # O PR #133 fechou com 10 checks verdes e deixou `main` reprovando em
+      # status-check: dois PNGs de evidencia entraram sem constar em nenhum
+      # scopePaths. Nenhum workflow executava o gate — ele so aparecia quando
+      # um agente rodava localmente, na sessao seguinte. E enquanto o arquivo
+      # esta untracked o check o ignora, entao rodar o gate antes do commit da
+      # verde e o vermelho so surge depois: gate verde pre-commit nao prova
+      # nada sobre arquivo novo. Aqui ele roda sobre o que ja foi commitado.
+      - name: Estado do projeto
+        run: python tools/project_status.py check
       - name: Tipos estritos
         run: mypy
       # Havia aqui um passo que instalava xorriso e genisoimage por apt. A
