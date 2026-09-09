@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-A1-ADAPTERS2",
+  "item": "SZ-AURA-METADATA",
+  "branch": "codex/aura-a1-adapters2-2026-09-09",
+  "baseRef": "67600257",
+  "owner": "codex-aura-a1-adapters2",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/domain/metadata_import/steam.py",
+    "tests/unit/test_metadata_import_steam.py",
+    "tests/unit/test_metadata_import_pegasus.py"
+  ],
+  "sharedPaths": [
+    "src/steamzero/domain/metadata_import/__init__.py",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md",
+    "docs/status/items/aura-metadata.json"
+  ],
+  "nextAction": "Adapter Steam (appmanifest .acf e atalhos ja decodificados) e validacao do Pegasus contra arquivos reais de reference/. Playnite e RetroFE seguem por fazer.",
+  "updatedAt": "2026-09-09"
+}

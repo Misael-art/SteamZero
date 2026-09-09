@@ -12,8 +12,8 @@ Adapters são puros: recebem texto já lido e devolvem registros. Ler disco,
 percorrer diretório e escrever é do chamador, para que a tradução seja testável
 com fixture sintética e sem tocar biblioteca real.
 
-Suportados neste ciclo: ES-DE, RetroArch, Pegasus e LaunchBox. Playnite, Steam
-e RetroFE seguem por fazer — ver ``SZ-AURA-METADATA``.
+Suportados: ES-DE, RetroArch, Pegasus, LaunchBox e Steam. Playnite e RetroFE
+seguem por fazer — ver ``SZ-AURA-METADATA``.
 """
 
 from __future__ import annotations
@@ -23,6 +23,10 @@ from steamzero.domain.metadata_import.esde import EsdeImportResult, import_esde_
 from steamzero.domain.metadata_import.launchbox import import_launchbox_xml
 from steamzero.domain.metadata_import.pegasus import import_pegasus_metadata
 from steamzero.domain.metadata_import.retroarch import import_retroarch_playlist
+from steamzero.domain.metadata_import.steam import (
+    import_steam_appmanifest,
+    import_steam_shortcuts,
+)
 
 __all__ = [
     "EsdeImportResult",
@@ -32,4 +36,6 @@ __all__ = [
     "import_launchbox_xml",
     "import_pegasus_metadata",
     "import_retroarch_playlist",
+    "import_steam_appmanifest",
+    "import_steam_shortcuts",
 ]

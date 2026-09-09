@@ -9,6 +9,8 @@ plural, que é multi-disco e não jogos separados.
 
 from __future__ import annotations
 
+import pathlib
+
 import pytest
 
 from steamzero.domain.game_record import GameRecordError
@@ -170,3 +172,49 @@ def test_reimportar_e_idempotente() -> None:
     (primeiro,) = _run(text).records
     (segundo,) = _run(text).records
     assert primeiro.merge(segundo).record.to_mapping() == primeiro.to_mapping()
+
+
+# -- validação contra dados reais --------------------------------------------
+
+# ``reference/`` é material de pesquisa e NÃO é versionado (.gitignore:36), então
+# este teste pula na CI e em qualquer checkout limpo. Ele existe porque fixture
+# sintética prova apenas consistência com as suposições de quem a escreveu: só
+# um arquivo real prova que o adapter entendeu o formato. Quando presente, é a
+# evidência mais forte desta suíte.
+_REAL = pathlib.Path(__file__).resolve().parents[2] / "reference" / "EmuDeck" / "android" / "roms"
+
+
+@pytest.mark.skipif(not _REAL.is_dir(), reason="reference/ não versionado; checkout sem pesquisa")
+def test_processa_arquivos_reais_sem_excecao_e_sem_recusa() -> None:
+    files = sorted(_REAL.rglob("metadata.pegasus.txt"))
+    assert files, "reference/ presente mas sem metadata.pegasus.txt"
+    total = 0
+    for path in files:
+        result = _run(path.read_text(encoding="utf-8", errors="replace"))
+        assert result.skipped == (), f"{path} produziu recusas: {result.skipped[:3]}"
+        total += len(result.records)
+    assert total > 0, "nenhum registro extraído de arquivos reais"
+
+
+@pytest.mark.skipif(not _REAL.is_dir(), reason="reference/ não versionado; checkout sem pesquisa")
+def test_extracao_real_bate_com_a_fonte() -> None:
+    """Não basta não quebrar: os campos precisam bater com o arquivo."""
+    path = _REAL / "mame" / "metadata.pegasus.txt"
+    if not path.is_file():
+        pytest.skip("coleção mame ausente na referência")
+    result = import_pegasus_metadata(
+        path.read_text(encoding="utf-8"),
+        platform_id="mame",
+        system_root="/roms/mame",
+        retrieved_at=WHEN,
+    )
+    by_title = {record.title: record.to_mapping() for record in result.records}
+    aqua = by_title.get("Aqua Jack (World)")
+    assert aqua is not None
+    assert aqua["path"] == "/roms/mame/aquajack.zip"
+    assert aqua["developer"] == "Taito"
+    assert aqua["publisher"] == "Taito"
+    assert aqua["releaseDate"] == "1990-01-01"
+    assert aqua["players"] == 1
+    ids = [record.id for record in result.records]
+    assert len(ids) == len(set(ids)), "IDs colidiram em biblioteca real"
