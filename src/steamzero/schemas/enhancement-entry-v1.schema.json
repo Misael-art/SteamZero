@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://steamzero.org/schemas/enhancement-entry-v1.schema.json",
+  "title": "SteamZero EnhancementEntry v1",
+  "description": "Entrada do registry de melhorias por jogo (docs/12-roadmap/AURA-FULLSCREEN-PLATFORM-EXECUTION-PLAN.md, frente A9). Categorias permitidas: performance, compatibility, quality, accessibility — cheat de gameplay é rejeitado por categoria fechada e política de parser, nunca por convenção. Fonte exige checksum verificável e licença; transporte somente https. Emuladores fora da ordem governada (DuckStation, Dolphin, PCSX2, RPCS3, Cemu; shadPS4 separado até contrato conhecido) não são rejeitados aqui: a ordem é política de adoção da frente A9.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "title",
+    "platformId",
+    "emulatorId",
+    "emulatorVersion",
+    "category",
+    "source",
+    "identifiers"
+  ],
+  "additionalProperties": false,
+  "maxProperties": 32,
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"},
+    "title": {"type": "string", "minLength": 1, "maxLength": 256},
+    "platformId": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$"},
+    "emulatorId": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$"},
+    "emulatorVersion": {"type": "string", "pattern": "^[0-9][A-Za-z0-9.+-]{0,63}$"},
+    "category": {
+      "enum": ["performance", "compatibility", "quality", "accessibility"]
+    },
+    "description": {"type": "string", "maxLength": 4096},
+    "source": {"$ref": "#/$defs/source"},
+    "identifiers": {"$ref": "#/$defs/identifiers"},
+    "settings": {
+      "type": "object",
+      "maxProperties": 128,
+      "additionalProperties": true
+    },
+    "incompatibleWith": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"}
+    },
+    "rollback": {"$ref": "#/$defs/rollback"}
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "required": ["url", "checksum", "checksumAlgorithm", "license"],
+      "additionalProperties": false,
+      "properties": {
+        "url": {"type": "string", "pattern": "^https://[A-Za-z0-9._~/-]+$", "maxLength": 2048},
+        "checksum": {"type": "string", "pattern": "^[0-9a-f]{8,128}$"},
+        "checksumAlgorithm": {"enum": ["sha1", "sha256", "sha512"]},
+        "license": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9 .()-]{1,127}$"}
+      }
+    },
+    "identifiers": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 4,
+      "additionalProperties": false,
+      "properties": {
+        "serial": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {"type": "string", "pattern": "^[A-Z0-9-]{4,32}$"}
+        },
+        "titleId": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {"type": "string", "pattern": "^[0-9A-Fa-f]{8,32}$"}
+        },
+        "gameId": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {"type": "string", "pattern": "^[A-Z0-9]{4,16}$"}
+        },
+        "crc": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {"type": "string", "pattern": "^[0-9A-Fa-f]{8}$"}
+        }
+      }
+    },
+    "rollback": {
+      "type": "object",
+      "required": ["strategy", "backupRequired"],
+      "additionalProperties": false,
+      "properties": {
+        "strategy": {"enum": ["restore-backup", "remove", "inverse-apply"]},
+        "backupRequired": {"type": "boolean"}
+      }
+    }
+  }
+}

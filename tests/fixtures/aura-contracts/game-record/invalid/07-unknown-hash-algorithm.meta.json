@@ -1,0 +1,6 @@
+{
+  "violates": "algoritmos de hash do conjunto vigente",
+  "explains": "Algoritmo fora da lista impede comparacao de integridade confiavel",
+  "failsAt": "/hashes",
+  "failsWith": "enum"
+}

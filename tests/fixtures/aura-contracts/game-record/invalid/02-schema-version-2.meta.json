@@ -1,0 +1,6 @@
+{
+  "violates": "schemaVersion da versao vigente",
+  "explains": "A versao 1 nao valida payload declarado como versao 2; nova versao exige novo schema",
+  "failsAt": "/schemaVersion",
+  "failsWith": "const"
+}

@@ -1,0 +1,6 @@
+{
+  "violates": "availability com estados fechados",
+  "explains": "Estado falsificado ou grafia livre impede a UI de degradar com honestidade",
+  "failsAt": "/availability",
+  "failsWith": "enum"
+}

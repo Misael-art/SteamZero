@@ -1,0 +1,6 @@
+{
+  "violates": "rating normalizado em 0..100",
+  "explains": "Fontes usam escalas diferentes; o contrato fixa a escala canonica",
+  "failsAt": "/rating",
+  "failsWith": "maximum"
+}

@@ -1,0 +1,6 @@
+{
+  "violates": "title obrigatorio nao vazio",
+  "explains": "Registro sem titulo exibivel quebra a jornada fullscreen",
+  "failsAt": "/title",
+  "failsWith": "minLength"
+}

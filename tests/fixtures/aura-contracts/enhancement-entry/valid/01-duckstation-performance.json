@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "duckstation.spyro1.60fps-patch",
+  "title": "Patch de 60 FPS",
+  "platformId": "psx",
+  "emulatorId": "duckstation",
+  "emulatorVersion": "0.1-3484",
+  "category": "performance",
+  "description": "Perfil de patch para framerate estendido.",
+  "source": {
+    "url": "https://registry.steamzero.local/enhancements/duckstation/spyro1-60fps.json",
+    "checksum": "d4e5f60718293a4b5c6d7e8f9012345678a1b2c3",
+    "checksumAlgorithm": "sha256",
+    "license": "CC-BY-4.0"
+  },
+  "identifiers": {
+    "serial": [
+      "SCUS-94162"
+    ]
+  },
+  "settings": {
+    "Enable60HzPatch": true,
+    "Interlacing": "none"
+  },
+  "incompatibleWith": [
+    "duckstation.spyro1.widescreen-hack"
+  ],
+  "rollback": {
+    "strategy": "restore-backup",
+    "backupRequired": true
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "violates": "transporte de fonte somente https",
+  "explains": "Fonte em texto plano permite substituicao de payload; o contrato exige https",
+  "failsAt": "/source/url",
+  "failsWith": "pattern"
+}
