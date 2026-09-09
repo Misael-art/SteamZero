@@ -38,12 +38,16 @@
       "reference": "tests/unit/test_game_record_contract.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_game_record_contract.py tests/unit/test_enhancement_entry_contract.py -q",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_enhancement_entry_contract.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_enhancement_entry_contract.py -q",
+      "result": "passed"
     }
   ],
-  "nextAction": "Operador executa commit/push da entrega A0 (staged) e abre o PR; o gate Mimosa L3 interrompeu a cadeia commit/push do agente por achados high pré-existentes fora do escopo (game_stream.py, reference/). Após o merge, abrir A1 e A2.",
-  "activeWorkstreams": [
-    "WS-2026-09-AURA-A0-CONTRACTS"
-  ],
-  "updatedAt": "2026-09-08",
+  "nextAction": "Frente A0 mergeada em main (PR #131, merge 0baeb6f6). Abrir A1 (modelo canonico de dominio + importadores ES-DE, RetroFE, Pegasus, LaunchBox, Playnite, Steam, RetroArch) e A2 (image pipeline declarativo), que consomem estes contratos. GAP-AURA-CONTRACTS-CONSUMER permanece aberto ate existir consumidor real: schema validado nao e importador nem pipeline.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-09-09",
   "notes": "Frente A0 do plano docs/12-roadmap/AURA-FULLSCREEN-PLATFORM-EXECUTION-PLAN.md. Congela contratos e fixtures da Onda 0 sem editar shell QML, daemon, importadores ou pipeline. Modelo Python de domínio, importadores e consumo pertencem às frentes seguintes (A1, A2)."
 }

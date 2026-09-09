@@ -6,7 +6,7 @@
   "branch": "codex/aura-a0-contracts-2026-09-08",
   "baseRef": "b37455f0",
   "owner": "codex-aura-a0",
-  "state": "blocked",
+  "state": "closed",
   "exclusivePaths": [
     "docs/adr/0028-aura-cinema-tema-default.md",
     "docs/12-roadmap/AURA-CAPABILITY-MATRIX.md",
@@ -24,6 +24,6 @@
     "docs/WORKLOG.md",
     "docs/status/items/aura-platform-execution-plan.json"
   ],
-  "nextAction": "Entrega completa e staged, commit bloqueado pelo gate Mimosa L3 por 113 achados high PRE-EXISTENTES fora do escopo da frente (src/steamzero/adapters/game_stream.py: SSRF; reference/linuxtoys e reference/EmuDeck: path traversal, material de pesquisa). Operador executa o commit/push; A1 e A2 abrem na sequencia.",
-  "updatedAt": "2026-09-08"
+  "nextAction": "Frente A0 concluida e mergeada em main pelo PR #131 (merge 0baeb6f6, commit 38ecd2c1). Os cinco gates da secao 6 foram reexecutados na sessao de fechamento, nao herdados do relatorio: suite isolada 5617 passed/44 skipped, ruff check e format --check, mypy, independence, boundaries e status-check. CI remota verde nos 8 jobs. Contratos disponiveis para consumo: A1 (metadados canonicos e importadores) e A2 (image pipeline) estao destravadas.",
+  "updatedAt": "2026-09-09"
 }
