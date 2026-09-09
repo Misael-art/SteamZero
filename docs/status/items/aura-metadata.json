@@ -44,10 +44,8 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Implementar os adapters restantes previstos pelo plano (RetroFE, Pegasus, LaunchBox, Playnite, Steam, RetroArch) sobre o mesmo contrato de tradução, e depois o export plan/preview/backup. Nenhum consumidor real usa o modelo ainda: GAP-AURA-METADATA-CONSUMER só fecha quando a biblioteca ou o Launcher passarem a ler GameRecord.",
-  "activeWorkstreams": [
-    "WS-2026-09-AURA-A1-METADATA"
-  ],
+  "nextAction": "Incremento inicial mergeado em main (PR #135). Proximo: adapters RetroFE, Pegasus, LaunchBox, Playnite, Steam e RetroArch sobre o mesmo contrato de traducao, depois export plan/preview/backup — cada um exige workstream e branch novos. GAP-AURA-METADATA-CONSUMER so fecha quando a biblioteca ou o Launcher passarem a ler GameRecord; hoje o modelo existe e nada o consome.",
+  "activeWorkstreams": [],
   "updatedAt": "2026-09-09",
   "notes": "Frente A1 do plano AURA. Entrega PARCIAL por decisão explícita: o modelo canônico e um adapter (ES-DE) provam o contrato de tradução ponta a ponta; seis adapters previstos pelo plano continuam por fazer. Um adapter completo e provado vale mais que sete parsers rasos. O módulo é domínio puro — não lê disco, não acessa rede, não importa adapters — e não toca library.py, shell QML nem daemon.",
   "scopeDigest": "36bc6b31288f329d8ceb6be023c99265a7c7557c58f3246de1a5db9dd28c0e9c"

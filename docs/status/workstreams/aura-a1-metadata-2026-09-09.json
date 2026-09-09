@@ -6,7 +6,7 @@
   "branch": "codex/aura-a1-metadata-2026-09-09",
   "baseRef": "dc71710d",
   "owner": "codex-aura-a1",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/domain/game_record.py",
     "src/steamzero/domain/metadata_import",
@@ -21,6 +21,6 @@
     "docs/WORKLOG.md",
     "docs/status/items/aura-contracts.json"
   ],
-  "nextAction": "Implementar o modelo canonico Python do GameRecord ancorado no schema da frente A0 e o primeiro adapter de importacao (ES-DE gamelist.xml), com provenance, confianca e politica de conflito explicita. Nao edita library.py, shell QML nem daemon.",
+  "nextAction": "Incremento da frente A1 mergeado em main pelo PR #135 (merge 01039acc, commit 80762c97): modelo canonico GameRecord e adapter ES-DE. A frente NAO esta completa — seis adapters (RetroFE, Pegasus, LaunchBox, Playnite, Steam, RetroArch) e o export plan/preview/backup continuam por fazer, e exigem workstream e branch novos porque esta ja foi mergeada. Estado real no item SZ-AURA-METADATA, que permanece implementation partial.",
   "updatedAt": "2026-09-09"
 }
