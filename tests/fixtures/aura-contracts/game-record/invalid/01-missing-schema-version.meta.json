@@ -1,0 +1,6 @@
+{
+  "violates": "schemaVersion obrigatorio",
+  "explains": "Sem versao de schema nao existe contrato de migracao nem compatibilidade",
+  "failsAt": "/",
+  "failsWith": "required"
+}

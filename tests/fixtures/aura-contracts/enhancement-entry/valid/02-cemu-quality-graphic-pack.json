@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "cemu.mk8.resolution-pack",
+  "title": "Graphic pack de resolucao",
+  "platformId": "wiiu",
+  "emulatorId": "cemu",
+  "emulatorVersion": "2.0-97",
+  "category": "quality",
+  "source": {
+    "url": "https://registry.steamzero.local/enhancements/cemu/mk8-resolution.zip",
+    "checksum": "e5f60718293a4b5c6d7e8f9012345678a1b2c3d4",
+    "checksumAlgorithm": "sha1",
+    "license": "MIT"
+  },
+  "identifiers": {
+    "titleId": [
+      "0005000010165D00"
+    ]
+  },
+  "settings": {
+    "resolution": "1440p"
+  },
+  "rollback": {
+    "strategy": "remove",
+    "backupRequired": false
+  }
+}

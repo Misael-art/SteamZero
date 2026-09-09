@@ -1,0 +1,6 @@
+{
+  "violates": "timestamp UTC com sufixo Z",
+  "explains": "Sem UTC explicito a ordenacao de saves e provenance e ambigua",
+  "failsAt": "/updatedAt",
+  "failsWith": "pattern"
+}

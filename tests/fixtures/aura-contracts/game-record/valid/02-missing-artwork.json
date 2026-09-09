@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "id": "psx-spyro-1",
+  "title": "Spyro the Dragon",
+  "sortTitle": "Spyro the Dragon",
+  "aliases": [
+    "Spyro 1"
+  ],
+  "platformId": "psx",
+  "systemId": "sony-psx",
+  "family": "playstation",
+  "region": "us",
+  "language": [
+    "en"
+  ],
+  "path": "/home/player/roms/psx/Spyro the Dragon (USA).chd",
+  "container": "chd",
+  "size": 402653184,
+  "hashes": {
+    "sha1": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"
+  },
+  "developer": "Insomniac Games",
+  "publisher": "Sony Computer Entertainment",
+  "releaseDate": "1998-09-10",
+  "genres": [
+    "Platform",
+    "Adventure"
+  ],
+  "series": "Spyro",
+  "franchise": "Spyro the Dragon",
+  "description": "Um dragao jovem atravessa os reinos para libertar os dragoes petrificados.",
+  "rating": 87.5,
+  "ageRating": "E",
+  "players": 1,
+  "features": [
+    "single-player",
+    "analog-support"
+  ],
+  "runtime": "org.retroarch.flatpak",
+  "core": "swanstation",
+  "launchProfile": "retroarch-libretro",
+  "emulatorId": "retroarch",
+  "saves": [
+    {
+      "slot": 1,
+      "path": "/home/player/.config/retroarch/states/Spyro1.state1",
+      "timestamp": "2026-09-01T21:15:04Z",
+      "playtimeSeconds": 3600,
+      "compatibility": "native"
+    }
+  ],
+  "playtime": 14400,
+  "lastPlayed": "2026-09-01T21:15:04Z",
+  "favorites": true,
+  "collections": [
+    "plataforma",
+    "infancia"
+  ],
+  "provenance": {
+    "title": {
+      "source": "es-de",
+      "retrievedAt": "2026-09-08T10:00:00Z",
+      "confidence": 0.98,
+      "conflictPolicy": "keepRichest"
+    }
+  },
+  "confidence": 0.95,
+  "warnings": [],
+  "availability": "available",
+  "updatedAt": "2026-09-08T10:00:00Z",
+  "media": {}
+}

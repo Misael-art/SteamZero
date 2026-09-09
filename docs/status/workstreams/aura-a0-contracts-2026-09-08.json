@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-A0-CONTRACTS",
+  "item": "SZ-AURA-CONTRACTS",
+  "branch": "codex/aura-a0-contracts-2026-09-08",
+  "baseRef": "b37455f0",
+  "owner": "codex-aura-a0",
+  "state": "blocked",
+  "exclusivePaths": [
+    "docs/adr/0028-aura-cinema-tema-default.md",
+    "docs/12-roadmap/AURA-CAPABILITY-MATRIX.md",
+    "src/steamzero/schemas/game-record-v1.schema.json",
+    "src/steamzero/schemas/enhancement-entry-v1.schema.json",
+    "tests/fixtures/aura-contracts",
+    "tests/unit/test_game_record_contract.py",
+    "tests/unit/test_enhancement_entry_contract.py",
+    "docs/status/items/aura-contracts.json"
+  ],
+  "sharedPaths": [
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md",
+    "docs/status/items/aura-platform-execution-plan.json"
+  ],
+  "nextAction": "Entrega completa e staged, commit bloqueado pelo gate Mimosa L3 por 113 achados high PRE-EXISTENTES fora do escopo da frente (src/steamzero/adapters/game_stream.py: SSRF; reference/linuxtoys e reference/EmuDeck: path traversal, material de pesquisa). Operador executa o commit/push; A1 e A2 abrem na sequencia.",
+  "updatedAt": "2026-09-08"
+}

@@ -1,0 +1,6 @@
+{
+  "violates": "roles de midia fechados nesta versao",
+  "explains": "Novo role exige nova versao do schema, nao chave extra silenciosa",
+  "failsAt": "/media",
+  "failsWith": "additionalProperties"
+}

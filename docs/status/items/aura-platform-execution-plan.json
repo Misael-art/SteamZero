@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AURA-PLATFORM-EXECUTION-PLAN",
+  "title": "Plano de execução AURA fullscreen e plataforma integrada",
+  "domain": "governance",
+  "implementation": "planned",
+  "integration": "isolated",
+  "verification": "none",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "docs/12-roadmap/AURA-FULLSCREEN-PLATFORM-EXECUTION-PLAN.md",
+    "docs/01-product/AURA-SURFACES.md",
+    "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
+    "docs/09-operations/evidence/2026-09-05-ux-audit/AUDIT.md",
+    "docs/status/items/aura-platform-execution-plan.json"
+  ],
+  "dependsOn": [
+    "SZ-AURA-LAUNCHER",
+    "SZ-AURA-UI",
+    "SZ-THEME-ENGINE",
+    "SZ-THEME-STUDIO",
+    "SZ-LIBRARY-CANONICAL"
+  ],
+  "knownGaps": [
+    "GAP-AURA-PLATFORM-EXECUTION-BASELINE",
+    "GAP-AURA-CINEMA-PHYSICAL-INTEGRATION",
+    "GAP-AURA-METADATA-CANONICAL-COVERAGE",
+    "GAP-AURA-PAUSE-SESSION-CONTRACT"
+  ],
+  "acceptanceCriteria": [
+    "O parecer atual e o baseline de prontidão estão registrados com a separação entre AURA UI, AURA Launcher, Theme Engine e Theme Studio.",
+    "O tema default AURA Cinema possui direção visual, tiers, fallback, acessibilidade e budget de desempenho definidos.",
+    "A especificação anexada está decomposta em capacidades, ondas, dependências e critérios de aceite.",
+    "Cada frente possui prompt estruturado, escopo exclusivo, entregáveis, testes e proibições para trabalho multiagente.",
+    "A ordem de integração reserva os arquivos compartilhados para um agente integrador e não declara implementação por planejamento.",
+    "O plano mantém como fora de escopo inicial as capacidades que não devem bloquear a jornada fullscreen principal."
+  ],
+  "evidence": [
+    {
+      "kind": "design",
+      "reference": "docs/12-roadmap/AURA-FULLSCREEN-PLATFORM-EXECUTION-PLAN.md",
+      "command": "Documento de parecer, direção AURA Cinema, decomposição AURA-01..AURA-18 e prompts A0..A14",
+      "result": "recorded"
+    }
+  ],
+  "nextAction": "A0 fechado (contratos game-record-v1/enhancement-entry-v1, ADR 0028, fixtures e matriz em SZ-AURA-CONTRACTS); abrir as frentes A1 (metadados canônicos) e A2 (pipeline de imagem) com workstreams próprios; nenhum agente edita o shell compartilhado sem workstream registrado.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-09-08",
+  "notes": "Plano de governança e execução derivado da auditoria do repositório, da especificação anexada e da direção visual Aura/RetroFE/BigBox. O plano não prova implementação, release, instalação ou performance física."
+}

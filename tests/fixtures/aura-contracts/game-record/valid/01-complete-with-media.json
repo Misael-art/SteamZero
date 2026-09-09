@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "id": "psx-spyro-1",
+  "title": "Spyro the Dragon",
+  "sortTitle": "Spyro the Dragon",
+  "aliases": [
+    "Spyro 1"
+  ],
+  "platformId": "psx",
+  "systemId": "sony-psx",
+  "family": "playstation",
+  "region": "us",
+  "language": [
+    "en"
+  ],
+  "path": "/home/player/roms/psx/Spyro the Dragon (USA).chd",
+  "container": "chd",
+  "size": 402653184,
+  "hashes": {
+    "sha1": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"
+  },
+  "developer": "Insomniac Games",
+  "publisher": "Sony Computer Entertainment",
+  "releaseDate": "1998-09-10",
+  "genres": [
+    "Platform",
+    "Adventure"
+  ],
+  "series": "Spyro",
+  "franchise": "Spyro the Dragon",
+  "description": "Um dragao jovem atravessa os reinos para libertar os dragoes petrificados.",
+  "rating": 87.5,
+  "ageRating": "E",
+  "players": 1,
+  "features": [
+    "single-player",
+    "analog-support"
+  ],
+  "runtime": "org.retroarch.flatpak",
+  "core": "swanstation",
+  "launchProfile": "retroarch-libretro",
+  "emulatorId": "retroarch",
+  "saves": [
+    {
+      "slot": 1,
+      "path": "/home/player/.config/retroarch/states/Spyro1.state1",
+      "timestamp": "2026-09-01T21:15:04Z",
+      "playtimeSeconds": 3600,
+      "compatibility": "native"
+    }
+  ],
+  "playtime": 14400,
+  "lastPlayed": "2026-09-01T21:15:04Z",
+  "favorites": true,
+  "collections": [
+    "plataforma",
+    "infancia"
+  ],
+  "provenance": {
+    "title": {
+      "source": "es-de",
+      "retrievedAt": "2026-09-08T10:00:00Z",
+      "confidence": 0.98,
+      "conflictPolicy": "keepRichest"
+    }
+  },
+  "confidence": 0.95,
+  "warnings": [],
+  "availability": "available",
+  "updatedAt": "2026-09-08T10:00:00Z",
+  "media": {
+    "cover": {
+      "path": "media/psx/spyro1/cover.png",
+      "format": "png",
+      "digest": "b2c3d4e5f60718293a4b5c6d7e8f9012345678a1",
+      "width": 512,
+      "height": 512
+    },
+    "fanart": {
+      "path": "media/psx/spyro1/fanart.jpg",
+      "format": "jpeg",
+      "width": 1920,
+      "height": 1080
+    },
+    "screenshot": {
+      "path": "media/psx/spyro1/shot-01.png",
+      "format": "png",
+      "width": 320,
+      "height": 240
+    },
+    "marquee": {
+      "path": "media/psx/spyro1/marquee.png",
+      "format": "png",
+      "width": 400,
+      "height": 160
+    },
+    "video": {
+      "path": "media/psx/spyro1/video.mp4",
+      "format": "mp4"
+    },
+    "icon": {
+      "path": "media/psx/spyro1/icon.svg",
+      "format": "svg"
+    }
+  },
+  "biosRequirements": [
+    {
+      "id": "scph1001",
+      "state": "valid",
+      "hash": "c3d4e5f60718293a4b5c6d7e8f9012345678a1b2",
+      "hashAlgorithm": "sha1",
+      "region": "us",
+      "size": 524288
+    }
+  ],
+  "firmwareRequirements": [],
+  "keyRequirements": []
+}

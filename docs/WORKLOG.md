@@ -9825,3 +9825,69 @@ encerramento da sessão KDE. A matriz registrou 56 JSONs, 12 agregados e 44
 itens não agregados; a diferença para os 43 itens citados no prompt foi
 preservada como achado de governança. `make status-render`, `make status-check`
 e `git diff --check` passaram.
+
+## 2026-09-08 — Sessão: parecer e plano AURA fullscreen/plataforma
+
+O parecer de prontidão do SteamZero foi registrado em
+`docs/12-roadmap/AURA-FULLSCREEN-PLATFORM-EXECUTION-PLAN.md`. O documento
+classifica o produto como RC técnica/beta interna: a fundação transacional e a
+fatia do AURA Launcher são reais, mas a experiência de consumidor ainda não
+atinge Big Picture/console por lacunas de integração física, artwork,
+onboarding, operações longas e acabamento visual.
+
+Foi tomada a decisão de produto de usar o **AURA Cinema** como tema fullscreen
+default: implementação independente inspirada na direção cinematográfica do
+Aura/RetroFE/BigBox, com arte em primeiro plano, fanart blur, capa central,
+paleta adaptativa, tiers low/balanced/cinematic, fallback seguro, high contrast
+e reduced motion. A decisão não copia código, assets, marca ou formato de
+terceiros.
+
+A especificação anexada foi decomposta em 18 capacidades AURA-01..AURA-18,
+seis ondas de execução e 15 papéis multiagente A0..A14, cada um com escopo
+exclusivo, dependências, entregáveis, testes e proibições. O novo item
+`SZ-AURA-PLATFORM-EXECUTION-PLAN` foi adicionado ao catálogo como `planned`,
+sem promover qualquer capacidade existente.
+
+Validação: `STATUS-CHECK`, Ruff, formatação, mypy em 256 módulos, fronteiras e
+independência passaram; o teste focado de service core passou 43/43 com
+`TMPDIR=/tmp`. A suíte integral terminou com 5.585 passados, 44 skips e uma
+falha ambiental `AF_UNIX path too long` causada pelo diretório temporário longo
+do Codex; o daemon ativo também escreveu logs/estado real, conforme o aviso do
+harness. Nenhum código de produção, host, release ou instalação foi alterado.
+
+## 2026-09-09 — Sessão: frente A0 do plano AURA (contratos congelados)
+
+Execução da frente A0 do plano
+`docs/12-roadmap/AURA-FULLSCREEN-PLATFORM-EXECUTION-PLAN.md` na branch
+`codex/aura-a0-contracts-2026-09-08` (base b37455f0), com workstream
+`WS-2026-09-AURA-A0-CONTRACTS` registrado antes de editar e item
+`SZ-AURA-CONTRACTS` criado. Nenhum shell QML, daemon, importador ou pipeline
+foi tocado; nenhum caminho reservado por workstream ativo foi editado.
+
+Entregas: ADR-0028 do tema default AURA Cinema (inspiração Aura/RetroFE/BigBox
+como direção, independência ADR-0019, composição com fallback obrigatório,
+tiers low/balanced/cinematic, budget de desempenho); schemas de contrato
+`game-record-v1.schema.json` (GameRecord com MediaRole fechado e Provenance
+com origem/timestamp/confiança/política de conflito; campos desconhecidos
+tolerados na raiz) e `enhancement-entry-v1.schema.json` (categoria fechada sem
+cheats de gameplay, fonte https com checksum e licença, rollback declarado);
+18 fixtures em `tests/fixtures/aura-contracts/` cobrindo arte ausente, conflito
+de fontes, multi-disc, BIOS ausente, save conflitante, operação interrompida e
+tolerância a versão futura; matriz `docs/12-roadmap/AURA-CAPABILITY-MATRIX.md`
+com AURA-01..AURA-18, ondas, agentes e critérios P0/P1/P2.
+
+Prova: 31 testes de contrato verdes; três mutações do schema (enum com cheat,
+required sem schemaVersion, fixture removida) foram reprovadas pelos
+testes-guarda antes do revert. Gates integrais no fechamento: suíte isolada
+5.617 passados / 44 skips / 0 falhas; ruff check e format-check limpos; mypy
+sem issues em 256 módulos; independência e fronteiras OK; STATUS-CHECK OK.
+Item `SZ-AURA-PLATFORM-EXECUTION-PLAN` avançou o nextAction para abrir A1 e
+A2. Nenhuma alteração de host, release ou instalação; push e PR autorizados
+nesta thread.
+
+Bloqueio registrado no fechamento: o gate Mimosa L3 interrompeu a cadeia
+commit/push do agente por 113 achados high pré-existentes fora do escopo da
+frente (`src/steamzero/adapters/game_stream.py`: SSRF; `reference/linuxtoys`
+e `reference/EmuDeck`: path traversal, material de pesquisa). A entrega A0
+permanece staged; o commit, o push e o PR seguem para o operador, conforme o
+fluxo já validado. As frentes A1 e A2 aguardam a base commitada.

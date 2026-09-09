@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AURA-CONTRACTS",
+  "title": "Contratos canônicos da plataforma AURA (GameRecord, MediaRole, Provenance, EnhancementEntry)",
+  "domain": "governance",
+  "implementation": "complete",
+  "integration": "isolated",
+  "verification": "unit",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopeDigest": "f015605723bb032c0b07b32f83cebeeb6ce0794a7a7d6ffa087b50ae9363231d",
+  "scopePaths": [
+    "docs/adr/0028-aura-cinema-tema-default.md",
+    "docs/12-roadmap/AURA-CAPABILITY-MATRIX.md",
+    "src/steamzero/schemas/game-record-v1.schema.json",
+    "src/steamzero/schemas/enhancement-entry-v1.schema.json",
+    "tests/fixtures/aura-contracts",
+    "tests/unit/test_game_record_contract.py",
+    "tests/unit/test_enhancement_entry_contract.py"
+  ],
+  "dependsOn": [
+    "SZ-AURA-PLATFORM-EXECUTION-PLAN"
+  ],
+  "knownGaps": [
+    "GAP-AURA-CONTRACTS-CONSUMER"
+  ],
+  "acceptanceCriteria": [
+    "O ADR do AURA Cinema registra inspiração, independência, licença, composição com fallback obrigatório, tiers, acessibilidade e budget de desempenho.",
+    "GameRecord, MediaRole, Provenance e EnhancementEntry possuem schemas JSON draft 2020-12 versionados e empacotados.",
+    "Fixtures de exceção (arte ausente, conflito de fontes, multi-disc, BIOS ausente, save conflitante, operação interrompida) validam contra os schemas e provam as regras declaradas.",
+    "A matriz AURA-01..AURA-18 registra dependências, ondas, agentes e os critérios de aceite P0/P1/P2.",
+    "Nenhum arquivo desta frente declara capacidade de usuário implementada: contratos não são Launcher, Theme Engine, importador ou pipeline."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_game_record_contract.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_game_record_contract.py tests/unit/test_enhancement_entry_contract.py -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Operador executa commit/push da entrega A0 (staged) e abre o PR; o gate Mimosa L3 interrompeu a cadeia commit/push do agente por achados high pré-existentes fora do escopo (game_stream.py, reference/). Após o merge, abrir A1 e A2.",
+  "activeWorkstreams": [
+    "WS-2026-09-AURA-A0-CONTRACTS"
+  ],
+  "updatedAt": "2026-09-08",
+  "notes": "Frente A0 do plano docs/12-roadmap/AURA-FULLSCREEN-PLATFORM-EXECUTION-PLAN.md. Congela contratos e fixtures da Onda 0 sem editar shell QML, daemon, importadores ou pipeline. Modelo Python de domínio, importadores e consumo pertencem às frentes seguintes (A1, A2)."
+}
