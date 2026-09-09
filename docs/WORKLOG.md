@@ -10073,3 +10073,58 @@ fornecer arquivos reais, ou fechar A1 em 5 de 7.
 **Limite que não mudou:** nada consome `GameRecord`. Existem cinco tradutores e
 nenhum leitor. `GAP-AURA-METADATA-CONSUMER` é o que separa A1 de virar
 capacidade visível para o usuário.
+
+## 2026-09-09 — Consumidor de GameRecord e endurecimento do asset-fonte SVG
+
+Dois fechamentos: `GAP-AURA-METADATA-CONSUMER` (PR #140, merge `fee675ac`) e os
+vetores de referência externa em SVG (PR #141, merge `71d8cef2`).
+
+**Consumidor.** Até então a frente A1 tinha cinco tradutores e nenhum leitor, e
+modelo que ninguém lê não move nada para o usuário.
+`domain/library_projection.py` projeta o registro canônico no payload que
+`adapters.launcher_catalog.catalog_games` já consome — encaixou sem adaptação
+porque esse adapter já lia `platformId`, que é o campo do contrato. O caminho
+arquivo externo → adapter → GameRecord → projeção → home é exercitado ponta a
+ponta, sem dublê em nenhum elo, e provado com a biblioteca real de 2524 jogos:
+nenhum se perde, nenhum é omitido, todos chegam com a plataforma correta.
+
+Duas regras, ambas por não falsear estado: jogo indisponível (`missing`,
+`incompatible`, `permissionDenied`) **não** entra no catálogo como jogo normal —
+sai em `omitted` com o motivo, porque listá-lo faria a home prometer o que não
+abre; e ausência de arte continua ausência, nunca placeholder fingindo capa.
+Escolha deliberadamente contrária: `unknown` **entra**, porque nenhum adapter lê
+disco e esconder por precaução apagaria a biblioteca de quem acabou de importar.
+
+**Sanitização.** Cheguei em A2 esperando construir o pipeline e encontrei
+`asset_recipes.py` com receitas, cache, resolver e validação já prontos.
+Reimplementar teria produzido muitas linhas e nenhum ganho. O que faltava eram
+duas cláusulas que o plano exige literalmente — URL externa e caminho absoluto —
+e uma sonda provou seis vetores **aceitos** antes da correção, incluindo
+`<image href="https://…">` (vaza requisição do host ao renderizar) e
+`file:///etc/passwd`.
+
+Desenhado como allowlist: só `#fragmento` e `data:image/` raster passam. A lista
+de esquemas perigosos nunca termina; a do que o tema pode alcançar, sim. A regra
+foi verificada contra os 33 SVGs reais do projeto **antes** de ser fixada, o que
+permitiu ser estrito sem quebrar arte legítima. Prova de mutação: 16 dos 28
+testes reprovam sem a correção.
+
+**O gate pegou e não foi contornado.** Mexer em `asset_recipes.py` marcou a
+evidência de `SZ-THEME-ENGINE` como obsoleta. Em vez de carimbar o digest,
+reexecutei a evidência de unidade daquele item — 319 testes, todos passando — e
+registrei a reverificação. Carimbar sem rodar seria fraudar o gate.
+
+Achado registrado sem inflar: três SVGs do projeto (`mega-drive`,
+`nintendo-handheld`, `playstation-3`) já eram recusados **antes** desta mudança,
+por conterem `<!DOCTYPE`. Não quebram nada porque o validador roda em pacote de
+tema de terceiro, não em ícone first-party do QML.
+
+Gates: suíte isolada 5.870 passados / 44 skips / 0 falhas (baseline do dia:
+5.617). ruff, mypy, independência, fronteiras e status-check OK; CI remota verde
+nos dois PRs.
+
+**Limites que permanecem.** A projeção prova que o modelo é consumível, mas o
+Launcher em produção segue lendo `emulation-library-cache-v1.json`; ligar os dois
+passa por arquivos de dois workstreams ativos. A frente A2 não está completa
+pelo mesmo motivo: `theme_assets.py` pertence a `WS-2026-09-TEMAS-ESDE`. Ambos
+exigem coordenação, não código.

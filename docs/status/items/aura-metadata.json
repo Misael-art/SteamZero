@@ -91,9 +91,7 @@
     }
   ],
   "nextAction": "GAP-AURA-METADATA-CONSUMER FECHADO: a projecao liga a metadata importada a home do Launcher, com o caminho completo provado ponta a ponta (inclusive contra biblioteca real de 2524 jogos). Faltam: ligar a projecao ao entry point do Launcher em producao, que hoje le emulation-library-cache-v1.json e cujo QML pertence a WS-2026-09-LAUNCHER-P0-ACTIVATION; adapters Playnite e RetroFE, bloqueados por GAP-AURA-METADATA-FIXTURE-REAL; e o export plan/preview/backup.",
-  "activeWorkstreams": [
-    "WS-2026-09-AURA-A1-CONSUMER"
-  ],
+  "activeWorkstreams": [],
   "updatedAt": "2026-09-09",
   "notes": "Frente A1 do plano AURA. Entrega PARCIAL por decisao explicita: 4 de 7 adapters. Um adapter completo e provado vale mais que sete parsers rasos. A defesa de caminho e a proveniencia vivem em _common.py, com prova central em test_metadata_import_common.py; cada adapter so precisa provar que a usa. Bug corrigido neste ciclo: o adapter ES-DE convertia rating para escala 0..10 quando o contrato fixa 0..100 — o schema aceitava o valor errado por estar dentro da faixa, e so a semantica denunciava. Modulo de dominio puro; nao toca library.py, shell QML nem daemon. O adapter Steam recebe atalhos JA decodificados: o decodificador VDF binario vive em adapters.steam_shortcuts, domain nao importa adapters, e uma segunda leitura do mesmo formato divergiria. Validacao externa registrada: o adapter Pegasus foi conferido contra 56 arquivos reais de reference/EmuDeck (2524 registros, zero excecoes, campos conferidos contra a fonte); o teste pula quando reference/ ausente, porque o diretorio nao e versionado. Consumidor entregue: domain/library_projection.py projeta GameRecord no payload que catalog_games consome, sem tocar o QML (travado por WS-2026-09-LAUNCHER-P0-ACTIVATION) nem library_scan.py (travado por WS-2026-08-V2-HARMONIZED). Jogo indisponivel (missing/incompatible/permissionDenied) NAO entra no catalogo como jogo normal: sai em omitted com o motivo, porque lista-lo faria a home prometer o que nao abre.",
   "scopeDigest": "67606513eb5bc0791d8eea359ec8139650f7dbdd834bcbcf34c180257034eea1"
