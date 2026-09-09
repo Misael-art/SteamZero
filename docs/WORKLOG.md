@@ -10023,3 +10023,53 @@ entregou capacidade de produto, entregou a base que A2 e A4 vão consumir.
 
 O workstream foi fechado junto: a branch está mergeada e a §2 proíbe voltar a
 commitar nela. Continuar a frente exige workstream e branch novos.
+
+## 2026-09-09 — Frente A1: adapters RetroArch, Pegasus, LaunchBox e Steam
+
+Dois ciclos que levaram A1 de 1 para 5 dos 7 adapters previstos, mergeados pelos
+PRs #137 (`67600257`) e #138 (`7fcbcb8e`).
+
+**Bug corrigido, e a lição que ele deixou.** O adapter ES-DE, já mergeado no
+PR #135, convertia `rating` para escala 0..10 quando o contrato fixa 0..100: um
+jogo avaliado em 85% virava `8.5`. O schema **não pegou**, porque 8.5 é um
+número válido dentro de 0..100 — só a semântica denuncia. A fixture inválida de
+A0 já nomeava a classe: *"Fontes usam escalas diferentes; o contrato fixa a
+escala canônica"*. Registrado no teste de regressão: **validação de schema não é
+validação semântica**; passar no contrato prova que o valor é representável, não
+que significa o que deveria.
+
+**Primeira validação externa da suíte.** O adapter Pegasus foi conferido contra
+56 arquivos `metadata.pegasus.txt` reais de `reference/EmuDeck`: 2524 registros,
+zero exceções, zero recusas, campos batendo com a fonte e 2524 IDs únicos sem
+colisão. Isso expõe uma fraqueza que vale para **todos** os adapters: fixture
+sintética prova apenas consistência com as suposições de quem a escreveu, não
+que o formato foi entendido. Os testes reais usam `skipif` porque `reference/` é
+gitignored e não versionado — sem isso, passariam aqui e reprovariam na CI.
+
+Decisões registradas em vez de resolvidas por adivinhação: a `.lpl` antiga de
+seis linhas é recusada com mensagem explícita; no Pegasus um único disco hostil
+recusa o jogo inteiro (importar meia lista daria multi-disco silenciosamente
+incompleto); o VDF binário do Steam **não** foi reimplementado, porque
+`adapters.steam_shortcuts` já tem decodificador em produção e um segundo parser
+do mesmo formato divergiria do primeiro.
+
+A defesa de caminho foi extraída para `_common.py` quando o segundo adapter
+apareceu. Replicada em cinco arquivos, uma cópia acabaria divergindo e viraria a
+brecha que as outras fecham. Prova de mutação confirmou que a contenção é
+load-bearing e que `startswith` aceitaria `/roms/psx-mal` como interno a
+`/roms/psx`.
+
+Gates: suíte isolada 5813 passados / 44 skips / 0 falhas (baseline inicial do
+ciclo: 5681). ruff, mypy, independência, fronteiras e status-check OK. CI remota
+verde nos dois PRs.
+
+**Bloqueio honesto registrado.** Playnite e RetroFE ficam abertos por falta de
+fixture real: o export do Playnite varia entre versões e o RetroFE usa `meta.db`
+alimentado por hyperlist XML, não o `meta.txt` que o plano cita. Escrever o
+parser a partir de suposição, com teste que confirma a mesma suposição, é
+exatamente o que deixou passar o bug do `rating`. A decisão é do operador —
+fornecer arquivos reais, ou fechar A1 em 5 de 7.
+
+**Limite que não mudou:** nada consome `GameRecord`. Existem cinco tradutores e
+nenhum leitor. `GAP-AURA-METADATA-CONSUMER` é o que separa A1 de virar
+capacidade visível para o usuário.
