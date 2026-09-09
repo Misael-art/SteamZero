@@ -9930,3 +9930,54 @@ Declará-las entregues nesta sessão exigiria fabricar evidência. A0 mergeada �
 o que de fato destrava A1 e A2.
 
 Nenhum artefato de release foi construído, publicado ou instalado.
+
+## 2026-09-09 — Entrega física: release 2.0.0rc1-e2b333678882 instalada no host
+
+Autorização explícita do operador nesta thread para instalação e release a partir
+do tip de `main`. Fluxo governado `tools/release_host.py`, sem nenhum comando
+privilegiado fora dele.
+
+Preflights da seção 1, todos cumpridos antes da mutação: `main` @ `e2b33367`
+limpo e descendente de `origin/main`; sintomas de base obsoleta da seção 3
+ausentes (versão 2.0.0rc1, `schemaVersion 4`, `--source-commit` exigido,
+`steam_boot.py`/`steam_session.py` presentes); gates da seção 6 verdes no commit
+exato a instalar; run `push` verde em `e2b33367`
+(actions/runs/34336700722); bundle montado a partir do artefato desse run — **não**
+de árvore local (seção 4); `verify-bundle` OK; estado atual inspecionado; plano de
+rollback conhecido.
+
+Release ativada: `2.0.0rc1-e2b333678882`, wheel sha256 `b079ef99…`, anterior
+`2.0.0rc1-435f9108eeb7`.
+
+Validação read-only pós-instalação: `readlink -f /opt/steamzero/current` aponta a
+release nova; `steamzero --version` 2.0.0rc1; `steamzero-core.service` e
+`.socket` ativos; doctor `degraded` com **`service.generation` PASS — daemon na
+release ativada**, o que descarta a regressão do incidente a37 (daemon preso na
+release antiga). Os dois `warn` são `staging.orphan` (1 árvore, pré-existente) e
+`boot.direct: unknown` por falta de permissão de inspeção — a degradação honesta
+prevista na seção 8. O host já estava `degraded` antes da instalação: não há
+regressão.
+
+Evidência em `docs/09-operations/evidence/2026-09-09-aura-a0-release-instalada/`:
+`01-baseline.png` (proveniência verificável da release ativa) e
+`02-entrega-funcional.png` (AURA Launcher da release instalada, biblioteca real
+de 8016 arquivos / 1131 jogos, foco válido no primeiro card).
+
+Erro de método corrigido no caminho, digno de registro: a primeira sonda usou
+`systemctl --user is-active steamzero.service`, que retornou `inactive` e parecia
+contradizer o instalador. Era nome de unit inexistente (exit 4) — as units reais
+são `steamzero-core.*` e estavam ativas. A sonda acusou o inocente; o instalador
+estava certo. Mesmo padrão de falso positivo já registrado em sessões anteriores.
+
+Limites honestos desta entrega:
+
+- A captura mostra o Launcher **pré-existente** com fallback tipográfico (sem
+  arte). Ela prova que a release instalada funciona; **não** prova capacidade
+  entregue por A0, que é só contrato, nem o tema AURA Cinema, que é a frente A4 e
+  não existe.
+- O rollback para `2.0.0rc1-435f9108eeb7` está disponível e o plano é conhecido,
+  mas **não foi exercitado** nesta sessão. Não há evidência de recuperação.
+- `boot.direct` permanece `unknown`. O **reboot físico continua sendo do
+  operador**; o host está pronto para o teste de boot direto.
+- `publish` NÃO foi executado: o próprio comando exige evidência de certificação
+  separada e aprovada, e a certificação do AURA é justamente o que falta.
