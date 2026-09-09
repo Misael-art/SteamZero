@@ -6,7 +6,7 @@
   "branch": "codex/aura-a1-adapters-2026-09-09",
   "baseRef": "cce2a531",
   "owner": "codex-aura-a1-adapters",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/domain/metadata_import/_common.py",
     "src/steamzero/domain/metadata_import/esde.py",
@@ -27,6 +27,6 @@
     "docs/WORKLOG.md",
     "docs/status/items/aura-metadata.json"
   ],
-  "nextAction": "Extrair o contrato de traducao compartilhado (_common.py) que hoje vive dentro do adapter ES-DE — duplicar a defesa de caminho em quatro arquivos garantiria que uma delas divergisse — e implementar RetroArch (.lpl), Pegasus (metadata.pegasus.txt) e LaunchBox (XML) sobre ele. Playnite, Steam e RetroFE ficam para o ciclo seguinte.",
+  "nextAction": "Contrato compartilhado, RetroArch, Pegasus e LaunchBox mergeados pelo PR #137 (merge 67600257). Branch mergeada; continuar exige workstream novo.",
   "updatedAt": "2026-09-09"
 }
