@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "unknown",
   "distribution": "installed",
-  "scopeDigest": "f015605723bb032c0b07b32f83cebeeb6ce0794a7a7d6ffa087b50ae9363231d",
+  "scopeDigest": "3a7d87e0b08d5b7aff9f4bbc3aa4f3d7ca6ca525e37ecf9009281646bcd1ff82",
   "scopePaths": [
     "docs/adr/0028-aura-cinema-tema-default.md",
     "docs/12-roadmap/AURA-CAPABILITY-MATRIX.md",
@@ -17,7 +17,8 @@
     "src/steamzero/schemas/enhancement-entry-v1.schema.json",
     "tests/fixtures/aura-contracts",
     "tests/unit/test_game_record_contract.py",
-    "tests/unit/test_enhancement_entry_contract.py"
+    "tests/unit/test_enhancement_entry_contract.py",
+    "docs/09-operations/evidence/2026-09-09-aura-a0-release-instalada"
   ],
   "dependsOn": [
     "SZ-AURA-PLATFORM-EXECUTION-PLAN"
