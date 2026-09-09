@@ -25,7 +25,8 @@
   ],
   "knownGaps": [
     "GAP-AURA-METADATA-ADAPTERS",
-    "GAP-AURA-METADATA-CONSUMER"
+    "GAP-AURA-METADATA-CONSUMER",
+    "GAP-AURA-METADATA-FIXTURE-REAL"
   ],
   "acceptanceCriteria": [
     "O modelo Python valida contra o schema de A0 em vez de reescrever as regras: não há segunda fonte de verdade que possa divergir em silêncio.",
@@ -80,10 +81,8 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Cinco dos sete adapters previstos estao implementados (ES-DE, RetroArch, Pegasus, LaunchBox, Steam). Faltam Playnite e RetroFE, e o export plan/preview/backup. GAP-AURA-METADATA-CONSUMER continua aberto: nenhum consumidor real le GameRecord.",
-  "activeWorkstreams": [
-    "WS-2026-09-AURA-A1-ADAPTERS2"
-  ],
+  "nextAction": "Cinco dos sete adapters implementados e mergeados (ES-DE, RetroArch, Pegasus, LaunchBox, Steam). Playnite e RetroFE aguardam DECISAO DO OPERADOR: sem arquivo real de cada formato, o parser sairia de suposicao e os testes confirmariam a mesma suposicao. Duas saidas: (a) operador fornece um export real do Playnite e um meta.db/hyperlist do RetroFE, e a implementacao sai com validacao externa como a do Pegasus; (b) A1 fecha em 5 de 7 e o esforco vai para GAP-AURA-METADATA-CONSUMER, que e o que separa a frente de virar capacidade visivel — hoje existem cinco tradutores e nenhum leitor.",
+  "activeWorkstreams": [],
   "updatedAt": "2026-09-09",
   "notes": "Frente A1 do plano AURA. Entrega PARCIAL por decisao explicita: 4 de 7 adapters. Um adapter completo e provado vale mais que sete parsers rasos. A defesa de caminho e a proveniencia vivem em _common.py, com prova central em test_metadata_import_common.py; cada adapter so precisa provar que a usa. Bug corrigido neste ciclo: o adapter ES-DE convertia rating para escala 0..10 quando o contrato fixa 0..100 — o schema aceitava o valor errado por estar dentro da faixa, e so a semantica denunciava. Modulo de dominio puro; nao toca library.py, shell QML nem daemon. O adapter Steam recebe atalhos JA decodificados: o decodificador VDF binario vive em adapters.steam_shortcuts, domain nao importa adapters, e uma segunda leitura do mesmo formato divergiria. Validacao externa registrada: o adapter Pegasus foi conferido contra 56 arquivos reais de reference/EmuDeck (2524 registros, zero excecoes, campos conferidos contra a fonte); o teste pula quando reference/ ausente, porque o diretorio nao e versionado.",
   "scopeDigest": "9f364f30363bacb823e7bb777c40382e337d6d662d01fa8398cc474a48f57b2d"
