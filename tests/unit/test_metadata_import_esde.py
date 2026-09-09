@@ -64,7 +64,7 @@ def test_traduz_jogo_completo() -> None:
     assert payload["developer"] == "Naughty Dog"
     assert payload["genres"] == ["Plataforma"]
     assert payload["players"] == 2
-    assert payload["rating"] == 8.5
+    assert payload["rating"] == 85.0
     assert payload["releaseDate"] == "1996-09-09"
     assert payload["media"]["cover"] == {"path": "/roms/psx/media/crash.png", "format": "png"}
 
@@ -230,3 +230,15 @@ def test_diretorio_irmao_com_prefixo_igual_nao_e_aceito_como_interno() -> None:
 def test_caminho_absoluto_dentro_da_raiz_e_aceito() -> None:
     (record,) = _run(_gamelist(_game(path="/roms/psx/ok.chd", name="OK"))).records
     assert record.to_mapping()["path"] == "/roms/psx/ok.chd"
+
+
+def test_rating_usa_a_escala_canonica_0_a_100_e_nao_0_a_10() -> None:
+    """Regressão do PR #135: 0.85 é 85, não 8.5.
+
+    O schema aceitava 8.5 (está dentro de 0..100), então a validação não pegava
+    — só a semântica denuncia. A fixture inválida de A0 nomeia a classe:
+    "Fontes usam escalas diferentes; o contrato fixa a escala canônica".
+    """
+    for fraction, expected in (("0.85", 85.0), ("1.0", 100.0), ("0.0", 0.0), ("0.5", 50.0)):
+        (record,) = _run(_gamelist(_game(path="./x.chd", name="X", rating=fraction))).records
+        assert record.to_mapping()["rating"] == expected

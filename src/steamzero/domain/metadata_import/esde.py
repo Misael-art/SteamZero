@@ -28,11 +28,21 @@ from __future__ import annotations
 import re
 import xml.etree.ElementTree as ET
 from collections.abc import Iterator
-from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any
 
 from steamzero.domain.game_record import GameRecord, GameRecordError
+from steamzero.domain.metadata_import._common import (
+    MAX_ENTRIES,
+    ImportResult,
+    PathRefused,
+    build_provenance,
+    media_asset,
+    normalized_players,
+    require_absolute_root,
+    resolve_path,
+    slug_id,
+)
 
 #: Origem registrada na proveniência de todo campo vindo deste adapter.
 SOURCE = "esde"
@@ -41,26 +51,9 @@ SOURCE = "esde"
 CONFIDENCE = 0.6
 
 _DOCTYPE = re.compile(r"<!(DOCTYPE|ENTITY)", re.IGNORECASE)
-_ID_SAFE = re.compile(r"[^a-z0-9._-]+")
-_PLAYERS = re.compile(r"(\d+)")
-_MAX_GAMES = 100_000
 
-
-@dataclass(frozen=True)
-class EsdeImportResult:
-    """Registros traduzidos e o que foi recusado, com o motivo.
-
-    Entrada rejeitada nunca desaparece em silêncio: ``skipped`` diz qual jogo e
-    por quê, para que a UI possa explicar em vez de mostrar biblioteca menor sem
-    justificativa.
-
-    Aviso que não derruba o jogo (rating fora de faixa, mídia de formato
-    desconhecido) fica em ``GameRecord.warnings``, junto do registro a que
-    pertence — não há lista global aqui, porque aviso solto não diz de quem é.
-    """
-
-    records: tuple[GameRecord, ...] = ()
-    skipped: tuple[tuple[str, str], ...] = ()
+#: Alias mantido: ``EsdeImportResult`` é o nome público desde o primeiro ciclo.
+EsdeImportResult = ImportResult
 
 
 def _text(node: ET.Element, tag: str) -> str | None:
@@ -69,48 +62,6 @@ def _text(node: ET.Element, tag: str) -> str | None:
         return None
     value = child.text.strip()
     return value or None
-
-
-def _slug_id(platform_id: str, path: str) -> str:
-    stem = PurePosixPath(path).stem.lower()
-    slug = _ID_SAFE.sub("-", f"{platform_id}-{stem}").strip("-._")
-    slug = slug or f"{platform_id}-sem-titulo"
-    if not slug[0].isalnum():
-        slug = f"g{slug}"
-    return slug[:128]
-
-
-def _resolve_path(raw: str, system_root: str) -> str:
-    """Resolve o caminho do ES-DE contra a raiz, recusando escape.
-
-    Recusar é deliberado. Normalizar silenciosamente um ``../`` transformaria um
-    gamelist de terceiro num leitor de arquivo arbitrário.
-    """
-    candidate = raw.strip()
-    if not candidate:
-        raise ValueError("caminho vazio")
-    if candidate.startswith("~"):
-        raise ValueError("caminho com expansão de home não é aceito")
-    root = PurePosixPath(system_root)
-    if candidate.startswith("/"):
-        resolved = PurePosixPath(candidate)
-    else:
-        resolved = root / PurePosixPath(candidate)
-    # Normaliza ``.`` e ``..`` sem tocar o disco (nada de resolve(), que
-    # seguiria symlink), e então exige contenção. A contenção é a única garantia
-    # e é o que os testes de mutação provam: guarda extra durante a normalização
-    # é código morto que só parece defesa.
-    parts: list[str] = []
-    for part in resolved.parts:
-        if part == "..":
-            if parts:
-                parts.pop()
-        elif part != ".":
-            parts.append(part)
-    final = PurePosixPath(*parts) if parts else root
-    if final != root and root not in final.parents:
-        raise ValueError("caminho escapa da raiz do sistema")
-    return str(final)
 
 
 def _rating(node: ET.Element, warnings: list[str]) -> float | None:
@@ -125,18 +76,21 @@ def _rating(node: ET.Element, warnings: list[str]) -> float | None:
     if not 0.0 <= fraction <= 1.0:
         warnings.append("esde-rating-fora-de-faixa")
         return None
-    return round(fraction * 10, 2)
+    # A escala canônica do contrato é 0..100, não 0..10. Multiplicar por 10
+    # produzia 8.5 para um jogo 85% — número que o schema aceita (está dentro
+    # da faixa) e que mesmo assim mente sobre a nota. Bug corrigido depois de
+    # mergeado no PR #135; a validação não pegava porque o valor era válido.
+    return round(fraction * 100, 2)
 
 
-def _players(node: ET.Element, warnings: list[str]) -> int | None:
+def _esde_players(node: ET.Element, warnings: list[str]) -> int | None:
     raw = _text(node, "players")
     if raw is None:
         return None
-    found = _PLAYERS.findall(raw)
-    if not found:
+    value = normalized_players(raw)
+    if value is None:
         warnings.append("esde-players-invalido")
-        return None
-    return max(int(value) for value in found)
+    return value
 
 
 def _iter_games(root: ET.Element) -> Iterator[ET.Element]:
@@ -160,8 +114,10 @@ def import_esde_gamelist(
     por isso ``availability`` fica ``unknown`` — afirmar ``available`` sem olhar
     o arquivo seria inventar estado.
     """
-    if not system_root.startswith("/"):
-        raise GameRecordError(f"system_root deve ser absoluto: {system_root!r}")
+    try:
+        require_absolute_root(system_root)
+    except ValueError as exc:
+        raise GameRecordError(str(exc)) from exc
 
     # XML de terceiro é entrada hostil: DTD/entidade abrem porta para expansão
     # de entidade e leitura de arquivo externo. Recusar é mais barato e mais
@@ -179,7 +135,7 @@ def import_esde_gamelist(
     seen: set[str] = set()
 
     for index, node in enumerate(_iter_games(root)):
-        if index >= _MAX_GAMES:
+        if index >= MAX_ENTRIES:
             skipped.append(("<limite>", "esde-gamelist-excede-limite"))
             break
 
@@ -189,13 +145,13 @@ def import_esde_gamelist(
             skipped.append((label, "esde-sem-path"))
             continue
         try:
-            path = _resolve_path(raw_path, system_root)
-        except ValueError as exc:
+            path = resolve_path(raw_path, system_root)
+        except PathRefused as exc:
             skipped.append((label, f"esde-path-recusado: {exc}"))
             continue
 
         title = _text(node, "name") or PurePosixPath(path).stem
-        record_id = _slug_id(platform_id, path)
+        record_id = slug_id(platform_id, path)
         if record_id in seen:
             skipped.append((label, "esde-id-duplicado"))
             continue
@@ -217,7 +173,7 @@ def import_esde_gamelist(
             "developer": _text(node, "developer"),
             "publisher": _text(node, "publisher"),
             "rating": _rating(node, warnings),
-            "players": _players(node, warnings),
+            "players": _esde_players(node, warnings),
         }
         genre = _text(node, "genre")
         if genre:
@@ -232,18 +188,15 @@ def import_esde_gamelist(
             if raw_media is None:
                 continue
             try:
-                media_path = _resolve_path(raw_media, system_root)
-            except ValueError:
+                media_path = resolve_path(raw_media, system_root)
+            except PathRefused:
                 warnings.append(f"esde-media-recusada-{role}")
                 continue
-            suffix = PurePosixPath(media_path).suffix.lower().lstrip(".")
-            fmt = {"jpg": "jpeg", "jpeg": "jpeg", "png": "png", "webp": "webp"}.get(suffix)
-            if role == "video":
-                fmt = {"mp4": "mp4", "webm": "webm"}.get(suffix)
-            if fmt is None:
+            asset = media_asset(media_path, role=role)
+            if asset is None:
                 warnings.append(f"esde-media-formato-desconhecido-{role}")
                 continue
-            media[role] = {"path": media_path, "format": fmt}
+            media[role] = asset
 
         payload.update({key: value for key, value in optional.items() if value is not None})
         if media:
@@ -251,16 +204,9 @@ def import_esde_gamelist(
         if warnings:
             payload["warnings"] = warnings
 
-        tracked = [key for key in payload if key not in {"schemaVersion", "provenance", "warnings"}]
-        payload["provenance"] = {
-            key: {
-                "source": SOURCE,
-                "retrievedAt": retrieved_at,
-                "confidence": CONFIDENCE,
-                "conflictPolicy": "keepRichest",
-            }
-            for key in tracked
-        }
+        payload["provenance"] = build_provenance(
+            payload, source=SOURCE, retrieved_at=retrieved_at, confidence=CONFIDENCE
+        )
 
         try:
             records.append(GameRecord.from_mapping(payload))
