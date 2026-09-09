@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "12a9a7843efc26cd6b8b40b296a171eb9ec14ed001443911cc4742194c5197ed",
+  "scopeDigest": "698c3b8cebfdd49d743154615db0783b049d46ae6526b2f37fc0f4ab9ec25c93",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -293,12 +293,18 @@
       "reference": "docs/09-operations/evidence/2026-09-08-ux-audit/README.md",
       "command": "theme list/status read-only na release 2.0.0rc1-435f9108eeb7: quatro builtin disponíveis, activeId asset-recipes-demo e orphanStaging=1; nenhum apply foi executado.",
       "result": "partial"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_asset_recipes.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_effects.py tests/unit/test_scene_contract.py tests/unit/test_scene_image_pipeline.py tests/unit/test_asset_recipes.py tests/unit/test_themes.py tests/unit/test_theme_editor.py tests/unit/test_scene_layout.py tests/unit/test_scene_motion.py tests/unit/test_scene_surfaces.py tests/unit/test_scene_containers.py tests/unit/test_studio_graph.py tests/unit/test_dynamic_palette.py tests/unit/test_glass_panels.py -q (319 passed) — reverificacao apos endurecer validate_asset_source contra referencia externa e caminho absoluto (SZ-AURA-ASSET-SANITIZACAO)",
+      "result": "passed"
     }
   ],
   "nextAction": "Repetir medição física e fechar bridge→catálogo→render na release 2.0.0rc1-435f9108eeb7; investigar o staging órfão sem instalar durante a auditoria.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],
-  "updatedAt": "2026-09-05",
+  "updatedAt": "2026-09-09",
   "notes": "Estado permanece parcial, com tres capacidades agora provadas fisicamente na release instalada. GAP-THEME-ASSET-INVERT-HUE e GAP-THEME-FALLBACK-SIGNAL fechados: invert e hue rotate sao aplicados pelo node builtin AssetColorTransform, com variantes pixel-distintas e alpha preservado. DEBT-HOST-INSTALL-DAEMON-RESTART FECHADO: a release 0.1.0a46-862fe3aa6837 convergiu sozinha (restarted=true) na primeira instalacao em que ativacao e convergencia rodaram ambas com o codigo corrigido. O defeito levou tres diagnosticos: nao era falta de restart nem o smoke em si, e sim _verify_release rodando 'doctor --json' com check=True, enquanto o doctor real sai com EXIT_FAILURE em status=failed; os testes escondiam isso porque o fake saia com codigo 0. GAP-THEME-PERF-BUDGET-UNMEASURED fechado. Eu havia afirmado que VRAM nao era mensuravel; isso valia para uma API portatil e por processo, mas nao para este host: o amdgpu expoe drm-memory-vram no fdinfo do processo. A sonda passou a medir, agrupando por drm-client-id porque o driver repete o mesmo cliente em varios fds. Na release instalada: p95 13,882 ms, startup 147 ms, 46,6 MB de VRAM — dentro dos tres limites. O criterio foi reescrito para excluir FPS apresentado, que exige instrumentacao do compositor inexistente na plataforma; o ritmo do render loop nao serve de substituto. Reconciliacao 2026-08-24: o porte v2 alterou MediaEffectLayer.qml e ReflectionLayer.qml (degradacao segura de efeitos no Qt 6.4) e tests/unit/test_theme_effects.py dentro deste escopo. As provas automatizadas foram re-executadas e estao verdes, mas as medicoes de desempenho no host (p95, startup, RSS, VRAM) sao ANTERIORES a essa mudanca de QML e precisam ser refeitas na proxima release instalada antes de sustentar o eixo hw.LOD de capas: MediaEffectLayer passou a aceitar um teto de decode declarado (CoverLod) e a decodificar fora da thread de render. A textura intermediaria e a mascara gradiente agora acompanham o renderer avancado em vez de custar por capa sem consumidor; sem esse gate a mascara ainda ficava visivel sobre a midia quando QtQuick.Effects estava ausente. Nao ha medicao de FPS ou memoria neste ciclo: o ganho declarado e a remocao de trabalho sem consumidor, nao um numero de desempenho. O teto de decode passou a ser required no MediaEffectLayer: um padrao permitiria que uma superficie nova voltasse ao decode integral em silencio. Medido que o teto so reduz (arte 320x180 com teto 4096 mantem implicitWidth 320), entao exigi-lo nao infla capas pequenas em tela grande."
 }

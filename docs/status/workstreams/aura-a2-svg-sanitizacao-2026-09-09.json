@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-A2-SVG",
+  "item": "SZ-AURA-ASSET-SANITIZACAO",
+  "branch": "codex/aura-a2-svg-sanitizacao-2026-09-09",
+  "baseRef": "fee675ac",
+  "owner": "codex-aura-a2-svg",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/domain/asset_recipes.py",
+    "tests/unit/test_asset_source_sanitization.py",
+    "docs/status/items/aura-asset-sanitizacao.json"
+  ],
+  "sharedPaths": [
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Fechar os vetores que validate_asset_source aceita hoje e que o plano da frente A2 exige recusar: URL externa (href/xlink:href/use/@import) e path absoluto (file:// e /caminho). Provados por sonda antes da correcao. NAO toca theme_assets.py, reivindicado por WS-2026-09-TEMAS-ESDE ativo.",
+  "updatedAt": "2026-09-09"
+}
