@@ -10244,3 +10244,36 @@ Ruff/mypy, independência, fronteiras e status-check ficaram verdes. A
 captura física pós-apply e a medição de desempenho na release com a nova QML
 ficam pendentes da publicação/instalação governada desta branch; não houve
 reboot, logout nem encerramento da sessão KDE.
+
+## 2026-09-10 — prova física pós-apply, H6 e foco da cena ES-DE
+
+Investigado o H6 antes da mutação: o staging órfão
+01M1MVR99JYX492AC41HAES91A continha apenas previous-theme.json do tema
+org.esde.nso-menu. O cleanup reversível foi aplicado pelo plano
+01M262KD4JEPTYR7SJ8S81D4GQ, com retenção até 2026-09-17; o state audit ficou
+limpo e o Doctor passou a reportar orphanStaging=0, pendingOperations=0 e
+nenhum backup/journal órfão.
+
+O plano theme.preference.activate para org.steamzero.aura foi aplicado com a
+operação 01M262PAZK4ZRGMJ9ACQSB1ME1. A release governada
+2.0.0rc1-c2436c5b8fed (source commit
+c2436c5b8fed69637e7ed6742c9b0df1fcaf851f) foi instalada pelo ciclo de
+componentes e o daemon convergiu no mesmo commit; rollback para
+2.0.0rc1-e2b333678882 permaneceu disponível. Nenhum reboot, logout ou
+encerramento da sessão KDE foi executado.
+
+A captura instalada em
+docs/09-operations/evidence/2026-09-10-theme-apply-focus/ usa os componentes
+QML de /opt/steamzero/current. No mesmo processo, o foco saiu do título e foi
+para o carrossel, com SceneFocusRing visível. Os PNGs 01-baseline.png e
+02-entrega-funcional.png são 1280x800 e têm hashes distintos; o README registra
+PID, release, tema aplicado e o comando de reprodução.
+
+A medição pós-QML com theme_perf_probe.py registrou 360 frames, média 16.723
+ms, p50 16.648 ms, p95 19.375 ms, máximo 35.521 ms, startup 172 ms, pico de
+RSS 150936 KiB e VRAM 55420 KiB. O p95 excede a meta de 16.7 ms, portanto o
+item permanece partial/degraded e não declara 60 FPS. A cadeia bridge →
+catálogo → render está evidenciada no componente instalado e no apply, mas a
+promoção da cena à aparência/navegação fullscreen e a otimização/repetição do
+p95 continuam como próxima ação; o gap GAP-THEME-ESDE-SCENE-NOT-RENDERED não
+foi declarado fechado.
