@@ -91,5 +91,24 @@ Item {
             const hint = findChild(preview, "focusHint")
             verify(hint !== null && hint.visible, "a dica de foco não apareceu")
         }
+
+        function test_immersive_mode_chooses_real_layout_dimensions() {
+            const before = calls.length
+            preview.selectionDefaultsApplied = false
+            preview.immersive = true
+            preview.render()
+
+            const controls = findChild(preview, "previewControls")
+            verify(controls !== null && !controls.visible,
+                   "fullscreen não deve deixar os seletores sobre a cena")
+            tryVerify(function() {
+                return calls.length >= before + 2
+                    && calls[calls.length - 1].payload.aspectRatio === "16:10"
+                    && calls[calls.length - 1].payload.colorScheme === "blue"
+                    && calls[calls.length - 1].payload.variant === "cover"
+            }, 2000)
+            verify(preview.selectionDefaultsApplied)
+            preview.immersive = false
+        }
     }
 }

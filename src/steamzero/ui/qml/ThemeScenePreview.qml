@@ -22,11 +22,16 @@ Item {
     property color textColor: "#f2f6fb"
     property color mutedColor: "#9eabba"
     property color focusColor: "#13bdf2"
+    // Em fullscreen a cena é uma superfície de apresentação, não um painel de
+    // diagnóstico. Os mesmos dados e o mesmo SceneEsdeView são usados; só o
+    // chrome de seleção e fidelidade fica fora do caminho visual.
+    property bool immersive: false
 
     property var rendered: null
     property var selections: ({})
     property string errorText: ""
     property bool loading: false
+    property bool selectionDefaultsApplied: false
     property string viewId: "gamelist"
     property string systemId: "snes"
 
@@ -52,6 +57,24 @@ Item {
         return [""].concat(declared)
     }
 
+    function selectionBoxes() {
+        return [aspectBox, colorBox, fontBox, variantBox]
+    }
+
+    function applyFirstSelections() {
+        const boxes = preview.selectionBoxes()
+        let changed = false
+        for (let i = 0; i < boxes.length; ++i) {
+            const box = boxes[i]
+            if (box.model && box.model.length > 1 && box.currentIndex < 1) {
+                box.currentIndex = 1
+                changed = true
+            }
+        }
+        preview.selectionDefaultsApplied = true
+        return changed
+    }
+
     function render() {
         if (!themeId)
             return
@@ -69,6 +92,14 @@ Item {
             preview.rendered = result
             if (result && result.selections)
                 preview.selections = result.selections
+            if (preview.immersive && !preview.selectionDefaultsApplied
+                    && preview.applyFirstSelections()) {
+                // A proporção costuma carregar toda a geometria do ES-DE. A
+                // primeira resposta enumera as opções; a segunda materializa
+                // a escolha real antes de mostrar a cena ao usuário.
+                Qt.callLater(function() { preview.render() })
+                return
+            }
             Qt.callLater(function() { sceneView.resetFocus() })
         }, function(error) {
             preview.loading = false
@@ -78,13 +109,27 @@ Item {
         })
     }
 
-    Component.onCompleted: preview.render()
+    onThemeIdChanged: {
+        preview.selectionDefaultsApplied = false
+        if (preview.themeId)
+            Qt.callLater(preview.render)
+    }
+
+    onImmersiveChanged: {
+        preview.selectionDefaultsApplied = false
+        if (preview.immersive && preview.themeId)
+            Qt.callLater(preview.render)
+    }
+
+    Component.onCompleted: if (preview.themeId) preview.render()
 
     ColumnLayout {
         anchors.fill: parent
         spacing: 10
 
         RowLayout {
+            objectName: "previewControls"
+            visible: !preview.immersive
             Layout.fillWidth: true
             spacing: 8
 
@@ -194,6 +239,7 @@ Item {
         Label {
             objectName: "fidelityLine"
             Layout.fillWidth: true
+            visible: !preview.immersive
             wrapMode: Text.WordWrap
             color: preview.mutedColor
             text: {
@@ -209,9 +255,9 @@ Item {
         Label {
             objectName: "notDrawnLine"
             Layout.fillWidth: true
+            visible: !preview.immersive && sceneView.notDrawn.length > 0
             wrapMode: Text.WordWrap
             color: preview.mutedColor
-            visible: sceneView.notDrawn.length > 0
             text: {
                 const counts = {}
                 for (let i = 0; i < sceneView.notDrawn.length; ++i) {

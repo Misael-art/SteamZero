@@ -12,6 +12,19 @@ Item {
     required property var layout
     readonly property var entries: layout && layout.entries ? layout.entries : []
     readonly property int entryCount: entries.length
+    // A maioria dos itens não tem destaque. Manter um Rectangle invisível para
+    // cada um cria uma segunda árvore visual que o compositor ainda percorre;
+    // o contrato já entrega a decisão de destaque, então filtrá-la aqui não
+    // muda o desenho e reduz o trabalho por frame.
+    readonly property var outlinedEntries: {
+        const out = []
+        for (let i = 0; i < sceneRepeater.entries.length; ++i) {
+            const entry = sceneRepeater.entries[i]
+            if (Number(entry.outlineWidth || 0) > 0 && entry.visible !== false)
+                out.push(entry)
+        }
+        return out
+    }
 
     readonly property url textSource: Qt.resolvedUrl("SceneText.qml")
     readonly property url imageSource: Qt.resolvedUrl("SceneImage.qml")
@@ -39,7 +52,7 @@ Item {
     // decide quem é o centro nem quanto contorno aplicar.
     Repeater {
         id: outlines
-        model: sceneRepeater.entries
+        model: sceneRepeater.outlinedEntries
 
         delegate: Rectangle {
             required property var modelData

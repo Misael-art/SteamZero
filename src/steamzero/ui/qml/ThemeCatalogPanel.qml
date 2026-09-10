@@ -18,6 +18,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Window
 // DarkButton respeita a paleta do pai; Button puro traz o estilo claro do Qt
 // e destoa do painel escuro, como a primeira captura mostrou.
 
@@ -344,6 +345,21 @@ Rectangle {
                                     onClicked: previewDialog.show(modelData.id,
                                                                   modelData.name || modelData.id)
                                 }
+                                DarkButton {
+                                    objectName: "fullscreenButton_" + modelData.id
+                                    // A apresentação fullscreen continua sendo
+                                    // explícita: instalar/ver não troca a
+                                    // aparência da central sem aplicar o tema.
+                                    visible: modelData.installed === true
+                                    text: qsTr("Tela cheia")
+                                    enabled: panel.busyThemeId === ""
+                                    Layout.minimumHeight: 48
+                                    Accessible.name: text + " " + (modelData.name || modelData.id)
+                                    Accessible.description: qsTr(
+                                        "Abre a cena compilada deste tema em tela cheia.")
+                                    onClicked: fullscreenScene.openScene(
+                                        modelData.id, modelData.name || modelData.id)
+                                }
                                 Item { Layout.fillWidth: true }
                                 DarkButton {
                                     objectName: "uninstallButton_" + modelData.id
@@ -542,5 +558,17 @@ Rectangle {
             textColor: panel.textColor
             mutedColor: panel.mutedColor
         }
+    }
+
+    // Janela própria para que a cena realmente ocupe a tela, sem transformar
+    // o Dialog de inspeção num falso fullscreen dentro do ScrollView.
+    ThemeSceneFullscreen {
+        id: fullscreenScene
+        requestAction: panel.requestAction
+        backgroundColor: panel.backgroundColor
+        borderColor: panel.borderColor
+        textColor: panel.textColor
+        mutedColor: panel.mutedColor
+        focusColor: panel.cyanColor
     }
 }

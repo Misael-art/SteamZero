@@ -76,7 +76,7 @@ Item {
         // seguinte, e o sintoma aparece longe da causa: foi assim que o teste
         // de instalar passou a ver zero chamadas por culpa do teste do GC.
         function cleanup() {
-            const dialogs = ["uninstallDialog", "gcDialog"]
+            const dialogs = ["uninstallDialog", "gcDialog", "previewDialog"]
             for (let i = 0; i < dialogs.length; ++i) {
                 const dialog = harness.locate(panel, dialogs[i])
                 if (dialog && dialog.visible) {
@@ -84,6 +84,9 @@ Item {
                     tryVerify(function() { return !dialog.visible })
                 }
             }
+            const fullscreen = harness.locate(panel, "themeSceneFullscreen")
+            if (fullscreen && fullscreen.visible)
+                fullscreen.close()
         }
 
         function init() {
@@ -239,6 +242,23 @@ Item {
             const label = harness.locate(panel, "errorLabel")
             verify(label !== null && label.visible)
             verify(String(label.text).indexOf("falha simulada") >= 0)
+        }
+
+        function test_fullscreen_button_opens_the_compiled_scene() {
+            const button = harness.locate(panel, "fullscreenButton_org.esde.xmb-menu")
+            verify(button !== null && button.visible,
+                   "tema instalado deve oferecer apresentação em tela cheia")
+
+            mouseClick(button)
+
+            const fullscreen = harness.locate(panel, "themeSceneFullscreen")
+            verify(fullscreen !== null)
+            tryVerify(function() { return fullscreen.visible })
+            compare(fullscreen.themeId, "org.esde.xmb-menu")
+            tryVerify(function() {
+                return harness.calls.some(c => c.id === "theme.scene.render")
+            }, 2000)
+            fullscreen.close()
         }
     }
 }
