@@ -21,6 +21,7 @@ Item {
     property color borderColor: "#2a3a49"
     property color textColor: "#f2f6fb"
     property color mutedColor: "#9eabba"
+    property color focusColor: "#13bdf2"
 
     property var rendered: null
     property var selections: ({})
@@ -68,6 +69,7 @@ Item {
             preview.rendered = result
             if (result && result.selections)
                 preview.selections = result.selections
+            Qt.callLater(function() { sceneView.resetFocus() })
         }, function(error) {
             preview.loading = false
             // A prévia anterior permanece: sumir com ela esconderia o que já
@@ -163,6 +165,9 @@ Item {
                 anchors.margins: 1
                 visible: preview.currentView !== null
                 viewData: preview.currentView ? preview.currentView : ({"id": "", "elements": []})
+                interactive: true
+                focusColor: preview.focusColor
+                Accessible.name: qsTr("Cena do tema, use as setas para navegar")
             }
 
             Label {
@@ -171,6 +176,16 @@ Item {
                 text: qsTr("compilando…")
                 color: preview.mutedColor
             }
+        }
+
+        Label {
+            objectName: "focusHint"
+            Layout.fillWidth: true
+            visible: sceneView.focusableElements.length > 0
+            color: preview.focusColor
+            text: qsTr("Foco na cena: %1 · setas navegam · Enter/Space ativam")
+                .arg(sceneView.currentFocusId || qsTr("nenhum elemento"))
+            Accessible.name: text
         }
 
         // A distinção entre COMPILADO e DESENHADO fica na tela porque confundir

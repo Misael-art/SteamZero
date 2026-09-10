@@ -3,9 +3,9 @@
   "kind": "workstream",
   "id": "WS-2026-09-CENA-ESDE",
   "item": "SZ-THEME-ESDE-SCENE-RENDER",
-  "branch": "codex/cena-esde-2026-09-03",
+  "branch": "codex/cena-esde-focus-2026-09-10",
   "baseRef": "9a78475f2e0f39e3a4b41b5bd1e2b0ba3f1a5c8d",
-  "owner": "cena-esde-agent",
+  "owner": "codex-cena-esde-focus",
   "state": "active",
   "exclusivePaths": [
     "src/steamzero/domain/theme_scene.py",
@@ -26,6 +26,6 @@
     "src/steamzero/domain/theme_import_esde_layout.py",
     "src/steamzero/ui/qml/ThemeCatalogPanel.qml"
   ],
-  "nextAction": "A cena desenha numa previa e nao substitui a aparencia da central. Faltam os tipos que carregam o peso visual (carousel, video, helpsystem, textlist, badges, rating) e a ativacao real do tema.",
-  "updatedAt": "2026-09-03"
+  "nextAction": "Ligar foco e navegacao por teclado aos elementos interativos da cena na previa, preservar a aplicacao transacional e repetir a prova fisica de render e desempenho na release instalada.",
+  "updatedAt": "2026-09-10"
 }

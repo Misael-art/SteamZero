@@ -25,6 +25,29 @@ Item {
     readonly property var elements: viewData && viewData.elements ? viewData.elements : []
     readonly property string viewId: viewData && viewData.id ? String(viewData.id) : ""
 
+    // A cena pode ser usada como uma superfície interativa sem ganhar regras
+    // próprias de catálogo. O IR continua sendo a fonte da geometria; esta
+    // camada só percorre os elementos que o IR marcou como dados de interação.
+    property bool interactive: false
+    property color focusColor: "#13bdf2"
+    property int currentFocusIndex: -1
+    signal elementFocused(string elementId)
+    signal elementActivated(string elementId)
+
+    readonly property var focusableElements: {
+        const out = []
+        for (let i = 0; i < view.elements.length; ++i) {
+            const element = view.elements[i]
+            if (view.isFocusable(element)) out.push(element)
+        }
+        return out
+    }
+
+    readonly property string currentFocusId: {
+        const element = view.focusableElements[view.currentFocusIndex]
+        return element && element.id ? String(element.id) : ""
+    }
+
     // Geometria é obrigatória para desenhar. Um elemento que não declara nem
     // posição nem tamanho não é "elemento na origem em tamanho natural": é
     // elemento cuja geometria mora em algo que não chegou até aqui (variante,
@@ -112,6 +135,131 @@ Item {
         if (!container) return fallback
         const value = Number(container[key])
         return value === value ? value : fallback
+    }
+
+    function isFocusable(element) {
+        if (!view.isDrawable(element)) return false
+        if (element.selectable === false) return false
+        // São os nós que representam conteúdo navegável do runtime. Imagens e
+        // textos decorativos continuam fora da tabulação da cena.
+        if (element.interactive === true) return true
+        return ["carousel", "textList", "grid", "gameSelector"].indexOf(element.kind) !== -1
+    }
+
+    function geometryFor(element) {
+        const lay = element && element.layout ? element.layout : ({})
+        const fx = view.numberOr(lay, "x", 0)
+        const fy = view.numberOr(lay, "y", 0)
+        const fw = view.numberOr(lay, "width", 0)
+        const fh = view.numberOr(lay, "height", 0)
+        const width = fw > 0
+            ? fw * view.width
+            : (view.numberOr(lay, "maxWidth", 0) || view.numberOr(lay, "cropWidth", 0))
+                * view.width
+        const height = fh > 0
+            ? fh * view.height
+            : (view.numberOr(lay, "maxHeight", 0) || view.numberOr(lay, "cropHeight", 0))
+                * view.height
+        const ox = view.numberOr(lay, "xOrigin", 0)
+        const oy = view.numberOr(lay, "yOrigin", 0)
+        return {
+            "x": fx * view.width - ox * width,
+            "y": fy * view.height - oy * height,
+            "width": width,
+            "height": height
+        }
+    }
+
+    function focusGeometry(element) {
+        return view.geometryFor(element)
+    }
+
+    function resetFocus() {
+        if (!view.interactive || view.focusableElements.length === 0) {
+            view.currentFocusIndex = -1
+            return
+        }
+        view.currentFocusIndex = 0
+        view.forceActiveFocus()
+        view.elementFocused(view.currentFocusId)
+    }
+
+    function focusCandidate(direction) {
+        if (view.currentFocusIndex < 0 || view.currentFocusIndex >= view.focusableElements.length)
+            return -1
+        const current = view.geometryFor(view.focusableElements[view.currentFocusIndex])
+        const cx = current.x + current.width / 2
+        const cy = current.y + current.height / 2
+        let best = -1
+        let bestScore = Number.POSITIVE_INFINITY
+        for (let i = 0; i < view.focusableElements.length; ++i) {
+            if (i === view.currentFocusIndex) continue
+            const candidate = view.geometryFor(view.focusableElements[i])
+            const dx = candidate.x + candidate.width / 2 - cx
+            const dy = candidate.y + candidate.height / 2 - cy
+            let primary
+            let secondary
+            if (direction === "left" || direction === "right") {
+                if (direction === "left" && dx >= 0) continue
+                if (direction === "right" && dx <= 0) continue
+                primary = Math.abs(dx)
+                secondary = Math.abs(dy)
+            } else {
+                if (direction === "up" && dy >= 0) continue
+                if (direction === "down" && dy <= 0) continue
+                primary = Math.abs(dy)
+                secondary = Math.abs(dx)
+            }
+            const score = primary * 1000 + secondary
+            if (score < bestScore) {
+                bestScore = score
+                best = i
+            }
+        }
+        return best
+    }
+
+    function moveFocus(direction) {
+        if (!view.interactive || view.focusableElements.length === 0) return false
+        if (view.currentFocusIndex < 0) {
+            view.resetFocus()
+            return true
+        }
+        const target = view.focusCandidate(direction)
+        if (target < 0) return false
+        view.currentFocusIndex = target
+        view.forceActiveFocus()
+        view.elementFocused(view.currentFocusId)
+        return true
+    }
+
+    function activateCurrentFocus() {
+        if (!view.interactive || view.currentFocusIndex < 0) return false
+        view.elementActivated(view.currentFocusId)
+        return true
+    }
+
+    onInteractiveChanged: Qt.callLater(view.resetFocus)
+    Component.onCompleted: if (view.interactive) Qt.callLater(view.resetFocus)
+
+    focus: view.interactive
+    activeFocusOnTab: view.interactive
+    Accessible.name: qsTr("Cena do tema")
+
+    Keys.onPressed: function(event) {
+        if (!view.interactive) return
+        let handled = true
+        switch (event.key) {
+        case Qt.Key_Left: handled = view.moveFocus("left"); break
+        case Qt.Key_Right: handled = view.moveFocus("right"); break
+        case Qt.Key_Up: handled = view.moveFocus("up"); break
+        case Qt.Key_Down: handled = view.moveFocus("down"); break
+        case Qt.Key_Return:
+        case Qt.Key_Enter:
+        case Qt.Key_Space: handled = view.activateCurrentFocus(); break
+        default: handled = false
+        }
+        event.accepted = handled
     }
 
     Repeater {
@@ -323,6 +471,28 @@ Item {
                     elide: Text.ElideRight
                     verticalAlignment: Text.AlignVCenter
                 }
+            }
+        }
+    }
+
+    // O anel é um elemento da cena, não um overlay do painel. Assim a mesma
+    // geometria declarada pelo tema continua governando o foco visível.
+    SceneFocusRing {
+        id: sceneFocusRing
+        z: 100000
+        model: {
+            const element = view.focusableElements[view.currentFocusIndex]
+            const rect = element ? view.focusGeometry(element) : ({})
+            return {
+                "id": element && element.id ? "focus-" + String(element.id) : "scene-focus-ring",
+                "x": rect.x || 0,
+                "y": rect.y || 0,
+                "width": rect.width || 0,
+                "height": rect.height || 0,
+                "visible": view.interactive && !!element && (rect.width || 0) > 0
+                    && (rect.height || 0) > 0,
+                "color": view.focusColor,
+                "borderWidth": 3
             }
         }
     }
