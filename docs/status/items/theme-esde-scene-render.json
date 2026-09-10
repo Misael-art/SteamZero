@@ -15,6 +15,10 @@
     "docs/09-operations/evidence/2026-09-03-cena-esde/01-cena-gamelist.png",
     "docs/09-operations/evidence/2026-09-03-cena-esde/02-cena-system-esparsa.png",
     "docs/09-operations/evidence/2026-09-03-cena-esde/README.md",
+    "docs/09-operations/evidence/2026-09-10-theme-apply-focus/01-baseline.png",
+    "docs/09-operations/evidence/2026-09-10-theme-apply-focus/02-entrega-funcional.png",
+    "docs/09-operations/evidence/2026-09-10-theme-apply-focus/README.md",
+    "docs/09-operations/evidence/2026-09-10-theme-apply-focus/performance-installed.json",
     "src/steamzero/adapters/desktop_contracts.py",
     "src/steamzero/adapters/desktop_dashboard.py",
     "src/steamzero/adapters/desktop_ui.py",
@@ -29,7 +33,7 @@
     "tests/qml/check_theme_scene_preview.qml",
     "tests/unit/test_theme_scene.py"
   ],
-  "scopeDigest": "fc1c90f255e8d633be9c1061cb4921e51bf4c5a35ea06623532bc893a9e789f9",
+  "scopeDigest": "014a458a55eb2f5a3c0791211e34438e420e0510d3600e75ef26012d269fe25e",
   "dependsOn": [
     "SZ-THEME-IMPORT-ESDE-LAYOUT"
   ],
@@ -98,12 +102,18 @@
       "reference": "docs/09-operations/evidence/2026-09-08-ux-audit/README.md",
       "command": "Inspeção da release instalada confirmou que a cena ES-DE permanece preview separado; SceneEsdeView.qml não possui handler de foco/teclas/movimento e a navegação interna não foi promovida.",
       "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-10-theme-apply-focus/README.md",
+      "command": "Release 2.0.0rc1-c2436c5b8fed instalada: tema org.steamzero.aura aplicado, cena da release instalada capturada antes/depois de moveFocus(\"down\") com PID 1101176; probe Wayland pós-QML mediu 360 frames, p95 19.375 ms, startup 172 ms, RSS 150936 KiB e VRAM 55420 KiB.",
+      "result": "partial"
     }
   ],
-  "nextAction": "Preview da cena agora aceita foco por geometria e teclado; falta promover a cena à aparência/navegação fullscreen e repetir a medição física na release instalada.",
+  "nextAction": "Promover a cena ES-DE à aparência/navegação fullscreen; otimizar o frame time p95 de 19.375 ms e repetir a medição física no mesmo perfil antes de fechar o gap.",
   "activeWorkstreams": [
     "WS-2026-09-CENA-ESDE"
   ],
-  "updatedAt": "2026-09-05",
+  "updatedAt": "2026-09-10",
   "notes": "Dois defeitos impediam qualquer renderizacao, e nenhum estava no renderizador. (1) resolve_includes so seguia include no topo do arquivo, e a geometria dos temas mora em <aspectRatio><include>: o bloco ficava na arvore e o arquivo nunca era aberto. (2) o mesmo elemento declarado em dois arquivos virava dois elementos, um com arte e sem posicao e outro com posicao e sem arte. Correcao de metrica junto: os 95,08% de cobertura reportados antes contavam elementos compilados, e os que carregam pos/size nunca eram visitados — dava para ter 95% e tela em branco. Selection ganhou aspect_ratio, a dimensao que a propria docstring ja listava e que a implementacao nao tinha. A primeira versao do renderizador desenhava elemento sem geometria no tamanho natural na origem, o que produzia captura impressionante e layout inventado; hoje ele nao desenha e declara o motivo. Validado no host em 2026-09-03 na release 2.0.0rc1-51f6a5d7db49: os numeros batem com os do checkout, confirmando que as duas correcoes viajaram para a release. A validacao revelou um defeito VIZINHO: doctor passou de 1 para 4 arvores de staging orfas porque acquire_and_install preserva o staging apos sucesso (e onde mora o previous-theme.json do rollback) e numa instalacao NOVA nao ha tema anterior, entao o diretorio vazio fica orfao. Pertence a SZ-THEME-IMPORT-ESDE-LAYOUT e nao foi corrigido aqui. Terceiro defeito da mesma familia, achado ao renderizar helpSystem: nome de elemento agrupado por virgula (name='help-left,help-right') nao era expandido, entao o bloco comum virava um terceiro elemento sem posicao e os dois nomeados ficavam sem cor nem fonte — tres elementos, nenhum desenhavel. E o mesmo defeito do elemento partido entre arquivos, agora no NOME. O video entra por Loader dinamico e nao por import no topo: um host sem QtMultimedia faria a CENA INTEIRA falhar ao carregar, e a regra e que falha degrada e nunca trava. O qmllint acusava 75 avisos de acesso nao qualificado contra 0 a 7 dos arquivos vizinhos; a pragma ComponentBehavior: Bound baixou para 29, com render byte-identico. Validacao no host encontrou dois defeitos no video, e o segundo escondia o primeiro. MediaPlayer nao e item visual, entao o encadeamento por hierarquia nao resolvia para o Item que o contem e a fonte ficava vazia: o video nunca carregava. E multimediaReady era marcado na CRIACAO do objeto, o que fazia a falha virar retangulo branco mudo com o quadro degradado nunca aparecendo; ligado ao estado do player, o aviso surgiu e denunciou o binding. RESSALVA sobre o que esta provado: o player carrega e reporta ready=true no compositor real, mas NAO ha confirmacao visual do quadro DENTRO da cena — grabToImage do conteiner devolve branco uniforme enquanto a captura direta do VideoOutput mostra o video, e a causa dessa diferenca continua hipotese. Concluir 'video entregue' a partir do ready verde seria a mesma classe de erro que me fez dizer, durante a sessao, que o fundo ondulado era o video tocando quando era waves.png, um elemento de imagem."
 }
