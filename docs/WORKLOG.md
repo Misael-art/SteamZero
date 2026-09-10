@@ -10277,3 +10277,35 @@ catálogo → render está evidenciada no componente instalado e no apply, mas a
 promoção da cena à aparência/navegação fullscreen e a otimização/repetição do
 p95 continuam como próxima ação; o gap GAP-THEME-ESDE-SCENE-NOT-RENDERED não
 foi declarado fechado.
+
+## 2026-09-10 — fullscreen ES-DE físico na release final
+
+O commit 2d9c283 foi mergeado em 172c020e03b6ac2b31af5bdb7e0b12c41bea57df
+após o run push 34517925470 ficar verde em Python 3.11, 3.12, 3.14, visual
+QML, smokes e wheel. O bundle canônico foi preparado e verificado com
+release 2.0.0rc1-172c020e03b6, wheel SHA-256
+1bf5aee209580877e8b55bcf94f1fe3b0d9223026be2b6dc4fbdb01f8014619a e rollback
+2.0.0rc1-c2436c5b8fed.
+
+A instalação governada publicou a release e convergiu o daemon no commit
+exato, sem reboot, logout ou encerramento da sessão KDE. Após a instalação:
+service status ficou converged; state audit ficou clean=true, com
+orphanStaging=0, orphanBackups=0, orphanJournals=0 e pendingOperations=0;
+Doctor ficou degraded somente por boot.direct=unknown e proveniência local
+não tagueada. O tema central ativo continuou org.steamzero.aura 1.0.0.
+
+O catálogo real foi consultado pela bridge e org.esde.xmb-menu instalado foi
+selecionado. ThemeSceneFullscreen abriu a cena compilada em fullscreen no
+Wayland real, com foco ciano, navegação direcional e dica Enter/Space; a
+captura está em
+docs/09-operations/evidence/2026-09-10-theme-esde-fullscreen/01-fullscreen-after-render.png
+e o README registra proveniência, PID, hashes e o limite dos bindings sem
+dados de biblioteca. A cena fullscreen foi entregue fisicamente; a promoção
+automática da cena à aparência central continua separada da AURA UI.
+
+A medição refeita na QML instalada, 1280x800, warmup 2s e duração 6s,
+registrou 360 frames, média 16.735 ms, p50 16.636 ms, p95 18.254 ms,
+máximo 32.442 ms, startup 118 ms, RSS 150988 KiB e VRAM 55420 KiB.
+O p95 continua acima de 16.7 ms, então o item permanece partial/degraded e
+não há alegação de 60 FPS. Próxima ação: otimizar o p95 e decidir a promoção
+da cena à aparência central.
