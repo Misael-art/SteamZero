@@ -332,6 +332,17 @@
       }
     },
     {
+      "id": "shadps4",
+      "manifestHash": "02cb52b0a08fcfb11af4f61633351f8df1daaeff85577f567c0f8ff8a9303595",
+      "source": {
+        "type": "native",
+        "version": "0.18.0",
+        "priority": 1,
+        "url": "https://github.com/shadps4-emu/shadPS4/releases/download/v.0.18.0/shadps4-linux-sdl-0.18.0.zip",
+        "sha256": "3cf0f669c089411775a2434a41ca9c391fb7d24c1a1521ee45dd1d36f390c4a4"
+      }
+    },
+    {
       "id": "sunshine",
       "manifestHash": "65b076f8b1c9f2ca47a761589cba023e0ce6e1603b7366f741c7033ef2f8c5fe",
       "source": {

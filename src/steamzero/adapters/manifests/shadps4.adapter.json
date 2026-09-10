@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "shadps4",
+  "kind": "emulator",
+  "presentation": {
+    "displayName": "shadPS4",
+    "iconAsset": "../assets/shadps4.svg"
+  },
+  "platforms": [
+    "playstation-4"
+  ],
+  "capabilities": [
+    "detect",
+    "status",
+    "install",
+    "update",
+    "uninstall",
+    "configure",
+    "verify",
+    "repair",
+    "backup",
+    "restore"
+  ],
+  "sources": [
+    {
+      "type": "native",
+      "version": "0.18.0",
+      "priority": 1,
+      "url": "https://github.com/shadps4-emu/shadPS4/releases/download/v.0.18.0/shadps4-linux-sdl-0.18.0.zip",
+      "sha256": "3cf0f669c089411775a2434a41ca9c391fb7d24c1a1521ee45dd1d36f390c4a4",
+      "payloadPath": "Shadps4-sdl.AppImage"
+    }
+  ],
+  "verify": {
+    "smokeTest": [
+      "--help"
+    ]
+  },
+  "compat": [
+    "steamos",
+    "bazzite",
+    "linux"
+  ],
+  "license": "GPL-2.0-only",
+  "upstream": "https://github.com/shadps4-emu/shadPS4",
+  "notes": "Zip Linux SDL da release v.0.18.0 fixado pelo SHA-256 publicado na API do GitHub em 2026-09-10 (conferido contra o digest do asset). O upstream NAO publica AppImage solto nem Flathub (verificado: org.shadps4.shadPS4 ausente do Flathub; as ultimas 12 releases so tem zips), e o zip traz um UNICO membro, Shadps4-sdl.AppImage — por isso a fonte e native com payloadPath: o sha256 pinado e o do zip inteiro, o engine extrai o membro declarado e o payload implantado e o AppImage, com o checksum do membro registrado em current.json. Smoke --help provado no binario extraido (CLI11 imprime o usage e sai com codigo 0; --appimage-version e execução sem argumento pendem sem display). configFormat none: o produto NAO edita a configuracao TOML do shadPS4. NAO declara requiresFirmware: o shadPS4 nao consome firmware do usuario; a verificacao de firmware do produto e Switch-only (GAP-FIRMWARE-SWITCH-ONLY) e declarar aqui prometeria checagem inexistente. NAO instalado no host ainda: o ciclo fisico exige autorizacao do operador."
+}

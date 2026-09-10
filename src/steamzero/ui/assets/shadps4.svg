@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="shadPS4 — artwork padrão SteamZero">
+  <rect width="320" height="180" rx="20" fill="#101a2e"/>
+  <g transform="translate(66 46)" opacity="0.35">
+    <rect x="10" y="12" width="168" height="64" rx="32" fill="#0a1220"/>
+  </g>
+  <rect x="66" y="46" width="168" height="64" rx="32" fill="#e6ecf7"/>
+  <path d="M100 62h22M111 51v22" stroke="#101a2e" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="204" cy="66" r="6" fill="#4caf80"/>
+  <circle cx="188" cy="78" r="6" fill="#ff6f8d"/>
+  <circle cx="220" cy="78" r="6" fill="#f0c05a"/>
+  <circle cx="204" cy="90" r="6" fill="#5e81ff"/>
+  <circle cx="97" cy="98" r="8" fill="#8fa3bf"/>
+  <circle cx="203" cy="98" r="8" fill="#8fa3bf"/>
+</svg>

@@ -95,13 +95,16 @@ def test_snapshot_publishes_global_management_without_a_synthetic_platform(
     workspace = controller.snapshot({"context": {}})
     global_management = workspace["globalManagement"]
 
-    assert len(workspace["platforms"]) == 62
+    # 62 -> 63 em 2026-09-10: playstation-4 catalogada (SZ-PLATFORM-PS4-CATALOG).
+    assert len(workspace["platforms"]) == 63
     assert global_management["id"] == "emulation-global"
-    assert global_management["technicalPlatformCount"] == 62
-    assert global_management["editorialDestinationCount"] == 63
+    assert global_management["technicalPlatformCount"] == 63
+    # 63 -> 64 em 2026-09-10: playstation-4 ganhou technicalPlatformId no
+    # catálogo canônico e passou a contar como destino editorial.
+    assert global_management["editorialDestinationCount"] == 64
     assert global_management["editorialExperienceCount"] == 155
     assert global_management["editorialSource"]["id"] == "steam"
-    assert len(global_management["platformCards"]) == 62
+    assert len(global_management["platformCards"]) == 63
     switch = next(card for card in global_management["platformCards"] if card["id"] == "switch")
     # Contrato alterado em 2026-08-13: com `which` devolvendo None, nenhum
     # emulador do Switch está instalado. O bloqueador do card é exatamente esse,
@@ -116,7 +119,8 @@ def test_snapshot_publishes_global_management_without_a_synthetic_platform(
     # PlayStation 2, mas a tupla de ordem da UI também filtrava a membresia e os
     # deixava de fora — as duas plataformas ficavam sem emulador renderizável.
     # 15 -> 16 em 2026-09-02 com a entrada de `vita3k` no registro.
-    assert len(global_management["emulators"]) == 16
+    # 16 -> 17 em 2026-09-10 com a entrada de `shadps4`.
+    assert len(global_management["emulators"]) == 17
     assert all("apiKey" not in provider for provider in global_management["mediaProviders"])
 
 
