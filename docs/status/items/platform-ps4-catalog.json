@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-PLATFORM-PS4-CATALOG",
+  "title": "Catálogo de plataforma PlayStation 4 (shadPS4)",
+  "domain": "platform",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/platform_manifests/64-playstation-4.platform.json",
+    "src/steamzero/adapters/manifests/shadps4.adapter.json",
+    "src/steamzero/input_profiles/29-dualshock-4.input.json",
+    "src/steamzero/ui/assets/playstation-4.svg",
+    "src/steamzero/ui/assets/shadps4.svg",
+    "tests/unit/test_platform_ps4_catalog.py"
+  ],
+  "dependsOn": [
+    "SZ-AGG-PLATFORM-MANIFESTS",
+    "SZ-COMPONENT-LIFECYCLE"
+  ],
+  "knownGaps": [
+    "GAP-PLATFORM-PS4-PHYSICAL-INSTALL"
+  ],
+  "acceptanceCriteria": [
+    "PlayStation 4 possui manifesto, adapter shadps4 e sistema de diretório (ps4) declarados, fechando GAP-PLATFORM-PS4-ABSENT.",
+    "A fonte é transportável e verificável: zip Linux da release fixado pelo SHA-256 publicado na API do GitHub, com o membro único (Shadps4-sdl.AppImage) declarado e extraído como payload pelo engine.",
+    "Nenhum runtime é prometido sem fonte verificável; nenhum requisito de firmware ou keys é inventado (o shadPS4 não os consome).",
+    "Arquivos .pkg/elf/bin deixam de ser plataforma desconhecida na varredura declarativa.",
+    "O engine reprovou, com teste, payload adulterado, membro ausente e artefato que não é zip; instalação é idempotente e repair restaura o membro fixado.",
+    "A prova física (instalar o shadPS4 no host e lançar um jogo real) é executada na release instalada com autorização do operador."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_platform_ps4_catalog.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_platform_ps4_catalog.py tests/unit/test_platforms.py tests/unit/test_input_profiles.py tests/unit/test_packaged_assets.py tests/unit/test_canonical_experiences.py tests/unit/test_platform_media_declaration.py tests/unit/test_platform_requirements.py tests/integration/test_component_lifecycle.py tests/integration/test_adapters.py tests/unit/test_launch_profile.py tests/unit/test_platform_composer.py -q (329 passed)",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "src/steamzero/adapters/manifests/shadps4.adapter.json",
+      "command": "Verificação upstream em 2026-09-10: Flathub responde 'App not found' para org.shadps4.shadPS4; as últimas 12 releases só publicam zips Linux (sem AppImage solto); sha256 do zip v.0.18.0 conferido contra o digest do asset; zip contém exatamente um membro (Shadps4-sdl.AppImage, sha256 70693665d2aed2281bd86b0b727eb1174328d09b5e0e9b7d1c9212f8fc598d0f); o binário interno responde --help com código 0 (a pendência sem display era o mount FUSE do AppImage, não o CLI).",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tests/integration/test_component_lifecycle.py",
+      "command": "Classe TestZipWrappedPayload: membro extraído é o payload implantado, current.json registra checksum do membro + artifactSha256 do zip, reinstall idempotente, payload adulterado reprova e repair restaura, membro ausente e artefato não-zip recusam o apply, uninstall funciona em fonte nativa (8 passed)",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Prova física no host: instalar o shadPS4 pelo ciclo de componentes na release que contiver esta branch, lançar um jogo PS4 real e capturar evidência (GAP-PLATFORM-PS4-PHYSICAL-INSTALL); exige autorização do operador.",
+  "activeWorkstreams": [
+    "WS-2026-09-PS4-SHADPS4"
+  ],
+  "notes": "PS4 era a lacuna declarada em GAP-PLATFORM-PS4-ABSENT (notas do agregador 2026-09-02): nem manifesto, nem entrada em systems, embora o catálogo canônico já o listasse como experimental com runtime shadps4. O precedente Vita guiou o formato; a diferença material está no transporte: a Vita3K publica AppImage solto, o shadPS4 publica zip com AppImage dentro, e o engine só implantava artefato bruto. Em vez de declarar install que não executaria (ou degradar o adapter a tool, que mentiria a taxonomia), o engine ganhou extração do membro declarado (payloadPath no schema do adapter): o sha256 do manifesto continua sendo o do artefato inteiro, o current.json registra o checksum do membro e o artifactSha256 preserva o pin, de modo que installed/outdated/degraded seguem dizendo a verdade. A matriz de capacidades exigiu o ciclo completo para emulador ativo — correto: sem install real, PS4 não passaria de catálogo. Smoke --help foi provado no binário extraído deste ambiente; a execução gráfica e o lançamento de jogo são prova do host, não do checkout. Artes autorais no estilo do projeto (nenhum logo oficial é redistribuível sob GPL). Lockfile de componentes e matriz de capacidades regravados; test_platforms.py permanece sob custodia de SZ-LIBRARY-CANONICAL; engine/lifecycle/registry/schema permanecem sob custodia de SZ-COMPONENT-LIFECYCLE, com evidência reexecutada neste ciclo.",
+  "updatedAt": "2026-09-10",
+  "scopeDigest": "2c13304f0567c1de40fdc7f9237cc628e476ecdb3b068ff33e6b9dc4eb8380c2"
+}

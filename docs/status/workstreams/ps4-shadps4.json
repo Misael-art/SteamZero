@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-PS4-SHADPS4",
+  "item": "SZ-PLATFORM-PS4-CATALOG",
+  "branch": "codex/ps4-shadps4-2026-09-10",
+  "baseRef": "0d194ddf07709b5347ae31129ff6f69e747d63e8",
+  "owner": "ps4-shadps4-agent",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/platform_manifests/64-playstation-4.platform.json",
+    "src/steamzero/adapters/manifests/shadps4.adapter.json",
+    "src/steamzero/input_profiles/29-dualshock-4.input.json",
+    "src/steamzero/ui/assets/playstation-4.svg",
+    "src/steamzero/ui/assets/shadps4.svg",
+    "src/steamzero/canonical_experiences/catalog-v1.json",
+    "tests/unit/test_platforms.py",
+    "tests/unit/test_platform_ps4_catalog.py",
+    "docs/status/items/platform-ps4-catalog.json",
+    "docs/status/workstreams/ps4-shadps4.json"
+  ],
+  "sharedPaths": [
+    "src/steamzero/ui/qml/PackagedAssets.qml",
+    "src/steamzero/adapters/component-lock.json",
+    "docs/01-product/CAPABILITY-MATRIX.md",
+    "docs/status/items/aggregate-platform-manifests.json",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Declarar plataforma playstation-4 com adapter shadps4 (fonte zip Linux fixada por SHA-256, capabilities detect/status — sem install porque o engine nao extrai payload), perfil DualShock 4, arte autoral e wiring do catalogo canonico; lockfile e matriz de capacidades regravados; NAO instalado no host — a prova fisica exige o operador.",
+  "updatedAt": "2026-09-10"
+}

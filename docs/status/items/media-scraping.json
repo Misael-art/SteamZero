@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "f095f9aec8974bdd4d0717bed2c47d888abae5155b7d68fd94df61b4e5076c75",
+  "scopeDigest": "e5d01b93763430de79579a9db80c24c89cdadee1963fac6831b225e5dfe694b6",
   "scopePaths": [
     "src/steamzero/adapters/scraping",
     "docs/09-operations/evidence/2026-08-29-media-pipeline-installed",
@@ -68,6 +68,12 @@
       "kind": "hardware",
       "reference": "docs/09-operations/evidence/2026-08-29-media-pipeline-installed",
       "command": "2026-08-29, Valve Jupiter, release 2.0.0rc1-a897f8ffcfed: workspace comprimido abriu 212 jogos canônicos/61 plataformas; media.global.search-missing processou 211 e pulou 1. O job registrou quota, mas a reavaliação real provou HTTP 403 com corpo de credencial recusada; ssid/sspassword não estavam no cofre. A central exibiu artwork legado; media_masters estava vazio e o plano de migração foi no-op seguro.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/scraping/test_screenscraper.py",
+      "command": "Renovacao 2026-09-10 (WS-2026-09-PS4-SHADPS4): _PLATFORMS_WITHOUT_SYSTEMEID ganhou playstation-4; test_screenscraper reexecutado",
       "result": "passed"
     }
   ],
