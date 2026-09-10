@@ -51,7 +51,7 @@
         {"id":"playstation-2","name":"Sony PlayStation 2","kind":"hardware","status":"supported","technicalPlatformId":"playstation-2","parentId":null,"runtimes":["pcsx2"]},
         {"id":"psp","name":"Sony PlayStation Portable","kind":"hardware","status":"supported","technicalPlatformId":"playstation-portable","parentId":null,"runtimes":["ppsspp"]},
         {"id":"playstation-3","name":"Sony PlayStation 3","kind":"hardware","status":"supported","technicalPlatformId":"playstation-3","parentId":null,"runtimes":["rpcs3"]},
-        {"id":"playstation-4","name":"Sony PlayStation 4","kind":"hardware","status":"experimental","technicalPlatformId":null,"parentId":null,"runtimes":["shadps4"]}
+        {"id":"playstation-4","name":"Sony PlayStation 4","kind":"hardware","status":"experimental","technicalPlatformId":"playstation-4","parentId":null,"runtimes":["shadps4"]}
       ]
     },
     {
