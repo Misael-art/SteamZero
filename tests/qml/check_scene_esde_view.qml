@@ -8,13 +8,16 @@ import QtQuick
 import QtTest
 import "../../src/steamzero/ui/qml"
 
-Item {
+    Item {
     width: 1000
     height: 800
+    property string lastActivated: ""
 
     SceneEsdeView {
         id: view
         anchors.fill: parent
+        interactive: true
+        onElementActivated: lastActivated = elementId
         viewData: ({
             "id": "system",
             "elements": [
@@ -25,7 +28,7 @@ Item {
                  "source": "qrc:/inexistente.png"},
                 {"id": "texto", "kind": "text", "name": "titulo",
                  "layout": {"x": 0.1, "y": 0.6, "width": 0.3, "height": 0.05},
-                 "text": "Olá"},
+                 "text": "Olá", "interactive": true},
                 {"id": "vinculo", "kind": "text", "name": "bind",
                  "layout": {"x": 0.1, "y": 0.7, "width": 0.3, "height": 0.05},
                  "binding": {"field": "title"}},
@@ -115,6 +118,20 @@ Item {
             compare(view.numberOr({"x": 0.5}, "x", 0), 0.5)
             compare(view.numberOr({}, "x", 0.25), 0.25)
             compare(view.numberOr(null, "x", 0.75), 0.75)
+        }
+
+        function test_interactive_scene_moves_focus_by_direction() {
+            view.resetFocus()
+            compare(view.currentFocusId, "texto")
+            keyClick(Qt.Key_Up)
+            compare(view.currentFocusId, "carrossel")
+        }
+
+        function test_interactive_scene_activates_the_focused_element() {
+            view.resetFocus()
+            keyClick(Qt.Key_Up)
+            keyClick(Qt.Key_Return)
+            compare(lastActivated, "carrossel")
         }
     }
 }

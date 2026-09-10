@@ -33,7 +33,7 @@ Item {
                     {"id": "gamelist", "elements": [
                         {"id": "a", "kind": "text", "name": "t",
                          "layout": {"x": 0.1, "y": 0.1, "width": 0.3, "height": 0.05},
-                         "text": "Olá"},
+                         "text": "Olá", "interactive": true},
                         {"id": "b", "kind": "carousel", "name": "c",
                          "layout": {"x": 0.0, "y": 0.0, "width": 1.0, "height": 1.0}}
                     ]}
@@ -79,6 +79,17 @@ Item {
             box.currentIndex = 1
             box.activated(1)
             verify(calls.length > before, "mudar a proporção não recompilou a cena")
+        }
+
+        function test_the_scene_preview_exposes_focus_and_navigation() {
+            const scene = findChild(preview, "sceneView")
+            verify(scene !== null, "cena interativa não encontrada")
+            tryCompare(scene, "currentFocusId", "a", 2000)
+            verify(scene.moveFocus("down"))
+            compare(scene.currentFocusId, "b")
+            verify(scene.activateCurrentFocus())
+            const hint = findChild(preview, "focusHint")
+            verify(hint !== null && hint.visible, "a dica de foco não apareceu")
         }
     }
 }

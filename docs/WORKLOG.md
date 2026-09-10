@@ -10221,3 +10221,26 @@ acionáveis.
 faltava. `--diff-filter=A` mentiu sobre o MediaHub, gap fechado sobreviveu num
 item órfão, e trabalho já feito apareceu como pendente. Estado que mente não é
 só do produto: é das ferramentas com que medimos o produto.
+
+## 2026-09-10 — H6, aplicação de tema e foco na cena ES-DE
+
+Auditoria read-only confirmou a release ativa 2.0.0rc1-e2b333678882 e um
+staging órfão de 122.349 bytes contendo previous-theme.json do tema
+org.esde.nso-menu. Os planos históricos estavam expirados; o plano novo foi
+aplicado com quarentena reversível até 2026-09-17. state audit ficou limpo e
+o Doctor passou a reportar orphanStaging: 0, sem jobs, backups ou journals
+órfãos.
+
+Na mesma release, o plano theme.preference.activate foi aplicado para
+org.steamzero.aura: operação 01M262PAZK4ZRGMJ9ACQSB1ME1 committed, rollback
+G-FULL, daemon convergido e sem restart. A árvore ainda deixava a cena
+ES-DE como preview sem foco. O commit 389e18bd liga SceneEsdeView a foco
+por geometria declarada, setas, Enter/Space, ativação e SceneFocusRing; o
+preview expõe a dica de interação e os testes QML cobrem a rota de teclado.
+Foco não é inventado para imagens/textos decorativos e não há wrap artificial.
+
+Provas locais: 6 testes QML da cena passaram, 20 testes focados passaram,
+Ruff/mypy, independência, fronteiras e status-check ficaram verdes. A
+captura física pós-apply e a medição de desempenho na release com a nova QML
+ficam pendentes da publicação/instalação governada desta branch; não houve
+reboot, logout nem encerramento da sessão KDE.
