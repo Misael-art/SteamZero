@@ -10221,3 +10221,44 @@ acionáveis.
 faltava. `--diff-filter=A` mentiu sobre o MediaHub, gap fechado sobreviveu num
 item órfão, e trabalho já feito apareceu como pendente. Estado que mente não é
 só do produto: é das ferramentas com que medimos o produto.
+
+## 2026-09-10 — Catálogo PlayStation 4 com shadPS4 e extração de payload zipado
+
+Branch `codex/ps4-shadps4-2026-09-10` (base `0d194ddf07709b5347ae31129ff6f69e747d63e8`),
+item `SZ-PLATFORM-PS4-CATALOG`, workstream `WS-2026-09-PS4-SHADPS4`. PS4 era a
+lacuna registrada em `GAP-PLATFORM-PS4-ABSENT` (agregador 2026-09-02): nem
+manifesto, nem `systems`, apesar de o catálogo canônico já listá-lo como
+experimental com runtime `shadps4`.
+
+**O transporte mandou no desenho.** Verificação upstream em 2026-09-10: o
+shadPS4 não publica AppImage solto nem Flathub (12 últimas releases só têm
+zips; `org.shadps4.shadPS4` responde "App not found"), e o zip Linux é um único
+membro `Shadps4-sdl.AppImage`. O engine implantava artefato bruto sem extrair —
+declarar `install` prometeria um deployment que não executa. Em vez de mentir
+na taxonomia (degradar a `tool`, como Sunshine) ou entregar catálogo sem
+instalação (o anti-padrão rejeitado na Vita), o engine ganhou extração do
+membro declarado: `payloadPath` no schema do adapter, checksum do membro em
+`current.json`, `artifactSha256` preservando o pin do zip — e
+installed/outdated/degraded continuam dizendo a verdade. A matriz de
+capacidades exigiu o ciclo completo para emulador ativo, e a recusou quando
+declarei só `detect`/`status`: prova negativa orgânica do gate.
+
+**Smoke provado, não presumido.** `--appimage-version` e execução sem
+argumento pendem sem display (FUSE); o binário interno extraído responde
+`--help` com código 0. O smoke `["--help"]` segue o padrão xenia.
+
+**Denominadores que mudaram, com teste:** 34→35 componentes, 16→17 emuladores
+ativos, 62→63 plataformas técnicas, 22→23 artes únicas, e 63→64 destinos
+editoriais — PS4 passou a contar porque ganhou `technicalPlatformId` no
+catálogo canônico. ScreenScraper: PS4 entrou em `_PLATFORMS_WITHOUT_SYSTEMEID`
+(sem ID conferido contra payload real; API exige credenciais) — a busca de
+mídia não filtra por plataforma até alguém sancionar o ID.
+
+**Fora do escopo e pendente:** nada foi instalado no host. A prova física
+(GAP-PLATFORM-PS4-PHYSICAL-INSTALL) — instalar o shadPS4 pelo ciclo de
+componentes numa release que contenha esta branch e lançar um jogo real —
+exige autorização do operador. `engine.py`/`lifecycle.py`/`registry.py` e
+`test_platforms.py` mudaram sob custódia de SZ-COMPONENT-LIFECYCLE,
+SZ-EMULATION-LONG-OPERATIONS e SZ-LIBRARY-CANONICAL, com evidência reexecutada
+e digests renovados; workstreams ativos não disputaram caminhos.
+

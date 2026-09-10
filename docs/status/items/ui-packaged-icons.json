@@ -16,7 +16,7 @@
     "tests/unit/test_packaged_assets.py",
     "docs/09-operations/evidence/2026-09-04-release-cf9c47e7"
   ],
-  "scopeDigest": "650ea8845d7362e95331e77303a5f93fde6f9801799ef9b571b2831157a75bba",
+  "scopeDigest": "55c7a9404a3600b468c6d31224f1714dc5d94a5f7f17b4658e79ba5b0647542b",
   "dependsOn": [
     "SZ-UI-DESKTOP-AUDIT"
   ],
@@ -55,10 +55,16 @@
       "reference": "docs/09-operations/evidence/2026-09-04-release-cf9c47e7/README.md",
       "command": "Empacotamento verificado na release instalada: os 41 assets estao em site-packages/steamzero/ui/assets e ../assets/pcsx2.png resolve a partir de qml/Emulation.qml. Mas NAO observei os icones renderizando: na tela de Emulacao, PCSX2 e Vita3K -- ambos com logo oficial empacotado, e PCSX2 em PNG, portanto sem depender do plugin SVG -- aparecem sem logotipo. Nao afirmo que estao quebrados (pode ser recorte de layout, posicao de rolagem ou o modelo desta view nao carregar iconAsset); afirmo que a evidencia visual continua ausente e a causa em aberto. Achado de leitura: Main.qml:44 declara que caminho de manifesto nunca vai direto para Image.source e oferece assetSource() para resolver pela allowlist, mas essa funcao nao e chamada em lugar nenhum e Emulation.qml:3471 usa modelData.iconAsset diretamente como Image.source.",
       "result": "partial"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_packaged_assets.py",
+      "command": "Renovacao 2026-09-10 (WS-2026-09-PS4-SHADPS4): assets autorais playstation-4.svg e shadps4.svg adicionados e allowlist sincronizada; test_packaged_assets reexecutado dentro do bloco focado (329 passed)",
+      "result": "passed"
     }
   ],
   "nextAction": "Capturar evidencia visual dos icones no Launcher instalado. Depende de instalacao autorizada e do plugin SVG do Qt, ausente neste runtime — o harness check_packaged_assets.qml fica skip sem ele. Sem essa captura, a troca esta provada como empacotamento, nao como aparencia na tela.",
   "notes": "Item aberto pela frente de integracao para dar dono de status a uma capacidade que nao tinha nenhum: nenhum item declarava src/steamzero/ui/assets nem PackagedAssets.qml, que so eram cobertos de forma transitiva pelo diretorio src/steamzero/ui de SZ-UI-DESKTOP-AUDIT. O teste guarda a sincronia das tres listas, que e o defeito provavel aqui: trocar o arquivo e esquecer o hash ou a atribuicao. O que este item NAO prova e o que o usuario ve — nenhuma captura do Launcher com os icones novos existe, e por isso a verificacao para em 'unit'.",
-  "updatedAt": "2026-09-04",
+  "updatedAt": "2026-09-10",
   "activeWorkstreams": []
 }

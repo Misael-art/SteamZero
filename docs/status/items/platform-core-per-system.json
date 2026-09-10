@@ -21,7 +21,7 @@
     "tests/unit/test_emulation_controller.py",
     "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun"
   ],
-  "scopeDigest": "1b4169e0e52775187908bb3e562c9f420979035c5677bafa9982b9eb8814ca22",
+  "scopeDigest": "dd41a986e0a30dc18c02f89f30091568f4c5c1f70dc35676436b82713d824b8c",
   "dependsOn": [
     "SZ-LIBRARY-CANONICAL",
     "SZ-AGG-PLATFORM-MANIFESTS"
@@ -61,6 +61,12 @@
       "reference": "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun/08-deep-functional-ux-audit.md",
       "command": "Suíte integral isolada chegou a 17%, permaneceu sem avanço por 30s e foi interrompida; nenhum processo residual ficou ativo.",
       "result": "partial"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_launch_profile.py",
+      "command": "Renovacao 2026-09-10 (WS-2026-09-PS4-SHADPS4): manifesto 64-playstation-4 adicionado ao diretorio do escopo; emulador nativo nao usa core libretro; test_launch_profile e test_platform_composer reexecutados (73 passed)",
+      "result": "passed"
     }
   ],
   "nextAction": "Publicar/instalar release autorizada e provar no host Atari 5200/7800/Lynx/Jaguar e Sega 32X; cobrir adapters de cores ainda ausentes.",

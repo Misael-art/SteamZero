@@ -23,7 +23,7 @@
     "docs/09-operations/evidence/2026-08-27-launch-gate-drift",
     "docs/09-operations/evidence/2026-08-31-componentes-update-fisico"
   ],
-  "scopeDigest": "e2762ae606ba50fe10b239d7150312b53c298f38c3d9544e263ea5b497c955fb",
+  "scopeDigest": "3d01c4e42899a1136ae17a32c7e49c4303dd130abf11181563f82123ee624782",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -107,12 +107,24 @@
       "reference": "docs/09-operations/evidence/2026-08-31-componentes-update-fisico/README.md",
       "command": "release 2.0.0rc1-5127fbc855d9. Update REAL do executor Flatpak exercitado fisicamente: Dolphin outdated -> installed no commit 377c3e63506e; RetroArch outdated -> installed no commit 9c51e2bcb6f7 (apos repin do manifest, cujo commit anterior d8644a97 estava purgado do Flathub — 404). Matriz no host: 15 instalados, 0 outdated, 18 missing. doctor: provenance na release, service.generation convergente, staging/backup orphao pass, recovery.pending 0; state audit clean.",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_component_lifecycle.py",
+      "command": "Renovacao 2026-09-10 (WS-2026-09-PS4-SHADPS4): fonte nativa com payloadPath ganhou extracao do membro declarado no engine; classe TestZipWrappedPayload prova membro como payload, checksums duplos, idempotencia, repair, recusas e uninstall; .venv/bin/python tools/run_tests_isolated.py tests/integration/test_component_lifecycle.py tests/integration/test_adapters.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_component_lifecycle.py",
+      "command": "Renovacao 2026-09-10 (revisao pos-format): classe TestZipWrappedPayload e suíte de conformancia zip-aware reexecutadas: tests/integration/test_emulator_conformance.py (364 passed)",
+      "result": "passed"
     }
   ],
   "nextAction": "Executor libretro e o update REAL do Flatpak provados no host: Dolphin atualizado para 377c3e63506e e RetroArch para 9c51e2bcb6f7 (outdated -> installed) na release 2.0.0rc1-5127fbc855d9; o pin do RetroArch estava purgado do Flathub (404) e foi repinado. Todos os componentes instalados: Azahar, PPSSPP e Xemu adicionados — matriz no host com 32 instalados, 0 outdated (Sunshine e tool de streaming sem capability install, por design nao instala como emulador). Progresso por bytes e cancelamento cooperativo implementados e testados (unit=bytes no transfer_observer + context.safepoint cancelando o download; flatpak reporta etapas por ser subprocess). Proximo: validacao fisica de lancamento de jogo real (jogar -> voltar) e acompanhamento de sessao, que exigem interacao humana.",
   "activeWorkstreams": [
     "WS-2026-08-COMPONENT-MATRIZ"
   ],
-  "updatedAt": "2026-08-27",
+  "updatedAt": "2026-09-10",
   "notes": "Item recriado em 2026-08-24: a capacidade veio no porte de codex/physical-functional-closure (commits f6b6e93, 5241d0f, 2f6d7d3, 20bcddf, 17d80df, e57aadf, d538201, ddf2e6d), mas o item normativo se perdeu na integracao interrompida e os arquivos ficaram apenas sob os agregadores SZ-AGG-ADAPTERS e SZ-AGG-JOBS — ou seja, com custodia declarada e nenhuma capacidade provada. O eixo operacional e 'degraded' e nao 'ready' porque existe uma contradicao de contrato REPRODUZIDA na suite focada, registrada acima como evidencia 'failed'. Nenhuma alegacao de estado aqui foi promovida a partir do historico dos 65 commits: as duas evidencias foram re-executadas nesta arvore. 2026-08-24, item fechado em dev: o defeito tinha DUAS causas. (1) o teste ainda exigia envelope.delegated['flatpakPlanId'] em plan(), que e o contrato v2; no v3 delegated num envelope pendente significa tentativa interrompida esperando recovery. (2) causa de codigo, que corrigir so o teste teria escondido: o ramo flatpak de _apply_deferred nao passava operation_id=envelope.plan_id ao executor, enquanto o caminho v2 passa. A operacao nascia sob o id do plano delegado e a cadeia plano->job->operacao ficava orfa, porque o job adota como operationId o que o lifecycle devolve. Corrigido restaurando a paridade com o v2."
 }
