@@ -12,10 +12,13 @@
   "scopePaths": [
     "src/steamzero/domain/game_record.py",
     "src/steamzero/domain/library_projection.py",
+    "src/steamzero/domain/metadata_export",
     "src/steamzero/domain/metadata_import",
     "tests/integration/test_metadata_to_catalog_pipeline.py",
     "tests/unit/test_game_record_model.py",
     "tests/unit/test_library_projection.py",
+    "tests/unit/test_metadata_export_esde.py",
+    "tests/unit/test_metadata_export_plan.py",
     "tests/unit/test_metadata_import_common.py",
     "tests/unit/test_metadata_import_esde.py",
     "tests/unit/test_metadata_import_launchbox.py",
@@ -38,7 +41,8 @@
     "O adapter ES-DE recusa caminho que escape da raiz do sistema e XML com DTD ou entidade, e registra o motivo de cada entrada descartada.",
     "Campo ausente na origem permanece ausente no registro: o adapter não inventa dado para preencher tela.",
     "Cada adapter declara uma confianca condizente com o que a fonte garante, e a defesa de caminho vive num contrato compartilhado — replicada por adapter, uma copia acabaria divergindo e viraria a brecha que as outras fecham.",
-    "O modelo canonico tem consumidor real: a projecao alimenta o payload que adapters.launcher_catalog.catalog_games ja consome, e o caminho arquivo externo -> adapter -> GameRecord -> projecao -> home e exercitado ponta a ponta, sem duble em nenhum elo."
+    "O modelo canonico tem consumidor real: a projecao alimenta o payload que adapters.launcher_catalog.catalog_games ja consome, e o caminho arquivo externo -> adapter -> GameRecord -> projecao -> home e exercitado ponta a ponta, sem duble em nenhum elo.",
+    "A exportacao nunca escreve as cegas: o dominio produz um plano com preview do conteudo final, digest do alvo atual e exigencia de backup so quando ha o que perder. Jogo desconhecido e campo nao modelado sobrevivem a atualizacao, e alvo que o parser nao entende e RECUSADO em vez de sobrescrito."
   ],
   "evidence": [
     {
@@ -88,11 +92,25 @@
       "reference": "tests/integration/test_metadata_to_catalog_pipeline.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_metadata_to_catalog_pipeline.py -q",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_metadata_export_plan.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_metadata_export_plan.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_metadata_export_esde.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_metadata_export_esde.py -q",
+      "result": "passed"
     }
   ],
-  "nextAction": "GAP-AURA-METADATA-CONSUMER FECHADO: a projecao liga a metadata importada a home do Launcher, com o caminho completo provado ponta a ponta (inclusive contra biblioteca real de 2524 jogos). Faltam: ligar a projecao ao entry point do Launcher em producao, que hoje le emulation-library-cache-v1.json e cujo QML pertence a WS-2026-09-LAUNCHER-P0-ACTIVATION; adapters Playnite e RetroFE, bloqueados por GAP-AURA-METADATA-FIXTURE-REAL; e o export plan/preview/backup.",
-  "activeWorkstreams": [],
+  "nextAction": "Export plan/preview/backup entregue para ES-DE, com as tres recusas provadas por mutacao. Faltam: exportadores para os demais formatos (Pegasus, LaunchBox, RetroArch), o APLICADOR do plano no adapter (dominio nao escreve em disco, entao alguem precisa gravar respeitando backup e digest), e os importadores Playnite e RetroFE bloqueados por GAP-AURA-METADATA-FIXTURE-REAL.",
+  "activeWorkstreams": [
+    "WS-2026-09-AURA-A1-EXPORT"
+  ],
   "updatedAt": "2026-09-09",
-  "notes": "Frente A1 do plano AURA. Entrega PARCIAL por decisao explicita: 4 de 7 adapters. Um adapter completo e provado vale mais que sete parsers rasos. A defesa de caminho e a proveniencia vivem em _common.py, com prova central em test_metadata_import_common.py; cada adapter so precisa provar que a usa. Bug corrigido neste ciclo: o adapter ES-DE convertia rating para escala 0..10 quando o contrato fixa 0..100 — o schema aceitava o valor errado por estar dentro da faixa, e so a semantica denunciava. Modulo de dominio puro; nao toca library.py, shell QML nem daemon. O adapter Steam recebe atalhos JA decodificados: o decodificador VDF binario vive em adapters.steam_shortcuts, domain nao importa adapters, e uma segunda leitura do mesmo formato divergiria. Validacao externa registrada: o adapter Pegasus foi conferido contra 56 arquivos reais de reference/EmuDeck (2524 registros, zero excecoes, campos conferidos contra a fonte); o teste pula quando reference/ ausente, porque o diretorio nao e versionado. Consumidor entregue: domain/library_projection.py projeta GameRecord no payload que catalog_games consome, sem tocar o QML (travado por WS-2026-09-LAUNCHER-P0-ACTIVATION) nem library_scan.py (travado por WS-2026-08-V2-HARMONIZED). Jogo indisponivel (missing/incompatible/permissionDenied) NAO entra no catalogo como jogo normal: sai em omitted com o motivo, porque lista-lo faria a home prometer o que nao abre.",
-  "scopeDigest": "67606513eb5bc0791d8eea359ec8139650f7dbdd834bcbcf34c180257034eea1"
+  "notes": "Frente A1 do plano AURA. Entrega PARCIAL por decisao explicita: 4 de 7 adapters. Um adapter completo e provado vale mais que sete parsers rasos. A defesa de caminho e a proveniencia vivem em _common.py, com prova central em test_metadata_import_common.py; cada adapter so precisa provar que a usa. Bug corrigido neste ciclo: o adapter ES-DE convertia rating para escala 0..10 quando o contrato fixa 0..100 — o schema aceitava o valor errado por estar dentro da faixa, e so a semantica denunciava. Modulo de dominio puro; nao toca library.py, shell QML nem daemon. O adapter Steam recebe atalhos JA decodificados: o decodificador VDF binario vive em adapters.steam_shortcuts, domain nao importa adapters, e uma segunda leitura do mesmo formato divergiria. Validacao externa registrada: o adapter Pegasus foi conferido contra 56 arquivos reais de reference/EmuDeck (2524 registros, zero excecoes, campos conferidos contra a fonte); o teste pula quando reference/ ausente, porque o diretorio nao e versionado. Consumidor entregue: domain/library_projection.py projeta GameRecord no payload que catalog_games consome, sem tocar o QML (travado por WS-2026-09-LAUNCHER-P0-ACTIVATION) nem library_scan.py (travado por WS-2026-08-V2-HARMONIZED). Jogo indisponivel (missing/incompatible/permissionDenied) NAO entra no catalogo como jogo normal: sai em omitted com o motivo, porque lista-lo faria a home prometer o que nao abre. Export entregue como PLANO, nao como escrita: dominio puro nunca toca disco. O plano carrega preview do conteudo final, digest do alvo atual (para detectar deriva entre planejar e aplicar) e requires_backup verdadeiro so em UPDATE. Reexportar o mesmo conteudo devolve UNCHANGED e aplicar nao toca o disco. A escala do rating e invertida na exportacao (0..100 -> fracao 0..1) com valores calculados a mao no teste, e um teste de ida e volta prova que import e export concordam.",
+  "scopeDigest": "4901197aea59fec00d86a075745cac69d0c097a5196b27a06ee59a775bac121f"
 }
