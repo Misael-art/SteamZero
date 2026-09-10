@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-A1-METADATA",
+  "item": "SZ-AURA-METADATA",
+  "branch": "codex/aura-a1-metadata-2026-09-09",
+  "baseRef": "dc71710d",
+  "owner": "codex-aura-a1",
+  "state": "closed",
+  "exclusivePaths": [
+    "src/steamzero/domain/game_record.py",
+    "src/steamzero/domain/metadata_import",
+    "tests/unit/test_game_record_model.py",
+    "tests/unit/test_metadata_import_esde.py",
+    "docs/status/items/aura-metadata.json"
+  ],
+  "sharedPaths": [
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md",
+    "docs/status/items/aura-contracts.json"
+  ],
+  "nextAction": "Incremento da frente A1 mergeado em main pelo PR #135 (merge 01039acc, commit 80762c97): modelo canonico GameRecord e adapter ES-DE. A frente NAO esta completa — seis adapters (RetroFE, Pegasus, LaunchBox, Playnite, Steam, RetroArch) e o export plan/preview/backup continuam por fazer, e exigem workstream e branch novos porque esta ja foi mergeada. Estado real no item SZ-AURA-METADATA, que permanece implementation partial.",
+  "updatedAt": "2026-09-09"
+}

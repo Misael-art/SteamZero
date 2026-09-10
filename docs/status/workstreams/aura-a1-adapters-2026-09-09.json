@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-A1-ADAPTERS",
+  "item": "SZ-AURA-METADATA",
+  "branch": "codex/aura-a1-adapters-2026-09-09",
+  "baseRef": "cce2a531",
+  "owner": "codex-aura-a1-adapters",
+  "state": "closed",
+  "exclusivePaths": [
+    "src/steamzero/domain/metadata_import/_common.py",
+    "src/steamzero/domain/metadata_import/esde.py",
+    "src/steamzero/domain/metadata_import/retroarch.py",
+    "src/steamzero/domain/metadata_import/pegasus.py",
+    "src/steamzero/domain/metadata_import/launchbox.py",
+    "tests/unit/test_metadata_import_esde.py",
+    "tests/unit/test_metadata_import_common.py",
+    "tests/unit/test_metadata_import_retroarch.py",
+    "tests/unit/test_metadata_import_pegasus.py",
+    "tests/unit/test_metadata_import_launchbox.py"
+  ],
+  "sharedPaths": [
+    "src/steamzero/domain/metadata_import/__init__.py",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md",
+    "docs/status/items/aura-metadata.json"
+  ],
+  "nextAction": "Contrato compartilhado, RetroArch, Pegasus e LaunchBox mergeados pelo PR #137 (merge 67600257). Branch mergeada; continuar exige workstream novo.",
+  "updatedAt": "2026-09-09"
+}

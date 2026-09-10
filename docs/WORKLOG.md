@@ -10025,3 +10025,242 @@ Limites honestos desta entrega:
 - O schema de workstream fixa `branch` em `^codex/[a-z0-9-]+$`, então a branch
   criada pelo harness foi renomeada em vez de o schema ser afrouxado — alargar
   o schema é mudança normativa e ficou fora de escopo.
+## 2026-09-09 — Frente A1: modelo canônico GameRecord e adapter ES-DE
+
+Primeira entrega que **consome** os contratos congelados em A0. Parcial por
+decisão explícita: o plano prevê sete adapters e este ciclo entregou um. Um
+adapter completo e provado vale mais que sete parsers rasos — e o item registra
+`implementation: partial`, não frente fechada.
+
+Entregue em `80762c97`, mergeado em `main` pelo PR #135 (merge `01039acc`):
+modelo canônico validando contra o schema de A0 (nunca reescrevendo as regras,
+para não criar segunda fonte de verdade), fusão que respeita a política de
+conflito da proveniência, e o adapter ES-DE de `gamelist.xml`.
+
+Três defeitos que os testes pegaram durante o desenvolvimento, todos meus:
+
+1. **O schema de A0 estava certo duas vezes contra mim.** `warnings` é lista de
+   códigos para máquina (`^[a-z0-9][a-z0-9-]{1,63}$`), não frase para humano; e
+   `provenance` exige `minProperties: 1`, então gravar mapa vazio era inválido.
+   Contrato bem escrito pega implementação preguiçosa.
+2. **Prova de mutação revelou código morto disfarçado de defesa.** A guarda
+   interna de `..` em `_resolve_path` não era load-bearing: mutei-a e nenhum
+   teste caiu, porque a checagem final de contenção já cobria tudo. Removida —
+   duas defesas onde uma é morta enganam quem lê depois.
+3. **A contenção usava `startswith`**, que aceitaria `/roms/psx-mal` como
+   interno a `/roms/psx`. Trocada por comparação de `parents`, e a correção foi
+   verificada reintroduzindo `startswith` e vendo o teste novo reprovar.
+
+Também removido `EsdeImportResult.warnings`, que nunca era preenchido: API
+sempre vazia promete algo que não entrega.
+
+Gates: suíte isolada 5.681 passados / 44 skips / 0 falhas, contra baseline de
+5.617 — os 64 novos são exatamente os desta frente. ruff check e format --check
+limpos em 576 arquivos, mypy sem issues em 259 módulos, independência,
+fronteiras e status-check OK. CI remota verde nos 10 checks.
+
+Limite honesto: **nada consome o modelo ainda.** `GAP-AURA-METADATA-CONSUMER`
+segue aberto e só fecha quando a biblioteca ou o Launcher lerem `GameRecord`.
+O modelo existe em `main`, mas não move nada para o usuário; a frente A1 não
+entregou capacidade de produto, entregou a base que A2 e A4 vão consumir.
+
+O workstream foi fechado junto: a branch está mergeada e a §2 proíbe voltar a
+commitar nela. Continuar a frente exige workstream e branch novos.
+
+## 2026-09-09 — Frente A1: adapters RetroArch, Pegasus, LaunchBox e Steam
+
+Dois ciclos que levaram A1 de 1 para 5 dos 7 adapters previstos, mergeados pelos
+PRs #137 (`67600257`) e #138 (`7fcbcb8e`).
+
+**Bug corrigido, e a lição que ele deixou.** O adapter ES-DE, já mergeado no
+PR #135, convertia `rating` para escala 0..10 quando o contrato fixa 0..100: um
+jogo avaliado em 85% virava `8.5`. O schema **não pegou**, porque 8.5 é um
+número válido dentro de 0..100 — só a semântica denuncia. A fixture inválida de
+A0 já nomeava a classe: *"Fontes usam escalas diferentes; o contrato fixa a
+escala canônica"*. Registrado no teste de regressão: **validação de schema não é
+validação semântica**; passar no contrato prova que o valor é representável, não
+que significa o que deveria.
+
+**Primeira validação externa da suíte.** O adapter Pegasus foi conferido contra
+56 arquivos `metadata.pegasus.txt` reais de `reference/EmuDeck`: 2524 registros,
+zero exceções, zero recusas, campos batendo com a fonte e 2524 IDs únicos sem
+colisão. Isso expõe uma fraqueza que vale para **todos** os adapters: fixture
+sintética prova apenas consistência com as suposições de quem a escreveu, não
+que o formato foi entendido. Os testes reais usam `skipif` porque `reference/` é
+gitignored e não versionado — sem isso, passariam aqui e reprovariam na CI.
+
+Decisões registradas em vez de resolvidas por adivinhação: a `.lpl` antiga de
+seis linhas é recusada com mensagem explícita; no Pegasus um único disco hostil
+recusa o jogo inteiro (importar meia lista daria multi-disco silenciosamente
+incompleto); o VDF binário do Steam **não** foi reimplementado, porque
+`adapters.steam_shortcuts` já tem decodificador em produção e um segundo parser
+do mesmo formato divergiria do primeiro.
+
+A defesa de caminho foi extraída para `_common.py` quando o segundo adapter
+apareceu. Replicada em cinco arquivos, uma cópia acabaria divergindo e viraria a
+brecha que as outras fecham. Prova de mutação confirmou que a contenção é
+load-bearing e que `startswith` aceitaria `/roms/psx-mal` como interno a
+`/roms/psx`.
+
+Gates: suíte isolada 5813 passados / 44 skips / 0 falhas (baseline inicial do
+ciclo: 5681). ruff, mypy, independência, fronteiras e status-check OK. CI remota
+verde nos dois PRs.
+
+**Bloqueio honesto registrado.** Playnite e RetroFE ficam abertos por falta de
+fixture real: o export do Playnite varia entre versões e o RetroFE usa `meta.db`
+alimentado por hyperlist XML, não o `meta.txt` que o plano cita. Escrever o
+parser a partir de suposição, com teste que confirma a mesma suposição, é
+exatamente o que deixou passar o bug do `rating`. A decisão é do operador —
+fornecer arquivos reais, ou fechar A1 em 5 de 7.
+
+**Limite que não mudou:** nada consome `GameRecord`. Existem cinco tradutores e
+nenhum leitor. `GAP-AURA-METADATA-CONSUMER` é o que separa A1 de virar
+capacidade visível para o usuário.
+
+## 2026-09-09 — Consumidor de GameRecord e endurecimento do asset-fonte SVG
+
+Dois fechamentos: `GAP-AURA-METADATA-CONSUMER` (PR #140, merge `fee675ac`) e os
+vetores de referência externa em SVG (PR #141, merge `71d8cef2`).
+
+**Consumidor.** Até então a frente A1 tinha cinco tradutores e nenhum leitor, e
+modelo que ninguém lê não move nada para o usuário.
+`domain/library_projection.py` projeta o registro canônico no payload que
+`adapters.launcher_catalog.catalog_games` já consome — encaixou sem adaptação
+porque esse adapter já lia `platformId`, que é o campo do contrato. O caminho
+arquivo externo → adapter → GameRecord → projeção → home é exercitado ponta a
+ponta, sem dublê em nenhum elo, e provado com a biblioteca real de 2524 jogos:
+nenhum se perde, nenhum é omitido, todos chegam com a plataforma correta.
+
+Duas regras, ambas por não falsear estado: jogo indisponível (`missing`,
+`incompatible`, `permissionDenied`) **não** entra no catálogo como jogo normal —
+sai em `omitted` com o motivo, porque listá-lo faria a home prometer o que não
+abre; e ausência de arte continua ausência, nunca placeholder fingindo capa.
+Escolha deliberadamente contrária: `unknown` **entra**, porque nenhum adapter lê
+disco e esconder por precaução apagaria a biblioteca de quem acabou de importar.
+
+**Sanitização.** Cheguei em A2 esperando construir o pipeline e encontrei
+`asset_recipes.py` com receitas, cache, resolver e validação já prontos.
+Reimplementar teria produzido muitas linhas e nenhum ganho. O que faltava eram
+duas cláusulas que o plano exige literalmente — URL externa e caminho absoluto —
+e uma sonda provou seis vetores **aceitos** antes da correção, incluindo
+`<image href="https://…">` (vaza requisição do host ao renderizar) e
+`file:///etc/passwd`.
+
+Desenhado como allowlist: só `#fragmento` e `data:image/` raster passam. A lista
+de esquemas perigosos nunca termina; a do que o tema pode alcançar, sim. A regra
+foi verificada contra os 33 SVGs reais do projeto **antes** de ser fixada, o que
+permitiu ser estrito sem quebrar arte legítima. Prova de mutação: 16 dos 28
+testes reprovam sem a correção.
+
+**O gate pegou e não foi contornado.** Mexer em `asset_recipes.py` marcou a
+evidência de `SZ-THEME-ENGINE` como obsoleta. Em vez de carimbar o digest,
+reexecutei a evidência de unidade daquele item — 319 testes, todos passando — e
+registrei a reverificação. Carimbar sem rodar seria fraudar o gate.
+
+Achado registrado sem inflar: três SVGs do projeto (`mega-drive`,
+`nintendo-handheld`, `playstation-3`) já eram recusados **antes** desta mudança,
+por conterem `<!DOCTYPE`. Não quebram nada porque o validador roda em pacote de
+tema de terceiro, não em ícone first-party do QML.
+
+Gates: suíte isolada 5.870 passados / 44 skips / 0 falhas (baseline do dia:
+5.617). ruff, mypy, independência, fronteiras e status-check OK; CI remota verde
+nos dois PRs.
+
+**Limites que permanecem.** A projeção prova que o modelo é consumível, mas o
+Launcher em produção segue lendo `emulation-library-cache-v1.json`; ligar os dois
+passa por arquivos de dois workstreams ativos. A frente A2 não está completa
+pelo mesmo motivo: `theme_assets.py` pertence a `WS-2026-09-TEMAS-ESDE`. Ambos
+exigem coordenação, não código.
+
+## 2026-09-09 — Harmonização da main e registro dos aprendizados
+
+Verificação de coesão da `main` em `bd829cd4`, não carimbo: suíte isolada
+integral **5.870 passados / 44 skips / 0 falhas**, ruff check e format --check
+limpos em 590 arquivos, mypy sem issues em 265 módulos, independência,
+fronteiras e status-check OK.
+
+**Incoerência de estado encontrada e corrigida.** `SZ-AURA-CONTRACTS` ainda
+declarava `GAP-AURA-CONTRACTS-CONSUMER` inteiro, mas o gap deixou de ser
+verdadeiro no PR #135: `domain/game_record.py` carrega e aplica
+`game-record-v1.schema.json` em runtime e alimenta cinco adapters e a projeção
+para a home. O gap foi **estreitado**, não apagado — vira
+`GAP-AURA-ENHANCEMENT-ENTRY-CONSUMER`, porque `enhancement-entry-v1.schema.json`
+segue sem nenhum leitor e só fecha quando a frente A9 existir.
+
+`integration` permanece `isolated` **por decisão, não por desatualização**: a
+cadeia schema → modelo → adapters → projeção está ligada a código de produto,
+mas ainda não é alcançável a partir do entry point do Launcher, que lê
+`emulation-library-cache-v1.json`. Promover o enum sugeriria que a capacidade
+chegou ao usuário, e é exatamente o tipo de promoção indevida que a governança
+deste repo existe para impedir.
+
+Registrado e não resolvido: 20 branches locais já mergeadas, 10 delas desta
+sessão. Não foram removidas — metade pertence a outras frentes e não é deste
+agente para apagar.
+
+Aprendizados da sessão persistidos na memória do projeto, com o caso concreto
+que originou cada um: validação de schema não é validação semântica (o `rating`
+85% que virou 8.5 e passou por schema, 30 testes e CI); `status-check` não roda
+na CI e ignora arquivo untracked, então dá verde antes do commit e vermelho
+depois; fixture sintética prova a suposição de quem a escreveu, não o formato —
+só arquivo real prova (56 arquivos reais do Pegasus, 2524 registros); os fios
+que fariam o AURA aparecer na tela pertencem a workstreams ativos de outras
+frentes; e workstream deve ser fechado no mesmo fôlego do merge, senão
+`ACTIVE-WORK` manda o próximo agente violar a §2.
+
+## 2026-09-09 — Harmonização das branches órfãs: o que a auditoria superestimou
+
+Avaliação profunda das 7 branches não mergeadas classificadas como "perda real".
+Das quatro atividades planejadas, **uma foi executada, uma se revelou maior que
+o escopo, e duas já estavam feitas ou não deviam ser feitas**. O resultado útil
+aqui é o que a verificação derrubou.
+
+**1. Migração de gaps — feita pela metade, de propósito.** O item órfão
+`SZ-HOST-RELEASE-UPDATE` declarava dois gaps que `SZ-HOST-UPDATE-TRANSACTIONAL`
+não tinha. Só um era verdadeiro. `GAP-HOST-UPDATE-PHYSICAL-CERTIFICATION` já
+estava **fechado**: a evidência de hardware de 2026-08-26/27 é posterior à
+branch, que parou em 2026-08-23. Migrar os dois teria inventado uma lacuna
+resolvida. `GAP-HOST-UPDATE-VM-CYCLE` foi migrado após verificar que o harness
+de VM exercita `install→update→rollback→roll-forward` com o update **noop**
+(fonte Flatpak pinada) e sobre ciclo de componente, não de release do host.
+
+**2. MediaHub — não importado; o escopo era outro.** A auditoria contou 2
+arquivos órfãos porque usou `git diff --diff-filter=A`, que só enxerga arquivos
+**adicionados**. A branch também **modifica** `media_pipeline.py` (+124 linhas),
+`switch_media.py`, `emulation.py` e `test_contracts.py`: são 551 inserções, uma
+feature inteira. Copiar só schema e teste reprovou 7 de 8 casos por
+`AttributeError: 'MediaPipeline' object has no attribute 'registry_snapshot'`.
+Pior: `main` ganhou **duas correções posteriores** no mesmo arquivo (`separa
+masters por plataforma`, `scope platform audit reports`) e o `registry_snapshot`
+da branch precede a separação por plataforma. Portar às cegas regrediria as
+duas. A cópia parcial foi revertida.
+
+**3. ASSET-INVENTORY — não importado; eu superestimei a exposição.** `main` já
+tem `docs/11-legal/` com `LICENSE-MATRIX.md`, `THIRD-PARTY-NOTICES.md`,
+`REUSE-POLICY.md` e `ATTRIBUTION-PLAN.md`, e o `ATTRIBUTION.md` cita os assets
+em questão. O documento órfão se autodeclara rascunho e manda regenerar hashes
+antes de qualquer integração. Verificação: dos 68 assets inventariados, **52
+hashes ainda conferem e 16 mudaram**. Hash alterado significa asset substituído
+ou editado — a alegação de licença do conteúdo antigo não vale automaticamente
+para o novo. Regenerar os hashes em silêncio produziria um documento que parece
+verificado e não está.
+
+**4. Return context — já coberto em `main`.** Os quatro comportamentos do teste
+órfão (sobrevive ao processo morrer, consumido uma vez, corrupção reportada e
+não adivinhada, id cabe no formato de foco) têm teste em
+`tests/integration/test_launcher_launch.py`. O teste órfão importa
+`remember_return`/`restore_return`, que não existem: a API evoluiu para
+`consume_context`. E `identifiers.py` é coberto em
+`test_launcher_navigation.py`, incluindo o caso exato do P0 — id hex começando
+por dígito, os 147 de 231 rejeitados no host.
+
+**Os dois P0 das auditorias de UX estão corrigidos.** `LauncherHome.qml` hoje
+tem `TapHandler` e trata Return/Enter/Space, e existe `LauncherGamePage.qml`; o
+defeito do ID hexadecimal foi resolvido por `identifiers.py`. As 184 capturas
+valem como proveniência — explicam por que esses módulos existem — e não são
+acionáveis.
+
+**O padrão, de novo.** A auditoria (a minha inclusive) superestimou o que
+faltava. `--diff-filter=A` mentiu sobre o MediaHub, gap fechado sobreviveu num
+item órfão, e trabalho já feito apareceu como pendente. Estado que mente não é
+só do produto: é das ferramentas com que medimos o produto.

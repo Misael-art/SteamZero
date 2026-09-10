@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-A2-SVG",
+  "item": "SZ-AURA-ASSET-SANITIZACAO",
+  "branch": "codex/aura-a2-svg-sanitizacao-2026-09-09",
+  "baseRef": "fee675ac",
+  "owner": "codex-aura-a2-svg",
+  "state": "closed",
+  "exclusivePaths": [
+    "src/steamzero/domain/asset_recipes.py",
+    "tests/unit/test_asset_source_sanitization.py",
+    "docs/status/items/aura-asset-sanitizacao.json"
+  ],
+  "sharedPaths": [
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Entregue e mergeado pelo PR #141 (merge 71d8cef2). Vetores de referencia externa e caminho absoluto fechados e mergeados. Branch mergeada; continuar exige workstream novo. O restante do pipeline da frente A2 depende de theme_assets.py, reivindicado por WS-2026-09-TEMAS-ESDE ativo.",
+  "updatedAt": "2026-09-09"
+}
