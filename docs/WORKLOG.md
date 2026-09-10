@@ -10164,3 +10164,60 @@ só arquivo real prova (56 arquivos reais do Pegasus, 2524 registros); os fios
 que fariam o AURA aparecer na tela pertencem a workstreams ativos de outras
 frentes; e workstream deve ser fechado no mesmo fôlego do merge, senão
 `ACTIVE-WORK` manda o próximo agente violar a §2.
+
+## 2026-09-09 — Harmonização das branches órfãs: o que a auditoria superestimou
+
+Avaliação profunda das 7 branches não mergeadas classificadas como "perda real".
+Das quatro atividades planejadas, **uma foi executada, uma se revelou maior que
+o escopo, e duas já estavam feitas ou não deviam ser feitas**. O resultado útil
+aqui é o que a verificação derrubou.
+
+**1. Migração de gaps — feita pela metade, de propósito.** O item órfão
+`SZ-HOST-RELEASE-UPDATE` declarava dois gaps que `SZ-HOST-UPDATE-TRANSACTIONAL`
+não tinha. Só um era verdadeiro. `GAP-HOST-UPDATE-PHYSICAL-CERTIFICATION` já
+estava **fechado**: a evidência de hardware de 2026-08-26/27 é posterior à
+branch, que parou em 2026-08-23. Migrar os dois teria inventado uma lacuna
+resolvida. `GAP-HOST-UPDATE-VM-CYCLE` foi migrado após verificar que o harness
+de VM exercita `install→update→rollback→roll-forward` com o update **noop**
+(fonte Flatpak pinada) e sobre ciclo de componente, não de release do host.
+
+**2. MediaHub — não importado; o escopo era outro.** A auditoria contou 2
+arquivos órfãos porque usou `git diff --diff-filter=A`, que só enxerga arquivos
+**adicionados**. A branch também **modifica** `media_pipeline.py` (+124 linhas),
+`switch_media.py`, `emulation.py` e `test_contracts.py`: são 551 inserções, uma
+feature inteira. Copiar só schema e teste reprovou 7 de 8 casos por
+`AttributeError: 'MediaPipeline' object has no attribute 'registry_snapshot'`.
+Pior: `main` ganhou **duas correções posteriores** no mesmo arquivo (`separa
+masters por plataforma`, `scope platform audit reports`) e o `registry_snapshot`
+da branch precede a separação por plataforma. Portar às cegas regrediria as
+duas. A cópia parcial foi revertida.
+
+**3. ASSET-INVENTORY — não importado; eu superestimei a exposição.** `main` já
+tem `docs/11-legal/` com `LICENSE-MATRIX.md`, `THIRD-PARTY-NOTICES.md`,
+`REUSE-POLICY.md` e `ATTRIBUTION-PLAN.md`, e o `ATTRIBUTION.md` cita os assets
+em questão. O documento órfão se autodeclara rascunho e manda regenerar hashes
+antes de qualquer integração. Verificação: dos 68 assets inventariados, **52
+hashes ainda conferem e 16 mudaram**. Hash alterado significa asset substituído
+ou editado — a alegação de licença do conteúdo antigo não vale automaticamente
+para o novo. Regenerar os hashes em silêncio produziria um documento que parece
+verificado e não está.
+
+**4. Return context — já coberto em `main`.** Os quatro comportamentos do teste
+órfão (sobrevive ao processo morrer, consumido uma vez, corrupção reportada e
+não adivinhada, id cabe no formato de foco) têm teste em
+`tests/integration/test_launcher_launch.py`. O teste órfão importa
+`remember_return`/`restore_return`, que não existem: a API evoluiu para
+`consume_context`. E `identifiers.py` é coberto em
+`test_launcher_navigation.py`, incluindo o caso exato do P0 — id hex começando
+por dígito, os 147 de 231 rejeitados no host.
+
+**Os dois P0 das auditorias de UX estão corrigidos.** `LauncherHome.qml` hoje
+tem `TapHandler` e trata Return/Enter/Space, e existe `LauncherGamePage.qml`; o
+defeito do ID hexadecimal foi resolvido por `identifiers.py`. As 184 capturas
+valem como proveniência — explicam por que esses módulos existem — e não são
+acionáveis.
+
+**O padrão, de novo.** A auditoria (a minha inclusive) superestimou o que
+faltava. `--diff-filter=A` mentiu sobre o MediaHub, gap fechado sobreviveu num
+item órfão, e trabalho já feito apareceu como pendente. Estado que mente não é
+só do produto: é das ferramentas com que medimos o produto.
