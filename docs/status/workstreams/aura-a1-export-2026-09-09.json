@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-A1-EXPORT",
+  "item": "SZ-AURA-METADATA",
+  "branch": "codex/aura-a1-export-2026-09-09",
+  "baseRef": "0dbfdc31",
+  "owner": "codex-aura-a1-export",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/domain/metadata_export",
+    "tests/unit/test_metadata_export_plan.py",
+    "tests/unit/test_metadata_export_esde.py"
+  ],
+  "sharedPaths": [
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md",
+    "docs/status/items/aura-metadata.json"
+  ],
+  "nextAction": "Implementar export com plan/preview/backup: a exportacao nunca escreve as cegas. O plano declara o que mudaria, preserva campos que o GameRecord nao modela (reescrever apagaria dado do usuario), e recusa arquivo alvo malformado em vez de sobrescrever. Dominio puro: nao escreve em disco.",
+  "updatedAt": "2026-09-09"
+}
