@@ -9982,6 +9982,49 @@ Limites honestos desta entrega:
 - `publish` NÃO foi executado: o próprio comando exige evidência de certificação
   separada e aprovada, e a certificação do AURA é justamente o que falta.
 
+## 2026-09-09 — status-check no CI (WS-2026-09-STATUS-CHECK-CI)
+
+O gate `make status-check` não era executado por nenhum workflow. `grep -rn
+"status-check\|project_status" .github/workflows/*.yml` não retornava nada.
+Consequência observada: o PR #133 fechou com 10 checks verdes e deixou `main`
+reprovando no gate — dois PNGs de evidência entraram sem constar em nenhum
+`scopePaths`, e a falha só apareceu quando um agente rodou o gate localmente na
+sessão seguinte (corrigido no PR #134, que mergeou no meio desta sessão).
+
+O gate passou a rodar no job `quality`, junto de ruff/mypy/boundaries/
+independence.
+
+Achado que mudou a entrega: adicionar o step sozinho teria produzido um gate
+verde para sempre. `_changed_paths` compara `HEAD^..HEAD`; no `fetch-depth`
+default do `actions/checkout` o `HEAD^` não existe, o `git diff` falha, o
+returncode era descartado em silêncio e o conjunto de arquivos alterados ficava
+vazio. Isso foi **medido, não inferido**: o commit 99be1ee8 reprova com
+histórico completo e passa num `git clone --depth 1` do mesmo commit. Daí as
+duas metades irem juntas — `check_history_depth` reprova o clone raso sem
+`HEAD^` em vez de imitar sucesso, e o checkout usa `fetch-depth: 2`.
+
+Controle positivo, num clone `--depth 2` (a configuração nova do CI): um commit
+adicionando `src/steamzero/bogus/orfao.py` reprova com "arquivo alterado sem
+item de status responsavel". Sem esse controle, "o gate passou" não distinguiria
+gate funcionando de gate cego.
+
+Armadilha registrada para quem vier depois: enquanto o arquivo está *untracked*
+o check o ignora. Rodar o gate imediatamente antes do commit dá verde e o
+vermelho só aparece depois — gate verde pré-commit não prova nada sobre arquivo
+novo. É exatamente por isso que ele precisa rodar no CI, sobre o que já foi
+commitado.
+
+Limites honestos desta entrega:
+
+- O gate remoto **não foi observado reprovando um PR real**. A prova é local, em
+  clones que reproduzem a configuração do CI. A confirmação no primeiro PR ficou
+  como `nextAction` do item.
+- A suíte rodou com `-m "not visual"`, como o CI faz; o gate visual exige a
+  imagem canônica e não foi reproduzido aqui.
+- Sem ação de host, sem release, sem instalação. A frente é de CI.
+- O schema de workstream fixa `branch` em `^codex/[a-z0-9-]+$`, então a branch
+  criada pelo harness foi renomeada em vez de o schema ser afrouxado — alargar
+  o schema é mudança normativa e ficou fora de escopo.
 ## 2026-09-09 — Frente A1: modelo canônico GameRecord e adapter ES-DE
 
 Primeira entrega que **consome** os contratos congelados em A0. Parcial por

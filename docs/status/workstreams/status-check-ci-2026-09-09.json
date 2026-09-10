@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-STATUS-CHECK-CI",
+  "item": "SZ-GOVERNANCE-STATUS",
+  "branch": "codex/status-check-ci-2026-09-09",
+  "baseRef": "dc71710d",
+  "owner": "status-check-ci-agent",
+  "state": "active",
+  "exclusivePaths": [
+    ".github/workflows/ci.yml",
+    "tools/project_status.py",
+    "tests/unit/test_project_status.py"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Executar make status-check no CI e reprovar clone raso em vez de passar em silencio.",
+  "updatedAt": "2026-09-09"
+}

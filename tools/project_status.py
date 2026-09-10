@@ -178,14 +178,40 @@ def _paths_overlap(first: str, second: str) -> bool:
     return left == right or left.startswith(f"{right}/") or right.startswith(f"{left}/")
 
 
+def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(["git", *args], cwd=root, text=True, capture_output=True, check=False)
+
+
+def check_history_depth(root: Path = ROOT) -> list[str]:
+    """Reprova quando o commit anterior nao esta no clone.
+
+    ``_changed_paths`` compara ``HEAD^..HEAD``. Num clone raso esse comando
+    falha, o erro era descartado em silencio e o conjunto de arquivos alterados
+    ficava vazio: o gate passava SEMPRE, com qualquer conteudo. Foi medido no
+    proprio commit 99be1ee8, que reprova com historico completo e passa num
+    ``git clone --depth 1`` do mesmo commit. Um gate que nao consegue reprovar
+    precisa dizer isso em vez de imitar sucesso.
+
+    Repositorio nao raso com commit raiz e legitimo e nao reprova.
+    """
+    if _git(root, "rev-parse", "--is-shallow-repository").stdout.strip() != "true":
+        return []
+    if _git(root, "rev-parse", "--verify", "--quiet", "HEAD^").returncode == 0:
+        return []
+    return [
+        "clone raso sem HEAD^: a comparacao de arquivos alterados nao pode ser feita; "
+        "use fetch-depth: 2 ou maior no checkout"
+    ]
+
+
 def _changed_paths(root: Path) -> set[str]:
     commands = [
-        ["git", "diff", "--name-only", "HEAD"],
-        ["git", "diff", "--name-only", "HEAD^", "HEAD"],
+        ["diff", "--name-only", "HEAD"],
+        ["diff", "--name-only", "HEAD^", "HEAD"],
     ]
     changed: set[str] = set()
     for command in commands:
-        result = subprocess.run(command, cwd=root, text=True, capture_output=True, check=False)
+        result = _git(root, *command)
         if result.returncode == 0:
             changed.update(line for line in result.stdout.splitlines() if line)
     return changed
@@ -203,6 +229,7 @@ def check_catalog(root: Path = ROOT, *, check_generated: bool = True) -> list[st
     except ValueError as exc:
         return str(exc).splitlines()
     errors: list[str] = []
+    errors.extend(check_history_depth(root))
     errors.extend(check_worklog_append_only(root))
     for identifier, item in catalog.items.items():
         for dependency in item["dependsOn"]:
