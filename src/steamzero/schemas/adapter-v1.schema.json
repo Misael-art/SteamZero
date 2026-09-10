@@ -322,6 +322,12 @@
         },
         "endOfLife": {
           "type": "boolean"
+        },
+        "payloadPath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "description": "Membro unico dentro do artefato zipado que se torna o payload executavel. O sha256 declarado continua sendo o do artefato inteiro."
         }
       },
       "allOf": [
@@ -344,6 +350,19 @@
               "url"
             ]
           }
+        },
+        {
+          "if": {
+            "required": [
+              "payloadPath"
+            ],
+            "properties": {
+              "type": {
+                "const": "flatpak"
+              }
+            }
+          },
+          "then": false
         }
       ]
     }

@@ -21,7 +21,7 @@
     "tests/unit/test_core_net.py",
     "tests/unit/test_media_multiprovider.py"
   ],
-  "scopeDigest": "b772d48e3768476da389dbe4a569106a5acdbc45522193ed7da8c6670587ad00",
+  "scopeDigest": "8703a4359e35a4c9cc3391c191d1a6927451d9c932216cc16682660e4ec1863d",
   "dependsOn": [
     "SZ-MEDIA-SCRAPING"
   ],
@@ -42,6 +42,12 @@
       "kind": "test",
       "reference": "tests/unit/scraping/test_registry.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests -q (5296 passed, 44 skipped, 35m52s)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/scraping/test_registry.py",
+      "command": "Renovacao 2026-09-10 (WS-2026-09-PS4-SHADPS4): playstation-4 declarada em _PLATFORMS_WITHOUT_SYSTEMEID (sem ID conferido contra payload real); tests/unit/scraping/test_screenscraper.py tests/unit/scraping/test_registry.py reexecutados",
       "result": "passed"
     }
   ],

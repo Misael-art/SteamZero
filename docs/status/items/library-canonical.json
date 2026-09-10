@@ -27,7 +27,7 @@
     "tests/unit/test_emulation_workspace.py",
     "tests/unit/test_workspace_composition.py"
   ],
-  "scopeDigest": "b6bcdace103712b1477b8340f3d155a3fa8174f1f8ae5b46cf51cdf4b620c536",
+  "scopeDigest": "f4b7a695f35f86d6521d5cd538f25a7498fd6738f08f011bf4e14594c5c681cc",
   "dependsOn": [],
   "knownGaps": [
     "GAP-LIBRARY-PHYSICAL-CATALOG-COVERAGE"
@@ -102,6 +102,12 @@
       "kind": "test",
       "reference": "tests/integration/test_handheld_production_journey.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_handheld_production_journey.py tests/unit/test_library_rom_classify.py tests/unit/test_switch_roots.py -q (a reconciliação conta cada arquivo uma vez, separa base/update/DLC, preserva arquivo incompatível com motivo e grava scanSummary no cache canônico)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_platforms.py",
+      "command": "Renovacao 2026-09-10 (WS-2026-09-PS4-SHADPS4): playstation-4 entrou na lista esperada de plataformas do registry e o catalogo canonico linkou technicalPlatformId; test_platforms reexecutado dentro do bloco focado (329 passed)",
       "result": "passed"
     }
   ],

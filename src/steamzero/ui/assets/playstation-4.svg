@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="PlayStation 4 — artwork padrão SteamZero">
+  <rect width="320" height="180" rx="20" fill="#101a2e"/>
+  <rect x="28" y="78" width="264" height="34" rx="6" fill="#1c2a44"/>
+  <rect x="28" y="70" width="264" height="26" rx="6" fill="#e6ecf7"/>
+  <rect x="28" y="90" width="264" height="5" fill="#5e81ff"/>
+  <rect x="196" y="78" width="5" height="34" fill="#101a2e"/>
+  <rect x="46" y="121" width="228" height="4" rx="2" fill="#2f4f7a"/>
+  <circle cx="60" cy="102" r="4" fill="#8fa3bf"/>
+  <circle cx="258" cy="102" r="4" fill="#8fa3bf"/>
+</svg>

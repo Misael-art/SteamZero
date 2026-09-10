@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import re
+import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -154,6 +155,23 @@ class AdapterEngine:
         else:
             fs.write_atomic(cached_artifact, artifact, mode=0o600)
 
+        # Fonte com membro declarado (ex.: AppImage embrulhado em zip upstream):
+        # o pin continua sendo o checksum do artefato inteiro, mas o payload
+        # implantado é o membro extraído, e é o checksum DELE que o deployment
+        # registra, observa e compara na reinstalação.
+        payload_sha = str(source.sha256)
+        payload_bytes: bytes | None = None
+        if source.payload_path is not None:
+            payload_bytes = self._extract_member(adapter_id, cached_artifact, source)
+            payload_sha = crypto.digest_bytes(payload_bytes).hexdigest
+            payload_cache = cache_root / payload_sha
+            if (
+                not payload_cache.is_file()
+                or payload_cache.is_symlink()
+                or self._sha256_file(payload_cache) != payload_sha
+            ):
+                fs.write_atomic(payload_cache, payload_bytes, mode=0o600)
+
         component_root = self._root / manifest.id
         payload = component_root / "releases" / source.version / "payload"
         current = component_root / "current.json"
@@ -162,15 +180,18 @@ class AdapterEngine:
             "adapterId": manifest.id,
             "version": source.version,
             "origin": source.type,
-            "sha256": source.sha256,
+            "sha256": payload_sha,
             "manifestHash": manifest.manifest_hash,
         }
+        if payload_bytes is not None:
+            metadata["artifactSha256"] = source.sha256
         current_bytes = json.dumps(
             metadata, sort_keys=True, separators=(",", ":"), ensure_ascii=False
         ).encode()
+        copy_source = cached_artifact if payload_bytes is None else cache_root / payload_sha
 
         if payload.exists() or payload.is_symlink():
-            if self._sha256_file(payload) != source.sha256:
+            if self._sha256_file(payload) != payload_sha:
                 if not force:
                     # Instalar por cima de payload divergente apagaria evidência
                     # de adulteração sem que ninguém decidisse isso. O reparo é
@@ -184,7 +205,7 @@ class AdapterEngine:
                 # meio restaura o estado anterior em vez de deixar o componente
                 # sem payload nenhum.
                 plan = transaction.plan_copy_files(
-                    {cached_artifact: payload},
+                    {copy_source: payload},
                     root=self._root,
                     kind=f"component.{operation}",
                     writes={current: current_bytes},
@@ -196,7 +217,7 @@ class AdapterEngine:
             )
         else:
             plan = transaction.plan_copy_files(
-                {cached_artifact: payload},
+                {copy_source: payload},
                 root=self._root,
                 kind=f"component.{operation}",
                 writes={current: current_bytes},
@@ -219,7 +240,7 @@ class AdapterEngine:
                 "E-COMPONENT-DEGRADED",
                 detail="deployment atual não pode ser removido com segurança",
             )
-        source = manifest.preferred_source("appimage", allow_eol=True)
+        source = manifest.preferred_source(allow_eol=True)
         current = self._root / manifest.id / "current.json"
         payload = self._root / manifest.id / "releases" / version / "payload"
         plan = transaction.plan_write_files(
@@ -242,7 +263,10 @@ class AdapterEngine:
             # de observar, porque a observação (status/payload_path) recusa
             # payload não executável — e a cópia recém-commitada ainda está no
             # modo do cache (0o600).
-            if prepared.source.type == "appimage" and prepared.plan.kind != "component.uninstall":
+            if (
+                prepared.source.type in {"appimage", "native"}
+                and prepared.plan.kind != "component.uninstall"
+            ):
                 deployed = (
                     self._root
                     / prepared.manifest.id
@@ -280,7 +304,7 @@ class AdapterEngine:
         status = self.status(adapter_id)
         version = status.get("version")
         if (
-            status.get("origin") == "appimage"
+            status.get("origin") in {"appimage", "native"}
             and isinstance(version, str)
             and _SAFE_VERSION.fullmatch(version)
         ):
@@ -314,6 +338,7 @@ class AdapterEngine:
             version = str(metadata["version"])
             expected = str(metadata["sha256"])
             origin = str(metadata["origin"])
+            metadata_artifact_sha = metadata.get("artifactSha256")
             manifest_drift = metadata.get("manifestHash") != manifest.manifest_hash
             if not _SAFE_VERSION.fullmatch(version) or origin not in {"appimage", "native"}:
                 raise ValueError("metadados de origem/versão inválidos")
@@ -356,7 +381,12 @@ class AdapterEngine:
             # diferença: isso permanece `degraded`, porque é o sinal de supply
             # chain que a checagem existe para dar.
             pinned = self._pinned_source(manifest)
-            if pinned is not None and (version, expected) != pinned:
+            # Fonte com membro extraído registra o checksum do artefato em
+            # artifactSha256; o pin do manifesto é sobre o artefato, não sobre
+            # o payload. Sem esse campo (AppImage direto), o comparativo segue
+            # sendo o checksum do próprio payload.
+            artifact_pin = str(metadata_artifact_sha or expected)
+            if pinned is not None and (version, artifact_pin) != pinned:
                 return {
                     "id": adapter_id,
                     "state": "outdated",
@@ -381,6 +411,41 @@ class AdapterEngine:
             "origin": origin,
             "sha256": expected,
         }
+
+    @staticmethod
+    def _extract_member(adapter_id: str, artifact: Path, source: AdapterSource) -> bytes:
+        """Lê o membro declarado de um artefato zipado.
+
+        Só o membro `payloadPath` é lido — o zip nunca é extraído por inteiro
+        e o conteúdo implantado é escrito pela transação a partir do cache,
+        verificado pelo checksum do próprio membro.
+        """
+        if source.payload_path is None:
+            raise SteamZeroError(
+                "E-SUPPLY-CHECKSUM", detail=f"fonte {adapter_id} sem membro declarado"
+            )
+        try:
+            with zipfile.ZipFile(artifact) as bundle:
+                if source.payload_path not in bundle.namelist():
+                    raise SteamZeroError(
+                        "E-SUPPLY-CHECKSUM",
+                        detail=(
+                            f"artefato de {adapter_id} não contém o membro "
+                            f"declarado {source.payload_path}"
+                        ),
+                    )
+                info = bundle.getinfo(source.payload_path)
+                if info.file_size > _MAX_ARTIFACT_BYTES:
+                    raise SteamZeroError(
+                        "E-SUPPLY-CHECKSUM",
+                        detail=f"membro {source.payload_path} excede o limite de artefato",
+                    )
+                return bundle.read(source.payload_path)
+        except zipfile.BadZipFile as exc:
+            raise SteamZeroError(
+                "E-SUPPLY-CHECKSUM",
+                detail=f"artefato de {adapter_id} não é o zip declarado: {exc}",
+            ) from exc
 
     @staticmethod
     def _pinned_source(manifest: AdapterManifest) -> tuple[str, str] | None:

@@ -142,10 +142,11 @@ def test_open_config_matrix_covers_each_active_emulator_without_exposing_argv() 
         registry_factory=AdapterRegistry.bundled
     ).component_open_config_matrix()
 
-    # 15 -> 16 em 2026-09-02 com a entrada de `vita3k`. A asserção abaixo é a
+    # 15 -> 16 em 2026-09-02 com a entrada de `vita3k`; 16 -> 17 em
+    # 2026-09-10 com a entrada de `shadps4`. A asserção abaixo é a
     # que protege de verdade: o conjunto precisa ser exatamente o dos
     # emuladores do registro, então um emulador novo sem decisão reprova.
-    assert matrix["count"] == 16
+    assert matrix["count"] == 17
     assert {item["componentId"] for item in matrix["decisions"]} == {
         manifest.id for manifest in AdapterRegistry.bundled().list() if manifest.kind == "emulator"
     }

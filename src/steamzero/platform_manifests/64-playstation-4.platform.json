@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 1,
+  "id": "playstation-4",
+  "kind": "emulated",
+  "name": "Sony PlayStation 4",
+  "shortName": "PlayStation 4",
+  "iconKey": "media-optical",
+  "artworkAsset": "../assets/playstation-4.svg",
+  "requirements": [],
+  "systems": [
+    "ps4"
+  ],
+  "capabilities": [
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "state": "planned",
+      "detail": "Biblioteca PlayStation 4 será composta pelo scanner declarativo.",
+      "action": null
+    },
+    {
+      "id": "requirements",
+      "label": "Sistema",
+      "state": "planned",
+      "detail": "Arquivos exigidos por cada título serão verificados localmente.",
+      "action": null
+    },
+    {
+      "id": "graphics",
+      "label": "Vídeo e desempenho",
+      "state": "planned",
+      "detail": "Renderizador e perfis gráficos permanecem opt-in.",
+      "action": null
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "state": "ready",
+      "detail": "Perfil DualShock 4 declarativo e reversível.",
+      "action": {
+        "id": "controls.profile.activate",
+        "label": "Selecionar perfil",
+        "requiresConfirmation": true
+      }
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "state": "planned",
+      "detail": "Diretórios, imagens e atalhos serão compostos pelo catálogo.",
+      "action": null
+    }
+  ],
+  "areas": [
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "iconKey": "dashboard",
+      "capabilityId": "overview"
+    },
+    {
+      "id": "keysFirmware",
+      "label": "Sistema",
+      "iconKey": "key",
+      "capabilityId": "requirements"
+    },
+    {
+      "id": "graphicsPerformance",
+      "label": "Vídeo e desempenho",
+      "iconKey": "video-display",
+      "capabilityId": "graphics"
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "iconKey": "gamepad",
+      "capabilityId": "controls"
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "iconKey": "image",
+      "capabilityId": "media"
+    }
+  ],
+  "emulators": [
+    {
+      "id": "shadps4",
+      "name": "shadPS4",
+      "adapterId": "shadps4",
+      "precedence": 1,
+      "role": "primary",
+      "launch": {
+        "gameArgs": [
+          "{rom}"
+        ]
+      }
+    }
+  ],
+  "media": {
+    "extensions": [
+      "bin",
+      "elf",
+      "pkg"
+    ],
+    "artworkKinds": [
+      "cover",
+      "background",
+      "logo",
+      "icon",
+      "video"
+    ],
+    "providers": [
+      "screenscraper",
+      "steamgriddb"
+    ],
+    "nature": "optical",
+    "formats": {
+      "pkg": [
+        "pkg"
+      ],
+      "elf": [
+        "elf",
+        "bin"
+      ]
+    },
+    "preferredFormat": "pkg",
+    "containerPolicy": "extract",
+    "auxiliaryContent": "both",
+    "auxiliaryBinding": "titleid"
+  },
+  "controls": {
+    "profiles": [
+      "dualshock-4"
+    ],
+    "maxPlayers": 4,
+    "specialized": [
+      "touchpad",
+      "motion"
+    ]
+  },
+  "timing": {
+    "standards": [
+      "ntsc",
+      "pal"
+    ],
+    "defaultStandard": null,
+    "unknownFallback": "unknown-explicit"
+  },
+  "presets": [
+    {
+      "id": "como-era",
+      "label": "Como era",
+      "state": "planned",
+      "detail": "Saída de console original quando o runtime estiver disponível."
+    },
+    {
+      "id": "equilibrado",
+      "label": "Equilibrado",
+      "state": "planned",
+      "detail": "Configuração conservadora com compatibilidade prioritária."
+    },
+    {
+      "id": "melhorado",
+      "label": "Melhorado",
+      "state": "planned",
+      "detail": "Aprimoramentos opt-in."
+    }
+  ],
+  "cloud": null
+}
