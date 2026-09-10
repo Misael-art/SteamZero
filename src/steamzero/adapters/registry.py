@@ -35,6 +35,7 @@ class AdapterSource:
     url: str | None = None
     sha256: str | None = None
     end_of_life: bool = False
+    payload_path: str | None = None
 
 
 @dataclass(frozen=True)
@@ -190,6 +191,7 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
             url=source.get("url"),
             sha256=source.get("sha256"),
             end_of_life=source.get("endOfLife", False),
+            payload_path=source.get("payloadPath"),
         )
         for source in data["sources"]
     )
@@ -227,6 +229,23 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
             raise SteamZeroError(
                 "E-API-SCHEMA", detail=f"adapter {data['id']} tem origem Flatpak inválida"
             )
+        if source.payload_path is not None:
+            if source.type not in {"appimage", "native"}:
+                raise SteamZeroError(
+                    "E-API-SCHEMA",
+                    detail=f"adapter {data['id']} declara payloadPath em fonte {source.type}",
+                )
+            segments = source.payload_path.split("/")
+            if (
+                not source.payload_path
+                or any(segment in {"", ".", ".."} or "\x00" in segment for segment in segments)
+                or source.payload_path.startswith("/")
+                or len(source.payload_path) > 256
+            ):
+                raise SteamZeroError(
+                    "E-API-SCHEMA",
+                    detail=f"adapter {data['id']} tem payloadPath inseguro",
+                )
 
     platforms = tuple(data["platforms"])
     core = _parse_core(data.get("core"), data["id"], data["kind"], sources)

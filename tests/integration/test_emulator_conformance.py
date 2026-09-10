@@ -38,6 +38,21 @@ UPDATED_SHA = hashlib.sha256(UPDATED).hexdigest()
 COMMIT = "a" * 64
 URL = "https://fixtures.invalid/conformidade.AppImage"
 
+#: Artefatos derivados por `derived()` para fontes com membro declarado
+#: (payloadPath): o pin passa a ser o checksum do ZIP inteiro, e o que o
+#: FakeArtifacts serve é o zip contendo o membro — indexado pelo sha esperado.
+_DERIVED_ARTIFACTS: dict[str, bytes] = {}
+
+
+def _zip_artifact(member_name: str, member_body: bytes) -> bytes:
+    import io
+    import zipfile
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as bundle:
+        bundle.writestr(member_name, member_body)
+    return buffer.getvalue()
+
 
 def emulator_ids() -> list[str]:
     """Os `kind=emulator` do registry. Sem lista fixa, de propósito.
@@ -91,7 +106,17 @@ def derived(
     else:
         source["version"] = version
         source["url"] = URL
-        source["sha256"] = sha
+        if source.get("payloadPath"):
+            # Fonte com membro declarado (shadps4): o FakeArtifacts precisa
+            # servir o ZIP declarado, e o pin é o checksum do zip inteiro.
+            # O corpo do membro segue a mesma convenção do sha: padrão ou
+            # atualizado.
+            member_body = UPDATED if sha == UPDATED_SHA else PAYLOAD
+            artifact = _zip_artifact(str(source["payloadPath"]), member_body)
+            source["sha256"] = hashlib.sha256(artifact).hexdigest()
+            _DERIVED_ARTIFACTS[source["sha256"]] = artifact
+        else:
+            source["sha256"] = sha
     raw["sources"] = [source]
     # Cores libretro carregam DOIS digests: o do arquivo baixado, em `sources`,
     # e o do `.so` extraido de dentro dele, em `core.sha256`. Trocar so o
@@ -194,7 +219,10 @@ def _lifecycle(
     if source["type"] == "flatpak":
         fake = FakeFlatpak(source["ref"])
         return ComponentLifecycle(store, registry, flatpak_factory=lambda: fake, **extra), fake
-    port = FakeArtifacts(artifacts or {URL: PAYLOAD})
+    default_artifacts: dict[str, bytes] = {URL: PAYLOAD}
+    if source.get("payloadPath") and source.get("sha256") in _DERIVED_ARTIFACTS:
+        default_artifacts = {URL: _DERIVED_ARTIFACTS[str(source["sha256"])]}
+    port = FakeArtifacts(artifacts or default_artifacts)
     # Cores libretro chegam num arquivo 7z e o lifecycle extrai um membro
     # `<prefixo><core>_libretro.so`. Fabricar um 7z valido na fixture provaria a
     # biblioteca de arquivo, nao a dimensao sob teste — e a extracao ja tem
@@ -390,7 +418,8 @@ class TestEmulatorLifecycleConformance:
         registry = registry_for(novo)
         lifecycle._registry = registry
         if fake is None:
-            lifecycle._artifacts = FakeArtifacts({URL: UPDATED})
+            served = _DERIVED_ARTIFACTS.get(str(novo["sources"][0].get("sha256")), UPDATED)
+            lifecycle._artifacts = FakeArtifacts({URL: served})
 
         envelope = lifecycle.plan(adapter_id, "update")
         assert envelope.action == "update"
