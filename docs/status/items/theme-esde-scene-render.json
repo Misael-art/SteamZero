@@ -29,7 +29,7 @@
     "tests/qml/check_theme_scene_preview.qml",
     "tests/unit/test_theme_scene.py"
   ],
-  "scopeDigest": "175f66d724ac0037c7534816d8d77fa1f6f8db52cc447ca605fc2788a7943119",
+  "scopeDigest": "fc1c90f255e8d633be9c1061cb4921e51bf4c5a35ea06623532bc893a9e789f9",
   "dependsOn": [
     "SZ-THEME-IMPORT-ESDE-LAYOUT"
   ],
@@ -100,7 +100,7 @@
       "result": "partial"
     }
   ],
-  "nextAction": "Desenhar textList, badges e rating e ligar a cena à aparência/navegação real; a auditoria 2026-09-05 confirmou que a central não é substituída e não houve nova medição física de FPS/GPU/memória.",
+  "nextAction": "Preview da cena agora aceita foco por geometria e teclado; falta promover a cena à aparência/navegação fullscreen e repetir a medição física na release instalada.",
   "activeWorkstreams": [
     "WS-2026-09-CENA-ESDE"
   ],
