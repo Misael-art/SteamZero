@@ -1,0 +1,17 @@
+{
+  "sourceCommits": ["035a7f76", "1d0a7380"],
+  "command": "python tools/run_tests_isolated.py tests -q --junitxml=/tmp/aura-full-gate-20260911-persistent.xml",
+  "pytest": {"passed": 5936, "skipped": 47, "failures": 0, "errors": 0, "seconds": 2091.27},
+  "ruffCheck": "passed",
+  "ruffFormat": "passed: 599 files",
+  "mypy": "passed: 270 source files",
+  "independence": "passed",
+  "boundaries": "passed: 0 violations",
+  "originalLogSha256": "2b8bd2b624f5ac340b73d407d09c98de7daca6e32ed8be3d65264cc3fd40be19",
+  "originalJunitSha256": "a25043fc5d4d5144a288edbbd23ddfc4d00fdb139bf15a763f146e69e8bcdcba",
+  "limits": [
+    "O daemon instalado, anterior à janela da suíte, escreveu logs e state.db; o runner registrou W-TEST-REAL-STATE-EXTERNAL-WRITER. A atribuição de preservação fica degradada, não há alegação de estado real byte-a-byte inalterado.",
+    "O script auxiliar foi editado durante a execução para corrigir o PID registrado; ao retomar a leitura do script, bash não executou a atribuição gate_exit e falhou no registro final. O código de saída desse wrapper não foi preservado. A aprovação de pytest é provada pelo resumo completo e pelo JUnit com zero erros/falhas, não pelo wrapper.",
+    "Correções ainda não instaladas; testes não promovem os gaps físicos."
+  ]
+}

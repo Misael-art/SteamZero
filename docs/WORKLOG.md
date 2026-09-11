@@ -10309,3 +10309,39 @@ máximo 32.442 ms, startup 118 ms, RSS 150988 KiB e VRAM 55420 KiB.
 O p95 continua acima de 16.7 ms, então o item permanece partial/degraded e
 não há alegação de 60 FPS. Próxima ação: otimizar o p95 e decidir a promoção
 da cena à aparência central.
+
+## 2026-09-11 — AURA Cinema: HTTP/layout e revisão da evidência
+
+Custódia: WS-2026-09-LAUNCHER-P0-ACTIVATION, branch própria
+`codex/aura-cinema-physical-2026-09-11`, após merge da frente anterior em
+`9caa2c223cfb9f901e8c4dde74ed534a396c9bba` (PR #152).
+
+| Item | Commit | Prova |
+|---|---|---|
+| Bloqueio entre conexões HTTP/1.1 persistentes | `035a7f76` | Reprodução TimeoutError antes da correção; 20 testes de ponte, incluindo concorrência sem lançamento duplicado |
+| Capa central encobrindo o título | `1d0a7380` | 11 verificações QML; geometria em Deck, Full HD, ultrawide e escala de texto |
+| Atribuição indevida de desempenho | `b315cd8e` | Inspeção da sonda: cena demonstrativa offscreen, não Launcher; PR #153 corrigida |
+
+Gates: 5.936 testes aprovados, 47 ignorados, zero erros/falhas no JUnit;
+ruff check e format (599 arquivos), mypy (270 arquivos), independência e
+fronteiras aprovados. O runner atribuiu alterações do state real ao daemon
+pré-existente, com aviso de atribuição degradada. O wrapper externo de logging
+falhou ao registrar o exit code após edição do próprio script em execução;
+resumo/JUnit completos preservados e hashes em `09-http-layout-gates.json`.
+
+Release ativa previamente instalada pelo fluxo governado:
+`2.0.0rc1-9caa2c223cfb`; rollback `2.0.0rc1-172c020e03b6`.
+Não houve nova instalação nem reinício/encerramento do KDE nesta correção.
+Capturas anteriores provam somente carousel/detalhes; a captura 07 agora
+registra janela órfã da ponte, conexão recusada e aviso unconfirmed sobreposto.
+O estado operacional do Launcher foi corrigido para degraded.
+
+Reprodução isolada adicional confirmou perda do watcher após saída do CLI:
+filho sintético termina, sessão permanece running e observador retorna unknown.
+Isso ainda não está corrigido. A confirmação de lançamento, lifetime do dono,
+recuperação de desconexão e metadados PID/start_ticks do Steam precedem OSD,
+saves e fade. Nenhuma capacidade ausente foi exposta como sucesso.
+
+Próximo ciclo: corrigir esses contratos, validar erro/retorno na release instalada
+e medir a própria superfície fullscreen. Theme Studio e demais superfícies não
+foram promovidos. Teste físico de boot continua sendo ação exclusiva do operador.

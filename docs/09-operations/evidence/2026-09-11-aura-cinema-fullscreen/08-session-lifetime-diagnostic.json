@@ -1,0 +1,10 @@
+{
+  "diagnosticOnly": true,
+  "hostGameLaunched": false,
+  "cliExitCode": 0,
+  "cliElapsedSeconds": 1.324,
+  "syntheticGameAliveAfterWait": false,
+  "canonicalStateAfterGameExit": "running",
+  "launcherObservation": "unknown",
+  "defectReproduced": true
+}

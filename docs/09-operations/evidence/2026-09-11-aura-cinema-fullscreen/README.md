@@ -18,8 +18,11 @@ Capturas:
 - `01-cinema-fullscreen.png` — Cinema visível na coleção Steam. A captura inicial anterior mostrava a grade clássica; a causa e o tempo dessa troca não foram instrumentados.
 - `02-carousel-navigation.png` — foco após navegação horizontal.
 - `03-details-fallback.png` — detalhes e fallback sem mídia.
+- `07-bridge-unavailable.png` — defeito posterior: janela instalada sem supervisor, ponte recusando conexão e aviso de sessão não confirmada sobreposto à capa. Não é captura de entrega funcional; ver `SESSION-NEXT-CYCLE.md`.
 
 ## Desempenho
+
+As correções locais de HTTP/layout estão nos commits `035a7f76` e `1d0a7380`. A suíte teve 5.936 testes aprovados e 47 ignorados; ruff, formatação, mypy, independência e fronteiras passaram. `09-http-layout-gates.json` registra hashes, limites de atribuição do state real e falha do wrapper de logging. Nenhum desses commits foi instalado nesta etapa.
 
 Os arquivos `04-performance.json`, `05-performance-repeat-2.json` e `06-performance-repeat-3.json` são preservados como ensaios **inadequados para certificar o Launcher**. O comando usado foi:
 

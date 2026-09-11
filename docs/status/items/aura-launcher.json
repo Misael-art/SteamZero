@@ -7,9 +7,9 @@
   "implementation": "partial",
   "integration": "isolated",
   "verification": "hw",
-  "operation": "ready",
+  "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "134ae1e91367bfd84f79798821f0cf0dc50296479636aa4de62184b9ee506d13",
+  "scopeDigest": "284b51effe6e2463b8a70d10e8d735187833740ebefbf487647fa270b6a54615",
   "scopePaths": [
     "docs/00-vision/PROJECT-VISION.md",
     "docs/00-vision/NON-GOALS.md",
@@ -45,7 +45,11 @@
     "tests/integration/test_launcher_child_lifetime.py",
     "docs/09-operations/evidence/2026-09-04-launcher-qml-orfao",
     "docs/09-operations/evidence/2026-09-04-release-cf9c47e7",
-    "docs/09-operations/evidence/2026-09-05-launcher-p0-loop"
+    "docs/09-operations/evidence/2026-09-05-launcher-p0-loop",
+    "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen",
+    "src/steamzero/adapters/launcher_session.py",
+    "tests/integration/test_launcher_session_observation.py",
+    "tests/unit/test_launcher_cinema.py"
   ],
   "dependsOn": [
     "SZ-AURA-UI",
@@ -55,7 +59,10 @@
     "GAP-LAUNCHER-REAL-CATALOG-PHYSICAL",
     "GAP-LAUNCHER-RETURN-FADES-PHYSICAL",
     "GAP-AURA-CINEMA-PERFORMANCE-PHYSICAL",
-    "GAP-AURA-CINEMA-TITLE-OCCLUSION"
+    "GAP-AURA-CINEMA-TITLE-OCCLUSION",
+    "GAP-AURA-CINEMA-HTTP-KEEPALIVE",
+    "GAP-AURA-LAUNCHER-BRIDGE-DISCONNECT-RECOVERY",
+    "GAP-AURA-LAUNCHER-SESSION-ACK-LIFETIME"
   ],
   "acceptanceCriteria": [
     "Home fullscreen, biblioteca, busca, colecoes e pagina de jogo funcionam por controle.",
@@ -66,6 +73,36 @@
     "O Launcher encontra a biblioteca canonica sozinho, sem depender de --library."
   ],
   "evidence": [
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/09-http-layout-gates.json",
+      "command": "Commits 035a7f76 e 1d0a7380: 5936 passed, 47 skipped, JUnit sem erros/falhas; ruff check/format, mypy e independence/boundaries verdes. Limites: state real modificado pelo daemon anterior à janela; wrapper externo falhou ao registrar exit code, sem invalidar o resultado completo de pytest. Prova instalada das correções pendente.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/07-bridge-unavailable.png",
+      "command": "2026-09-11 13:27 -03:00, release 2.0.0rc1-9caa2c223cfb, QML PID 3835345 sem supervisor 3835330: consulta autenticada à ponte recusou conexão. Janela mostra LAUNCHER-SESSION-UNCONFIRMED-001 sobreposto à capa e diz que a observação continua. Nenhum jogo iniciado nesta revisão; causa da morte do supervisor não determinada. SHA-256 4333938c163afe1137ff67cce833b47781f0ccc3028254286c83b64086154f01.",
+      "result": "failed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/SESSION-NEXT-CYCLE.md",
+      "command": "Reprodução em subprocesso e DB temporários com CLI/controller de produção: CLI exit 0 em 1,324s, filho sintético termina, sessão permanece running e observador retorna unknown. Script e resultado 08 preservados. Inspeção adicional: preflight pode falhar sem linha canônica; Steam registra PID sem start_ticks. Defeitos abertos, sem alegar correção nem jogo físico.",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_launcher_app.py",
+      "command": "test_keep_alive_model_connection_does_not_block_cinema_or_session reproduziu TimeoutError no servidor HTTPServer HTTP/1.1. Após ThreadingHTTPServer e lock de sessão, 20 testes passaram, incluindo duas conexões persistentes e lançamento concorrente único com catálogo responsivo. Correção ainda não instalada.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/launcher/check_launcher_focus_bootstrap.qml",
+      "command": "Qt6 qmltestrunner offscreen: 11 passed. Teste de geometria mapeia a capa transformada para a cena e exige separação do título/rodapé em Deck 1280x800, texto 2x, Full HD e ultrawide. Prova automatizada, pendente de captura instalada da correção.",
+      "result": "passed"
+    },
     {
       "kind": "test",
       "reference": "tests/unit/test_launcher_navigation.py",
@@ -289,7 +326,7 @@
       "result": "recorded"
     }
   ],
-  "nextAction": "Corrigir o título encoberto no carousel, instrumentar bootstrap e medir a própria superfície fullscreen instalada (ensaio offscreen da referência não é prova AURA); validar busca, erro e ciclo jogo-retorno. Depois integrar adapters reais de pause/OSD/save-state/troca de mídia e fade, ampliar mídia canônica e testar boot com o operador.",
+  "nextAction": "Fechar gates de HTTP/layout; corrigir confirmação e lifetime da sessão e recuperação de ponte desconectada antes de promover jogo-retorno. Instalar pelo fluxo governado e validar bootstrap, busca, erro e retorno. Medir a própria superfície fullscreen; depois integrar adapters de pause/OSD/saves/mídia e fade. Boot físico permanece do operador.",
   "activeWorkstreams": [
     "WS-2026-08-AURA-LAUNCHER",
     "WS-2026-09-LAUNCHER-P0-ACTIVATION",
