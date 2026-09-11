@@ -19,6 +19,7 @@ Item {
     required property var focusMap
     required property var sections
     property var catalogSummary: ({})
+    property var cinemaScene: null
     // Preferências de acessibilidade herdadas do host (highContrast etc.).
     property var accessibility: ({"highContrast": false, "visualScale": 1.0, "reducedMotion": false})
     // Função que devolve a página de um jogo, injetada por quem monta o shell.
@@ -31,6 +32,38 @@ Item {
         "emulator-visible", "returning", "recovered", "failed"]
     property string launchState: "idle"
     property string launchError: ""
+    property string observedSessionId: ""
+    property string sessionGameId: ""
+
+    function observeSession(observation) {
+        if (!observation || observation.gameId !== shell.sessionGameId
+                || !observation.sessionId)
+            return false
+        if (shell.observedSessionId !== "" && observation.sessionId !== shell.observedSessionId)
+            return false
+        if (shell.launchState !== "launching" && shell.launchState !== "emulator-visible")
+            return false
+        shell.observedSessionId = observation.sessionId
+        if (observation.state === "running")
+            return shell.markEmulatorVisible()
+        if (observation.state === "failed") {
+            shell.failLaunch(qsTr("LAUNCHER-SESSION-FAILED-001\nA sessão registrou falha. Verifique os requisitos do jogo na central antes de tentar novamente."))
+            return true
+        }
+        if (observation.state === "closed") {
+            // Even a short game may close between two polls. A canonical
+            // terminal record is evidence; window focus is not.
+            if (shell.launchState === "launching")
+                shell.markEmulatorVisible()
+            shell.markReturning()
+            if (shell.gamePage !== null)
+                shell.back()
+            else
+                shell.recoverLaunch()
+            return true
+        }
+        return false
+    }
     property var gamePage: null
     property string homeFocus: _restoredFocus()
     // De onde o jogo foi aberto. É isto que a volta restaura.
@@ -47,7 +80,15 @@ Item {
         interval: 10000
         repeat: false
         running: shell.launchState === "launching"
-        onTriggered: shell.failLaunch("O lançamento demorou mais que o esperado.")
+        onTriggered: shell.markUnconfirmed()
+    }
+
+    function markUnconfirmed() {
+        if (shell.launchState !== "launching")
+            return false
+        shell.launchError = qsTr("LAUNCHER-SESSION-UNCONFIRMED-001\nO início do jogo ainda não foi confirmado. A observação continua; um novo lançamento está bloqueado para evitar duplicação. Consulte a sessão na central.")
+        shell.feedbackRequested("launch-unconfirmed")
+        return true
     }
 
     function _restoredFocus() {
@@ -67,6 +108,8 @@ Item {
     }
 
     function openGame(gameId) {
+        if (launchState === "launching" || launchState === "emulator-visible")
+            return false
         if (typeof resolveGamePage !== "function")
             return false
         const page = resolveGamePage(gameId)
@@ -82,6 +125,8 @@ Item {
                                   && launchState !== "failed"))
             return false
         launchError = ""
+        observedSessionId = ""
+        sessionGameId = gamePage.gameId
         launchState = "preparing"
         launchStateRequested("preparing")
         launchState = "launching"
@@ -95,6 +140,7 @@ Item {
         if (launchState !== "launching")
             return false
         launchState = "emulator-visible"
+        launchError = ""
         launchStateRequested("emulator-visible")
         return true
     }
@@ -108,6 +154,8 @@ Item {
     }
 
     function recoverLaunch() {
+        if (launchState !== "failed" && launchState !== "returning")
+            return false
         launchError = ""
         launchState = "recovered"
         launchStateRequested("recovered")
@@ -125,8 +173,8 @@ Item {
     function back() {
         if (gamePage === null)
             return false
-        if (launchState === "emulator-visible")
-            markReturning()
+        // Leaving the details page does not end the game. Keep the session
+        // lock and let its canonical terminal observation trigger recovery.
         gamePage = null
         if (exitFocus !== "")
             homeFocus = exitFocus
@@ -151,9 +199,11 @@ Item {
         objectName: "launcherHome"
         anchors.fill: parent
         visible: shell.screen === "home"
+        focus: visible
         focusMap: shell.focusMap
         sections: shell.sections
         catalogSummary: shell.catalogSummary
+        cinemaScene: shell.cinemaScene
         currentFocus: shell.homeFocus
         accessibility: shell.accessibility
         onCurrentFocusChanged: shell.homeFocus = currentFocus
@@ -169,6 +219,7 @@ Item {
         id: page
         anchors.fill: parent
         visible: shell.screen === "game"
+        focus: visible
         model: shell.gamePage !== null
             ? shell.gamePage
             : ({"gameId": "", "title": "", "platform": "", "lastPlayed": null,
@@ -205,7 +256,7 @@ Item {
 
             Text {
                 width: parent.width
-                text: shell.launchState === "failed"
+                text: shell.launchError !== ""
                     ? shell.launchError
                     : qsTr("Preparando %1…").arg(shell.gamePage
                         ? shell.gamePage.title : qsTr("o jogo"))

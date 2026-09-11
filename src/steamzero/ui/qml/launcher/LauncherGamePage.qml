@@ -13,7 +13,7 @@
 
 import QtQuick
 
-Item {
+FocusScope {
     id: page
 
     // Vindo de `GamePage.to_qml_object()`.
@@ -22,6 +22,16 @@ Item {
     property string currentFocus: model && model.initialFocus ? model.initialFocus : ""
     // Preferências de acessibilidade herdadas do host (highContrast etc.).
     property var accessibility: ({"highContrast": false, "visualScale": 1.0, "reducedMotion": false})
+    readonly property real textScale: Math.max(1, Number(accessibility.visualScale || 1))
+    readonly property string description: model && model.description
+        ? String(model.description) : qsTr("Descrição ainda não disponível para este jogo.")
+    property alias detailScrollY: detailScroll.contentY
+
+    function scrollDetails(delta) {
+        detailScroll.contentY = Math.max(0, Math.min(
+            Math.max(0, detailScroll.contentHeight - detailScroll.height),
+            detailScroll.contentY + delta))
+    }
 
     function _hc(lightValue, highContrastValue) {
         return page.accessibility && page.accessibility.highContrast
@@ -81,6 +91,8 @@ Item {
 
     Keys.onLeftPressed: move(-1)
     Keys.onRightPressed: move(1)
+    Keys.onDownPressed: scrollDetails(64 * page.textScale)
+    Keys.onUpPressed: scrollDetails(-64 * page.textScale)
     Keys.onPressed: function(event) {
         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter
                 || event.key === Qt.Key_Space) {
@@ -90,66 +102,135 @@ Item {
     }
     focus: true
 
-    Column {
+    Rectangle {
         anchors.fill: parent
-        anchors.margins: 28
-        spacing: 12
-
-        Row {
-            spacing: 16
-
-            Rectangle {
-                width: 220
-                height: 132
-                radius: 8
-                color: page._hc("#0b1622", "#03080c")
-                border.color: page._hc("#243044", "#68839b")
-                border.width: 1
-                clip: true
-                Accessible.name: qsTr("Capa de %1").arg(page.model ? page.model.title : "")
-                Accessible.role: Accessible.Graphic
-
-                Image {
-                    anchors.fill: parent
-                    visible: !!(page.model && page.model.coverUrl)
-                    source: page.model && page.model.coverUrl ? page.model.coverUrl : ""
-                    fillMode: Image.PreserveAspectCrop
-                    asynchronous: true
-                    sourceSize.width: width * 2
-                    sourceSize.height: height * 2
-                }
-                Text {
-                    anchors.fill: parent
-                    visible: !(page.model && page.model.coverUrl)
-                    text: page.model && page.model.title
-                        ? String(page.model.title).charAt(0) : "?"
-                    color: page._hc("#8b93a8", "#c6d0db")
-                    font.pixelSize: 48
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-            }
-
-            Column {
-                spacing: 8
-
+        color: page._hc("#071019", "#000000")
+    }
+    Image {
+        anchors.fill: parent
+        source: page.accessibility.highContrast ? "" : String(page.model.fanartUrl || "")
+        fillMode: Image.PreserveAspectCrop
+        asynchronous: true
+        sourceSize: Qt.size(Math.ceil(width), Math.ceil(height))
+        opacity: 0.12
+    }
+    Text {
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.margins: 32
+        text: qsTr("AURA CINEMA · DETALHES")
+        color: "#ffffff"
+        font.pixelSize: 16 * page.textScale
+    }
+    Rectangle {
+        id: poster
+        x: 32
+        y: 96
+        width: Math.min(page.width * 0.32, 420)
+        height: Math.max(96, page.height - 192)
+        color: page._hc("#142332", "#000000")
+        border.color: "#8a9baa"
+        radius: 8
+        Image {
+            id: detailCover
+            anchors.fill: parent
+            anchors.margins: 4
+            source: String(page.model.coverUrl || "")
+            fillMode: Image.PreserveAspectFit
+            asynchronous: true
+            sourceSize: Qt.size(Math.ceil(width), Math.ceil(height))
+        }
         Text {
+            anchors.fill: parent
+            anchors.margins: 24
+            visible: detailCover.status !== Image.Ready
+            text: String(page.model.title || qsTr("Sem capa"))
+            textFormat: Text.PlainText
+            color: "#ffffff"
+            font.pixelSize: 26 * page.textScale
+            wrapMode: Text.Wrap
+            elide: Text.ElideRight
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+    }
+    Column {
+        id: info
+        x: poster.x + poster.width + 32
+        y: poster.y
+        width: Math.max(100, page.width - x - 32)
+        spacing: 14
+        Text {
+            id: titleLabel
             objectName: "gameTitle"
-            text: page.model ? page.model.title : ""
-            color: page._hc("#f2f6fb", "#ffffff")
-            font.pixelSize: 28
+            width: parent.width
+            text: String(page.model.title || "")
+            textFormat: Text.PlainText
+            color: "#ffffff"
+            font.pixelSize: 32 * page.textScale
+            wrapMode: Text.Wrap
+            maximumLineCount: 3
+            elide: Text.ElideRight
         }
         Text {
-            text: page.model
-                ? page.model.platform + (page.model.lastPlayed
-                    ? " · jogado em " + page.model.lastPlayed : "")
-                : ""
-            color: page._hc("#8b93a8", "#c6d0db")
-            font.pixelSize: 13
+            id: platformLabel
+            width: parent.width
+            text: String(page.model.platform || "")
+            textFormat: Text.PlainText
+            color: page._hc("#c6d0db", "#ffffff")
+            font.pixelSize: 16 * page.textScale
+            wrapMode: Text.Wrap
         }
+        Row {
+            id: details
+            width: parent.width
+            height: Math.max(80, poster.height - titleLabel.height - platformLabel.height - 150)
+            spacing: 16
+            Flickable {
+                id: detailScroll
+                objectName: "gameDescriptionScroll"
+                width: parent.width - (screenshot.visible ? screenshot.width + 16 : 0)
+                height: parent.height
+                contentHeight: descriptionText.height
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                Text {
+                    id: descriptionText
+                    objectName: "gameDescription"
+                    width: detailScroll.width
+                    text: page.description
+                    textFormat: Text.PlainText
+                    wrapMode: Text.Wrap
+                    color: "#ffffff"
+                    font.pixelSize: 18 * page.textScale
+                    lineHeight: 1.2
+                    Accessible.name: text
+                }
+                Rectangle {
+                    anchors.right: parent.right
+                    y: detailScroll.contentY + (detailScroll.contentY / Math.max(1, detailScroll.contentHeight))
+                       * detailScroll.height
+                    width: 3
+                    height: Math.max(12, detailScroll.height * detailScroll.height
+                                     / Math.max(1, detailScroll.contentHeight))
+                    color: "#ffffff"
+                    visible: detailScroll.contentHeight > detailScroll.height
+                }
+            }
+            Image {
+                id: screenshot
+                objectName: "gameScreenshot"
+                width: parent.width * 0.32
+                height: Math.min(parent.height, width * 9 / 16)
+                source: String(page.model.screenshotUrl || "")
+                visible: status === Image.Ready
+                asynchronous: true
+                fillMode: Image.PreserveAspectFit
+                sourceSize: Qt.size(Math.ceil(width), Math.ceil(height))
+                Accessible.name: qsTr("Screenshot de %1").arg(page.model.title || "")
+                Accessible.role: Accessible.Graphic
             }
         }
-
         Row {
             spacing: 12
             Repeater {
@@ -159,7 +240,7 @@ Item {
                     required property var modelData
                     objectName: "gameAction"
                     width: 170
-                    height: 46
+                    height: Math.max(48, 40 * page.textScale)
                     radius: 8
                     property bool keyboardPressed: false
                     readonly property bool pressed:
@@ -197,7 +278,7 @@ Item {
                         text: modelData.label
                         color: modelData.enabled
                             ? page._hc("#f2f6fb", "#ffffff") : page._hc("#8b93a8", "#c6d0db")
-                        font.pixelSize: 14
+                        font.pixelSize: 16 * page.textScale
                     }
                 }
             }
@@ -217,5 +298,13 @@ Item {
                 return ""
             }
         }
+    }
+    Text {
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.margins: 32
+        text: qsTr("↑ ↓ Ler descrição    ← → Ações    Enter Confirmar    Esc Voltar")
+        color: "#ffffff"
+        font.pixelSize: 14 * page.textScale
     }
 }

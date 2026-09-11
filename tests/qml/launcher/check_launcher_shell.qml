@@ -121,15 +121,36 @@ Item {
                           && harness.launched[0] === "hades@continue:hades",
                           "o lançamento precisa levar o foco de saída junto")
 
-            harness.check(shell.markEmulatorVisible() === true,
-                          "o shell precisa aceitar a transição para emulador visível")
+            harness.check(shell.observeSession({gameId: "other", sessionId: "x",
+                                                state: "running"}) === false,
+                          "sessão de outro jogo não pode confirmar o lançamento")
+            harness.check(shell.observeSession({gameId: "hades", sessionId: null,
+                                                state: "awaiting"}) === false,
+                          "aceitar o pedido não confirma processo em execução")
+            harness.check(shell.launchState === "launching", "aguardar mantém launching")
+            harness.check(shell.markUnconfirmed(), "timeout deve registrar ausência de confirmação")
+            harness.check(shell.launchState === "launching", "timeout não prova falha")
+            harness.check(shell.launchFocused() === false, "timeout não libera lançamento duplicado")
+            harness.check(shell.observeSession({gameId: "hades", sessionId: "new-session",
+                                                state: "running"}) === true,
+                          "a sessão canônica precisa confirmar a execução")
             harness.check(shell.launchState === "emulator-visible",
                           "o estado emulator-visible não foi publicado")
             harness.check(shell.launchFocused() === false,
                           "um segundo lançamento não pode acontecer durante a sessão")
+            harness.check(shell.recoverLaunch() === false,
+                          "recuperação não pode desbloquear sessão ativa")
+            harness.check(shell.openGame("celeste") === false,
+                          "sessão ativa não pode trocar seu contexto por outro jogo")
 
             // Voltar: mesma tela e MESMO foco, não o topo da home.
-            harness.check(shell.back() === true, "voltar falhou")
+            harness.check(shell.observeSession({gameId: "hades", sessionId: "old-session",
+                                                state: "closed"}) === false,
+                          "fechamento de outra partida não pode provocar retorno")
+            harness.check(shell.screen === "game", "sessão antiga alterou a tela")
+            harness.check(shell.observeSession({gameId: "hades", sessionId: "new-session",
+                                                state: "closed"}) === true,
+                          "fechamento canônico precisa provocar retorno")
             harness.check(shell.screen === "home", "voltar não retornou à home")
             harness.check(shell.homeFocus === "continue:hades",
                           "o retorno precisa cair no foco de onde saiu")

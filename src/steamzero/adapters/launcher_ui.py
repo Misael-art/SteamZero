@@ -25,6 +25,9 @@ from pathlib import Path
 from typing import Any
 
 from steamzero.adapters.launcher_process import supervised_child
+from steamzero.core.errors import SteamZeroError
+from steamzero.domain.scene_layout import LayoutBounds, LayoutRecipe
+from steamzero.launcher.cinema import resolve_cinema_covers
 from steamzero.launcher.navigation import HomeSection, resolve_home_focus
 
 LaunchCallback = Callable[[str, str], None]
@@ -51,6 +54,21 @@ class _Handler(BaseHTTPRequestHandler):
         if self.path == "/model":
             self._send(200, self._bridge.model())
             return
+        if self.path.startswith("/session?"):
+            self._send(200, self._bridge.session(self._query_param("gameId") or ""))
+            return
+        if self.path.startswith("/cinema?"):
+            try:
+                body = self._bridge.cinema(
+                    self._query_param("focus") or "",
+                    width=float(self._query_param("width") or "0"),
+                    height=float(self._query_param("height") or "0"),
+                )
+            except ValueError:
+                self._send(400, {"error": "LAUNCHER-CINEMA-REQUEST-001"})
+                return
+            self._send(200, body)
+            return
         if self.path.startswith("/search?"):
             query = self._query_param("q")
             if query is None:
@@ -67,7 +85,14 @@ class _Handler(BaseHTTPRequestHandler):
         if self.path != "/launch":
             self._send(404, {"error": "rota desconhecida"})
             return
-        length = int(self.headers.get("Content-Length", "0"))
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            length = -1
+        if not 0 < length <= 4096:
+            self.close_connection = True
+            self._send(400, {"error": "LAUNCHER-REQUEST-SIZE-001"})
+            return
         try:
             payload = json.loads(self.rfile.read(length).decode("utf-8"))
         except (ValueError, UnicodeDecodeError):
@@ -81,7 +106,25 @@ class _Handler(BaseHTTPRequestHandler):
         if not game_id:
             self._send(400, {"error": "gameId ausente"})
             return
-        self._bridge.launch(game_id, focus_id)
+        try:
+            self._bridge.launch(game_id, focus_id)
+        except (OSError, ValueError, SteamZeroError):
+            # Exception text can contain local paths or credentials. Publish a
+            # stable recovery contract, never an unfiltered traceback/detail.
+            self._send(
+                409,
+                {
+                    "error": {
+                        "code": "LAUNCHER-LAUNCH-FAILED-001",
+                        "cause": "Não foi possível preparar o lançamento.",
+                        "impact": "O Launcher não confirmou o início do jogo.",
+                        "nextAction": (
+                            "Verifique o emulador e os requisitos na central e tente novamente."
+                        ),
+                    }
+                },
+            )
+            return
         self.send_response(204)
         self.send_header("Content-Length", "0")
         self.end_headers()
@@ -125,10 +168,16 @@ class LauncherBridge:
         accessibility: Mapping[str, Any] | None = None,
         return_context: Mapping[str, Any] | None = None,
         catalog_summary: Mapping[str, Any] | None = None,
+        metadata: Mapping[str, Mapping[str, Any]] | None = None,
+        session_observer: Callable[[str], dict[str, Any]] | None = None,
     ) -> None:
         self._sections = tuple(sections)
         self._titles = dict(titles or {})
         self._covers = dict(covers or {})
+        self._metadata = {key: dict(value) for key, value in (metadata or {}).items()}
+        self._session_observer = session_observer
+        self._previous_sessions: dict[str, str | None] = {}
+        self._pending_game: str | None = None
         self._context_path = Path(context_path)
         self._on_launch = on_launch
         self._accessibility = dict(accessibility or {})
@@ -156,9 +205,11 @@ class LauncherBridge:
                     "title": section.title,
                     "items": [
                         {
+                            **self._metadata.get(item, {}),
                             "id": item,
                             "title": self._titles.get(item, item),
-                            "coverUrl": self._covers.get(item, ""),
+                            "coverUrl": self._covers.get(item)
+                            or self._metadata.get(item, {}).get("coverUrl", ""),
                         }
                         for item in section.items
                     ],
@@ -190,8 +241,101 @@ class LauncherBridge:
         matches.sort(key=lambda row: str(row["title"]).casefold())
         return {"query": query, "games": matches}
 
+    def cinema(self, focus_id: str, *, width: float, height: float) -> dict[str, Any]:
+        """Resolve only the focused collection; no navigation decision is made here."""
+        bounds = LayoutBounds(width, height)
+        node = self._focus.nodes.get(focus_id)
+        if node is None:
+            raise ValueError("unknown focus")
+        section = next((row for row in self._sections if row.id == node.section), None)
+        if section is None:
+            return {"layouts": {}, "sourceIndices": [], "selected": 0, "focusId": focus_id}
+        items = [
+            {
+                **self._metadata.get(game, {}),
+                "id": game,
+                "title": self._titles.get(game, game),
+                "coverUrl": self._covers.get(game)
+                or self._metadata.get(game, {}).get("coverUrl", ""),
+            }
+            for game in section.items
+        ]
+        cover_height = min(height * 0.72, 640)
+        recipe = LayoutRecipe.from_dict(
+            "covers",
+            {
+                "source": "cinema.items",
+                "kind": "coverFlow",
+                "item": {"width": max(1, cover_height * 2 / 3), "height": max(1, cover_height)},
+                "template": {
+                    "kind": "image",
+                    "id": "cover",
+                    "properties": {"source": {"binding": "item.coverUrl", "fallback": ""}},
+                },
+                "offset": {
+                    "scaleStep": 0.18,
+                    "opacityStep": 0.2,
+                    "minScale": 0.5,
+                    "minOpacity": 0.35,
+                    "rotationStep": 0,
+                    "overlap": 0.65,
+                },
+                "highlight": {"scale": 1, "opacity": 1, "outlineWidth": 3},
+            },
+        )
+        result = resolve_cinema_covers(recipe, items, node.column, bounds=bounds)
+        result.update(
+            focusId=focus_id,
+            collection=section.title,
+            items=[items[index] for index in result["sourceIndices"]],
+        )
+        return result
+
     def launch(self, game_id: str, focus_id: str) -> None:
+        if self._pending_game is not None:
+            self.session(self._pending_game)
+            if self._pending_game is not None:
+                raise ValueError("a launch is still active or unconfirmed")
+        node = self._focus.nodes.get(focus_id)
+        if node is None or node.action is not None:
+            raise ValueError("launch requires a current game focus")
+        section = next((row for row in self._sections if row.id == node.section), None)
+        if (
+            section is None
+            or not 0 <= node.column < len(section.items)
+            or section.items[node.column] != game_id
+        ):
+            raise ValueError("launch game does not match its return focus")
+        if self._session_observer is not None:
+            previous = self._session_observer(game_id)
+            if previous.get("state") in {
+                "launching",
+                "running",
+                "suspending",
+                "suspended",
+                "resuming",
+                "closing",
+            }:
+                raise ValueError("the game already has an active canonical session")
+            self._previous_sessions[game_id] = previous.get("sessionId")
         self._on_launch(game_id, focus_id)
+        if self._session_observer is not None:
+            self._pending_game = game_id
+
+    def session(self, game_id: str) -> dict[str, Any]:
+        if self._session_observer is None or not any(
+            game_id in section.items for section in self._sections
+        ):
+            return {"gameId": game_id, "state": "unknown", "sessionId": None}
+        result = self._session_observer(game_id)
+        if (
+            game_id in self._previous_sessions
+            and result.get("sessionId") == self._previous_sessions[game_id]
+        ):
+            return {"gameId": game_id, "state": "awaiting", "sessionId": None}
+        if self._pending_game == game_id and result.get("state") in {"closed", "failed"}:
+            self._pending_game = None
+        return result
 
     @contextmanager
     def serving(self) -> Iterator[str]:

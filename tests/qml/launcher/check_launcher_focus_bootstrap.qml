@@ -33,7 +33,8 @@ Item {
     readonly property var sections: [
         {"id": "library", "title": "Biblioteca", "items": [
             {"id": "celeste", "title": "Celeste", "coverUrl": ""},
-            {"id": "hollow", "title": "Hollow Knight", "coverUrl": ""}
+            {"id": "hollow", "title": "Hollow Knight", "coverUrl": "",
+             "description": "Descrição canônica. ".repeat(300)}
         ]}
     ]
 
@@ -66,6 +67,91 @@ Item {
     TestCase {
         name: "LauncherFocusBootstrap"
         when: windowShown
+
+        function test_search_launch_uses_shell_error_and_real_return_context() {
+            const scene = createTemporaryObject(sceneComponent, harness)
+            scene.model = harness.model
+            scene.loadState = "ready"
+            scene.searching = true
+            verify(scene._launchSearch("hollow", "search:hollow"))
+            const shell = scene._activeLauncherShell()
+            compare(shell.exitFocus, "library:hollow")
+            compare(scene.searching, false)
+            // No API in this fixture: the shared launch callback must surface
+            // failure, instead of silently swallowing the search request.
+            compare(shell.launchState, "failed")
+            verify(shell.launchError.indexOf("LAUNCHER-LAUNCH-FAILED-001") >= 0)
+            shell.recoverLaunch()
+            shell.back()
+            compare(shell.homeFocus, "library:hollow")
+            compare(scene._launchSearch("absent", "search:absent"), false)
+        }
+
+        function test_cinema_keeps_keyboard_navigation_and_activation() {
+            const scene = createTemporaryObject(sceneComponent, harness)
+            scene.model = harness.model
+            scene.loadState = "ready"
+            scene.cinemaScene = {
+                "focusId": "library:celeste", "selected": 0,
+                "collection": "Biblioteca", "items": [{"title": "Celeste"}],
+                "layouts": {"covers": {"entries": [{
+                    "x": 420, "y": 160, "width": 240, "height": 360,
+                    "scale": 1, "opacity": 1, "z": 1, "highlighted": true,
+                    "source": ""
+                }]}}
+            }
+            scene.requestActivate()
+            tryVerify(function() { return scene.active }, 5000)
+            const shell = scene._activeLauncherShell()
+            tryVerify(function() { return scene.activeFocusItem !== null }, 2000)
+            compare(scene.activeFocusItem.objectName, "launcherCinema")
+            const cinema = scene.activeFocusItem
+            compare(findChild(scene.contentItem, "launcherItem"), null,
+                    "a grade antiga deve ser descarregada, não apenas escondida")
+            compare(cinema.selectionReady, true)
+            keyClick(Qt.Key_Right)
+            tryCompare(shell, "homeFocus", "library:hollow")
+            compare(cinema.selectionReady, false)
+            compare(cinema.activateSelection(), false,
+                    "a capa anterior não pode abrir o novo jogo por toque")
+            keyClick(Qt.Key_Return)
+            tryCompare(shell, "screen", "game")
+            compare(shell.gamePage.title, "Hollow Knight")
+            const description = findChild(scene.contentItem, "gameDescription")
+            verify(description !== null)
+            compare(description.text, harness.sections[0].items[1].description)
+            compare(description.textFormat, Text.PlainText)
+            const scroll = findChild(scene.contentItem, "gameDescriptionScroll")
+            tryVerify(function() { return scroll.contentHeight > scroll.height })
+            keyClick(Qt.Key_Down)
+            tryVerify(function() { return scroll.contentY > 0 }, 2000,
+                      "descrição longa precisa rolar por teclado sem perder Jogar")
+            keyClick(Qt.Key_Escape)
+            tryCompare(shell, "screen", "home")
+            compare(shell.homeFocus, "library:hollow")
+        }
+
+        function test_search_is_above_home_and_escape_restores_navigation() {
+            const scene = createTemporaryObject(sceneComponent, harness)
+            scene.model = harness.model
+            scene.loadState = "ready"
+            scene.requestActivate()
+            tryVerify(function() { return scene.active }, 5000)
+            const shell = scene._activeLauncherShell()
+            tryVerify(function() { return scene.activeFocusItem !== null }, 2000)
+            keyClick(Qt.Key_F)
+            tryCompare(scene, "searching", true)
+            const field = findChild(scene.contentItem, "launcherSearchField")
+            verify(field !== null)
+            tryCompare(field, "activeFocus", true)
+            const panel = field.parent.parent
+            verify(panel.z > shell.parent.z,
+                   "a busca precisa ser composta acima do Loader fullscreen")
+            keyClick(Qt.Key_Escape)
+            tryCompare(scene, "searching", false)
+            keyClick(Qt.Key_Right)
+            tryCompare(shell, "homeFocus", "library:hollow")
+        }
 
         function test_first_key_navigates_without_any_pointer_interaction() {
             // Cena real, montada como em produção: sem `api`/`token` o modelo
