@@ -15,7 +15,7 @@
 
 import QtQuick
 
-Item {
+FocusScope {
     id: home
 
     // Mapa vindo de `FocusMap.to_qml_object()`.
@@ -23,6 +23,7 @@ Item {
     // Seções já ordenadas: [{id, title, items: [{id, title}]}].
     required property var sections
     property var catalogSummary: ({})
+    property var cinemaScene: null
 
     property string currentFocus: focusMap && focusMap.initial ? focusMap.initial : ""
     // Preferências de acessibilidade herdadas do host (highContrast etc.).
@@ -164,8 +165,14 @@ Item {
     }
     focus: true
 
+    Loader {
+        anchors.fill: parent
+        active: !home.cinemaScene
+        focus: active
+        sourceComponent: Component {
     Column {
         id: rows
+        visible: !home.cinemaScene
         anchors.fill: parent
         anchors.margins: 24
         spacing: 18
@@ -248,7 +255,7 @@ Item {
                                 ? home._hc("#22d3ee", "#55d8ff") : home._hc("#243044", "#68839b")
                             clip: true
                             scale: pressed ? 0.98 : 1.0
-                            focus: home.currentFocus === nodeId
+                            focus: !home.cinemaScene && home.currentFocus === nodeId
                             activeFocusOnTab: true
                             Accessible.name: qsTr("%1, jogo").arg(modelData.title)
                             Accessible.role: Accessible.Button
@@ -320,6 +327,20 @@ Item {
                 }
             }
         }
+    }
+
+        }
+    }
+
+    LauncherCinema {
+        objectName: "launcherCinema"
+        anchors.fill: parent
+        visible: home.cinemaScene !== null && !home.empty
+        focus: visible
+        scene: home.cinemaScene
+        currentFocus: home.currentFocus
+        accessibility: home.accessibility
+        onActivated: home.activateCurrent()
     }
 
     // The empty library still has a real focus target. Its action is routed to

@@ -23,6 +23,44 @@ def _get(url: str, token: str) -> dict:
         return json.loads(response.read())
 
 
+def test_session_route_does_not_reuse_previous_game_session(tmp_path: Path) -> None:
+    observed = {"gameId": "game", "sessionId": "old", "state": "closed"}
+    bridge = LauncherBridge(
+        sections=build_sections([{"id": "game", "title": "Game", "section": "library"}]),
+        context_path=tmp_path / "return.json",
+        on_launch=lambda game, focus: None,
+        session_observer=lambda game: dict(observed),
+    )
+    with bridge.serving() as base:
+        bridge.launch("game", "library:game")
+        assert _get(f"{base}/session?gameId=game", bridge.token)["state"] == "awaiting"
+        observed.update(sessionId="new", state="running")
+        assert _get(f"{base}/session?gameId=game", bridge.token)["state"] == "running"
+        observed["state"] = "closed"
+        assert _get(f"{base}/session?gameId=game", bridge.token)["state"] == "closed"
+        assert _get(f"{base}/session?gameId=outside", bridge.token)["state"] == "unknown"
+
+
+def test_pending_launch_stays_locked_until_new_canonical_terminal_state(tmp_path: Path) -> None:
+    observed = {"gameId": "game", "sessionId": "old", "state": "closed"}
+    launched = []
+    bridge = LauncherBridge(
+        sections=build_sections([{"id": "game", "title": "Game", "section": "library"}]),
+        context_path=tmp_path / "return.json",
+        on_launch=lambda game, focus: launched.append(game),
+        session_observer=lambda game: dict(observed),
+    )
+    bridge.launch("game", "library:game")
+    for state, identifier in [("closed", "old"), ("unknown", None), ("running", "new")]:
+        observed.update(state=state, sessionId=identifier)
+        with pytest.raises(ValueError):
+            bridge.launch("game", "library:game")
+    assert launched == ["game"]
+    observed.update(state="closed", sessionId="new")
+    bridge.launch("game", "library:game")
+    assert launched == ["game", "game"]
+
+
 def _post(url: str, token: str, payload: dict) -> int:
     request = urllib.request.Request(  # noqa: S310
         url,
@@ -32,6 +70,100 @@ def _post(url: str, token: str, payload: dict) -> int:
     )
     with urllib.request.urlopen(request, timeout=5) as response:  # noqa: S310
         return int(response.status)
+
+
+def test_launch_failure_is_reported_without_secrets_and_bridge_recovers(tmp_path: Path) -> None:
+    attempts = []
+
+    def launch(game: str, focus: str) -> None:
+        attempts.append(game)
+        if len(attempts) == 1:
+            raise OSError("private-path-and-secret")
+
+    bridge = LauncherBridge(
+        sections=build_sections([{"id": "game", "title": "Game", "section": "library"}]),
+        context_path=tmp_path / "return.json",
+        on_launch=launch,
+    )
+    with bridge.serving() as base:
+        payload = {"gameId": "game", "focusId": "library:game"}
+        with pytest.raises(urllib.error.HTTPError) as failure:
+            _post(f"{base}/launch", bridge.token, payload)
+        assert failure.value.code == 409
+        body = json.loads(failure.value.read())
+        assert body["error"]["code"] == "LAUNCHER-LAUNCH-FAILED-001"
+        assert body["error"]["cause"] and body["error"]["impact"] and body["error"]["nextAction"]
+        assert "private-path-and-secret" not in json.dumps(body)
+        assert _post(f"{base}/launch", bridge.token, payload) == 204
+    assert attempts == ["game", "game"]
+
+
+@pytest.mark.parametrize(
+    "game,focus",
+    [
+        ("outside", "library:game"),
+        ("game", "search:game"),
+        ("game", "header:home"),
+        ("game", ""),
+    ],
+)
+def test_launch_rejects_foreign_game_or_stale_return_context(
+    tmp_path: Path,
+    game: str,
+    focus: str,
+) -> None:
+    launched = []
+    bridge = LauncherBridge(
+        sections=build_sections([{"id": "game", "title": "Game", "section": "library"}]),
+        context_path=tmp_path / "return.json",
+        on_launch=lambda game, focus: launched.append(game),
+    )
+    with bridge.serving() as base:
+        with pytest.raises(urllib.error.HTTPError) as denied:
+            _post(f"{base}/launch", bridge.token, {"gameId": game, "focusId": focus})
+        assert denied.value.code == 409
+    assert launched == []
+
+
+def test_cinema_route_resolves_focus_and_rejects_untrusted_requests(tmp_path: Path) -> None:
+    games = [{"id": f"game{i}", "title": f"Game {i}", "section": "library"} for i in range(30)]
+    bridge = LauncherBridge(
+        sections=build_sections(games),
+        titles=build_titles(games),
+        context_path=tmp_path / "return.json",
+        on_launch=lambda game, focus: None,
+        metadata={
+            "game29": {
+                "description": "Descrição canônica",
+                "players": 2,
+                "fanartUrl": "file:///art/fanart.png",
+            }
+        },
+    )
+    with bridge.serving() as base:
+        route = f"{base}/cinema?focus=library:game29&width=1280&height=800"
+        result = _get(route, bridge.token)
+        assert result["focusId"] == "library:game29"
+        assert len(result["items"]) == 7
+        assert result["items"][result["selected"]]["id"] == "game29"
+        assert result["items"][result["selected"]]["players"] == 2
+        assert result["items"][result["selected"]]["fanartUrl"] == "file:///art/fanart.png"
+        model = _get(f"{base}/model", bridge.token)
+        item = next(item for item in model["sections"][0]["items"] if item["id"] == "game29")
+        assert item["description"] == "Descrição canônica"
+        assert len(result["layouts"]["covers"]["entries"]) == 7
+        with pytest.raises(urllib.error.HTTPError) as denied:
+            _get(route, "wrong-token")
+        assert denied.value.code == 403
+        for query in (
+            "focus=missing&width=1280&height=800",
+            "focus=library:game29&width=nan&height=800",
+            "focus=library:game29&width=20000&height=800",
+        ):
+            with pytest.raises(urllib.error.HTTPError) as invalid:
+                _get(f"{base}/cinema?{query}", bridge.token)
+            assert invalid.value.code == 400
+        assert _get(route, bridge.token)["focusId"] == "library:game29"
 
 
 def test_the_bridge_serves_the_resolved_model_and_accepts_a_launch(tmp_path: Path) -> None:

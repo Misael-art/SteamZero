@@ -22,6 +22,40 @@ Window {
     property string token: ""
     property var model: null
     property string failure: ""
+    property var cinemaScene: null
+    property int cinemaRequest: 0
+
+    function refreshCinema() {
+        const shell = root._activeLauncherShell()
+        if (!shell || root.api === "" || root.token === "")
+            return
+        const focusId = shell.homeFocus
+        const requestId = ++root.cinemaRequest
+        root._request("GET", "/cinema?focus=" + encodeURIComponent(focusId)
+                      + "&width=" + root.width + "&height=" + root.height,
+                      null, function(status, text) {
+            if (requestId !== root.cinemaRequest || shell.homeFocus !== focusId)
+                return
+            if (status !== 200) {
+                root.cinemaScene = null
+                return
+            }
+            try {
+                const scene = JSON.parse(text)
+                root.cinemaScene = scene.focusId === focusId
+                    && scene.layouts && scene.layouts.covers ? scene : null
+            } catch (error) {
+                root.cinemaScene = null
+            }
+        })
+    }
+    onWidthChanged: cinemaRefresh.restart()
+    onHeightChanged: cinemaRefresh.restart()
+    Timer {
+        id: cinemaRefresh
+        interval: 16
+        onTriggered: root.refreshCinema()
+    }
     property var accessibility: ({"highContrast": false, "visualScale": 1.0, "reducedMotion": false})
 
     // Busca full-text: ativa no foco do campo, mostra os resultados da ponte.
@@ -33,15 +67,42 @@ Window {
         return launcherLoader && launcherLoader.item ? launcherLoader.item : null
     }
 
-    // The emulator owns the foreground window. When the Launcher becomes
-    // active again, that is the observable return edge and the shell restores
-    // the saved card without requiring a terminal or a second launch.
-    onActiveChanged: {
-        if (!active)
-            return
+    property bool sessionPollPending: false
+    property int launchGeneration: 0
+
+    function pollSession() {
         const shell = root._activeLauncherShell()
-        if (shell && shell.launchState === "emulator-visible")
-            shell.back()
+        if (!shell || root.sessionPollPending || !shell.sessionGameId)
+            return
+        const generation = root.launchGeneration
+        root.sessionPollPending = true
+        root._request("GET", "/session?gameId=" + encodeURIComponent(shell.sessionGameId),
+                      null, function(status, text) {
+            root.sessionPollPending = false
+            if (generation !== root.launchGeneration || status !== 200)
+                return
+            try {
+                shell.observeSession(JSON.parse(text))
+            } catch (error) {}
+        })
+    }
+
+    Timer {
+        interval: 400
+        repeat: true
+        running: {
+            const shell = root._activeLauncherShell()
+            return shell !== null && (shell.launchState === "launching"
+                                      || shell.launchState === "emulator-visible")
+        }
+        onTriggered: root.pollSession()
+    }
+
+    // Alt+Tab can activate the Launcher while the game is still running.
+    // Only a terminal record from the lifecycle owner triggers the return.
+    onActiveChanged: {
+        if (active)
+            root.pollSession()
     }
 
     function _argument(name) {
@@ -91,7 +152,35 @@ Window {
     }
 
     function _launchSearch(gameId, focusId) {
-        root._request("POST", "/launch", {"gameId": gameId, "focusId": focusId}, function() {})
+        const shell = root._activeLauncherShell()
+        if (!shell || !root.model || !root.model.sections)
+            return false
+        // Search is another entry to the same launch state machine. Save a
+        // real focus node, not a synthetic search id absent from the home map.
+        for (let s = 0; s < root.model.sections.length; ++s) {
+            const section = root.model.sections[s]
+            const nodeId = section.id + ":" + gameId
+            if (!root.model.focusMap.nodes[nodeId])
+                continue
+            shell.homeFocus = nodeId
+            if (!shell.openGame(gameId))
+                return false
+            root.searching = false
+            return shell.launchFocused()
+        }
+        return false
+    }
+
+    function launchErrorText(status, text) {
+        try {
+            const payload = JSON.parse(text)
+            const error = payload.error
+            if (error && typeof error === "object" && error.code)
+                return [error.code, error.cause, error.impact, error.nextAction]
+                    .filter(function(value) { return typeof value === "string" && value.length > 0 })
+                    .join("\n")
+        } catch (error) {}
+        return qsTr("LAUNCHER-LAUNCH-FAILED-001\nO início do jogo não foi confirmado (%1). Verifique a conexão local e tente novamente.").arg(status)
     }
 
     function _resolveGamePage(gameId) {
@@ -110,6 +199,10 @@ Window {
                     "title": String(item.title || item.id),
                     "platform": String(section.title || section.id),
                     "coverUrl": String(item.coverUrl || ""),
+                    "description": String(item.description || ""),
+                    "fanartUrl": String(item.fanartUrl || ""),
+                    "screenshotUrl": String(item.screenshotUrl || ""),
+                    "metadata": item,
                     "lastPlayed": null,
                     "initialFocus": "action:play",
                     "actions": [
@@ -211,6 +304,8 @@ Window {
     Rectangle {
         id: searchPanel
         anchors.fill: parent
+        // The shell Loader is declared later; search must remain above it.
+        z: 20
         visible: root.searching
         color: "#0b1020ee"
         focus: root.searching
@@ -317,18 +412,22 @@ Window {
                 focusMap: root.model.focusMap
                 sections: root.model.sections
                 catalogSummary: root.model.catalogSummary || ({})
+                cinemaScene: root.cinemaScene
+                onHomeFocusChanged: cinemaRefresh.restart()
+                Component.onCompleted: cinemaRefresh.restart()
                 accessibility: root.accessibility
                 resolveGamePage: function(gameId) { return root._resolveGamePage(gameId) }
                 returnContext: root.model.returnContext || null
                 onLaunchRequested: function(gameId, focusId) {
+                    ++root.launchGeneration
                     root._request("POST", "/launch",
                                   {"gameId": gameId, "focusId": focusId},
                                   function(status, text) {
                                       if (status === 204)
-                                          launcherShell.markEmulatorVisible()
+                                          root.pollSession()
                                       else
                                           launcherShell.failLaunch(
-                                              qsTr("O jogo não pôde ser iniciado (%1).").arg(status))
+                                              root.launchErrorText(status, text))
                                   })
                 }
                 onSearchRequested: function() {

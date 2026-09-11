@@ -327,11 +327,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
 
     accessibility = _host_accessibility()
+    from steamzero.adapters.launcher_session import observe_game_session
+    from steamzero.launcher.cinema import cinema_metadata
+
+    metadata = {
+        str(record.get("id")): cinema_metadata(record) for record in library if record.get("id")
+    }
 
     bridge = LauncherBridge(
         sections=sections,
         titles=titles,
         covers=covers,
+        metadata=metadata,
+        session_observer=lambda game_id: observe_game_session(paths.state_db(), game_id),
         context_path=context_path,
         on_launch=router.launch,
         accessibility=accessibility,

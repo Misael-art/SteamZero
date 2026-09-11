@@ -3,11 +3,17 @@
     "kind": "workstream",
     "id": "WS-2026-09-LAUNCHER-P0-ACTIVATION",
     "item": "SZ-AURA-LAUNCHER",
-    "branch": "codex/ux-console-experience-p0-2026-09-02",
-    "baseRef": "bad8735f",
-    "owner": "codex-ux-console-experience",
+    "branch": "codex/aura-cinema-fullscreen-2026-09-10",
+    "baseRef": "ef777dc34c3c44b0a093a129c7865a236a1159c2",
+    "owner": "codex-aura-cinema",
     "state": "active",
     "exclusivePaths": [
+        "src/steamzero/adapters/launcher_session.py",
+        "tests/integration/test_launcher_session_observation.py",
+        "src/steamzero/launcher/app.py",
+        "src/steamzero/adapters/launcher_ui.py",
+        "src/steamzero/launcher/cinema.py",
+        "tests/unit/test_launcher_cinema.py",
         "src/steamzero/ui/qml/launcher",
         "tests/qml/launcher",
         "tests/integration/test_launcher_app.py",
@@ -19,6 +25,6 @@
         "docs/ACTIVE-WORK.md",
         "docs/WORKLOG.md"
     ],
-    "nextAction": "Aguardar autorização de publicação/instalação; depois provar na release instalada Return, Enter, Space, controle e clique com uma única abertura da página de jogo.",
-    "updatedAt": "2026-09-02"
+    "nextAction": "Custódia transferida pelo operador nesta tarefa em 2026-09-10. Executar ADR-0028: baseline instalado, integração da Theme Engine ao Launcher, carousel com arte e metadados canônicos, detalhes, busca, acessibilidade e tiers; depois contratos reais de sessão/OSD/saves e fades, gates e prova física governada sem encerrar KDE. Roteiro em docs/12-roadmap/AURA-CINEMA-RETOMADA-2026-09-10.md. Nenhuma nova capacidade instalada declarada pela reserva.",
+    "updatedAt": "2026-09-10"
 }
