@@ -25,6 +25,6 @@
         "docs/ACTIVE-WORK.md",
         "docs/WORKLOG.md"
     ],
-    "nextAction": "Prova física Cinema instalada concluída em 2026-09-11. Próxima frente: contracts reais de sessão para pause/OSD/save-state/troca de mídia, fade de retorno e otimização do p95 abaixo de 16,7 ms; não promover fallback sem mídia a cobertura de arte/fanart.",
+    "nextAction": "Capturas instaladas provam carousel e detalhes; permanece título encoberto. Corrigir layout e instrumentar bootstrap, busca, erro e jogo-retorno. Medição anterior offscreen da cena de referência invalidada para AURA: medir a superfície fullscreen. Prosseguir depois com contratos reais de sessão/OSD/saves, fade e mídia canônica.",
     "updatedAt": "2026-09-11"
 }

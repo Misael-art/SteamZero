@@ -54,7 +54,8 @@
   "knownGaps": [
     "GAP-LAUNCHER-REAL-CATALOG-PHYSICAL",
     "GAP-LAUNCHER-RETURN-FADES-PHYSICAL",
-    "GAP-AURA-CINEMA-P95-FRAME-TIME"
+    "GAP-AURA-CINEMA-PERFORMANCE-PHYSICAL",
+    "GAP-AURA-CINEMA-TITLE-OCCLUSION"
   ],
   "acceptanceCriteria": [
     "Home fullscreen, biblioteca, busca, colecoes e pagina de jogo funcionam por controle.",
@@ -284,11 +285,11 @@
     {
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/04-performance.json",
-      "command": "Sonda real apontando para /opt/steamzero/current/venv/lib/python3.14/site-packages/steamzero/ui/qml, 1280x800, 10 s + 2 s warm-up em três amostras: 625 frames por amostra, média ~16,0 ms, p95 16,708–16,735 ms, startup 75–78 ms, pico RSS 57.484–57.616 KiB; VRAM não medida. O p95 excede marginalmente a meta de 16,7 ms e permanece aberto.",
+      "command": "Ensaio invalidado para certificação do Launcher: QT_QPA_PLATFORM=offscreen e tema default org.steamzero.asset-recipes-demo em tools/theme_perf_probe.py. Mede sete SceneRepeater da referência, não LauncherMain/Cinema; repetições 05/06 simultâneas. Arquivos preservados para auditoria. FPS, p95, startup e VRAM da própria superfície fullscreen continuam não medidos; os valores não provam aprovação nem reprovação da meta AURA.",
       "result": "recorded"
     }
   ],
-  "nextAction": "Manter a cadeia Cinema instalada e avançar nos adapters reais de sessão: pause/OSD, save-state, troca de mídia e fade de retorno; reduzir o p95 do render loop abaixo de 16,7 ms, ampliar cobertura do catálogo/arte-fanart canônica e executar o teste físico de boot.",
+  "nextAction": "Corrigir o título encoberto no carousel, instrumentar bootstrap e medir a própria superfície fullscreen instalada (ensaio offscreen da referência não é prova AURA); validar busca, erro e ciclo jogo-retorno. Depois integrar adapters reais de pause/OSD/save-state/troca de mídia e fade, ampliar mídia canônica e testar boot com o operador.",
   "activeWorkstreams": [
     "WS-2026-08-AURA-LAUNCHER",
     "WS-2026-09-LAUNCHER-P0-ACTIVATION",

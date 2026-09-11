@@ -8,20 +8,26 @@ Rollback disponível: `2.0.0rc1-172c020e03b6`
 
 ## Jornada provada
 
-1. O Launcher instalado abriu em fullscreen e resolveu a ponte `/cinema` para o foco inicial.
+1. O Launcher instalado abriu em fullscreen. Uma consulta read-only separada a `/cinema` retornou HTTP 200 e a receita para o foco inicial; essa consulta não mede o bootstrap da janela.
 2. A cena exibiu o cover-flow com capa central, vizinhas reduzidas e fallback legível sem arte.
 3. `Right` moveu o foco horizontal para outro jogo sem mouse.
 4. `Enter` abriu a página de detalhes do jogo focado, com capa fallback, plataforma, descrição fallback, ação `Jogar` focada e rodapé de controles.
 
 Capturas:
 
-- `01-cinema-fullscreen.png` — Cinema após a resolução assíncrona da ponte.
+- `01-cinema-fullscreen.png` — Cinema visível na coleção Steam. A captura inicial anterior mostrava a grade clássica; a causa e o tempo dessa troca não foram instrumentados.
 - `02-carousel-navigation.png` — foco após navegação horizontal.
 - `03-details-fallback.png` — detalhes e fallback sem mídia.
 
 ## Desempenho
 
-`04-performance.json` foi medido no host real apontando para `/opt/steamzero/current/venv/lib/python3.14/site-packages/steamzero/ui/qml`, em 1280x800, com 10 s de amostragem e 2 s de warm-up:
+Os arquivos `04-performance.json`, `05-performance-repeat-2.json` e `06-performance-repeat-3.json` são preservados como ensaios **inadequados para certificar o Launcher**. O comando usado foi:
+
+```sh
+QT_QPA_PLATFORM=offscreen python tools/theme_perf_probe.py --qml-dir /opt/steamzero/current/venv/lib/python3.14/site-packages/steamzero/ui/qml --duration 10 --warmup 2 --width 1280 --height 800
+```
+
+Sem `--preview-json`, a ferramenta carrega `org.steamzero.asset-recipes-demo` e renderiza sete `SceneRepeater` em uma janela de sonda. Ela não instancia `LauncherMain` nem `LauncherCinema`. O backend offscreen tampouco apresenta frames no compositor. Os números da primeira amostra dessa cena de referência foram:
 
 - 625 frames do render loop;
 - média 15,999 ms;
@@ -31,8 +37,8 @@ Capturas:
 - pico RSS 57.616 KiB;
 - VRAM não medida pela API disponível.
 
-As repetições `05-performance-repeat-2.json` e `06-performance-repeat-3.json` ficaram em p95 de 16,718 ms e 16,708 ms. Portanto, o p95 observado (16,708–16,735 ms) ainda excede marginalmente a meta de 16,7 ms e permanece aberto para otimização. O valor de frame time vem do render loop da sonda e não é afirmado como FPS apresentado na tela.
+As duas repetições foram executadas simultaneamente e também não constituem medições independentes de desempenho. Nenhum desses valores prova aprovação ou reprovação da meta do AURA. FPS apresentado, frame time, startup do Launcher e VRAM continuam sem medição válida nesta etapa. A próxima medição precisa identificar a janela e a release, carregar o catálogo real, executar navegação e observar a própria superfície fullscreen.
 
 ## Limites observados
 
-O catálogo instalado resolveu vários jogos sem mídia de capa/fanart; a cena permaneceu acionável e legível pelo fallback. A prova desta etapa cobre a cadeia mecânica `bridge → catálogo → Theme Engine/Cinema → carousel → detalhes`. Pause/OSD, save-state, troca de disco, bezels por jogo e execução de um jogo real continuam dependentes dos adapters de sessão e permanecem fora desta captura.
+O catálogo instalado resolveu vários jogos sem mídia de capa/fanart. O fallback do cartão e a página de detalhes estão legíveis, mas o título abaixo do carousel aparece parcialmente encoberto pela capa central nas capturas 01/02: o layout ainda precisa de correção. A prova cobre a navegação observada `carousel → detalhes` e a resposta da ponte em consulta separada. Não prova escolha/aplicação de pacote de tema, bootstrap completo, busca, erro/recuperação ou desempenho do Launcher. Pause/OSD, save-state, troca de disco, bezels por jogo e execução/retorno de um jogo real permanecem sem prova nesta release.
