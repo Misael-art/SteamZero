@@ -4,9 +4,12 @@
 
 from __future__ import annotations
 
+import http.client
 import json
+import threading
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -21,6 +24,72 @@ def _get(url: str, token: str) -> dict:
     request = urllib.request.Request(url, headers={"X-SteamZero-Token": token})  # noqa: S310
     with urllib.request.urlopen(request, timeout=5) as response:  # noqa: S310
         return json.loads(response.read())
+
+
+def test_keep_alive_model_connection_does_not_block_cinema_or_session(tmp_path: Path) -> None:
+    bridge = LauncherBridge(
+        sections=build_sections([{"id": "game", "title": "Game", "section": "library"}]),
+        context_path=tmp_path / "return.json",
+        on_launch=lambda game, focus: None,
+    )
+    with bridge.serving() as base:
+        address = urllib.parse.urlsplit(base)
+        first = http.client.HTTPConnection(address.hostname, address.port, timeout=2)
+        second = http.client.HTTPConnection(address.hostname, address.port, timeout=2)
+        headers = {"X-SteamZero-Token": bridge.token}
+        try:
+            first.request("GET", "/model", headers=headers)
+            model = first.getresponse()
+            assert model.status == 200
+            assert json.loads(model.read())["sections"]
+            # Keep the model connection open, as a QML HTTP connection pool does.
+            second.request(
+                "GET", "/cinema?focus=library:game&width=1280&height=800", headers=headers
+            )
+            scene = second.getresponse()
+            assert scene.status == 200
+            assert json.loads(scene.read())["focusId"] == "library:game"
+            second.request("GET", "/session?gameId=game", headers=headers)
+            session = second.getresponse()
+            assert session.status == 200
+            assert json.loads(session.read())["gameId"] == "game"
+        finally:
+            second.close()
+            first.close()
+
+
+def test_parallel_launches_remain_single_while_catalog_requests_continue(tmp_path: Path) -> None:
+    entered = threading.Event()
+    release = threading.Event()
+    calls = []
+
+    def launch(game: str, focus: str) -> None:
+        calls.append(game)
+        entered.set()
+        assert release.wait(5), "test did not release launch callback"
+
+    bridge = LauncherBridge(
+        sections=build_sections([{"id": "game", "title": "Game", "section": "library"}]),
+        context_path=tmp_path / "return.json",
+        on_launch=launch,
+        session_observer=lambda game: {"gameId": game, "state": "unknown", "sessionId": None},
+    )
+    with bridge.serving() as base, ThreadPoolExecutor(max_workers=2) as pool:
+        payload = {"gameId": "game", "focusId": "library:game"}
+        first = pool.submit(_post, f"{base}/launch", bridge.token, payload)
+        try:
+            assert entered.wait(3)
+            second = pool.submit(_post, f"{base}/launch", bridge.token, payload)
+            # The potentially slow launch callback must not block the catalog.
+            assert _get(f"{base}/model", bridge.token)["sections"]
+        finally:
+            release.set()
+        assert first.result(timeout=3) == 204
+        with pytest.raises(urllib.error.HTTPError) as rejected:
+            second.result(timeout=3)
+        assert rejected.value.code == 409
+        rejected.value.close()
+    assert calls == ["game"]
 
 
 def test_session_route_does_not_reuse_previous_game_session(tmp_path: Path) -> None:

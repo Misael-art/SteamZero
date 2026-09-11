@@ -20,7 +20,7 @@ import shutil
 import threading
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
@@ -150,7 +150,7 @@ class _Handler(BaseHTTPRequestHandler):
         """Silencia o log HTTP: ele carregaria o token na linha de requisição."""
 
 
-class _Server(HTTPServer):
+class _Server(ThreadingHTTPServer):
     bridge: LauncherBridge
 
 
@@ -178,6 +178,7 @@ class LauncherBridge:
         self._session_observer = session_observer
         self._previous_sessions: dict[str, str | None] = {}
         self._pending_game: str | None = None
+        self._session_lock = threading.RLock()
         self._context_path = Path(context_path)
         self._on_launch = on_launch
         self._accessibility = dict(accessibility or {})
@@ -287,11 +288,18 @@ class LauncherBridge:
         result.update(
             focusId=focus_id,
             collection=section.title,
+            viewport={"width": width, "height": height},
             items=[items[index] for index in result["sourceIndices"]],
         )
         return result
 
     def launch(self, game_id: str, focus_id: str) -> None:
+        # Connections are concurrent; validation, spawn and reservation form
+        # one critical section so two clients cannot both launch the game.
+        with self._session_lock:
+            self._launch_locked(game_id, focus_id)
+
+    def _launch_locked(self, game_id: str, focus_id: str) -> None:
         if self._pending_game is not None:
             self.session(self._pending_game)
             if self._pending_game is not None:
@@ -323,6 +331,10 @@ class LauncherBridge:
             self._pending_game = game_id
 
     def session(self, game_id: str) -> dict[str, Any]:
+        with self._session_lock:
+            return self._session_locked(game_id)
+
+    def _session_locked(self, game_id: str) -> dict[str, Any]:
         if self._session_observer is None or not any(
             game_id in section.items for section in self._sections
         ):
