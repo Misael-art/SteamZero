@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "release": "2.0.0rc1-9caa2c223cfb",
+  "packageVersion": "2.0.0rc1",
+  "sourceCommit": "9caa2c223cfb9f901e8c4dde74ed534a396c9bba",
+  "wheelhouseRunId": "34585110023",
+  "rollbackRelease": "2.0.0rc1-172c020e03b6",
+  "hostProbe": {
+    "release": "2.0.0rc1-9caa2c223cfb",
+    "sourceCommit": "9caa2c223cfb9f901e8c4dde74ed534a396c9bba",
+    "service": "active",
+    "socket": "active",
+    "doctorPendingOperations": 0,
+    "orphanStaging": 0,
+    "convergence": "converged",
+    "idempotent": true
+  },
+  "evidenceCommand": "tools/release_host.py --json inspect",
+  "artifacts": {
+    "01-cinema-fullscreen.png": "0d282dab33641096be9aca82aa3243650b137d8bd152abf448d0b19ab8826467",
+    "02-carousel-navigation.png": "493f248676ed7ef8311bc6e9151f771956f49a23bc30cd29e28d1eb795bf1b2e",
+    "03-details-fallback.png": "29c51448f5f59c9e0834d188a85f01a0be7b51631e779dc24d8d2b87ba674ce8",
+    "04-performance.json": "24524a4ae777d8f0418bb82c4b6ac606f5c3533562a819f8edd51453b1f4dd1e",
+    "05-performance-repeat-2.json": "e91a2d187eb572cff427a6ae15b3cca2ac9f19bfaf9ccccec2e54d226f51ab4f",
+    "06-performance-repeat-3.json": "58d8a5fcdf0b10c78c95e80d233830305723e6c0fef728468460f3564839324f"
+  }
+}

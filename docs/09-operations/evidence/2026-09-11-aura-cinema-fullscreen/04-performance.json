@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "qmlDir": "/opt/steamzero/current/venv/lib/python3.14/site-packages/steamzero/ui/qml",
+  "scenes": 7,
+  "surface": "1280x800",
+  "frameTime": {
+    "frames": 625,
+    "avgFrameTimeMs": 15.999,
+    "p50Ms": 15.866,
+    "p95Ms": 16.735,
+    "maxMs": 16.999
+  },
+  "startupMs": 77.0,
+  "peakRssKb": 57616,
+  "peakVramKb": null,
+  "vramMeasured": false,
+  "vramMethod": null,
+  "note": "frameTime vem do render loop (FrameAnimation), nao de frames apresentados: nao afirme FPS de tela a partir daqui."
+}
