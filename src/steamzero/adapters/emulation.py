@@ -1467,7 +1467,12 @@ class EmulationController:
                         str(game["titleId"]) if isinstance(game.get("titleId"), str) else None,
                     ),
                     name=f"steamzero-game-{session_id[-8:]}",
-                    daemon=True,
+                    # The CLI publishes the launch result and then reaches
+                    # interpreter shutdown. A daemon observer would disappear
+                    # there, leaving a running row after the game exits.
+                    # Retain the lifecycle owner until its wait/checkpoint ends;
+                    # the game itself still has an independent process session.
+                    daemon=False,
                 )
                 watcher.start()
         elif session_id is not None:
