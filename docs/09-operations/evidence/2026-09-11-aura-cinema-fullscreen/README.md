@@ -45,3 +45,31 @@ As duas repetições foram executadas simultaneamente e também não constituem 
 ## Limites observados
 
 O catálogo instalado resolveu vários jogos sem mídia de capa/fanart. O fallback do cartão e a página de detalhes estão legíveis, mas o título abaixo do carousel aparece parcialmente encoberto pela capa central nas capturas 01/02: o layout ainda precisa de correção. A prova cobre a navegação observada `carousel → detalhes` e a resposta da ponte em consulta separada. Não prova escolha/aplicação de pacote de tema, bootstrap completo, busca, erro/recuperação ou desempenho do Launcher. Pause/OSD, save-state, troca de disco, bezels por jogo e execução/retorno de um jogo real permanecem sem prova nesta release.
+
+## Ciclo físico de 2026-09-12
+
+Release ativa: `2.0.0rc1-47511fbe3067`, source commit
+`47511fbe3067ad3c16d7700e431d1b25dfee431f`, wheelhouse CI
+`34692714900`; rollback disponível: `2.0.0rc1-9caa2c223cfb`.
+O instalador governado confirmou convergência e idempotência, sem staging,
+backup ou operação órfã. O KDE não foi reiniciado nem encerrado.
+
+O Launcher instalado abriu o catálogo real, navegou horizontalmente e entre
+coleções, abriu detalhes e busca por teclado. `Tatsunoko vs. Capcom - Ultimate
+All-Stars (Europe)` foi lançado pela ação `Jogar`; o Dolphin exibiu a tela real
+do Wii e, após o encerramento do emulador, o Launcher retornou ao mesmo cartão
+e coleção (`22` e `26` têm conteúdo byte-idêntico). Capturas `17`, `18`, `22`,
+`23`, `24`, `26` e `27` registram essa jornada.
+
+O jogo Saturn `Akumajou Dracula X Gekka no Yasoukyoku` reproduziu a falha
+pré-spawn real por ausência do core `mednafen_saturn`. A captura `31` prova que
+o erro e o botão de retry chegaram à tela; `32` prova que Enter liberou a nova
+tentativa. A mesma captura revelou dois defeitos: alfa `0x07` no overlay e uso
+da causa genérica no lugar do detalhe allowlisted. O commit funcional
+`861a43e` corrige ambos, limita a mensagem e adiciona timeout/recuperação
+acionável para a ponte local. Essa correção ainda não está na release das
+capturas e precisa de nova instalação e recaptura; portanto `31` é baseline de
+defeito, não evidência de aceite visual.
+
+Não há medição nova válida de FPS, p95, startup ou VRAM nesta etapa. O ciclo
+real não promove OSD, saves, bezels, troca de disco nem fades.

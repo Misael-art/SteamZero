@@ -52,7 +52,7 @@
     "docs/09-operations/evidence/2026-09-06-ui-contrast-footer-physical",
     "docs/09-operations/evidence/2026-09-08-ux-audit"
   ],
-  "scopeDigest": "53c4049b280e144b0e0eb650a11d1dd1d986dc89bab37475b5458bf150c5e62b",
+  "scopeDigest": "e5a8763a92cf8ae861d8b176772fe24bc69556afed19921fbecd947f3bf59ebb",
   "dependsOn": [],
   "knownGaps": [
     "GAP-UI-LIVE-LAUNCHER-ROUTING"
@@ -79,6 +79,12 @@
     "O rotulo do item selecionado e legivel em todo tema empacotado, com a cor escolhida por contraste."
   ],
   "evidence": [
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/33-aura-failure-recovery-gates.md",
+      "command": "2026-09-12: scopeDigest renovado porque o escopo amplo de QML também inclui LauncherMain/Shell. A auditoria não foi carimbada por inferência: a suíte integral reexecutou a matriz QML e fechou 5.958 passed/47 skipped; Ruff, mypy, independência e fronteiras verdes. O estado do item permanece inalterado.",
+      "result": "passed"
+    },
     {
       "kind": "test",
       "reference": "tests/integration/test_qml_handheld_offscreen.py",

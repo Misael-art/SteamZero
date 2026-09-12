@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "release": "2.0.0rc1-9caa2c223cfb",
+  "release": "2.0.0rc1-47511fbe3067",
   "packageVersion": "2.0.0rc1",
-  "sourceCommit": "9caa2c223cfb9f901e8c4dde74ed534a396c9bba",
-  "wheelhouseRunId": "34585110023",
-  "rollbackRelease": "2.0.0rc1-172c020e03b6",
+  "sourceCommit": "47511fbe3067ad3c16d7700e431d1b25dfee431f",
+  "wheelhouseRunId": "34692714900",
+  "rollbackRelease": "2.0.0rc1-9caa2c223cfb",
   "hostProbe": {
-    "release": "2.0.0rc1-9caa2c223cfb",
-    "sourceCommit": "9caa2c223cfb9f901e8c4dde74ed534a396c9bba",
+    "release": "2.0.0rc1-47511fbe3067",
+    "sourceCommit": "47511fbe3067ad3c16d7700e431d1b25dfee431f",
     "service": "active",
     "socket": "active",
     "doctorPendingOperations": 0,
@@ -22,6 +22,18 @@
     "03-details-fallback.png": "29c51448f5f59c9e0834d188a85f01a0be7b51631e779dc24d8d2b87ba674ce8",
     "04-performance.json": "24524a4ae777d8f0418bb82c4b6ac606f5c3533562a819f8edd51453b1f4dd1e",
     "05-performance-repeat-2.json": "e91a2d187eb572cff427a6ae15b3cca2ac9f19bfaf9ccccec2e54d226f51ab4f",
-    "06-performance-repeat-3.json": "58d8a5fcdf0b10c78c95e80d233830305723e6c0fef728468460f3564839324f"
+    "06-performance-repeat-3.json": "58d8a5fcdf0b10c78c95e80d233830305723e6c0fef728468460f3564839324f",
+    "17-installed-home-47511fbe.png": "0d3fd9b63da3db64bc37ff55fd1503cf09e9a39bb8dc2ae813c9b3533da61022",
+    "18-installed-navigation-47511fbe.png": "ca74efff80abfe7f3bd3d0a965c27252e9beac6c79b72ebf24fde332a86903ef",
+    "19-installed-details-47511fbe.png": "3b586dd6a11b50cddf004ed5b1713c009ff569a046a74101a05cc97608040833",
+    "22-installed-section-up-47511fbe.png": "05a392575e0e0472aac3be01078e83d73b54cc00b8b226dfade349f6adf72845",
+    "23-installed-emulation-details-47511fbe.png": "ad61b8a597cfe74eacc6fb96c8ba6a7a470dcc99c8f536887092866b5cee9d65",
+    "24-installed-launch-result-47511fbe.png": "c3ca06e3b28bcfec45d0443332808c5ef46971fdfb527898236df37b6f09ca8f",
+    "26-installed-return-same-focus-47511fbe.png": "05a392575e0e0472aac3be01078e83d73b54cc00b8b226dfade349f6adf72845",
+    "27-installed-search-47511fbe.png": "74344a5593d30db24ac1020a680be69cc2b1db6b3af5cecb572bdac642c000df",
+    "30-installed-preflight-search-47511fbe.png": "73025ac83fd826c1da19b4ac0361c8eeb9a68c34b53b6d19334f8d83b0da40b6",
+    "31-installed-preflight-error-47511fbe.png": "254c4b6808733138f784def466dbfba12f50e0a481d3f5a3dfd412b428faa361",
+    "32-installed-retry-47511fbe.png": "a572eef3d743e94f76c0f1d6c2f6575e8ca6b2fcaa294c3e43f361d5fbec71a9",
+    "33-aura-failure-recovery-gates.xml": "9d3358d83568bc7ca55b83ef4c32a55e03743c45ddeca2b4966b6c0f04da0a8b"
   }
 }
