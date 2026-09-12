@@ -128,11 +128,36 @@ Item {
             // No API in this fixture: the shared launch callback must surface
             // failure, instead of silently swallowing the search request.
             compare(shell.launchState, "failed")
-            verify(shell.launchError.indexOf("LAUNCHER-LAUNCH-FAILED-001") >= 0)
+            verify(shell.launchError.indexOf("LAUNCHER-BRIDGE-OFFLINE-001") >= 0)
             shell.recoverLaunch()
             shell.back()
             compare(shell.homeFocus, "library:hollow")
             compare(scene._launchSearch("absent", "search:absent"), false)
+        }
+
+        function test_launch_error_prefers_actionable_allowlisted_detail() {
+            const scene = createTemporaryObject(sceneComponent, harness)
+            const message = scene.launchErrorText(409, JSON.stringify({error: {
+                code: "E-CONTENT-UNSUPPORTED",
+                cause: "O formato do arquivo não é reconhecido ou suportado.",
+                detail: "O core mednafen_saturn não está instalado.",
+                impact: "O jogo não chegou a iniciar.",
+                manualAction: "Instale o core e tente novamente."
+            }}))
+            verify(message.indexOf("E-CONTENT-UNSUPPORTED") >= 0)
+            verify(message.indexOf("mednafen_saturn") >= 0)
+            verify(message.indexOf("Instale o core") >= 0)
+            verify(message.indexOf("formato do arquivo") < 0,
+                   "a causa genérica não pode substituir o detalhe confirmado")
+        }
+
+        function test_bridge_disconnect_has_actionable_recovery() {
+            const scene = createTemporaryObject(sceneComponent, harness)
+            const message = scene.launchErrorText(0, "")
+            verify(message.indexOf("LAUNCHER-BRIDGE-OFFLINE-001") >= 0)
+            verify(message.indexOf("Volte e tente novamente") >= 0)
+            compare(scene.requestTimeoutMs, 3000,
+                    "requisição à ponte não pode prender a interface indefinidamente")
         }
 
         function test_cinema_keeps_keyboard_navigation_and_activation() {

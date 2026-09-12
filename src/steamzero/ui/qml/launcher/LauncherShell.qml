@@ -49,10 +49,13 @@ Item {
                 return false
             const detail = attempt.error || null
             let reason = ""
-            if (detail && detail.code)
-                reason = [detail.code, detail.what, detail.impact, detail.manualAction]
+            if (detail && detail.code) {
+                const explanation = detail.detail || detail.what || detail.probableCause
+                const recovery = detail.manualAction || detail.action
+                reason = [detail.code, explanation, detail.impact, recovery]
                     .filter(function(value) { return typeof value === "string" && value.length > 0 })
                     .join("\n")
+            }
             shell.failLaunch(reason !== "" ? reason
                 : qsTr("LAUNCHER-LAUNCH-NOT-STARTED-001\nO jogo não chegou a iniciar. Verifique a causa na central e tente novamente."))
             return true
@@ -253,11 +256,14 @@ Item {
 
     Rectangle {
         id: launchOverlay
+        objectName: "launchFailureOverlay"
         anchors.fill: parent
         z: 10
         visible: shell.launchState === "preparing"
             || shell.launchState === "launching" || shell.launchState === "failed"
-        color: "#071019ee"
+        // QML interpreta oito dígitos como #AARRGGBB. O valor anterior punha
+        // 0x07 no alfa e deixava a página vazar por trás do texto da falha.
+        color: "#ee071019"
         opacity: visible ? 1 : 0
         Behavior on opacity {
             NumberAnimation {
@@ -275,7 +281,10 @@ Item {
             spacing: 16
 
             Text {
+                id: launchFailureText
+                objectName: "launchFailureText"
                 width: parent.width
+                height: Math.min(implicitHeight, launchOverlay.height - recoverButton.height - 96)
                 text: shell.launchError !== ""
                     ? shell.launchError
                     : qsTr("Preparando %1…").arg(shell.gamePage
@@ -284,10 +293,13 @@ Item {
                 font.pixelSize: 22
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.Wrap
+                maximumLineCount: 8
+                elide: Text.ElideRight
             }
 
             Rectangle {
                 id: recoverButton
+                objectName: "launchFailureRetry"
                 anchors.horizontalCenter: parent.horizontalCenter
                 visible: shell.launchState === "failed"
                 width: 220

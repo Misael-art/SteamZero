@@ -24,6 +24,9 @@ Window {
     property string failure: ""
     property var cinemaScene: null
     property int cinemaRequest: 0
+    // A ponte é local; três segundos distinguem indisponibilidade de uma
+    // operação normal sem deixar a cena presa se o processo for suspenso.
+    readonly property int requestTimeoutMs: 3000
 
     function refreshCinema() {
         const shell = root._activeLauncherShell()
@@ -125,14 +128,24 @@ Window {
             return
         }
         const request = new XMLHttpRequest()
+        let completed = false
+        function finish(status, text) {
+            if (completed)
+                return
+            completed = true
+            onDone(status, text)
+        }
         request.open(method, root.api + path)
+        request.timeout = root.requestTimeoutMs
         request.setRequestHeader("X-SteamZero-Token", root.token)
         if (body !== null)
             request.setRequestHeader("Content-Type", "application/json")
         request.onreadystatechange = function() {
             if (request.readyState === XMLHttpRequest.DONE)
-                onDone(request.status, request.responseText)
+                finish(request.status, request.responseText)
         }
+        request.onerror = function() { finish(0, "") }
+        request.ontimeout = function() { finish(0, "") }
         request.send(body === null ? undefined : JSON.stringify(body))
     }
 
@@ -175,13 +188,19 @@ Window {
     }
 
     function launchErrorText(status, text) {
+        if (status === 0)
+            return qsTr("LAUNCHER-BRIDGE-OFFLINE-001\nA ponte local do SteamZero não respondeu. O jogo não foi iniciado.\nVolte e tente novamente; se persistir, abra a central para verificar o serviço.")
         try {
             const payload = JSON.parse(text)
             const error = payload.error
-            if (error && typeof error === "object" && error.code)
-                return [error.code, error.cause, error.impact, error.nextAction]
+            if (error && typeof error === "object" && error.code) {
+                const explanation = error.detail || error.what
+                    || error.probableCause || error.cause
+                const recovery = error.manualAction || error.action || error.nextAction
+                return [error.code, explanation, error.impact, recovery]
                     .filter(function(value) { return typeof value === "string" && value.length > 0 })
                     .join("\n")
+            }
         } catch (error) {}
         return qsTr("LAUNCHER-LAUNCH-FAILED-001\nO início do jogo não foi confirmado (%1). Verifique a conexão local e tente novamente.").arg(status)
     }

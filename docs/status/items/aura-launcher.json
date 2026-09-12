@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "af1568f211ebf3c87af1e25ad9613b453122bc7dbc09269f43c3fa7a6eae9080",
+  "scopeDigest": "38def4d4bc60930442d1d65e70353afa80d706e749464e987ace7397b6217556",
   "scopePaths": [
     "src/steamzero/cli/main.py",
     "src/steamzero/adapters/emulation.py",
@@ -79,6 +79,24 @@
     "O Launcher encontra a biblioteca canonica sozinho, sem depender de --library."
   ],
   "evidence": [
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/33-aura-failure-recovery-gates.md",
+      "command": "Composição 861a43e: 5.958 passed, 47 skipped em 36m07s; Ruff check verde, 602 arquivos formatados, mypy 271, independência, fronteiras e status-check verdes. JUnit SHA-256 9d3358d8; log bruto excluído por conter argv sensível de processo externo pré-existente.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/README.md",
+      "command": "Release 2.0.0rc1-47511fbe3067 instalada do source commit exato 47511fbe: catálogo e busca reais por teclado; Tatsunoko vs. Capcom abriu no Dolphin e retornou ao mesmo cartão/coleção; falha pré-spawn real por core mednafen_saturn ausente mostrou erro e retry funcional. Capturas 17-32 com falsos enquadramentos removidos. O baseline 31 revelou overlay translúcido e mensagem genérica, corrigidos localmente em 861a43e; recaptura da correção e desconexão da bridge pendentes.",
+      "result": "partial"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/launcher/check_launcher_focus_bootstrap.qml",
+      "command": "Commit 861a43e: testes negativos reproduziram descarte do detail allowlisted e overlay com alfa 0x07. Correção prioriza detail/what e ação allowlisted, usa fundo opaco, limita a mensagem, preserva retry por teclado e converte timeout/erro da ponte em LAUNCHER-BRIDGE-OFFLINE-001 acionável após 3 s. Focados do Launcher: 48 passed, 39 deselected.",
+      "result": "passed"
+    },
     {
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/15-receipt-hardening.md",
@@ -362,7 +380,7 @@
       "result": "recorded"
     }
   ],
-  "nextAction": "Publicar o hardening do recibo em codex/aura-receipt-hardening-2026-09-12, acompanhar CI e integrar. Depois instalar pelo fluxo governado e provar erro/retry e jogo/retorno no host com PNGs. Desconexão, Steam, OSD/saves e performance da própria superfície permanecem abertos; preservar KDE.",
+  "nextAction": "Publicar e integrar 861a43e, instalar nova release e recapturar erro pré-spawn/retry sem sobreposição. Suspender temporariamente a ponte para provar timeout, mensagem acionável e recuperação após retomada. Medir a própria janela do Launcher; Steam, OSD/saves e fades continuam fora deste lote. Preservar KDE.",
   "activeWorkstreams": [
     "WS-2026-08-AURA-LAUNCHER",
     "WS-2026-09-LAUNCHER-P0-ACTIVATION",
