@@ -9,11 +9,14 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "7256183d75706ac651bd2b1684eff0345e2aaabaa976e02752f997632bfaa705",
+  "scopeDigest": "2d4d6bd635df923414389afaf36d693f6b55ff37a0c549082c2e6e3784a64a46",
   "scopePaths": [
     "src/steamzero/cli/main.py",
     "src/steamzero/adapters/emulation.py",
+    "src/steamzero/adapters/launcher_receipt.py",
     "tests/integration/test_emulation_session_lifetime.py",
+    "tests/integration/test_launcher_receipt.py",
+    "tests/integration/test_cli_emulation.py",
     "docs/00-vision/PROJECT-VISION.md",
     "docs/00-vision/NON-GOALS.md",
     "docs/01-product/AURA-SURFACES.md",
@@ -76,6 +79,12 @@
     "O Launcher encontra a biblioteca canonica sozinho, sem depender de --library."
   ],
   "evidence": [
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/14-launch-confirmation-gates.xml",
+      "command": "Contrato de confirmação implementado: LaunchNotStartedError envolve falhas comprovadamente pré-spawn e o CLI publica launchAcknowledgment=notStarted (prova negativa: 2 testes novos reprovam com wrap/branch revertidos). Adapter launcher_receipt captura a resposta JSON do CLI em worker próprio (confirmed/notStarted/unconfirmed/delayed, fds fechados, sem matar o jogo); LaunchRouter gera requestId por pedido (--json; rota Steam sem recibo devolve None); bridge publica requestId no /launch (200), anexa projeção allowlisted da tentativa em /session e LIBERA a tentativa em notStarted confirmado — unconfirmed mantém bloqueio. QML aceita falha sem sessionId somente com o requestId do POST atual (check_launcher_shell.qml: 7 verificações novas). Bateria launcher/CLI: 64+31 testes verdes; ruff check/format, mypy, fronteiras e independência verdes. Prova física na release instalada pendente.",
+      "result": "passed"
+    },
     {
       "kind": "test",
       "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/13-cli-reply-gates.xml",

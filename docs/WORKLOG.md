@@ -10376,3 +10376,31 @@ Prova física instalada destas mudanças pendente. Confirmação de falha de
 pré-lançamento (requestId ↔ sessionId), desconexão da ponte e rota Steam
 continuam abertos; desenho registrado fora do repositório para o próximo ciclo.
 Nenhuma capacidade ausente foi exposta como sucesso.
+
+## 2026-09-11 — AURA Cinema: contrato de confirmação de lançamento
+
+Custódia: WS-2026-09-LAUNCHER-P0-ACTIVATION, branch
+`codex/aura-cinema-physical-2026-09-11` (PR #153).
+
+| Item | Prova |
+|---|---|
+| Falha pré-spawn sem confirmação deixava a ponte em `awaiting` eterno | Reprodução `preflight_receipt_repro.py` na árvore e no pacote instalado; testes novos reprovam com a correção revertida |
+| Exceção tipada + `notStarted` no CLI | `LaunchNotStartedError` envolve só a fase de preparação; 3 testes novos em `test_cli_emulation.py` (10/10) |
+| Resposta do CLI nunca era consumida (stdout em DEVNULL) | Adapter `launcher_receipt`: worker lê envelope limitado (7/7 testes de subprocesso) |
+| Pedido sem correlação à tentativa | `LaunchRouter` gera requestId; `/launch` responde 200 com requestId; `/session` publica projeção da tentativa e libera em `notStarted` confirmado |
+| QML aceitava falha sem prova do pedido atual | `expectedRequestId` no shell; `notStarted` → `failed` com erro projetado e retry por teclado (7 verificações novas em `check_launcher_shell.qml`) |
+
+Gates: suíte integral `14-launch-confirmation-gates.xml` — 5.953 passed,
+47 skipped e 1 reprovação de consistência de visões geradas (regenerada;
+`status-check` OK e 10 testes de status). ruff check/format, mypy (271
+arquivos), fronteiras e independência verdes. Bateria do launcher: 64+31
+testes. Design e hashes em `design-contrato-confirmacao.md` (fora do repo)
+e `SESSION-NEXT-CYCLE.md`.
+
+Limites desta entrega: rota Steam fora do contrato (rota própria, outro
+item); OSD, saves e desempenho seguem fora; commits do contrato pendentes
+de aplicação pelo bloqueio do gate Mimosa (116 highs pré-existentes em
+`game_stream.py` e `reference/`, fora do diff — linhas para o operador);
+prova física na release instalada continua o fechamento do ciclo. Release
+ativa segue `2.0.0rc1-9caa2c223cfb`; rollback `2.0.0rc1-172c020e03b6`.
+Nenhuma capacidade ausente foi exposta como sucesso.
