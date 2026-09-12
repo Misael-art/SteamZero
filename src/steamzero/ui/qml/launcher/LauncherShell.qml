@@ -34,10 +34,30 @@ Item {
     property string launchError: ""
     property string observedSessionId: ""
     property string sessionGameId: ""
+    // requestId do lançamento atual, publicado no retorno do POST /launch.
+    // Uma falha sem sessionId só é aceita se o requestId coincide: resposta
+    // de tentativa antiga não pode encerrar um pedido novo.
+    property string expectedRequestId: ""
 
     function observeSession(observation) {
-        if (!observation || observation.gameId !== shell.sessionGameId
-                || !observation.sessionId)
+        if (!observation || observation.gameId !== shell.sessionGameId)
+            return false
+        const attempt = observation.attempt || null
+        if (attempt && attempt.state === "notStarted") {
+            if (!shell.expectedRequestId
+                    || attempt.requestId !== shell.expectedRequestId)
+                return false
+            const detail = attempt.error || null
+            let reason = ""
+            if (detail && detail.code)
+                reason = [detail.code, detail.what, detail.impact, detail.manualAction]
+                    .filter(function(value) { return typeof value === "string" && value.length > 0 })
+                    .join("\n")
+            shell.failLaunch(reason !== "" ? reason
+                : qsTr("LAUNCHER-LAUNCH-NOT-STARTED-001\nO jogo não chegou a iniciar. Verifique a causa na central e tente novamente."))
+            return true
+        }
+        if (!observation.sessionId)
             return false
         if (shell.observedSessionId !== "" && observation.sessionId !== shell.observedSessionId)
             return false

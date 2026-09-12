@@ -20,17 +20,19 @@ import shutil
 import threading
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
 from steamzero.adapters.launcher_process import supervised_child
+from steamzero.adapters.launcher_receipt import LaunchAttempt
 from steamzero.core.errors import SteamZeroError
 from steamzero.domain.scene_layout import LayoutBounds, LayoutRecipe
 from steamzero.launcher.cinema import resolve_cinema_covers
 from steamzero.launcher.navigation import HomeSection, resolve_home_focus
 
-LaunchCallback = Callable[[str, str], None]
+#: Devolve a tentativa com recibo (ou ``None`` na rota Steam, sem recibo).
+LaunchCallback = Callable[[str, str], LaunchAttempt | None]
 _QT_QUICK_BACKEND = "software"
 
 
@@ -107,7 +109,7 @@ class _Handler(BaseHTTPRequestHandler):
             self._send(400, {"error": "gameId ausente"})
             return
         try:
-            self._bridge.launch(game_id, focus_id)
+            attempt = self._bridge.launch(game_id, focus_id)
         except (OSError, ValueError, SteamZeroError):
             # Exception text can contain local paths or credentials. Publish a
             # stable recovery contract, never an unfiltered traceback/detail.
@@ -125,9 +127,13 @@ class _Handler(BaseHTTPRequestHandler):
                 },
             )
             return
-        self.send_response(204)
-        self.send_header("Content-Length", "0")
-        self.end_headers()
+        # O requestId publica a tentativa criada: é ele que o shell exige de
+        # volta numa falha sem sessionId, para que resposta de tentativa antiga
+        # nunca altere um pedido novo. Sem recibo (rota Steam), requestId nulo.
+        self._send(
+            200,
+            {"requestId": attempt.request_id if attempt is not None else None},
+        )
 
     def _query_param(self, name: str) -> str | None:
         from urllib.parse import parse_qs, urlsplit
@@ -150,7 +156,7 @@ class _Handler(BaseHTTPRequestHandler):
         """Silencia o log HTTP: ele carregaria o token na linha de requisição."""
 
 
-class _Server(HTTPServer):
+class _Server(ThreadingHTTPServer):
     bridge: LauncherBridge
 
 
@@ -178,6 +184,8 @@ class LauncherBridge:
         self._session_observer = session_observer
         self._previous_sessions: dict[str, str | None] = {}
         self._pending_game: str | None = None
+        self._attempts: dict[str, LaunchAttempt] = {}
+        self._session_lock = threading.RLock()
         self._context_path = Path(context_path)
         self._on_launch = on_launch
         self._accessibility = dict(accessibility or {})
@@ -287,11 +295,23 @@ class LauncherBridge:
         result.update(
             focusId=focus_id,
             collection=section.title,
+            viewport={"width": width, "height": height},
             items=[items[index] for index in result["sourceIndices"]],
         )
         return result
 
-    def launch(self, game_id: str, focus_id: str) -> None:
+    def launch(self, game_id: str, focus_id: str) -> LaunchAttempt | None:
+        """Lança o jogo e devolve a tentativa com requestId correlacionado.
+
+        ``None`` significa rota sem recibo (Steam): falha sem sessionId não é
+        aceita para ela — não há como confirmar o que aconteceu.
+        """
+        # Connections are concurrent; validation, spawn and reservation form
+        # one critical section so two clients cannot both launch the game.
+        with self._session_lock:
+            return self._launch_locked(game_id, focus_id)
+
+    def _launch_locked(self, game_id: str, focus_id: str) -> LaunchAttempt | None:
         if self._pending_game is not None:
             self.session(self._pending_game)
             if self._pending_game is not None:
@@ -318,23 +338,49 @@ class LauncherBridge:
             }:
                 raise ValueError("the game already has an active canonical session")
             self._previous_sessions[game_id] = previous.get("sessionId")
-        self._on_launch(game_id, focus_id)
+        attempt = self._on_launch(game_id, focus_id)
+        if attempt is not None:
+            # Uma tentativa substitui a anterior do mesmo jogo; respostas da
+            # antiga deixam de ser consultáveis pelo caminho da ponte.
+            self._attempts[game_id] = attempt
         if self._session_observer is not None:
             self._pending_game = game_id
+        return attempt
 
     def session(self, game_id: str) -> dict[str, Any]:
+        with self._session_lock:
+            return self._session_locked(game_id)
+
+    def _session_locked(self, game_id: str) -> dict[str, Any]:
         if self._session_observer is None or not any(
             game_id in section.items for section in self._sections
         ):
             return {"gameId": game_id, "state": "unknown", "sessionId": None}
         result = self._session_observer(game_id)
+        attempt = self._attempts.get(game_id)
+        outcome = attempt.outcome() if attempt is not None else None
+        if outcome is not None and outcome.get("state") == "notStarted":
+            # Falha comprovadamente anterior ao spawn, confirmada pelo requestId
+            # do pedido atual: nada foi criado, a tentativa é liberada e Jogar
+            # volta a ser elegível. O erro viaja na projeção da tentativa.
+            self._attempts.pop(game_id, None)
+            if self._pending_game == game_id:
+                self._pending_game = None
+            return {**result, "state": "failed", "sessionId": None, "attempt": outcome}
         if (
             game_id in self._previous_sessions
             and result.get("sessionId") == self._previous_sessions[game_id]
         ):
-            return {"gameId": game_id, "state": "awaiting", "sessionId": None}
+            awaiting: dict[str, Any] = {"gameId": game_id, "state": "awaiting", "sessionId": None}
+            if outcome is not None:
+                awaiting["attempt"] = outcome
+            return awaiting
         if self._pending_game == game_id and result.get("state") in {"closed", "failed"}:
             self._pending_game = None
+            # Terminalização canônica encerra a tentativa; retenção liberada.
+            self._attempts.pop(game_id, None)
+        if outcome is not None:
+            result = {**result, "attempt": outcome}
         return result
 
     @contextmanager

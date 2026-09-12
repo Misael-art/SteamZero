@@ -64,9 +64,57 @@ Item {
         LauncherMain {}
     }
 
+    Component {
+        id: cinemaComponent
+        LauncherCinema {}
+    }
+
     TestCase {
         name: "LauncherFocusBootstrap"
         when: windowShown
+
+        function test_cinema_text_does_not_overlap_cover_data() {
+            return [
+                {tag: "deck", w: 1280, h: 800, textScale: 1},
+                {tag: "deck-large-text", w: 1280, h: 800, textScale: 2},
+                {tag: "full-hd", w: 1920, h: 1080, textScale: 1.5},
+                {tag: "ultrawide", w: 3440, h: 1440, textScale: 2}
+            ]
+        }
+
+        function test_cinema_text_does_not_overlap_cover(data) {
+            const coverHeight = Math.min(data.h * 0.72, 640)
+            const cinema = createTemporaryObject(cinemaComponent, harness, {
+                width: data.w, height: data.h,
+                currentFocus: "library:game",
+                accessibility: {visualScale: data.textScale},
+                scene: {
+                    focusId: "library:game", selected: 0, collection: "Biblioteca",
+                    viewport: {width: data.w, height: data.h},
+                    items: [{title: "<b>Um título longo</b>", players: 2, genres: ["Aventura"]}],
+                    layouts: {covers: {entries: [{
+                        x: (data.w - coverHeight * 2/3) / 2,
+                        y: (data.h - coverHeight) / 2,
+                        width: coverHeight * 2/3, height: coverHeight,
+                        scale: 1, opacity: 1, z: 10, highlighted: true, source: ""
+                    }]}}
+                }
+            })
+            verify(cinema !== null)
+            const cover = findChild(cinema, "cinemaSelectedCover")
+            const title = findChild(cinema, "cinemaSelectedTitle")
+            const footer = findChild(cinema, "cinemaFooter")
+            verify(cover !== null && title !== null && footer !== null)
+            wait(0)
+            const top = cover.mapToItem(cinema, 0, 0)
+            const bottom = cover.mapToItem(cinema, cover.width, cover.height)
+            verify(bottom.y > top.y, "a capa deve manter área visível")
+            verify(bottom.y <= title.y - 1, "a capa não pode encobrir o título")
+            verify(title.y + title.height <= footer.y, "título separado do rodapé")
+            verify(footer.y >= 0 && footer.y + footer.height <= cinema.height)
+            compare(title.textFormat, Text.PlainText)
+            compare(title.text, "<b>Um título longo</b>")
+        }
 
         function test_search_launch_uses_shell_error_and_real_return_context() {
             const scene = createTemporaryObject(sceneComponent, harness)

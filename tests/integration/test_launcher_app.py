@@ -4,14 +4,20 @@
 
 from __future__ import annotations
 
+import http.client
 import json
+import sys
+import threading
+import time
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
 
 from steamzero.adapters.launcher_catalog import catalog_games, catalog_summary
+from steamzero.adapters.launcher_receipt import spawn_receipt
 from steamzero.adapters.launcher_ui import LauncherBridge
 from steamzero.launcher.app import build_sections, build_titles, main
 
@@ -21,6 +27,72 @@ def _get(url: str, token: str) -> dict:
     request = urllib.request.Request(url, headers={"X-SteamZero-Token": token})  # noqa: S310
     with urllib.request.urlopen(request, timeout=5) as response:  # noqa: S310
         return json.loads(response.read())
+
+
+def test_keep_alive_model_connection_does_not_block_cinema_or_session(tmp_path: Path) -> None:
+    bridge = LauncherBridge(
+        sections=build_sections([{"id": "game", "title": "Game", "section": "library"}]),
+        context_path=tmp_path / "return.json",
+        on_launch=lambda game, focus: None,
+    )
+    with bridge.serving() as base:
+        address = urllib.parse.urlsplit(base)
+        first = http.client.HTTPConnection(address.hostname, address.port, timeout=2)
+        second = http.client.HTTPConnection(address.hostname, address.port, timeout=2)
+        headers = {"X-SteamZero-Token": bridge.token}
+        try:
+            first.request("GET", "/model", headers=headers)
+            model = first.getresponse()
+            assert model.status == 200
+            assert json.loads(model.read())["sections"]
+            # Keep the model connection open, as a QML HTTP connection pool does.
+            second.request(
+                "GET", "/cinema?focus=library:game&width=1280&height=800", headers=headers
+            )
+            scene = second.getresponse()
+            assert scene.status == 200
+            assert json.loads(scene.read())["focusId"] == "library:game"
+            second.request("GET", "/session?gameId=game", headers=headers)
+            session = second.getresponse()
+            assert session.status == 200
+            assert json.loads(session.read())["gameId"] == "game"
+        finally:
+            second.close()
+            first.close()
+
+
+def test_parallel_launches_remain_single_while_catalog_requests_continue(tmp_path: Path) -> None:
+    entered = threading.Event()
+    release = threading.Event()
+    calls = []
+
+    def launch(game: str, focus: str) -> None:
+        calls.append(game)
+        entered.set()
+        assert release.wait(5), "test did not release launch callback"
+
+    bridge = LauncherBridge(
+        sections=build_sections([{"id": "game", "title": "Game", "section": "library"}]),
+        context_path=tmp_path / "return.json",
+        on_launch=launch,
+        session_observer=lambda game: {"gameId": game, "state": "unknown", "sessionId": None},
+    )
+    with bridge.serving() as base, ThreadPoolExecutor(max_workers=2) as pool:
+        payload = {"gameId": "game", "focusId": "library:game"}
+        first = pool.submit(_post, f"{base}/launch", bridge.token, payload)
+        try:
+            assert entered.wait(3)
+            second = pool.submit(_post, f"{base}/launch", bridge.token, payload)
+            # The potentially slow launch callback must not block the catalog.
+            assert _get(f"{base}/model", bridge.token)["sections"]
+        finally:
+            release.set()
+        assert first.result(timeout=3) == 200
+        with pytest.raises(urllib.error.HTTPError) as rejected:
+            second.result(timeout=3)
+        assert rejected.value.code == 409
+        rejected.value.close()
+    assert calls == ["game"]
 
 
 def test_session_route_does_not_reuse_previous_game_session(tmp_path: Path) -> None:
@@ -94,7 +166,7 @@ def test_launch_failure_is_reported_without_secrets_and_bridge_recovers(tmp_path
         assert body["error"]["code"] == "LAUNCHER-LAUNCH-FAILED-001"
         assert body["error"]["cause"] and body["error"]["impact"] and body["error"]["nextAction"]
         assert "private-path-and-secret" not in json.dumps(body)
-        assert _post(f"{base}/launch", bridge.token, payload) == 204
+        assert _post(f"{base}/launch", bridge.token, payload) == 200
     assert attempts == ["game", "game"]
 
 
@@ -182,7 +254,7 @@ def test_the_bridge_serves_the_resolved_model_and_accepts_a_launch(tmp_path: Pat
             _post(
                 f"{base}/launch", bridge.token, {"gameId": "celeste", "focusId": "library:celeste"}
             )
-            == 204
+            == 200
         )
     assert launched == [("celeste", "library:celeste")]
 
@@ -368,6 +440,8 @@ def test_launch_route_is_emulation_launch_not_steam_wrapper(
     O id canônico de emulação passava por um comando cujo contrato é outro, e o
     spawn falho deixava o contexto de retorno pendurado.
     """
+    from types import SimpleNamespace
+
     from steamzero.launcher import app as app_module
 
     fake_bin = tmp_path / "steamzero"
@@ -377,16 +451,21 @@ def test_launch_route_is_emulation_launch_not_steam_wrapper(
     captured: list[tuple[str, ...]] = []
 
     def fake_spawn(argv: tuple[str, ...]) -> int:
-        captured.append(argv)
         return 12345
+
+    def fake_receipt(argv, *, request_id: str, game_id: str):
+        captured.append(tuple(argv))
+        return SimpleNamespace(pid=12345, request_id=request_id, game_id=game_id)
 
     router = app_module.LaunchRouter(
         on_spawn=fake_spawn,
         context_path=tmp_path / "return.json",
         executable=lambda: str(fake_bin),
+        receipt_spawner=fake_receipt,
     )
-    router.launch("celeste")
+    attempt = router.launch("celeste")
 
+    assert attempt is not None and attempt.request_id
     assert captured, "o lançamento não acionou nenhum spawn"
     assert captured[0][0] == str(fake_bin), (
         f"o launcher deve usar o binário `steamzero`, não o wrapper Steam: {captured[0]}"
@@ -395,6 +474,173 @@ def test_launch_route_is_emulation_launch_not_steam_wrapper(
     assert captured[0][1:5] == ("emulation", "launch", "--game-id", "celeste"), (
         f"a rota de jogo canônico deve ser `emulation launch --game-id`: {captured[0]}"
     )
+    assert captured[0][5] == "--json", "o recibo exige a resposta JSON do CLI"
     assert "steamzero-launch" not in captured[0][0], (
         "regressão: o wrapper Steam não pode lançar jogo de emulação"
     )
+
+
+# --- Contrato de confirmação de lançamento (recibo notStarted/unconfirmed) ---
+
+_NOT_STARTED_ENVELOPE = (
+    json.dumps(
+        {
+            "ok": False,
+            "status": "failed",
+            "error": {
+                "code": "E-COMPONENT-DEGRADED",
+                "what": "emulador ausente",
+                "impact": "nada foi criado",
+                "manualAction": "defina o emulador",
+                "launchAcknowledgment": "notStarted",
+            },
+        }
+    )
+    + "\n"
+)
+
+
+def _wait_state(attempt, state: str, timeout: float = 15.0) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if attempt.state == state:
+            return True
+        time.sleep(0.01)
+    return attempt.state == state
+
+
+def test_not_started_receipt_releases_the_attempt_for_a_new_launch(tmp_path: Path) -> None:
+    attempts = []
+
+    def on_launch(game: str, focus: str):
+        attempt = spawn_receipt(
+            (
+                sys.executable,
+                "-c",
+                f"import sys; sys.stdout.write({_NOT_STARTED_ENVELOPE!r})",
+            ),
+            request_id=f"req-{len(attempts)}",
+            game_id=game,
+        )
+        attempts.append(attempt)
+        return attempt
+
+    bridge = LauncherBridge(
+        sections=build_sections([{"id": "game", "title": "Game", "section": "library"}]),
+        context_path=tmp_path / "return.json",
+        on_launch=on_launch,
+        session_observer=lambda game: {"gameId": game, "state": "closed", "sessionId": "old"},
+    )
+    bridge.launch("game", "library:game")
+    assert _wait_state(attempts[0], "notStarted")
+    session = bridge.session("game")
+    assert session["state"] == "failed"
+    assert session["attempt"]["state"] == "notStarted"
+    assert session["attempt"]["error"]["code"] == "E-COMPONENT-DEGRADED"
+    # Falha confirmada pelo requestId atual: Jogar volta a ser elegível.
+    bridge.launch("game", "library:game")
+    assert len(attempts) == 2
+
+
+def test_unconfirmed_receipt_keeps_the_launch_locked(tmp_path: Path) -> None:
+    attempts = []
+
+    def on_launch(game: str, focus: str):
+        attempt = spawn_receipt(
+            (sys.executable, "-c", "import sys; sys.stdout.write('not-json\\n')"),
+            request_id=f"req-{len(attempts)}",
+            game_id=game,
+        )
+        attempts.append(attempt)
+        return attempt
+
+    bridge = LauncherBridge(
+        sections=build_sections([{"id": "game", "title": "Game", "section": "library"}]),
+        context_path=tmp_path / "return.json",
+        on_launch=on_launch,
+        session_observer=lambda game: {"gameId": game, "state": "unknown", "sessionId": None},
+    )
+    bridge.launch("game", "library:game")
+    assert _wait_state(attempts[0], "unconfirmed")
+    session = bridge.session("game")
+    assert session["state"] == "awaiting"
+    assert session["attempt"]["state"] == "unconfirmed"
+    # Sem confirmação do que aconteceu, não liberar duplicação.
+    with pytest.raises(ValueError):
+        bridge.launch("game", "library:game")
+
+
+def test_confirmed_receipt_observations_follow_the_new_session(tmp_path: Path) -> None:
+    gate = tmp_path / "release"
+    script = (
+        "import json, os, sys, time;"
+        "sys.stdout.write(json.dumps({'ok': True, 'data': {"
+        "'gameId': 'game', 'sessionId': 'sess-new'}}) + '\\n');"
+        "sys.stdout.flush();"
+        f"gate, deadline = {gate.as_posix()!r}, time.time() + 10\n"
+        "while not os.path.exists(gate) and time.time() < deadline: time.sleep(0.02)"
+    )
+    observed = {"gameId": "game", "sessionId": "old", "state": "closed"}
+    attempts = []
+
+    def on_launch(game: str, focus: str):
+        attempt = spawn_receipt((sys.executable, "-c", script), request_id="req-1", game_id=game)
+        attempts.append(attempt)
+        return attempt
+
+    bridge = LauncherBridge(
+        sections=build_sections([{"id": "game", "title": "Game", "section": "library"}]),
+        context_path=tmp_path / "return.json",
+        on_launch=on_launch,
+        session_observer=lambda game: dict(observed),
+    )
+    bridge.launch("game", "library:game")
+    assert _wait_state(attempts[0], "confirmed")
+    # A sessão antiga ainda é a última observação: aguardando, com o recibo já
+    # confirmado anexado à projeção.
+    awaiting = bridge.session("game")
+    assert awaiting["state"] == "awaiting"
+    assert awaiting["attempt"]["state"] == "confirmed"
+    observed.update(sessionId="sess-new", state="running")
+    running = bridge.session("game")
+    assert running["state"] == "running"
+    assert running["sessionId"] == "sess-new"
+    observed.update(state="closed")
+    assert bridge.session("game")["state"] == "closed"
+    gate.touch()
+    bridge.launch("game", "library:game")
+    assert len(attempts) == 2
+
+
+def test_launch_route_publishes_the_request_id(tmp_path: Path) -> None:
+    attempts = []
+
+    def on_launch(game: str, focus: str):
+        attempt = spawn_receipt(
+            (
+                sys.executable,
+                "-c",
+                f"import sys; sys.stdout.write({_NOT_STARTED_ENVELOPE!r})",
+            ),
+            request_id=f"req-{len(attempts)}",
+            game_id=game,
+        )
+        attempts.append(attempt)
+        return attempt
+
+    bridge = LauncherBridge(
+        sections=build_sections([{"id": "game", "title": "Game", "section": "library"}]),
+        context_path=tmp_path / "return.json",
+        on_launch=on_launch,
+    )
+    with bridge.serving() as base:
+        request = urllib.request.Request(  # noqa: S310
+            f"{base}/launch",
+            data=json.dumps({"gameId": "game", "focusId": "library:game"}).encode("utf-8"),
+            headers={"X-SteamZero-Token": bridge.token, "Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=5) as response:  # noqa: S310
+            assert response.status == 200
+            body = json.loads(response.read())
+    assert body["requestId"] == attempts[0].request_id

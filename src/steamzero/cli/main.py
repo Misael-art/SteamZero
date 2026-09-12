@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any
 from steamzero import CONTRACT_VERSION, __version__
 from steamzero.api.envelope import build_envelope, status_from_checks
 from steamzero.core import ids, log, transaction
-from steamzero.core.errors import SteamZeroError, build_error
+from steamzero.core.errors import LaunchNotStartedError, SteamZeroError, build_error
 from steamzero.core.state import StateStore
 from steamzero.diagnostics.doctor import run_doctor
 from steamzero.domain.desktop import ExperienceCoordinator
@@ -2121,8 +2121,12 @@ def _emit(env: dict[str, Any], *, json_out: bool) -> None:
     if json_out:
         # stdout PURO: só o envelope (CLI-CONTRACT).
         sys.stdout.write(json.dumps(env, ensure_ascii=False) + "\n")
+        # A session observer may keep this process alive after main returns.
+        # Pipe consumers still need the accepted/error reply immediately.
+        sys.stdout.flush()
         return
     _render_human(env)
+    sys.stdout.flush()
 
 
 def _render_human(env: dict[str, Any]) -> None:
@@ -2220,6 +2224,24 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         env, code = handler(rest, correlation_id)
+    except LaunchNotStartedError as exc:
+        # Falha comprovadamente anterior ao spawn: o consumidor do pipe pode
+        # liberar a tentativa com segurança porque nada foi criado. O erro
+        # exibido continua sendo o da causa original; demais falhas seguem sem
+        # acknowledgment (unconfirmed) — não fabricar garantia.
+        logger.warning("cli.launch-not-started", domain=domain, action=action, code=exc.code)
+        error = exc.to_error_object()
+        error["launchAcknowledgment"] = "notStarted"
+        env = build_envelope(
+            domain,
+            action or "",
+            status="failed",
+            ok=False,
+            error=error,
+            correlation_id=correlation_id,
+        )
+        _emit(env, json_out=json_out)
+        return EXIT_FAILURE
     except SteamZeroError as exc:
         logger.warning("cli.domain-error", domain=domain, action=action, code=exc.code)
         blocked = exc.code in {

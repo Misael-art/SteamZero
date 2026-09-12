@@ -3,8 +3,8 @@
     "kind": "workstream",
     "id": "WS-2026-09-LAUNCHER-P0-ACTIVATION",
     "item": "SZ-AURA-LAUNCHER",
-    "branch": "codex/aura-cinema-fullscreen-2026-09-10",
-    "baseRef": "ef777dc34c3c44b0a093a129c7865a236a1159c2",
+    "branch": "codex/aura-cinema-physical-2026-09-11",
+    "baseRef": "9caa2c223cfb9f901e8c4dde74ed534a396c9bba",
     "owner": "codex-aura-cinema",
     "state": "active",
     "exclusivePaths": [
@@ -17,7 +17,7 @@
         "src/steamzero/ui/qml/launcher",
         "tests/qml/launcher",
         "tests/integration/test_launcher_app.py",
-        "docs/09-operations/evidence/2026-09-02-ux-console-experience"
+        "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen"
     ],
     "sharedPaths": [
         "docs/status",
@@ -25,6 +25,6 @@
         "docs/ACTIVE-WORK.md",
         "docs/WORKLOG.md"
     ],
-    "nextAction": "Custódia transferida pelo operador nesta tarefa em 2026-09-10. Executar ADR-0028: baseline instalado, integração da Theme Engine ao Launcher, carousel com arte e metadados canônicos, detalhes, busca, acessibilidade e tiers; depois contratos reais de sessão/OSD/saves e fades, gates e prova física governada sem encerrar KDE. Roteiro em docs/12-roadmap/AURA-CINEMA-RETOMADA-2026-09-10.md. Nenhuma nova capacidade instalada declarada pela reserva.",
-    "updatedAt": "2026-09-10"
+    "nextAction": "Fechar gates de HTTP/layout. Captura 07 prova janela instalada sem ponte, aviso unconfirmed sobreposto e recuperação pendente. Reproduzir e corrigir confirmação/lifetime de sessão antes de OSD/saves; roteiro em SESSION-NEXT-CYCLE.md. Medição offscreen anterior invalidada: medir a própria superfície instalada. Preservar KDE.",
+    "updatedAt": "2026-09-11"
 }

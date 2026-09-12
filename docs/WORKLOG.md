@@ -10309,3 +10309,98 @@ máximo 32.442 ms, startup 118 ms, RSS 150988 KiB e VRAM 55420 KiB.
 O p95 continua acima de 16.7 ms, então o item permanece partial/degraded e
 não há alegação de 60 FPS. Próxima ação: otimizar o p95 e decidir a promoção
 da cena à aparência central.
+
+## 2026-09-11 — AURA Cinema: HTTP/layout e revisão da evidência
+
+Custódia: WS-2026-09-LAUNCHER-P0-ACTIVATION, branch própria
+`codex/aura-cinema-physical-2026-09-11`, após merge da frente anterior em
+`9caa2c223cfb9f901e8c4dde74ed534a396c9bba` (PR #152).
+
+| Item | Commit | Prova |
+|---|---|---|
+| Bloqueio entre conexões HTTP/1.1 persistentes | `035a7f76` | Reprodução TimeoutError antes da correção; 20 testes de ponte, incluindo concorrência sem lançamento duplicado |
+| Capa central encobrindo o título | `1d0a7380` | 11 verificações QML; geometria em Deck, Full HD, ultrawide e escala de texto |
+| Atribuição indevida de desempenho | `b315cd8e` | Inspeção da sonda: cena demonstrativa offscreen, não Launcher; PR #153 corrigida |
+
+Gates: 5.936 testes aprovados, 47 ignorados, zero erros/falhas no JUnit;
+ruff check e format (599 arquivos), mypy (270 arquivos), independência e
+fronteiras aprovados. O runner atribuiu alterações do state real ao daemon
+pré-existente, com aviso de atribuição degradada. O wrapper externo de logging
+falhou ao registrar o exit code após edição do próprio script em execução;
+resumo/JUnit completos preservados e hashes em `09-http-layout-gates.json`.
+
+Release ativa previamente instalada pelo fluxo governado:
+`2.0.0rc1-9caa2c223cfb`; rollback `2.0.0rc1-172c020e03b6`.
+Não houve nova instalação nem reinício/encerramento do KDE nesta correção.
+Capturas anteriores provam somente carousel/detalhes; a captura 07 agora
+registra janela órfã da ponte, conexão recusada e aviso unconfirmed sobreposto.
+O estado operacional do Launcher foi corrigido para degraded.
+
+Reprodução isolada adicional confirmou perda do watcher após saída do CLI:
+filho sintético termina, sessão permanece running e observador retorna unknown.
+Isso ainda não está corrigido. A confirmação de lançamento, lifetime do dono,
+recuperação de desconexão e metadados PID/start_ticks do Steam precedem OSD,
+saves e fade. Nenhuma capacidade ausente foi exposta como sucesso.
+
+Próximo ciclo: corrigir esses contratos, validar erro/retorno na release instalada
+e medir a própria superfície fullscreen. Theme Studio e demais superfícies não
+foram promovidos. Teste físico de boot continua sendo ação exclusiva do operador.
+
+## 2026-09-11 — AURA Cinema: lifetime do observador e resposta do CLI
+
+Custódia: WS-2026-09-LAUNCHER-P0-ACTIVATION, branch
+`codex/aura-cinema-physical-2026-09-11` (PR #153), da mesma frente anterior.
+
+| Item | Commit | Prova |
+|---|---|---|
+| Watcher de sessão morto antes do jogo (sessão running órfã) | `8a400aab` | Subprocessos reais com saída 0/7: sessão persiste closed/failed antes do fim do processo do CLI |
+| Resposta do CLI presa no buffer com watcher vivo | flush de `_emit` | Teste reforçado com `main`/`_emit` reais reprova sem flush; com flush, resposta JSON e humana chegam enquanto o jogo vive |
+
+Incidente registrado: a limpeza de `/tmp` do host apagou o worktree desta
+frente com mudanças não commitadas e o JUnit do gate integral que as provava.
+O worktree foi recriado em caminho durável, os diffs reaplicados a partir do
+registro da sessão (blobs idênticos: `4615fcf8..9f8db5bc`, `fc7b6660..ad05c905`,
+`acd64134..8ec76300`) e os gates re-executados; a execução anterior não foi
+reivindicada sem artefato.
+
+Gates da composição: 5.939 passed, 47 skipped e 1 reprovação de consistência
+de visões geradas (edições de status desta mesma composição), corrigida pela
+regeneração — 16 digests recomputados e 10 testes de status aprovados após
+`status-render --write`. Focados: 61 testes de lifetime/CLI. ruff check e
+format, mypy (270 arquivos), independência e fronteiras aprovados. Artefatos
+em `13-cli-reply-gates.xml`/`.log`.
+
+Release ativa segue `2.0.0rc1-9caa2c223cfb`; rollback `2.0.0rc1-172c020e03b6`.
+Nenhuma instalação nova e nenhum reinício/encerramento do KDE nesta correção.
+Prova física instalada destas mudanças pendente. Confirmação de falha de
+pré-lançamento (requestId ↔ sessionId), desconexão da ponte e rota Steam
+continuam abertos; desenho registrado fora do repositório para o próximo ciclo.
+Nenhuma capacidade ausente foi exposta como sucesso.
+
+## 2026-09-11 — AURA Cinema: contrato de confirmação de lançamento
+
+Custódia: WS-2026-09-LAUNCHER-P0-ACTIVATION, branch
+`codex/aura-cinema-physical-2026-09-11` (PR #153).
+
+| Item | Prova |
+|---|---|
+| Falha pré-spawn sem confirmação deixava a ponte em `awaiting` eterno | Reprodução `preflight_receipt_repro.py` na árvore e no pacote instalado; testes novos reprovam com a correção revertida |
+| Exceção tipada + `notStarted` no CLI | `LaunchNotStartedError` envolve só a fase de preparação; 3 testes novos em `test_cli_emulation.py` (10/10) |
+| Resposta do CLI nunca era consumida (stdout em DEVNULL) | Adapter `launcher_receipt`: worker lê envelope limitado (7/7 testes de subprocesso) |
+| Pedido sem correlação à tentativa | `LaunchRouter` gera requestId; `/launch` responde 200 com requestId; `/session` publica projeção da tentativa e libera em `notStarted` confirmado |
+| QML aceitava falha sem prova do pedido atual | `expectedRequestId` no shell; `notStarted` → `failed` com erro projetado e retry por teclado (7 verificações novas em `check_launcher_shell.qml`) |
+
+Gates: suíte integral `14-launch-confirmation-gates.xml` — 5.953 passed,
+47 skipped e 1 reprovação de consistência de visões geradas (regenerada;
+`status-check` OK e 10 testes de status). ruff check/format, mypy (271
+arquivos), fronteiras e independência verdes. Bateria do launcher: 64+31
+testes. Design e hashes em `design-contrato-confirmacao.md` (fora do repo)
+e `SESSION-NEXT-CYCLE.md`.
+
+Limites desta entrega: rota Steam fora do contrato (rota própria, outro
+item); OSD, saves e desempenho seguem fora; commits do contrato pendentes
+de aplicação pelo bloqueio do gate Mimosa (116 highs pré-existentes em
+`game_stream.py` e `reference/`, fora do diff — linhas para o operador);
+prova física na release instalada continua o fechamento do ciclo. Release
+ativa segue `2.0.0rc1-9caa2c223cfb`; rollback `2.0.0rc1-172c020e03b6`.
+Nenhuma capacidade ausente foi exposta como sucesso.

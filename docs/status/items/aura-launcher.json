@@ -7,10 +7,16 @@
   "implementation": "partial",
   "integration": "isolated",
   "verification": "hw",
-  "operation": "ready",
+  "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "134ae1e91367bfd84f79798821f0cf0dc50296479636aa4de62184b9ee506d13",
+  "scopeDigest": "2d4d6bd635df923414389afaf36d693f6b55ff37a0c549082c2e6e3784a64a46",
   "scopePaths": [
+    "src/steamzero/cli/main.py",
+    "src/steamzero/adapters/emulation.py",
+    "src/steamzero/adapters/launcher_receipt.py",
+    "tests/integration/test_emulation_session_lifetime.py",
+    "tests/integration/test_launcher_receipt.py",
+    "tests/integration/test_cli_emulation.py",
     "docs/00-vision/PROJECT-VISION.md",
     "docs/00-vision/NON-GOALS.md",
     "docs/01-product/AURA-SURFACES.md",
@@ -45,7 +51,11 @@
     "tests/integration/test_launcher_child_lifetime.py",
     "docs/09-operations/evidence/2026-09-04-launcher-qml-orfao",
     "docs/09-operations/evidence/2026-09-04-release-cf9c47e7",
-    "docs/09-operations/evidence/2026-09-05-launcher-p0-loop"
+    "docs/09-operations/evidence/2026-09-05-launcher-p0-loop",
+    "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen",
+    "src/steamzero/adapters/launcher_session.py",
+    "tests/integration/test_launcher_session_observation.py",
+    "tests/unit/test_launcher_cinema.py"
   ],
   "dependsOn": [
     "SZ-AURA-UI",
@@ -53,7 +63,12 @@
   ],
   "knownGaps": [
     "GAP-LAUNCHER-REAL-CATALOG-PHYSICAL",
-    "GAP-LAUNCHER-RETURN-FADES-PHYSICAL"
+    "GAP-LAUNCHER-RETURN-FADES-PHYSICAL",
+    "GAP-AURA-CINEMA-PERFORMANCE-PHYSICAL",
+    "GAP-AURA-CINEMA-TITLE-OCCLUSION",
+    "GAP-AURA-CINEMA-HTTP-KEEPALIVE",
+    "GAP-AURA-LAUNCHER-BRIDGE-DISCONNECT-RECOVERY",
+    "GAP-AURA-LAUNCHER-SESSION-ACK-LIFETIME"
   ],
   "acceptanceCriteria": [
     "Home fullscreen, biblioteca, busca, colecoes e pagina de jogo funcionam por controle.",
@@ -64,6 +79,60 @@
     "O Launcher encontra a biblioteca canonica sozinho, sem depender de --library."
   ],
   "evidence": [
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/14-launch-confirmation-gates.xml",
+      "command": "Contrato de confirmação implementado: LaunchNotStartedError envolve falhas comprovadamente pré-spawn e o CLI publica launchAcknowledgment=notStarted (prova negativa: 2 testes novos reprovam com wrap/branch revertidos). Adapter launcher_receipt captura a resposta JSON do CLI em worker próprio (confirmed/notStarted/unconfirmed/delayed, fds fechados, sem matar o jogo); LaunchRouter gera requestId por pedido (--json; rota Steam sem recibo devolve None); bridge publica requestId no /launch (200), anexa projeção allowlisted da tentativa em /session e LIBERA a tentativa em notStarted confirmado — unconfirmed mantém bloqueio. QML aceita falha sem sessionId somente com o requestId do POST atual (check_launcher_shell.qml: 7 verificações novas). Bateria launcher/CLI: 64+31 testes verdes; ruff check/format, mypy, fronteiras e independência verdes. Prova física na release instalada pendente.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/13-cli-reply-gates.xml",
+      "command": "Gate integral da composição (8a400aab + flush de _emit + teste reforçado): 5.939 passed, 47 skipped e 1 reprovação de consistência de visões geradas, corrigida pela regeneração (16 digests recomputados; 10 testes de status aprovados). Focados: 61 testes de lifetime/CLI; ruff check/format, mypy, independência e fronteiras verdes. Composição recuperada após limpeza de /tmp ter apagado o worktree com diffs não commitados; blobs reaplicados idênticos. Prova instalada pendente; preflight/desconexão não resolvidos.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_emulation_session_lifetime.py",
+      "command": "Teste reforçado passa por main/_emit reais: sem flush, pipe não recebe resposta antes do encerramento (1 failed, 2 passed). Correção em _emit: 4 testes reais de lifetime/resposta JSON e humana passaram, mais 71 testes de CLI. A prova anterior do handler com print(flush=True) não comprovava emissão pelo CLI.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_emulation_session_lifetime.py",
+      "command": "Baseline: 2 falhas, pois o CLI saía e a sessão permanecia running após o filho terminar. Correção local mantém watcher não-daemon: 134 testes passaram junto ao controlador, e os 3 testes finais de lifetime passaram, incluindo resposta de lançamento antes do encerramento do jogo. Gates integrais: 5939 passed, 47 skipped e runner exit 0; prova instalada desta mudança pendente; preflight/desconexão não resolvidos.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/09-http-layout-gates.json",
+      "command": "Commits 035a7f76 e 1d0a7380: 5936 passed, 47 skipped, JUnit sem erros/falhas; ruff check/format, mypy e independence/boundaries verdes. Limites: state real modificado pelo daemon anterior à janela; wrapper externo falhou ao registrar exit code, sem invalidar o resultado completo de pytest. Prova instalada das correções pendente.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/07-bridge-unavailable.png",
+      "command": "2026-09-11 13:27 -03:00, release 2.0.0rc1-9caa2c223cfb, QML PID 3835345 sem supervisor 3835330: consulta autenticada à ponte recusou conexão. Janela mostra LAUNCHER-SESSION-UNCONFIRMED-001 sobreposto à capa e diz que a observação continua. Nenhum jogo iniciado nesta revisão; causa da morte do supervisor não determinada. SHA-256 4333938c163afe1137ff67cce833b47781f0ccc3028254286c83b64086154f01.",
+      "result": "failed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/SESSION-NEXT-CYCLE.md",
+      "command": "Reprodução em subprocesso e DB temporários com CLI/controller de produção: CLI exit 0 em 1,324s, filho sintético termina, sessão permanece running e observador retorna unknown. Script e resultado 08 preservados. Inspeção adicional: preflight pode falhar sem linha canônica; Steam registra PID sem start_ticks. Defeitos abertos, sem alegar correção nem jogo físico.",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_launcher_app.py",
+      "command": "test_keep_alive_model_connection_does_not_block_cinema_or_session reproduziu TimeoutError no servidor HTTPServer HTTP/1.1. Após ThreadingHTTPServer e lock de sessão, 20 testes passaram, incluindo duas conexões persistentes e lançamento concorrente único com catálogo responsivo. Correção ainda não instalada.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/launcher/check_launcher_focus_bootstrap.qml",
+      "command": "Qt6 qmltestrunner offscreen: 11 passed. Teste de geometria mapeia a capa transformada para a cena e exige separação do título/rodapé em Deck 1280x800, texto 2x, Full HD e ultrawide. Prova automatizada, pendente de captura instalada da correção.",
+      "result": "passed"
+    },
     {
       "kind": "test",
       "reference": "tests/unit/test_launcher_navigation.py",
@@ -273,14 +342,26 @@
       "reference": "docs/09-operations/evidence/2026-09-08-ux-audit/README.md",
       "command": "Release 2.0.0rc1-435f9108eeb7: Return/Enter lançou ROM real e o jogo sobreviveu ao encerramento do Launcher; 30 setas para direita e F não alteraram a home. PID Launcher 1702338, capturas 11–15.",
       "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/README.md",
+      "command": "Release ativa 2.0.0rc1-9caa2c223cfb. A ponte /cinema resolveu a cena fullscreen; captura 01 prova cover-flow com foco central e vizinhas reduzidas em fallback. Right moveu o foco horizontal e Enter abriu os detalhes do jogo focado; capturas 02 e 03 provam navegação, fallback de capa/descrição, ação Jogar focada e rodapé Enter/Esc sem mouse.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/04-performance.json",
+      "command": "Ensaio invalidado para certificação do Launcher: QT_QPA_PLATFORM=offscreen e tema default org.steamzero.asset-recipes-demo em tools/theme_perf_probe.py. Mede sete SceneRepeater da referência, não LauncherMain/Cinema; repetições 05/06 simultâneas. Arquivos preservados para auditoria. FPS, p95, startup e VRAM da própria superfície fullscreen continuam não medidos; os valores não provam aprovação nem reprovação da meta AURA.",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Corrigir e provar o roteamento físico de setas/busca na release 2.0.0rc1-435f9108eeb7; cobertura integral do catálogo, fade de retorno e teste físico de boot continuam abertos.",
+  "nextAction": "Fechar gates de HTTP/layout; corrigir confirmação e lifetime da sessão e recuperação de ponte desconectada antes de promover jogo-retorno. Instalar pelo fluxo governado e validar bootstrap, busca, erro e retorno. Medir a própria superfície fullscreen; depois integrar adapters de pause/OSD/saves/mídia e fade. Boot físico permanece do operador.",
   "activeWorkstreams": [
     "WS-2026-08-AURA-LAUNCHER",
     "WS-2026-09-LAUNCHER-P0-ACTIVATION",
     "WS-2026-09-LAUNCHER-P0-LOOP"
   ],
-  "updatedAt": "2026-09-05",
+  "updatedAt": "2026-09-11",
   "notes": "Baseline registrado antes de comecar: zero artefatos. src/steamzero/launcher, src/steamzero/ui/qml/launcher e tests/qml/launcher nao existiam, e o escopo do item declarava os tres — o digest nem podia ser calculado. Os dois que seguem sem artefato sairam do escopo e voltam quando existirem. Primeiro slice do vertical: o modelo de foco da home, no dominio. Num launcher por controle nao ha mouse para resgatar o usuario, entao o contrato nao e 'todo no tem saida' e sim conectividade: de qualquer no o direcional devolve ao foco inicial. Home vazia cai num no de acao com LAUNCHER-FOCUS-EMPTY-001 em vez de ficar sem foco; secao sem itens nao vira linha alcancavel; linha de um item so recusa a volta horizontal, que pareceria movimento sem mover. Um teste de mutacao mostrou que a volta a esquerda nao estava coberta, e a lacuna foi fechada. Segundo slice: a home renderiza as secoes e move o foco aplicando o mapa — o QML nao escolhe vizinho, nao deduz coluna e nao inventa destino, senao a garantia de 'sem becos' provada no dominio nao valeria para o que o usuario navega. Direcao sem destino mantem o foco onde esta, porque mover para destino nulo apagaria o foco. Um erro proprio ficou registrado no componente: o indice de itens era um array preenchido por push no Component.onCompleted e zerava quando outro binding passava a le-lo; agora e derivado das secoes. Terceiro slice: pagina de jogo e o contrato de retorno. Acao bloqueada continua visivel com o motivo — esconder faria procurar o que nao existe, e mostrar sem explicar faria apertar sem entender o silencio; o foco nunca comeca nem para numa acao desabilitada. O contexto de lancamento atravessa processos, porque o item 5 da DoD exige reiniciar o launcher sem derrubar o jogo. Como a biblioteca muda enquanto o jogo roda, o foco salvo pode nao existir na volta: cai no vizinho da mesma secao com LAUNCHER-RETURN-MISSING-001, em vez de voltar ao topo da home e perder o lugar do usuario. Contexto corrompido nao derruba o retorno. Quarto slice: lancamento real e retorno. O jogo nasce em sessao propria, entao um sinal dirigido ao grupo do launcher — Ctrl+C no terminal ou o systemd encerrando o escopo — nao o leva junto; isso e o item 5 da DoD e so se prova com processo de verdade. O contexto vai para disco ANTES do spawn: gravar depois abriria uma janela em que o jogo ja roda e o lugar do usuario ainda nao foi salvo. O primeiro teste desse contrato nao provava nada: matava so o processo pai, e no Linux o filho e reparentado ao init e sobrevive de qualquer jeito. Passou a derrubar o grupo, e ai o mutante sem start_new_session reprova. A primeira versao do modulo tambem fazia I/O e subprocess a mao; o gate de fronteiras recusou com razao — a escrita atomica ja existia em core.fs e subprocess pertence aos adapters, entao o spawn virou adapters/launcher_process.py e o dominio recebe por injecao. Quinto slice: o shell costura home e pagina de jogo no mesmo processo. Ele guarda de onde o usuario saiu e devolve exatamente ali na volta — cair no topo da home depois de fechar um jogo obrigaria a percorrer a biblioteca de novo a cada partida. O foco de saida viaja junto no pedido de lancamento, porque e ele que o contexto grava. Contexto apontando para item que sumiu cai no foco inicial em vez de deixar o shell sem foco. O shell nao resolve foco nem decide acoes: a home aplica o mapa do dominio e a pagina recebe as acoes ja decididas; aqui so ha a costura e o contexto. Sexto slice: o entry point steamzero-launcher. Segue o desenho ja usado pela central — servidor em loopback, token por execucao e o QML como processo separado. O token nao e formalidade: sem ele qualquer processo local dispararia jogos na maquina do usuario. A fonte da biblioteca e injetada por --library. A varredura real do acervo roda por jobs assincronos e liga-la aqui seria integracao de fachada; sem biblioteca o Launcher abre assim mesmo, com a home vazia acionavel que o dominio resolve, porque primeira execucao sem acervo e o caso comum e nao erro. Runtime Qt ausente vira codigo de saida, nao traceback. O item permanece planned: falta ligar a biblioteca real, instalar a release e capturar a primeira evidencia fisica com jogo lancado de verdade. Nada aqui promove AURA UI ou Theme Engine. 2026-08-24: fonte da biblioteca ligada ao entry point. Eram DOIS defeitos empilhados: o Launcher so lia o arquivo de --library, e quem abre pelo entry point nao passa argumento; e _read_library so aceitava lista crua, entao apontar --library para a propria biblioteca canonica, que e {'games': [...]}, devolvia vazio do mesmo jeito. O segundo estava escondido atras do primeiro. P0 corrigido: o contrato de identificador exigia letra inicial e recusava 147 dos 231 jogos do acervo real (ids hex de 24 chars, 63% comecando por digito), fazendo steamzero-launcher encerrar antes da home. Dois defeitos somados: o contrato estreito e, em _sections_from_catalog, um except que presumia culpa da secao e repetia fora do try, transformando um registro invalido em queda da home inteira. O contrato estava duplicado em cinco regexes e tres modulos, o que garantiria correcao parcial; agora mora em launcher/identifiers.py. A fixture existente usava um id hex iniciado por letra, e por isso nenhum teste pegou o defeito. Segundo P0, exposto pela correcao do primeiro: resolve_home_focus levantava ValueError acima de MAX_SECTIONS=12 e o acervo real tem 13 plataformas — o projeto empacota 61 manifests, ou seja, a salvaguarda estava uma ordem de grandeza abaixo do proprio dominio. Duas correcoes: o teto passou a cobrir os manifests com folga para colecoes, e estourar o teto agora corta com LAUNCHER-FOCUS-TRUNCATED-001 em vez de levantar, porque o numero de secoes vem do acervo do usuario e nenhum dado dele pode impedir o Launcher de abrir (secao 8). A verificacao anterior deste agente parou em _sections_from_catalog e afirmou que 231 jogos chegavam a home; a home so existe depois do mapa de foco, e la ela nao montava. A fronteira de verificacao era conveniente, nao a real. Validação independente em 2026-09-02: o harness `check_launcher_activation.qml` chama `card.activate()`/`home.activateCurrent()` diretamente e NÃO envia gesto. Removendo os `Keys.onPressed` do cartão e da home ele continuava passando — o mesmo ponto cego do defeito original, em que `openGame()` existia e o gesto não chegava. Acrescentado `check_launcher_gestures.qml` (QtTest), que envia Return, Space e clique reais e reprova nos quatro cenários sem os handlers. O resumo do acervo publicado à home deixou de inventar `filesFound`. Defeito de processo corrigido em 2026-09-04: o wrapper esperava o qml6 com wait() e mais nada, entao morrendo o wrapper a cena sobrevivia como orfa — janela Wayland com o mesmo titulo (\"SteamZero\") e a mesma classe (\"org.qt-project.qml\") da sessao viva, ja sem a ponte HTTP, que morre junto. Nao foi hipotese: essa janela produziu DOIS diagnosticos errados deste proprio item — as duas janelas coexistindo em 2026-08-27 (\"identidade de janela nao e identidade de release\") e, em 2026-09-04, injecoes de teclado entregues a orfa em vez da sessao. A cena agora nasce sob supervisao com grupo proprio e SIGTERM com prazo antes do SIGKILL, cobrindo retorno, excecao e sinal (SIGTERM do systemd, SIGINT do terminal); SIGKILL no launcher continua fora do alcance de qualquer processo, e nesse caso a orfa some ao fechar a janela. Consequencia para quem for certificar este item: uma janela com titulo e classe corretos deixa de ser evidencia ambigua, mas a validacao fisica do item segue pendente — nada aqui foi provado no host."
 }

@@ -131,6 +131,43 @@ Item {
             harness.check(shell.markUnconfirmed(), "timeout deve registrar ausência de confirmação")
             harness.check(shell.launchState === "launching", "timeout não prova falha")
             harness.check(shell.launchFocused() === false, "timeout não libera lançamento duplicado")
+
+            // Recibo do contrato de confirmação: falha sem sessionId só vale
+            // para o pedido atual, e unconfirmed nunca fabrica conclusão.
+            shell.expectedRequestId = "req-current"
+            harness.check(shell.observeSession({gameId: "hades", state: "failed",
+                                                attempt: {requestId: "req-old",
+                                                          state: "notStarted"}}) === false,
+                          "recibo notStarted de outra tentativa não encerra o pedido atual")
+            harness.check(shell.launchState === "launching",
+                          "recibo de tentativa antiga não altera o lançamento")
+            shell.expectedRequestId = ""
+            harness.check(shell.observeSession({gameId: "hades", state: "failed",
+                                                attempt: {requestId: "req-current",
+                                                          state: "notStarted"}}) === false,
+                          "falha sem sessionId exige o requestId publicado pelo POST")
+            shell.expectedRequestId = "req-current"
+            harness.check(shell.observeSession({gameId: "hades", state: "failed",
+                                                attempt: {requestId: "req-current",
+                                                          state: "unconfirmed"}}) === false,
+                          "recibo unconfirmed não pode fabricar falha")
+            harness.check(shell.launchState === "launching",
+                          "unconfirmed mantém a observação canônica como árbitro")
+            harness.check(shell.observeSession({gameId: "hades", state: "failed",
+                                                attempt: {requestId: "req-current",
+                                                          state: "notStarted",
+                                                          error: {code: "E-COMPONENT-DEGRADED",
+                                                                  manualAction: "defina o emulador"}}}) === true,
+                          "notStarted confirmado precisa falhar o lançamento")
+            harness.check(shell.launchState === "failed",
+                          "notStarted precisa terminar no estado failed")
+            harness.check(shell.launchError.indexOf("E-COMPONENT-DEGRADED") >= 0
+                          && shell.launchError.indexOf("defina o emulador") >= 0,
+                          "o erro projetado precisa aparecer na área de falha")
+            harness.check(shell.launchFocused() === true,
+                          "falha confirmada antes do spawn libera nova tentativa")
+            harness.check(harness.launched.length === 2, "a nova tentativa precisa chegar à ponte")
+
             harness.check(shell.observeSession({gameId: "hades", sessionId: "new-session",
                                                 state: "running"}) === true,
                           "a sessão canônica precisa confirmar a execução")

@@ -69,6 +69,9 @@ Window {
 
     property bool sessionPollPending: false
     property int launchGeneration: 0
+    // requestId do POST atual: é ele que autoriza o shell a aceitar uma falha
+    // sem sessionId — resposta de tentativa antiga não altera pedido novo.
+    property string launchRequestId: ""
 
     function pollSession() {
         const shell = root._activeLauncherShell()
@@ -423,11 +426,26 @@ Window {
                     root._request("POST", "/launch",
                                   {"gameId": gameId, "focusId": focusId},
                                   function(status, text) {
-                                      if (status === 204)
+                                      if (status === 200) {
+                                          try {
+                                              const payload = JSON.parse(text)
+                                              root.launchRequestId = payload
+                                                  && payload.requestId
+                                                  ? String(payload.requestId) : ""
+                                          } catch (error) {
+                                              root.launchRequestId = ""
+                                          }
+                                          launcherShell.expectedRequestId = root.launchRequestId
                                           root.pollSession()
-                                      else
+                                      } else if (status === 204) {
+                                          // Ponte sem contrato de recibo (release
+                                          // anterior): a sessão canônica segue sendo
+                                          // a única fonte de confirmação.
+                                          root.pollSession()
+                                      } else {
                                           launcherShell.failLaunch(
                                               root.launchErrorText(status, text))
+                                      }
                                   })
                 }
                 onSearchRequested: function() {
