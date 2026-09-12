@@ -21,7 +21,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-TOOLS | 39 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AURA-ASSET-SANITIZACAO | 2 | 1 | 1 | unit |  |
 | SZ-AURA-CONTRACTS | 38 | 3 | 3 | unit |  |
-| SZ-AURA-LAUNCHER | 232 | 46 | 35 | hw |  |
+| SZ-AURA-LAUNCHER | 235 | 47 | 36 | hw |  |
 | SZ-AURA-METADATA | 23 | 10 | 10 | unit |  |
 | SZ-AURA-PLATFORM-EXECUTION-PLAN | 5 | 1 | 0 | none |  |
 | SZ-AURA-UI | 16 | 5 | 4 | unit |  |
