@@ -164,6 +164,16 @@ Item {
             harness.check(shell.launchError.indexOf("E-COMPONENT-DEGRADED") >= 0
                           && shell.launchError.indexOf("defina o emulador") >= 0,
                           "o erro projetado precisa aparecer na área de falha")
+            const overlay = shell.children[shell.children.length - 1]
+            const errorColumn = overlay.children[0]
+            const errorText = errorColumn.children[0]
+            const retry = errorColumn.children[1]
+            harness.check(overlay.objectName === "launchFailureOverlay" && overlay.color.a >= 0.9,
+                          "a falha precisa ocultar a página, não sobrepor texto translúcido")
+            harness.check(errorText.objectName === "launchFailureText"
+                          && retry.objectName === "launchFailureRetry"
+                          && errorText.height <= overlay.height - retry.height - 96,
+                          "a mensagem precisa caber na área reservada acima do retry")
             harness.check(shell.launchFocused() === true,
                           "falha confirmada antes do spawn libera nova tentativa")
             harness.check(harness.launched.length === 2, "a nova tentativa precisa chegar à ponte")
