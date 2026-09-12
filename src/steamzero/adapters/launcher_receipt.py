@@ -16,9 +16,11 @@ de vida canônico); encerrá-lo aqui destruiria a observação da sessão.
 from __future__ import annotations
 
 import json
+import os
 import selectors
 import subprocess
 import threading
+import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -87,7 +89,10 @@ def _classify(payload: Any, expected_game_id: str) -> Receipt:
             return Receipt(state=_UNCONFIRMED, reason="game-mismatch")
         return Receipt(state=_CONFIRMED, session_id=session_id, game_id=expected_game_id)
     if payload.get("status") == "failed" and payload.get("ok") is False:
-        acknowledgment = (payload.get("error") or {}).get("launchAcknowledgment")
+        raw_error = payload.get("error")
+        if not isinstance(raw_error, Mapping):
+            return Receipt(state=_UNCONFIRMED, reason="malformed")
+        acknowledgment = raw_error.get("launchAcknowledgment")
         if acknowledgment == "notStarted":
             error = _project_error(payload.get("error"))
             return Receipt(state=_NOT_STARTED, game_id=expected_game_id, error=error)
@@ -155,26 +160,51 @@ def _watch(attempt: LaunchAttempt, process: subprocess.Popen[bytes]) -> None:
     try:
         if stdout is not None:
             with selectors.DefaultSelector() as selector:
+                os.set_blocking(stdout.fileno(), False)
                 selector.register(stdout, selectors.EVENT_READ)
+                reply = bytearray()
+                deadline = time.monotonic() + REPLY_TIMEOUT_SECONDS
                 deadline_hit = False
-                while attempt.state not in _FINAL_STATES:
-                    events = selector.select(timeout=REPLY_TIMEOUT_SECONDS)
+                while True:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0 and not deadline_hit:
+                        deadline_hit = True
+                        attempt._delay()
+                    events = selector.select(
+                        timeout=REPLY_TIMEOUT_SECONDS if deadline_hit else max(0, remaining)
+                    )
                     if not events:
-                        if not deadline_hit:
-                            deadline_hit = True
-                            attempt._delay()
                         continue
-                    line = stdout.readline(_MAX_REPLY_BYTES)
-                    if not line:
+                    try:
+                        chunk = os.read(stdout.fileno(), 65536)
+                    except BlockingIOError:
+                        continue
+                    if attempt.state in _FINAL_STATES:
+                        # Drain without retention: additional output must not
+                        # fill the pipe and block the CLI's session observer.
+                        if not chunk:
+                            break
+                        continue
+                    if not chunk and not reply:
                         attempt._settle(Receipt(state=_UNCONFIRMED, reason="eof"))
                         break
+                    line, separator, _ = chunk.partition(b"\n")
+                    if len(reply) + len(line) >= _MAX_REPLY_BYTES:
+                        attempt._settle(Receipt(state=_UNCONFIRMED, reason="oversized"))
+                        reply.clear()
+                        continue
+                    reply.extend(line)
+                    if chunk and not separator:
+                        continue
                     try:
-                        payload = json.loads(line.decode("utf-8"))
-                    except (ValueError, UnicodeDecodeError):
+                        payload = json.loads(reply.decode("utf-8"))
+                    except (ValueError, UnicodeDecodeError, RecursionError):
                         attempt._settle(Receipt(state=_UNCONFIRMED, reason="malformed"))
+                    else:
+                        attempt._settle(_classify(payload, attempt.game_id))
+                    reply.clear()
+                    if not chunk:
                         break
-                    attempt._settle(_classify(payload, attempt.game_id))
-                    break
         # O CLI vive até o fim do jogo (dono do ciclo canônico). Esperar sem
         # matar: o reap evita zumbi e o fechamento da nossa ponta de stdout
         # não afeta um filho que só escreveu o envelope e nunca mais volta.

@@ -182,3 +182,62 @@ def test_slow_reply_reports_delay_before_confirming(tmp_path: Path, monkeypatch)
     assert attempt.state in {"pending", "delayed"}
     assert _settled(attempt, "confirmed", timeout=5.0)
     assert attempt.outcome()["sessionId"] == "sess-3"
+
+
+def test_partial_reply_reports_delay_and_later_confirms(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setattr(launcher_receipt, "REPLY_TIMEOUT_SECONDS", 0.1)
+    gate = tmp_path / "finish-reply"
+    script = (
+        "import os,sys,time\n"
+        "sys.stdout.write('{');sys.stdout.flush()\n"
+        "deadline=time.monotonic()+5\n"
+        "while not os.path.exists(sys.argv[1]) and time.monotonic()<deadline: time.sleep(.01)\n"
+        'sys.stdout.write(\'"ok":true,"data":{"gameId":"celeste","sessionId":"partial"}}\\n\')\n'
+        "sys.stdout.flush()\n"
+    )
+    attempt = spawn_receipt(
+        (sys.executable, "-c", script, str(gate)), request_id="partial", game_id="celeste"
+    )
+    try:
+        assert _settled(attempt, "delayed", timeout=1.5)
+    finally:
+        gate.touch()
+        _wait_exit(attempt.pid)
+    assert _settled(attempt, "confirmed")
+
+
+def test_non_object_error_is_malformed_without_worker_exception() -> None:
+    receipt = launcher_receipt._classify(
+        {"ok": False, "status": "failed", "error": "invalid"}, "celeste"
+    )
+    assert receipt.state == "unconfirmed"
+    assert receipt.reason == "malformed"
+
+
+def test_output_after_reply_is_drained_without_blocking_child(tmp_path: Path) -> None:
+    finished = tmp_path / "finished"
+    envelope = json_envelope({"ok": True, "data": {"gameId": "celeste", "sessionId": "drain"}})
+    script = (
+        "import pathlib,sys\n"
+        f"sys.stdout.write({envelope!r});sys.stdout.flush()\n"
+        "sys.stdout.write('x' * (2 << 20));sys.stdout.flush()\n"
+        "pathlib.Path(sys.argv[1]).touch()\n"
+    )
+    attempt = spawn_receipt(
+        (sys.executable, "-c", script, str(finished)), request_id="drain", game_id="celeste"
+    )
+    assert _settled(attempt, "confirmed")
+    _wait_exit(attempt.pid)
+    assert finished.exists()
+
+
+def test_oversized_reply_is_rejected_and_child_can_exit(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setattr(launcher_receipt, "_MAX_REPLY_BYTES", 256)
+    attempt = spawn_receipt(
+        (sys.executable, "-c", "import sys;sys.stdout.write('x' * (2 << 20));sys.stdout.flush()"),
+        request_id="oversized",
+        game_id="celeste",
+    )
+    assert _settled(attempt, "unconfirmed")
+    assert attempt.outcome()["reason"] == "oversized"
+    _wait_exit(attempt.pid)

@@ -367,6 +367,20 @@ class LauncherBridge:
             if self._pending_game == game_id:
                 self._pending_game = None
             return {**result, "state": "failed", "sessionId": None, "attempt": outcome}
+        if outcome is not None:
+            receipt_state = outcome.get("state")
+            receipt_session = outcome.get("sessionId")
+            if receipt_state != "confirmed" or result.get("sessionId") != receipt_session:
+                # A observação só pertence a ESTE pedido depois que o recibo
+                # confirmar o sessionId exato. Uma sessão diferente do mesmo
+                # jogo pode ter sido criada externamente; pending/delayed ou
+                # unconfirmed também nunca fabricam essa correlação.
+                return {
+                    "gameId": game_id,
+                    "state": "awaiting",
+                    "sessionId": None,
+                    "attempt": outcome,
+                }
         if (
             game_id in self._previous_sessions
             and result.get("sessionId") == self._previous_sessions[game_id]
