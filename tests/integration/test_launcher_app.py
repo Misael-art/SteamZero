@@ -601,6 +601,13 @@ def test_confirmed_receipt_observations_follow_the_new_session(tmp_path: Path) -
     awaiting = bridge.session("game")
     assert awaiting["state"] == "awaiting"
     assert awaiting["attempt"]["state"] == "confirmed"
+    # Uma sessão nova do mesmo jogo, mas diferente daquela confirmada pelo
+    # recibo, pode ter sido iniciada externamente e não pertence ao pedido.
+    observed.update(sessionId="sess-unrelated", state="running")
+    mismatched = bridge.session("game")
+    assert mismatched["state"] == "awaiting"
+    assert mismatched["sessionId"] is None
+    assert mismatched["attempt"]["sessionId"] == "sess-new"
     observed.update(sessionId="sess-new", state="running")
     running = bridge.session("game")
     assert running["state"] == "running"
