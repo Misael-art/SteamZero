@@ -51,3 +51,17 @@ A janela instalada `LauncherMain.qml` (PID 3835345) permaneceu aberta sem o supe
 `launcher_process.py:supervised_child` documenta que SIGKILL do supervisor não encerra o filho. Não foi identificado qual evento encerrou o supervisor neste caso; não atribuir a SIGKILL sem evidência. Necessário tratar desconexão da ponte explicitamente na UI e deixar saída/recuperação acionáveis, sem afirmar que a observação continua quando o canal está recusando conexões.
 
 A única ação de interface nesta revisão foi ativar a janela existente para captura. Nenhum jogo foi iniciado, nenhum processo encerrado e nenhuma release alterada.
+
+## Fechamento do lifetime e próxima reprodução
+
+`8a400aab` mantém o watcher vivo até persistir o encerramento, sem retirar o processo do jogo de sua sessão independente. Os testes de subprocesso cobrem saída 0/7 e resposta do CLI enquanto o jogo está vivo. Gates em `10-session-lifetime-gates.json`: 5.939 passed, 47 skipped, exit 0; mudança ainda não instalada.
+
+`preflight_receipt_repro.py` reproduziu a pendência restante tanto na árvore quanto importando o pacote da release instalada. Com banco e XDG temporários, CLI exit 1 sem sessão criada deixou a ponte em `awaiting` e a próxima tentativa bloqueada. Resultado instalado em `11-preflight-failure-diagnostic.json`. É diagnóstico de código da release, não jornada física nem jogo real. A correção precisa transportar o resultado do pedido e correlacioná-lo à sessão; liberar por timeout ou pelo foco da janela não é confirmação segura.
+
+Revisão adicional: o harness inicial imprimia o resultado do handler com flush próprio. O teste reforçado com main/_emit reais reprovou porque a resposta ficava no buffer durante a espera do watcher. Flush explícito corrigiu essa fronteira: 4 testes de ciclo/resposta (JSON e texto) e 71 testes de CLI passaram. Essa emissão é pré-requisito, não implementação da confirmação de falha de preflight.
+
+## Recuperação da composição e gate integral
+
+A limpeza de `/tmp` do host apagou o worktree desta frente com mudanças não commitadas (flush de `_emit`, teste reforçado e atualizações de status) e o JUnit do gate integral que as provava. O worktree foi recriado em caminho durável, os diffs reaplicados a partir do registro da sessão — blobs idênticos (`4615fcf8..9f8db5bc`, `fc7b6660..ad05c905`, `acd64134..8ec76300`) — e os gates re-executados; a execução anterior não foi reivindicada sem artefato.
+
+Gate integral reaplicado (`13-cli-reply-gates.xml`, caminho durável): 5.939 passed, 47 skipped e 1 reprovação de consistência de catálogo/visões geradas, causada pelas próprias edições de status desta composição e corrigida pela regeneração (`status-render --write`, digests recomputados em 16 itens); 10 testes de status aprovados depois da regeneração. Focados: 61 testes de lifetime/CLI. ruff check/format, mypy, independência e fronteiras verdes na composição. Mudança ainda não instalada; preflight/desconexão seguem abertos.

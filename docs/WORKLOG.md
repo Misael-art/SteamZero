@@ -10345,3 +10345,34 @@ saves e fade. Nenhuma capacidade ausente foi exposta como sucesso.
 Próximo ciclo: corrigir esses contratos, validar erro/retorno na release instalada
 e medir a própria superfície fullscreen. Theme Studio e demais superfícies não
 foram promovidos. Teste físico de boot continua sendo ação exclusiva do operador.
+
+## 2026-09-11 — AURA Cinema: lifetime do observador e resposta do CLI
+
+Custódia: WS-2026-09-LAUNCHER-P0-ACTIVATION, branch
+`codex/aura-cinema-physical-2026-09-11` (PR #153), da mesma frente anterior.
+
+| Item | Commit | Prova |
+|---|---|---|
+| Watcher de sessão morto antes do jogo (sessão running órfã) | `8a400aab` | Subprocessos reais com saída 0/7: sessão persiste closed/failed antes do fim do processo do CLI |
+| Resposta do CLI presa no buffer com watcher vivo | flush de `_emit` | Teste reforçado com `main`/`_emit` reais reprova sem flush; com flush, resposta JSON e humana chegam enquanto o jogo vive |
+
+Incidente registrado: a limpeza de `/tmp` do host apagou o worktree desta
+frente com mudanças não commitadas e o JUnit do gate integral que as provava.
+O worktree foi recriado em caminho durável, os diffs reaplicados a partir do
+registro da sessão (blobs idênticos: `4615fcf8..9f8db5bc`, `fc7b6660..ad05c905`,
+`acd64134..8ec76300`) e os gates re-executados; a execução anterior não foi
+reivindicada sem artefato.
+
+Gates da composição: 5.939 passed, 47 skipped e 1 reprovação de consistência
+de visões geradas (edições de status desta mesma composição), corrigida pela
+regeneração — 16 digests recomputados e 10 testes de status aprovados após
+`status-render --write`. Focados: 61 testes de lifetime/CLI. ruff check e
+format, mypy (270 arquivos), independência e fronteiras aprovados. Artefatos
+em `13-cli-reply-gates.xml`/`.log`.
+
+Release ativa segue `2.0.0rc1-9caa2c223cfb`; rollback `2.0.0rc1-172c020e03b6`.
+Nenhuma instalação nova e nenhum reinício/encerramento do KDE nesta correção.
+Prova física instalada destas mudanças pendente. Confirmação de falha de
+pré-lançamento (requestId ↔ sessionId), desconexão da ponte e rota Steam
+continuam abertos; desenho registrado fora do repositório para o próximo ciclo.
+Nenhuma capacidade ausente foi exposta como sucesso.

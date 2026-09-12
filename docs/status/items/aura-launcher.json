@@ -9,8 +9,11 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "284b51effe6e2463b8a70d10e8d735187833740ebefbf487647fa270b6a54615",
+  "scopeDigest": "7256183d75706ac651bd2b1684eff0345e2aaabaa976e02752f997632bfaa705",
   "scopePaths": [
+    "src/steamzero/cli/main.py",
+    "src/steamzero/adapters/emulation.py",
+    "tests/integration/test_emulation_session_lifetime.py",
     "docs/00-vision/PROJECT-VISION.md",
     "docs/00-vision/NON-GOALS.md",
     "docs/01-product/AURA-SURFACES.md",
@@ -73,6 +76,24 @@
     "O Launcher encontra a biblioteca canonica sozinho, sem depender de --library."
   ],
   "evidence": [
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/13-cli-reply-gates.xml",
+      "command": "Gate integral da composição (8a400aab + flush de _emit + teste reforçado): 5.939 passed, 47 skipped e 1 reprovação de consistência de visões geradas, corrigida pela regeneração (16 digests recomputados; 10 testes de status aprovados). Focados: 61 testes de lifetime/CLI; ruff check/format, mypy, independência e fronteiras verdes. Composição recuperada após limpeza de /tmp ter apagado o worktree com diffs não commitados; blobs reaplicados idênticos. Prova instalada pendente; preflight/desconexão não resolvidos.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_emulation_session_lifetime.py",
+      "command": "Teste reforçado passa por main/_emit reais: sem flush, pipe não recebe resposta antes do encerramento (1 failed, 2 passed). Correção em _emit: 4 testes reais de lifetime/resposta JSON e humana passaram, mais 71 testes de CLI. A prova anterior do handler com print(flush=True) não comprovava emissão pelo CLI.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_emulation_session_lifetime.py",
+      "command": "Baseline: 2 falhas, pois o CLI saía e a sessão permanecia running após o filho terminar. Correção local mantém watcher não-daemon: 134 testes passaram junto ao controlador, e os 3 testes finais de lifetime passaram, incluindo resposta de lançamento antes do encerramento do jogo. Gates integrais: 5939 passed, 47 skipped e runner exit 0; prova instalada desta mudança pendente; preflight/desconexão não resolvidos.",
+      "result": "passed"
+    },
     {
       "kind": "test",
       "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/09-http-layout-gates.json",

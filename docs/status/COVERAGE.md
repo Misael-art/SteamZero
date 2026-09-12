@@ -17,11 +17,11 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-PRIVILEGED | 7 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SCHEMAS | 51 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SERVICE-API | 11 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-TESTS | 451 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-TESTS | 452 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TOOLS | 39 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AURA-ASSET-SANITIZACAO | 2 | 1 | 1 | unit |  |
 | SZ-AURA-CONTRACTS | 38 | 3 | 3 | unit |  |
-| SZ-AURA-LAUNCHER | 222 | 42 | 31 | hw |  |
+| SZ-AURA-LAUNCHER | 227 | 45 | 34 | hw |  |
 | SZ-AURA-METADATA | 23 | 10 | 10 | unit |  |
 | SZ-AURA-PLATFORM-EXECUTION-PLAN | 5 | 1 | 0 | none |  |
 | SZ-AURA-UI | 16 | 5 | 4 | unit |  |
