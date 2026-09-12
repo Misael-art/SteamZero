@@ -27,7 +27,7 @@ import threading
 import time
 from unittest.mock import patch
 from steamzero.adapters import emulation
-from steamzero.cli.main import _cmd_emulation_launch
+from steamzero.cli.main import main as cli_main
 from steamzero.core.state import StateStore
 
 database = Path(sys.argv[1])
@@ -60,8 +60,9 @@ if len(sys.argv) > 3:
         sys.argv[3],
     )
 with patch.object(emulation, 'EmulationController', return_value=controller):
-    envelope, code = _cmd_emulation_launch(['--game-id', 'lifetime-probe'], 'correlation')
-print(json.dumps({'code': code, 'data': envelope['data']}), flush=True)
+    options = [] if len(sys.argv) > 4 and sys.argv[4] == 'human' else ['--json']
+    code = cli_main(['emulation', 'launch', '--game-id', 'lifetime-probe', *options])
+raise SystemExit(code)
 """
 
 
@@ -79,6 +80,7 @@ def test_cli_records_game_exit_before_observer_process_exits(
 ) -> None:
     database = tmp_path / "state.db"
     environment = dict(os.environ)
+    environment.pop("PYTHONUNBUFFERED", None)
     environment["PYTHONPATH"] = str(Path(steamzero.__file__).resolve().parent.parent)
     completed = subprocess.run(
         [sys.executable, "-c", _WORKER, str(database), str(game_exit_code)],
@@ -96,7 +98,7 @@ def test_cli_records_game_exit_before_observer_process_exits(
     while _alive(pid) and time.monotonic() < deadline:
         time.sleep(0.02)
     assert not _alive(pid)
-    assert launched["code"] == 0
+    assert launched["ok"] is True
     with StateStore(database) as store:
         row = store.latest_game_session("lifetime-probe")
     assert row is not None
@@ -106,13 +108,19 @@ def test_cli_records_game_exit_before_observer_process_exits(
     assert observe_game_session(database, "lifetime-probe")["state"] == "closed"
 
 
-def test_cli_publishes_launch_reply_while_game_and_observer_are_alive(tmp_path: Path) -> None:
+@pytest.mark.parametrize("output_mode", ["json", "human"])
+def test_cli_publishes_launch_reply_while_game_and_observer_are_alive(
+    tmp_path: Path, output_mode: str
+) -> None:
     database = tmp_path / "state.db"
     release = tmp_path / "release-game"
     environment = dict(os.environ)
+    # A logging runner may use -u/PYTHONUNBUFFERED; do not let that hide
+    # missing production flushes in the CLI subprocess under test.
+    environment.pop("PYTHONUNBUFFERED", None)
     environment["PYTHONPATH"] = str(Path(steamzero.__file__).resolve().parent.parent)
     with subprocess.Popen(
-        [sys.executable, "-c", _WORKER, str(database), "0", str(release)],
+        [sys.executable, "-c", _WORKER, str(database), "0", str(release), output_mode],
         env=environment,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -123,9 +131,15 @@ def test_cli_publishes_launch_reply_while_game_and_observer_are_alive(tmp_path: 
             with selectors.DefaultSelector() as ready:
                 ready.register(process.stdout, selectors.EVENT_READ)
                 assert ready.select(timeout=10), "CLI must reply before the game is released"
-            launched = json.loads(process.stdout.readline())
-            assert launched["code"] == 0
-            assert _alive(launched["data"]["pid"])
+            reply = process.stdout.readline()
+            if output_mode == "json":
+                assert json.loads(reply)["ok"] is True
+            else:
+                assert reply.strip() == "emulation launch: ok"
+            with StateStore(database) as store:
+                row = store.latest_game_session("lifetime-probe")
+            assert row is not None
+            assert _alive(row["pid"])
             assert process.poll() is None
             assert observe_game_session(database, "lifetime-probe")["state"] == "running"
         finally:

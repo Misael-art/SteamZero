@@ -2121,8 +2121,12 @@ def _emit(env: dict[str, Any], *, json_out: bool) -> None:
     if json_out:
         # stdout PURO: só o envelope (CLI-CONTRACT).
         sys.stdout.write(json.dumps(env, ensure_ascii=False) + "\n")
+        # A session observer may keep this process alive after main returns.
+        # Pipe consumers still need the accepted/error reply immediately.
+        sys.stdout.flush()
         return
     _render_human(env)
+    sys.stdout.flush()
 
 
 def _render_human(env: dict[str, Any]) -> None:
