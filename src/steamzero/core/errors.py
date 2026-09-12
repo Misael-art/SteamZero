@@ -268,3 +268,25 @@ class SteamZeroError(Exception):
             details_ref=self.details_ref,
             locale=locale,
         )
+
+
+class LaunchNotStartedError(SteamZeroError):
+    """Lançamento que comprovadamente não chegou ao spawn do jogo.
+
+    Envolve o ``SteamZeroError`` original da fase de preparação (preflight,
+    melhorias e argv): código e textos exibidos continuam sendo os do erro de
+    origem. O tipo existe para o CLI poder declarar o acknowledgment
+    ``notStarted`` sem inventar garantia em falha posterior ao spawn — erro
+    genérico, saída anormal ou falha do próprio spawn permanecem sem
+    acknowledgment.
+    """
+
+    def __init__(self, original: SteamZeroError) -> None:
+        super().__init__(
+            original.code,
+            detail=original.detail,
+            operation_id=original.operation_id,
+            auto_action=original.auto_action,
+            details_ref=original.details_ref,
+        )
+        self.original = original

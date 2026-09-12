@@ -69,7 +69,7 @@ from steamzero.adapters.steam_shortcuts import SteamShortcutManager
 from steamzero.adapters.storage_summary import collect_storage_summary
 from steamzero.api import contracts
 from steamzero.core import fs, ids, journal, paths, safezip, transaction
-from steamzero.core.errors import SteamZeroError, provider_error_category
+from steamzero.core.errors import LaunchNotStartedError, SteamZeroError, provider_error_category
 from steamzero.core.net import NetworkFailure, fetch_bytes
 from steamzero.core.secret import Secret
 from steamzero.core.session_state import SESSION_OWNER
@@ -1404,31 +1404,39 @@ class EmulationController:
         }
 
     def launch_game(self, game_id: str) -> dict[str, Any]:
-        preflight = self._launch_preflight(game_id)
-        game = preflight["game"]
-        game_settings = preflight["game_settings"]
-        emulator_id = str(preflight["emulator_id"])
-        platform_id = str(preflight["platform_id"])
-        rom = preflight["rom"]
-        profile = preflight["profile"]
-        source_type = preflight["source_type"]
-        flatpak_ref = preflight["flatpak_ref"]
-        payload = preflight["payload"]
-        core_path = preflight["core_path"]
-        # Melhorias são aplicadas ANTES de montar o argv, não apenas antes do
-        # spawn: uma melhoria pode precisar influenciar o próprio comando (core
-        # override, flag de shader, parâmetro de executor). Aplicar depois do
-        # argv faria a melhoria constar como aplicada sem efeito no lançamento
-        # — falha silenciosa que nenhum teste de aplicação pegaria.
-        enhancement_outcome = self._apply_launch_enhancements(game, game_settings, emulator_id)
-        argv = self._build_exec_argv(
-            profile,
-            source_type=source_type,
-            flatpak_ref=flatpak_ref,
-            payload=payload,
-            rom=rom,
-            core_path=core_path,
-        )
+        # A fase de PREPARAÇÃO precede sessão e spawn: qualquer SteamZeroError
+        # aqui é comprovadamente anterior ao spawn e vira LaunchNotStartedError,
+        # para o CLI declarar notStarted e o Launcher liberar a tentativa.
+        # Falha depois da criação de sessão (spawn, PID) NÃO é convertida —
+        # ela já finaliza a sessão canônica e não ganha garantia inventada.
+        try:
+            preflight = self._launch_preflight(game_id)
+            game = preflight["game"]
+            game_settings = preflight["game_settings"]
+            emulator_id = str(preflight["emulator_id"])
+            platform_id = str(preflight["platform_id"])
+            rom = preflight["rom"]
+            profile = preflight["profile"]
+            source_type = preflight["source_type"]
+            flatpak_ref = preflight["flatpak_ref"]
+            payload = preflight["payload"]
+            core_path = preflight["core_path"]
+            # Melhorias são aplicadas ANTES de montar o argv, não apenas antes do
+            # spawn: uma melhoria pode precisar influenciar o próprio comando (core
+            # override, flag de shader, parâmetro de executor). Aplicar depois do
+            # argv faria a melhoria constar como aplicada sem efeito no lançamento
+            # — falha silenciosa que nenhum teste de aplicação pegaria.
+            enhancement_outcome = self._apply_launch_enhancements(game, game_settings, emulator_id)
+            argv = self._build_exec_argv(
+                profile,
+                source_type=source_type,
+                flatpak_ref=flatpak_ref,
+                payload=payload,
+                rom=rom,
+                core_path=core_path,
+            )
+        except SteamZeroError as exc:
+            raise LaunchNotStartedError(exc) from exc
 
         session_id: str | None = None
         started_monotonic = self._monotonic()

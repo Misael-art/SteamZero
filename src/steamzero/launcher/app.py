@@ -22,7 +22,12 @@ from pathlib import Path
 from typing import Any
 
 from steamzero.adapters.launcher_catalog import CatalogGame, catalog_games, catalog_summary
-from steamzero.core import paths
+from steamzero.adapters.launcher_receipt import (
+    LaunchAttempt,
+    ReceiptSpawner,
+    spawn_receipt,
+)
+from steamzero.core import ids, paths
 from steamzero.core.errors import SteamZeroError
 from steamzero.launcher.launch import LaunchPlan, Spawn, consume_context, launch_detached
 from steamzero.launcher.navigation import HomeSection
@@ -140,29 +145,53 @@ class LaunchRouter:
         executable: Callable[[], str] | None = None,
         kinds: Mapping[str, str] | None = None,
         steam_executable: Callable[[], str | None] | None = None,
+        receipt_spawner: ReceiptSpawner | None = None,
     ) -> None:
         self._spawn = on_spawn
         self._context_path = Path(context_path)
         self._executable = executable or _steamzero_executable
         self._kinds = dict(kinds or {})
         self._steam_executable = steam_executable or _steam_executable
+        self._receipt_spawner = receipt_spawner or spawn_receipt
 
-    def launch(self, game_id: str, focus_id: str = "") -> None:
-        # O antigo `steamzero-launch <game_id>` era o wrapper de jogo Steam
-        # (`--appid APPID -- %command%`) e não existe como binário publicado;
-        # passava o id canônico de emulação a um comando cujo contrato é outro.
+    def launch(self, game_id: str, focus_id: str = "") -> LaunchAttempt | None:
+        """Lança o jogo e devolve a tentativa com recibo capturável.
+
+        Cada pedido tem um requestId próprio: correlacionar resposta a pedido é
+        o que impede uma tentativa antiga de liberar ou encerrar uma nova. A
+        rota Steam devolve ``None`` — ``steam://rungameid`` não produz recibo
+        JSON e o encerramento do cliente Steam não é o encerramento do jogo; o
+        contrato de confirmação é da rota de emulação.
+        """
+        request_id = ids.new_ulid()
         if self._kinds.get(game_id) == "steam":
-            argv = self._steam_argv(game_id)
-        else:
-            executable = self._executable()
-            argv = (executable, "emulation", "launch", "--game-id", game_id)
+            plan = LaunchPlan(
+                game_id=game_id,
+                argv=self._steam_argv(game_id),
+                focus_id=focus_id or f"{_DEFAULT_SECTION}:{game_id}",
+                context_path=self._context_path,
+            )
+            launch_detached(plan, spawn=self._spawn)
+            return None
+        executable = self._executable()
+        # ``--json`` é o que o adapter de recibo consome: uma linha de
+        # envelope no stdout, aceita ou notStarted, sem saída humana.
+        argv = (executable, "emulation", "launch", "--game-id", game_id, "--json")
         plan = LaunchPlan(
             game_id=game_id,
             argv=argv,
             focus_id=focus_id or f"{_DEFAULT_SECTION}:{game_id}",
             context_path=self._context_path,
         )
-        launch_detached(plan, spawn=self._spawn)
+        collected: list[LaunchAttempt] = []
+
+        def _receipt_spawn(spawn_argv: tuple[str, ...]) -> int:
+            attempt = self._receipt_spawner(spawn_argv, request_id=request_id, game_id=game_id)
+            collected.append(attempt)
+            return attempt.pid
+
+        launch_detached(plan, spawn=_receipt_spawn)
+        return collected[0] if collected else None
 
     def _steam_argv(self, app_id: str) -> tuple[str, ...]:
         if not app_id.isdigit() or len(app_id) > 32:

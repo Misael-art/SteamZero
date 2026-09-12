@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -55,6 +56,16 @@ def _catalog(library: Path, steam_root: Path):
     ), payload
 
 
+def _receipt_recorder(spawned: list[tuple[str, ...]]):
+    """Stub do adapter de recibo: registra o argv sem criar processo."""
+
+    def _spawn(argv, *, request_id: str, game_id: str):
+        spawned.append(tuple(argv))
+        return SimpleNamespace(pid=4242, request_id=request_id, game_id=game_id)
+
+    return _spawn
+
+
 def _focus_after_restart(context_path: Path, catalog):
     """Reproduz a nova sessão: consome o contexto e resolve o foco."""
     restored = consume_context(context_path)
@@ -87,10 +98,11 @@ def test_the_cycle_returns_to_the_same_emulation_card(scenario) -> None:
     _library_path, _steam_root_path, catalog, context_path = scenario
     spawned: list[tuple[str, ...]] = []
     router = LaunchRouter(
-        on_spawn=lambda argv: (spawned.append(tuple(argv)), 4242)[1],
+        on_spawn=lambda argv: 4242,
         context_path=context_path,
         executable=lambda: "/usr/local/bin/steamzero",
         kinds={game.id: game.kind for game in catalog},
+        receipt_spawner=_receipt_recorder(spawned),
     )
 
     router.launch("hollow", "nes-famicom:hollow")
@@ -129,6 +141,7 @@ def test_the_context_is_consumed_so_an_old_return_does_not_hijack_a_new_session(
         context_path=context_path,
         executable=lambda: "/usr/local/bin/steamzero",
         kinds={game.id: game.kind for game in catalog},
+        receipt_spawner=_receipt_recorder([]),
     )
     router.launch("hollow", "nes-famicom:hollow")
 
@@ -148,6 +161,7 @@ def test_a_game_removed_while_playing_lands_in_the_same_section(scenario) -> Non
         context_path=context_path,
         executable=lambda: "/usr/local/bin/steamzero",
         kinds={game.id: game.kind for game in catalog},
+        receipt_spawner=_receipt_recorder([]),
     )
     router.launch("hollow", "nes-famicom:hollow")
 
