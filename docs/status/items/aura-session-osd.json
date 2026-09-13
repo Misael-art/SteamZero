@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AURA-SESSION-OSD",
+  "title": "AURA Pause, OSD e contrato de sessão",
+  "domain": "ui",
+  "implementation": "partial",
+  "integration": "isolated",
+  "verification": "unit",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopeDigest": "591b452104f463baba40a417c9a6c275f43b44bc525c2b659c4b63e95c9a30e0",
+  "scopePaths": [
+    "src/steamzero/domain/session_overlay.py",
+    "tests/unit/test_session_overlay.py"
+  ],
+  "dependsOn": [
+    "SZ-AURA-CONTRACTS",
+    "SZ-AURA-LAUNCHER"
+  ],
+  "knownGaps": [
+    "GAP-AURA-PAUSE-SESSION-ADAPTER",
+    "GAP-AURA-OSD-QML-INTEGRATION",
+    "GAP-AURA-SAVE-STATE-UI"
+  ],
+  "acceptanceCriteria": [
+    "O contrato publica somente ações semânticas allowlisted e capacidades declaradas pelo adapter.",
+    "O read model do overlay preserva estado da sessão, foco selecionado e erro crítico sem ocultá-lo.",
+    "A ausência de capacidade produz ação visível desabilitada com causa e próximo passo.",
+    "A resolução é pura, bounded e não cria um segundo gerenciador de sessão no QML.",
+    "Pause, OSD, save-state gallery e retorno seguro só são promovidos após adapter, integração e evidência física."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_session_overlay.py",
+      "command": ".venv/bin/python -m pytest tests/unit/test_session_overlay.py -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Contrato puro entregue e testado. Próximo lote: implementar o adapter de controle da sessão, expor o read model pela ponte e só depois integrar o overlay QML.",
+  "activeWorkstreams": [
+    "WS-2026-09-AURA-SESSION-OSD"
+  ],
+  "updatedAt": "2026-09-13",
+  "notes": "A10 da execução AURA. Esta frente começa pelo contrato semântico para impedir que o tema invente pausa, volume ou saves. Não promove Theme Engine, Launcher ou capacidade física por si só."
+}
