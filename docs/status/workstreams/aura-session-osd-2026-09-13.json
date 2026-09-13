@@ -6,7 +6,7 @@
   "branch": "codex/aura-session-osd-2026-09-13",
   "baseRef": "02632ae9adbf826d0b34c07a3e22183e9988b906",
   "owner": "codex-aura-session-osd",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/domain/session_overlay.py",
     "tests/unit/test_session_overlay.py",
@@ -19,6 +19,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Contrato puro de read model, capacidades e intents entregue com 6 testes unitários. Próximo: adapter de sessão e ponte; o QML continua sem gerenciador próprio.",
+  "nextAction": "Contrato puro entregue pelo PR #159. A continuação do adapter foi registrada no workstream WS-2026-09-AURA-SESSION-ADAPTER.",
   "updatedAt": "2026-09-13"
 }
