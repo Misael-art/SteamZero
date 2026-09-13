@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "measurement": "installed-launcher-navigation-process",
+  "release": "2.0.0rc1-54bf42f619ec",
+  "sourceCommit": "54bf42f619ec430eed5f5cec83cb9388be5c5f8f",
+  "pid": 3327942,
+  "durationSeconds": 12.253,
+  "samples": 23,
+  "navigationKeysSent": 23,
+  "rssPeakBytes": 159387648,
+  "cpuSeconds": 0.25,
+  "cpuPercentOfOneCore": 2.04,
+  "startupMs": null,
+  "frameTime": null,
+  "vramMeasured": false,
+  "note": "janela LauncherMain instalada real durante navegacao; medicao de processo, nao certificacao de FPS/p95."
+}
