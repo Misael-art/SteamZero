@@ -4,9 +4,9 @@
   "id": "WS-2026-09-AURA-SESSION-COMPOSITION",
   "item": "SZ-AURA-SESSION-OSD",
   "branch": "codex/aura-session-composition-2026-09-13",
-  "baseRef": "abc5d8c067885ebda754f967d0d4ecc8dd5246a3",
+  "baseRef": "79af5e5b20d51fa1d073f37c146a149c09525622",
   "owner": "codex-aura-session-composition",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/adapters/emulation.py",
     "src/steamzero/adapters/session_control.py",
@@ -23,6 +23,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Compor o endpoint local do dono canônico com o Launcher, provar pause/retomada correlacionadas e manter as demais ações desabilitadas.",
+  "nextAction": "Composição física encerrada; próxima frente elegível é AURA-12 save-state gallery.",
   "updatedAt": "2026-09-13"
 }

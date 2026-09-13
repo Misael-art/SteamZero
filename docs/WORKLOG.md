@@ -10428,3 +10428,31 @@ ainda não injeta um `SessionOverlayAdapter` ligado ao dono canônico da sessão
 Também permanece `GAP-AURA-SAVE-STATE-UI`. A próxima frente deve compor esse
 adapter, instalar uma release commitada e capturar sucesso, indisponibilidade e
 recuperação em jogo real antes de promover o OSD como capacidade física.
+
+## 2026-09-13 — Fechamento físico da composição AURA Cinema
+
+Custódia: `WS-2026-09-AURA-SESSION-COMPOSITION`, branch
+`codex/aura-session-evidence-2026-09-13`, baseada no merge `79af5e5b` (PR #163).
+
+| Item | Commit/release | Prova |
+|---|---|---|
+| Launcher → sessão → OSD → render | `79af5e5b20d51fa1d073f37c146a149c09525622`, release `2.0.0rc1-79af5e5b20d5` | Jogo real `'89 Dennou Kyuusei Uranai (Japan)'`: `running → suspended → running`, com F1/Enter e confirmação no State Store |
+| Retorno ao contexto | mesma release | SIGTERM controlado do PID exato publicou `closed`, exibiu `AURA-OSD-SESSION-001` e Esc devolveu o foco ao cartão original |
+| Evidência visual | commit documental desta sessão | `docs/09-operations/evidence/2026-09-13-aura-session-composition/01-baseline.png` a `06-recuperacao.png`, em 1280×800 Wayland fullscreen |
+| Saúde pós-teste | mesma release | `service status` convergido e `state audit` limpo; staging, backups e journals órfãos: zero |
+
+Gates estáticos/documentais: `ruff check`, `ruff format --check`, `mypy` (274
+arquivos), `make independence boundaries` e `make status-check` verdes. A suíte
+integral local foi interrompida com SIGINT após aproximadamente 19 minutos num
+probe QML ativo, sem resultado verde reivindicado; o código funcional já tinha
+CI pós-merge 100% verde no run `34787859486`. A performance instalada registra
+20 eventos de navegação em 0,258839 s, RSS de 162072 KiB e CPU de 4,3%;
+startup, frame time/p95 e VRAM permanecem não medidos validamente.
+
+O host foi instalado somente pelo fluxo governado, sem reboot ou encerramento da
+sessão KDE. Rollback conhecido: `2.0.0rc1-54bf42f619ec`. O item
+`SZ-AURA-SESSION-OSD` fica integrado/verificado em hardware, porém parcial e
+degradado porque catálogo de mídia rico, save-state gallery, troca de disco,
+bezels/fades e métricas completas ainda não têm implementação/prova física.
+A próxima frente elegível é `AURA-12` (save-state gallery), mantendo ações sem
+adapter como indisponíveis.
