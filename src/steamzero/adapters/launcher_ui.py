@@ -115,8 +115,13 @@ class _Handler(BaseHTTPRequestHandler):
             game_id = payload.get("gameId")
             session_id = payload.get("sessionId")
             action_id = payload.get("actionId")
-            if not all(
-                isinstance(value, str) and value for value in (game_id, session_id, action_id)
+            if (
+                not isinstance(game_id, str)
+                or not game_id
+                or not isinstance(session_id, str)
+                or not session_id
+                or not isinstance(action_id, str)
+                or not action_id
             ):
                 self._send(400, {"error": "AURA-OSD-REQUEST-001"})
                 return
