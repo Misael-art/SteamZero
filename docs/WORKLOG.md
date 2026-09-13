@@ -10404,3 +10404,27 @@ de aplicação pelo bloqueio do gate Mimosa (116 highs pré-existentes em
 prova física na release instalada continua o fechamento do ciclo. Release
 ativa segue `2.0.0rc1-9caa2c223cfb`; rollback `2.0.0rc1-172c020e03b6`.
 Nenhuma capacidade ausente foi exposta como sucesso.
+
+## 2026-09-13 — AURA Cinema: consumidor QML do OSD de sessão
+
+Custódia: `WS-2026-09-AURA-SESSION-QML`, branch
+`codex/aura-session-qml-2026-09-13`, baseada no merge `856ed175` do bridge.
+
+| Item | Commit/escopo | Prova |
+|---|---|---|
+| Bridge → QML | `LauncherMain.qml` consulta `/session?gameId=…&overlay=1`, preserva geração/pending e encaminha somente `gameId`, `sessionId`, `actionId` para `/session/action` | 7 harnesses QML do Launcher verdes; a rota autenticada e a correlação permanecem cobertas pelos 46 testes da ponte |
+| Render do OSD | `LauncherSessionOverlay.qml` renderiza ações allowlisted, foco por teclado, estados disabled, diagnóstico, erro crítico, high contrast, escala visual e reduced motion | `check_launcher_session_osd.qml` verde: ação desabilitada não faz dispatch, `pause` preserva o id semântico e erro crítico bloqueia ação |
+| Governança | item `SZ-AURA-SESSION-OSD`, workstream e visões regenerados | `status-check` OK; Ruff, format-check, mypy (273), independence e boundaries verdes |
+
+O teste integral iniciado pelo runner isolado não produziu saída nem processo
+filho observável após vários minutos e foi interrompido com `SIGINT`; portanto
+não é reivindicado como gate verde. Os testes focados e os gates estáticos acima
+passaram. O host não foi mutado, não houve instalação, reboot ou encerramento da
+sessão KDE; a release ativa e o rollback permanecem os registrados pela última
+instalação governada.
+
+O gap `GAP-AURA-SESSION-COMPOSITION` permanece aberto: o entry point do Launcher
+ainda não injeta um `SessionOverlayAdapter` ligado ao dono canônico da sessão.
+Também permanece `GAP-AURA-SAVE-STATE-UI`. A próxima frente deve compor esse
+adapter, instalar uma release commitada e capturar sucesso, indisponibilidade e
+recuperação em jogo real antes de promover o OSD como capacidade física.

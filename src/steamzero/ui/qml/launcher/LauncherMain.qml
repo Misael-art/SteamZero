@@ -76,6 +76,128 @@ Window {
     // sem sessionId — resposta de tentativa antiga não altera pedido novo.
     property string launchRequestId: ""
 
+    // O overlay é uma superfície de leitura/ação sobre a sessão canônica. O
+    // QML não decide capabilities nem executa o emulador: apenas pede o
+    // read model e envia a tripla autenticada ao bridge.
+    property bool sessionOverlayOpen: false
+    property bool sessionOverlayPending: false
+    property int sessionOverlayGeneration: 0
+    property string sessionOverlayGameId: ""
+    property var sessionOverlayModel: null
+    property string sessionOverlayError: ""
+
+    function _overlayErrorText(status, text) {
+        if (status === 0)
+            return qsTr("AURA-OSD-BRIDGE-OFFLINE-001\nA ponte local não respondeu. Tente novamente.")
+        try {
+            const payload = JSON.parse(text)
+            const error = payload && payload.error
+            if (error && typeof error === "object" && error.code) {
+                return [error.code, error.detail || error.message || error.what,
+                        error.impact, error.nextAction || error.action]
+                    .filter(function(value) { return typeof value === "string" && value.length > 0 })
+                    .join("\n")
+            }
+        } catch (error) {}
+        return qsTr("AURA-OSD-BRIDGE-ERROR-002\nA sessão não pôde ser consultada (%1).").arg(status)
+    }
+
+    function refreshSessionOverlay() {
+        if (!root.sessionOverlayOpen || root.sessionOverlayPending
+                || root.sessionOverlayGameId === "")
+            return false
+        const generation = ++root.sessionOverlayGeneration
+        root.sessionOverlayPending = true
+        root._request("GET", "/session?gameId="
+                      + encodeURIComponent(root.sessionOverlayGameId) + "&overlay=1",
+                      null, function(status, text) {
+            if (generation !== root.sessionOverlayGeneration)
+                return
+            root.sessionOverlayPending = false
+            if (status !== 200) {
+                root.sessionOverlayError = root._overlayErrorText(status, text)
+                root.sessionOverlayModel = null
+                return
+            }
+            try {
+                const payload = JSON.parse(text)
+                root.sessionOverlayModel = payload && payload.overlay
+                    ? payload.overlay : null
+                root.sessionOverlayError = root.sessionOverlayModel === null
+                    ? qsTr("AURA-OSD-RESPONSE-003\nA ponte não publicou o modelo do overlay.") : ""
+                sessionOverlay.setModel(root.sessionOverlayModel)
+            } catch (error) {
+                root.sessionOverlayModel = null
+                root.sessionOverlayError = qsTr("AURA-OSD-RESPONSE-004\nA resposta do overlay está ilegível.")
+            }
+        })
+        return true
+    }
+
+    function openSessionOverlay(gameId) {
+        const shell = root._activeLauncherShell()
+        const requested = String(gameId || (shell ? shell.sessionGameId : ""))
+        root.sessionOverlayGameId = requested
+        root.sessionOverlayError = requested === ""
+            ? qsTr("AURA-OSD-SESSION-001\nNenhuma sessão ativa foi identificada.") : ""
+        root.sessionOverlayModel = null
+        root.sessionOverlayOpen = true
+        sessionOverlay.forceActiveFocus()
+        if (requested !== "")
+            root.refreshSessionOverlay()
+        return requested !== ""
+    }
+
+    function closeSessionOverlay() {
+        ++root.sessionOverlayGeneration
+        root.sessionOverlayPending = false
+        root.sessionOverlayOpen = false
+        root.sessionOverlayError = ""
+        root.sessionOverlayModel = null
+        const shell = root._activeLauncherShell()
+        if (shell)
+            shell.forceActiveFocus()
+    }
+
+    function dispatchSessionOverlayAction(actionId) {
+        if (root.sessionOverlayPending || !root.sessionOverlayModel)
+            return false
+        const model = root.sessionOverlayModel
+        if (!model.sessionId || !model.gameId)
+            return false
+        root.sessionOverlayPending = true
+        root.sessionOverlayError = ""
+        root._request("POST", "/session/action", {
+            "gameId": String(model.gameId),
+            "sessionId": String(model.sessionId),
+            "actionId": String(actionId)
+        }, function(status, text) {
+            root.sessionOverlayPending = false
+            if (status !== 200) {
+                root.sessionOverlayError = root._overlayErrorText(status, text)
+                return
+            }
+            root.refreshSessionOverlay()
+        })
+        return true
+    }
+
+    Timer {
+        interval: 1000
+        repeat: true
+        running: root.sessionOverlayOpen && !root.sessionOverlayPending
+        onTriggered: root.refreshSessionOverlay()
+    }
+
+    Shortcut {
+        sequence: "F1"
+        enabled: root.model !== null && !root.searching
+        onActivated: {
+            const shell = root._activeLauncherShell()
+            root.openSessionOverlay(shell ? shell.sessionGameId : "")
+        }
+    }
+
     function pollSession() {
         const shell = root._activeLauncherShell()
         if (!shell || root.sessionPollPending || !shell.sessionGameId)
@@ -109,6 +231,8 @@ Window {
     onActiveChanged: {
         if (active)
             root.pollSession()
+        if (active && root.sessionOverlayOpen)
+            root.refreshSessionOverlay()
     }
 
     function _argument(name) {
@@ -502,5 +626,23 @@ Window {
                 }
             }
         }
+    }
+
+    LauncherSessionOverlay {
+        id: sessionOverlay
+        anchors.fill: parent
+        overlayOpen: root.sessionOverlayOpen
+        overlayModel: root.sessionOverlayModel
+        gameTitle: {
+            const shell = root._activeLauncherShell()
+            return shell && shell.gamePage ? String(shell.gamePage.title || "") : ""
+        }
+        accessibility: root.accessibility
+        requestPending: root.sessionOverlayPending
+        bridgeError: root.sessionOverlayError
+        onActionRequested: function(actionId) {
+            root.dispatchSessionOverlayAction(actionId)
+        }
+        onCloseRequested: root.closeSessionOverlay()
     }
 }

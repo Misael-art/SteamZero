@@ -9,21 +9,25 @@
   "verification": "unit",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopeDigest": "374090340a599f9c4a19cfbbac08485b8e18dcb1b76252c8c73cfce736396501",
+  "scopeDigest": "7dd501c89ccb1e6bbc1428c80277b3bf84bfda674a58270b8091a682ce814b95",
   "scopePaths": [
     "src/steamzero/domain/session_overlay.py",
     "tests/unit/test_session_overlay.py",
     "src/steamzero/adapters/session_overlay.py",
     "tests/unit/test_session_overlay_adapter.py",
     "src/steamzero/adapters/launcher_ui.py",
-    "tests/integration/test_launcher_app.py"
+    "tests/integration/test_launcher_app.py",
+    "src/steamzero/ui/qml/launcher/LauncherMain.qml",
+    "src/steamzero/ui/qml/launcher/LauncherSessionOverlay.qml",
+    "tests/qml/launcher/check_launcher_session_osd.qml",
+    "tests/integration/test_qml_handheld_offscreen.py"
   ],
   "dependsOn": [
     "SZ-AURA-CONTRACTS",
     "SZ-AURA-LAUNCHER"
   ],
   "knownGaps": [
-    "GAP-AURA-OSD-QML-INTEGRATION",
+    "GAP-AURA-SESSION-COMPOSITION",
     "GAP-AURA-SAVE-STATE-UI"
   ],
   "acceptanceCriteria": [
@@ -51,9 +55,15 @@
       "reference": "tests/integration/test_launcher_app.py",
       "command": ".venv/bin/python -m pytest tests/integration/test_launcher_app.py -q",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/launcher/check_launcher_session_osd.qml",
+      "command": ".venv/bin/python -m pytest tests/integration/test_qml_handheld_offscreen.py -k session_osd -q",
+      "result": "passed"
     }
   ],
-  "nextAction": "Read model e dispatch autenticados foram expostos pela ponte. Próximo lote: integrar o overlay QML sem mover a autoridade de sessão para a cena.",
+  "nextAction": "Consumidor QML e ponte estão integrados; falta compor o adapter com o dono canônico da sessão no entry point do Launcher, instalar a release e provar o OSD em jogo real antes da galeria de save-state.",
   "activeWorkstreams": [
     "WS-2026-09-AURA-SESSION-ADAPTER",
     "WS-2026-09-AURA-SESSION-BRIDGE"
