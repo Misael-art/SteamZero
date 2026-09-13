@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-SESSION-BRIDGE",
+  "item": "SZ-AURA-SESSION-OSD",
+  "branch": "codex/aura-session-bridge-2026-09-13",
+  "baseRef": "0c7fe51ae99547ad46340762561b5ef6ac6fa88f",
+  "owner": "codex-aura-session-bridge",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/adapters/launcher_ui.py",
+    "tests/integration/test_launcher_app.py",
+    "docs/status/workstreams/aura-session-bridge-2026-09-13.json"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Ponte autenticada expõe read model e dispatch correlacionado, com 25 testes anteriores mais a prova nova verdes. Próximo: integração QML como consumidor sem lógica de sessão.",
+  "updatedAt": "2026-09-13"
+}

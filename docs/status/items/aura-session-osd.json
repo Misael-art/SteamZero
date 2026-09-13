@@ -9,12 +9,14 @@
   "verification": "unit",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopeDigest": "24d863643e1687847d3c63137a69a8d03c5cc968203420a3501f0a19995c2bce",
+  "scopeDigest": "210298382e9f594f7b7cd9e6c3e8866148bfb65788032ac62977fa28c3ea9f54",
   "scopePaths": [
     "src/steamzero/domain/session_overlay.py",
     "tests/unit/test_session_overlay.py",
     "src/steamzero/adapters/session_overlay.py",
-    "tests/unit/test_session_overlay_adapter.py"
+    "tests/unit/test_session_overlay_adapter.py",
+    "src/steamzero/adapters/launcher_ui.py",
+    "tests/integration/test_launcher_app.py"
   ],
   "dependsOn": [
     "SZ-AURA-CONTRACTS",
@@ -43,11 +45,18 @@
       "reference": "tests/unit/test_session_overlay_adapter.py",
       "command": ".venv/bin/python -m pytest tests/unit/test_session_overlay_adapter.py -q",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_launcher_app.py",
+      "command": ".venv/bin/python -m pytest tests/integration/test_launcher_app.py -q",
+      "result": "passed"
     }
   ],
-  "nextAction": "Adapter de pausa/retomada entregue e testado. Próximo lote: expor o read model e dispatch pela ponte; depois integrar o overlay QML.",
+  "nextAction": "Read model e dispatch autenticados foram expostos pela ponte. Próximo lote: integrar o overlay QML sem mover a autoridade de sessão para a cena.",
   "activeWorkstreams": [
-    "WS-2026-09-AURA-SESSION-ADAPTER"
+    "WS-2026-09-AURA-SESSION-ADAPTER",
+    "WS-2026-09-AURA-SESSION-BRIDGE"
   ],
   "updatedAt": "2026-09-13",
   "notes": "A10 da execução AURA. Esta frente começa pelo contrato semântico para impedir que o tema invente pausa, volume ou saves. Não promove Theme Engine, Launcher ou capacidade física por si só."

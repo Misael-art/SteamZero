@@ -24,7 +24,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AURA-LAUNCHER | 260 | 58 | 41 | hw |  |
 | SZ-AURA-METADATA | 23 | 10 | 10 | unit |  |
 | SZ-AURA-PLATFORM-EXECUTION-PLAN | 5 | 1 | 0 | none |  |
-| SZ-AURA-SESSION-OSD | 4 | 2 | 2 | unit |  |
+| SZ-AURA-SESSION-OSD | 6 | 3 | 3 | unit |  |
 | SZ-AURA-UI | 16 | 5 | 4 | unit |  |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
