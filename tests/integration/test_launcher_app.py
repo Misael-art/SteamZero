@@ -216,6 +216,8 @@ def test_cinema_route_resolves_focus_and_rejects_untrusted_requests(tmp_path: Pa
         route = f"{base}/cinema?focus=library:game29&width=1280&height=800"
         result = _get(route, bridge.token)
         assert result["focusId"] == "library:game29"
+        assert result["performanceTier"] == "balanced"
+        assert result["connectionState"] == "connected"
         assert len(result["items"]) == 7
         assert result["items"][result["selected"]]["id"] == "game29"
         assert result["items"][result["selected"]]["players"] == 2

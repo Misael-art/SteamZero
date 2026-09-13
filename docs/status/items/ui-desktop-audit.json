@@ -52,7 +52,7 @@
     "docs/09-operations/evidence/2026-09-06-ui-contrast-footer-physical",
     "docs/09-operations/evidence/2026-09-08-ux-audit"
   ],
-  "scopeDigest": "e5a8763a92cf8ae861d8b176772fe24bc69556afed19921fbecd947f3bf59ebb",
+  "scopeDigest": "b6c1bd9f3bad080533508a0f1ffccb8863b133f16c76e83002cbee040ab38b9f",
   "dependsOn": [],
   "knownGaps": [
     "GAP-UI-LIVE-LAUNCHER-ROUTING"
@@ -79,6 +79,12 @@
     "O rotulo do item selecionado e legivel em todo tema empacotado, com a cor escolhida por contraste."
   ],
   "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_launcher_request_timeout.py",
+      "command": "2026-09-12: scopeDigest renovado pelo watchdog QML do Launcher. O harness Qt6 exercita peer loopback que aceita e congela, com 9 testes focados verdes; gate integral do lote será registrado após resultado terminal. O estado da auditoria não foi promovido.",
+      "result": "passed"
+    },
     {
       "kind": "test",
       "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/33-aura-failure-recovery-gates.md",

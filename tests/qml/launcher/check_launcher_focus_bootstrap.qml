@@ -116,6 +116,34 @@ Item {
             compare(title.text, "<b>Um título longo</b>")
         }
 
+        function test_cinema_visual_contract_exposes_context_and_accessibility() {
+            const scene = createTemporaryObject(cinemaComponent, harness, {
+                width: 1280, height: 800,
+                currentFocus: "library:game",
+                accessibility: {visualScale: 1, reducedMotion: true},
+                scene: {
+                    focusId: "library:game", selected: 0, collection: "Biblioteca",
+                    performanceTier: "balanced", connectionState: "connected",
+                    viewport: {width: 1280, height: 800},
+                    items: [{title: "AURA Adventure", releaseDate: "2026-01-01",
+                             genres: ["Ação", "RPG"], players: 2, rating: 94,
+                             playtime: 3720, fanartUrl: "file:///missing-fanart.png"}],
+                    layouts: {covers: {entries: [{
+                        x: 420, y: 160, width: 240, height: 360,
+                        scale: 1, opacity: 1, z: 1, highlighted: true, source: ""
+                    }]}}
+                }
+            })
+            verify(scene !== null)
+            wait(0)
+            compare(scene.reducedMotion, true)
+            compare(scene.backdropEffects, true)
+            compare(scene.metadataParts.length, 5)
+            verify(findChild(scene, "cinemaHeader").text.indexOf("Biblioteca") >= 0)
+            compare(findChild(scene, "cinemaConnection").text, "● ONLINE")
+            verify(findChild(scene, "cinemaClock").text.indexOf(":") >= 0)
+        }
+
         function test_search_launch_uses_shell_error_and_real_return_context() {
             const scene = createTemporaryObject(sceneComponent, harness)
             scene.model = harness.model

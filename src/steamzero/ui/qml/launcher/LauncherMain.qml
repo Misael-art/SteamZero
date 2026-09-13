@@ -119,6 +119,14 @@ Window {
         return ""
     }
 
+    // Qt's XMLHttpRequest.timeout is not reliable while a loopback peer has
+    // accepted the connection but is suspended. Keep the deadline in the
+    // scene graph as well: a frozen bridge must return control to the user.
+    Component {
+        id: requestWatchdogComponent
+        Timer { repeat: false }
+    }
+
     function _request(method, path, body, onDone) {
         if (root.api === "" || root.token === "") {
             // Sem canal não há requisição válida; chamar `open` com URL vazia
@@ -128,12 +136,23 @@ Window {
             return
         }
         const request = new XMLHttpRequest()
+        const watchdog = requestWatchdogComponent.createObject(root, {
+            "interval": root.requestTimeoutMs
+        })
         let completed = false
         function finish(status, text) {
             if (completed)
                 return
             completed = true
+            if (watchdog !== null) {
+                watchdog.stop()
+                watchdog.destroy()
+            }
             onDone(status, text)
+        }
+        if (watchdog !== null) {
+            watchdog.triggered.connect(function() { finish(0, "") })
+            watchdog.start()
         }
         request.open(method, root.api + path)
         request.timeout = root.requestTimeoutMs
