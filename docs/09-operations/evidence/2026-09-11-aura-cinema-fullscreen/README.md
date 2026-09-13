@@ -73,3 +73,39 @@ defeito, não evidência de aceite visual.
 
 Não há medição nova válida de FPS, p95, startup ou VRAM nesta etapa. O ciclo
 real não promove OSD, saves, bezels, troca de disco nem fades.
+
+## Revisão de recuperação — 2026-09-12
+
+A release `2.0.0rc1-183a1f0dfce7` (source commit
+`183a1f0dfce75d2a5efdea02b01efd51cc42999b`, CI `34698828661`) instalou e
+convergiu de forma idempotente, com rollback `2.0.0rc1-47511fbe3067`.
+
+`35-installed-preflight-error-corrected-183a1f0d.png` prova a correção física
+do erro pré-spawn: overlay legível, código e detalhe verdadeiro do core
+`mednafen_saturn`; `36-installed-preflight-retry-corrected-183a1f0d.png`
+prova a volta à página de detalhes após retry.
+
+Ao suspender a ponte loopback real, a captura `43-installed-bridge-timeout-183a1f0d.png`
+mostrou a cena presa em “Preparando”: o `XMLHttpRequest.timeout` do Qt não
+vence uma conexão que foi aceita e cujo servidor foi suspenso. É baseline de
+defeito, não aceite. O commit `ee7f70f` adiciona watchdog Timer por requisição,
+com prova automatizada contra peer que aceita e não responde. Requer nova
+release e recaptura física antes de fechar GAP-AURA-LAUNCHER-BRIDGE-DISCONNECT-RECOVERY.
+
+## Gate integral após a correção — 2026-09-12
+
+O gate da composição `ee7f70f` com a correção da corrida de leitura de `/proc`
+executou 5.958 testes aprovados e 47 ignorados. Houve uma única falha, em
+`test_committed_catalog_and_generated_views_are_consistent`, porque o arquivo
+de teste alterado havia tornado o `scopeDigest` do item obsoleto. O JUnit bruto
+está em `34-aura-failure-recovery-gates-rerun.xml`, SHA-256
+`61a53d0a57770111a1ac71b59ba5b4ad7228a0d3ea37e79a1c05c72fbc39ac22`.
+
+O digest foi atualizado para `329b7e015aee080383617681787068148d1eee25bc68f4aef4672b10e53ed3ef`;
+`tests/unit/test_project_status.py`, `make VENV=/mnt/sdcard/Projects/Port_Steam/.venv
+status-check`, Ruff, mypy, independência e fronteiras passaram depois disso.
+Durante a suíte o `steamzero-core` já ativo alterou seus próprios logs/state.db;
+o runner identificou esse escritor externo e não atribuiu a mutação à suíte.
+O state audit posterior devolveu `clean: true`, com zero staging, backup ou
+journal órfão. O gate integral é registrado como parcial por causa da falha
+autorreferente, não como verde retroativo; não houve nova suíte integral.

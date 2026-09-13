@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "38def4d4bc60930442d1d65e70353afa80d706e749464e987ace7397b6217556",
+  "scopeDigest": "67e5553b254fd5a7754794139b47ed7b440b2bd2cffdbe16dfc00b38e9b3bfa5",
   "scopePaths": [
     "src/steamzero/cli/main.py",
     "src/steamzero/adapters/emulation.py",
@@ -81,6 +81,18 @@
   "evidence": [
     {
       "kind": "test",
+      "reference": "tests/integration/test_launcher_request_timeout.py",
+      "command": "Commit ee7f70f: peer loopback aceita GET e congela; o QML precisa devolver status 0 em até 4,5 s. Baseline físico 43 mostrou XMLHttpRequest.timeout inoperante com ponte suspensa; watchdog Timer por requisição fecha o caso. Focados: 9 passed, 39 deselected; prova instalada da correção pendente.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/README.md",
+      "command": "Release 2.0.0rc1-183a1f0dfce7: 35 mostra E-CONTENT-UNSUPPORTED com detalhe mednafen_saturn e overlay legível; 36 mostra retry. Ao suspender o processo da ponte, 43 permaneceu em Preparando após 4 s, defeito físico que abriu ee7f70f. A ponte foi retomada; não houve reboot ou encerramento de KDE.",
+      "result": "partial"
+    },
+    {
+      "kind": "test",
       "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/33-aura-failure-recovery-gates.md",
       "command": "Composição 861a43e: 5.958 passed, 47 skipped em 36m07s; Ruff check verde, 602 arquivos formatados, mypy 271, independência, fronteiras e status-check verdes. JUnit SHA-256 9d3358d8; log bruto excluído por conter argv sensível de processo externo pré-existente.",
       "result": "passed"
@@ -96,6 +108,12 @@
       "reference": "tests/qml/launcher/check_launcher_focus_bootstrap.qml",
       "command": "Commit 861a43e: testes negativos reproduziram descarte do detail allowlisted e overlay com alfa 0x07. Correção prioriza detail/what e ação allowlisted, usa fundo opaco, limita a mensagem, preserva retry por teclado e converte timeout/erro da ponte em LAUNCHER-BRIDGE-OFFLINE-001 acionável após 3 s. Focados do Launcher: 48 passed, 39 deselected.",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen/34-aura-failure-recovery-gates-rerun.xml",
+      "command": "Gate integral da composição ee7f70f + correção da corrida de /proc: 5.958 passed, 47 skipped e uma única falha em test_committed_catalog_and_generated_views_are_consistent, causada pelo scopeDigest obsoleto do próprio teste alterado. JUnit SHA-256 61a53d0a; após atualizar o digest, tests/unit/test_project_status.py e make status-check passaram. Ruff check/format, mypy, independência e fronteiras passaram. O runner registrou somente warning de escritor externo pré-existente (steamzero-core) no state home; nenhuma mutação foi atribuída à suíte.",
+      "result": "partial"
     },
     {
       "kind": "diagnostic",
@@ -380,7 +398,7 @@
       "result": "recorded"
     }
   ],
-  "nextAction": "Publicar e integrar 861a43e, instalar nova release e recapturar erro pré-spawn/retry sem sobreposição. Suspender temporariamente a ponte para provar timeout, mensagem acionável e recuperação após retomada. Medir a própria janela do Launcher; Steam, OSD/saves e fades continuam fora deste lote. Preservar KDE.",
+  "nextAction": "Publicar ee7f70f, instalar release e repetir ponte suspensa → timeout acionável → retomada/retry. Medir a própria janela do Launcher; Steam, OSD/saves e fades continuam fora deste lote. Preservar KDE.",
   "activeWorkstreams": [
     "WS-2026-08-AURA-LAUNCHER",
     "WS-2026-09-LAUNCHER-P0-ACTIVATION",
