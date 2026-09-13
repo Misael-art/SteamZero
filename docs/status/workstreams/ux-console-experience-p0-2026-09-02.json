@@ -27,6 +27,6 @@
         "docs/ACTIVE-WORK.md",
         "docs/WORKLOG.md"
     ],
-    "nextAction": "A release 183a1f0 corrigiu erro pré-spawn/retry fisicamente, mas bridge suspensa revelou XMLHttpRequest.timeout inoperante. ee7f70f adiciona watchdog por requisição e prova contra peer que aceita/congela; fechar gates, publicar, instalar e repetir desconexão/retomada. Preservar KDE.",
+    "nextAction": "A release 183a1f0 corrigiu erro pré-spawn/retry fisicamente; ee7f70f adiciona watchdog contra peer que aceita/congela e 6d01c979 compõe o Cinema visual com backdrop allowlisted, metadata e acessibilidade. Branch publicada; integrar via PR, instalar e recapturar erro/recovery e a cena visual no host. Preservar KDE.",
     "updatedAt": "2026-09-12"
 }

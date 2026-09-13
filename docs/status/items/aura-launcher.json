@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "67e5553b254fd5a7754794139b47ed7b440b2bd2cffdbe16dfc00b38e9b3bfa5",
+  "scopeDigest": "161aeffd58b597fc7873a720042ba67567f036f20e0839654e6695b799e82b66",
   "scopePaths": [
     "src/steamzero/cli/main.py",
     "src/steamzero/adapters/emulation.py",
@@ -79,6 +79,12 @@
     "O Launcher encontra a biblioteca canonica sozinho, sem depender de --library."
   ],
   "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/qml/launcher/check_launcher_focus_bootstrap.qml",
+      "command": "Commit 6d01c979: 4 testes focados do Launcher passaram. A cena Cinema usa MediaEffectLayer allowlisted para backdrop fanart com blur/vignette por tier, aplica blur às capas vizinhas, publica chips de ano/gênero/jogadores/rating/playtime, header com coleção/estado/relógio e respeita reducedMotion. test_launcher_card_gestures.py + test_launcher_app.py: 26 testes anteriores mais 2 de contrato visual passaram; Ruff check/format, mypy, independência e fronteiras verdes.",
+      "result": "passed"
+    },
     {
       "kind": "test",
       "reference": "tests/integration/test_launcher_request_timeout.py",
@@ -398,7 +404,7 @@
       "result": "recorded"
     }
   ],
-  "nextAction": "Publicar ee7f70f, instalar release e repetir ponte suspensa → timeout acionável → retomada/retry. Medir a própria janela do Launcher; Steam, OSD/saves e fades continuam fora deste lote. Preservar KDE.",
+  "nextAction": "PR da branch codex/aura-bridge-watchdog-2026-09-12 aguarda autorização GitHub para integração do commit 6d01c979. Após merge, publicar e instalar release: capturar Cinema visual pós-composição e repetir ponte suspensa → timeout acionável → retomada/retry; medir a própria janela do Launcher. Steam, OSD/saves e fades continuam fora deste lote. Preservar KDE.",
   "activeWorkstreams": [
     "WS-2026-08-AURA-LAUNCHER",
     "WS-2026-09-LAUNCHER-P0-ACTIVATION",
