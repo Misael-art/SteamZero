@@ -19,7 +19,7 @@ import json
 import shutil
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from steamzero.adapters.launcher_catalog import CatalogGame, catalog_games, catalog_summary
 from steamzero.adapters.launcher_receipt import (
@@ -357,7 +357,20 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     accessibility = _host_accessibility()
     from steamzero.adapters.launcher_session import observe_game_session
+    from steamzero.adapters.session_control import resolve_remote_session_control
+    from steamzero.adapters.session_overlay import SessionOverlayAdapter
     from steamzero.launcher.cinema import cinema_metadata
+
+    def observe_session(game_id: str) -> dict[str, Any]:
+        return observe_game_session(paths.state_db(), game_id)
+
+    session_overlay = SessionOverlayAdapter(
+        observe=observe_session,
+        resolve_control=lambda session_id, game_id: cast(
+            Any,
+            resolve_remote_session_control(session_id, game_id, observe=observe_session),
+        ),
+    )
 
     metadata = {
         str(record.get("id")): cinema_metadata(record) for record in library if record.get("id")
@@ -368,7 +381,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         titles=titles,
         covers=covers,
         metadata=metadata,
-        session_observer=lambda game_id: observe_game_session(paths.state_db(), game_id),
+        session_observer=observe_session,
+        session_overlay=session_overlay,
         context_path=context_path,
         on_launch=router.launch,
         accessibility=accessibility,

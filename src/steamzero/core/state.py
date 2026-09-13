@@ -497,6 +497,13 @@ class StateStore:
         ).fetchone()
         return dict(row) if row is not None else None
 
+    def get_game_session(self, session_id: str) -> dict[str, Any] | None:
+        """Lê uma sessão pela identidade canônica, sem escolher outra sessão."""
+        row = self._conn.execute(
+            "SELECT * FROM game_session WHERE id=? LIMIT 1", (session_id,)
+        ).fetchone()
+        return dict(row) if row is not None else None
+
     def active_game_session(self, owner: str) -> dict[str, Any] | None:
         placeholders = ",".join("?" for _ in ACTIVE_SESSION_STATES)
         values = [owner, *sorted(ACTIVE_SESSION_STATES)]

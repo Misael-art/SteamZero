@@ -63,6 +63,11 @@ from steamzero.adapters.scraping.registry import ProviderRegistry
 from steamzero.adapters.scraping.screenscraper import ScreenScraperAdapter
 from steamzero.adapters.scraping.steamgriddb import SteamGridDbAdapter
 from steamzero.adapters.secret_service import SecretServiceStore
+from steamzero.adapters.session_control import (
+    SessionControlOwner,
+    SessionControlServer,
+    control_path,
+)
 from steamzero.adapters.state_store_media import StateStoreGameMediaAdapter
 from steamzero.adapters.state_store_provider_health import StateStoreProviderHealthAdapter
 from steamzero.adapters.steam_shortcuts import SteamShortcutManager
@@ -521,6 +526,7 @@ class EmulationController:
         self._pending: dict[str, _PendingMutation] = {}
         self._bios_library = BiosLibrary()
         self._running_pids: dict[str, int] = {}
+        self._session_control_enabled = True
         # (identidade do arquivo, jogos normalizados, não identificados)
         self._library_cache_memo: tuple[tuple[int, int], list[dict[str, Any]], int] | None = None
         self._background_lock = threading.Lock()
@@ -1439,6 +1445,7 @@ class EmulationController:
             raise LaunchNotStartedError(exc) from exc
 
         session_id: str | None = None
+        control_server: SessionControlServer | None = None
         started_monotonic = self._monotonic()
         if self._process_waiter is not None:
             session_id = self._create_tracked_game_session(game, emulator_id, platform_id)
@@ -1464,6 +1471,25 @@ class EmulationController:
                         pid=pid,
                         start_ticks=self._read_start_ticks(pid),
                     )
+                if getattr(self, "_session_control_enabled", False):
+                    try:
+                        owner = SessionControlOwner(
+                            session_id,
+                            str(game["id"]),
+                            pid,
+                            self._read_start_ticks(pid),
+                            store_factory=self._store_factory,
+                            read_start_ticks=self._read_start_ticks,
+                        )
+                        candidate = SessionControlServer(owner, control_path(session_id))
+                        try:
+                            candidate.start()
+                        except OSError:
+                            candidate.close()
+                            raise
+                        control_server = candidate
+                    except (OSError, ValueError):
+                        _log.warning("controle da sessão %s indisponível", session_id)
                 watcher = threading.Thread(
                     target=self._watch_tracked_game,
                     args=(
@@ -1473,6 +1499,7 @@ class EmulationController:
                         started_monotonic,
                         str(game["id"]),
                         str(game["titleId"]) if isinstance(game.get("titleId"), str) else None,
+                        control_server,
                     ),
                     name=f"steamzero-game-{session_id[-8:]}",
                     # The CLI publishes the launch result and then reaches
@@ -1502,6 +1529,7 @@ class EmulationController:
             "name": str(game["name"]),
             "pid": pid,
             "sessionId": session_id,
+            "controlPath": str(control_path(session_id)) if session_id and control_server else None,
             "argv": argv,
             "enhancementsApplied": enhancement_outcome["applied"],
             "enhancementsTried": enhancement_outcome["tried"],
@@ -1690,6 +1718,7 @@ class EmulationController:
         started_monotonic: float,
         game_id: str,
         title_id: str | None,
+        control_server: SessionControlServer | None = None,
     ) -> None:
         waiter = self._process_waiter
         if waiter is None:
@@ -1714,6 +1743,8 @@ class EmulationController:
                 exit_code=exit_code,
             )
         finally:
+            if control_server is not None:
+                control_server.close()
             self._running_pids.pop(emulator_id, None)
             if title_id is not None:
                 self._session_save_checkpoint(game_id, title_id, emulator_id)
