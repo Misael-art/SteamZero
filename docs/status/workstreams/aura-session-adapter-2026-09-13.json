@@ -6,7 +6,7 @@
   "branch": "codex/aura-session-adapter-2026-09-13",
   "baseRef": "6a884921beae4a6ce151fb3e2a222ebdfb08bdbb",
   "owner": "codex-aura-session-adapter",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/adapters/session_overlay.py",
     "tests/unit/test_session_overlay_adapter.py",
@@ -18,6 +18,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Adapter bounded de sessão entregue com pausa/retomada correlacionadas ao SessionManager. Próximo: expor read model e dispatch pela ponte, sem segundo gerenciador no QML.",
+  "nextAction": "Adapter bounded de sessão entregue e integrado à ponte; composição com o dono canônico segue na frente WS-2026-09-AURA-SESSION-COMPOSITION.",
   "updatedAt": "2026-09-13"
 }

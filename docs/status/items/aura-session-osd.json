@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopeDigest": "7dd501c89ccb1e6bbc1428c80277b3bf84bfda674a58270b8091a682ce814b95",
+  "scopeDigest": "388a3e5f2c7893ae5ea85f50c2347b561c44e4fff48e2117fb55737bcfab4272",
   "scopePaths": [
     "src/steamzero/domain/session_overlay.py",
     "tests/unit/test_session_overlay.py",
@@ -20,14 +20,20 @@
     "src/steamzero/ui/qml/launcher/LauncherMain.qml",
     "src/steamzero/ui/qml/launcher/LauncherSessionOverlay.qml",
     "tests/qml/launcher/check_launcher_session_osd.qml",
-    "tests/integration/test_qml_handheld_offscreen.py"
+    "tests/integration/test_qml_handheld_offscreen.py",
+    "src/steamzero/adapters/session_control.py",
+    "src/steamzero/adapters/emulation.py",
+    "src/steamzero/adapters/launcher_session.py",
+    "src/steamzero/launcher/app.py",
+    "src/steamzero/core/state.py",
+    "tests/unit/test_session_control.py",
+    "tests/integration/test_launcher_session_composition.py"
   ],
   "dependsOn": [
     "SZ-AURA-CONTRACTS",
     "SZ-AURA-LAUNCHER"
   ],
   "knownGaps": [
-    "GAP-AURA-SESSION-COMPOSITION",
     "GAP-AURA-SAVE-STATE-UI"
   ],
   "acceptanceCriteria": [
@@ -63,10 +69,9 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Consumidor QML e ponte estão integrados; falta compor o adapter com o dono canônico da sessão no entry point do Launcher, instalar a release e provar o OSD em jogo real antes da galeria de save-state.",
+  "nextAction": "Composição do pause/retomada com o dono canônico entregue em código e testes; falta publicar a release, instalar e provar o OSD em jogo real antes da galeria de save-state.",
   "activeWorkstreams": [
-    "WS-2026-09-AURA-SESSION-ADAPTER",
-    "WS-2026-09-AURA-SESSION-BRIDGE"
+    "WS-2026-09-AURA-SESSION-COMPOSITION"
   ],
   "updatedAt": "2026-09-13",
   "notes": "A10 da execução AURA. Esta frente começa pelo contrato semântico para impedir que o tema invente pausa, volume ou saves. Não promove Theme Engine, Launcher ou capacidade física por si só."

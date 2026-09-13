@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-SESSION-COMPOSITION",
+  "item": "SZ-AURA-SESSION-OSD",
+  "branch": "codex/aura-session-composition-2026-09-13",
+  "baseRef": "abc5d8c067885ebda754f967d0d4ecc8dd5246a3",
+  "owner": "codex-aura-session-composition",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/adapters/emulation.py",
+    "src/steamzero/adapters/session_control.py",
+    "src/steamzero/adapters/launcher_session.py",
+    "src/steamzero/launcher/app.py",
+    "src/steamzero/core/state.py",
+    "tests/unit/test_session_control.py",
+    "tests/integration/test_launcher_session_composition.py",
+    "docs/status/workstreams/aura-session-composition-2026-09-13.json"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Compor o endpoint local do dono canônico com o Launcher, provar pause/retomada correlacionadas e manter as demais ações desabilitadas.",
+  "updatedAt": "2026-09-13"
+}
