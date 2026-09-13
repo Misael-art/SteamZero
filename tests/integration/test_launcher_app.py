@@ -12,6 +12,7 @@ import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
@@ -19,6 +20,7 @@ import pytest
 from steamzero.adapters.launcher_catalog import catalog_games, catalog_summary
 from steamzero.adapters.launcher_receipt import spawn_receipt
 from steamzero.adapters.launcher_ui import LauncherBridge
+from steamzero.adapters.session_overlay import SessionOverlayAdapter
 from steamzero.launcher.app import build_sections, build_titles, main
 
 
@@ -659,3 +661,73 @@ def test_launch_route_publishes_the_request_id(tmp_path: Path) -> None:
             assert response.status == 200
             body = json.loads(response.read())
     assert body["requestId"] == attempts[0].request_id
+
+
+@dataclass
+class _OverlaySession:
+    id: str = "session-1"
+    game_id: str = "game"
+    state: str = "running"
+
+
+class _OverlayControl:
+    def __init__(self) -> None:
+        self.current = _OverlaySession()
+
+    def suspend(self) -> _OverlaySession:
+        self.current.state = "suspended"
+        return self.current
+
+    def resume(self) -> _OverlaySession:
+        self.current.state = "running"
+        return self.current
+
+
+def test_session_route_exposes_overlay_and_allowlisted_action(tmp_path: Path) -> None:
+    control = _OverlayControl()
+    overlay = SessionOverlayAdapter(
+        lambda game_id: {
+            "gameId": game_id,
+            "sessionId": control.current.id,
+            "state": control.current.state,
+        },
+        lambda session_id, game_id: (
+            control
+            if (session_id, game_id) == (control.current.id, control.current.game_id)
+            else None
+        ),
+    )
+    bridge = LauncherBridge(
+        sections=build_sections([{"id": "game", "title": "Game", "section": "library"}]),
+        context_path=tmp_path / "return.json",
+        on_launch=lambda game, focus: None,
+        session_observer=lambda game: {
+            "gameId": game,
+            "sessionId": control.current.id,
+            "state": control.current.state,
+        },
+        session_overlay=overlay,
+    )
+    with bridge.serving() as base:
+        model = _get(f"{base}/session?gameId=game&overlay=1", bridge.token)
+        assert model["overlay"]["visible"] is True
+        assert next(item for item in model["overlay"]["actions"] if item["id"] == "pause")[
+            "enabled"
+        ]
+        assert (
+            _post(
+                f"{base}/session/action",
+                bridge.token,
+                {"gameId": "game", "sessionId": "session-1", "actionId": "pause"},
+            )
+            == 200
+        )
+        assert control.current.state == "suspended"
+        with pytest.raises(urllib.error.HTTPError) as rejected:
+            _post(
+                f"{base}/session/action",
+                bridge.token,
+                {"gameId": "game", "sessionId": "stale", "actionId": "pause"},
+            )
+        assert rejected.value.code == 409
+        rejected.value.close()

@@ -6,7 +6,7 @@
     "branch": "codex/aura-details-physical-2026-09-13",
     "baseRef": "54bf42f619ec430eed5f5cec83cb9388be5c5f8",
     "owner": "codex-aura-cinema",
-    "state": "active",
+    "state": "closed",
     "exclusivePaths": [
         "src/steamzero/adapters/launcher_receipt.py",
         "tests/integration/test_launcher_receipt.py",
@@ -28,6 +28,6 @@
         "docs/ACTIVE-WORK.md",
         "docs/WORKLOG.md"
     ],
-  "nextAction": "Lote C 000c8bb mergeado em 54bf42f6 e instalado como 2.0.0rc1-54bf42f619ec. Captura física de fullscreen, detalhe, fallback e retorno de foco registrada em 2026-09-13-aura-details-installed. Próximo: manter OSD/saves/discos/fades e FPS/p95/startup/VRAM como itens separados; não alegar mídia quando o catálogo não a publica.",
+  "nextAction": "Lote C e o contrato de confirmação foram entregues e o adapter da ponte segue no workstream WS-2026-09-AURA-SESSION-BRIDGE. A prova física de jogo real, OSD/saves/discos/fades e métricas de frame continuam abertas em seus itens.",
     "updatedAt": "2026-09-13"
 }

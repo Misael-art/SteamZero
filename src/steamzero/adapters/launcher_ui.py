@@ -26,8 +26,10 @@ from typing import Any
 
 from steamzero.adapters.launcher_process import supervised_child
 from steamzero.adapters.launcher_receipt import LaunchAttempt
+from steamzero.adapters.session_overlay import SessionOverlayAdapter
 from steamzero.core.errors import SteamZeroError
 from steamzero.domain.scene_layout import LayoutBounds, LayoutRecipe
+from steamzero.domain.session_overlay import resolve_session_overlay
 from steamzero.launcher.cinema import resolve_cinema_covers
 from steamzero.launcher.navigation import HomeSection, resolve_home_focus
 
@@ -57,7 +59,13 @@ class _Handler(BaseHTTPRequestHandler):
             self._send(200, self._bridge.model())
             return
         if self.path.startswith("/session?"):
-            self._send(200, self._bridge.session(self._query_param("gameId") or ""))
+            self._send(
+                200,
+                self._bridge.session(
+                    self._query_param("gameId") or "",
+                    include_overlay=self._query_param("overlay") == "1",
+                ),
+            )
             return
         if self.path.startswith("/cinema?"):
             try:
@@ -84,7 +92,7 @@ class _Handler(BaseHTTPRequestHandler):
         if not self._authorized():
             self._send(403, {"error": "token inválido"})
             return
-        if self.path != "/launch":
+        if self.path not in {"/launch", "/session/action"}:
             self._send(404, {"error": "rota desconhecida"})
             return
         try:
@@ -102,6 +110,23 @@ class _Handler(BaseHTTPRequestHandler):
             return
         if not isinstance(payload, dict):
             self._send(400, {"error": "corpo inválido"})
+            return
+        if self.path == "/session/action":
+            game_id = payload.get("gameId")
+            session_id = payload.get("sessionId")
+            action_id = payload.get("actionId")
+            if (
+                not isinstance(game_id, str)
+                or not game_id
+                or not isinstance(session_id, str)
+                or not session_id
+                or not isinstance(action_id, str)
+                or not action_id
+            ):
+                self._send(400, {"error": "AURA-OSD-REQUEST-001"})
+                return
+            result = self._bridge.session_action(game_id, session_id, action_id)
+            self._send(200 if result["accepted"] else 409, result)
             return
         game_id = str(payload.get("gameId", ""))
         focus_id = str(payload.get("focusId", ""))
@@ -176,12 +201,14 @@ class LauncherBridge:
         catalog_summary: Mapping[str, Any] | None = None,
         metadata: Mapping[str, Mapping[str, Any]] | None = None,
         session_observer: Callable[[str], dict[str, Any]] | None = None,
+        session_overlay: SessionOverlayAdapter | None = None,
     ) -> None:
         self._sections = tuple(sections)
         self._titles = dict(titles or {})
         self._covers = dict(covers or {})
         self._metadata = {key: dict(value) for key, value in (metadata or {}).items()}
         self._session_observer = session_observer
+        self._session_overlay = session_overlay
         self._previous_sessions: dict[str, str | None] = {}
         self._pending_game: str | None = None
         self._attempts: dict[str, LaunchAttempt] = {}
@@ -349,9 +376,43 @@ class LauncherBridge:
             self._pending_game = game_id
         return attempt
 
-    def session(self, game_id: str) -> dict[str, Any]:
+    def session(self, game_id: str, *, include_overlay: bool = False) -> dict[str, Any]:
         with self._session_lock:
-            return self._session_locked(game_id)
+            result = self._session_locked(game_id)
+            if include_overlay:
+                result["overlay"] = self._overlay_locked(game_id, result)
+            return result
+
+    def session_action(self, game_id: str, session_id: str, action_id: str) -> dict[str, Any]:
+        """Despacha uma ação semântica para o adapter canônico injetado."""
+
+        with self._session_lock:
+            if self._session_overlay is None:
+                return {
+                    "accepted": False,
+                    "gameId": game_id,
+                    "sessionId": session_id,
+                    "operation": None,
+                    "state": "unknown",
+                    "diagnostic": "AURA-OSD-ADAPTER-UNAVAILABLE-005",
+                    "detail": "O adapter de sessão ainda não está conectado ao runtime.",
+                }
+            return self._session_overlay.dispatch(game_id, session_id, action_id).to_dict()
+
+    def _overlay_locked(self, game_id: str, session: Mapping[str, Any]) -> dict[str, Any]:
+        if self._session_overlay is None:
+            return {
+                "sessionId": session.get("sessionId"),
+                "gameId": game_id,
+                "state": session.get("state", "unknown"),
+                "visible": False,
+                "focusedAction": "",
+                "actions": [],
+                "criticalError": None,
+                "diagnostic": "AURA-OSD-ADAPTER-UNAVAILABLE-005",
+            }
+        model = self._session_overlay.read_model(game_id, visible=True)
+        return resolve_session_overlay(model).to_qml_object()
 
     def _session_locked(self, game_id: str) -> dict[str, Any]:
         if self._session_observer is None or not any(

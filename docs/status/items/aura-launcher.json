@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "a6a69ba0373e7e2798a529f376ee71734d25f9701ecfbcceae143f3bc7dfabc9",
+  "scopeDigest": "56633ceb65ec9eb6ccea69ced268c7b48c7373657af482a3b6bc642374acfe78",
   "scopePaths": [
     "src/steamzero/cli/main.py",
     "src/steamzero/adapters/emulation.py",
@@ -431,7 +431,6 @@
   "nextAction": "Lote C funcional 000c8bb foi mergeado no commit 54bf42f6 e instalado na release 2.0.0rc1-54bf42f619ec. A prova física do detalhe, fallback e retorno de foco está em 2026-09-13-aura-details-installed; o catálogo real não publica mídia. O gate integral local segue inconclusivo por infraestrutura de IO; OSD/saves/discos/fades, lançamento/retorno de jogo real e medição física de frame time/startup/VRAM continuam pendentes. Preservar KDE.",
   "activeWorkstreams": [
     "WS-2026-08-AURA-LAUNCHER",
-    "WS-2026-09-LAUNCHER-P0-ACTIVATION",
     "WS-2026-09-LAUNCHER-P0-LOOP"
   ],
   "updatedAt": "2026-09-13",
