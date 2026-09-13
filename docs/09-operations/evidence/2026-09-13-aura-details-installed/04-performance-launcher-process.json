@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "measurement": "installed-launcher-process",
+  "release": "2.0.0rc1-54bf42f619ec",
+  "sourceCommit": "54bf42f619ec430eed5f5cec83cb9388be5c5f8f",
+  "pid": 3327942,
+  "durationSeconds": 10.014,
+  "samples": 40,
+  "rssPeakBytes": 159199232,
+  "cpuSeconds": 0.0,
+  "cpuPercentOfOneCore": 0.0,
+  "startupMs": null,
+  "frameTime": null,
+  "vramMeasured": false,
+  "note": "janela LauncherMain instalada real; medicao de processo, nao certificacao de FPS/p95."
+}

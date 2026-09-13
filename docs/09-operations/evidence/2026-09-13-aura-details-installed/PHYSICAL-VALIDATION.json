@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "release": "2.0.0rc1-54bf42f619ec",
+  "sourceCommit": "54bf42f619ec430eed5f5cec83cb9388be5c5f8f",
+  "ciRun": "34768050136",
+  "rollbackRelease": "2.0.0rc1-183a1f0dfce7",
+  "window": {
+    "title": "SteamZero",
+    "pid": 3327942,
+    "fullscreen": true,
+    "collection": "snes",
+    "selectedTitle": "Alcahest (Japan) (Translated PtBr)"
+  },
+  "journey": [
+    {"file": "01-baseline.png", "event": "fullscreen carousel"},
+    {"file": "02-entrega-funcional.png", "event": "Enter opens game details"},
+    {"file": "03-recuperacao.png", "event": "Esc returns to same focus"}
+  ],
+  "sha256": {
+    "01-baseline.png": "af23300d41af276890b03872cfa9621b238ecaa824132c82cf668b2142624974",
+    "02-entrega-funcional.png": "96ad9a3060aeb61cd41341c529d293a4660ca512844fd185f7f66c0eb60e0f25",
+    "03-recuperacao.png": "732257e25eb2cde2044f1e3e64abe127badcdff922b210f714551daf0d7156d6",
+    "04-performance-launcher-process.json": "eb362bdf49f4286600b38eac4ac7f8d9da977aae6533e0a5756ed3ee7d51dd66",
+    "05-performance-navigation.json": "e50608361d5ef148ac2d84854d3c5bf5d89ebd783ffe93d49826a5b12a4d9ff2"
+  },
+  "catalogMedia": {
+    "games": 1124,
+    "coverUrl": 0,
+    "bannerAsset": 0,
+    "media": 0,
+    "screenshotUrls": 0,
+    "fallbackUsed": true
+  },
+  "performance": {
+    "processMeasurement": true,
+    "frameTimeMeasured": false,
+    "vramMeasured": false,
+    "startupMeasured": false
+  },
+  "cleanup": {
+    "kdeSessionRestarted": false,
+    "launcherStopped": true,
+    "inputDaemonStopped": true,
+    "stateAuditClean": true
+  }
+}

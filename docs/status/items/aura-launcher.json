@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "dad64022a7817acc612587b2de97db1fdbb26f3537328cd154e9a15b2ab9c47f",
+  "scopeDigest": "a6a69ba0373e7e2798a529f376ee71734d25f9701ecfbcceae143f3bc7dfabc9",
   "scopePaths": [
     "src/steamzero/cli/main.py",
     "src/steamzero/adapters/emulation.py",
@@ -53,6 +53,7 @@
     "docs/09-operations/evidence/2026-09-04-release-cf9c47e7",
     "docs/09-operations/evidence/2026-09-05-launcher-p0-loop",
     "docs/09-operations/evidence/2026-09-11-aura-cinema-fullscreen",
+    "docs/09-operations/evidence/2026-09-13-aura-details-installed",
     "src/steamzero/adapters/launcher_session.py",
     "tests/integration/test_launcher_session_observation.py",
     "tests/unit/test_launcher_cinema.py"
@@ -65,7 +66,6 @@
     "GAP-LAUNCHER-REAL-CATALOG-PHYSICAL",
     "GAP-LAUNCHER-RETURN-FADES-PHYSICAL",
     "GAP-AURA-CINEMA-PERFORMANCE-PHYSICAL",
-    "GAP-AURA-CINEMA-TITLE-OCCLUSION",
     "GAP-AURA-CINEMA-HTTP-KEEPALIVE",
     "GAP-AURA-LAUNCHER-BRIDGE-DISCONNECT-RECOVERY",
     "GAP-AURA-LAUNCHER-SESSION-ACK-LIFETIME"
@@ -414,9 +414,21 @@
       "reference": "tools/run_tests_isolated.py",
       "command": "Gate integral reexecutado após o Lote C: primeira tentativa terminou por OSError [Errno 28] No space left on device após 5142 passed/47 skipped; repetição com TMPDIR dedicado no volume de 22 GB livres não apresentou ENOSPC, mas a matriz visual seguia ativa após 90 minutos e foi encerrada somente na árvore temporária do runner. O gate integral não foi carimbado como verde; gates focados, Ruff, formatação, mypy, independência, fronteiras e status-check passaram.",
       "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-13-aura-details-installed/README.md",
+      "command": "Release 2.0.0rc1-54bf42f619ec, source commit 54bf42f6 e CI 34768050136: LauncherMain instalado abriu fullscreen no compositor real; catálogo canônico snes carregou; Enter abriu detalhes com fallback de screenshots e ação Jogar focada; Esc retornou ao mesmo cartão/coleção. Capturas 01-03 e hashes em PHYSICAL-VALIDATION.json.",
+      "result": "partial"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-13-aura-details-installed/05-performance-navigation.json",
+      "command": "Medição física do processo QML instalado durante 12,253 s e 23 navegações: RSS máximo 159.387.648 bytes e CPU 2,04% de um núcleo. Frame time/p95, startup e VRAM permanecem não medidos; a sonda theme_perf_probe.py mede SceneRepeater, não LauncherMain.",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Commit funcional 000c8bb entregue na branch codex/aura-details-2026-09-13; após CI terminal e merge, preparar/instalar a release canônica e capturar a página de detalhes real. O gate integral local segue inconclusivo por infraestrutura de IO; OSD/saves/discos/fades e medição física da janela continuam pendentes. Preservar KDE.",
+  "nextAction": "Lote C funcional 000c8bb foi mergeado no commit 54bf42f6 e instalado na release 2.0.0rc1-54bf42f619ec. A prova física do detalhe, fallback e retorno de foco está em 2026-09-13-aura-details-installed; o catálogo real não publica mídia. O gate integral local segue inconclusivo por infraestrutura de IO; OSD/saves/discos/fades, lançamento/retorno de jogo real e medição física de frame time/startup/VRAM continuam pendentes. Preservar KDE.",
   "activeWorkstreams": [
     "WS-2026-08-AURA-LAUNCHER",
     "WS-2026-09-LAUNCHER-P0-ACTIVATION",
