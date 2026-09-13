@@ -295,6 +295,8 @@ class LauncherBridge:
         result.update(
             focusId=focus_id,
             collection=section.title,
+            performanceTier="balanced",
+            connectionState="connected",
             viewport={"width": width, "height": height},
             items=[items[index] for index in result["sourceIndices"]],
         )
