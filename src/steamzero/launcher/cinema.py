@@ -20,6 +20,27 @@ from steamzero.domain.scene_layout import (
 )
 
 
+def _local_asset_url(value: object) -> str | None:
+    """Return a safe local asset URL without widening the QML trust boundary."""
+    if (
+        not isinstance(value, str)
+        or not value.startswith("/")
+        or value.startswith("//")
+        or len(value) > 4096
+        or "\x00" in value
+        or ".." in value.split("/")
+    ):
+        return None
+    return "file://" + quote(value, safe="/")
+
+
+def _bounded_text_list(record: Mapping[str, Any], key: str) -> list[str]:
+    value = record.get(key)
+    if not isinstance(value, list):
+        return []
+    return [item[:256] for item in value[:16] if isinstance(item, str) and item]
+
+
 def cinema_metadata(record: Mapping[str, Any]) -> dict[str, Any]:
     """Project public display fields only; never pass arbitrary record data to QML."""
     result: dict[str, Any] = {}
@@ -50,20 +71,24 @@ def cinema_metadata(record: Mapping[str, Any]) -> dict[str, Any]:
         result["genres"] = [
             value[:128] for value in genres[:16] if isinstance(value, str) and value
         ]
+    for key in ("requirements", "controls"):
+        values = _bounded_text_list(record, key)
+        if values:
+            result[key] = values
+    screenshot_paths = record.get("screenshotUrls")
+    if isinstance(screenshot_paths, list):
+        screenshots = [
+            url for value in screenshot_paths[:8] if (url := _local_asset_url(value)) is not None
+        ]
+        if screenshots:
+            result["screenshotUrls"] = screenshots
     media = record.get("media")
     if isinstance(media, Mapping):
         for role in ("cover", "fanart", "screenshot", "marquee", "video", "icon"):
             asset = media.get(role)
             path = asset.get("path") if isinstance(asset, Mapping) else None
-            if (
-                isinstance(path, str)
-                and path.startswith("/")
-                and not path.startswith("//")
-                and len(path) <= 4096
-                and "\x00" not in path
-                and ".." not in path.split("/")
-            ):
-                result[role + "Url"] = "file://" + quote(path, safe="/")
+            if (url := _local_asset_url(path)) is not None:
+                result[role + "Url"] = url
     return result
 
 

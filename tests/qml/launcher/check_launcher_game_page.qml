@@ -30,6 +30,11 @@ Item {
         anchors.fill: parent
         model: ({
             "gameId": "celeste", "title": "Celeste", "platform": "Steam",
+            "screenshotUrl": Qt.resolvedUrl("fixtures/cover.png"),
+            "requirements": ["Controle compatível"],
+            "controls": ["A · confirmar", "Analógico · mover"],
+            "releaseDate": "2018-01-25", "genres": ["Plataforma"],
+            "players": 1, "rating": 92, "playtime": 7200,
             "lastPlayed": "2026-08-18T21:00:00Z", "initialFocus": "action:play",
             "actions": [
                 {"id": "play", "focusId": "action:play", "label": "Jogar",
@@ -66,6 +71,10 @@ Item {
             harness.check(playable.currentFocus === "action:play",
                           "a página precisa começar no foco resolvido")
             harness.check(playable.actionCount === 3, "as ações não chegaram ao QML")
+            harness.check(playable.screenshots.length === 1,
+                          "screenshot legada precisa virar galeria de um item")
+            harness.check(playable.requirements.length === 1 && playable.controls.length === 2,
+                          "requisitos e controles publicados precisam chegar à página")
             harness.check(playable.activate() === true, "ação habilitada precisa ativar")
             harness.check(harness.activatedIds.length === 1
                           && harness.activatedIds[0] === "play",
@@ -74,6 +83,10 @@ Item {
             // Jogo bloqueado: botão visível, motivo publicado, foco fora dele.
             harness.check(blocked.actionCount === 2,
                           "ação desabilitada não pode sumir da página")
+            harness.check(blocked.screenshots.length === 0
+                          && blocked.requirements.length === 0
+                          && blocked.controls.length === 0,
+                          "fallbacks não podem inventar mídia ou instruções")
             harness.check(blocked.focusOnDisabledAction === false,
                           "o foco não pode repousar numa ação desabilitada")
             // Força o foco na ação desabilitada para exercitar a guarda de

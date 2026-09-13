@@ -209,6 +209,9 @@ def test_cinema_route_resolves_focus_and_rejects_untrusted_requests(tmp_path: Pa
                 "description": "Descrição canônica",
                 "players": 2,
                 "fanartUrl": "file:///art/fanart.png",
+                "screenshotUrls": ["file:///art/shot-01.png"],
+                "requirements": ["Controle compatível"],
+                "controls": ["A · confirmar"],
             }
         },
     )
@@ -225,6 +228,9 @@ def test_cinema_route_resolves_focus_and_rejects_untrusted_requests(tmp_path: Pa
         model = _get(f"{base}/model", bridge.token)
         item = next(item for item in model["sections"][0]["items"] if item["id"] == "game29")
         assert item["description"] == "Descrição canônica"
+        assert item["screenshotUrls"] == ["file:///art/shot-01.png"]
+        assert item["requirements"] == ["Controle compatível"]
+        assert item["controls"] == ["A · confirmar"]
         assert len(result["layouts"]["covers"]["entries"]) == 7
         with pytest.raises(urllib.error.HTTPError) as denied:
             _get(route, "wrong-token")

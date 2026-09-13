@@ -25,6 +25,25 @@ FocusScope {
     readonly property real textScale: Math.max(1, Number(accessibility.visualScale || 1))
     readonly property string description: model && model.description
         ? String(model.description) : qsTr("Descrição ainda não disponível para este jogo.")
+    readonly property var screenshots: {
+        const supplied = model && Array.isArray(model.screenshotUrls)
+            ? model.screenshotUrls : []
+        const result = supplied.map(function(value) { return String(value) }).filter(function(value) {
+            return value.length > 0
+        }).slice(0, 8)
+        const legacy = model && model.screenshotUrl ? String(model.screenshotUrl) : ""
+        if (result.length === 0 && legacy !== "")
+            result.push(legacy)
+        return result
+    }
+    readonly property var requirements: model && Array.isArray(model.requirements)
+        ? model.requirements.filter(function(value) {
+            return typeof value === "string" && value.length > 0
+        }).slice(0, 16) : []
+    readonly property var controls: model && Array.isArray(model.controls)
+        ? model.controls.filter(function(value) {
+            return typeof value === "string" && value.length > 0
+        }).slice(0, 16) : []
     property alias detailScrollY: detailScroll.contentY
 
     function scrollDetails(delta) {
@@ -181,6 +200,41 @@ FocusScope {
             font.pixelSize: 16 * page.textScale
             wrapMode: Text.Wrap
         }
+        Flow {
+            id: gameFacts
+            objectName: "gameFacts"
+            width: parent.width
+            spacing: 8
+            Repeater {
+                model: [
+                    {"label": qsTr("Ano"), "value": String(page.model.releaseDate || "").slice(0, 4)},
+                    {"label": qsTr("Gênero"), "value": page.model.genres && page.model.genres.length
+                        ? page.model.genres.slice(0, 2).join(" · ") : ""},
+                    {"label": qsTr("Jogadores"), "value": page.model.players > 0
+                        ? String(page.model.players) : ""},
+                    {"label": qsTr("Nota"), "value": page.model.rating !== undefined
+                        ? (Number(page.model.rating) / 10).toFixed(1) : ""},
+                    {"label": qsTr("Tempo"), "value": page.model.playtime > 0
+                        ? Math.floor(Number(page.model.playtime) / 3600) + "h" : ""}
+                ].filter(function(fact) { return fact.value !== "" })
+                delegate: Rectangle {
+                    required property var modelData
+                    width: factLabel.width + 24
+                    height: 32
+                    radius: 16
+                    color: page._hc("#173148cc", "#000000")
+                    border.color: page._hc("#49657a", "#ffffff")
+                    Text {
+                        id: factLabel
+                        anchors.centerIn: parent
+                        text: modelData.label + "  " + modelData.value
+                        textFormat: Text.PlainText
+                        color: "#ffffff"
+                        font.pixelSize: 12 * page.textScale
+                    }
+                }
+            }
+        }
         Row {
             id: details
             width: parent.width
@@ -189,22 +243,76 @@ FocusScope {
             Flickable {
                 id: detailScroll
                 objectName: "gameDescriptionScroll"
-                width: parent.width - (screenshot.visible ? screenshot.width + 16 : 0)
+                width: parent.width - screenshotPanel.width - 16
                 height: parent.height
-                contentHeight: descriptionText.height
+                contentHeight: detailContent.height
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
-                Text {
-                    id: descriptionText
-                    objectName: "gameDescription"
+                Column {
+                    id: detailContent
                     width: detailScroll.width
-                    text: page.description
-                    textFormat: Text.PlainText
-                    wrapMode: Text.Wrap
-                    color: "#ffffff"
-                    font.pixelSize: 18 * page.textScale
-                    lineHeight: 1.2
-                    Accessible.name: text
+                    spacing: 18
+                    Text {
+                        id: descriptionText
+                        objectName: "gameDescription"
+                        width: parent.width
+                        text: page.description
+                        textFormat: Text.PlainText
+                        wrapMode: Text.Wrap
+                        color: "#ffffff"
+                        font.pixelSize: 18 * page.textScale
+                        lineHeight: 1.2
+                        Accessible.name: text
+                    }
+                    Row {
+                        width: parent.width
+                        spacing: 16
+                        visible: page.requirements.length > 0 || page.controls.length > 0
+                        Column {
+                            objectName: "gameRequirements"
+                            width: (parent.width - parent.spacing) / 2
+                            spacing: 6
+                            Text {
+                                text: qsTr("REQUISITOS")
+                                color: page._hc("#9ee8f4", "#ffffff")
+                                font.pixelSize: 12 * page.textScale
+                            }
+                            Repeater {
+                                model: page.requirements
+                                delegate: Text {
+                                    required property string modelData
+                                    width: parent.width
+                                    text: "• " + modelData
+                                    textFormat: Text.PlainText
+                                    wrapMode: Text.Wrap
+                                    color: "#ffffff"
+                                    font.pixelSize: 14 * page.textScale
+                                }
+                            }
+                        }
+                        Column {
+                            objectName: "gameControls"
+                            width: (parent.width - parent.spacing) / 2
+                            spacing: 6
+                            Text {
+                                text: qsTr("CONTROLES")
+                                color: page._hc("#9ee8f4", "#ffffff")
+                                font.pixelSize: 12 * page.textScale
+                            }
+                            Repeater {
+                                model: page.controls
+                                delegate: Text {
+                                    required property string modelData
+                                    width: parent.width
+                                    text: "• " + modelData
+                                    textFormat: Text.PlainText
+                                    wrapMode: Text.Wrap
+                                    color: "#ffffff"
+                                    font.pixelSize: 14 * page.textScale
+                                }
+                            }
+                        }
+                    }
                 }
                 Rectangle {
                     anchors.right: parent.right
@@ -217,18 +325,48 @@ FocusScope {
                     visible: detailScroll.contentHeight > detailScroll.height
                 }
             }
-            Image {
-                id: screenshot
-                objectName: "gameScreenshot"
+            Rectangle {
+                id: screenshotPanel
+                objectName: "gameScreenshots"
                 width: parent.width * 0.32
                 height: Math.min(parent.height, width * 9 / 16)
-                source: String(page.model.screenshotUrl || "")
-                visible: status === Image.Ready
-                asynchronous: true
-                fillMode: Image.PreserveAspectFit
-                sourceSize: Qt.size(Math.ceil(width), Math.ceil(height))
-                Accessible.name: qsTr("Screenshot de %1").arg(page.model.title || "")
-                Accessible.role: Accessible.Graphic
+                color: page._hc("#142332cc", "#000000")
+                border.color: page._hc("#49657a", "#ffffff")
+                radius: 8
+                Column {
+                    anchors.fill: parent
+                    anchors.margins: 8
+                    spacing: 6
+                    Repeater {
+                        model: page.screenshots
+                        delegate: Image {
+                            required property string modelData
+                            required property int index
+                            objectName: index === 0 ? "gameScreenshot" : ""
+                            width: parent.width
+                            height: Math.max(1, (parent.height - 6 * (page.screenshots.length - 1))
+                                             / Math.max(1, page.screenshots.length))
+                            source: modelData
+                            visible: status === Image.Ready
+                            asynchronous: true
+                            fillMode: Image.PreserveAspectFit
+                            sourceSize: Qt.size(Math.ceil(width), Math.ceil(height))
+                            Accessible.name: qsTr("Screenshot %1 de %2").arg(index + 1)
+                                .arg(page.model.title || "")
+                            Accessible.role: Accessible.Graphic
+                        }
+                    }
+                    Text {
+                        objectName: "gameScreenshotFallback"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        visible: page.screenshots.length === 0
+                        text: qsTr("Screenshots não publicados")
+                        textFormat: Text.PlainText
+                        color: page._hc("#d8e4ed", "#ffffff")
+                        font.pixelSize: 14 * page.textScale
+                        wrapMode: Text.Wrap
+                    }
+                }
             }
         }
         Row {
