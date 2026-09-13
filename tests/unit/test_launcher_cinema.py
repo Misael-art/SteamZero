@@ -15,6 +15,9 @@ def test_metadata_projects_only_known_fields_without_fabricating_absent_values()
             "players": 2,
             "playtime": 0,
             "genres": ["Adventure"],
+            "requirements": ["Controle compatível", "Sistema atualizado"],
+            "controls": ["Analógico · mover", "A · confirmar"],
+            "screenshotUrls": ["/art/shot-01.png", "https://example.org/shot.png"],
             "secret": "never-publish",
             "media": {
                 "fanart": {"path": "/art/game #1.png"},
@@ -28,6 +31,9 @@ def test_metadata_projects_only_known_fields_without_fabricating_absent_values()
         "players": 2,
         "playtime": 0,
         "genres": ["Adventure"],
+        "requirements": ["Controle compatível", "Sistema atualizado"],
+        "controls": ["Analógico · mover", "A · confirmar"],
+        "screenshotUrls": ["file:///art/shot-01.png"],
         "fanartUrl": "file:///art/game%20%231.png",
     }
     assert (

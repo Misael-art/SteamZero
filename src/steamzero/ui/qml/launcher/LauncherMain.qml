@@ -243,6 +243,12 @@ Window {
                     "description": String(item.description || ""),
                     "fanartUrl": String(item.fanartUrl || ""),
                     "screenshotUrl": String(item.screenshotUrl || ""),
+                    "screenshotUrls": Array.isArray(item.screenshotUrls)
+                        ? item.screenshotUrls.slice(0, 8) : [],
+                    "requirements": Array.isArray(item.requirements)
+                        ? item.requirements.slice(0, 16) : [],
+                    "controls": Array.isArray(item.controls)
+                        ? item.controls.slice(0, 16) : [],
                     "metadata": item,
                     "lastPlayed": null,
                     "initialFocus": "action:play",
