@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopeDigest": "210298382e9f594f7b7cd9e6c3e8866148bfb65788032ac62977fa28c3ea9f54",
+  "scopeDigest": "374090340a599f9c4a19cfbbac08485b8e18dcb1b76252c8c73cfce736396501",
   "scopePaths": [
     "src/steamzero/domain/session_overlay.py",
     "tests/unit/test_session_overlay.py",
