@@ -87,7 +87,9 @@ def _settled(attempt, state: str, timeout: float = 15.0) -> bool:
 def _alive(pid: int) -> bool:
     try:
         fields = Path(f"/proc/{pid}/stat").read_text().rpartition(") ")[2].split()
-    except FileNotFoundError:
+    except (FileNotFoundError, ProcessLookupError):
+        # O processo pode terminar entre a abertura do caminho e a leitura
+        # do pseudo-arquivo; isso é exatamente o estado que o helper consulta.
         return False
     return fields[0] not in {"Z", "X"}
 
