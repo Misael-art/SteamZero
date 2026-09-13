@@ -404,7 +404,7 @@
       "result": "recorded"
     }
   ],
-  "nextAction": "PR da branch codex/aura-bridge-watchdog-2026-09-12 aguarda autorização GitHub para integração do commit 6d01c979. Após merge, publicar e instalar release: capturar Cinema visual pós-composição e repetir ponte suspensa → timeout acionável → retomada/retry; medir a própria janela do Launcher. Steam, OSD/saves e fades continuam fora deste lote. Preservar KDE.",
+  "nextAction": "PR #156 aberta da branch codex/aura-bridge-watchdog-2026-09-12 para main, incluindo 6d01c979 e documentação 1e75d9d. Após merge, publicar e instalar release: capturar Cinema visual pós-composição e repetir ponte suspensa → timeout acionável → retomada/retry; medir a própria janela do Launcher. Steam, OSD/saves e fades continuam fora deste lote. Preservar KDE.",
   "activeWorkstreams": [
     "WS-2026-08-AURA-LAUNCHER",
     "WS-2026-09-LAUNCHER-P0-ACTIVATION",
