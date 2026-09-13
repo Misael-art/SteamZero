@@ -3,8 +3,8 @@
     "kind": "workstream",
     "id": "WS-2026-09-LAUNCHER-P0-ACTIVATION",
     "item": "SZ-AURA-LAUNCHER",
-    "branch": "codex/aura-bridge-watchdog-2026-09-12",
-    "baseRef": "183a1f0dfce75d2a5efdea02b01efd51cc42999b",
+    "branch": "codex/aura-details-2026-09-13",
+    "baseRef": "47570508eb4dac71746510dd32e60db8608e04c2",
     "owner": "codex-aura-cinema",
     "state": "active",
     "exclusivePaths": [
@@ -27,6 +27,6 @@
         "docs/ACTIVE-WORK.md",
         "docs/WORKLOG.md"
     ],
-    "nextAction": "PR #156 aberta para integrar ee7f70f, 11006333, 667a4971, 6d01c979 e 1e75d9d. Depois do merge, usar release_host.py no tip main, recapturar o Cinema visual e repetir bridge suspensa → timeout acionável → retomada/retry. Preservar KDE.",
-    "updatedAt": "2026-09-12"
+    "nextAction": "Lote C funcional entregue em 000c8bb: página de detalhes com metadata opcional, galeria bounded, requisitos/controles e fallback de mídia, mantendo a ação Jogar sem falsificar suporte. Gates focados e qualidade passaram; o integral local ficou inconclusivo por infraestrutura de IO. Próximo: push/CI, merge, release governada e captura física.",
+    "updatedAt": "2026-09-13"
 }
