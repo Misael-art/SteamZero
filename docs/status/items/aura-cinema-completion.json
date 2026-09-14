@@ -5,10 +5,10 @@
   "title": "AURA Cinema — periféricos de sessão e composição fullscreen",
   "domain": "ui",
   "implementation": "partial",
-  "integration": "feature-branch",
-  "verification": "dev",
+  "integration": "integrated",
+  "verification": "hw",
   "operation": "degraded",
-  "distribution": "not-packaged",
+  "distribution": "installed",
   "scopePaths": [
     "src/steamzero/domain/session_peripherals.py",
     "src/steamzero/adapters/session_peripherals.py",
@@ -42,7 +42,6 @@
     "SZ-THEME-ENGINE"
   ],
   "knownGaps": [
-    "GAP-AURA-CINEMA-PHYSICAL-PROOF",
     "GAP-AURA-CINEMA-PERFORMANCE-POST-QML"
   ],
   "acceptanceCriteria": [
@@ -88,9 +87,21 @@
       "reference": "tests/unit/test_session_peripherals.py",
       "command": "RetroArchSessionPeripheral publica session-peripherals.cfg e aura-bezel-overlay.cfg gerenciados; o teste verifica asset SVG empacotado, input_overlay_enable, caminho do overlay e preservação do centro transparente. tests/unit/test_emulation_controller.py confirma --appendconfig no argv RetroArch.",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-14-aura-rich-media-installed/README.md",
+      "command": "release 2.0.0rc1-f734c97cdb3c + launcher_perf_probe.py --backend opengl --timeout 30",
+      "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-14-aura-rich-media-installed/PHYSICAL-VALIDATION.json",
+      "command": "fullscreen AURA fallback, carousel, details, recovery and real RetroArch launch",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Promover esta correção; validar a release instalada com jogo real, bezel/fallback e registrar capturas e métricas de desempenho pós-QML.",
+  "nextAction": "Otimizar o render loop até p95 <= 16,7 ms e repetir o fluxo OSD na mesma sessão/card; manter a release instalada enquanto isso.",
   "activeWorkstreams": [
     "WS-2026-09-AURA-CINEMA-COMPLETION"
   ],
