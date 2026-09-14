@@ -69,10 +69,10 @@ def _send_udp(command: str, *, host: str, port: int, timeout: float) -> None:
 class RetroArchSessionPeripheral:
     """Use only RetroArch's documented UDP commands and its state files.
 
-    The adapter intentionally implements slot zero first: RetroArch exposes
-    direct ``SAVE_STATE``/``LOAD_STATE`` commands, while selecting an arbitrary
-    slot requires emulator-side state that this boundary cannot safely guess.
-    Other slots stay visible only when a future concrete adapter can prove them.
+    The adapter tracks RetroArch's current state slot from the session start and
+    moves it with the documented ``STATE_SLOT_PLUS``/``STATE_SLOT_MINUS``
+    commands before saving. Loading uses the documented ``LOAD_STATE_SLOT``
+    command, so the gallery can operate on every bounded slot it lists.
     """
 
     def __init__(
@@ -96,6 +96,7 @@ class RetroArchSessionPeripheral:
         self._sleep = sleep
         self._now = now
         self._active_disc = 0
+        self._state_slot = 0
         self._discs = self._read_m3u()
 
     def list_save_states(self) -> Mapping[str, Any]:
@@ -126,7 +127,8 @@ class RetroArchSessionPeripheral:
         }
 
     def save_state(self, slot: int) -> SessionPeripheralRecord:
-        self._require_slot_zero(slot)
+        self._require_slot(slot)
+        self._select_state_slot(slot)
         fs.ensure_dir(self._state_root, mode=0o700)
         current = self._state_path(slot)
         if current.is_file() and not current.is_symlink() and current.stat().st_size > 0:
@@ -136,10 +138,11 @@ class RetroArchSessionPeripheral:
         return self._record()
 
     def load_state(self, slot: int) -> SessionPeripheralRecord:
-        self._require_slot_zero(slot)
+        self._require_slot(slot)
         if not self._state_path(slot).is_file():
             raise RuntimeError("o slot de save-state ainda não existe")
-        self._send("LOAD_STATE")
+        self._send(f"LOAD_STATE_SLOT {slot}")
+        self._state_slot = slot
         return self._record()
 
     def list_discs(self) -> Mapping[str, Any]:
@@ -224,10 +227,16 @@ class RetroArchSessionPeripheral:
                 discs.append(candidate)
         return tuple(discs[:16])
 
+    def _select_state_slot(self, slot: int) -> None:
+        step = "STATE_SLOT_PLUS" if slot > self._state_slot else "STATE_SLOT_MINUS"
+        for _ in range(abs(slot - self._state_slot)):
+            self._send(step)
+        self._state_slot = slot
+
     @staticmethod
-    def _require_slot_zero(slot: int) -> None:
-        if isinstance(slot, bool) or not isinstance(slot, int) or slot != 0:
-            raise ValueError("este adapter RetroArch expõe somente o slot 0")
+    def _require_slot(slot: int) -> None:
+        if isinstance(slot, bool) or not isinstance(slot, int) or not 0 <= slot <= MAX_SLOT:
+            raise ValueError(f"slot de save-state fora do limite 0..{MAX_SLOT}")
 
     def _record(self) -> SessionPeripheralRecord:
         class Record:

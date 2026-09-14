@@ -80,7 +80,26 @@ def test_retroarch_save_state_backups_the_previous_snapshot_atomically(tmp_path:
     assert adapter.list_save_states()["entries"][0]["backupAvailable"] is True
 
 
-def test_retroarch_rejects_unproven_slots_and_supports_m3u_swap(tmp_path: Path) -> None:
+def test_retroarch_gallery_saves_and_loads_a_bounded_nonzero_slot(tmp_path: Path) -> None:
+    content = tmp_path / "game.zip"
+    content.write_bytes(b"content")
+    states = tmp_path / "states"
+    states.mkdir()
+    commands: list[str] = []
+
+    def send(command: str) -> None:
+        commands.append(command)
+        if command == "SAVE_STATE":
+            (states / "game.state2").write_bytes(b"slot-two")
+
+    adapter = RetroArchSessionPeripheral(content, states, send_command=send, sleep=lambda _: None)
+    adapter.save_state(2)
+    assert commands == ["STATE_SLOT_PLUS", "STATE_SLOT_PLUS", "SAVE_STATE"]
+    assert adapter.load_state(2).state == "running"
+    assert commands[-1] == "LOAD_STATE_SLOT 2"
+
+
+def test_retroarch_bounds_save_slots_and_supports_m3u_swap(tmp_path: Path) -> None:
     first = tmp_path / "disc-one.cue"
     second = tmp_path / "disc-two.cue"
     first.write_text("FILE one.bin BINARY\n", encoding="utf-8")
@@ -91,8 +110,8 @@ def test_retroarch_rejects_unproven_slots_and_supports_m3u_swap(tmp_path: Path) 
     adapter = RetroArchSessionPeripheral(
         playlist, tmp_path / "states", send_command=commands.append, sleep=lambda _: None
     )
-    with pytest.raises(ValueError, match="somente o slot 0"):
-        adapter.save_state(1)
+    with pytest.raises(ValueError, match=r"limite 0\.\.31"):
+        adapter.save_state(32)
     assert adapter.list_discs()["discs"][1]["label"] == "disc-two.cue"
     adapter.swap_disc("disc-1")
     assert commands == ["DISK_EJECT_TOGGLE", "DISK_NEXT", "DISK_EJECT_TOGGLE"]
