@@ -3,9 +3,9 @@
   "kind": "workstream",
   "id": "WS-2026-09-AURA-CINEMA-COMPLETION",
   "item": "SZ-AURA-CINEMA-COMPLETION",
-  "branch": "codex/aura-cinema-focus-osd-2026-09-14",
-  "baseRef": "dd2221656ef34c0c01c2fee6979706d9d2083eff",
-  "owner": "codex-aura-cinema-focus-osd",
+  "branch": "codex/aura-cinema-physical-closure-2026-09-14",
+  "baseRef": "98f0cc5c6fcd1cca6a467dcf1815ea2836bb81f5",
+  "owner": "codex-aura-cinema-physical-closure",
   "state": "active",
   "exclusivePaths": [
     "src/steamzero/domain/session_peripherals.py",
@@ -40,6 +40,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Publicar a correção de foco da cena Cinema, reinstalar pelo fluxo governado e capturar OSD semântico AURA na mesma sessão/cartão; depois otimizar o p95.",
+  "nextAction": "Registrar a prova física da release 98f0 e abrir a próxima frente para reduzir o frame-time p95 de 17.819–18.686 ms até o alvo de 16.7 ms.",
   "updatedAt": "2026-09-14"
 }

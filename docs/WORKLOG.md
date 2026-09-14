@@ -10537,3 +10537,32 @@ backups ou journals órfãos. O daemon foi atualizado pelo fluxo governado; a
 sessão KDE não foi reiniciada nem finalizada. O OSD semântico AURA na mesma
 sessão/cartão permanece gap separado do OSD nativo capturado, assim como o p95
 acima do alvo; ambos são a próxima ação do workstream.
+
+## 2026-09-14 — Fechamento físico do ciclo AURA Cinema pós-apply
+
+Custódia: `WS-2026-09-AURA-CINEMA-COMPLETION`, branch documental
+`codex/aura-cinema-physical-closure-2026-09-14`, baseada no merge
+`98f0cc5c6fcd1cca6a467dcf1815ea2836bb81f5` (PR #173).
+
+| Item | Commit/release | Prova |
+|---|---|---|
+| Foco da cena Cinema ligado ao Launcher | `c07c14ca` → `98f0cc5c6fcd` | Setas esquerda/direita e Enter passaram a usar o mapa de foco do Launcher; 43 testes focados e QML visual 48/48 verdes |
+| Instalação governada | `2.0.0rc1-98f0cc5c6fcd` | CI exato `34861980121` verde; wheel SHA `fa6aeb001612fdd5a00f275f020024e3eb973664c65f2d73d5dc3aee21c67613`; current e daemon convergidos; rollback `2.0.0rc1-dd2221656ef3` |
+| Fullscreen e navegação | mesma release | `36-release-98f0-fullscreen.png` e `37-release-98f0-focus-navigation.png`: AURA Cinema fullscreen e troca real de cartão por seta |
+| Detalhes e jogo real | mesma release | `38-release-98f0-details.png` e `39-release-98f0-game-launch.png`: ação `Jogar` abriu RetroArch Mesen 0.9.9 com jogo NES real |
+| OSD semântico e retorno | mesma release | `40-release-98f0-aura-osd-same-card.png`: F1 no Launcher exibiu o OSD AURA com o mesmo título e estado `running`; `41-release-98f0-return-focus.png`: retorno ao mesmo cartão |
+| Desempenho instalado | mesma release | três probes OpenGL/Wayland: startup `503–938 ms`, VRAM `85268–95644 KiB`, p95 `17,819–18,686 ms`; startup e VRAM dentro da meta, p95 ainda acima de `16,7 ms` |
+
+Gates locais/documentais da implementação: Ruff, formatação, mypy (278
+arquivos), independência, fronteiras, QML visual e testes focados verdes. O CI
+do commit exato foi a prova autoritativa. O status foi regenerado e
+`make VENV=/mnt/sdcard/Projects/Port_Steam/.venv status-check` terminou em
+`STATUS-CHECK: OK`.
+
+O host foi mutado exclusivamente pelo fluxo governado de `release_host.py`; o
+Doctor pós-instalação confirmou zero operações pendentes e zero staging,
+backups ou journals órfãos. A sessão KDE não foi reiniciada nem finalizada. O
+item `SZ-AURA-CINEMA-COMPLETION` fecha a cadeia física de foco, fullscreen,
+jogo, OSD e retorno; permanece degradado somente pelo gap nomeado
+`GAP-AURA-CINEMA-PERFORMANCE-POST-QML`. A próxima frente deve otimizar o
+frame-time p95 e repetir a medição no host real.
