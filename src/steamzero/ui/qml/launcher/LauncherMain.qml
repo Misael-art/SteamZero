@@ -27,6 +27,54 @@ Window {
     // A ponte é local; três segundos distinguem indisponibilidade de uma
     // operação normal sem deixar a cena presa se o processo for suspenso.
     readonly property int requestTimeoutMs: 3000
+    property string perfReportUrl: ""
+    property bool perfReported: false
+    property bool perfWarm: false
+    property real perfStartedAt: Date.now()
+    property real perfFirstFrameAt: 0
+    property var perfSamples: []
+
+    function reportPerformance() {
+        if (root.perfReportUrl === "" || root.perfReported)
+            return
+        root.perfReported = true
+        const request = new XMLHttpRequest()
+        request.open("POST", root.perfReportUrl)
+        request.setRequestHeader("Content-Type", "application/json")
+        request.send(JSON.stringify({
+            "samples": root.perfSamples,
+            "startupMs": root.perfFirstFrameAt > 0
+                ? root.perfFirstFrameAt - root.perfStartedAt : null,
+            "surface": root.width + "x" + root.height
+        }))
+    }
+
+    FrameAnimation {
+        id: perfFrames
+        running: root.perfReportUrl !== "" && !root.perfReported
+        onTriggered: {
+            if (root.perfFirstFrameAt === 0)
+                root.perfFirstFrameAt = Date.now()
+            if (root.perfWarm)
+                root.perfSamples.push(frameTime * 1000.0)
+        }
+    }
+
+    Timer {
+        id: perfWarmup
+        interval: 2000
+        running: root.perfReportUrl !== ""
+        repeat: false
+        onTriggered: root.perfWarm = true
+    }
+
+    Timer {
+        id: perfReport
+        interval: 8000
+        running: root.perfReportUrl !== ""
+        repeat: false
+        onTriggered: root.reportPerformance()
+    }
 
     function refreshCinema() {
         const shell = root._activeLauncherShell()
@@ -432,6 +480,7 @@ Window {
     Component.onCompleted: {
         root.api = _argument("--steamzero-api")
         root.token = _argument("--steamzero-token")
+        root.perfReportUrl = _argument("--steamzero-perf-url")
         root._start()
     }
 

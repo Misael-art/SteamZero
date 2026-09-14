@@ -35,7 +35,23 @@ from steamzero.launcher.navigation import HomeSection, resolve_home_focus
 
 #: Devolve a tentativa com recibo (ou ``None`` na rota Steam, sem recibo).
 LaunchCallback = Callable[[str, str], LaunchAttempt | None]
-_QT_QUICK_BACKEND = "software"
+# AURA Launcher deve usar o backend acelerado do host.  O caminho software
+# continua disponível como degradação explícita para hosts sem RHI utilizável;
+# valores vindos do ambiente nunca são repassados diretamente ao QML.
+_QT_QUICK_BACKEND = "opengl"
+_ALLOWED_QT_QUICK_BACKENDS = frozenset({"opengl", "software"})
+
+
+def _resolve_qt_quick_backend() -> str:
+    requested = os.environ.get("STEAMZERO_QT_QUICK_BACKEND", _QT_QUICK_BACKEND)
+    return requested if requested in _ALLOWED_QT_QUICK_BACKENDS else _QT_QUICK_BACKEND
+
+
+def _performance_report_url() -> str:
+    value = os.environ.get("STEAMZERO_PERF_REPORT_URL", "")
+    if value.startswith("http://127.0.0.1:") and " " not in value and "\n" not in value:
+        return value
+    return ""
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -530,7 +546,7 @@ def launch_launcher_ui(bridge: LauncherBridge) -> int:
         return 3
     resource = importlib.resources.files("steamzero.ui").joinpath("qml/launcher/LauncherMain.qml")
     with bridge.serving() as base, importlib.resources.as_file(resource) as scene:
-        argv = (
+        argv: tuple[str, ...] = (
             executable,
             str(scene),
             "--",
@@ -539,9 +555,12 @@ def launch_launcher_ui(bridge: LauncherBridge) -> int:
             "--steamzero-token",
             bridge.token,
         )
+        report_url = _performance_report_url()
+        if report_url:
+            argv += ("--steamzero-perf-url", report_url)
         environment = {
             **os.environ,
-            "QT_QUICK_BACKEND": _QT_QUICK_BACKEND,
+            "QT_QUICK_BACKEND": _resolve_qt_quick_backend(),
             "STEAMZERO_CLASS": "launcher",
         }
         # A cena vive sob supervisão: quando este processo acabar — por retorno,
