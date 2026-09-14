@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://steamzero.org/schemas/session-peripherals-v1.schema.json",
+  "title": "AURA session peripherals v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "state", "available", "discs", "activeDisc", "bezels", "fade", "reason"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "state": {"enum": ["unavailable", "ready", "degraded", "error"]},
+    "available": {"type": "boolean"},
+    "discs": {"type": "array", "maxItems": 16, "items": {"$ref": "#/$defs/disc"}},
+    "activeDisc": {"type": ["integer", "null"], "minimum": 0, "maximum": 15},
+    "bezels": {"type": "array", "maxItems": 8, "items": {"$ref": "#/$defs/bezel"}},
+    "fade": {"$ref": "#/$defs/fade"},
+    "reason": {"type": "string", "maxLength": 240}
+  },
+  "$defs": {
+    "disc": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "index", "inserted", "available", "compatible", "reason"],
+      "properties": {
+        "id": {"type": "string", "maxLength": 64},
+        "label": {"type": "string", "maxLength": 128},
+        "index": {"type": "integer", "minimum": 0, "maximum": 15},
+        "inserted": {"type": "boolean"},
+        "available": {"type": "boolean"},
+        "compatible": {"type": "boolean"},
+        "reason": {"type": "string", "maxLength": 240}
+      }
+    },
+    "bezel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "assetUrl", "available", "selected", "reason"],
+      "properties": {
+        "id": {"type": "string", "maxLength": 64},
+        "label": {"type": "string", "maxLength": 128},
+        "assetUrl": {"type": "string", "maxLength": 4096},
+        "available": {"type": "boolean"},
+        "selected": {"type": "boolean"},
+        "reason": {"type": "string", "maxLength": 240}
+      }
+    },
+    "fade": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["phase", "progress", "durationMs", "reducedMotion"],
+      "properties": {
+        "phase": {"enum": ["idle", "in", "out", "return", "error"]},
+        "progress": {"type": "number", "minimum": 0, "maximum": 1},
+        "durationMs": {"type": "integer", "minimum": 0, "maximum": 10000},
+        "reducedMotion": {"type": "boolean"}
+      }
+    }
+  }
+}

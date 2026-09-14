@@ -68,6 +68,10 @@ from steamzero.adapters.session_control import (
     SessionControlServer,
     control_path,
 )
+from steamzero.adapters.session_peripherals import (
+    RetroArchSessionPeripheral,
+    prepare_retroarch_session_config,
+)
 from steamzero.adapters.state_store_media import StateStoreGameMediaAdapter
 from steamzero.adapters.state_store_provider_health import StateStoreProviderHealthAdapter
 from steamzero.adapters.steam_shortcuts import SteamShortcutManager
@@ -1137,7 +1141,10 @@ class EmulationController:
             # emulador" e "Jogar" subiriam o RetroArch sem o perfil de controle
             # — que é o caminho que o usuário realmente percorre.
             overlay = input_devices.retroarch_launch_arguments(flatpak_ref)
-            return ["flatpak", "run", "--user", flatpak_ref, *overlay, *args]
+            session_config = (
+                ("--appendconfig", str(prepare_retroarch_session_config())) if overlay else ()
+            )
+            return ["flatpak", "run", "--user", flatpak_ref, *overlay, *session_config, *args]
         if payload is None:
             raise SteamZeroError(
                 "E-API-SCHEMA", detail=f"fonte portátil sem payload: {profile.adapter_id}"
@@ -1473,6 +1480,15 @@ class EmulationController:
                     )
                 if getattr(self, "_session_control_enabled", False):
                     try:
+                        peripheral_control = None
+                        if (
+                            source_type == "flatpak"
+                            and flatpak_ref
+                            and input_devices.RETROARCH_REF in flatpak_ref
+                        ):
+                            peripheral_control = RetroArchSessionPeripheral(
+                                rom, paths.saves_dir() / "states"
+                            )
                         owner = SessionControlOwner(
                             session_id,
                             str(game["id"]),
@@ -1480,6 +1496,7 @@ class EmulationController:
                             self._read_start_ticks(pid),
                             store_factory=self._store_factory,
                             read_start_ticks=self._read_start_ticks,
+                            peripheral_control=peripheral_control,
                         )
                         candidate = SessionControlServer(owner, control_path(session_id))
                         try:

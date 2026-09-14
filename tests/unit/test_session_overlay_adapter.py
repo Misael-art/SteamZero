@@ -64,6 +64,22 @@ class SaveStateControl(FakeControl):
         return self.current
 
 
+class DiscControl(FakeControl):
+    def list_discs(self) -> dict[str, Any]:
+        return {
+            "state": "ready",
+            "activeDisc": 0,
+            "discs": [
+                {"id": "disc-0", "label": "Disco 1", "inserted": True},
+                {"id": "disc-1", "label": "Disco 2", "inserted": False},
+            ],
+        }
+
+    def swap_disc(self, disc_id: str) -> FakeSession:
+        self.calls.append(f"disc:{disc_id}")
+        return self.current
+
+
 def make_adapter(control: FakeControl) -> SessionOverlayAdapter:
     def observe(_game_id: str) -> dict[str, Any]:
         return {
@@ -167,3 +183,17 @@ def test_dispatch_returns_recoverable_error_when_session_operation_fails() -> No
     assert result.diagnostic == "AURA-SESSION-ADAPTER-003"
     assert result.state == "running"
     assert "flush indisponível" in result.detail
+
+
+def test_disc_surface_is_available_only_from_a_multi_disc_adapter() -> None:
+    control = DiscControl(FakeSession())
+    adapter = make_adapter(control)
+
+    model = adapter.read_model("game-1", visible=True)
+    result = adapter.dispatch("game-1", "session-1", "disc", disc_id="disc-1")
+
+    assert model["osd"]["capabilities"]["disc"] == {"available": True, "reason": ""}
+    assert model["peripherals"]["discs"][1]["id"] == "disc-1"
+    assert result.accepted is True
+    assert result.disc_id == "disc-1"
+    assert control.calls == ["disc:disc-1"]

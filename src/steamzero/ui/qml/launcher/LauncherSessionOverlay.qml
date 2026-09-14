@@ -18,12 +18,15 @@ Item {
     property string localError: ""
     property bool overlayOpen: false
     property bool saveGalleryOpen: false
+    property bool peripheralOpen: false
     property bool requestPending: false
     property int selectedIndex: _initialIndex()
     readonly property var actions: overlayModel && Array.isArray(overlayModel.actions)
         ? overlayModel.actions : []
     readonly property var saveStates: overlayModel && overlayModel.saveStates
         ? overlayModel.saveStates : null
+    readonly property var peripherals: overlayModel && overlayModel.peripherals
+        ? overlayModel.peripherals : null
     readonly property var criticalError: overlayModel
         ? overlayModel.criticalError : null
     readonly property bool highContrast: !!(accessibility && accessibility.highContrast)
@@ -35,6 +38,7 @@ Item {
 
     signal actionRequested(string actionId)
     signal saveStateRequested(string actionId, int slot)
+    signal discRequested(string discId)
     signal closeRequested()
 
     function _initialIndex() {
@@ -52,6 +56,8 @@ Item {
         overlay.selectedIndex = _initialIndex()
         if (overlay.saveGalleryOpen)
             saveGallery.setModel(overlay.saveStates)
+        if (overlay.peripheralOpen)
+            peripheralSurface.setModel(overlay.peripherals)
         overlay.localError = ""
     }
 
@@ -60,7 +66,9 @@ Item {
             setModel(value)
         overlay.overlayOpen = true
         overlay.saveGalleryOpen = false
+        overlay.peripheralOpen = false
         saveGallery.visible = false
+        peripheralSurface.visible = false
         overlay.forceActiveFocus()
     }
 
@@ -69,7 +77,9 @@ Item {
             return false
         overlay.overlayOpen = false
         overlay.saveGalleryOpen = false
+        overlay.peripheralOpen = false
         saveGallery.visible = false
+        peripheralSurface.visible = false
         overlay.localError = ""
         overlay.closeRequested()
         return true
@@ -119,6 +129,13 @@ Item {
             saveGallery.openGallery(String(action.id))
             return true
         }
+        if (String(action.id) === "disc" && overlay.peripherals
+                && overlay.peripherals.available === true) {
+            overlay.peripheralOpen = true
+            peripheralSurface.setModel(overlay.peripherals)
+            peripheralSurface.openSurface()
+            return true
+        }
         overlay.localError = ""
         overlay.actionRequested(String(action.id))
         return true
@@ -129,6 +146,15 @@ Item {
             return false
         overlay.saveGalleryOpen = false
         saveGallery.visible = false
+        overlay.forceActiveFocus()
+        return true
+    }
+
+    function closePeripheralSurface() {
+        if (!overlay.peripheralOpen)
+            return false
+        overlay.peripheralOpen = false
+        peripheralSurface.visible = false
         overlay.forceActiveFocus()
         return true
     }
@@ -333,12 +359,31 @@ Item {
         onCloseRequested: overlay.closeSaveGallery()
     }
 
-    Keys.onEscapePressed: overlay.saveGalleryOpen ? overlay.closeSaveGallery() : overlay.closeOverlay()
-    Keys.onLeftPressed: overlay.saveGalleryOpen ? saveGallery.move("left") : overlay.move("left")
-    Keys.onRightPressed: overlay.saveGalleryOpen ? saveGallery.move("right") : overlay.move("right")
-    Keys.onUpPressed: overlay.saveGalleryOpen ? saveGallery.move("left") : overlay.move("up")
-    Keys.onDownPressed: overlay.saveGalleryOpen ? saveGallery.move("right") : overlay.move("down")
-    Keys.onReturnPressed: overlay.saveGalleryOpen ? saveGallery.activateFocused() : overlay.activateFocused()
-    Keys.onEnterPressed: overlay.saveGalleryOpen ? saveGallery.activateFocused() : overlay.activateFocused()
-    Keys.onSpacePressed: overlay.saveGalleryOpen ? saveGallery.activateFocused() : overlay.activateFocused()
+    LauncherSessionPeripherals {
+        id: peripheralSurface
+        anchors.fill: parent
+        model: overlay.peripherals
+        accessibility: overlay.accessibility
+        onDiscRequested: function(discId) {
+            overlay.discRequested(discId)
+        }
+        onCloseRequested: overlay.closePeripheralSurface()
+    }
+
+    Keys.onEscapePressed: overlay.saveGalleryOpen ? overlay.closeSaveGallery()
+        : overlay.peripheralOpen ? overlay.closePeripheralSurface() : overlay.closeOverlay()
+    Keys.onLeftPressed: overlay.saveGalleryOpen ? saveGallery.move("left")
+        : overlay.peripheralOpen ? peripheralSurface.move("left") : overlay.move("left")
+    Keys.onRightPressed: overlay.saveGalleryOpen ? saveGallery.move("right")
+        : overlay.peripheralOpen ? peripheralSurface.move("right") : overlay.move("right")
+    Keys.onUpPressed: overlay.saveGalleryOpen ? saveGallery.move("left")
+        : overlay.peripheralOpen ? peripheralSurface.move("left") : overlay.move("up")
+    Keys.onDownPressed: overlay.saveGalleryOpen ? saveGallery.move("right")
+        : overlay.peripheralOpen ? peripheralSurface.move("right") : overlay.move("down")
+    Keys.onReturnPressed: overlay.saveGalleryOpen ? saveGallery.activateFocused()
+        : overlay.peripheralOpen ? peripheralSurface.activateFocused() : overlay.activateFocused()
+    Keys.onEnterPressed: overlay.saveGalleryOpen ? saveGallery.activateFocused()
+        : overlay.peripheralOpen ? peripheralSurface.activateFocused() : overlay.activateFocused()
+    Keys.onSpacePressed: overlay.saveGalleryOpen ? saveGallery.activateFocused()
+        : overlay.peripheralOpen ? peripheralSurface.activateFocused() : overlay.activateFocused()
 }
