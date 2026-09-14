@@ -43,6 +43,10 @@ Item {
         return parts;
     }
     signal activated
+    // A cena só apresenta o carousel. O mapa de foco continua sendo
+    // autoridade da LauncherHome; estes sinais transportam a intenção de
+    // controle sem duplicar a resolução de vizinhos no tema.
+    signal moveRequested(string direction)
 
     Timer {
         id: clockRefresh
@@ -113,11 +117,33 @@ Item {
     }
 
     function activateSelection() {
+        // Toque só pode ativar uma capa que já corresponde ao foco publicado.
         if (!cinema.selectionReady)
             return false;
         cinema.activated();
         return true;
     }
+
+    function activateFocused() {
+        // Teclado/controle representa o foco semântico da Home. Após uma
+        // seta, a ponte ainda pode estar atualizando `scene.focusId`; bloquear
+        // o Enter nesse intervalo abriria uma janela em que a tela parece
+        // navegável, mas o controle não responde. A Home valida o nó e resolve
+        // o gameId a partir de `currentFocus`.
+        if (cinema.currentFocus === "")
+            return false;
+        cinema.activated();
+        return true;
+    }
+
+    Keys.onLeftPressed: cinema.moveRequested("left")
+    Keys.onRightPressed: cinema.moveRequested("right")
+    Keys.onUpPressed: cinema.moveRequested("up")
+    Keys.onDownPressed: cinema.moveRequested("down")
+    Keys.onReturnPressed: cinema.activateFocused()
+    Keys.onEnterPressed: cinema.activateFocused()
+    Keys.onSpacePressed: cinema.activateFocused()
+    focus: visible
 
     Item {
         id: coverViewport

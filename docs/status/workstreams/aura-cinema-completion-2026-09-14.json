@@ -3,9 +3,9 @@
   "kind": "workstream",
   "id": "WS-2026-09-AURA-CINEMA-COMPLETION",
   "item": "SZ-AURA-CINEMA-COMPLETION",
-  "branch": "codex/aura-physical-proof-close-2026-09-14",
+  "branch": "codex/aura-cinema-focus-osd-2026-09-14",
   "baseRef": "dd2221656ef34c0c01c2fee6979706d9d2083eff",
-  "owner": "codex-aura-physical-proof",
+  "owner": "codex-aura-cinema-focus-osd",
   "state": "active",
   "exclusivePaths": [
     "src/steamzero/domain/session_peripherals.py",
@@ -40,6 +40,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Otimizar p95 do render loop e capturar o OSD semântico AURA na mesma sessão/card; evidência pós-apply e retorno ao foco estão instalados.",
+  "nextAction": "Publicar a correção de foco da cena Cinema, reinstalar pelo fluxo governado e capturar OSD semântico AURA na mesma sessão/cartão; depois otimizar o p95.",
   "updatedAt": "2026-09-14"
 }
