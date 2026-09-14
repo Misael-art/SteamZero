@@ -7,7 +7,11 @@ from pathlib import Path
 
 import pytest
 
-from steamzero.adapters.session_peripherals import RetroArchSessionPeripheral
+from steamzero.adapters.session_peripherals import (
+    RetroArchSessionPeripheral,
+    prepare_retroarch_session_config,
+)
+from steamzero.core import paths
 from steamzero.domain.session_peripherals import resolve_session_peripherals
 
 
@@ -41,6 +45,25 @@ def test_resolver_bounds_and_hides_private_bezel_paths() -> None:
         "durationMs": 10000,
         "reducedMotion": True,
     }
+
+
+def test_retroarch_session_config_publishes_managed_aura_bezel(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(paths, "config_home", lambda: tmp_path / "config")
+    monkeypatch.setattr(paths, "saves_dir", lambda: tmp_path / "saves")
+
+    config = prepare_retroarch_session_config()
+    text = config.read_text(encoding="utf-8")
+    bezel_config = config.parent / "aura-bezel-overlay.cfg"
+    bezel_asset = config.parent / "aura-bezel.svg"
+
+    assert "SteamZero-Session-Managed: true" in text
+    assert 'input_overlay_enable = "true"' in text
+    assert f'input_overlay = "{bezel_config}"' in text
+    assert bezel_config.read_text(encoding="utf-8").startswith("# SteamZero-Session-Managed: true")
+    assert bezel_asset.is_file()
+    assert 'fill="none"' in bezel_asset.read_text(encoding="utf-8")
 
 
 def test_retroarch_save_state_slot_zero_waits_for_a_real_file(tmp_path: Path) -> None:

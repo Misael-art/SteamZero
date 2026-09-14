@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SteamZero-Theme-Managed: true -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6ee7f9" stop-opacity="0.96"/>
+      <stop offset="0.5" stop-color="#38bdf8" stop-opacity="0.62"/>
+      <stop offset="1" stop-color="#a78bfa" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6ee7f9" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#6ee7f9" stop-opacity="0.72"/>
+      <stop offset="1" stop-color="#a78bfa" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="14" y="14" width="1892" height="1052" rx="30" fill="none"
+        stroke="#020617" stroke-opacity="0.76" stroke-width="28"/>
+  <rect x="26" y="26" width="1868" height="1028" rx="24" fill="none"
+        stroke="url(#edge)" stroke-width="4"/>
+  <path d="M72 96H520 M1400 96h448" stroke="url(#glow)" stroke-width="3"/>
+  <path d="M72 984h448 M1400 984h448" stroke="url(#glow)" stroke-width="3"/>
+  <path d="M72 96V250 M1848 96v154 M72 984V830 M1848 984V830"
+        stroke="url(#edge)" stroke-width="3"/>
+</svg>

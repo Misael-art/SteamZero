@@ -12,10 +12,13 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from steamzero.core import fs, paths
+from steamzero.core.errors import SteamZeroError
 
 MAX_SLOT = 31
 DEFAULT_COMMAND_PORT = 55355
 SESSION_CONFIG_NAME = "session-peripherals.cfg"
+BEZEL_CONFIG_NAME = "aura-bezel-overlay.cfg"
+BEZEL_ASSET_NAME = "aura-bezel.svg"
 
 
 class SessionPeripheralRecord(Protocol):
@@ -38,10 +41,34 @@ SendCommand = Callable[[str], None]
 
 
 def prepare_retroarch_session_config() -> Path:
-    """Publish the bounded RetroArch settings needed by session controls."""
+    """Publish bounded session controls and the managed AURA bezel overlay."""
 
     state_root = paths.saves_dir() / "states"
-    config_path = paths.config_home() / "retroarch" / SESSION_CONFIG_NAME
+    config_root = paths.config_home() / "retroarch"
+    config_path = config_root / SESSION_CONFIG_NAME
+    bezel_source = Path(__file__).resolve().parents[1] / "ui" / "assets" / BEZEL_ASSET_NAME
+    if bezel_source.is_symlink() or not bezel_source.is_file():
+        raise SteamZeroError(
+            "E-COMPONENT-DEGRADED", detail=f"asset de bezel AURA ausente: {BEZEL_ASSET_NAME}"
+        )
+    bezel_asset = config_root / BEZEL_ASSET_NAME
+    fs.copy_file_atomic(bezel_source, bezel_asset)
+    bezel_config = config_root / BEZEL_CONFIG_NAME
+    fs.write_atomic_text(
+        bezel_config,
+        "\n".join(
+            (
+                "# SteamZero-Session-Managed: true",
+                f'overlay0_overlay = "{bezel_asset}"',
+                'overlay0_full_screen = "true"',
+                'overlay0_normalized = "true"',
+                'overlay0_descs = "0"',
+                'overlay0_rect = "0.0,0.0,1.0,1.0"',
+                'overlay0_alpha = "1.0"',
+                "",
+            )
+        ),
+    )
     fs.write_atomic_text(
         config_path,
         "\n".join(
@@ -50,6 +77,9 @@ def prepare_retroarch_session_config() -> Path:
                 'network_cmd_enable = "true"',
                 f'network_cmd_port = "{DEFAULT_COMMAND_PORT}"',
                 f'savestate_directory = "{state_root}"',
+                f'input_overlay = "{bezel_config}"',
+                'input_overlay_enable = "true"',
+                'config_save_on_exit = "false"',
                 "",
             )
         ),
@@ -246,6 +276,8 @@ class RetroArchSessionPeripheral:
 
 
 __all__ = [
+    "BEZEL_ASSET_NAME",
+    "BEZEL_CONFIG_NAME",
     "DEFAULT_COMMAND_PORT",
     "SESSION_CONFIG_NAME",
     "RetroArchSessionPeripheral",

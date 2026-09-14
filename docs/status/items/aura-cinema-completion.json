@@ -26,20 +26,22 @@
     "tests/integration/test_launcher_app.py",
     "tests/integration/test_qml_handheld_offscreen.py",
     "src/steamzero/adapters/emulation.py",
+    "src/steamzero/ui/assets/aura-bezel.svg",
+    "src/steamzero/ui/qml/PackagedAssets.qml",
     "src/steamzero/adapters/launcher_media.py",
     "tests/unit/test_launcher_media.py",
     "tests/integration/test_media.py",
+    "tests/unit/test_emulation_controller.py",
     "tests/unit/test_session_overlay.py",
     "tests/unit/test_session_overlay_adapter.py"
   ],
-  "scopeDigest": "3f4ed842a8a69bd72dd6bd864672fc46350c91ac0a4f2248533c0c22793b6c18",
+  "scopeDigest": "e4b3d0233fef79b0e75419429024a4b27523cea71630fc58f69c0943c218d29e",
   "dependsOn": [
     "SZ-AURA-SAVE-STATE-GALLERY",
     "SZ-AURA-SESSION-OSD",
     "SZ-THEME-ENGINE"
   ],
   "knownGaps": [
-    "GAP-AURA-CINEMA-BEZEL-ADAPTER",
     "GAP-AURA-CINEMA-PHYSICAL-PROOF",
     "GAP-AURA-CINEMA-PERFORMANCE-POST-QML"
   ],
@@ -80,9 +82,15 @@
       "reference": "docs/status/items/aura-cinema-completion.json",
       "command": "run_tests_isolated.py tests -q: avançou até 16%, depois ficou sem processos Python/QML e sem relatório terminal; encerrado com SIGINT; nenhum teste do host foi alterado",
       "result": "partial"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_session_peripherals.py",
+      "command": "RetroArchSessionPeripheral publica session-peripherals.cfg e aura-bezel-overlay.cfg gerenciados; o teste verifica asset SVG empacotado, input_overlay_enable, caminho do overlay e preservação do centro transparente. tests/unit/test_emulation_controller.py confirma --appendconfig no argv RetroArch.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Promover esta correção; validar a release instalada com jogo real, fallback e registrar capturas e métricas de desempenho pós-QML.",
+  "nextAction": "Promover esta correção; validar a release instalada com jogo real, bezel/fallback e registrar capturas e métricas de desempenho pós-QML.",
   "activeWorkstreams": [
     "WS-2026-09-AURA-CINEMA-COMPLETION"
   ],
