@@ -35,7 +35,16 @@ from steamzero.launcher.navigation import HomeSection, resolve_home_focus
 
 #: Devolve a tentativa com recibo (ou ``None`` na rota Steam, sem recibo).
 LaunchCallback = Callable[[str, str], LaunchAttempt | None]
-_QT_QUICK_BACKEND = "software"
+# AURA Launcher deve usar o backend acelerado do host.  O caminho software
+# continua disponível como degradação explícita para hosts sem RHI utilizável;
+# valores vindos do ambiente nunca são repassados diretamente ao QML.
+_QT_QUICK_BACKEND = "opengl"
+_ALLOWED_QT_QUICK_BACKENDS = frozenset({"opengl", "software"})
+
+
+def _resolve_qt_quick_backend() -> str:
+    requested = os.environ.get("STEAMZERO_QT_QUICK_BACKEND", _QT_QUICK_BACKEND)
+    return requested if requested in _ALLOWED_QT_QUICK_BACKENDS else _QT_QUICK_BACKEND
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -541,7 +550,7 @@ def launch_launcher_ui(bridge: LauncherBridge) -> int:
         )
         environment = {
             **os.environ,
-            "QT_QUICK_BACKEND": _QT_QUICK_BACKEND,
+            "QT_QUICK_BACKEND": _resolve_qt_quick_backend(),
             "STEAMZERO_CLASS": "launcher",
         }
         # A cena vive sob supervisão: quando este processo acabar — por retorno,
