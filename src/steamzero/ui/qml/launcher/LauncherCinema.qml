@@ -83,7 +83,7 @@ Item {
         fillMode: Image.PreserveAspectCrop
         opacity: 0.34
         effects: [
-            {"type": "blur", "parameters": {"radius": cinema.performanceTier === "cinematic" ? 28 : 18}},
+            {"type": "blur", "parameters": {"radius": cinema.performanceTier === "cinematic" ? 28 : 12}},
             {"type": "vignette", "parameters": {"color": "#02060b", "strength": 0.72}}
         ]
     }
@@ -174,7 +174,7 @@ Item {
                         decodeSize: Qt.size(Math.ceil(width), Math.ceil(height))
                         fillMode: Image.PreserveAspectFit
                         effects: !card.modelData.highlighted && cinema.performanceTier !== "low"
-                            ? [{"type": "blur", "parameters": {"radius": 12}}] : []
+                            ? [{"type": "blur", "parameters": {"radius": cinema.performanceTier === "cinematic" ? 12 : 8}}] : []
                     }
                     Text {
                         anchors.fill: parent
