@@ -44,7 +44,8 @@
   ],
   "knownGaps": [
     "GAP-AURA-CINEMA-PERFORMANCE-POST-QML",
-    "GAP-AURA-CINEMA-OSD-SAME-CARD-POST-APPLY"
+    "GAP-AURA-CINEMA-OSD-SAME-CARD-POST-APPLY",
+    "GAP-PS4-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
   ],
   "acceptanceCriteria": [
     "O adapter concreto declara save/load com backup transacional e troca de disco somente quando o emulador fornece esses contratos.",

@@ -68,7 +68,9 @@
     "tests/unit/test_theme_perf_probe.py"
   ],
   "dependsOn": [],
-  "knownGaps": [],
+  "knownGaps": [
+    "GAP-PS4-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
+  ],
   "acceptanceCriteria": [
     "Um asset-fonte produz variantes de cor, silhueta e contorno em runtime sem derivados no pacote.",
     "Scene graph, layout, bindings, effect graph e animacoes sao declarativos, versionados e seguros.",

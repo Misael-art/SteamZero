@@ -68,7 +68,8 @@
     "GAP-AURA-CINEMA-PERFORMANCE-PHYSICAL",
     "GAP-AURA-CINEMA-HTTP-KEEPALIVE",
     "GAP-AURA-LAUNCHER-BRIDGE-DISCONNECT-RECOVERY",
-    "GAP-AURA-LAUNCHER-SESSION-ACK-LIFETIME"
+    "GAP-AURA-LAUNCHER-SESSION-ACK-LIFETIME",
+    "GAP-PS4-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
   ],
   "acceptanceCriteria": [
     "Home fullscreen, biblioteca, busca, colecoes e pagina de jogo funcionam por controle.",

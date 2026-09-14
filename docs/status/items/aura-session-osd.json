@@ -35,7 +35,8 @@
     "SZ-AURA-LAUNCHER"
   ],
   "knownGaps": [
-    "GAP-AURA-SAVE-STATE-UI"
+    "GAP-AURA-SAVE-STATE-UI",
+    "GAP-PS4-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
   ],
   "acceptanceCriteria": [
     "O contrato publica somente ações semânticas allowlisted e capacidades declaradas pelo adapter.",
