@@ -72,8 +72,8 @@ Item {
         anchors.fill: parent
         color: cinema.highContrast ? "#000000" : "#071019"
     }
-    // Uma única textura para o backdrop: o renderer aplica blur/vignette
-    // somente quando o tier permite. Sem arte, a base sólida continua legível.
+    // O tier balanced mantém a arte como backdrop nativo e reserva o FBO/blur
+    // para cinematic. A base e os véus continuam legíveis mesmo sem fanart.
     MediaEffectLayer {
         id: backdrop
         anchors.fill: parent
@@ -82,10 +82,10 @@ Item {
         decodeSize: Qt.size(Math.ceil(width), Math.ceil(height))
         fillMode: Image.PreserveAspectCrop
         opacity: 0.34
-        effects: [
-            {"type": "blur", "parameters": {"radius": cinema.performanceTier === "cinematic" ? 28 : 12}},
+        effects: cinema.performanceTier === "cinematic" ? [
+            {"type": "blur", "parameters": {"radius": 28}},
             {"type": "vignette", "parameters": {"color": "#02060b", "strength": 0.72}}
-        ]
+        ] : []
     }
     // Véus de leitura: mantém arte como elemento principal, mas protege
     // título, chips e rodapé em capas claras ou sem paleta publicada.
@@ -173,8 +173,8 @@ Item {
                         source: card.modelData.source || ""
                         decodeSize: Qt.size(Math.ceil(width), Math.ceil(height))
                         fillMode: Image.PreserveAspectFit
-                        effects: !card.modelData.highlighted && cinema.performanceTier !== "low"
-                            ? [{"type": "blur", "parameters": {"radius": cinema.performanceTier === "cinematic" ? 12 : 8}}] : []
+                        effects: !card.modelData.highlighted && cinema.performanceTier === "cinematic"
+                            ? [{"type": "blur", "parameters": {"radius": 12}}] : []
                     }
                     Text {
                         anchors.fill: parent
