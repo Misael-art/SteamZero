@@ -24,7 +24,7 @@
     "tests/integration/test_qml_handheld_offscreen.py",
     "tests/qml/launcher/check_launcher_save_state_gallery.qml"
   ],
-  "scopeDigest": "89cb786b8dd6d22fc799a0eb446c4eaa1429686a97ba38727fe505315f8902f9",
+  "scopeDigest": "9e8d1d20a35c3074f8ba2113c3baeebf0c5e2f8b7d88280cb0d0ef01e8450bc3",
   "dependsOn": [
     "SZ-AURA-SESSION-OSD",
     "SZ-AURA-LAUNCHER"
