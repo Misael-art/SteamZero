@@ -1180,13 +1180,6 @@ class EmulationController:
             source_type=source_type,
             flatpak_ref=flatpak_ref,
             payload=payload,
-            session_config=(
-                prepare_retroarch_session_config()
-                if source_type == "flatpak"
-                and flatpak_ref
-                and input_devices.RETROARCH_REF in flatpak_ref
-                else None
-            ),
         )
         if payload is not None and self._managed_process_groups(payload):
             raise SteamZeroError(
