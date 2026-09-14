@@ -559,11 +559,11 @@ class TestMetadataOnlyPlanning:
     ) -> None:
         registry = AdapterRegistry.bundled()
         manifests = registry.list()
-        # 33 -> 34 em 2026-09-02: `vita3k` entrou ao completar PlayStation
-        # Vita. O numero fica na asserção, não no nome do teste: um nome
+        # 34 -> 35 em 2026-09-10: `shadps4` entrou ao completar PlayStation 4.
+        # O numero fica na asserção, não no nome do teste: um nome
         # que crava o denominador envelhece a cada componente novo e passa
         # a mentir antes de reprovar.
-        assert len(manifests) == 34
+        assert len(manifests) == 35
         artifacts = FakeArtifacts({})
         flatpak = FakeFlatpak()
         lifecycle = ComponentLifecycle(
@@ -1702,3 +1702,174 @@ class TestAdversarialLifecycleClosure:
             json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))["status"]
             == "aborted"
         )
+
+
+class TestZipWrappedPayload:
+    """Fonte nativa com membro declarado: o payload implantado é o membro.
+
+    O shadPS4 distribui Linux como zip contendo um único AppImage. O pin do
+    manifesto é o checksum do zip inteiro; o deployment registra o checksum
+    do membro extraído e aponta o artefato em artifactSha256, para que
+    installed/outdated/degraded continuem dizendo a verdade.
+    """
+
+    MEMBER = "Shadps4-sdl.AppImage"
+
+    @staticmethod
+    def _zip_artifact(member_body: bytes) -> bytes:
+        import io
+        import zipfile
+
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as bundle:
+            bundle.writestr(TestZipWrappedPayload.MEMBER, member_body)
+        return buffer.getvalue()
+
+    @staticmethod
+    def _zip_registry(version: str, member_body: bytes) -> AdapterRegistry:
+        artifact = TestZipWrappedPayload._zip_artifact(member_body)
+        manifest = portable_manifest(version, artifact, source_type="native")
+        manifest["sources"][0]["payloadPath"] = TestZipWrappedPayload.MEMBER
+        manifest["sources"][0]["url"] = f"https://fixtures.invalid/demo-{version}.zip"
+        return AdapterRegistry([load_manifest(manifest)])
+
+    def test_install_deploys_the_member_and_records_both_checksums(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        member_body = executable_payload()
+        artifact = self._zip_artifact(member_body)
+        registry = self._zip_registry("0.18.0", member_body)
+        lifecycle = ComponentLifecycle(
+            store,
+            registry,
+            artifacts=FakeArtifacts({"https://fixtures.invalid/demo-0.18.0.zip": artifact}),
+        )
+        envelope = lifecycle.plan("demo-emulator", "install")
+        result = lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        assert result["executor"] == "engine"
+
+        root = store_paths_component_root(tmp_path)
+        payload = root / "demo-emulator" / "releases" / "0.18.0" / "payload"
+        assert payload.read_bytes() == member_body, "o payload deve ser o membro, não o zip"
+
+        metadata = json.loads((root / "demo-emulator" / "current.json").read_text(encoding="utf-8"))
+        assert metadata["sha256"] == hashlib.sha256(member_body).hexdigest()
+        assert metadata["artifactSha256"] == hashlib.sha256(artifact).hexdigest()
+
+        status = lifecycle.status("demo-emulator")
+        assert status["state"] == "installed"
+        assert status["origin"] == "native"
+        assert status["version"] == "0.18.0"
+
+    def test_reinstall_after_install_is_idempotent(self, store: state.StateStore) -> None:
+        member_body = executable_payload()
+        artifact = self._zip_artifact(member_body)
+        registry = self._zip_registry("0.18.0", member_body)
+        lifecycle = ComponentLifecycle(
+            store,
+            registry,
+            artifacts=FakeArtifacts({"https://fixtures.invalid/demo-0.18.0.zip": artifact}),
+        )
+        first = lifecycle.plan("demo-emulator", "install")
+        lifecycle.apply(first.plan_id, first.confirm_token)
+
+        second = lifecycle.plan("demo-emulator", "install")
+        lifecycle.apply(second.plan_id, second.confirm_token)
+        assert lifecycle.status("demo-emulator")["state"] == "installed"
+
+    def test_tampered_payload_requires_repair_and_repair_restores(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        member_body = executable_payload()
+        artifact = self._zip_artifact(member_body)
+        registry = self._zip_registry("0.18.0", member_body)
+        lifecycle = ComponentLifecycle(
+            store,
+            registry,
+            artifacts=FakeArtifacts({"https://fixtures.invalid/demo-0.18.0.zip": artifact}),
+        )
+        envelope = lifecycle.plan("demo-emulator", "install")
+        lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+
+        root = store_paths_component_root(tmp_path)
+        payload = root / "demo-emulator" / "releases" / "0.18.0" / "payload"
+        payload.write_bytes(b"adulterado")
+
+        assert lifecycle.status("demo-emulator")["state"] == "degraded"
+
+        # O planejamento é metadata-only e nasce idempotente; o apply revalida
+        # o deployment sob lock e reprova o plano stale antes de chegar ao
+        # check de divergência do engine.
+        with pytest.raises(SteamZeroError, match="deployment mudou"):
+            applied = lifecycle.plan("demo-emulator", "install")
+            lifecycle.apply(applied.plan_id, applied.confirm_token)
+
+        repair = lifecycle.plan("demo-emulator", "repair")
+        lifecycle.apply(repair.plan_id, repair.confirm_token)
+        assert payload.read_bytes() == member_body
+        assert lifecycle.status("demo-emulator")["state"] == "installed"
+
+    def test_missing_member_refuses_the_plan(self, store: state.StateStore) -> None:
+        member_body = executable_payload()
+        artifact = self._zip_artifact(member_body)
+        manifest = portable_manifest("0.18.0", artifact, source_type="native")
+        manifest["sources"][0]["payloadPath"] = "Inexistente.AppImage"
+        manifest["sources"][0]["url"] = "https://fixtures.invalid/demo-0.18.0.zip"
+        registry = AdapterRegistry([load_manifest(manifest)])
+        lifecycle = ComponentLifecycle(
+            store,
+            registry,
+            artifacts=FakeArtifacts({"https://fixtures.invalid/demo-0.18.0.zip": artifact}),
+        )
+        with pytest.raises(SteamZeroError, match="não contém o membro"):
+            envelope = lifecycle.plan("demo-emulator", "install")
+            lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+
+    def test_non_zip_artifact_with_declared_member_refuses(self, store: state.StateStore) -> None:
+        member_body = executable_payload()
+        manifest = portable_manifest("0.18.0", member_body, source_type="native")
+        manifest["sources"][0]["payloadPath"] = self.MEMBER
+        manifest["sources"][0]["url"] = "https://fixtures.invalid/demo-0.18.0.zip"
+        registry = AdapterRegistry([load_manifest(manifest)])
+        lifecycle = ComponentLifecycle(
+            store,
+            registry,
+            artifacts=FakeArtifacts({"https://fixtures.invalid/demo-0.18.0.zip": member_body}),
+        )
+        with pytest.raises(SteamZeroError, match="não é o zip declarado"):
+            envelope = lifecycle.plan("demo-emulator", "install")
+            lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+
+    def test_uninstall_works_for_native_source(self, store: state.StateStore) -> None:
+        member_body = executable_payload()
+        artifact = self._zip_artifact(member_body)
+        registry = self._zip_registry("0.18.0", member_body)
+        lifecycle = ComponentLifecycle(
+            store,
+            registry,
+            artifacts=FakeArtifacts({"https://fixtures.invalid/demo-0.18.0.zip": artifact}),
+        )
+        envelope = lifecycle.plan("demo-emulator", "install")
+        lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+
+        removal = lifecycle.plan("demo-emulator", "uninstall")
+        lifecycle.apply(removal.plan_id, removal.confirm_token)
+        assert lifecycle.status("demo-emulator")["state"] == "missing"
+
+
+def test_payloadpath_is_rejected_on_flatpak_and_unsafe_paths() -> None:
+    member_body = executable_payload()
+    artifact = TestZipWrappedPayload._zip_artifact(member_body)
+
+    flatpak = portable_manifest("1.0.0", artifact, source_type="flatpak")
+    flatpak["sources"][0]["payloadPath"] = "demo.AppImage"
+    flatpak["sources"][0]["ref"] = "org.demo.Emulator"
+    flatpak["sources"][0]["remote"] = "flathub"
+    # O schema recusa a combinação flatpak+payloadPath antes do loader.
+    with pytest.raises(SteamZeroError, match="inválido"):
+        load_manifest(flatpak)
+
+    traversal = portable_manifest("1.0.0", artifact, source_type="native")
+    traversal["sources"][0]["payloadPath"] = "../escape.AppImage"
+    with pytest.raises(SteamZeroError, match="payloadPath inseguro"):
+        load_manifest(traversal)

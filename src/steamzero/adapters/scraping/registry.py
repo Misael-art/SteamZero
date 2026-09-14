@@ -22,9 +22,10 @@ A ordem de fallback default segue a matriz da seção 2 do estudo de fontes:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from steamzero.core.errors import SteamZeroError
+from steamzero.core.title_variants import title_variants
 from steamzero.ports import GameIdentity, MediaCandidate, MediaProviderPort
 
 _DEFAULT_FALLBACK: dict[str, list[str]] = {
@@ -105,18 +106,22 @@ class ProviderRegistry:
         Retorna ``None`` se nenhum provider retornar candidatos com confiança
         >= ``min_confidence``.
         """
-        for provider in self.providers_for_kind(media_kind, platform_slug=identity.platform_slug):
-            candidates = _search_provider(provider, identity, [media_kind], region_priority)
-            best: MediaCandidate | None = None
-            for c in candidates:
-                if c.media_kind != media_kind:
-                    continue
-                if c.confidence >= min_confidence and (
-                    best is None or c.confidence > best.confidence
-                ):
-                    best = c
-            if best is not None:
-                return best
+        providers = self.providers_for_kind(media_kind, platform_slug=identity.platform_slug)
+        for provider in providers:
+            for query_identity in _search_identities(identity):
+                candidates = _search_provider(
+                    provider, query_identity, [media_kind], region_priority
+                )
+                best: MediaCandidate | None = None
+                for c in candidates:
+                    if c.media_kind != media_kind:
+                        continue
+                    if c.confidence >= min_confidence and (
+                        best is None or c.confidence > best.confidence
+                    ):
+                        best = c
+                if best is not None:
+                    return best
         return None
 
     def search_all(
@@ -135,8 +140,13 @@ class ProviderRegistry:
         result: dict[str, list[MediaCandidate]] = {}
         for kind in kinds:
             all_candidates: list[MediaCandidate] = []
-            for provider in self.providers_for_kind(kind, platform_slug=identity.platform_slug):
-                all_candidates.extend(_search_provider(provider, identity, [kind], region_priority))
+            for query_identity in _search_identities(identity):
+                for provider in self.providers_for_kind(
+                    kind, platform_slug=query_identity.platform_slug
+                ):
+                    all_candidates.extend(
+                        _search_provider(provider, query_identity, [kind], region_priority)
+                    )
             filtered = [c for c in all_candidates if c.confidence >= min_confidence]
             filtered.sort(key=lambda c: c.confidence, reverse=True)
             if filtered:
@@ -148,6 +158,18 @@ class ProviderRegistry:
         if media_kind not in provider.supported_kinds():
             return False
         return platform_slug is None or platform_slug in provider.supported_platforms()
+
+
+def _search_identities(identity: GameIdentity) -> tuple[GameIdentity, ...]:
+    """Gera a identidade original e o fallback textual progressivo.
+
+    Hash, title id e serial são identificadores mais fortes e não devem ser
+    substituídos por palpites de nome. Para ROMs sem identificador estruturado,
+    a tentativa segue de nome completo até o nome limpo.
+    """
+    if identity.hashes or identity.title_id or identity.serial:
+        return (identity,)
+    return tuple(replace(identity, title=query) for query in title_variants(identity.title))
 
 
 def _search_provider(

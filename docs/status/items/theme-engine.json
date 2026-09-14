@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "04cc295d009a9cf9f31ec6561f0ce61498bc62903d3d0c92f4969448eb329b37",
+  "scopeDigest": "d2cd6f104eb20ad65fc5c595eddfcda1483557c68df79451a2e7b7590973c253",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -68,7 +68,9 @@
     "tests/unit/test_theme_perf_probe.py"
   ],
   "dependsOn": [],
-  "knownGaps": [],
+  "knownGaps": [
+    "GAP-PS4-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
+  ],
   "acceptanceCriteria": [
     "Um asset-fonte produz variantes de cor, silhueta e contorno em runtime sem derivados no pacote.",
     "Scene graph, layout, bindings, effect graph e animacoes sao declarativos, versionados e seguros.",

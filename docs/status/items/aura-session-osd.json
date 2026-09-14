@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "ce5e495977c274f7e0f51b4bc27be3ab91be36c4cd5228cab4343d688bfe3d24",
+  "scopeDigest": "c8e63ba5ce83e1f7e7bd781c88f3b67e6fd20b03564645aad95cbe9e98041903",
   "scopePaths": [
     "src/steamzero/domain/session_overlay.py",
     "tests/unit/test_session_overlay.py",
@@ -35,7 +35,8 @@
     "SZ-AURA-LAUNCHER"
   ],
   "knownGaps": [
-    "GAP-AURA-SAVE-STATE-UI"
+    "GAP-AURA-SAVE-STATE-UI",
+    "GAP-PS4-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
   ],
   "acceptanceCriteria": [
     "O contrato publica somente ações semânticas allowlisted e capacidades declaradas pelo adapter.",

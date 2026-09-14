@@ -455,6 +455,13 @@ sem editor externo. Inclua canvas, árvore, seleção, constraints, tokens, effe
 graph, keyframes/easing, breakpoints, states, preview Deck/FullHD/ultrawide,
 high contrast, reduced motion e budget de FPS/VRAM/textura/draw calls.
 
+Inclua também os controles de autoria para artwork heterogêneo: orientação
+automática ou forçada por slot (`none`, `auto`, `portrait`, `landscape`), regras
+condicionais por sistema/região/categoria, modos `contain`/`cover`/`fill`/`crop`,
+alinhamento em nove pontos e ponto focal. A receita deve explicar a decisão,
+permitir override e preservar uma única fonte de asset; não substitua essa
+capacidade por arquivos pré-rotacionados ou pré-editados.
+
 Pacotes são declarativos, sanitizados, licenciados, versionados e reproduzíveis.
 Undo/redo e recuperação são obrigatórios. Prove que o pacote roda na Theme Engine.
 
@@ -535,4 +542,3 @@ Ficam explicitamente posteriores ao primeiro release console-like:
 
 Esses itens podem possuir contrato e protótipo, mas não devem bloquear a entrega do
 fluxo principal nem aparecer como prontos.
-

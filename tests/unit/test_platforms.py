@@ -106,6 +106,10 @@ def test_bundled_registry_covers_required_platforms_with_unique_artwork() -> Non
         "pico8",
         "tic80",
         "wasm4",
+        # PS4 catalogada em 2026-09-10: lacuna registrada em
+        # GAP-PLATFORM-PS4-ABSENT; emulacao emergente via shadPS4 (zip Linux
+        # fixado por SHA-256, sem Flathub/AppImage upstream).
+        "playstation-4",
     ]
     artwork = [manifest.artwork_asset for manifest in manifests]
     shared_artwork = {asset for asset in artwork if artwork.count(asset) > 1}

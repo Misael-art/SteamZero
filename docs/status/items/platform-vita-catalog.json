@@ -16,7 +16,7 @@
     "tests/unit/test_capability_matrix.py",
     "docs/01-product/CAPABILITY-MATRIX.md"
   ],
-  "scopeDigest": "eb30bced3bd44d0c571e9f5a9f588a3c7ac1d71e38413a96064fb5ccc7ec8bae",
+  "scopeDigest": "604b8b6619f7710d37dd0911f2089886fd62c12b5500521d4270d0cbf6752359",
   "dependsOn": [
     "SZ-AGG-PLATFORM-MANIFESTS",
     "SZ-PLATFORM-REQUIREMENT-SCOPE"
@@ -49,10 +49,22 @@
       "reference": "tests",
       "command": "TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests -q; runner chegou a 17%, ficou sem saída por 30s e foi interrompido com código 130; sem processos pytest/run_tests_isolated residuais",
       "result": "partial"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_capability_matrix.py",
+      "command": "Renovacao 2026-09-10 (WS-2026-09-PS4-SHADPS4): CAPABILITY-MATRIX.md regravado por documento GERADO e test_capability_matrix.py com denominador 17; .venv/bin/python tools/run_tests_isolated.py tests/unit/test_platform_vita_catalog.py tests/unit/test_capability_matrix.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_capability_matrix.py",
+      "command": "Renovacao 2026-09-10 (revisao pos-format): screenscraper.py e test_capability_matrix.py revalidados; tests/unit/test_platform_vita_catalog.py tests/unit/test_capability_matrix.py reexecutados",
+      "result": "passed"
     }
   ],
   "nextAction": "Criar adapter e store de requisitos do Vita; validar a plataforma em release instalada.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-03",
+  "updatedAt": "2026-09-10",
   "notes": "Este recorte torna a plataforma observável e catalogável. Não equivale a suporte de execução: ainda falta adapter, store de firmware e validação física. Completada em 2026-09-02: a plataforma estava catalogada sem emulador (`emulators: []`) e com a arte do PSP, violando dois contratos — a Vita apareceria na UI sem poder lancar nada e com o logo errado, pior que a lacuna que substituiu. Agora declara `vita3k` como primary, com AppImage x86_64 fixado pelo SHA-256 publicado na API do GitHub (verificado: o upstream NAO publica no Flathub). Arte propria em `assets/playstation-vita.svg`, no mesmo estilo autoral dos outros 26 (nenhum asset do projeto e logo oficial: marca registrada nao e redistribuivel sob GPL). Perfil de controle `vita-handheld` proprio, com analogico direito — reusar o do PSP declararia controle que o aparelho nao tem. Lockfile de componente e matriz de capacidades regravados; denominadores 15->16 ativos e 47->46 bloqueadas. NAO instalado no host. 2026-09-03: scopeDigest renovado por documento GERADO (CAPABILITY-MATRIX.md) apos a rota theme.scene.render entrar no contrato, em WS-2026-09-CENA-ESDE. Regerado pela ferramenta, nao editado a mao."
 }

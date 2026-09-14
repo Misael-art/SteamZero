@@ -15,10 +15,10 @@ host, que vive nos relatórios de certificação.
 
 | dimensão | valor |
 |---|---|
-| adapters declarados | 34 |
-| adapters instaláveis pelo lifecycle | 34 de 34 |
-| plataformas declaradas | 62 |
-| plataformas com bloqueio | 24 de 62 |
+| adapters declarados | 35 |
+| adapters instaláveis pelo lifecycle | 35 de 35 |
+| plataformas declaradas | 63 |
+| plataformas com bloqueio | 24 de 63 |
 | cores libretro exigidos | 41 |
 | cores libretro com instalador | 17 |
 | ações de UI publicadas | 130 |
@@ -61,6 +61,7 @@ Capacidade declarada no manifesto não implica execução verificada: a coluna
 | retroarch | emulator | flatpak | não | flatpak | sim | 10 | — |
 | rpcs3 | emulator | flatpak | não | flatpak | sim | 10 | — |
 | ryubing | emulator | appimage | não | engine | sim | 10 | — |
+| shadps4 | emulator | native | não | engine | sim | 10 | — |
 | sunshine | tool | native | não | engine | sim | 2 | — |
 | vita3k | emulator | appimage | não | engine | sim | 10 | — |
 | xemu | emulator | flatpak | não | flatpak | sim | 10 | — |
@@ -87,11 +88,12 @@ obrigatória, fica sem executor ou mantém fonte EOL.
 | retroarch | ativo | flatpak | sim | sim | sim | sim | sim | sim | sim | sim | n/d | **não** | não | — |
 | rpcs3 | ativo | flatpak | sim | sim | sim | sim | sim | sim | sim | sim | n/d | **não** | não | — |
 | ryubing | ativo | engine | sim | sim | sim | sim | sim | sim | sim | sim | sim | **não** | não | — |
+| shadps4 | ativo | engine | sim | sim | sim | sim | sim | sim | sim | sim | sim | **não** | não | — |
 | vita3k | ativo | engine | sim | sim | sim | sim | sim | sim | sim | sim | sim | **não** | não | — |
 | xemu | ativo | flatpak | sim | sim | sim | sim | sim | sim | sim | sim | n/d | **não** | não | — |
 | xenia-canary | ativo | engine | sim | sim | sim | sim | sim | sim | sim | sim | sim | **não** | não | — |
 
-**16 emuladores ativos** · obrigatórias: detect, status, install, update, verify, repair, uninstall · `open-config` declarado em **0 de 16**.
+**17 emuladores ativos** · obrigatórias: detect, status, install, update, verify, repair, uninstall · `open-config` declarado em **0 de 17**.
 
 `open-config` não é obrigatório ainda porque nenhum manifesto declara o argv: emuladores não compartilham forma de abrir configuração, e inventar um produziria botão que abre a coisa errada. A lacuna fica contada aqui até que o argv de cada upstream seja verificado.
 
@@ -161,6 +163,7 @@ obrigatória, fica sem executor ou mantém fonte EOL.
 | pico8 | retroarch | flatpak | fake08 | — | core `fake08` sem instalador |
 | tic80 | retroarch | flatpak | tic80 | — | core `tic80` sem instalador |
 | wasm4 | retroarch | flatpak | wasm4 | — | core `wasm4` sem instalador |
+| playstation-4 | shadps4 | engine | — | — | nenhum |
 
 ## Cores libretro exigidos
 

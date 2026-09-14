@@ -60,7 +60,8 @@ def test_switch_workspace_matches_versioned_contract() -> None:
         ]
         == "nintendo-handheld"
     )
-    assert len(payload["platforms"]) == 62
+    # 62 -> 63 em 2026-09-10: playstation-4 catalogada.
+    assert len(payload["platforms"]) == 63
     assert payload["platforms"][1]["areas"][0]["id"] == "overview"
     cloud_platforms = [p for p in payload["platforms"] if p.get("cloud")]
     assert any(p["cloud"]["allowedHosts"] == ["luna.amazon.com"] for p in cloud_platforms)
@@ -73,7 +74,8 @@ def test_switch_workspace_matches_versioned_contract() -> None:
     # 21 -> 22 em 2026-09-02: PlayStation Vita ganhou arte própria em vez de
     # reusar a do PSP. Arte distinta por plataforma é o que esta contagem
     # protege — duas plataformas com o mesmo asset exibiriam o logo errado.
-    assert len({item["fallbackArtworkAsset"] for item in payload["platforms"]}) == 22
+    # 22 -> 23 em 2026-09-10: playstation-4 ganhou arte própria.
+    assert len({item["fallbackArtworkAsset"] for item in payload["platforms"]}) == 23
 
 
 def test_global_management_keeps_technical_and_editorial_counts_distinct() -> None:
@@ -91,8 +93,10 @@ def test_global_management_keeps_technical_and_editorial_counts_distinct() -> No
         media_providers=[],
     )
 
-    assert global_management["technicalPlatformCount"] == 62
-    assert global_management["editorialDestinationCount"] == 63
+    assert global_management["technicalPlatformCount"] == 63
+    # 63 -> 64 em 2026-09-10: playstation-4 ganhou technicalPlatformId no
+    # catálogo canônico e passou a contar como destino editorial.
+    assert global_management["editorialDestinationCount"] == 64
     assert global_management["editorialExperienceCount"] == 155
     assert global_management["editorialSource"]["id"] == "steam"
     assert global_management["platformCards"][0]["gameCount"] == 1
