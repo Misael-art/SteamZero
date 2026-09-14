@@ -1,35 +1,39 @@
 {
   "schemaVersion": 1,
-  "release": "2.0.0rc1-dd2221656ef3",
-  "sourceCommit": "dd2221656ef34c0c01c2fee6979706d9d2083eff",
+  "release": "2.0.0rc1-98f0cc5c6fcd",
+  "sourceCommit": "98f0cc5c6fcd1cca6a467dcf1815ea2836bb81f5",
   "sessionType": "wayland",
   "backend": "opengl",
   "visual": {
-    "fullscreen": "18-release-dd222-fullscreen.png",
-    "details": "19-release-dd222-details.png",
-    "realGameLaunch": "20-release-dd222-launch.png",
-    "recoverySameFocus": "31-release-dd222-return-focus.png"
+    "fullscreen": "36-release-98f0-fullscreen.png",
+    "focusNavigation": "37-release-98f0-focus-navigation.png",
+    "details": "38-release-98f0-details.png",
+    "realGameLaunch": "39-release-98f0-game-launch.png",
+    "auraOsdSameCard": "40-release-98f0-aura-osd-same-card.png",
+    "recoverySameFocus": "41-release-98f0-return-focus.png"
   },
   "realGame": {
     "emulator": "RetroArch Mesen 0.9.9",
-    "capture": "20-release-dd222-launch.png",
+    "capture": "39-release-98f0-game-launch.png",
     "result": "started",
-    "nativeOsdCapture": "21-release-dd222-osd.png",
-    "returnCapture": "31-release-dd222-return-focus.png",
-    "note": "A real NES title reached RetroArch Mesen 0.9.9 from the selected AURA card. The native emulator OSD was captured and the controlled close returned to the same AURA card. The AURA session overlay remains a separate contract and is not promoted by the native OSD capture."
+    "auraOsdCapture": "40-release-98f0-aura-osd-same-card.png",
+    "returnCapture": "41-release-98f0-return-focus.png",
+    "note": "A real NES title reached RetroArch Mesen 0.9.9 from the selected AURA card. Focusing the Launcher and pressing F1 opened the semantic AURA session OSD with the same title and running state; closing the game returned to the same AURA card."
   },
   "performance": {
     "runs": [
-      "performance-installed-dd222-1.json",
-      "performance-installed-dd222-2.json",
-      "performance-installed-dd222-3.json"
+      "performance-installed-98f0-1.json",
+      "performance-installed-98f0-2.json",
+      "performance-installed-98f0-3.json"
     ],
-    "startupMs": {"min": 561, "max": 768},
-    "frameTimeP95Ms": {"min": 17.636, "max": 18.182},
-    "peakVramKb": {"min": 66760, "max": 90128},
+    "startupMs": {"min": 503, "max": 938},
+    "frameTimeP95Ms": {"min": 17.819, "max": 18.686},
+    "peakVramKb": {"min": 85268, "max": 95644},
     "vramMeasured": true,
     "targetP95Ms": 16.7,
     "result": "measured-target-not-met"
   },
-  "kdeSessionRestarted": false
+  "kdeSessionRestarted": false,
+  "physicalResult": "fullscreen-focus-details-launch-aura-osd-return-proven",
+  "performanceGap": "frameTime p95 remains above the 16.7 ms target"
 }

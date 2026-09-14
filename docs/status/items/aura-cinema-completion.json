@@ -36,15 +36,14 @@
     "tests/unit/test_session_overlay.py",
     "tests/unit/test_session_overlay_adapter.py"
   ],
-  "scopeDigest": "344bbd763e97b2d3a5e0974e09dcd2222ba4e972040c3dfbd2ed278a199b2bcb",
+  "scopeDigest": "63177e9ade03560cb99c5fda0bea2182184b4a5230146c302569de294c49cae2",
   "dependsOn": [
     "SZ-AURA-SAVE-STATE-GALLERY",
     "SZ-AURA-SESSION-OSD",
     "SZ-THEME-ENGINE"
   ],
   "knownGaps": [
-    "GAP-AURA-CINEMA-PERFORMANCE-POST-QML",
-    "GAP-AURA-CINEMA-OSD-SAME-CARD-POST-APPLY"
+    "GAP-AURA-CINEMA-PERFORMANCE-POST-QML"
   ],
   "acceptanceCriteria": [
     "O adapter concreto declara save/load com backup transacional e troca de disco somente quando o emulador fornece esses contratos.",
@@ -99,11 +98,17 @@
     {
       "kind": "hardware",
       "reference": "docs/09-operations/evidence/2026-09-14-aura-rich-media-installed/PHYSICAL-VALIDATION.json",
-      "command": "fullscreen AURA fallback, details, real RetroArch launch, native OSD and return focus on release dd222",
+      "command": "release 2.0.0rc1-98f0cc5c6fcd: fullscreen, carousel focus, details, real RetroArch launch, semantic AURA OSD on the same card and return focus",
       "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-14-aura-rich-media-installed/performance-installed-98f0-1.json",
+      "command": "launcher_perf_probe.py --backend opengl --timeout 30 --out performance-installed-98f0-1.json (three installed-release runs)",
+      "result": "partial"
     }
   ],
-  "nextAction": "Publicar a correção de foco da cena Cinema, reinstalar pelo fluxo governado e capturar OSD semântico AURA na mesma sessão/cartão; depois otimizar o p95.",
+  "nextAction": "Otimizar o frame-time p95 da cena Cinema na próxima frente, repetindo a medição no host real; manter a cadeia física OSD/retorno como evidência concluída.",
   "activeWorkstreams": [
     "WS-2026-09-AURA-CINEMA-COMPLETION"
   ],

@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
-  "release": "2.0.0rc1-dd2221656ef3",
-  "sourceCommit": "dd2221656ef34c0c01c2fee6979706d9d2083eff",
-  "ciRun": "34837460662",
-  "rollbackRelease": "2.0.0rc1-7e66e98cb766",
-  "wheelSha256": "cd4d390513ed5bc4454ce43d9bef51ded4c861178520e0038582ff2701a080f0",
-  "installedAt": "2026-09-14T12:10:49-03:00",
+  "release": "2.0.0rc1-98f0cc5c6fcd",
+  "sourceCommit": "98f0cc5c6fcd1cca6a467dcf1815ea2836bb81f5",
+  "ciRun": "34861980121",
+  "rollbackRelease": "2.0.0rc1-dd2221656ef3",
+  "wheelSha256": "fa6aeb001612fdd5a00f275f020024e3eb973664c65f2d73d5dc3aee21c67613",
+  "installedAt": "2026-09-14T12:41:00-03:00",
   "daemon": {
     "firstConvergence": "converged",
-    "idempotentConvergence": "converged",
-    "restarted": true,
+    "idempotentConvergence": "not-run",
+    "restarted": false,
     "kdeSessionRestarted": false
   },
   "doctor": {
