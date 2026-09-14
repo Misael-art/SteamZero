@@ -4,7 +4,7 @@
   "id": "WS-2026-09-AURA-CINEMA-COMPLETION",
   "item": "SZ-AURA-CINEMA-COMPLETION",
   "branch": "codex/aura-physical-proof-close-2026-09-14",
-  "baseRef": "f734c97cdb3cb31767c1a8adb65d657252f1f356",
+  "baseRef": "dd2221656ef34c0c01c2fee6979706d9d2083eff",
   "owner": "codex-aura-physical-proof",
   "state": "active",
   "exclusivePaths": [
@@ -40,6 +40,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Otimizar p95 do render loop e repetir OSD/pausa na mesma sessão; evidência física da composição fullscreen já está instalada.",
+  "nextAction": "Otimizar p95 do render loop e capturar o OSD semântico AURA na mesma sessão/card; evidência pós-apply e retorno ao foco estão instalados.",
   "updatedAt": "2026-09-14"
 }

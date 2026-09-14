@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "release": "2.0.0rc1-f734c97cdb3c",
-  "sourceCommit": "f734c97cdb3cb31767c1a8adb65d657252f1f356",
-  "ciRun": "34824781870",
-  "rollbackRelease": "2.0.0rc1-c059ad798a59",
-  "wheelSha256": "81ec6b7bf8d0e27c75e45f3f3f598dee293f4a9c4c83519ea5fa21fe90373f7d",
-  "installedAt": "2026-09-14T09:17:25-03:00",
+  "release": "2.0.0rc1-dd2221656ef3",
+  "sourceCommit": "dd2221656ef34c0c01c2fee6979706d9d2083eff",
+  "ciRun": "34837460662",
+  "rollbackRelease": "2.0.0rc1-7e66e98cb766",
+  "wheelSha256": "cd4d390513ed5bc4454ce43d9bef51ded4c861178520e0038582ff2701a080f0",
+  "installedAt": "2026-09-14T12:10:49-03:00",
   "daemon": {
     "firstConvergence": "converged",
     "idempotentConvergence": "converged",

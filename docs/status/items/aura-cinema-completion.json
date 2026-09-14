@@ -31,18 +31,20 @@
     "src/steamzero/adapters/launcher_media.py",
     "tests/unit/test_launcher_media.py",
     "tests/integration/test_media.py",
+    "docs/09-operations/evidence/2026-09-14-aura-rich-media-installed",
     "tests/unit/test_emulation_controller.py",
     "tests/unit/test_session_overlay.py",
     "tests/unit/test_session_overlay_adapter.py"
   ],
-  "scopeDigest": "18a47889a84ba2dfc6e62912a0fd17379881ba96b6f14ce56e2f853a1d4eccac",
+  "scopeDigest": "9c296b71d80b969dd293244393f177dce3ca441720846fd1e8d980364222d92a",
   "dependsOn": [
     "SZ-AURA-SAVE-STATE-GALLERY",
     "SZ-AURA-SESSION-OSD",
     "SZ-THEME-ENGINE"
   ],
   "knownGaps": [
-    "GAP-AURA-CINEMA-PERFORMANCE-POST-QML"
+    "GAP-AURA-CINEMA-PERFORMANCE-POST-QML",
+    "GAP-AURA-CINEMA-OSD-SAME-CARD-POST-APPLY"
   ],
   "acceptanceCriteria": [
     "O adapter concreto declara save/load com backup transacional e troca de disco somente quando o emulador fornece esses contratos.",
@@ -91,17 +93,17 @@
     {
       "kind": "hardware",
       "reference": "docs/09-operations/evidence/2026-09-14-aura-rich-media-installed/README.md",
-      "command": "release 2.0.0rc1-f734c97cdb3c + launcher_perf_probe.py --backend opengl --timeout 30",
+      "command": "release 2.0.0rc1-dd2221656ef3 + launcher_perf_probe.py --backend opengl --timeout 30",
       "result": "recorded"
     },
     {
       "kind": "hardware",
       "reference": "docs/09-operations/evidence/2026-09-14-aura-rich-media-installed/PHYSICAL-VALIDATION.json",
-      "command": "fullscreen AURA fallback, carousel, details, recovery and real RetroArch launch",
+      "command": "fullscreen AURA fallback, details, real RetroArch launch, native OSD and return focus on release dd222",
       "result": "recorded"
     }
   ],
-  "nextAction": "Otimizar o render loop até p95 <= 16,7 ms e repetir o fluxo OSD na mesma sessão/card; manter a release instalada enquanto isso.",
+  "nextAction": "Otimizar o render loop até p95 <= 16,7 ms e capturar o OSD semântico AURA na mesma sessão/card; manter a release dd222 instalada enquanto isso.",
   "activeWorkstreams": [
     "WS-2026-09-AURA-CINEMA-COMPLETION"
   ],
