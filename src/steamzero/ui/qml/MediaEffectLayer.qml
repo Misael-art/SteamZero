@@ -127,7 +127,10 @@ Item {
     Loader {
         id: advancedRenderer
         anchors.fill: parent
-        active: root.advancedEffectsAvailable
+        // Uma camada sem efeitos não precisa de textura intermediária, FBO ou
+        // MultiEffect. Isso é importante no tier balanced: a composição ainda
+        // mostra a arte nativa, enquanto somente cinematic pede blur real.
+        active: root.advancedEffectsAvailable && root.effects.length > 0
         source: active ? "MediaMultiEffectRenderer.qml" : ""
         onLoaded: {
             item.sourceItem = Qt.binding(function() { return mediaTexture })
