@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AURA-SAVE-STATE-GALLERY",
+  "title": "AURA save-state gallery e contrato de slots",
+  "domain": "ui",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/domain/save_states.py",
+    "src/steamzero/domain/session_overlay.py",
+    "src/steamzero/adapters/session_overlay.py",
+    "src/steamzero/adapters/launcher_ui.py",
+    "src/steamzero/schemas/session-save-state-v1.schema.json",
+    "src/steamzero/ui/qml/launcher/LauncherSaveStateGallery.qml",
+    "src/steamzero/ui/qml/launcher/LauncherSessionOverlay.qml",
+    "src/steamzero/ui/qml/launcher/LauncherMain.qml",
+    "tests/unit/test_save_states.py",
+    "tests/unit/test_session_overlay_adapter.py",
+    "tests/integration/test_launcher_app.py",
+    "tests/integration/test_qml_handheld_offscreen.py",
+    "tests/qml/launcher/check_launcher_save_state_gallery.qml"
+  ],
+  "scopeDigest": "4cfa6359626855b1543d3ba0c207e9866968df7cb9af725c55480025223f886d",
+  "dependsOn": [
+    "SZ-AURA-SESSION-OSD",
+    "SZ-AURA-LAUNCHER"
+  ],
+  "knownGaps": [
+    "GAP-AURA-SAVE-STATE-ADAPTER-ABSENT",
+    "GAP-AURA-SAVE-STATE-PHYSICAL"
+  ],
+  "acceptanceCriteria": [
+    "A galeria publica slot, thumbnail, timestamp, playtime, compatibilidade e backup sem expor paths privados.",
+    "Save/load exige sessão e jogo correlacionados, slot inteiro limitado e operação semântica allowlisted.",
+    "A ausência de adapter produz fallback visível e não inventa slots ou sucesso.",
+    "A cena oferece navegação horizontal, seleção por foco, thumbnail fallback e escala/acessibilidade herdadas.",
+    "Backup e restauração permanecem responsabilidade do adapter concreto e só são promovidos após prova física instalada."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_save_states.py",
+      "command": ".venv/bin/python -m pytest tests/unit/test_save_states.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_session_overlay_adapter.py",
+      "command": ".venv/bin/python -m pytest tests/unit/test_session_overlay_adapter.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_launcher_app.py",
+      "command": ".venv/bin/python -m pytest tests/integration/test_launcher_app.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/launcher/check_launcher_save_state_gallery.qml",
+      "command": ".venv/bin/python -m pytest tests/integration/test_qml_handheld_offscreen.py -k save_state_gallery -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Criar adapter de sessão para um emulador com save/load state, incluindo backup transacional e prova em jogo real; manter a galeria indisponível nos adapters sem contrato.",
+  "activeWorkstreams": [
+    "WS-2026-09-AURA-SAVE-STATE-GALLERY"
+  ],
+  "updatedAt": "2026-09-14",
+  "notes": "AURA-12 entrega o read model e a superfície visual, não finge captura. O host atual usa adapters sem save-state e deve continuar exibindo indisponibilidade explícita até a implementação concreta."
+}

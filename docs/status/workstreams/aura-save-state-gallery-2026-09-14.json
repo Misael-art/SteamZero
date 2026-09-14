@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-SAVE-STATE-GALLERY",
+  "item": "SZ-AURA-SAVE-STATE-GALLERY",
+  "branch": "codex/aura-save-state-gallery-2026-09-14",
+  "baseRef": "b0d2852cba309b05257245ff030da5618cf15ccf",
+  "owner": "codex-aura-save-state-gallery",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/domain/save_states.py",
+    "src/steamzero/schemas/session-save-state-v1.schema.json",
+    "src/steamzero/ui/qml/launcher/LauncherSaveStateGallery.qml",
+    "tests/unit/test_save_states.py",
+    "tests/qml/launcher/check_launcher_save_state_gallery.qml",
+    "docs/status/items/aura-save-state-gallery.json",
+    "docs/status/workstreams/aura-save-state-gallery-2026-09-14.json"
+  ],
+  "sharedPaths": [
+    "src/steamzero/domain/session_overlay.py",
+    "src/steamzero/adapters/session_overlay.py",
+    "src/steamzero/adapters/launcher_ui.py",
+    "src/steamzero/ui/qml/launcher/LauncherSessionOverlay.qml",
+    "src/steamzero/ui/qml/launcher/LauncherMain.qml",
+    "tests/unit/test_session_overlay_adapter.py",
+    "tests/integration/test_launcher_app.py",
+    "tests/integration/test_qml_handheld_offscreen.py",
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Fechar o contrato funcional com gates integrais; depois implementar adapter concreto de save/load state e prova instalada sem promover fallback como sucesso.",
+  "updatedAt": "2026-09-14"
+}
