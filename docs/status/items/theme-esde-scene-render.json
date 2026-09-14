@@ -37,12 +37,13 @@
     "tests/qml/check_theme_scene_preview.qml",
     "tests/unit/test_theme_scene.py"
   ],
-  "scopeDigest": "cc1cc4b0c87252a49187a8bf702bea5f2b72442788032b610e85c720e9097d79",
+  "scopeDigest": "167003dc6cbc19155403a50b873aa2dc311a3a8cb1e3de8a74e112668cf63e01",
   "dependsOn": [
     "SZ-THEME-IMPORT-ESDE-LAYOUT"
   ],
   "knownGaps": [
-    "GAP-THEME-ESDE-SCENE-NOT-RENDERED"
+    "GAP-THEME-ESDE-SCENE-NOT-RENDERED",
+    "GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
   ],
   "acceptanceCriteria": [
     "Um tema instalado compila a partir dos blobs do store, sem materializar a arvore de arte.",

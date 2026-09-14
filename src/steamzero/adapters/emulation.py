@@ -6932,11 +6932,8 @@ class EmulationController:
         platform_id = str(requested_platform_id or "")
         if mode not in {"audit", "search-missing", "refresh", "overwrite", "optimize"}:
             raise SteamZeroError("E-API-SCHEMA", detail="modo global de mídia inválido")
-        if platform_id and platform_id != "switch":
-            raise SteamZeroError(
-                "E-API-SCHEMA",
-                detail="esta superfície de emulação só aceita o escopo da plataforma Switch",
-            )
+        if platform_id:
+            self._require_declared_platform(platform_id)
         if mode == "overwrite" and not overwrite:
             raise SteamZeroError(
                 "E-API-SCHEMA",
@@ -8758,16 +8755,42 @@ class EmulationController:
         ]
 
     @staticmethod
+    def _require_declared_platform(platform_id: str) -> str:
+        """Valida o escopo contra as plataformas declaradas nos manifestos.
+
+        A validação é por manifesto, não por lista fixa: uma plataforma nova
+        passa a ser escopo válido de mídia no mesmo commit que a declara, sem
+        segunda fonte de verdade para esquecer de atualizar.
+        """
+        try:
+            PlatformRegistry.bundled().get(platform_id)
+        except SteamZeroError as exc:
+            # A origem é o payload da UI, então o erro é de esquema da API, não
+            # de componente degradado: quem chamou precisa corrigir o escopo.
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail=f"plataforma desconhecida: {platform_id}"
+            ) from exc
+        return platform_id
+
+    @staticmethod
     def _media_scope_from_payload(payload: Mapping[str, Any]) -> str:
+        """Resolve o escopo de plataforma de uma ação global de mídia.
+
+        Ausente e ``"all"`` significam todos os sistemas — string vazia, que é
+        o que ``platform_id or None`` já traduzia para "sem filtro" a jusante.
+        Antes daqui aceitar qualquer plataforma declarada, o escopo global era
+        fixado em Switch e a superfície recusava PS4, PS3, Vita e o resto,
+        mesmo com a plataforma selecionada na interface.
+        """
         requested = payload.get("platformId")
         if requested is None:
-            return "switch"
-        if not isinstance(requested, str) or requested != "switch":
-            raise SteamZeroError(
-                "E-API-SCHEMA",
-                detail="esta superfície de emulação só aceita o escopo da plataforma Switch",
-            )
-        return requested
+            return ""
+        if not isinstance(requested, str) or not requested.strip():
+            raise SteamZeroError("E-API-SCHEMA", detail="platformId precisa ser string não vazia")
+        scope = requested.strip()
+        if scope == "all":
+            return ""
+        return EmulationController._require_declared_platform(scope)
 
     def _count_projection_ghosts(self) -> int:
         """Conta jogos do cache cujo arquivo sumiu (verificação pós-reparo)."""

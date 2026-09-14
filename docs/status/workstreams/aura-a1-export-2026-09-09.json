@@ -6,7 +6,7 @@
   "branch": "codex/aura-a1-export-2026-09-09",
   "baseRef": "0dbfdc31",
   "owner": "codex-aura-a1-export",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/domain/metadata_export",
     "tests/unit/test_metadata_export_plan.py",
@@ -19,6 +19,6 @@
     "docs/WORKLOG.md",
     "docs/status/items/aura-metadata.json"
   ],
-  "nextAction": "Implementar export com plan/preview/backup: a exportacao nunca escreve as cegas. O plano declara o que mudaria, preserva campos que o GameRecord nao modela (reescrever apagaria dado do usuario), e recusa arquivo alvo malformado em vez de sobrescrever. Dominio puro: nao escreve em disco.",
-  "updatedAt": "2026-09-09"
+  "nextAction": "Frente mergeada no main; branch codex/aura-a1-export-2026-09-09 e ancestral de main.",
+  "updatedAt": "2026-09-14"
 }

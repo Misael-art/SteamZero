@@ -31,6 +31,19 @@ Rectangle {
     property bool compactLayout: false
     // Tema ativo no host (dashboard.theme.activeId). Main.qml deve vincular.
     property string activeThemeId: ""
+    // Nome de apresentacao do tema em vigor. Vazio significa "o tema
+    // preferido nao esta disponivel no catalogo" — a UI diz isso, em vez de
+    // cair para o ID tecnico.
+    property string activeThemeName: ""
+
+    // O ID tecnico (org.steamzero.aura) nunca e o titulo apresentado. Quando o
+    // pacote nao declara nome, a UI diz que o nome falta em vez de exibir o ID
+    // como se fosse o nome do tema; o ID continua visivel no detalhe tecnico.
+    function themeLabel(entry) {
+        if (!entry)
+            return qsTr("Tema sem nome")
+        return String(entry.displayName || entry.name || qsTr("Tema sem nome"))
+    }
     property var applyPlan: null
     property var exportPlan: null
 
@@ -509,6 +522,26 @@ Rectangle {
 
         Item { Layout.minimumHeight: 8 }
 
+        // Qual tema esta EM VIGOR, pelo nome. Sem isto a tela mostrava a lista
+        // de temas instalados sem dizer qual deles esta aplicado, e instalar
+        // parecia ativar.
+        Label {
+            objectName: "activeThemeLabel"
+            visible: panel.activeThemeName !== "" || panel.activeThemeId !== ""
+            text: panel.activeThemeName !== ""
+                ? qsTr("Tema ativo: %1").arg(panel.activeThemeName)
+                : qsTr("Tema ativo: indisponível no catálogo")
+            color: panel.activeThemeName !== "" ? panel.cyanColor : panel.amberColor
+            font.pixelSize: 14
+            font.weight: Font.Medium
+            Layout.leftMargin: 20
+            Layout.rightMargin: 20
+            Layout.fillWidth: true
+            elide: Text.ElideRight
+        }
+
+        Item { Layout.minimumHeight: 8 }
+
         Label {
             text: qsTr("Crie ou edite temas visuais do SteamZero")
             color: panel.mutedColor
@@ -727,7 +760,7 @@ Rectangle {
                                 Layout.alignment: Qt.AlignVCenter
                                 spacing: 2
                                 Label {
-                                    text: modelData.name || modelData.id
+                                    text: panel.themeLabel(modelData)
                                     color: panel.textColor
                                     font.pixelSize: 15
                                     font.weight: Font.Medium
@@ -779,7 +812,7 @@ Rectangle {
                                     text: qsTr("Aplicar")
                                     implicitWidth: 88
                                     implicitHeight: 36
-                                    Accessible.name: qsTr("Aplicar tema %1").arg(modelData.name || modelData.id)
+                                    Accessible.name: qsTr("Aplicar tema %1").arg(panel.themeLabel(modelData))
                                     onClicked: panel.beginApply(modelData.id)
                                     background: Rectangle {
                                         color: parent.hovered ? panel.cyanColor : panel.raisedColor
@@ -805,7 +838,7 @@ Rectangle {
                                         ? (panel.compactLayout ? 120 : 150)
                                         : 88
                                     implicitHeight: 36
-                                    Accessible.name: text + " " + (modelData.name || modelData.id)
+                                    Accessible.name: text + " " + (panel.themeLabel(modelData))
                                     onClicked: {
                                         // Via envelope de ações: URL/método vêm do
                                         // contrato do backend, não são montados aqui.
@@ -835,7 +868,7 @@ Rectangle {
                                     text: qsTr("Duplicar e editar")
                                     implicitWidth: panel.compactLayout ? 120 : 140
                                     implicitHeight: 36
-                                    Accessible.name: qsTr("Duplicar e editar %1").arg(modelData.name || modelData.id)
+                                    Accessible.name: qsTr("Duplicar e editar %1").arg(panel.themeLabel(modelData))
                                     onClicked: panel.duplicateAndEdit(modelData.id, modelData.name)
                                     background: Rectangle {
                                         color: parent.hovered ? panel.raisedColor : panel.surfaceColor

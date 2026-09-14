@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "ready",
   "distribution": "installed",
-  "scopeDigest": "0632a70757bbf33f6eb0db8bfd23dc82f406c4c90f1d98252cdd85fd296d8dce",
+  "scopeDigest": "ef5671c9887bbb8f02333a718d3419dd3385c97df700ea9b7a6dc1e498c8f2be",
   "scopePaths": [
     "src/steamzero/adapters/desktop_contracts.py",
     "src/steamzero/adapters/desktop_dashboard.py",
@@ -24,7 +24,9 @@
   "dependsOn": [
     "SZ-THEME-ENGINE"
   ],
-  "knownGaps": [],
+  "knownGaps": [
+    "GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
+  ],
   "acceptanceCriteria": [
     "A central consegue inspecionar uma pasta ou layout RetroFE local sem escrever nada.",
     "A inspeção mostra layouts, cobertura, perdas e reparos antes da aplicação.",

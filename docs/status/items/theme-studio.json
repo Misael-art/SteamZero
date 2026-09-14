@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "7b2d37233d980f33a1008c3c5b8fcba9387f3ab9e986be83f8125d4c94c4c709",
+  "scopeDigest": "5a2125fdbbfb939e8e4d0942ea940b76d28047c80e4008d511f3340949a80bbf",
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun",
     "docs/09-operations/evidence/2026-09-07-theme-studio-contrast",
@@ -30,7 +30,8 @@
     "SZ-THEME-ENGINE"
   ],
   "knownGaps": [
-    "GAP-THEME-STUDIO-PHYSICAL-CANVAS"
+    "GAP-THEME-STUDIO-PHYSICAL-CANVAS",
+    "GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
   ],
   "acceptanceCriteria": [
     "Edicao de tokens, metadados e catalogo possui contratos e testes unitarios.",

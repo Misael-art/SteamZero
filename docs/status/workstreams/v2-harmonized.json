@@ -6,7 +6,7 @@
   "branch": "codex/v2-harmonized-functional-release",
   "baseRef": "c2a1ff1abc98fbffd04175c81010009872476893",
   "owner": "v2-harmonized-agent",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/ui/qml/ControlsProfileCard.qml",
     "src/steamzero/ui/qml/EditorialHome.qml",
@@ -31,6 +31,6 @@
     "src/steamzero/ui/qml",
     "tools/install_host.py"
   ],
-  "nextAction": "Contrato do plano Flatpak v3 ja integrado e provado (SZ-COMPONENT-LIFECYCLE). A custodia de src/steamzero/domain/library.py segue exclusiva de SZ-LIBRARY-CANONICAL, ja fechada. Restam para o fechamento 2.0: biblioteca canonica consumida pelos demais superficies, prova de artwork da midia no acervo real, matriz fisica dos 33, jornada ES-DE/RetroFE, 7 controles de UI e updater com prova de quarentena. Sem merge das PRs antigas 78, 79, 80, 81, 82 e 92.",
-  "updatedAt": "2026-08-30"
+  "nextAction": "Frente mergeada no main; branch e ancestral de main.",
+  "updatedAt": "2026-09-14"
 }

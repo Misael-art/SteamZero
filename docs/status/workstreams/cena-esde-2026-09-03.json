@@ -6,7 +6,7 @@
   "branch": "codex/theme-esde-fullscreen-evidence-2026-09-10",
   "baseRef": "9a78475f2e0f39e3a4b41b5bd1e2b0ba3f1a5c8d",
   "owner": "codex-theme-physical-evidence",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/domain/theme_scene.py",
     "src/steamzero/ui/qml/SceneEsdeView.qml",
@@ -27,6 +27,6 @@
     "src/steamzero/domain/theme_import_esde_layout.py",
     "src/steamzero/ui/qml/ThemeCatalogPanel.qml"
   ],
-  "nextAction": "Fullscreen interativo entregue fisicamente; otimizar p95=18.254 ms e decidir promoção da cena à aparência central.",
-  "updatedAt": "2026-09-10"
+  "nextAction": "Frente mergeada no main; branch e ancestral de main.",
+  "updatedAt": "2026-09-14"
 }

@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "264e54910f263b5690719af1b237bd0abf72b32e2712fea0cf3a047b98f36f09",
+  "scopeDigest": "4c001ca080840cd7f48a04c8140ab0a5fb283e6b2741f20b5ed401cdafab3528",
   "scopePaths": [
     "src/steamzero/cli/main.py",
     "src/steamzero/adapters/emulation.py",
@@ -69,7 +69,8 @@
     "GAP-AURA-CINEMA-HTTP-KEEPALIVE",
     "GAP-AURA-LAUNCHER-BRIDGE-DISCONNECT-RECOVERY",
     "GAP-AURA-LAUNCHER-SESSION-ACK-LIFETIME",
-    "GAP-PS4-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
+    "GAP-PS4-SCOPE-PHYSICAL-EVIDENCE-PRECEDES",
+    "GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
   ],
   "acceptanceCriteria": [
     "Home fullscreen, biblioteca, busca, colecoes e pagina de jogo funcionam por controle.",

@@ -6,7 +6,7 @@
   "branch": "codex/aura-save-state-gallery-2026-09-14",
   "baseRef": "b0d2852cba309b05257245ff030da5618cf15ccf",
   "owner": "codex-aura-save-state-gallery",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/domain/save_states.py",
     "src/steamzero/schemas/session-save-state-v1.schema.json",
@@ -30,6 +30,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Fechar o contrato funcional com gates integrais; depois implementar adapter concreto de save/load state e prova instalada sem promover fallback como sucesso.",
+  "nextAction": "Frente mergeada no main; branch e ancestral de main.",
   "updatedAt": "2026-09-14"
 }

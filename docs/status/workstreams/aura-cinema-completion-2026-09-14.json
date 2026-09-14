@@ -6,7 +6,7 @@
   "branch": "codex/aura-cinema-focus-osd-2026-09-14",
   "baseRef": "dd2221656ef34c0c01c2fee6979706d9d2083eff",
   "owner": "codex-aura-cinema-focus-osd",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/domain/session_peripherals.py",
     "src/steamzero/adapters/session_peripherals.py",
@@ -40,6 +40,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Publicar a correção de foco da cena Cinema, reinstalar pelo fluxo governado e capturar OSD semântico AURA na mesma sessão/cartão; depois otimizar o p95.",
+  "nextAction": "Frente mergeada (PR #173); branch e ancestral de main.",
   "updatedAt": "2026-09-14"
 }
