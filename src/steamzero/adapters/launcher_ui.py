@@ -546,7 +546,7 @@ def launch_launcher_ui(bridge: LauncherBridge) -> int:
         return 3
     resource = importlib.resources.files("steamzero.ui").joinpath("qml/launcher/LauncherMain.qml")
     with bridge.serving() as base, importlib.resources.as_file(resource) as scene:
-        argv = (
+        argv: tuple[str, ...] = (
             executable,
             str(scene),
             "--",
