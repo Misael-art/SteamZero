@@ -10483,3 +10483,32 @@ real, adapter de bezel, ingestão rica efetivamente populada no catálogo e
 medição pós-QML de startup/frame time/p95/VRAM. O próximo passo é push/CI da
 PR e, após merge, instalar somente pelo fluxo governado para recolher essas
 evidências sem atribuir resultados offscreen ao hardware.
+
+## 2026-09-14 — Fechamento físico pós-QML do AURA Cinema
+
+Custódia: `WS-2026-09-AURA-CINEMA-COMPLETION`, branch
+`codex/aura-physical-proof-close-2026-09-14`, baseada no merge `f734c97c`
+(PR #168).
+
+| Item | Commit/release | Prova |
+|---|---|---|
+| Backend acelerado e probe físico | `2ac6a5e`, `75450b0`, `857b52c` → `f734c97c` | CI `34824781870` 100% verde; probe Wayland/OpenGL no binário instalado, 3 execuções, 360 frames por execução |
+| AURA fullscreen e mídia | release `2.0.0rc1-f734c97cdb3c` | `08-release-f734-baseline.png`, `10-release-f734-astyanax.png`, `11-release-f734-details.png` e `12-release-f734-recovery.png`: fallback, capa real, carousel, detalhes e retorno ao mesmo foco |
+| Jogo real e degradação | mesma release | RetroArch Mesen 0.9.9 capturado em `15-release-f734-session-focused-full.png`; erro OSD visível em `16-release-f734-osd.png` e recuperação em `17-release-f734-osd-recovery.png` |
+| Desempenho instalado | mesma release | startup `696–975 ms`, VRAM `123980–132792 KiB`, RSS `355960–369504 KiB`; p95 `17,993–18,551 ms`, acima do alvo `16,7 ms` |
+| Governança de host | mesma release | instalação governada convergiu e repetiu idempotência; Doctor confirmou staging, backups e journals órfãos: zero |
+
+Gates estáticos/documentais desta sessão: `ruff check`, `ruff format --check`,
+mypy (278 arquivos), `make independence boundaries` e `make status-check`
+verdes. O CI pós-merge também passou em Python 3.11, 3.12 e 3.14, visual QML,
+wheels e smoke de Manjaro/Ubuntu/Arch. A suíte integral local não foi repetida
+após o histórico travamento do runner; o resultado CI é a prova autoritativa.
+
+O host foi mutado somente por `tools/release_host.py install` com o ambiente da
+sessão KDE, sem reboot ou encerramento do KDE. Release ativa:
+`2.0.0rc1-f734c97cdb3c`; rollback: `2.0.0rc1-c059ad798a59`. O item
+`SZ-AURA-CINEMA-COMPLETION` agora está integrado, verificado em hardware e
+instalado, porém degradado: o p95 ainda excede o critério e a tentativa de OSD
+na mesma sessão/cartão precisa ser repetida após limpar a sessão anterior. O
+próximo trabalho é otimizar o render loop e fechar essa repetição física; não se
+promove a medição atual como cumprimento da meta de 60 FPS.

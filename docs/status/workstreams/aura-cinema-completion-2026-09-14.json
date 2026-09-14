@@ -3,9 +3,9 @@
   "kind": "workstream",
   "id": "WS-2026-09-AURA-CINEMA-COMPLETION",
   "item": "SZ-AURA-CINEMA-COMPLETION",
-  "branch": "codex/aura-rich-media-2026-09-14",
-  "baseRef": "d49834d04737ad8c914369f93dd2a86bb0f31111",
-  "owner": "codex-aura-rich-media",
+  "branch": "codex/aura-physical-proof-close-2026-09-14",
+  "baseRef": "f734c97cdb3cb31767c1a8adb65d657252f1f356",
+  "owner": "codex-aura-physical-proof",
   "state": "active",
   "exclusivePaths": [
     "src/steamzero/domain/session_peripherals.py",
@@ -40,6 +40,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Promover mídia, periféricos e bezel; depois instalar a release governada e registrar prova física de sessão, fallback e métricas pós-QML.",
+  "nextAction": "Otimizar p95 do render loop e repetir OSD/pausa na mesma sessão; evidência física da composição fullscreen já está instalada.",
   "updatedAt": "2026-09-14"
 }

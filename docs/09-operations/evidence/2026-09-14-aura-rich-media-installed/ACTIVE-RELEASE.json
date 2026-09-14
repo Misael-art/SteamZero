@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "release": "2.0.0rc1-f734c97cdb3c",
+  "sourceCommit": "f734c97cdb3cb31767c1a8adb65d657252f1f356",
+  "ciRun": "34824781870",
+  "rollbackRelease": "2.0.0rc1-c059ad798a59",
+  "wheelSha256": "81ec6b7bf8d0e27c75e45f3f3f598dee293f4a9c4c83519ea5fa21fe90373f7d",
+  "installedAt": "2026-09-14T09:17:25-03:00",
+  "daemon": {
+    "firstConvergence": "converged",
+    "idempotentConvergence": "converged",
+    "restarted": true,
+    "kdeSessionRestarted": false
+  },
+  "doctor": {
+    "status": "degraded",
+    "orphanStaging": 0,
+    "orphanBackups": 0,
+    "orphanJournals": 0,
+    "pendingOperations": 0
+  }
+}
