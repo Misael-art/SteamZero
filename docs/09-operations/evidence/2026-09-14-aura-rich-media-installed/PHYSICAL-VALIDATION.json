@@ -1,31 +1,32 @@
 {
   "schemaVersion": 1,
-  "release": "2.0.0rc1-f734c97cdb3c",
-  "sourceCommit": "f734c97cdb3cb31767c1a8adb65d657252f1f356",
+  "release": "2.0.0rc1-dd2221656ef3",
+  "sourceCommit": "dd2221656ef34c0c01c2fee6979706d9d2083eff",
   "sessionType": "wayland",
   "backend": "opengl",
   "visual": {
-    "fullscreen": true,
-    "fallback": "08-release-f734-baseline.png",
-    "richMediaCarousel": "10-release-f734-astyanax.png",
-    "details": "11-release-f734-details.png",
-    "recoverySameFocus": "12-release-f734-recovery.png"
+    "fullscreen": "18-release-dd222-fullscreen.png",
+    "details": "19-release-dd222-details.png",
+    "realGameLaunch": "20-release-dd222-launch.png",
+    "recoverySameFocus": "31-release-dd222-return-focus.png"
   },
   "realGame": {
     "emulator": "RetroArch Mesen 0.9.9",
-    "capture": "15-release-f734-session-focused-full.png",
+    "capture": "20-release-dd222-launch.png",
     "result": "started",
-    "note": "A real NES title reached the emulator; the active launcher card and the pre-existing session did not correlate for the F1 OSD attempt. The controlled error was captured in 16-release-f734-osd.png and recovered in 17-release-f734-osd-recovery.png."
+    "nativeOsdCapture": "21-release-dd222-osd.png",
+    "returnCapture": "31-release-dd222-return-focus.png",
+    "note": "A real NES title reached RetroArch Mesen 0.9.9 from the selected AURA card. The native emulator OSD was captured and the controlled close returned to the same AURA card. The AURA session overlay remains a separate contract and is not promoted by the native OSD capture."
   },
   "performance": {
     "runs": [
-      "performance-installed.json",
-      "performance-installed-repeat-2.json",
-      "performance-installed-repeat-3.json"
+      "performance-installed-dd222-1.json",
+      "performance-installed-dd222-2.json",
+      "performance-installed-dd222-3.json"
     ],
-    "startupMs": {"min": 696, "max": 975},
-    "frameTimeP95Ms": {"min": 17.993, "max": 18.551},
-    "peakVramKb": {"min": 123980, "max": 132792},
+    "startupMs": {"min": 561, "max": 768},
+    "frameTimeP95Ms": {"min": 17.636, "max": 18.182},
+    "peakVramKb": {"min": 66760, "max": 90128},
     "vramMeasured": true,
     "targetP95Ms": 16.7,
     "result": "measured-target-not-met"

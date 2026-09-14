@@ -10512,3 +10512,28 @@ instalado, porém degradado: o p95 ainda excede o critério e a tentativa de OSD
 na mesma sessão/cartão precisa ser repetida após limpar a sessão anterior. O
 próximo trabalho é otimizar o render loop e fechar essa repetição física; não se
 promove a medição atual como cumprimento da meta de 60 FPS.
+
+## 2026-09-14 — Recaptura pós-otimização e promoção da release dd222
+
+Custódia: `WS-2026-09-AURA-CINEMA-COMPLETION`, branch
+`codex/aura-physical-proof-close-2026-09-14`, baseada no merge `dd2221656`
+(PR #171).
+
+| Item | Commit/release | Prova |
+|---|---|---|
+| Tier balanced sem buffers de efeitos vazios | `57fb8eb` + `7d0b52b` → `dd2221656` | QML visual 48/48; testes focados Launcher 5/5; CI `34837460662` verde em Python 3.11/3.12/3.14, QML, wheels e smoke |
+| Instalação governada | `2.0.0rc1-dd2221656ef3` | bundle com wheel SHA `cd4d390513ed5bc4454ce43d9bef51ded4c861178520e0038582ff2701a080f0`; daemon convergiu e segunda convergência foi idempotente; rollback `2.0.0rc1-7e66e98cb766` |
+| Fullscreen e retorno | mesma release | `18-release-dd222-fullscreen.png`, `19-release-dd222-details.png`, `20-release-dd222-launch.png` e `31-release-dd222-return-focus.png` |
+| Jogo real e OSD nativo | mesma release | RetroArch Mesen 0.9.9 iniciou o título NES; `21-release-dd222-osd.png` mostra o menu nativo e `31-release-dd222-return-focus.png` confirma retorno ao mesmo cartão |
+| Desempenho instalado | mesma release | startup `561–768 ms`, VRAM `66760–90128 KiB`, p95 `17,636–18,182 ms`; medição válida, mas acima de `16,7 ms` |
+
+Gates locais: QML visual 48 passed, foco do Launcher 5 passed, Ruff,
+formatação, mypy (278 arquivos), independência e fronteiras verdes. A suíte
+integral local voltou a travar no ambiente após aproximadamente 16%; não foi
+reivindicada como verde. O CI remoto do commit exato foi a prova autoritativa.
+
+O Doctor pós-instalação confirmou zero operações pendentes e zero staging,
+backups ou journals órfãos. O daemon foi atualizado pelo fluxo governado; a
+sessão KDE não foi reiniciada nem finalizada. O OSD semântico AURA na mesma
+sessão/cartão permanece gap separado do OSD nativo capturado, assim como o p95
+acima do alvo; ambos são a próxima ação do workstream.
