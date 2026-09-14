@@ -9,10 +9,11 @@ objeto de gerenciador para executar por conta própria.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
+from steamzero.domain.save_states import resolve_save_state_gallery, unavailable_gallery
 from steamzero.domain.session_overlay import (
     OSD_ACTIONS,
     OverlayIntent,
@@ -45,6 +46,16 @@ class SessionControl(Protocol):
     def resume(self) -> SessionRecord: ...
 
 
+class SaveStateControl(Protocol):
+    """Optional save-state surface owned by the concrete session adapter."""
+
+    def list_save_states(self) -> Sequence[Mapping[str, Any]]: ...
+
+    def save_state(self, slot: int) -> SessionRecord: ...
+
+    def load_state(self, slot: int) -> SessionRecord: ...
+
+
 @dataclass(frozen=True)
 class SessionActionDispatch:
     """Resultado serializável de uma tentativa de ação sem efeito implícito."""
@@ -54,11 +65,12 @@ class SessionActionDispatch:
     session_id: str
     operation: str | None
     state: str
+    slot: int | None = None
     diagnostic: str | None = None
     detail: str = ""
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result: dict[str, Any] = {
             "accepted": self.accepted,
             "gameId": self.game_id,
             "sessionId": self.session_id,
@@ -67,6 +79,9 @@ class SessionActionDispatch:
             "diagnostic": self.diagnostic,
             "detail": self.detail,
         }
+        if self.slot is not None:
+            result["slot"] = self.slot
+        return result
 
 
 def _text(value: Any, *, fallback: str = "", limit: int = MAX_DETAIL_LENGTH) -> str:
@@ -107,6 +122,7 @@ class SessionOverlayAdapter:
         consistent = session_game_id == game_id and bool(session_id)
         control = self._matching_control(session_id, game_id) if consistent else None
         pause_available = control is not None and state in {"running", "suspended"}
+        gallery, save_available, load_available = self._save_state_surface(control, state)
         capabilities: dict[str, dict[str, Any]] = {
             action_id: {
                 "available": action_id in SESSION_ACTIONS and pause_available,
@@ -128,6 +144,20 @@ class SessionOverlayAdapter:
                 "available": False,
                 "reason": "A sessão não está em um estado pausável.",
             }
+        capabilities["saveState"] = {
+            "available": save_available,
+            "reason": (
+                "" if save_available else gallery.reason or "O adapter não oferece save-state."
+            ),
+        }
+        capabilities["loadState"] = {
+            "available": load_available,
+            "reason": (
+                ""
+                if load_available
+                else gallery.reason or "Nenhum save-state compatível está disponível."
+            ),
+        }
         result_session = {
             "gameId": game_id,
             "sessionId": session_id or None,
@@ -142,6 +172,7 @@ class SessionOverlayAdapter:
                 "focusedAction": focused_action,
                 "capabilities": capabilities,
             },
+            "saveStates": gallery.to_dict(),
         }
 
     def dispatch(
@@ -149,6 +180,7 @@ class SessionOverlayAdapter:
         game_id: str,
         session_id: str,
         action_id: str,
+        slot: int | None = None,
     ) -> SessionActionDispatch:
         """Valida correlação/capacidade e encaminha pause ou resume ao dono."""
 
@@ -159,6 +191,7 @@ class SessionOverlayAdapter:
                 session_id=_text(session_id, limit=128),
                 operation=None,
                 state="unknown",
+                slot=slot,
                 diagnostic=DIAG_INVALID_INTENT,
                 detail="gameId e sessionId são obrigatórios.",
             )
@@ -173,6 +206,7 @@ class SessionOverlayAdapter:
                 session_id=session_id,
                 operation=None,
                 state=observed_state,
+                slot=slot,
                 diagnostic=DIAG_SESSION_MISMATCH,
                 detail="A sessão mudou; atualize o overlay antes de tentar novamente.",
             )
@@ -185,6 +219,7 @@ class SessionOverlayAdapter:
                 session_id=session_id,
                 operation=(requested.action.operation if requested.action else None),
                 state=observed_state,
+                slot=slot,
                 diagnostic=requested.diagnostic,
                 detail=(requested.action.reason if requested.action else "Ação não reconhecida."),
             )
@@ -198,11 +233,12 @@ class SessionOverlayAdapter:
                 session_id=session_id,
                 operation=intent.operation,
                 state=observed_state,
+                slot=slot,
                 diagnostic=DIAG_SESSION_UNAVAILABLE,
                 detail="O gerenciador canônico da sessão não está disponível.",
             )
         try:
-            updated = self._execute(intent, control)
+            updated = self._execute(intent, control, slot=slot)
         except Exception as exc:  # boundary: transforma falha de adapter em estado recuperável
             return SessionActionDispatch(
                 accepted=False,
@@ -214,6 +250,7 @@ class SessionOverlayAdapter:
                     fallback=observed_state,
                     limit=32,
                 ),
+                slot=slot,
                 diagnostic=DIAG_ACTION_FAILED,
                 detail=_text(str(exc), fallback="A operação da sessão falhou."),
             )
@@ -224,7 +261,39 @@ class SessionOverlayAdapter:
             session_id=session_id,
             operation=intent.operation,
             state=state,
+            slot=slot,
         )
+
+    @staticmethod
+    def _save_state_surface(control: SessionControl | None, state: str) -> tuple[Any, bool, bool]:
+        if control is None:
+            return unavailable_gallery("Nenhuma sessão controlável foi observada."), False, False
+        list_states = getattr(control, "list_save_states", None)
+        save = getattr(control, "save_state", None)
+        load = getattr(control, "load_state", None)
+        if not callable(list_states):
+            return (
+                unavailable_gallery("O adapter desta sessão não oferece save-state."),
+                False,
+                False,
+            )
+        try:
+            raw_states = list_states()
+        except Exception as exc:  # boundary: read failure remains visible and recoverable
+            message = _text(str(exc), fallback="Não foi possível consultar os save-states.")
+            gallery = resolve_save_state_gallery(
+                {"state": "error", "reason": message, "entries": []},
+                save_available=False,
+                load_available=False,
+            )
+            return gallery, False, False
+        active = state in {"running", "suspended"}
+        gallery = resolve_save_state_gallery(
+            raw_states,
+            save_available=active and callable(save),
+            load_available=active and callable(load),
+        )
+        return gallery, active and callable(save), gallery.load_available
 
     def _matching_control(self, session_id: str, game_id: str) -> SessionControl | None:
         control = self._resolve_control(session_id, game_id)
@@ -236,7 +305,23 @@ class SessionOverlayAdapter:
         return control
 
     @staticmethod
-    def _execute(intent: OverlayIntent, control: SessionControl) -> SessionRecord:
+    def _execute(
+        intent: OverlayIntent, control: SessionControl, *, slot: int | None
+    ) -> SessionRecord:
+        if intent.action_id in {"saveState", "loadState"}:
+            if isinstance(slot, bool) or not isinstance(slot, int) or not 0 <= slot <= 999:
+                raise ValueError("slot de save-state inválido")
+            method = getattr(
+                control,
+                "save_state" if intent.action_id == "saveState" else "load_state",
+                None,
+            )
+            if not callable(method):
+                raise RuntimeError("O adapter desta sessão não oferece esta operação.")
+            current = control.current
+            if current is None or current.state not in {"running", "suspended"}:
+                raise ValueError("a sessão não está disponível para save-state")
+            return cast(Callable[[int], SessionRecord], method)(slot)
         if intent.action_id != "pause" or intent.operation not in {"pause", "resume"}:
             raise ValueError("intent de sessão não allowlisted")
         current = control.current
@@ -251,4 +336,4 @@ class SessionOverlayAdapter:
         return control.resume()
 
 
-__all__ = ["SessionActionDispatch", "SessionOverlayAdapter"]
+__all__ = ["SaveStateControl", "SessionActionDispatch", "SessionOverlayAdapter"]

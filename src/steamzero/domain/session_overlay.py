@@ -108,6 +108,7 @@ class SessionOverlay:
     visible: bool
     focused_action: str
     actions: tuple[OverlayAction, ...]
+    save_states: Mapping[str, Any] | None = None
     critical_error: Mapping[str, Any] | None = None
     diagnostic: str | None = None
 
@@ -119,6 +120,7 @@ class SessionOverlay:
             "visible": self.visible,
             "focusedAction": self.focused_action,
             "actions": [item.to_dict() for item in self.actions],
+            "saveStates": dict(self.save_states) if self.save_states is not None else None,
             "criticalError": dict(self.critical_error) if self.critical_error else None,
             "diagnostic": self.diagnostic,
         }
@@ -164,6 +166,10 @@ def _actions(
         if action_id == "pause":
             label = "Retomar" if state == "suspended" else "Pausar"
             operation = "resume" if state == "suspended" else "pause"
+        elif action_id == "saveState":
+            label = "Galeria de saves"
+        elif action_id == "loadState":
+            label = "Carregar save"
         # A critical error stays visible, but cannot be reported as a
         # successful action. Recovery controls remain declarative.
         if critical_error is not None and available:
@@ -203,6 +209,8 @@ def resolve_session_overlay(read_model: Mapping[str, Any]) -> SessionOverlay:
     raw_capabilities = osd.get("capabilities")
     capabilities = raw_capabilities if isinstance(raw_capabilities, Mapping) else {}
     actions = _actions(capabilities, state=state, critical_error=critical_error)
+    raw_gallery = read_model.get("saveStates")
+    save_states = raw_gallery if isinstance(raw_gallery, Mapping) else None
     requested_focus = _text(osd.get("focusedAction"), limit=32)
     enabled_ids = {item.id for item in actions if item.enabled}
     focused = (
@@ -221,6 +229,7 @@ def resolve_session_overlay(read_model: Mapping[str, Any]) -> SessionOverlay:
         visible=active and osd.get("visible") is True,
         focused_action=focused,
         actions=actions,
+        save_states=save_states,
         critical_error=critical_error,
         diagnostic=diagnostic,
     )

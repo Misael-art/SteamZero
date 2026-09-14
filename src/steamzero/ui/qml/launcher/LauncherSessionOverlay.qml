@@ -17,10 +17,13 @@ Item {
     property string bridgeError: ""
     property string localError: ""
     property bool overlayOpen: false
+    property bool saveGalleryOpen: false
     property bool requestPending: false
     property int selectedIndex: _initialIndex()
     readonly property var actions: overlayModel && Array.isArray(overlayModel.actions)
         ? overlayModel.actions : []
+    readonly property var saveStates: overlayModel && overlayModel.saveStates
+        ? overlayModel.saveStates : null
     readonly property var criticalError: overlayModel
         ? overlayModel.criticalError : null
     readonly property bool highContrast: !!(accessibility && accessibility.highContrast)
@@ -31,6 +34,7 @@ Item {
         ? String(actions[selectedIndex].id || "") : ""
 
     signal actionRequested(string actionId)
+    signal saveStateRequested(string actionId, int slot)
     signal closeRequested()
 
     function _initialIndex() {
@@ -46,6 +50,8 @@ Item {
     function setModel(value) {
         overlay.overlayModel = value
         overlay.selectedIndex = _initialIndex()
+        if (overlay.saveGalleryOpen)
+            saveGallery.setModel(overlay.saveStates)
         overlay.localError = ""
     }
 
@@ -53,6 +59,8 @@ Item {
         if (value !== undefined)
             setModel(value)
         overlay.overlayOpen = true
+        overlay.saveGalleryOpen = false
+        saveGallery.visible = false
         overlay.forceActiveFocus()
     }
 
@@ -60,6 +68,8 @@ Item {
         if (!overlay.overlayOpen)
             return false
         overlay.overlayOpen = false
+        overlay.saveGalleryOpen = false
+        saveGallery.visible = false
         overlay.localError = ""
         overlay.closeRequested()
         return true
@@ -100,8 +110,26 @@ Item {
                 : qsTr("Esta ação está indisponível nesta sessão.")
             return false
         }
+        if ((String(action.id) === "saveState" || String(action.id) === "loadState")
+                && overlay.saveStates
+                && (overlay.saveStates.saveAvailable === true
+                    || overlay.saveStates.loadAvailable === true)) {
+            overlay.saveGalleryOpen = true
+            saveGallery.setModel(overlay.saveStates)
+            saveGallery.openGallery(String(action.id))
+            return true
+        }
         overlay.localError = ""
         overlay.actionRequested(String(action.id))
+        return true
+    }
+
+    function closeSaveGallery() {
+        if (!overlay.saveGalleryOpen)
+            return false
+        overlay.saveGalleryOpen = false
+        saveGallery.visible = false
+        overlay.forceActiveFocus()
         return true
     }
 
@@ -294,12 +322,23 @@ Item {
         }
     }
 
-    Keys.onEscapePressed: overlay.closeOverlay()
-    Keys.onLeftPressed: overlay.move("left")
-    Keys.onRightPressed: overlay.move("right")
-    Keys.onUpPressed: overlay.move("up")
-    Keys.onDownPressed: overlay.move("down")
-    Keys.onReturnPressed: overlay.activateFocused()
-    Keys.onEnterPressed: overlay.activateFocused()
-    Keys.onSpacePressed: overlay.activateFocused()
+    LauncherSaveStateGallery {
+        id: saveGallery
+        anchors.fill: parent
+        model: overlay.saveStates
+        accessibility: overlay.accessibility
+        onSlotRequested: function(actionId, slot) {
+            overlay.saveStateRequested(actionId, slot)
+        }
+        onCloseRequested: overlay.closeSaveGallery()
+    }
+
+    Keys.onEscapePressed: overlay.saveGalleryOpen ? overlay.closeSaveGallery() : overlay.closeOverlay()
+    Keys.onLeftPressed: overlay.saveGalleryOpen ? saveGallery.move("left") : overlay.move("left")
+    Keys.onRightPressed: overlay.saveGalleryOpen ? saveGallery.move("right") : overlay.move("right")
+    Keys.onUpPressed: overlay.saveGalleryOpen ? saveGallery.move("left") : overlay.move("up")
+    Keys.onDownPressed: overlay.saveGalleryOpen ? saveGallery.move("right") : overlay.move("down")
+    Keys.onReturnPressed: overlay.saveGalleryOpen ? saveGallery.activateFocused() : overlay.activateFocused()
+    Keys.onEnterPressed: overlay.saveGalleryOpen ? saveGallery.activateFocused() : overlay.activateFocused()
+    Keys.onSpacePressed: overlay.saveGalleryOpen ? saveGallery.activateFocused() : overlay.activateFocused()
 }

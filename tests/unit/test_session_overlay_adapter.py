@@ -38,6 +38,32 @@ class FakeControl:
         return self.current
 
 
+class SaveStateControl(FakeControl):
+    def __init__(self, session: FakeSession) -> None:
+        super().__init__(session)
+        self.save_states = [
+            {
+                "slot": 2,
+                "timestamp": "2026-09-13T20:00:00Z",
+                "playtimeSeconds": 120,
+                "thumbnailUrl": "asset://save-states/slot-2.png",
+                "compatibility": "native",
+                "backupAvailable": True,
+            }
+        ]
+
+    def list_save_states(self) -> list[dict[str, Any]]:
+        return self.save_states
+
+    def save_state(self, slot: int) -> FakeSession:
+        self.calls.append(f"save:{slot}")
+        return self.current
+
+    def load_state(self, slot: int) -> FakeSession:
+        self.calls.append(f"load:{slot}")
+        return self.current
+
+
 def make_adapter(control: FakeControl) -> SessionOverlayAdapter:
     def observe(_game_id: str) -> dict[str, Any]:
         return {
@@ -103,6 +129,33 @@ def test_dispatch_keeps_unsupported_action_visible_without_side_effect() -> None
     assert result.accepted is False
     assert result.diagnostic == "AURA-OSD-ACTION-003"
     assert control.calls == []
+
+
+def test_read_model_publishes_save_state_gallery_and_declares_real_operations() -> None:
+    control = SaveStateControl(FakeSession())
+    model = make_adapter(control).read_model("game-1", visible=True)
+
+    assert model["osd"]["capabilities"]["saveState"] == {"available": True, "reason": ""}
+    assert model["osd"]["capabilities"]["loadState"] == {"available": True, "reason": ""}
+    assert model["saveStates"]["state"] == "ready"
+    assert model["saveStates"]["entries"][0]["slot"] == 2
+    assert model["saveStates"]["entries"][0]["backupAvailable"] is True
+
+
+def test_save_and_load_dispatch_requires_a_bounded_slot_and_same_session() -> None:
+    control = SaveStateControl(FakeSession())
+    adapter = make_adapter(control)
+
+    saved = adapter.dispatch("game-1", "session-1", "saveState", slot=2)
+    loaded = adapter.dispatch("game-1", "session-1", "loadState", slot=2)
+
+    assert saved.accepted is True
+    assert saved.operation == "saveState"
+    assert saved.slot == 2
+    assert loaded.accepted is True
+    assert loaded.operation == "loadState"
+    assert loaded.slot == 2
+    assert control.calls == ["save:2", "load:2"]
 
 
 def test_dispatch_returns_recoverable_error_when_session_operation_fails() -> None:

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://steamzero.org/schemas/session-save-state-v1.schema.json",
+  "title": "AURA session save-state gallery v1",
+  "description": "Read model público; não expõe paths privados nem controla o emulador.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "state", "available", "saveAvailable", "loadAvailable", "reason", "entries"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "state": {"enum": ["unavailable", "empty", "ready", "degraded", "error"]},
+    "available": {"type": "boolean"},
+    "saveAvailable": {"type": "boolean"},
+    "loadAvailable": {"type": "boolean"},
+    "reason": {"type": "string", "maxLength": 240},
+    "entries": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {"$ref": "#/$defs/entry"}
+    }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slot", "timestamp", "playtimeSeconds", "thumbnailUrl", "thumbnailFallback", "compatibility", "available", "backupAvailable", "reason"],
+      "properties": {
+        "slot": {"type": "integer", "minimum": 0, "maximum": 999},
+        "timestamp": {"type": "string", "maxLength": 32},
+        "playtimeSeconds": {"type": "integer", "minimum": 0},
+        "thumbnailUrl": {"type": "string", "maxLength": 4096},
+        "thumbnailFallback": {"type": "boolean"},
+        "compatibility": {"enum": ["native", "emulated", "unknown"]},
+        "available": {"type": "boolean"},
+        "backupAvailable": {"type": "boolean"},
+        "reason": {"type": "string", "maxLength": 240}
+      }
+    }
+  }
+}

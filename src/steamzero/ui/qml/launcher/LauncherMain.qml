@@ -159,7 +159,7 @@ Window {
             shell.forceActiveFocus()
     }
 
-    function dispatchSessionOverlayAction(actionId) {
+    function dispatchSessionOverlayAction(actionId, slot) {
         if (root.sessionOverlayPending || !root.sessionOverlayModel)
             return false
         const model = root.sessionOverlayModel
@@ -167,16 +167,20 @@ Window {
             return false
         root.sessionOverlayPending = true
         root.sessionOverlayError = ""
-        root._request("POST", "/session/action", {
+        const request = {
             "gameId": String(model.gameId),
             "sessionId": String(model.sessionId),
             "actionId": String(actionId)
-        }, function(status, text) {
+        }
+        if (slot !== undefined && Number(slot) >= 0)
+            request.slot = Number(slot)
+        root._request("POST", "/session/action", request, function(status, text) {
             root.sessionOverlayPending = false
             if (status !== 200) {
                 root.sessionOverlayError = root._overlayErrorText(status, text)
                 return
             }
+            sessionOverlay.closeSaveGallery()
             root.refreshSessionOverlay()
         })
         return true
@@ -642,6 +646,9 @@ Window {
         bridgeError: root.sessionOverlayError
         onActionRequested: function(actionId) {
             root.dispatchSessionOverlayAction(actionId)
+        }
+        onSaveStateRequested: function(actionId, slot) {
+            root.dispatchSessionOverlayAction(actionId, slot)
         }
         onCloseRequested: root.closeSessionOverlay()
     }
