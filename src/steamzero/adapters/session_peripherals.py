@@ -12,10 +12,13 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from steamzero.core import fs, paths
+from steamzero.core.errors import SteamZeroError
 
 MAX_SLOT = 31
 DEFAULT_COMMAND_PORT = 55355
 SESSION_CONFIG_NAME = "session-peripherals.cfg"
+BEZEL_CONFIG_NAME = "aura-bezel-overlay.cfg"
+BEZEL_ASSET_NAME = "aura-bezel.svg"
 
 
 class SessionPeripheralRecord(Protocol):
@@ -38,10 +41,34 @@ SendCommand = Callable[[str], None]
 
 
 def prepare_retroarch_session_config() -> Path:
-    """Publish the bounded RetroArch settings needed by session controls."""
+    """Publish bounded session controls and the managed AURA bezel overlay."""
 
     state_root = paths.saves_dir() / "states"
-    config_path = paths.config_home() / "retroarch" / SESSION_CONFIG_NAME
+    config_root = paths.config_home() / "retroarch"
+    config_path = config_root / SESSION_CONFIG_NAME
+    bezel_source = Path(__file__).resolve().parents[1] / "ui" / "assets" / BEZEL_ASSET_NAME
+    if bezel_source.is_symlink() or not bezel_source.is_file():
+        raise SteamZeroError(
+            "E-COMPONENT-DEGRADED", detail=f"asset de bezel AURA ausente: {BEZEL_ASSET_NAME}"
+        )
+    bezel_asset = config_root / BEZEL_ASSET_NAME
+    fs.copy_file_atomic(bezel_source, bezel_asset)
+    bezel_config = config_root / BEZEL_CONFIG_NAME
+    fs.write_atomic_text(
+        bezel_config,
+        "\n".join(
+            (
+                "# SteamZero-Session-Managed: true",
+                f'overlay0_overlay = "{bezel_asset}"',
+                'overlay0_full_screen = "true"',
+                'overlay0_normalized = "true"',
+                'overlay0_descs = "0"',
+                'overlay0_rect = "0.0,0.0,1.0,1.0"',
+                'overlay0_alpha = "1.0"',
+                "",
+            )
+        ),
+    )
     fs.write_atomic_text(
         config_path,
         "\n".join(
@@ -50,6 +77,9 @@ def prepare_retroarch_session_config() -> Path:
                 'network_cmd_enable = "true"',
                 f'network_cmd_port = "{DEFAULT_COMMAND_PORT}"',
                 f'savestate_directory = "{state_root}"',
+                f'input_overlay = "{bezel_config}"',
+                'input_overlay_enable = "true"',
+                'config_save_on_exit = "false"',
                 "",
             )
         ),
@@ -69,10 +99,10 @@ def _send_udp(command: str, *, host: str, port: int, timeout: float) -> None:
 class RetroArchSessionPeripheral:
     """Use only RetroArch's documented UDP commands and its state files.
 
-    The adapter intentionally implements slot zero first: RetroArch exposes
-    direct ``SAVE_STATE``/``LOAD_STATE`` commands, while selecting an arbitrary
-    slot requires emulator-side state that this boundary cannot safely guess.
-    Other slots stay visible only when a future concrete adapter can prove them.
+    The adapter tracks RetroArch's current state slot from the session start and
+    moves it with the documented ``STATE_SLOT_PLUS``/``STATE_SLOT_MINUS``
+    commands before saving. Loading uses the documented ``LOAD_STATE_SLOT``
+    command, so the gallery can operate on every bounded slot it lists.
     """
 
     def __init__(
@@ -96,6 +126,7 @@ class RetroArchSessionPeripheral:
         self._sleep = sleep
         self._now = now
         self._active_disc = 0
+        self._state_slot = 0
         self._discs = self._read_m3u()
 
     def list_save_states(self) -> Mapping[str, Any]:
@@ -126,7 +157,8 @@ class RetroArchSessionPeripheral:
         }
 
     def save_state(self, slot: int) -> SessionPeripheralRecord:
-        self._require_slot_zero(slot)
+        self._require_slot(slot)
+        self._select_state_slot(slot)
         fs.ensure_dir(self._state_root, mode=0o700)
         current = self._state_path(slot)
         if current.is_file() and not current.is_symlink() and current.stat().st_size > 0:
@@ -136,10 +168,11 @@ class RetroArchSessionPeripheral:
         return self._record()
 
     def load_state(self, slot: int) -> SessionPeripheralRecord:
-        self._require_slot_zero(slot)
+        self._require_slot(slot)
         if not self._state_path(slot).is_file():
             raise RuntimeError("o slot de save-state ainda não existe")
-        self._send("LOAD_STATE")
+        self._send(f"LOAD_STATE_SLOT {slot}")
+        self._state_slot = slot
         return self._record()
 
     def list_discs(self) -> Mapping[str, Any]:
@@ -224,10 +257,16 @@ class RetroArchSessionPeripheral:
                 discs.append(candidate)
         return tuple(discs[:16])
 
+    def _select_state_slot(self, slot: int) -> None:
+        step = "STATE_SLOT_PLUS" if slot > self._state_slot else "STATE_SLOT_MINUS"
+        for _ in range(abs(slot - self._state_slot)):
+            self._send(step)
+        self._state_slot = slot
+
     @staticmethod
-    def _require_slot_zero(slot: int) -> None:
-        if isinstance(slot, bool) or not isinstance(slot, int) or slot != 0:
-            raise ValueError("este adapter RetroArch expõe somente o slot 0")
+    def _require_slot(slot: int) -> None:
+        if isinstance(slot, bool) or not isinstance(slot, int) or not 0 <= slot <= MAX_SLOT:
+            raise ValueError(f"slot de save-state fora do limite 0..{MAX_SLOT}")
 
     def _record(self) -> SessionPeripheralRecord:
         class Record:
@@ -237,6 +276,8 @@ class RetroArchSessionPeripheral:
 
 
 __all__ = [
+    "BEZEL_ASSET_NAME",
+    "BEZEL_CONFIG_NAME",
     "DEFAULT_COMMAND_PORT",
     "SESSION_CONFIG_NAME",
     "RetroArchSessionPeripheral",

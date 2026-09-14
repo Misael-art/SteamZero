@@ -17,7 +17,20 @@ from pathlib import Path
 
 from steamzero.core import fs, ids, transaction
 
-_KINDS = frozenset({"boxart", "screenshot", "video"})
+_KINDS = frozenset(
+    {
+        "boxart",
+        "screenshot",
+        "video",
+        "fanart",
+        "marquee",
+        "hero",
+        "icon",
+        "wheel",
+        "grid",
+        "title",
+    }
+)
 _BIDI_CONTROLS = frozenset({"LRE", "RLE", "LRO", "RLO", "PDF", "LRI", "RLI", "FSI", "PDI"})
 _DEFAULT_MAX_BYTES = 32 * 1024 * 1024
 

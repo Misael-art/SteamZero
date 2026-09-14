@@ -1292,6 +1292,26 @@ def test_a_libretro_core_launch_also_carries_the_overlay(monkeypatch, tmp_path: 
     assert "--appendconfig" in argv
 
 
+def test_retroarch_launch_carries_the_session_bezel_config(tmp_path: Path) -> None:
+    controller = EmulationController(store_factory=lambda: StateStore(tmp_path / "state.db"))
+    session_config = tmp_path / "session-peripherals.cfg"
+    session_config.write_text("# managed\n", encoding="utf-8")
+    rom = tmp_path / "jogo.sfc"
+    rom.write_bytes(b"rom")
+
+    argv = controller._build_exec_argv(  # type: ignore[attr-defined]
+        _retroarch_profile(),
+        source_type="flatpak",
+        flatpak_ref="org.libretro.RetroArch",
+        payload=None,
+        rom=rom,
+        session_config=session_config,
+    )
+
+    assert argv[4:6] == ["--appendconfig", str(session_config)]
+    assert argv[-1] == str(rom)
+
+
 def test_a_non_retroarch_emulator_is_launched_unchanged(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     controller = EmulationController(store_factory=lambda: StateStore(tmp_path / "state.db"))
     managed = input_devices.ManagedRetroArchConfig(root=tmp_path / "gerenciado")

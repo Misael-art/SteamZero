@@ -201,6 +201,8 @@ Item {
             harness.check(shell.screen === "home", "voltar não retornou à home")
             harness.check(shell.homeFocus === "continue:hades",
                           "o retorno precisa cair no foco de onde saiu")
+            harness.check(shell.returnFadeActive === true,
+                          "o retorno precisa iniciar o fade visual")
             harness.check(shell.launchState === "recovered",
                           "o retorno precisa terminar no estado recovered")
 

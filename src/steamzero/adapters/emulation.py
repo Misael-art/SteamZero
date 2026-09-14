@@ -1123,6 +1123,7 @@ class EmulationController:
         payload: Path | None,
         rom: Path | None = None,
         core_path: Path | None = None,
+        session_config: Path | None = None,
     ) -> list[str]:
         """Monta o argv do executor derivado da fonte fixada.
 
@@ -1141,10 +1142,18 @@ class EmulationController:
             # emulador" e "Jogar" subiriam o RetroArch sem o perfil de controle
             # — que é o caminho que o usuário realmente percorre.
             overlay = input_devices.retroarch_launch_arguments(flatpak_ref)
-            session_config = (
-                ("--appendconfig", str(prepare_retroarch_session_config())) if overlay else ()
+            session_config_args = (
+                ("--appendconfig", str(session_config)) if session_config is not None else ()
             )
-            return ["flatpak", "run", "--user", flatpak_ref, *overlay, *session_config, *args]
+            return [
+                "flatpak",
+                "run",
+                "--user",
+                flatpak_ref,
+                *overlay,
+                *session_config_args,
+                *args,
+            ]
         if payload is None:
             raise SteamZeroError(
                 "E-API-SCHEMA", detail=f"fonte portátil sem payload: {profile.adapter_id}"
@@ -1440,6 +1449,13 @@ class EmulationController:
             # argv faria a melhoria constar como aplicada sem efeito no lançamento
             # — falha silenciosa que nenhum teste de aplicação pegaria.
             enhancement_outcome = self._apply_launch_enhancements(game, game_settings, emulator_id)
+            session_config = (
+                prepare_retroarch_session_config()
+                if source_type == "flatpak"
+                and flatpak_ref
+                and input_devices.RETROARCH_REF in flatpak_ref
+                else None
+            )
             argv = self._build_exec_argv(
                 profile,
                 source_type=source_type,
@@ -1447,6 +1463,7 @@ class EmulationController:
                 payload=payload,
                 rom=rom,
                 core_path=core_path,
+                session_config=session_config,
             )
         except SteamZeroError as exc:
             raise LaunchNotStartedError(exc) from exc

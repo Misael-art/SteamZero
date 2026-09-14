@@ -26,18 +26,22 @@
     "tests/integration/test_launcher_app.py",
     "tests/integration/test_qml_handheld_offscreen.py",
     "src/steamzero/adapters/emulation.py",
+    "src/steamzero/ui/assets/aura-bezel.svg",
+    "src/steamzero/ui/qml/PackagedAssets.qml",
+    "src/steamzero/adapters/launcher_media.py",
+    "tests/unit/test_launcher_media.py",
+    "tests/integration/test_media.py",
+    "tests/unit/test_emulation_controller.py",
     "tests/unit/test_session_overlay.py",
     "tests/unit/test_session_overlay_adapter.py"
   ],
-  "scopeDigest": "89919a6871c15b23a39ca4fc2ea221cd0095f58da11dd06d1627446f7cbe4162",
+  "scopeDigest": "5f1108aee3224b8a6ca36b101a913f031b13bbf99a93b46370b19d7f6f731f8f",
   "dependsOn": [
     "SZ-AURA-SAVE-STATE-GALLERY",
     "SZ-AURA-SESSION-OSD",
     "SZ-THEME-ENGINE"
   ],
   "knownGaps": [
-    "GAP-AURA-CINEMA-BEZEL-ADAPTER",
-    "GAP-AURA-CINEMA-RICH-MEDIA-INGEST",
     "GAP-AURA-CINEMA-PHYSICAL-PROOF",
     "GAP-AURA-CINEMA-PERFORMANCE-POST-QML"
   ],
@@ -68,13 +72,25 @@
       "result": "passed"
     },
     {
+      "kind": "test",
+      "reference": "tests/unit/test_launcher_media.py",
+      "command": ".venv/bin/python -m pytest tests/unit/test_launcher_media.py tests/unit/test_launcher_catalog.py tests/unit/test_launcher_cinema.py tests/integration/test_launcher_app.py tests/integration/test_media.py -q",
+      "result": "passed"
+    },
+    {
       "kind": "diagnostic",
       "reference": "docs/status/items/aura-cinema-completion.json",
-      "command": "run_tests_isolated.py tests -q: interrompido após 15 min em subprocessos QML sem relatório terminal; nenhum teste do host foi alterado",
+      "command": "run_tests_isolated.py tests -q: avançou até 16%, depois ficou sem processos Python/QML e sem relatório terminal; encerrado com SIGINT; nenhum teste do host foi alterado",
       "result": "partial"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_session_peripherals.py",
+      "command": "RetroArchSessionPeripheral publica session-peripherals.cfg e aura-bezel-overlay.cfg gerenciados; o teste verifica asset SVG empacotado, input_overlay_enable, caminho do overlay e preservação do centro transparente. tests/unit/test_emulation_controller.py confirma --appendconfig no argv RetroArch.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Validar a release promovida com jogo real e registrar capturas e métricas de desempenho pós-QML.",
+  "nextAction": "Promover esta correção; validar a release instalada com jogo real, bezel/fallback e registrar capturas e métricas de desempenho pós-QML.",
   "activeWorkstreams": [
     "WS-2026-09-AURA-CINEMA-COMPLETION"
   ],

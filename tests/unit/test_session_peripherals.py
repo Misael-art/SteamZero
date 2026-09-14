@@ -7,7 +7,11 @@ from pathlib import Path
 
 import pytest
 
-from steamzero.adapters.session_peripherals import RetroArchSessionPeripheral
+from steamzero.adapters.session_peripherals import (
+    RetroArchSessionPeripheral,
+    prepare_retroarch_session_config,
+)
+from steamzero.core import paths
 from steamzero.domain.session_peripherals import resolve_session_peripherals
 
 
@@ -41,6 +45,25 @@ def test_resolver_bounds_and_hides_private_bezel_paths() -> None:
         "durationMs": 10000,
         "reducedMotion": True,
     }
+
+
+def test_retroarch_session_config_publishes_managed_aura_bezel(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(paths, "config_home", lambda: tmp_path / "config")
+    monkeypatch.setattr(paths, "saves_dir", lambda: tmp_path / "saves")
+
+    config = prepare_retroarch_session_config()
+    text = config.read_text(encoding="utf-8")
+    bezel_config = config.parent / "aura-bezel-overlay.cfg"
+    bezel_asset = config.parent / "aura-bezel.svg"
+
+    assert "SteamZero-Session-Managed: true" in text
+    assert 'input_overlay_enable = "true"' in text
+    assert f'input_overlay = "{bezel_config}"' in text
+    assert bezel_config.read_text(encoding="utf-8").startswith("# SteamZero-Session-Managed: true")
+    assert bezel_asset.is_file()
+    assert 'fill="none"' in bezel_asset.read_text(encoding="utf-8")
 
 
 def test_retroarch_save_state_slot_zero_waits_for_a_real_file(tmp_path: Path) -> None:
@@ -80,7 +103,26 @@ def test_retroarch_save_state_backups_the_previous_snapshot_atomically(tmp_path:
     assert adapter.list_save_states()["entries"][0]["backupAvailable"] is True
 
 
-def test_retroarch_rejects_unproven_slots_and_supports_m3u_swap(tmp_path: Path) -> None:
+def test_retroarch_gallery_saves_and_loads_a_bounded_nonzero_slot(tmp_path: Path) -> None:
+    content = tmp_path / "game.zip"
+    content.write_bytes(b"content")
+    states = tmp_path / "states"
+    states.mkdir()
+    commands: list[str] = []
+
+    def send(command: str) -> None:
+        commands.append(command)
+        if command == "SAVE_STATE":
+            (states / "game.state2").write_bytes(b"slot-two")
+
+    adapter = RetroArchSessionPeripheral(content, states, send_command=send, sleep=lambda _: None)
+    adapter.save_state(2)
+    assert commands == ["STATE_SLOT_PLUS", "STATE_SLOT_PLUS", "SAVE_STATE"]
+    assert adapter.load_state(2).state == "running"
+    assert commands[-1] == "LOAD_STATE_SLOT 2"
+
+
+def test_retroarch_bounds_save_slots_and_supports_m3u_swap(tmp_path: Path) -> None:
     first = tmp_path / "disc-one.cue"
     second = tmp_path / "disc-two.cue"
     first.write_text("FILE one.bin BINARY\n", encoding="utf-8")
@@ -91,8 +133,8 @@ def test_retroarch_rejects_unproven_slots_and_supports_m3u_swap(tmp_path: Path) 
     adapter = RetroArchSessionPeripheral(
         playlist, tmp_path / "states", send_command=commands.append, sleep=lambda _: None
     )
-    with pytest.raises(ValueError, match="somente o slot 0"):
-        adapter.save_state(1)
+    with pytest.raises(ValueError, match=r"limite 0\.\.31"):
+        adapter.save_state(32)
     assert adapter.list_discs()["discs"][1]["label"] == "disc-two.cue"
     adapter.swap_disc("disc-1")
     assert commands == ["DISK_EJECT_TOGGLE", "DISK_NEXT", "DISK_EJECT_TOGGLE"]

@@ -3,9 +3,9 @@
   "kind": "workstream",
   "id": "WS-2026-09-AURA-CINEMA-COMPLETION",
   "item": "SZ-AURA-CINEMA-COMPLETION",
-  "branch": "codex/aura-cinema-completion-2026-09-14",
-  "baseRef": "7798ccfdc8ed27690b414b7e95ba9a241a3d0b94",
-  "owner": "codex-aura-cinema-completion",
+  "branch": "codex/aura-rich-media-2026-09-14",
+  "baseRef": "d49834d04737ad8c914369f93dd2a86bb0f31111",
+  "owner": "codex-aura-rich-media",
   "state": "active",
   "exclusivePaths": [
     "src/steamzero/domain/session_peripherals.py",
@@ -15,8 +15,13 @@
     "tests/unit/test_session_peripherals.py",
     "tests/qml/launcher/check_launcher_session_peripherals.qml",
     "src/steamzero/adapters/emulation.py",
+    "src/steamzero/ui/assets/aura-bezel.svg",
+    "src/steamzero/ui/qml/PackagedAssets.qml",
     "tests/unit/test_session_overlay.py",
     "tests/unit/test_session_overlay_adapter.py",
+    "src/steamzero/adapters/launcher_media.py",
+    "tests/unit/test_launcher_media.py",
+    "tests/integration/test_media.py",
     "docs/status/items/aura-cinema-completion.json",
     "docs/status/workstreams/aura-cinema-completion-2026-09-14.json"
   ],
@@ -35,6 +40,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Promover o lote 6f7c140 pela PR; após merge, instalar a release governada e registrar prova física de save/disco/fade, ingestão rica e métricas pós-QML.",
+  "nextAction": "Promover mídia, periféricos e bezel; depois instalar a release governada e registrar prova física de sessão, fallback e métricas pós-QML.",
   "updatedAt": "2026-09-14"
 }
