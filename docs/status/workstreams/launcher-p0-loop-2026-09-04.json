@@ -6,7 +6,7 @@
   "branch": "codex/launcher-p0-loop-2026-09-04",
   "baseRef": "aad7787040467d7481d8d7a0ab87c888a8aa4d39",
   "owner": "codex-launcher-p0-loop",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "docs/09-operations/evidence/2026-09-04-launcher-p0-loop",
     "docs/09-operations/evidence/2026-09-05-launcher-p0-loop"
@@ -14,6 +14,6 @@
   "sharedPaths": [
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Release v2.0.0rc1 publicada a partir do merge 085169f471866fbb61530c777d368729002b6868 e instalada/verificada no host. Emulacao e Steam real foram provados com retorno sem processos residuais; permanecem cobertura fisica integral do catalogo e fade de retorno.",
-  "updatedAt": "2026-09-05"
+  "nextAction": "Frente mergeada no main; branch e ancestral de main.",
+  "updatedAt": "2026-09-14"
 }

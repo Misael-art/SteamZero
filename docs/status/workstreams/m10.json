@@ -6,9 +6,14 @@
   "branch": "codex/fase1-cores-laco-primario",
   "baseRef": "e1e2c73",
   "owner": "m10-vm",
-  "state": "active",
-  "exclusivePaths": ["tools/vm_harness", "tests/integration/test_vm_harness.py"],
-  "sharedPaths": ["docs/WORKLOG.md"],
-  "nextAction": "Provar um ciclo minimo de RetroArch antes de ampliar a matriz.",
-  "updatedAt": "2026-08-10"
+  "state": "closed",
+  "exclusivePaths": [
+    "tools/vm_harness",
+    "tests/integration/test_vm_harness.py"
+  ],
+  "sharedPaths": [
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Frente mergeada no main; branch e ancestral de main.",
+  "updatedAt": "2026-09-14"
 }

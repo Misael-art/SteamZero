@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-HARMONIZE-THEME-MEDIA",
+  "item": "SZ-MEDIA-AUDIT-PLATFORM-SCOPE",
+  "branch": "codex/harmonize-theme-media-2026-09-14",
+  "baseRef": "2605bc87",
+  "owner": "codex-harmonize",
+  "state": "active",
+  "exclusivePaths": [
+    "tests/unit/test_media_global_scope.py",
+    "tests/unit/test_theme_display_name.py",
+    "docs/status/workstreams/harmonize-theme-media-2026-09-14.json"
+  ],
+  "sharedPaths": [
+    "src/steamzero/adapters/emulation.py",
+    "src/steamzero/adapters/desktop_dashboard.py",
+    "src/steamzero/ui/qml/Main.qml",
+    "src/steamzero/ui/qml/ThemeCatalogPanel.qml",
+    "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Escopo global de midia generalizado (aceita qualquer plataforma declarada; ausente e 'all' significam todos os sistemas) e contrato de nome de tema separado do ID tecnico, com activeName chegando a apresentacao. Falta prova fisica: nenhuma das duas cadeias foi capturada em release instalada.",
+  "updatedAt": "2026-09-14"
+}

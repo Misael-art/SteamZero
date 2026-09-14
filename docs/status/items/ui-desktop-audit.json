@@ -52,10 +52,11 @@
     "docs/09-operations/evidence/2026-09-06-ui-contrast-footer-physical",
     "docs/09-operations/evidence/2026-09-08-ux-audit"
   ],
-  "scopeDigest": "69e970f10a91d9bf14039707389d25c9bb5ab6e9bb3f9befb2918df8014aefca",
+  "scopeDigest": "daef4c756f388fd506d1aff205acaa80beca4dde9afe91b911f5fab2648cc94d",
   "dependsOn": [],
   "knownGaps": [
-    "GAP-UI-LIVE-LAUNCHER-ROUTING"
+    "GAP-UI-LIVE-LAUNCHER-ROUTING",
+    "GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
   ],
   "acceptanceCriteria": [
     "Instalar emulador nao e no-op silencioso.",

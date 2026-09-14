@@ -43,10 +43,11 @@
     "tests/unit/test_theme_import_esde_layout.py",
     "tests/unit/test_theme_sources.py"
   ],
-  "scopeDigest": "8686c12751dbeb722f171018acfa095b3c73c8e11c49c3413fdaa51b98f0aacd",
+  "scopeDigest": "61387dfc229ed3c2287fab61bd80373bd75a7eb36241f8f3c3bff68c259d1dbf",
   "dependsOn": [],
   "knownGaps": [
-    "GAP-THEME-ESDE-SCENE-NOT-RENDERED"
+    "GAP-THEME-ESDE-SCENE-NOT-RENDERED",
+    "GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
   ],
   "acceptanceCriteria": [
     "Um XML de tema ES-DE compila no mesmo IR de cena emitido por scene_retrofe, sem segundo renderizador.",

@@ -6,7 +6,7 @@
   "branch": "codex/ui-contrast-physical-2026-09-06",
   "baseRef": "44354ac068e3b46c3aba06cb15c3138b91c5e318",
   "owner": "codex-ui-contrast-physical",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "docs/09-operations/evidence/2026-09-06-ui-contrast-physical",
     "tools/ui_contrast_inventory.py",
@@ -17,6 +17,6 @@
     "docs/status/items/ui-desktop-audit.json",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Reproduzir a captura determinística de contraste por pixel e transformar a medição validada em prova do gap, sem mascarar artefatos de clipping ou alpha.",
-  "updatedAt": "2026-09-06"
+  "nextAction": "Frente mergeada no main; branch e ancestral de main.",
+  "updatedAt": "2026-09-14"
 }

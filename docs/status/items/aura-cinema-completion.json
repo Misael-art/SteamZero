@@ -36,7 +36,7 @@
     "tests/unit/test_session_overlay.py",
     "tests/unit/test_session_overlay_adapter.py"
   ],
-  "scopeDigest": "04efe37eabd1f75f14a291ad860dc53f75963f5759e528a004b0d8fe14693a60",
+  "scopeDigest": "a5612938349f95fe9720eb22ee6b65bfd6f38a96b28f4d75e14a9440f28270a0",
   "dependsOn": [
     "SZ-AURA-SAVE-STATE-GALLERY",
     "SZ-AURA-SESSION-OSD",
@@ -45,7 +45,8 @@
   "knownGaps": [
     "GAP-AURA-CINEMA-PERFORMANCE-POST-QML",
     "GAP-AURA-CINEMA-OSD-SAME-CARD-POST-APPLY",
-    "GAP-PS4-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
+    "GAP-PS4-SCOPE-PHYSICAL-EVIDENCE-PRECEDES",
+    "GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
   ],
   "acceptanceCriteria": [
     "O adapter concreto declara save/load com backup transacional e troca de disco somente quando o emulador fornece esses contratos.",

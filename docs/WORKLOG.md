@@ -10576,3 +10576,48 @@ exige autorização do operador. `engine.py`/`lifecycle.py`/`registry.py` e
 `test_platforms.py` mudaram sob custódia de SZ-COMPONENT-LIFECYCLE,
 SZ-EMULATION-LONG-OPERATIONS e SZ-LIBRARY-CANONICAL, com evidência reexecutada
 e digests renovados; workstreams ativos não disputaram caminhos.
+
+## 2026-09-14 — harmonizacao PS4, nomes de tema e escopo de midia
+
+O suporte PS4/shadPS4 vivia em branch 84 commits atras do main. Rebase sobre
+98f0cc5c aplicou os dois commits de codigo sem conflito; so o commit documental
+conflitou, e apenas em `scopeDigest` regenerado e no WORKLOG (ambos os lados
+preservados, append-only). Merge `--no-ff` em 2605bc87 com arvore identica a
+que passou nos gates: 6035 passed, 47 skipped, ruff check, ruff format --check,
+mypy, independencia, fronteiras e status-check verdes. CI remoto success.
+
+Junto entrou a busca tolerante por variantes de titulo, que estava como WIP nao
+commitado no checkout principal. Os quatro conflitos em `launcher_ui.py` eram
+reais — o WIP fora escrito antes de metadata/session_overlay/cinema existirem —
+e foram resolvidos por uniao. O `launch()` do WIP foi descartado de proposito:
+aceita-lo teria regredido o caminho de recibo e `attempts` que o main ja tinha.
+
+Dois eixos estruturais fecharam depois do merge. O escopo global de midia
+estava preso em Switch por constante: ausente virava "switch" e o resto era
+recusado, entao a interface parecia preparada para plataformas enquanto a acao
+global ignorava a selecao. Agora ausente e "all" significam todos os sistemas —
+que e o que `platform_id or None` ja queria dizer a jusante — e qualquer
+plataforma declarada nos manifestos e escopo valido, validada pelo registry em
+vez de lista fixa. O contrato de nome de tema separou ID tecnico, nome
+apresentado e estado: `activeName` so nomeia tema disponivel, `activeKnown`
+distingue "sem nome" de "nome vazio", e Main.qml finalmente liga o nome ate a
+tela. Ele era calculado e ninguem consumia; nenhum teste cobria o campo.
+
+Nove workstreams estavam `active` apontando para branches ja mergeadas no main,
+travando caminhos que ninguem estava editando — inclusive `emulation.py` e
+`Main.qml`. Foram fechados. Cinco continuam ativos com branch apenas local e
+NAO foram tocados: podem ser trabalho real inacabado.
+
+Duas dividas ficam registradas em vez de escondidas. Treze itens `hw`/`dev`
+tiveram `scopeDigest` revalidado contra a suite verde, mas a evidencia deles e
+captura fisica de arvore anterior e nao foi re-tomada; os gaps
+GAP-PS4-SCOPE-PHYSICAL-EVIDENCE-PRECEDES e
+GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES marcam isso. E a cadeia de
+lancamento PS4 continua SEM prova fisica: nao ha conteudo PS4 nem shadPS4 no
+host, e capturar a UI com catalogo vazio provaria a tela, nao a cadeia.
+
+Licao de metodo: quatro vezes nesta sessao um comando reportou sucesso sem ter
+passado — notificacao de exit 0 numa suite que saiu 1, `status-check` imprimindo
+"evidencia obsoleta" e retornando 0, `GATES_EXTRA=0` vindo do `tail` num `make`
+morto com erro 127, e `MERGE_EXIT=0` num merge que nem rodou por `-F -` nao ler
+stdin. Codigo de saida sem ler a saida teria produzido um relatorio falso.

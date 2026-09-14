@@ -27,10 +27,11 @@
     "tests/unit/test_emulation_workspace.py",
     "tests/unit/test_workspace_composition.py"
   ],
-  "scopeDigest": "cf0c7ca0787c002dcf315032b9125e8d27aaf460aba0e5fa94d75f47c1c7dae9",
+  "scopeDigest": "f8ff182804730c410399dbda78461a7da3aca34cc8c2dbd1bcf9c20871ede704",
   "dependsOn": [],
   "knownGaps": [
-    "GAP-LIBRARY-PHYSICAL-CATALOG-COVERAGE"
+    "GAP-LIBRARY-PHYSICAL-CATALOG-COVERAGE",
+    "GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
   ],
   "acceptanceCriteria": [
     "Uma raiz mista nao colapsa na plataforma de um unico scanner.",
