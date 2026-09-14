@@ -683,6 +683,26 @@ class _OverlayControl:
         return self.current
 
 
+class _SaveOverlayControl(_OverlayControl):
+    def list_save_states(self) -> list[dict[str, object]]:
+        return [
+            {
+                "slot": 4,
+                "timestamp": "2026-09-13T20:00:00Z",
+                "playtimeSeconds": 120,
+                "thumbnailUrl": "asset://save-states/slot-4.png",
+                "compatibility": "native",
+                "backupAvailable": True,
+            }
+        ]
+
+    def save_state(self, slot: int) -> _OverlaySession:
+        return self.current
+
+    def load_state(self, slot: int) -> _OverlaySession:
+        return self.current
+
+
 def test_session_route_exposes_overlay_and_allowlisted_action(tmp_path: Path) -> None:
     control = _OverlayControl()
     overlay = SessionOverlayAdapter(
@@ -731,3 +751,57 @@ def test_session_route_exposes_overlay_and_allowlisted_action(tmp_path: Path) ->
             )
         assert rejected.value.code == 409
         rejected.value.close()
+
+
+def test_session_route_accepts_a_bounded_save_state_slot(tmp_path: Path) -> None:
+    control = _SaveOverlayControl()
+    overlay = SessionOverlayAdapter(
+        lambda game_id: {
+            "gameId": game_id,
+            "sessionId": control.current.id,
+            "state": control.current.state,
+        },
+        lambda session_id, game_id: (
+            control
+            if (session_id, game_id) == (control.current.id, control.current.game_id)
+            else None
+        ),
+    )
+    bridge = LauncherBridge(
+        sections=build_sections([{"id": "game", "title": "Game", "section": "library"}]),
+        context_path=tmp_path / "return.json",
+        on_launch=lambda game, focus: None,
+        session_observer=lambda game: {
+            "gameId": game,
+            "sessionId": control.current.id,
+            "state": control.current.state,
+        },
+        session_overlay=overlay,
+    )
+    with bridge.serving() as base:
+        model = _get(f"{base}/session?gameId=game&overlay=1", bridge.token)
+        assert model["overlay"]["saveStates"]["entries"][0]["slot"] == 4
+        assert model["overlay"]["actions"][4]["id"] == "saveState"
+        with urllib.request.urlopen(  # noqa: S310
+            urllib.request.Request(  # noqa: S310
+                f"{base}/session/action",
+                data=json.dumps(
+                    {
+                        "gameId": "game",
+                        "sessionId": "session-1",
+                        "actionId": "loadState",
+                        "slot": 4,
+                    }
+                ).encode(),
+                headers={
+                    "X-SteamZero-Token": bridge.token,
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            ),
+            timeout=5,
+        ) as response:
+            assert response.status == 200
+            result = json.loads(response.read())
+        assert result["accepted"] is True
+        assert result["slot"] == 4

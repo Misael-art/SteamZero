@@ -115,6 +115,7 @@ class _Handler(BaseHTTPRequestHandler):
             game_id = payload.get("gameId")
             session_id = payload.get("sessionId")
             action_id = payload.get("actionId")
+            slot = payload.get("slot")
             if (
                 not isinstance(game_id, str)
                 or not game_id
@@ -125,7 +126,12 @@ class _Handler(BaseHTTPRequestHandler):
             ):
                 self._send(400, {"error": "AURA-OSD-REQUEST-001"})
                 return
-            result = self._bridge.session_action(game_id, session_id, action_id)
+            if slot is not None and (
+                isinstance(slot, bool) or not isinstance(slot, int) or not 0 <= slot <= 999
+            ):
+                self._send(400, {"error": "AURA-SAVE-STATE-REQUEST-002"})
+                return
+            result = self._bridge.session_action(game_id, session_id, action_id, slot=slot)
             self._send(200 if result["accepted"] else 409, result)
             return
         game_id = str(payload.get("gameId", ""))
@@ -383,7 +389,9 @@ class LauncherBridge:
                 result["overlay"] = self._overlay_locked(game_id, result)
             return result
 
-    def session_action(self, game_id: str, session_id: str, action_id: str) -> dict[str, Any]:
+    def session_action(
+        self, game_id: str, session_id: str, action_id: str, *, slot: int | None = None
+    ) -> dict[str, Any]:
         """Despacha uma ação semântica para o adapter canônico injetado."""
 
         with self._session_lock:
@@ -397,7 +405,9 @@ class LauncherBridge:
                     "diagnostic": "AURA-OSD-ADAPTER-UNAVAILABLE-005",
                     "detail": "O adapter de sessão ainda não está conectado ao runtime.",
                 }
-            return self._session_overlay.dispatch(game_id, session_id, action_id).to_dict()
+            return self._session_overlay.dispatch(
+                game_id, session_id, action_id, slot=slot
+            ).to_dict()
 
     def _overlay_locked(self, game_id: str, session: Mapping[str, Any]) -> dict[str, Any]:
         if self._session_overlay is None:
@@ -408,6 +418,15 @@ class LauncherBridge:
                 "visible": False,
                 "focusedAction": "",
                 "actions": [],
+                "saveStates": {
+                    "schemaVersion": 1,
+                    "state": "unavailable",
+                    "available": False,
+                    "saveAvailable": False,
+                    "loadAvailable": False,
+                    "reason": "O adapter de sessão ainda não está conectado ao runtime.",
+                    "entries": [],
+                },
                 "criticalError": None,
                 "diagnostic": "AURA-OSD-ADAPTER-UNAVAILABLE-005",
             }
