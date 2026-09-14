@@ -341,6 +341,7 @@ FocusScope {
         currentFocus: home.currentFocus
         accessibility: home.accessibility
         onActivated: home.activateCurrent()
+        onMoveRequested: function(direction) { home.move(direction) }
     }
 
     // The empty library still has a real focus target. Its action is routed to

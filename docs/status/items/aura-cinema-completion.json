@@ -36,7 +36,7 @@
     "tests/unit/test_session_overlay.py",
     "tests/unit/test_session_overlay_adapter.py"
   ],
-  "scopeDigest": "9c296b71d80b969dd293244393f177dce3ca441720846fd1e8d980364222d92a",
+  "scopeDigest": "344bbd763e97b2d3a5e0974e09dcd2222ba4e972040c3dfbd2ed278a199b2bcb",
   "dependsOn": [
     "SZ-AURA-SAVE-STATE-GALLERY",
     "SZ-AURA-SESSION-OSD",
@@ -103,7 +103,7 @@
       "result": "recorded"
     }
   ],
-  "nextAction": "Otimizar o render loop até p95 <= 16,7 ms e capturar o OSD semântico AURA na mesma sessão/card; manter a release dd222 instalada enquanto isso.",
+  "nextAction": "Publicar a correção de foco da cena Cinema, reinstalar pelo fluxo governado e capturar OSD semântico AURA na mesma sessão/cartão; depois otimizar o p95.",
   "activeWorkstreams": [
     "WS-2026-09-AURA-CINEMA-COMPLETION"
   ],
