@@ -34,6 +34,11 @@ Item {
     property string launchError: ""
     property string observedSessionId: ""
     property string sessionGameId: ""
+    // A volta confirmada cobre a troca do jogo pela home sem deixar um frame
+    // exposto. O lifecycle continua semântico; esta camada só anima a
+    // superfície visual e respeita reducedMotion.
+    property bool returnFadeActive: false
+    property real returnFadeOpacity: 0.0
     // requestId do lançamento atual, publicado no retorno do POST /launch.
     // Uma falha sem sessionId só é aceita se o requestId coincide: resposta
     // de tentativa antiga não pode encerrar um pedido novo.
@@ -78,6 +83,7 @@ Item {
             // terminal record is evidence; window focus is not.
             if (shell.launchState === "launching")
                 shell.markEmulatorVisible()
+            shell.startReturnFade()
             shell.markReturning()
             if (shell.gamePage !== null)
                 shell.back()
@@ -104,6 +110,25 @@ Item {
         repeat: false
         running: shell.launchState === "launching"
         onTriggered: shell.markUnconfirmed()
+    }
+
+    Timer {
+        id: returnFadeTimer
+        interval: 180
+        repeat: false
+        onTriggered: shell.returnFadeActive = false
+    }
+
+    function startReturnFade() {
+        if (accessibility && accessibility.reducedMotion) {
+            returnFadeActive = false
+            returnFadeOpacity = 0
+            return false
+        }
+        returnFadeActive = true
+        returnFadeOpacity = 1
+        returnFadeTimer.restart()
+        return true
     }
 
     function markUnconfirmed() {
@@ -255,6 +280,20 @@ Item {
     }
 
     Rectangle {
+        id: returnFadeLayer
+        objectName: "returnFadeLayer"
+        anchors.fill: parent
+        z: 9
+        color: "#000000"
+        visible: shell.returnFadeActive || opacity > 0.01
+        opacity: shell.returnFadeActive ? shell.returnFadeOpacity : 0
+        Behavior on opacity {
+            enabled: !(shell.accessibility && shell.accessibility.reducedMotion)
+            NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+        }
+    }
+
+    Rectangle {
         id: launchOverlay
         objectName: "launchFailureOverlay"
         anchors.fill: parent
@@ -329,4 +368,5 @@ Item {
             }
         }
     }
+
 }
