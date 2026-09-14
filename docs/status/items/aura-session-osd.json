@@ -5,11 +5,11 @@
   "title": "AURA Pause, OSD e contrato de sessão",
   "domain": "ui",
   "implementation": "partial",
-  "integration": "isolated",
-  "verification": "unit",
-  "operation": "unknown",
-  "distribution": "not-packaged",
-  "scopeDigest": "388a3e5f2c7893ae5ea85f50c2347b561c44e4fff48e2117fb55737bcfab4272",
+  "integration": "integrated",
+  "verification": "hw",
+  "operation": "degraded",
+  "distribution": "installed",
+  "scopeDigest": "046175fb25eec45469e4b8ee0bfb63e5826f55bf79eda8c89836cfaed4ade9ad",
   "scopePaths": [
     "src/steamzero/domain/session_overlay.py",
     "tests/unit/test_session_overlay.py",
@@ -27,7 +27,8 @@
     "src/steamzero/launcher/app.py",
     "src/steamzero/core/state.py",
     "tests/unit/test_session_control.py",
-    "tests/integration/test_launcher_session_composition.py"
+    "tests/integration/test_launcher_session_composition.py",
+    "docs/09-operations/evidence/2026-09-13-aura-session-composition"
   ],
   "dependsOn": [
     "SZ-AURA-CONTRACTS",
@@ -44,6 +45,18 @@
     "Pause, OSD, save-state gallery e retorno seguro só são promovidos após adapter, integração e evidência física."
   ],
   "evidence": [
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-13-aura-session-composition/README.md",
+      "command": "Release 2.0.0rc1-79af5e5b20d5 instalada do commit 79af5e5b20d51fa1d073f37c146a149c09525622: AURA Cinema fullscreen abriu, F1 abriu o OSD sobre jogo real, pause/resume confirmaram running→suspended→running no State Store e Esc devolveu o foco ao mesmo cartão. Auditoria posterior clean=true; falha de fechamento por janela foi exibida como erro controlado e recuperada pelo watcher.",
+      "result": "partial"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-13-aura-session-composition/performance-installed.json",
+      "command": "Janela instalada 1280x800: backend software, 20 eventos de navegação em 0.258839 s, RSS 162072 KiB e CPU 4.3%; frame time/p95, VRAM e startup não foram alegados sem probe válido de LauncherMain.",
+      "result": "partial"
+    },
     {
       "kind": "test",
       "reference": "tests/unit/test_session_overlay.py",
@@ -69,10 +82,8 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Composição do pause/retomada com o dono canônico entregue em código e testes; falta publicar a release, instalar e provar o OSD em jogo real antes da galeria de save-state.",
-  "activeWorkstreams": [
-    "WS-2026-09-AURA-SESSION-COMPOSITION"
-  ],
+  "nextAction": "Abrir a frente AURA-12 para save-state gallery; preservar as ações sem adapter como indisponíveis e medir frame time/VRAM/startup somente com probe da janela LauncherMain.",
+  "activeWorkstreams": [],
   "updatedAt": "2026-09-13",
-  "notes": "A10 da execução AURA. Esta frente começa pelo contrato semântico para impedir que o tema invente pausa, volume ou saves. Não promove Theme Engine, Launcher ou capacidade física por si só."
+  "notes": "A10 da execução AURA. Esta frente começa pelo contrato semântico para impedir que o tema invente pausa, volume ou saves. Não promove Theme Engine, Launcher ou capacidade física por si só. A release 2.0.0rc1-79af5e5b20d5 fechou a composição física do OSD de pausa/retomada. O catálogo real ainda publica fallback sem mídia; save-state gallery e outras ações continuam dependentes dos adapters."
 }

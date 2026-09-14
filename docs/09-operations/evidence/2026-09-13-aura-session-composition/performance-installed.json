@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "release": "2.0.0rc1-79af5e5b20d5",
+  "sourceCommit": "79af5e5b20d51fa1d073f37c146a149c09525622",
+  "ciRun": "34787859486",
+  "rollbackRelease": "2.0.0rc1-54bf42f619ec",
+  "display": {
+    "width": 1280,
+    "height": 800,
+    "backend": "software",
+    "sessionType": "wayland"
+  },
+  "window": {
+    "title": "SteamZero",
+    "qmlPid": 469641,
+    "fullscreen": true
+  },
+  "navigation": {
+    "events": 20,
+    "elapsedSeconds": 0.258839
+  },
+  "processSample": {
+    "rssKiB": 162072,
+    "cpuPercent": 4.3,
+    "vramKiB": null
+  },
+  "startup": {
+    "measured": false,
+    "startupMs": null,
+    "reason": "O probe disponível não instrumenta a primeira superfície utilizável do Launcher; a tentativa em background perdeu a ponte ao encerrar o shell."
+  },
+  "frameTime": {
+    "measured": false,
+    "p95Ms": null,
+    "reason": "LauncherMain não publica amostras de frame time e o backend efetivo foi software."
+  },
+  "session": {
+    "gameId": "c51dbc23e9b3258b761df058",
+    "sessionId": "01M2EH3KRY3KDBVY4AT14RZMG7",
+    "transitions": ["running", "suspended", "running", "closed"]
+  },
+  "result": "partial",
+  "kdeSessionRestarted": false
+}
