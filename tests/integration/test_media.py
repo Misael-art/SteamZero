@@ -143,3 +143,20 @@ def test_media_extension_detects_webp(tmp_path: Path) -> None:
 
     ext = _media_extension(target, max_bytes=2**20)
     assert ext == ".webp"
+
+
+@pytest.mark.integration
+def test_rich_media_kinds_are_canonicalized_instead_of_quarantined(
+    tmp_path: Path, isolated_xdg_root: Path
+) -> None:
+    root = tmp_path / "media"
+    source = root / "downloads" / "fanart.payload"
+    fs.write_atomic(source, _JPG)
+    game_id = ids.new_ulid()
+    assignment = _assignment(game_id, "fanart")
+    plan = MediaLibrary().plan_reconcile(root, {"downloads/fanart.payload": assignment})
+
+    MediaLibrary.apply(plan.plan_id, plan.confirm_token)
+
+    assert (root / "canonical" / game_id / "fanart.jpg").read_bytes() == _JPG
+    assert not list((root / ".quarantine").rglob("*"))

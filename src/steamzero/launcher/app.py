@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from steamzero.adapters.launcher_catalog import CatalogGame, catalog_games, catalog_summary
+from steamzero.adapters.launcher_media import launcher_media_metadata
 from steamzero.adapters.launcher_receipt import (
     LaunchAttempt,
     ReceiptSpawner,
@@ -372,9 +373,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         ),
     )
 
-    metadata = {
-        str(record.get("id")): cinema_metadata(record) for record in library if record.get("id")
-    }
+    metadata = {}
+    registry_media = launcher_media_metadata(media_root=paths.media_dir())
+    for record in library:
+        game_id = record.get("id")
+        if not game_id:
+            continue
+        projected = cinema_metadata(record)
+        projected.update(registry_media.get(str(game_id), {}))
+        metadata[str(game_id)] = projected
+        if not covers.get(str(game_id)):
+            cover_url = projected.get("coverUrl")
+            if isinstance(cover_url, str) and cover_url:
+                covers[str(game_id)] = cover_url
 
     bridge = LauncherBridge(
         sections=sections,
