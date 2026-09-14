@@ -30,6 +30,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from steamzero.core.title_variants import title_variants as build_title_variants
+
 
 @dataclass(frozen=True)
 class CatalogGame:
@@ -47,8 +49,9 @@ class CatalogGame:
     #: AppID ao cliente Steam. A discriminação é por registro, não pelo formato
     #: do id, porque ids canônicos de emulação também podem ser numéricos.
     kind: str = "emulation"
+    title_variants: tuple[str, ...] = ()
 
-    def to_dict(self) -> dict[str, str]:
+    def to_dict(self) -> dict[str, Any]:
         # A seção é a plataforma: a home agrupa por sistema.
         return {
             "id": self.id,
@@ -56,6 +59,7 @@ class CatalogGame:
             "section": self.platform,
             "system": self.platform,
             "coverUrl": self.cover_url,
+            "titleVariants": list(self.title_variants or build_title_variants(self.title)),
         }
 
 
@@ -103,6 +107,7 @@ def catalog_games(records: Sequence[Mapping[str, Any]]) -> tuple[CatalogGame, ..
                 title=title,
                 platform=_platform_of(record),
                 cover_url=_cover_of(record),
+                title_variants=build_title_variants(title),
             )
         )
     return tuple(games)

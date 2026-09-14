@@ -391,6 +391,25 @@ def test_search_filters_by_title_case_insensitive(tmp_path: Path) -> None:
     assert miss["games"] == []
 
 
+def test_the_bridge_exposes_title_variants_and_selected_display_mode(tmp_path: Path) -> None:
+    filename = "Batman - The Video Game (USA) (Translated PtBr).7z"
+    bridge = LauncherBridge(
+        sections=build_sections([{"id": "batman", "title": filename, "section": "nes"}]),
+        titles={"batman": filename},
+        title_mode="clean",
+        context_path=tmp_path / "return.json",
+        on_launch=lambda game, focus: None,
+    )
+    with bridge.serving() as base:
+        model = _get(f"{base}/model", bridge.token)
+        hit = _get(f"{base}/search?q=Translated", bridge.token)
+    item = model["sections"][0]["items"][0]
+    assert model["titleMode"] == "clean"
+    assert item["title"] == "Batman - The Video Game"
+    assert item["titleVariants"][-1] == "Batman - The Video Game"
+    assert hit["games"][0]["title"] == "Batman - The Video Game"
+
+
 def test_main_reports_the_missing_runtime_instead_of_crashing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

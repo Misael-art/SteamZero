@@ -259,6 +259,32 @@ O Studio completo oferece:
 O editor atual de tokens, metadados e preview é fundação parcial, não evidência de
 canvas, effect graph ou timeline.
 
+### 14.1. Ergonomia de autoria para artwork heterogêneo
+
+O backlog do Studio deve tornar o ajuste de capas e demais artes declarativo,
+reversível e aplicável por objeto, sem exigir edição destrutiva dos arquivos-fonte
+nem cópias pré-rotacionadas. Em especial:
+
+- **orientação automática**: oferecer `none`, `auto`, `portrait` e `landscape`,
+  comparando a orientação da imagem com a orientação do slot/moldura e permitindo
+  regras condicionais por sistema, região, categoria de mídia ou variante. `auto`
+  deve ser determinístico, explicável no inspector e sempre permitir override;
+- **enquadramento e preenchimento**: expor visualmente `contain`, `cover`, `fill`
+  e `crop`, além de alinhamento horizontal/vertical (`left|center|right` e
+  `top|center|bottom`) e ponto focal. O editor deve deixar claro quando a imagem
+  será recortada, distorcida ou terá letterbox;
+- **regras por slot, não por asset**: uma mesma categoria de objeto pode declarar
+  receitas diferentes para arte japonesa, americana, retrato, paisagem ou mídia
+  ausente. A engine continua responsável por renderizar e cachear a variação; o
+  pacote não deve acumular assets derivados apenas para resolver orientação ou
+  enquadramento;
+- **polimento seguro**: preview simultâneo em low/balanced/cinematic, fallback
+  legível, high contrast, escala de texto e `reducedMotion` devem prevalecer sobre
+  a estética. Toda regra precisa sobreviver a exportar/importar/reabrir sem perda.
+
+Esses controles são requisitos futuros de autoria do Theme Studio e não promovem
+por si só o estado do runtime ou do AURA Launcher.
+
 ## 15. Pacote, compatibilidade e segurança
 
 O pacote declara schema, API mínima/máxima, autoria, licença SPDX, assets-fonte,

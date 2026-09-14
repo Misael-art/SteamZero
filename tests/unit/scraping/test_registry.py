@@ -182,6 +182,56 @@ def test_search_best_returns_none_when_no_match() -> None:
     assert registry.search_best(identity, "boxart") is None
 
 
+def test_search_best_tries_progressive_title_variants() -> None:
+    class VariantProvider(FakeProvider):
+        def search(self, identity, media_kinds, region_priority=None):
+            self.calls.append(identity)
+            if identity.title == "Batman - The Video Game (USA)":
+                return [
+                    MediaCandidate(
+                        url="https://example.com/batman.png",
+                        media_kind="boxart",
+                        provider=self.name,
+                        confidence=0.8,
+                    )
+                ]
+            return []
+
+    provider = VariantProvider("variant", frozenset({"boxart"}), frozenset({"nes"}))
+    registry = ProviderRegistry()
+    registry.register(provider)
+    result = registry.search_best(
+        GameIdentity(
+            game_id="g1",
+            title="Batman - The Video Game (USA) (Translated PtBr).7z",
+            platform_slug="nes",
+        ),
+        "boxart",
+    )
+    assert result is not None
+    assert [call.title for call in provider.calls] == [
+        "Batman - The Video Game (USA) (Translated PtBr).7z",
+        "Batman - The Video Game (USA) (Translated PtBr)",
+        "Batman - The Video Game (USA)",
+    ]
+
+
+def test_structured_identity_does_not_fallback_to_guessed_titles() -> None:
+    registry = ProviderRegistry()
+    provider = FakeProvider("variant", frozenset({"boxart"}), frozenset({"nes"}))
+    registry.register(provider)
+    registry.search_best(
+        GameIdentity(
+            game_id="g1",
+            title="Batman (USA).nes",
+            platform_slug="nes",
+            hashes={"sha1": "abc"},
+        ),
+        "boxart",
+    )
+    assert [call.title for call in provider.calls] == ["Batman (USA).nes"]
+
+
 def test_search_best_skips_low_confidence() -> None:
     registry = ProviderRegistry()
 

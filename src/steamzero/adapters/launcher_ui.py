@@ -28,6 +28,14 @@ from steamzero.adapters.launcher_process import supervised_child
 from steamzero.adapters.launcher_receipt import LaunchAttempt
 from steamzero.adapters.session_overlay import SessionOverlayAdapter
 from steamzero.core.errors import SteamZeroError
+from steamzero.core.title_variants import (
+    TITLE_VARIANT_MODES,
+    normalize_title_variants,
+    select_title_variant,
+)
+from steamzero.core.title_variants import (
+    title_variants as build_title_variants,
+)
 from steamzero.domain.scene_layout import LayoutBounds, LayoutRecipe
 from steamzero.domain.session_overlay import resolve_session_overlay
 from steamzero.launcher.cinema import resolve_cinema_covers
@@ -224,6 +232,8 @@ class LauncherBridge:
         on_launch: LaunchCallback,
         titles: Mapping[str, str] | None = None,
         covers: Mapping[str, str] | None = None,
+        title_variants: Mapping[str, Sequence[str]] | None = None,
+        title_mode: str = "full",
         accessibility: Mapping[str, Any] | None = None,
         return_context: Mapping[str, Any] | None = None,
         catalog_summary: Mapping[str, Any] | None = None,
@@ -241,6 +251,15 @@ class LauncherBridge:
         self._pending_game: str | None = None
         self._attempts: dict[str, LaunchAttempt] = {}
         self._session_lock = threading.RLock()
+        if title_mode not in TITLE_VARIANT_MODES:
+            raise ValueError(f"modo de título desconhecido: {title_mode}")
+        self._title_mode = title_mode
+        supplied_variants = title_variants or {}
+        self._title_variants = {
+            game_id: normalize_title_variants(supplied_variants.get(game_id, ()))
+            or build_title_variants(title)
+            for game_id, title in self._titles.items()
+        }
         self._context_path = Path(context_path)
         self._on_launch = on_launch
         self._accessibility = dict(accessibility or {})
@@ -251,6 +270,7 @@ class LauncherBridge:
 
     def model(self) -> dict[str, Any]:
         return {
+            "titleMode": self._title_mode,
             "accessibility": {
                 "highContrast": bool(self._accessibility.get("highContrast", False)),
                 "visualScale": float(self._accessibility.get("visualScale", 1.0)),
@@ -270,7 +290,8 @@ class LauncherBridge:
                         {
                             **self._metadata.get(item, {}),
                             "id": item,
-                            "title": self._titles.get(item, item),
+                            "title": self._display_title(item),
+                            "titleVariants": list(self._variants_for(item)),
                             "coverUrl": self._covers.get(item)
                             or self._metadata.get(item, {}).get("coverUrl", ""),
                         }
@@ -292,12 +313,14 @@ class LauncherBridge:
         needle = query.strip().casefold()
         matches: list[dict[str, Any]] = []
         if needle:
-            for game_id, title in self._titles.items():
-                if needle in str(title).casefold():
+            for game_id in self._titles:
+                variants = self._variants_for(game_id)
+                if any(needle in variant.casefold() for variant in variants):
                     matches.append(
                         {
                             "id": game_id,
-                            "title": str(title),
+                            "title": self._display_title(game_id),
+                            "titleVariants": list(variants),
                             "coverUrl": self._covers.get(game_id, ""),
                         }
                     )
@@ -521,6 +544,14 @@ class LauncherBridge:
         if outcome is not None:
             result = {**result, "attempt": outcome}
         return result
+
+    def _variants_for(self, game_id: str) -> tuple[str, ...]:
+        return self._title_variants.get(game_id, ()) or build_title_variants(
+            self._titles.get(game_id, game_id)
+        )
+
+    def _display_title(self, game_id: str) -> str:
+        return select_title_variant(self._titles.get(game_id, game_id), self._title_mode)
 
     @contextmanager
     def serving(self) -> Iterator[str]:

@@ -30,6 +30,7 @@ from steamzero.adapters.launcher_receipt import (
 )
 from steamzero.core import ids, paths
 from steamzero.core.errors import SteamZeroError
+from steamzero.core.title_variants import TITLE_VARIANT_MODES
 from steamzero.launcher.launch import LaunchPlan, Spawn, consume_context, launch_detached
 from steamzero.launcher.navigation import HomeSection
 
@@ -332,6 +333,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--library", type=Path, default=None)
     parser.add_argument("--context", type=Path, default=None)
+    parser.add_argument(
+        "--title-mode",
+        choices=TITLE_VARIANT_MODES,
+        default="full",
+        help="forma do nome exibida no launcher (as variantes também são publicadas)",
+    )
     args = parser.parse_args(argv)
 
     from steamzero.adapters.launcher_process import spawn_detached
@@ -390,6 +397,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     bridge = LauncherBridge(
         sections=sections,
         titles=titles,
+        title_variants={game.id: game.title_variants for game in catalog},
+        title_mode=args.title_mode,
         covers=covers,
         metadata=metadata,
         session_observer=observe_session,
