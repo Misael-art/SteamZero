@@ -47,6 +47,13 @@ def _resolve_qt_quick_backend() -> str:
     return requested if requested in _ALLOWED_QT_QUICK_BACKENDS else _QT_QUICK_BACKEND
 
 
+def _performance_report_url() -> str:
+    value = os.environ.get("STEAMZERO_PERF_REPORT_URL", "")
+    if value.startswith("http://127.0.0.1:") and " " not in value and "\n" not in value:
+        return value
+    return ""
+
+
 class _Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
@@ -548,6 +555,9 @@ def launch_launcher_ui(bridge: LauncherBridge) -> int:
             "--steamzero-token",
             bridge.token,
         )
+        report_url = _performance_report_url()
+        if report_url:
+            argv += ("--steamzero-perf-url", report_url)
         environment = {
             **os.environ,
             "QT_QUICK_BACKEND": _resolve_qt_quick_backend(),

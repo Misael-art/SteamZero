@@ -20,3 +20,11 @@ def test_launcher_allows_explicit_software_degradation(monkeypatch) -> None:
 def test_launcher_rejects_unallowlisted_backend(monkeypatch) -> None:
     monkeypatch.setenv("STEAMZERO_QT_QUICK_BACKEND", "vulkan-experimental")
     assert launcher_ui._resolve_qt_quick_backend() == "opengl"
+
+
+def test_launcher_accepts_only_loopback_performance_report(monkeypatch) -> None:
+    monkeypatch.setenv("STEAMZERO_PERF_REPORT_URL", "http://127.0.0.1:1234/report")
+    assert launcher_ui._performance_report_url() == "http://127.0.0.1:1234/report"
+
+    monkeypatch.setenv("STEAMZERO_PERF_REPORT_URL", "https://example.test/report")
+    assert launcher_ui._performance_report_url() == ""
