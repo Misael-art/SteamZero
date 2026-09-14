@@ -1618,20 +1618,32 @@ class DesktopDashboard:
         catalog = self._theme_catalog.list_catalog()
         preference = self._theme_prefs._read_preference()
         active_id: str = str(preference.get("themeId")) if preference else "org.steamzero.default"
-        active_name = active_id
+        # O ID tecnico nunca vira titulo. Se o tema preferido nao esta
+        # disponivel no catalogo (removido, incompativel ou pacote quebrado),
+        # a apresentacao degrada para desconhecido em vez de exibir
+        # "org.steamzero.algo" como se fosse o nome do tema. `activeKnown`
+        # existe para a UI distinguir "nao ha nome" de "nome vazio".
+        active_name = ""
+        active_known = False
         for entry in catalog:
             if entry["id"] == active_id and entry["state"] == "available":
-                active_name = entry["name"]
+                active_name = str(entry["name"])
+                active_known = True
                 break
         available = [
             {
                 "id": e["id"],
                 "name": e["name"],
+                # `displayName` e o campo do contrato de apresentacao; `name`
+                # permanece como alias para nao quebrar consumidores atuais.
+                "displayName": e["name"],
                 "version": e["version"],
                 "author": e["author"],
                 "origin": e["origin"],
                 "state": e["state"],
                 "compatible": e["compatible"],
+                # Instalado e ativo sao estados distintos: `state` diz se o
+                # pacote esta utilizavel, `active` diz se e o tema em vigor.
                 "active": e["id"] == active_id,
             }
             for e in catalog
@@ -1651,6 +1663,7 @@ class DesktopDashboard:
             return {
                 "activeId": active_id,
                 "activeName": active_name,
+                "activeKnown": active_known,
                 "available": available,
                 "resolved": None,
                 "state": "ready",
@@ -1660,6 +1673,7 @@ class DesktopDashboard:
         return {
             "activeId": active_id,
             "activeName": active_name,
+            "activeKnown": active_known,
             "available": available,
             "resolved": qml_object,
             "state": "ready",

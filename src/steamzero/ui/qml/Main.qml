@@ -6017,6 +6017,15 @@ ApplicationWindow {
                                         && root.desktopStatus.dashboard.theme.activeId
                                         ? String(root.desktopStatus.dashboard.theme.activeId)
                                         : (root._themeBridge.themeId || "")
+                                    // O backend ja calculava activeName e nada
+                                    // o consumia: o nome parava no adapter e a
+                                    // tela so via o ID. Este binding fecha o
+                                    // elo bridge -> apresentacao.
+                                    activeThemeName: root.desktopStatus.dashboard
+                                        && root.desktopStatus.dashboard.theme
+                                        && root.desktopStatus.dashboard.theme.activeKnown
+                                        ? String(root.desktopStatus.dashboard.theme.activeName || "")
+                                        : ""
                                     onApplied: root.refreshStatus(qsTr("Tema aplicado"))
                                     onExported: root.notify(qsTr("Tema exportado"), false)
                                 }

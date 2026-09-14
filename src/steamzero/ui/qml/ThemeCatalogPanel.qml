@@ -38,6 +38,15 @@ Rectangle {
     property color redColor: "#ff6b73"
 
     property var requestAction: function(_id, _payload, _cb, _ecb) {}
+
+    // O ID tecnico (org.steamzero.aura) nunca e o titulo apresentado. Quando o
+    // pacote nao declara nome, a UI diz que o nome falta em vez de exibir o ID
+    // como se fosse o nome do tema; o ID continua visivel no detalhe tecnico.
+    function themeLabel(entry) {
+        if (!entry)
+            return qsTr("Tema sem nome")
+        return String(entry.displayName || entry.name || qsTr("Tema sem nome"))
+    }
     // A Central nasce com um status fallback. O catálogo não pode consultar a
     // bridge nesse instante: os contratos reais só chegam na primeira resposta
     // de /status. O valor true preserva o uso standalone do painel nos harnesses;
@@ -269,7 +278,7 @@ Rectangle {
                                 spacing: 8
 
                                 Label {
-                                    text: modelData.name || modelData.id
+                                    text: panel.themeLabel(modelData)
                                     color: panel.textColor
                                     font.pixelSize: 16
                                     font.bold: true
@@ -319,7 +328,7 @@ Rectangle {
                                         : qsTr("Instalar")
                                     enabled: panel.busyThemeId === ""
                                     Layout.minimumHeight: 48
-                                    Accessible.name: text + " " + (modelData.name || modelData.id)
+                                    Accessible.name: text + " " + (panel.themeLabel(modelData))
                                     onClicked: panel.installTheme(modelData.id,
                                                                   modelData.installed === true)
                                 }
@@ -341,9 +350,9 @@ Rectangle {
                                     text: qsTr("Ver cena")
                                     enabled: panel.busyThemeId === ""
                                     Layout.minimumHeight: 48
-                                    Accessible.name: text + " " + (modelData.name || modelData.id)
+                                    Accessible.name: text + " " + (panel.themeLabel(modelData))
                                     onClicked: previewDialog.show(modelData.id,
-                                                                  modelData.name || modelData.id)
+                                                                  panel.themeLabel(modelData))
                                 }
                                 DarkButton {
                                     objectName: "fullscreenButton_" + modelData.id
@@ -354,11 +363,11 @@ Rectangle {
                                     text: qsTr("Tela cheia")
                                     enabled: panel.busyThemeId === ""
                                     Layout.minimumHeight: 48
-                                    Accessible.name: text + " " + (modelData.name || modelData.id)
+                                    Accessible.name: text + " " + (panel.themeLabel(modelData))
                                     Accessible.description: qsTr(
                                         "Abre a cena compilada deste tema em tela cheia.")
                                     onClicked: fullscreenScene.openScene(
-                                        modelData.id, modelData.name || modelData.id)
+                                        modelData.id, panel.themeLabel(modelData))
                                 }
                                 Item { Layout.fillWidth: true }
                                 DarkButton {
@@ -367,10 +376,10 @@ Rectangle {
                                     text: qsTr("Remover")
                                     enabled: panel.busyThemeId === ""
                                     Layout.minimumHeight: 48
-                                    Accessible.name: text + " " + (modelData.name || modelData.id)
+                                    Accessible.name: text + " " + (panel.themeLabel(modelData))
                                     // Destrutiva: confirma antes, como o contrato exige.
                                     onClicked: uninstallDialog.ask(modelData.id,
-                                                                   modelData.name || modelData.id)
+                                                                   panel.themeLabel(modelData))
                                 }
                             }
                         }
