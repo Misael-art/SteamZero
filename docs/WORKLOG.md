@@ -10456,3 +10456,30 @@ degradado porque catálogo de mídia rico, save-state gallery, troca de disco,
 bezels/fades e métricas completas ainda não têm implementação/prova física.
 A próxima frente elegível é `AURA-12` (save-state gallery), mantendo ações sem
 adapter como indisponíveis.
+
+## 2026-09-14 — Lote AURA Cinema: periféricos de sessão e fallback visual
+
+Custódia: `WS-2026-09-AURA-CINEMA-COMPLETION`, branch
+`codex/aura-cinema-completion-2026-09-14`, baseada no merge
+`7798ccfdc8ed27690b414b7e95ba9a241a3d0b94`.
+
+| Item | Commit | Prova |
+|---|---|---|
+| Contrato e adapter RetroArch | `6f7c140` | `tests/unit/test_session_peripherals.py`: limites, m3u, comando de troca e backup atômico; 12 testes do adapter/ponte verdes |
+| Ponte → overlay → QML | `6f7c140` | `check_launcher_session_peripherals.qml`, OSD e galeria: 3 harnesses QML verdes; troca de disco só fica habilitada para conjunto multi-disc |
+| Fallback e acessibilidade | `6f7c140` | read model allowlisted para bezel/fade, fallback legível sem asset e navegação horizontal com `reducedMotion`/alto contraste |
+
+Gates estáticos: Ruff check, formatação, mypy (277 arquivos), independência e
+fronteiras verdes. A suíte integral local foi iniciada uma vez e interrompida
+com SIGINT após aproximadamente 15 minutos em subprocessos QML sem relatório
+terminal; não foi reivindicada como verde. O host não foi mutado, não houve
+instalação, reboot ou encerramento da sessão KDE; a release ativa continua
+`2.0.0rc1-79af5e5b20d5` e o rollback conhecido continua
+`2.0.0rc1-54bf42f619ec`.
+
+O item `SZ-AURA-CINEMA-COMPLETION` permanece parcial/degradado. O adapter
+concreto ainda precisa de promoção pela release instalada, prova física em jogo
+real, adapter de bezel, ingestão rica efetivamente populada no catálogo e
+medição pós-QML de startup/frame time/p95/VRAM. O próximo passo é push/CI da
+PR e, após merge, instalar somente pelo fluxo governado para recolher essas
+evidências sem atribuir resultados offscreen ao hardware.

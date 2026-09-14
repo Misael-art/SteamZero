@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AURA-CINEMA-COMPLETION",
+  "title": "AURA Cinema — periféricos de sessão e composição fullscreen",
+  "domain": "ui",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "dev",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/domain/session_peripherals.py",
+    "src/steamzero/adapters/session_peripherals.py",
+    "src/steamzero/schemas/session-peripherals-v1.schema.json",
+    "src/steamzero/ui/qml/launcher/LauncherSessionPeripherals.qml",
+    "tests/unit/test_session_peripherals.py",
+    "tests/qml/launcher/check_launcher_session_peripherals.qml",
+    "src/steamzero/adapters/session_control.py",
+    "src/steamzero/adapters/session_overlay.py",
+    "src/steamzero/adapters/launcher_ui.py",
+    "src/steamzero/ui/qml/launcher/LauncherSessionOverlay.qml",
+    "src/steamzero/ui/qml/launcher/LauncherMain.qml",
+    "src/steamzero/ui/qml/launcher/LauncherCinema.qml",
+    "src/steamzero/launcher/cinema.py",
+    "tests/integration/test_launcher_app.py",
+    "tests/integration/test_qml_handheld_offscreen.py",
+    "src/steamzero/adapters/emulation.py",
+    "tests/unit/test_session_overlay.py",
+    "tests/unit/test_session_overlay_adapter.py"
+  ],
+  "scopeDigest": "89919a6871c15b23a39ca4fc2ea221cd0095f58da11dd06d1627446f7cbe4162",
+  "dependsOn": [
+    "SZ-AURA-SAVE-STATE-GALLERY",
+    "SZ-AURA-SESSION-OSD",
+    "SZ-THEME-ENGINE"
+  ],
+  "knownGaps": [
+    "GAP-AURA-CINEMA-BEZEL-ADAPTER",
+    "GAP-AURA-CINEMA-RICH-MEDIA-INGEST",
+    "GAP-AURA-CINEMA-PHYSICAL-PROOF",
+    "GAP-AURA-CINEMA-PERFORMANCE-POST-QML"
+  ],
+  "acceptanceCriteria": [
+    "O adapter concreto declara save/load com backup transacional e troca de disco somente quando o emulador fornece esses contratos.",
+    "A UI mostra mídia, estado, bezel e fade por read model allowlisted; ausência de capacidade permanece visível e recuperável.",
+    "A ingestão publica capa, fanart e screenshots locais sanitizados sem expor caminhos privados nem inventar arte.",
+    "A release instalada é medida com startup, frame time/p95, RSS e VRAM por ferramenta reproduzível; nenhum resultado offscreen é promovido a hardware.",
+    "A evidência física mostra a versão ativa e distingue sucesso de fallback ou capacidade não disponível."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_session_peripherals.py",
+      "command": ".venv/bin/python -m pytest tests/unit/test_session_peripherals.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_session_overlay_adapter.py",
+      "command": ".venv/bin/python -m pytest tests/unit/test_session_overlay_adapter.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_qml_handheld_offscreen.py",
+      "command": ".venv/bin/python -m pytest tests/integration/test_qml_handheld_offscreen.py -k 'session_osd or save_state_gallery or session_peripherals' -q",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/status/items/aura-cinema-completion.json",
+      "command": "run_tests_isolated.py tests -q: interrompido após 15 min em subprocessos QML sem relatório terminal; nenhum teste do host foi alterado",
+      "result": "partial"
+    }
+  ],
+  "nextAction": "Validar a release promovida com jogo real e registrar capturas e métricas de desempenho pós-QML.",
+  "activeWorkstreams": [
+    "WS-2026-09-AURA-CINEMA-COMPLETION"
+  ],
+  "updatedAt": "2026-09-14",
+  "notes": "Frente de continuação do AURA Launcher/Theme Engine. Não promove AURA UI ou Theme Studio; cobre apenas a cadeia de sessão e a composição fullscreen especificadas no plano."
+}

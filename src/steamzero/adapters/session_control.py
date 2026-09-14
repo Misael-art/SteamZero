@@ -20,10 +20,13 @@ from collections.abc import Callable, Mapping
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from steamzero.core import fs, paths
 from steamzero.core.state import StateStore
+
+if TYPE_CHECKING:
+    from steamzero.adapters.session_peripherals import SessionPeripheralControl
 
 MAX_CONTROL_REQUEST = 1024
 MAX_CONTROL_RESPONSE = 2048
@@ -91,6 +94,7 @@ class SessionControlOwner:
         store_factory: StoreFactory = StateStore,
         read_start_ticks: ReadStartTicks,
         signal_process: SignalProcess | None = None,
+        peripheral_control: SessionPeripheralControl | None = None,
     ) -> None:
         self.session_id = session_id
         self.game_id = game_id
@@ -99,6 +103,7 @@ class SessionControlOwner:
         self._store_factory = store_factory
         self._read_start_ticks = read_start_ticks
         self._signal_process = signal_process or os.killpg
+        self._peripheral_control = peripheral_control
         self._lock = threading.RLock()
 
     @property
@@ -119,6 +124,40 @@ class SessionControlOwner:
 
     def resume(self) -> SessionControlRecord:
         return self._transition_with_signal("resuming", signal.SIGCONT, "running")
+
+    def list_save_states(self) -> Mapping[str, Any]:
+        if self._peripheral_control is None:
+            raise RuntimeError("o adapter desta sessão não oferece save-state")
+        return self._peripheral_control.list_save_states()
+
+    def save_state(self, slot: int) -> SessionControlRecord:
+        if self._peripheral_control is None:
+            raise RuntimeError("o adapter desta sessão não oferece save-state")
+        self._peripheral_control.save_state(slot)
+        return self._require_current()
+
+    def load_state(self, slot: int) -> SessionControlRecord:
+        if self._peripheral_control is None:
+            raise RuntimeError("o adapter desta sessão não oferece save-state")
+        self._peripheral_control.load_state(slot)
+        return self._require_current()
+
+    def list_discs(self) -> Mapping[str, Any]:
+        if self._peripheral_control is None:
+            raise RuntimeError("o adapter desta sessão não oferece troca de disco")
+        return self._peripheral_control.list_discs()
+
+    def swap_disc(self, disc_id: str) -> SessionControlRecord:
+        if self._peripheral_control is None:
+            raise RuntimeError("o adapter desta sessão não oferece troca de disco")
+        self._peripheral_control.swap_disc(disc_id)
+        return self._require_current()
+
+    def _require_current(self) -> SessionControlRecord:
+        current = self.current
+        if current is None:
+            raise RuntimeError("a sessão não está mais disponível")
+        return current
 
     def _transition_with_signal(
         self, intermediate: str, signum: int, target: str
@@ -213,7 +252,10 @@ class SessionControlServer:
                     connection.sendall(payload[:MAX_CONTROL_RESPONSE].encode("utf-8") + b"\n")
 
     def _dispatch(self, request: Any) -> dict[str, Any]:
-        if not isinstance(request, dict) or set(request) != {"sessionId", "gameId", "action"}:
+        allowed = {"sessionId", "gameId", "action", "slot", "discId"}
+        if not isinstance(request, dict) or not set(request).issubset(allowed):
+            raise ValueError("schema inválido")
+        if not {"sessionId", "gameId", "action"}.issubset(request):
             raise ValueError("schema inválido")
         if (
             _bounded_text(request.get("sessionId")) != self.owner.session_id
@@ -226,7 +268,15 @@ class SessionControlServer:
                 "detail": "A sessão não corresponde ao processo controlado.",
             }
         action = _bounded_text(request.get("action"), limit=16)
-        if action not in {"pause", "resume"}:
+        if action not in {
+            "pause",
+            "resume",
+            "listSaveStates",
+            "saveState",
+            "loadState",
+            "listDiscs",
+            "swapDisc",
+        }:
             return {
                 "accepted": False,
                 "state": "unknown",
@@ -234,7 +284,42 @@ class SessionControlServer:
                 "detail": "A ação da sessão não é permitida.",
             }
         try:
-            record = self.owner.suspend() if action == "pause" else self.owner.resume()
+            if action == "pause":
+                record = self.owner.suspend()
+            elif action == "resume":
+                record = self.owner.resume()
+            elif action == "listSaveStates":
+                current = self.owner.current
+                if current is None:
+                    raise RuntimeError("a sessão não está mais disponível")
+                return {
+                    "accepted": True,
+                    "state": current.state,
+                    "data": self.owner.list_save_states(),
+                }
+            elif action == "listDiscs":
+                current = self.owner.current
+                if current is None:
+                    raise RuntimeError("a sessão não está mais disponível")
+                return {
+                    "accepted": True,
+                    "state": current.state,
+                    "data": self.owner.list_discs(),
+                }
+            elif action in {"saveState", "loadState"}:
+                slot = request.get("slot")
+                if isinstance(slot, bool) or not isinstance(slot, int) or not 0 <= slot <= 999:
+                    raise ValueError("slot de save-state inválido")
+                record = (
+                    self.owner.save_state(slot)
+                    if action == "saveState"
+                    else self.owner.load_state(slot)
+                )
+            else:
+                disc_id = request.get("discId")
+                if not isinstance(disc_id, str):
+                    raise ValueError("disco não informado")
+                record = self.owner.swap_disc(disc_id)
         except Exception:
             current = self.owner.current
             return {
@@ -272,12 +357,13 @@ class RemoteSessionControl:
     def resume(self) -> SessionControlRecord:
         return self._request("resume")
 
-    def _request(self, action: str) -> SessionControlRecord:
-        request = {
+    def _request(self, action: str, **extra: Any) -> SessionControlRecord:
+        request: dict[str, Any] = {
             "sessionId": self._session_id,
             "gameId": self._game_id,
             "action": action,
         }
+        request.update(extra)
         try:
             with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
                 connection.settimeout(1.0)
@@ -292,6 +378,44 @@ class RemoteSessionControl:
         if current is None:
             raise RuntimeError("a sessão não está mais disponível")
         return current
+
+    def _request_data(self, action: str) -> Mapping[str, Any]:
+        request = {
+            "sessionId": self._session_id,
+            "gameId": self._game_id,
+            "action": action,
+        }
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+                connection.settimeout(1.0)
+                connection.connect(str(self._path))
+                connection.sendall(json.dumps(request, separators=(",", ":")).encode() + b"\n")
+                response = json.loads(_read_line(connection).decode("utf-8"))
+        except (OSError, ValueError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise RuntimeError("o dono da sessão não respondeu") from exc
+        data = response.get("data") if isinstance(response, dict) else None
+        if (
+            not isinstance(response, dict)
+            or response.get("accepted") is not True
+            or not isinstance(data, Mapping)
+        ):
+            raise RuntimeError("o dono da sessão recusou a consulta")
+        return data
+
+    def list_save_states(self) -> Mapping[str, Any]:
+        return self._request_data("listSaveStates")
+
+    def save_state(self, slot: int) -> SessionControlRecord:
+        return self._request("saveState", slot=slot)
+
+    def load_state(self, slot: int) -> SessionControlRecord:
+        return self._request("loadState", slot=slot)
+
+    def list_discs(self) -> Mapping[str, Any]:
+        return self._request_data("listDiscs")
+
+    def swap_disc(self, disc_id: str) -> SessionControlRecord:
+        return self._request("swapDisc", discId=disc_id)
 
 
 def control_path(session_id: str, *, root: Path | None = None) -> Path:

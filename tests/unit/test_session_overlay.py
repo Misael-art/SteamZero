@@ -33,7 +33,7 @@ def test_overlay_exposes_only_bounded_semantic_actions_and_focus() -> None:
     overlay = resolve_session_overlay(_model())
     assert overlay.visible is True
     assert overlay.focused_action == "pause"
-    assert len(overlay.actions) == 12
+    assert len(overlay.actions) == 13
     assert overlay.actions[0].id == "volume"
     assert next(item for item in overlay.actions if item.id == "saveState").enabled is False
     assert "save-state" in next(item for item in overlay.actions if item.id == "saveState").reason

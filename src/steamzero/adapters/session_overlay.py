@@ -19,6 +19,10 @@ from steamzero.domain.session_overlay import (
     OverlayIntent,
     request_overlay_action,
 )
+from steamzero.domain.session_peripherals import (
+    resolve_session_peripherals,
+    unavailable_peripherals,
+)
 
 SESSION_ACTIONS = frozenset({"pause"})
 UNSUPPORTED_REASON = "Esta ação ainda não possui adapter de sessão."
@@ -66,6 +70,7 @@ class SessionActionDispatch:
     operation: str | None
     state: str
     slot: int | None = None
+    disc_id: str | None = None
     diagnostic: str | None = None
     detail: str = ""
 
@@ -81,6 +86,8 @@ class SessionActionDispatch:
         }
         if self.slot is not None:
             result["slot"] = self.slot
+        if self.disc_id is not None:
+            result["discId"] = self.disc_id
         return result
 
 
@@ -123,6 +130,7 @@ class SessionOverlayAdapter:
         control = self._matching_control(session_id, game_id) if consistent else None
         pause_available = control is not None and state in {"running", "suspended"}
         gallery, save_available, load_available = self._save_state_surface(control, state)
+        peripherals, disc_available = self._peripheral_surface(control, state)
         capabilities: dict[str, dict[str, Any]] = {
             action_id: {
                 "available": action_id in SESSION_ACTIONS and pause_available,
@@ -158,6 +166,10 @@ class SessionOverlayAdapter:
                 else gallery.reason or "Nenhum save-state compatível está disponível."
             ),
         }
+        capabilities["disc"] = {
+            "available": disc_available,
+            "reason": "" if disc_available else peripherals.reason,
+        }
         result_session = {
             "gameId": game_id,
             "sessionId": session_id or None,
@@ -173,6 +185,7 @@ class SessionOverlayAdapter:
                 "capabilities": capabilities,
             },
             "saveStates": gallery.to_dict(),
+            "peripherals": peripherals.to_dict(),
         }
 
     def dispatch(
@@ -181,6 +194,7 @@ class SessionOverlayAdapter:
         session_id: str,
         action_id: str,
         slot: int | None = None,
+        disc_id: str | None = None,
     ) -> SessionActionDispatch:
         """Valida correlação/capacidade e encaminha pause ou resume ao dono."""
 
@@ -192,6 +206,7 @@ class SessionOverlayAdapter:
                 operation=None,
                 state="unknown",
                 slot=slot,
+                disc_id=disc_id,
                 diagnostic=DIAG_INVALID_INTENT,
                 detail="gameId e sessionId são obrigatórios.",
             )
@@ -207,6 +222,7 @@ class SessionOverlayAdapter:
                 operation=None,
                 state=observed_state,
                 slot=slot,
+                disc_id=disc_id,
                 diagnostic=DIAG_SESSION_MISMATCH,
                 detail="A sessão mudou; atualize o overlay antes de tentar novamente.",
             )
@@ -220,6 +236,7 @@ class SessionOverlayAdapter:
                 operation=(requested.action.operation if requested.action else None),
                 state=observed_state,
                 slot=slot,
+                disc_id=disc_id,
                 diagnostic=requested.diagnostic,
                 detail=(requested.action.reason if requested.action else "Ação não reconhecida."),
             )
@@ -234,11 +251,12 @@ class SessionOverlayAdapter:
                 operation=intent.operation,
                 state=observed_state,
                 slot=slot,
+                disc_id=disc_id,
                 diagnostic=DIAG_SESSION_UNAVAILABLE,
                 detail="O gerenciador canônico da sessão não está disponível.",
             )
         try:
-            updated = self._execute(intent, control, slot=slot)
+            updated = self._execute(intent, control, slot=slot, disc_id=disc_id)
         except Exception as exc:  # boundary: transforma falha de adapter em estado recuperável
             return SessionActionDispatch(
                 accepted=False,
@@ -251,6 +269,7 @@ class SessionOverlayAdapter:
                     limit=32,
                 ),
                 slot=slot,
+                disc_id=disc_id,
                 diagnostic=DIAG_ACTION_FAILED,
                 detail=_text(str(exc), fallback="A operação da sessão falhou."),
             )
@@ -262,7 +281,27 @@ class SessionOverlayAdapter:
             operation=intent.operation,
             state=state,
             slot=slot,
+            disc_id=disc_id,
         )
+
+    @staticmethod
+    def _peripheral_surface(control: SessionControl | None, state: str) -> tuple[Any, bool]:
+        if control is None:
+            return unavailable_peripherals("Nenhuma sessão controlável foi observada."), False
+        list_discs = getattr(control, "list_discs", None)
+        if not callable(list_discs):
+            return unavailable_peripherals(
+                "O adapter desta sessão não oferece troca de disco."
+            ), False
+        try:
+            raw = list_discs()
+        except Exception as exc:  # boundary: peripheral failure remains visible
+            return unavailable_peripherals(
+                _text(str(exc), fallback="A troca de disco falhou.")
+            ), False
+        peripheral = resolve_session_peripherals(raw)
+        available = state in {"running", "suspended"} and len(peripheral.discs) > 1
+        return peripheral, available
 
     @staticmethod
     def _save_state_surface(control: SessionControl | None, state: str) -> tuple[Any, bool, bool]:
@@ -306,7 +345,11 @@ class SessionOverlayAdapter:
 
     @staticmethod
     def _execute(
-        intent: OverlayIntent, control: SessionControl, *, slot: int | None
+        intent: OverlayIntent,
+        control: SessionControl,
+        *,
+        slot: int | None,
+        disc_id: str | None,
     ) -> SessionRecord:
         if intent.action_id in {"saveState", "loadState"}:
             if isinstance(slot, bool) or not isinstance(slot, int) or not 0 <= slot <= 999:
@@ -322,6 +365,16 @@ class SessionOverlayAdapter:
             if current is None or current.state not in {"running", "suspended"}:
                 raise ValueError("a sessão não está disponível para save-state")
             return cast(Callable[[int], SessionRecord], method)(slot)
+        if intent.action_id == "disc":
+            if not isinstance(disc_id, str) or not disc_id:
+                raise ValueError("disco não informado")
+            method = getattr(control, "swap_disc", None)
+            if not callable(method):
+                raise RuntimeError("O adapter desta sessão não oferece troca de disco.")
+            current = control.current
+            if current is None or current.state not in {"running", "suspended"}:
+                raise ValueError("a sessão não está disponível para troca de disco")
+            return cast(Callable[[str], SessionRecord], method)(disc_id)
         if intent.action_id != "pause" or intent.operation not in {"pause", "resume"}:
             raise ValueError("intent de sessão não allowlisted")
         current = control.current

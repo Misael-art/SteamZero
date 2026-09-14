@@ -116,6 +116,7 @@ class _Handler(BaseHTTPRequestHandler):
             session_id = payload.get("sessionId")
             action_id = payload.get("actionId")
             slot = payload.get("slot")
+            disc_id = payload.get("discId")
             if (
                 not isinstance(game_id, str)
                 or not game_id
@@ -131,7 +132,12 @@ class _Handler(BaseHTTPRequestHandler):
             ):
                 self._send(400, {"error": "AURA-SAVE-STATE-REQUEST-002"})
                 return
-            result = self._bridge.session_action(game_id, session_id, action_id, slot=slot)
+            if disc_id is not None and (not isinstance(disc_id, str) or not 0 < len(disc_id) <= 64):
+                self._send(400, {"error": "AURA-DISC-REQUEST-003"})
+                return
+            result = self._bridge.session_action(
+                game_id, session_id, action_id, slot=slot, disc_id=disc_id
+            )
             self._send(200 if result["accepted"] else 409, result)
             return
         game_id = str(payload.get("gameId", ""))
@@ -390,7 +396,13 @@ class LauncherBridge:
             return result
 
     def session_action(
-        self, game_id: str, session_id: str, action_id: str, *, slot: int | None = None
+        self,
+        game_id: str,
+        session_id: str,
+        action_id: str,
+        *,
+        slot: int | None = None,
+        disc_id: str | None = None,
     ) -> dict[str, Any]:
         """Despacha uma ação semântica para o adapter canônico injetado."""
 
@@ -406,7 +418,7 @@ class LauncherBridge:
                     "detail": "O adapter de sessão ainda não está conectado ao runtime.",
                 }
             return self._session_overlay.dispatch(
-                game_id, session_id, action_id, slot=slot
+                game_id, session_id, action_id, slot=slot, disc_id=disc_id
             ).to_dict()
 
     def _overlay_locked(self, game_id: str, session: Mapping[str, Any]) -> dict[str, Any]:
@@ -426,6 +438,21 @@ class LauncherBridge:
                     "loadAvailable": False,
                     "reason": "O adapter de sessão ainda não está conectado ao runtime.",
                     "entries": [],
+                },
+                "peripherals": {
+                    "schemaVersion": 1,
+                    "state": "unavailable",
+                    "available": False,
+                    "discs": [],
+                    "activeDisc": None,
+                    "bezels": [],
+                    "fade": {
+                        "phase": "idle",
+                        "progress": 0.0,
+                        "durationMs": 180,
+                        "reducedMotion": False,
+                    },
+                    "reason": "O adapter de sessão ainda não está conectado ao runtime.",
                 },
                 "criticalError": None,
                 "diagnostic": "AURA-OSD-ADAPTER-UNAVAILABLE-005",

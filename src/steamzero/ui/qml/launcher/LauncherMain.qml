@@ -159,7 +159,7 @@ Window {
             shell.forceActiveFocus()
     }
 
-    function dispatchSessionOverlayAction(actionId, slot) {
+    function dispatchSessionOverlayAction(actionId, slot, discId) {
         if (root.sessionOverlayPending || !root.sessionOverlayModel)
             return false
         const model = root.sessionOverlayModel
@@ -174,6 +174,8 @@ Window {
         }
         if (slot !== undefined && Number(slot) >= 0)
             request.slot = Number(slot)
+        if (discId !== undefined && String(discId) !== "")
+            request.discId = String(discId)
         root._request("POST", "/session/action", request, function(status, text) {
             root.sessionOverlayPending = false
             if (status !== 200) {
@@ -181,6 +183,7 @@ Window {
                 return
             }
             sessionOverlay.closeSaveGallery()
+            sessionOverlay.closePeripheralSurface()
             root.refreshSessionOverlay()
         })
         return true
@@ -649,6 +652,9 @@ Window {
         }
         onSaveStateRequested: function(actionId, slot) {
             root.dispatchSessionOverlayAction(actionId, slot)
+        }
+        onDiscRequested: function(discId) {
+            root.dispatchSessionOverlayAction("disc", undefined, discId)
         }
         onCloseRequested: root.closeSessionOverlay()
     }
