@@ -10656,3 +10656,34 @@ Próxima ação: instrumentar o detalhe do smoke AppImage no daemon e corrigir o
 caminho físico que falha, depois otimizar o p95 do Launcher e repetir a prova
 em três execuções consecutivas. A galeria de save-state continua habilitada
 somente quando um adapter concreto a publica.
+
+## 2026-09-15 — pacing AURA e bloqueio de autenticação da release
+
+Na branch `codex/aura-visual-completion-2026-09-15` foi implementado o commit
+`01856c71`: o Launcher passa a resolver `QSG_RENDER_LOOP=basic` por padrão, com
+override limitado a `basic`/`threaded`, e o job de componentes persiste um
+diagnóstico causal limitado quando o apply falha. O teste focado ficou verde
+em 15 casos; ruff, formatação, mypy, independência, fronteiras e
+`status-check` também passaram.
+
+A suíte integral registrou 6047 passed, 47 skipped e quatro falhas. As três
+falhas de socket foram as limitações conhecidas do caminho temporário profundo;
+a quarta foi interferência do daemon real no teste de identidade. Os quatro
+testes passaram quando reexecutados com `TMPDIR=/tmp`. O CI do PR #176 e o CI
+do merge `5d64d87c` ficaram verdes, e o merge foi concluído.
+
+O diagnóstico comparativo na release instalada mostrou OpenGL com p95 de
+18–20 ms no padrão e 16,168 ms com `QSG_RENDER_LOOP=basic`, confirmando a
+viabilidade do ajuste sem alterar a cena. A medição candidata está em
+`performance-installed-opengl-basic-candidate.json`, explicitamente sem ser
+promovida como prova da nova release.
+
+O bundle `2.0.0rc1-5d64d87cd0c0` foi preparado e verificado com o run CI
+`34958081379`, com rollback `2.0.0rc1-1d55b4ca4127`. Duas tentativas do
+`release_host.py install` usaram o token exato, mas `pkexec` ficou aguardando o
+agente polkit sem apresentar prompt; foram canceladas antes da execução
+privilegiada. Verificação posterior confirmou a release anterior ativa,
+serviço/socket ativos e nenhum processo de instalação remanescente. O gap
+`GAP-AURA-RELEASE-AUTHENTICATION` permanece aberto; ainda faltam a instalação
+da release nova, três medições sem override, a repetição do apply PS4 com o
+diagnóstico e as provas físicas de jogo/save-state.

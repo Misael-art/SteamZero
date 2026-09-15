@@ -22,6 +22,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Repetir o ciclo shadPS4 usando o diagnóstico persistido do job; validar o render loop básico em três medições OpenGL consecutivas e atualizar a evidência física.",
+  "nextAction": "Desbloquear a autenticação polkit e instalar 5d64d87c pelo fluxo governado; então repetir o apply shadPS4 com diagnóstico persistido e três medições OpenGL sem override.",
   "updatedAt": "2026-09-15"
 }
