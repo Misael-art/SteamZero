@@ -16,7 +16,7 @@
     "tests/unit/test_component_jobs.py",
     "tests/unit/test_launcher_ui_backend.py"
   ],
-  "scopeDigest": "62583eb815426797f4051ce7a0d3d71c8660c3965f679096e1f0fadd817fce9f",
+  "scopeDigest": "c5a235d88684f211a28425245514b9950a49562d213dfa8e37e67d60a9281cdb",
   "dependsOn": [
     "SZ-AURA-CINEMA-COMPLETION",
     "SZ-AURA-SAVE-STATE-GALLERY",
@@ -26,6 +26,7 @@
   ],
   "knownGaps": [
     "GAP-AURA-CINEMA-PERFORMANCE-P95",
+    "GAP-AURA-RELEASE-AUTHENTICATION",
     "GAP-PLATFORM-PS4-PHYSICAL-INSTALL",
     "GAP-PLATFORM-PS4-GAME-LAUNCH-PHYSICAL",
     "GAP-AURA-SAVE-STATE-PHYSICAL"
@@ -57,6 +58,12 @@
     },
     {
       "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-15-aura-visual-completion/performance-installed-opengl-basic-candidate.json",
+      "command": "QSG_RENDER_LOOP=basic python3 tools/launcher_perf_probe.py --backend opengl --timeout 12 --out performance-installed-opengl-basic-candidate.json; release instalada 2.0.0rc1-1d55b4ca4127; override externo, não promoção.",
+      "result": "recorded"
+    },
+    {
+      "kind": "hardware",
       "reference": "docs/status/items/platform-ps4-physical-install.json",
       "command": "Release 2.0.0rc1-1d55b4ca4127: component plan/apply shadps4 baixou o zip fixado, mas terminou E-TX-VERIFY-FAILED/smoke-failed; rollback deixou state=missing e state audit clean=true.",
       "result": "failed"
@@ -77,7 +84,7 @@
   "activeWorkstreams": [
     "WS-2026-09-AURA-VISUAL-COMPLETION"
   ],
-  "nextAction": "Usar o diagnóstico persistido do job para corrigir o smoke AppImage na frente PS4 e repetir o apply; validar o render loop básico do Launcher em três medições OpenGL consecutivas sem alterar a semântica visual nem reduzir acessibilidade.",
+  "nextAction": "Obter autenticação polkit visível para instalar governadamente 5d64d87c; depois repetir três medições OpenGL sem override, o apply PS4 com diagnóstico persistido e as provas físicas restantes.",
   "updatedAt": "2026-09-15",
-  "notes": "A prova visual foi feita na release ativa sem reiniciar o KDE. A composição está integrada e legível, mas o objetivo não é marcado como pronto porque a meta física de p95 falhou nas quatro amostras e o PS4 sofreu rollback controlado. A galeria de save-state, troca de disco e bezel seguem honestamente dependentes do adapter/sessão que os publica."
+  "notes": "A prova visual foi feita na release ativa sem reiniciar o KDE. A correção de pacing e o diagnóstico de jobs estão integrados em main, mas não foram ativados por bloqueio de autenticação polkit. O objetivo não é marcado como pronto porque a meta física de p95 ainda não foi repetida na nova release, o PS4 sofreu rollback controlado e save-state/jogo real continuam sem prova física."
 }

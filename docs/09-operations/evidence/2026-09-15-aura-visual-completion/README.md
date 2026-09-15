@@ -6,6 +6,12 @@ Source commit: `1d55b4ca41275c1aec5b344e89877b5abd4690fd`
 Rollback disponível: `2.0.0rc1-1f030b2d76da`
 KDE: sessão preservada; nenhum reboot ou encerramento da sessão foi executado.
 
+A correção `01856c71` foi integrada em `main` como `5d64d87c` e passou o CI do
+merge. A ativação governada foi tentada duas vezes com o token exato, mas o
+`pkexec` ficou aguardando o agente polkit sem apresentar prompt. As tentativas
+foram canceladas antes da execução privilegiada; a release acima permaneceu
+ativa e nenhum processo de instalação ficou vivo.
+
 ## Prova visual
 
 - `01-baseline.png`: central AURA UI observada antes da abertura do Launcher.
@@ -29,6 +35,12 @@ Startup e VRAM atendem aos limites registrados; o p95 não atende ao alvo de
 16,7 ms. A capacidade permanece `degraded` até uma otimização ser medida em
 três execuções consecutivas dentro do limite.
 
+Como diagnóstico, a mesma release foi medida com `QSG_RENDER_LOOP=basic`
+injetado pela sonda: p95 16,168 ms, startup 1123 ms e VRAM 77,4 MiB
+(`performance-installed-opengl-basic-candidate.json`). Isso valida o ajuste de
+pacing proposto, mas não é promoção da release nova: falta instalar o commit
+`5d64d87c` e repetir três vezes sem override externo.
+
 ## PS4 e recuperação
 
 O ciclo governado de `shadps4` foi executado após a instalação da release. O
@@ -49,7 +61,8 @@ pendências abertas e não foram promovidos por esta captura.
 ## Gates
 
 Lint, formatação, fronteiras, independência, lockfile, matriz e 20 testes
-focados passaram. A suíte integral terminou com `6046 passed, 47 skipped` e
-três falhas somente por caminho UNIX temporário longo; os três testes foram
-reexecutados com `TMPDIR=/tmp` e passaram. Mypy passou isoladamente em 279
-arquivos.
+focados passaram. A suíte integral da correção terminou com `6047 passed, 47
+skipped, 4 failed`: três falhas por `AF_UNIX path too long` no diretório
+temporário profundo e uma falha de identidade de sessão sob escrita do daemon
+real. Os quatro testes foram reexecutados com `TMPDIR=/tmp` e passaram. Mypy
+passou em 279 arquivos; CI do merge ficou verde em todas as matrizes.
