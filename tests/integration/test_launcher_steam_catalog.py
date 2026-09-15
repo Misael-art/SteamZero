@@ -79,6 +79,14 @@ def test_the_home_gets_a_steam_section(steam_root: Path) -> None:
     assert set(by_id["steam"].items) == {"620", "1145360", "3311720"}
 
 
+def test_the_home_uses_a_human_platform_label_without_changing_routing_id() -> None:
+    sections = _sections_from_catalog(
+        (CatalogGame(id="nes-game", title="Jogo", platform="nes-famicom"),)
+    )
+    assert sections[0].id == "nes-famicom"
+    assert sections[0].title == "Nintendo Entertainment System e Famicom"
+
+
 def test_the_published_count_stops_diverging_from_the_central(steam_root: Path) -> None:
     emulation = tuple(
         CatalogGame(id=f"g{index}", title=f"Jogo {index}", platform="nes-famicom")

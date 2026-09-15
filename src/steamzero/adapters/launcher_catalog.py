@@ -45,6 +45,7 @@ class CatalogGame:
     title: str
     platform: str
     cover_url: str = ""
+    platform_label: str = ""
     #: Rota de lançamento: emulation resolve executor/sessão; steam entrega o
     #: AppID ao cliente Steam. A discriminação é por registro, não pelo formato
     #: do id, porque ids canônicos de emulação também podem ser numéricos.
@@ -58,6 +59,7 @@ class CatalogGame:
             "title": self.title,
             "section": self.platform,
             "system": self.platform,
+            "platformLabel": self.platform_label or _platform_label(self.platform),
             "coverUrl": self.cover_url,
             "titleVariants": list(self.title_variants or build_title_variants(self.title)),
         }
@@ -69,6 +71,22 @@ def _platform_of(record: Mapping[str, Any]) -> str:
         return platform
     fmt = str(record.get("format") or "").casefold()
     return {"nsp": "switch", "xci": "switch", "nsz": "switch"}.get(fmt, fmt or "outros")
+
+
+def _platform_label(platform_id: str) -> str:
+    """Resolve the human label without changing the canonical section id.
+
+    The id is an internal routing key (``nes-famicom``); exposing it in the
+    fullscreen header made the first physical AURA proof look like a debug
+    screen. Unknown/imported platforms retain their declared id as an honest
+    fallback rather than inventing a translation.
+    """
+    try:
+        from steamzero.domain.platforms import PlatformRegistry
+
+        return PlatformRegistry.bundled().get(platform_id).name
+    except Exception:
+        return platform_id
 
 
 def _cover_of(record: Mapping[str, Any]) -> str:
@@ -101,12 +119,14 @@ def catalog_games(records: Sequence[Mapping[str, Any]]) -> tuple[CatalogGame, ..
         title = str(record.get("name") or record.get("title") or "")
         if not identifier or not title:
             continue
+        platform = _platform_of(record)
         games.append(
             CatalogGame(
                 id=identifier,
                 title=title,
-                platform=_platform_of(record),
+                platform=platform,
                 cover_url=_cover_of(record),
+                platform_label=_platform_label(platform),
                 title_variants=build_title_variants(title),
             )
         )

@@ -325,14 +325,27 @@ class LauncherBridge:
             for game_id in self._titles:
                 variants = self._variants_for(game_id)
                 if any(needle in variant.casefold() for variant in variants):
-                    matches.append(
-                        {
-                            "id": game_id,
-                            "title": self._display_title(game_id),
-                            "titleVariants": list(variants),
-                            "coverUrl": self._covers.get(game_id, ""),
-                        }
-                    )
+                    row: dict[str, Any] = {
+                        "id": game_id,
+                        "title": self._display_title(game_id),
+                        "titleVariants": list(variants),
+                        "coverUrl": self._covers.get(game_id, ""),
+                    }
+                    # Search is another Cinema entry point. Preserve only the
+                    # already allowlisted media fields so a result can show
+                    # its rich art without creating a second catalog or
+                    # exposing arbitrary record data to QML.
+                    for key in (
+                        "fanartUrl",
+                        "logoUrl",
+                        "iconUrl",
+                        "screenshotUrls",
+                        "releaseDate",
+                        "genres",
+                    ):
+                        if key in self._metadata.get(game_id, {}):
+                            row[key] = self._metadata[game_id][key]
+                    matches.append(row)
         matches.sort(key=lambda row: str(row["title"]).casefold())
         return {"query": query, "games": matches}
 
