@@ -80,3 +80,23 @@ focados passaram. A suíte integral terminou com `6046 passed, 47 skipped` e
 três falhas somente por caminho UNIX temporário longo; os três testes foram
 reexecutados com `TMPDIR=/tmp` e passaram. Mypy passou isoladamente em 279
 arquivos.
+
+## Revalidação do smoke PS4
+
+O PR #181 (`0a111ec`) corrigiu o ambiente do smoke AppImage: cada execução
+recebe HOME e raízes XDG privadas, previamente criadas, e nunca grava no
+ambiente do daemon. O AppImage oficial v0.18.0, SHA-256
+`3cf0f669c089411775a2434a41ca9c391fb7d24c1a1521ee45dd1d36f390c4a4`, passou o
+smoke `--appimage-extract` + `AppRun --help` fora da raiz de componentes. A
+prova durável está em `shadps4-smoke-after-xdg-fix.json`.
+
+A nova execução física do apply depende da release governada derivada de
+`b45f65983a28223ed5b33ef4f64f12a2c29516d1`; até ela ser instalada, o resultado
+positivo acima não promove o componente no host.
+
+## Medições candidatas adicionais
+
+As quatro medições novas estão preservadas como `performance-candidate-df1*.json`.
+Elas confirmam startup entre 132 ms e 2138 ms, VRAM entre 15,1 MiB e 67,2 MiB,
+mas p95 entre 16,84 ms e 21,67 ms; a execução threaded piorou o p95. Portanto,
+o alvo de 16,7 ms continua aberto e o modo básico permanece a escolha segura.

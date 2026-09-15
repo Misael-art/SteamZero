@@ -8,11 +8,9 @@
   "owner": "codex-ps4-aura-physical",
   "state": "active",
   "exclusivePaths": [
-    "src/steamzero/adapters/lifecycle.py",
     "src/steamzero/adapters/manifests/shadps4.adapter.json",
     "src/steamzero/adapters/component-lock.json",
     "src/steamzero/schemas/adapter-v1.schema.json",
-    "tests/integration/test_component_lifecycle.py",
     "docs/09-operations/evidence/2026-09-14-ps4-appimage-smoke-recovery",
     "docs/status/items/platform-ps4-physical-install.json",
     "docs/status/workstreams/ps4-physical-closure-2026-09-15.json"
@@ -23,6 +21,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Publicar a correção do smoke AppImage, instalar a release resultante e validar o ciclo do shadPS4; o lançamento de jogo real permanece condicionado à presença de dump PS4 no host.",
+  "nextAction": "A nova release deve repetir o apply e manter o lançamento real bloqueado até existir dump PS4 no host; a correção do smoke agora é compartilhada com a frente AURA.",
   "updatedAt": "2026-09-14"
 }

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "kind": "component-smoke-diagnostic",
+  "observedAt": "2026-09-15",
+  "sourceCommit": "b45f65983a28223ed5b33ef4f64f12a2c29516d1",
+  "adapterId": "shadps4",
+  "version": "0.18.0",
+  "artifactSha256": "3cf0f669c089411775a2434a41ca9c391fb7d24c1a1521ee45dd1d36f390c4a4",
+  "command": "ComponentLifecycle._engine_smoke(payload=Shadps4-sdl.AppImage, smoke=--help)",
+  "environment": "private temporary HOME, XDG_CONFIG_HOME, XDG_DATA_HOME, XDG_STATE_HOME and XDG_CACHE_HOME roots",
+  "result": "pass",
+  "previousFailure": "SIGABRT: filesystem_error while creating the shadPS4 data directory under an inherited, non-existent XDG root",
+  "hostMutation": false,
+  "note": "The official AppImage was downloaded and tested outside the installed component root; the governed apply must be repeated after the release containing this fix is installed."
+}

@@ -47,11 +47,11 @@
       "result": "partial"
     }
   ],
-  "nextAction": "Publicar a correção do smoke, instalar a release resultante e repetir plan/apply/verify; depois fornecer um dump PS4 real para provar lançamento, retorno ao foco e captura visual.",
+  "nextAction": "A correção do smoke foi incorporada em b45f65983a28223ed5b33ef4f64f12a2c29516d1; instalar a release governada, repetir plan/apply/verify e, se houver dump PS4, provar lançamento/retorno ao foco.",
   "activeWorkstreams": [
     "WS-2026-09-PS4-PHYSICAL-CLOSURE"
   ],
   "updatedAt": "2026-09-14",
   "notes": "O primeiro apply físico revelou que o payload real é um zip contendo Shadps4-sdl.AppImage. O AppImage direto bloqueia neste host por depender do mount FUSE, embora o binário interno e o AppRun extraídos respondam --help com código 0. A correção mantém a política de payload declarativo, extrai em diretório temporário privado, executa o AppRun interno e valida saída/regex. Ainda não existe conteúdo de jogo PS4 no host; portanto não se pode alegar lançamento real nem fabricar captura de fullscreen.",
-  "scopeDigest": "6331e5d581582dae787666250dea6e6671f88882ef7e2d5716eb7ab5c27abff3"
+  "scopeDigest": "6f67f15f4f66f72ecbed27c35565f01124dacf9102aedf46a6f8492a41a5db23"
 }
