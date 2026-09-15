@@ -105,11 +105,110 @@ _REPAIR_OP_STATES = frozenset(
 
 Spawn = Callable[[Sequence[str]], int | None]
 
+# O core roda com ``MemoryDenyWriteExecute=true``. Alguns emuladores portáteis
+# legítimos usam JIT (inclusive no caminho ``--help``), portanto o processo
+# filho precisa ser entregue ao user manager em uma unidade própria. A lista é
+# deliberadamente fechada: o componente recebe somente o ambiente necessário
+# para a sessão gráfica e para o seu diretório de dados, nunca o ambiente
+# completo do daemon.
+_TRANSIENT_ENV_KEYS = (
+    "APPIMAGELAUNCHER_DISABLE",
+    "DBUS_SESSION_BUS_ADDRESS",
+    "DISPLAY",
+    "HOME",
+    "LANG",
+    "LC_ALL",
+    "PATH",
+    "QT_QPA_PLATFORM",
+    "STEAMZERO_CLASS",
+    "WAYLAND_DISPLAY",
+    "XAUTHORITY",
+    "XDG_CACHE_HOME",
+    "XDG_CONFIG_HOME",
+    "XDG_DATA_HOME",
+    "XDG_RUNTIME_DIR",
+    "XDG_STATE_HOME",
+)
+
+
+def _component_transient_argv(
+    argv: Sequence[str],
+    *,
+    environment: dict[str, str],
+    cwd: Path | None = None,
+    wait: bool = False,
+) -> list[str]:
+    """Monta a unidade transitória endurecida para um componente portátil.
+
+    A propriedade W^X é a única exceção: ela é aplicada à unidade do
+    componente, não ao ``steamzero-core.service``. O user manager fornece um
+    novo contexto de segurança; assim a restrição do daemon não pode ser
+    herdada pelo emulador JIT, e o daemon continua incapaz de mapear memória
+    gravável e executável.
+    """
+    systemd_run = shutil.which("systemd-run")
+    if systemd_run is None:
+        raise OSError("systemd-run não encontrado para componente portátil")
+    command = [
+        systemd_run,
+        "--user",
+        "--collect",
+        "--quiet",
+        "--service-type=exec",
+    ]
+    if wait:
+        command.extend(("--wait", "--pipe"))
+    command.extend(
+        (
+            "--property=NoNewPrivileges=true",
+            "--property=PrivateTmp=true",
+            "--property=ProtectSystem=strict",
+            "--property=ProtectControlGroups=true",
+            "--property=ProtectKernelModules=true",
+            "--property=ProtectKernelTunables=true",
+            "--property=RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK",
+            "--property=LockPersonality=true",
+            "--property=MemoryDenyWriteExecute=false",
+        )
+    )
+    if cwd is not None:
+        command.append(f"--property=WorkingDirectory={cwd}")
+    for key in _TRANSIENT_ENV_KEYS:
+        value = environment.get(key)
+        if value is not None:
+            command.append(f"--setenv={key}={value}")
+    command.extend(("--", *argv))
+    return command
+
+
+def _component_environment() -> dict[str, str]:
+    """Ambiente allowlisted para o processo real do componente."""
+    return {
+        **os.environ,
+        "APPIMAGELAUNCHER_DISABLE": "true",
+        "STEAMZERO_CLASS": "emulator",
+    }
+
+
+def _daemon_component_spawn(argv: Sequence[str]) -> int:
+    """Entrega um emulador JIT ao user manager sem enfraquecer o core."""
+    process = subprocess.Popen(  # noqa: S603
+        _component_transient_argv(argv, environment=_component_environment()),
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+        env=os.environ.copy(),
+    )
+    return process.pid
+
 
 def spawn_detached(argv: Sequence[str]) -> int | None:
     """Inicia um processo sem shell, em grupo próprio, sem herdar stdio."""
     if not argv:
         return None
+    if os.environ.get("STEAMZERO_CLASS") == "daemon":
+        return _daemon_component_spawn(argv)
     process = subprocess.Popen(  # noqa: S603
         list(argv),
         stdin=subprocess.DEVNULL,
@@ -1345,7 +1444,12 @@ class ComponentLifecycle:
                 (executable, "run", "--user", source.ref, *self._launch_extras(source.ref))
             )
         else:
-            pid = self._spawn([str(self._engine().payload_path(adapter_id))])
+            pid = self._spawn(
+                [
+                    str(self._engine().payload_path(adapter_id)),
+                    *self._portable_launch_arguments(manifest, route),
+                ]
+            )
         return {"status": "started", "componentId": adapter_id, "pid": pid}
 
     def _retroarch_config(self) -> input_devices.ManagedRetroArchConfig:
@@ -1399,13 +1503,31 @@ class ComponentLifecycle:
                 raise SteamZeroError("E-COMPONENT-DEGRADED", detail="runtime Flatpak indisponível")
             argv = [executable, "run", "--user", source.ref, *arguments]
         else:
-            argv = [str(self._engine().payload_path(adapter_id)), *arguments]
+            argv = [
+                str(self._engine().payload_path(adapter_id)),
+                *self._portable_launch_arguments(manifest, route),
+                *arguments,
+            ]
         pid = self._spawn(argv)
         # ``argv`` é detalhe de execução, não contrato público: ele pode
         # carregar paths de payload ou referências de runtime. A chamada
         # continua sem shell e com argumentos allowlisted, mas só publica o
         # resultado mínimo necessário para a UI/CLI.
         return {"status": "started", "componentId": adapter_id, "pid": pid}
+
+    @staticmethod
+    def _portable_launch_arguments(manifest: AdapterManifest, route: LifecycleRoute) -> list[str]:
+        """Escolhe o modo de execução sem FUSE quando o manifesto o provou.
+
+        ``--appimage-extract-and-run`` é o caminho suportado pelo runtime
+        AppImage para hosts sem FUSE. Ele também evita que o AppImageLauncher
+        transforme o clique em uma janela de integração. Só é acrescentado
+        quando o smoke do próprio manifesto usa extração, mantendo fontes
+        nativas e AppImages que dependem de outro modo inalterados.
+        """
+        if route.source_type == "appimage" and manifest.verify_smoke_mode == "appimage-extract":
+            return ["--appimage-extract-and-run"]
+        return []
 
     @staticmethod
     def _open_config_arguments(manifest: AdapterManifest) -> list[str] | None:
@@ -1766,11 +1888,22 @@ class ComponentLifecycle:
             environment: dict[str, str],
             cwd: Path | None = None,
         ) -> str:
+            process_cwd = cwd
+            if os.environ.get("STEAMZERO_CLASS") == "daemon":
+                command = _component_transient_argv(
+                    command,
+                    environment=environment,
+                    cwd=cwd,
+                    wait=True,
+                )
+                # O caminho fica em XDG_RUNTIME_DIR e é visível para a unidade
+                # transitória; não o passe novamente como cwd do cliente.
+                process_cwd = None
             try:
                 result = subprocess.run(  # noqa: S603
                     command,
                     check=False,
-                    cwd=cwd,
+                    cwd=process_cwd,
                     stdin=subprocess.DEVNULL,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
@@ -1805,7 +1938,20 @@ class ComponentLifecycle:
         # declarada existe apenas como caminho, mas seu pai ainda não existe.
         # Criar todas as raízes privadas antes do exec torna a verificação
         # determinística e mantém a prova sem efeitos no host.
-        with tempfile.TemporaryDirectory(prefix="steamzero-appimage-smoke-") as directory:
+        temp_parent = os.environ.get("XDG_RUNTIME_DIR")
+        temporary_directory_parent: str | None = None
+        if (
+            os.environ.get("STEAMZERO_CLASS") == "daemon"
+            and temp_parent
+            and Path(temp_parent).is_dir()
+        ):
+            # PrivateTmp do core torna /tmp invisível ao serviço transitório.
+            # XDG_RUNTIME_DIR é compartilhável entre os dois serviços e é
+            # removido ao fim da verificação, sem deixar staging no host.
+            temporary_directory_parent = temp_parent
+        with tempfile.TemporaryDirectory(
+            prefix="steamzero-appimage-smoke-", dir=temporary_directory_parent
+        ) as directory:
             smoke_root = Path(directory)
             home = smoke_root / "home"
             config_home = smoke_root / "config"
@@ -1839,7 +1985,7 @@ class ComponentLifecycle:
 
             # AppImages podem depender de FUSE, indisponível em instalações
             # endurecidas do host. A extração ocorre somente no diretório
-            # temporário privado desta verificação; em seguida executamos o
+            # temporário isolado desta verificação; em seguida executamos o
             # AppRun interno, que é o payload efetivo.
             run_smoke(
                 [str(payload), "--appimage-extract"],
