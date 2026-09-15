@@ -53,5 +53,5 @@
   ],
   "updatedAt": "2026-09-14",
   "notes": "O primeiro apply físico revelou que o payload real é um zip contendo Shadps4-sdl.AppImage. O AppImage direto bloqueia neste host por depender do mount FUSE e o core endurecido aborta o JIT com Xbyak sob MemoryDenyWriteExecute=true; o ALX também interceptava o launch sem bypass explícito. 3ad4066 mantém a política de payload declarativo, roda smoke/launch em unidade transitória endurecida com W^X liberado apenas no componente, usa runtime path compartilhado e extract-and-run com APPIMAGELAUNCHER_DISABLE. O apply governado precisa ser repetido após a release nova. Ainda não existe conteúdo de jogo PS4 no host; portanto não se pode alegar lançamento real nem fabricar captura de fullscreen.",
-  "scopeDigest": "6f36fa6c35b7c4ee6ce057234651a08d437985ebfc9918931a56be6e7bdd282a"
+  "scopeDigest": "487cefa107f62ab34cd89e9abf794c1732b25ceb6d1308899650915d2d6a30e6"
 }

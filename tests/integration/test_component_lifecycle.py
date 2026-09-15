@@ -1993,7 +1993,9 @@ def test_appimage_launch_uses_extract_and_run_when_smoke_uses_extraction(
     store: state.StateStore, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     payload = executable_payload()
-    manifest_data = portable_manifest("1.0.0", payload, source_type="appimage")
+    # shadPS4 é o caso real: fonte declarada como native porque o download é
+    # um ZIP, enquanto o payload implantado e executado é um AppImage.
+    manifest_data = portable_manifest("1.0.0", payload, source_type="native")
     manifest_data["verify"]["smokeMode"] = "appimage-extract"
     manifest = load_manifest(manifest_data)
     spawned: list[list[str]] = []
