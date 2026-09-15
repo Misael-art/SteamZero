@@ -47,11 +47,11 @@
       "result": "partial"
     }
   ],
-  "nextAction": "A correção do smoke foi incorporada em b45f65983a28223ed5b33ef4f64f12a2c29516d1; instalar a release governada, repetir plan/apply/verify e, se houver dump PS4, provar lançamento/retorno ao foco.",
+  "nextAction": "A correção de XDG/JIT/ALX está em 3ad4066; após o merge, instalar a release governada, repetir plan/apply/verify e, se houver dump PS4, provar lançamento/retorno ao foco.",
   "activeWorkstreams": [
     "WS-2026-09-PS4-PHYSICAL-CLOSURE"
   ],
   "updatedAt": "2026-09-14",
-  "notes": "O primeiro apply físico revelou que o payload real é um zip contendo Shadps4-sdl.AppImage. O AppImage direto bloqueia neste host por depender do mount FUSE, embora o binário interno e o AppRun extraídos respondam --help com código 0. A correção mantém a política de payload declarativo, extrai em diretório temporário privado, executa o AppRun interno e valida saída/regex. Ainda não existe conteúdo de jogo PS4 no host; portanto não se pode alegar lançamento real nem fabricar captura de fullscreen.",
-  "scopeDigest": "6f67f15f4f66f72ecbed27c35565f01124dacf9102aedf46a6f8492a41a5db23"
+  "notes": "O primeiro apply físico revelou que o payload real é um zip contendo Shadps4-sdl.AppImage. O AppImage direto bloqueia neste host por depender do mount FUSE e o core endurecido aborta o JIT com Xbyak sob MemoryDenyWriteExecute=true; o ALX também interceptava o launch sem bypass explícito. 3ad4066 mantém a política de payload declarativo, roda smoke/launch em unidade transitória endurecida com W^X liberado apenas no componente, usa runtime path compartilhado e extract-and-run com APPIMAGELAUNCHER_DISABLE. O apply governado precisa ser repetido após a release nova. Ainda não existe conteúdo de jogo PS4 no host; portanto não se pode alegar lançamento real nem fabricar captura de fullscreen.",
+  "scopeDigest": "6f36fa6c35b7c4ee6ce057234651a08d437985ebfc9918931a56be6e7bdd282a"
 }

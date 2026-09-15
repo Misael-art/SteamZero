@@ -3,9 +3,9 @@
   "kind": "workstream",
   "id": "WS-2026-09-AURA-VISUAL-COMPLETION",
   "item": "SZ-AURA-VISUAL-COMPLETION",
-  "branch": "codex/aura-physical-revalidation-2026-09-15",
-  "baseRef": "b45f65983a28223ed5b33ef4f64f12a2c29516d1",
-  "owner": "codex-aura-physical-revalidation",
+  "branch": "codex/aura-jit-component-handoff-2026-09-15",
+  "baseRef": "0260e53065aec4d85aaa842d8fd0f2bd8f02cb91",
+  "owner": "codex-aura-jit-component-handoff",
   "state": "active",
   "exclusivePaths": [
     "docs/09-operations/evidence/2026-09-15-aura-visual-completion",
@@ -34,6 +34,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Instalar a release b45f65983a28223ed5b33ef4f64f12a2c29516d1 pelo fluxo governado, repetir o apply do shadPS4 e capturar a janela física; manter abertos os gaps que exigem jogo/adapter real.",
+  "nextAction": "Aguardar CI/merge de 3ad4066, preparar release governada, repetir o apply/verify do shadPS4 e capturar a janela física; manter abertos os gaps que exigem jogo/adapter real.",
   "updatedAt": "2026-09-15"
 }
