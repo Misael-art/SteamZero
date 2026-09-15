@@ -1759,13 +1759,13 @@ class ComponentLifecycle:
     def _engine_smoke(self, engine: AdapterEngine, manifest: AdapterManifest) -> None:
         """Smoke test do payload portátil, igual ao caminho da central."""
         payload = engine.payload_path(manifest.id)
-        environment = {
-            **os.environ,
-            "APPIMAGELAUNCHER_DISABLE": "1",
-            **dict(manifest.verify_environment),
-        }
 
-        def run_smoke(command: list[str], *, cwd: Path | None = None) -> str:
+        def run_smoke(
+            command: list[str],
+            *,
+            environment: dict[str, str],
+            cwd: Path | None = None,
+        ) -> str:
             try:
                 result = subprocess.run(  # noqa: S603
                     command,
@@ -1800,22 +1800,52 @@ class ComponentLifecycle:
                 )
             return output
 
-        if manifest.verify_smoke_mode == "application":
-            run_smoke([str(payload), *manifest.verify_smoke_test])
-            return
-        if manifest.verify_smoke_mode != "appimage-extract":
-            raise SteamZeroError(
-                "E-API-SCHEMA",
-                detail=f"modo de smoke portátil inválido: {manifest.verify_smoke_mode}",
-            )
-
-        # AppImages podem depender de FUSE, indisponível em instalações
-        # endurecidas do host. A extração ocorre somente no diretório temporário
-        # privado desta verificação; em seguida executamos o AppRun interno, que
-        # é o payload efetivo, sem deixar squashfs-root persistente.
+        # O smoke nunca deve deixar um emulador escrever no HOME/XDG do daemon.
+        # Alguns runtimes abortam (em vez de retornarem erro) quando a raiz XDG
+        # declarada existe apenas como caminho, mas seu pai ainda não existe.
+        # Criar todas as raízes privadas antes do exec torna a verificação
+        # determinística e mantém a prova sem efeitos no host.
         with tempfile.TemporaryDirectory(prefix="steamzero-appimage-smoke-") as directory:
             smoke_root = Path(directory)
-            run_smoke([str(payload), "--appimage-extract"], cwd=smoke_root)
+            home = smoke_root / "home"
+            config_home = smoke_root / "config"
+            data_home = smoke_root / "data"
+            state_home = smoke_root / "state"
+            cache_home = smoke_root / "cache"
+            for root in (home, config_home, data_home, state_home, cache_home):
+                fs.ensure_dir(root)
+            environment = {
+                **os.environ,
+                "APPIMAGELAUNCHER_DISABLE": "1",
+                **dict(manifest.verify_environment),
+                "HOME": str(home),
+                "XDG_CONFIG_HOME": str(config_home),
+                "XDG_DATA_HOME": str(data_home),
+                "XDG_STATE_HOME": str(state_home),
+                "XDG_CACHE_HOME": str(cache_home),
+            }
+
+            if manifest.verify_smoke_mode == "application":
+                run_smoke(
+                    [str(payload), *manifest.verify_smoke_test],
+                    environment=environment,
+                )
+                return
+            if manifest.verify_smoke_mode != "appimage-extract":
+                raise SteamZeroError(
+                    "E-API-SCHEMA",
+                    detail=f"modo de smoke portátil inválido: {manifest.verify_smoke_mode}",
+                )
+
+            # AppImages podem depender de FUSE, indisponível em instalações
+            # endurecidas do host. A extração ocorre somente no diretório
+            # temporário privado desta verificação; em seguida executamos o
+            # AppRun interno, que é o payload efetivo.
+            run_smoke(
+                [str(payload), "--appimage-extract"],
+                environment=environment,
+                cwd=smoke_root,
+            )
             app_root = smoke_root / "squashfs-root"
             app_run = app_root / "AppRun"
             try:
@@ -1832,7 +1862,11 @@ class ComponentLifecycle:
                     detail="AppRun extraído sem permissão de execução",
                 )
             environment["APPDIR"] = str(app_root)
-            run_smoke([str(app_run), *manifest.verify_smoke_test], cwd=smoke_root)
+            run_smoke(
+                [str(app_run), *manifest.verify_smoke_test],
+                environment=environment,
+                cwd=smoke_root,
+            )
 
     def _revalidate_engine_apply(self, envelope: ComponentPlan, engine: AdapterEngine) -> None:
         """Revalida plano e deployment sob lock, como o executor Flatpak faz.
