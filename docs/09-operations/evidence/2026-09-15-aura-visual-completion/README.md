@@ -6,6 +6,20 @@ Source commit: `1d55b4ca41275c1aec5b344e89877b5abd4690fd`
 Rollback disponível: `2.0.0rc1-1f030b2d76da`
 KDE: sessão preservada; nenhum reboot ou encerramento da sessão foi executado.
 
+## Continuação de instalação governada
+
+O candidato pós-merge `2.0.0rc1-a71ba77a7d5d` foi preparado pelo
+`release_host.py prepare` a partir de `a71ba77a7d5dbaf94c659bd56c756b7d565ab407`,
+com o run de CI `34975470323`; `verify-bundle` passou e o wheel foi conferido
+com SHA-256 `a1ef36b2be24466a3b69ad9cd81483516decaf4ecd2236e2963761e079d102a6`.
+
+O comando autorizado de instalação foi iniciado com o token exato
+`INSTALAR-2.0.0rc1-a71ba77a7d5d`, mas o polkit não apresentou autenticação em
+aproximadamente quatro minutos. O invólucro foi interrompido sem ativação;
+nenhum `bigsudo`, `pkexec` ou `install_host.py` permaneceu ativo. A release
+continua `2.0.0rc1-1d55b4ca4127` e `orphanStaging=0`. Esta tentativa não é
+prova física do candidato.
+
 ## Prova visual
 
 - `01-baseline.png`: central AURA UI observada antes da abertura do Launcher.

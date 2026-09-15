@@ -10690,3 +10690,21 @@ Pendências honestas: prova física da nova ponte após instalação, ingestão
 real de mídia PS4, p95 físico de frame time dentro de 16,7 ms, save-state,
 troca de disco, bezel/fade e lançamento PS4 real. Os contratos seguem
 allowlisted e degradam visivelmente quando o adapter concreto não os publica.
+
+## 2026-09-15 — tentativa governada da release pós-merge
+
+O CI da linha principal terminou verde no run `34975470323`, incluindo Python
+3.12, e o merge de PR #178 está em `a71ba77a7d5dbaf94c659bd56c756b7d565ab407`.
+Preparei e validei pelo fluxo governado a release
+`2.0.0rc1-a71ba77a7d5d`; o wheel foi conferido com SHA-256
+`a1ef36b2be24466a3b69ad9cd81483516decaf4ecd2236e2963761e079d102a6`.
+
+Com a autorização desta thread, iniciei `release_host.py install` usando o
+rollback `2.0.0rc1-1f030b2d76da` e o token exato. O polkit não exibiu prompt
+nem concluiu autenticação após aproximadamente quatro minutos. Interrompi
+somente o processo aguardando a autorização; a inspeção posterior confirmou a
+release ativa `2.0.0rc1-1d55b4ca4127`, nenhum processo privilegiado pendente,
+`orphanStaging=0`, daemon/socket ativos e KDE preservado. Não alego instalação
+nem prova física do candidato. A próxima ação operacional é repetir o comando
+quando a autenticação Polkit estiver visível; p95, PS4 e as capacidades de
+sessão continuam pendências abertas.
