@@ -290,6 +290,8 @@ def test_failed_job_retries_as_a_new_auditable_job(job_env: None) -> None:
     assert failed["canRetry"] is True
     assert failed["planId"] == "01M000000000000000000000AA"
     assert lifecycle.plan_status[str(failed["planId"])] == "aborted"
+    failures = [item["failure"] for item in failed["diagnostics"] if "failure" in item]
+    assert failures == [{"errorCode": "E-SUPPLY-OFFLINE", "detail": "rede indisponível"}]
 
     retried = service.retry(str(first["jobId"]))
     assert retried["jobId"] != first["jobId"]

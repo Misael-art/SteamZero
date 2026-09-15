@@ -308,7 +308,32 @@ class ComponentJobService:
                         result = lifecycle.apply(plan_id, legacy_token)
                     else:
                         result = lifecycle._apply_validated(plan_id)
-            except Exception:
+            except SteamZeroError as exc:
+                context.checkpoint(
+                    {
+                        "kind": "component-diagnostic",
+                        "adapterId": adapter_id,
+                        "executor": executor,
+                        "failure": {
+                            "errorCode": exc.code,
+                            "detail": str(exc.detail or str(exc))[:240],
+                        },
+                    }
+                )
+                lifecycle._abort_apply(plan_id)
+                raise
+            except Exception as exc:
+                context.checkpoint(
+                    {
+                        "kind": "component-diagnostic",
+                        "adapterId": adapter_id,
+                        "executor": executor,
+                        "failure": {
+                            "errorCode": "E-INTERNAL-UNEXPECTED",
+                            "detail": str(exc)[:240],
+                        },
+                    }
+                )
                 lifecycle._abort_apply(plan_id)
                 raise
             operation_id = result.get("operationId")

@@ -48,11 +48,20 @@ LaunchCallback = Callable[[str, str], LaunchAttempt | None]
 # valores vindos do ambiente nunca são repassados diretamente ao QML.
 _QT_QUICK_BACKEND = "opengl"
 _ALLOWED_QT_QUICK_BACKENDS = frozenset({"opengl", "software"})
+_QSG_RENDER_LOOP = "basic"
+_ALLOWED_QSG_RENDER_LOOPS = frozenset({"basic", "threaded"})
 
 
 def _resolve_qt_quick_backend() -> str:
     requested = os.environ.get("STEAMZERO_QT_QUICK_BACKEND", _QT_QUICK_BACKEND)
     return requested if requested in _ALLOWED_QT_QUICK_BACKENDS else _QT_QUICK_BACKEND
+
+
+def _resolve_qsg_render_loop() -> str:
+    requested = os.environ.get(
+        "STEAMZERO_QSG_RENDER_LOOP", os.environ.get("QSG_RENDER_LOOP", _QSG_RENDER_LOOP)
+    )
+    return requested if requested in _ALLOWED_QSG_RENDER_LOOPS else _QSG_RENDER_LOOP
 
 
 def _performance_report_url() -> str:
@@ -592,6 +601,7 @@ def launch_launcher_ui(bridge: LauncherBridge) -> int:
         environment = {
             **os.environ,
             "QT_QUICK_BACKEND": _resolve_qt_quick_backend(),
+            "QSG_RENDER_LOOP": _resolve_qsg_render_loop(),
             "STEAMZERO_CLASS": "launcher",
         }
         # A cena vive sob supervisão: quando este processo acabar — por retorno,

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-VISUAL-COMPLETION",
+  "item": "SZ-AURA-VISUAL-COMPLETION",
+  "branch": "codex/aura-visual-completion-2026-09-15",
+  "baseRef": "1d55b4ca41275c1aec5b344e89877b5abd4690fd",
+  "owner": "codex-aura-visual-completion",
+  "state": "active",
+  "exclusivePaths": [
+    "docs/09-operations/evidence/2026-09-15-aura-visual-completion",
+    "docs/status/items/aura-visual-completion-2026-09-15.json",
+    "docs/status/workstreams/aura-visual-completion-2026-09-15.json",
+    "src/steamzero/adapters/component_jobs.py",
+    "src/steamzero/adapters/launcher_ui.py",
+    "tests/unit/test_component_jobs.py",
+    "tests/unit/test_launcher_ui_backend.py"
+  ],
+  "sharedPaths": [
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Repetir o ciclo shadPS4 usando o diagnóstico persistido do job; validar o render loop básico em três medições OpenGL consecutivas e atualizar a evidência física.",
+  "updatedAt": "2026-09-15"
+}
