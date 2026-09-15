@@ -34,7 +34,8 @@
   "verify": {
     "smokeTest": [
       "--help"
-    ]
+    ],
+    "smokeMode": "appimage-extract"
   },
   "compat": [
     "steamos",

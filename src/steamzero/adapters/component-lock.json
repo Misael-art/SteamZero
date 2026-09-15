@@ -333,7 +333,7 @@
     },
     {
       "id": "shadps4",
-      "manifestHash": "02cb52b0a08fcfb11af4f61633351f8df1daaeff85577f567c0f8ff8a9303595",
+      "manifestHash": "bf590d0a9e82fd9184c5eabc2542b96d9b7c74cb70a832afe2d3862a90c31c49",
       "source": {
         "type": "native",
         "version": "0.18.0",

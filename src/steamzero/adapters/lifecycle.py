@@ -43,10 +43,12 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import secrets
 import shutil
 import signal
 import subprocess
+import tempfile
 from collections.abc import Callable, Sequence
 from contextlib import suppress
 from dataclasses import dataclass, replace
@@ -1756,27 +1758,81 @@ class ComponentLifecycle:
 
     def _engine_smoke(self, engine: AdapterEngine, manifest: AdapterManifest) -> None:
         """Smoke test do payload portátil, igual ao caminho da central."""
-        command = [str(engine.payload_path(manifest.id))]
-        command.extend(manifest.verify_smoke_test)
-        try:
-            result = subprocess.run(  # noqa: S603
-                command,
-                check=False,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                env={**os.environ, "APPIMAGELAUNCHER_DISABLE": "1"},
-                timeout=20,
-            )
-        except (OSError, subprocess.TimeoutExpired) as exc:
+        payload = engine.payload_path(manifest.id)
+        environment = {
+            **os.environ,
+            "APPIMAGELAUNCHER_DISABLE": "1",
+            **dict(manifest.verify_environment),
+        }
+
+        def run_smoke(command: list[str], *, cwd: Path | None = None) -> str:
+            try:
+                result = subprocess.run(  # noqa: S603
+                    command,
+                    check=False,
+                    cwd=cwd,
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    env=environment,
+                    text=True,
+                    timeout=20,
+                )
+            except (OSError, subprocess.TimeoutExpired) as exc:
+                raise SteamZeroError(
+                    "E-COMPONENT-DEGRADED", detail=f"smoke test falhou: {exc}"
+                ) from exc
+            output = result.stdout or ""
+            if result.returncode not in manifest.verify_smoke_exit_codes:
+                detail = output.strip()[-600:]
+                suffix = f": {detail}" if detail else ""
+                raise SteamZeroError(
+                    "E-COMPONENT-DEGRADED",
+                    detail=f"smoke test retornou código {result.returncode}{suffix}",
+                )
+            if (
+                manifest.verify_smoke_match is not None
+                and re.search(manifest.verify_smoke_match, output, re.MULTILINE) is None
+            ):
+                raise SteamZeroError(
+                    "E-COMPONENT-DEGRADED",
+                    detail="smoke test não encontrou o padrão declarado na saída",
+                )
+            return output
+
+        if manifest.verify_smoke_mode == "application":
+            run_smoke([str(payload), *manifest.verify_smoke_test])
+            return
+        if manifest.verify_smoke_mode != "appimage-extract":
             raise SteamZeroError(
-                "E-COMPONENT-DEGRADED", detail=f"smoke test falhou: {exc}"
-            ) from exc
-        if result.returncode != 0:
-            raise SteamZeroError(
-                "E-COMPONENT-DEGRADED",
-                detail=f"smoke test retornou código {result.returncode}",
+                "E-API-SCHEMA",
+                detail=f"modo de smoke portátil inválido: {manifest.verify_smoke_mode}",
             )
+
+        # AppImages podem depender de FUSE, indisponível em instalações
+        # endurecidas do host. A extração ocorre somente no diretório temporário
+        # privado desta verificação; em seguida executamos o AppRun interno, que
+        # é o payload efetivo, sem deixar squashfs-root persistente.
+        with tempfile.TemporaryDirectory(prefix="steamzero-appimage-smoke-") as directory:
+            smoke_root = Path(directory)
+            run_smoke([str(payload), "--appimage-extract"], cwd=smoke_root)
+            app_root = smoke_root / "squashfs-root"
+            app_run = app_root / "AppRun"
+            try:
+                resolved_app_run = app_run.resolve(strict=True)
+                resolved_app_run.relative_to(app_root.resolve())
+            except (OSError, RuntimeError, ValueError):
+                raise SteamZeroError(
+                    "E-COMPONENT-DEGRADED",
+                    detail="AppImage extraído sem AppRun executável",
+                ) from None
+            if not resolved_app_run.is_file() or not os.access(resolved_app_run, os.X_OK):
+                raise SteamZeroError(
+                    "E-COMPONENT-DEGRADED",
+                    detail="AppRun extraído sem permissão de execução",
+                )
+            environment["APPDIR"] = str(app_root)
+            run_smoke([str(app_run), *manifest.verify_smoke_test], cwd=smoke_root)
 
     def _revalidate_engine_apply(self, envelope: ComponentPlan, engine: AdapterEngine) -> None:
         """Revalida plano e deployment sob lock, como o executor Flatpak faz.

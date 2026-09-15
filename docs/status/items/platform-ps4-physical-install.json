@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-PLATFORM-PS4-PHYSICAL-INSTALL",
+  "title": "Instalação física do shadPS4 e lançamento PS4",
+  "domain": "platform",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "dev",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/adapters/lifecycle.py",
+    "src/steamzero/adapters/manifests/shadps4.adapter.json",
+    "src/steamzero/adapters/component-lock.json",
+    "src/steamzero/schemas/adapter-v1.schema.json",
+    "tests/integration/test_component_lifecycle.py",
+    "tests/integration/test_emulator_conformance.py",
+    "docs/09-operations/evidence/2026-09-14-ps4-appimage-smoke-recovery",
+    "docs/status/workstreams/ps4-physical-closure-2026-09-15.json"
+  ],
+  "dependsOn": [
+    "SZ-PLATFORM-PS4-CATALOG",
+    "SZ-COMPONENT-LIFECYCLE"
+  ],
+  "knownGaps": [
+    "GAP-PLATFORM-PS4-PHYSICAL-INSTALL"
+  ],
+  "acceptanceCriteria": [
+    "O smoke de um AppImage transportado em zip extrai somente o payload declarado em diretório temporário e executa o AppRun interno sem depender de FUSE.",
+    "Uma falha de smoke termina em rollback e deixa o componente ausente, sem staging órfão ou operação pendente.",
+    "O shadPS4 é instalado na release governada, fica verificável e permanece idempotente em uma aplicação repetida.",
+    "Um jogo PS4 real inicia pelo fluxo do componente e retorna ao launcher preservando o contexto e o foco.",
+    "A prova física é registrada com a release ativa e capturas PNG do sucesso, erro controlado e recuperação quando o conteúdo PS4 estiver disponível."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_component_lifecycle.py",
+      "command": "PYTHONPATH=src .venv/bin/python tools/run_tests_isolated.py tests/integration/test_component_lifecycle.py tests/integration/test_adapters.py tests/unit/test_platform_ps4_catalog.py -q (110 passed)",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-14-ps4-appimage-smoke-recovery/README.md",
+      "command": "Release 2.0.0rc1-1f030b2d76da: component plan/apply do shadPS4 alcançou verify e falhou no smoke direto do AppImage; rollback E-TX-VERIFY-FAILED deixou o estado missing e nenhum staging órfão. A causa e a correção do modo appimage-extract estão registradas.",
+      "result": "partial"
+    }
+  ],
+  "nextAction": "Publicar a correção do smoke, instalar a release resultante e repetir plan/apply/verify; depois fornecer um dump PS4 real para provar lançamento, retorno ao foco e captura visual.",
+  "activeWorkstreams": [
+    "WS-2026-09-PS4-PHYSICAL-CLOSURE"
+  ],
+  "updatedAt": "2026-09-14",
+  "notes": "O primeiro apply físico revelou que o payload real é um zip contendo Shadps4-sdl.AppImage. O AppImage direto bloqueia neste host por depender do mount FUSE, embora o binário interno e o AppRun extraídos respondam --help com código 0. A correção mantém a política de payload declarativo, extrai em diretório temporário privado, executa o AppRun interno e valida saída/regex. Ainda não existe conteúdo de jogo PS4 no host; portanto não se pode alegar lançamento real nem fabricar captura de fullscreen.",
+  "scopeDigest": "6331e5d581582dae787666250dea6e6671f88882ef7e2d5716eb7ab5c27abff3"
+}
