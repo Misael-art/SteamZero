@@ -31,6 +31,27 @@ def _get(url: str, token: str) -> dict:
         return json.loads(response.read())
 
 
+def test_model_keeps_cinema_metadata_for_details_and_search(tmp_path: Path) -> None:
+    bridge = LauncherBridge(
+        sections=build_sections([{"id": "game", "title": "Game", "section": "library"}]),
+        context_path=tmp_path / "return.json",
+        on_launch=lambda game, focus: None,
+        titles={"game": "Game"},
+        metadata={
+            "game": {
+                "fanartUrl": "file:///managed/fanart.png",
+                "screenshotUrls": ["file:///managed/shot.png"],
+                "genres": ["Action"],
+            }
+        },
+    )
+    model = bridge.model()
+    item = model["sections"][0]["items"][0]
+    assert item["fanartUrl"] == "file:///managed/fanart.png"
+    assert item["screenshotUrls"] == ["file:///managed/shot.png"]
+    assert bridge.search("game")["games"][0]["fanartUrl"] == "file:///managed/fanart.png"
+
+
 def test_keep_alive_model_connection_does_not_block_cinema_or_session(tmp_path: Path) -> None:
     bridge = LauncherBridge(
         sections=build_sections([{"id": "game", "title": "Game", "section": "library"}]),

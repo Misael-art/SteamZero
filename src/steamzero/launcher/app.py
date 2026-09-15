@@ -21,7 +21,12 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any, cast
 
-from steamzero.adapters.launcher_catalog import CatalogGame, catalog_games, catalog_summary
+from steamzero.adapters.launcher_catalog import (
+    CatalogGame,
+    _platform_label,
+    catalog_games,
+    catalog_summary,
+)
 from steamzero.adapters.launcher_media import launcher_media_metadata
 from steamzero.adapters.launcher_receipt import (
     LaunchAttempt,
@@ -248,10 +253,12 @@ def _sections_from_catalog(catalog: Sequence[CatalogGame]) -> tuple[HomeSection,
     plataforma não tem seção conhecida cai em ``outros``.
     """
     grouped: dict[str, list[str]] = {}
+    labels: dict[str, str] = {}
     for game in catalog:
         section = game.platform or "outros"
+        section_title = game.platform_label or _platform_label(section)
         try:
-            HomeSection(id=section, title=section, items=(game.id,))
+            HomeSection(id=section, title=section_title, items=(game.id,))
         except ValueError:
             # A recusa pode ser da seção OU do item, e a mensagem não era
             # consultada. Reagir sempre como se fosse a seção fazia a segunda
@@ -266,8 +273,16 @@ def _sections_from_catalog(catalog: Sequence[CatalogGame]) -> tuple[HomeSection,
                 continue
             section = "outros"
         grouped.setdefault(section, []).append(game.id)
+        # The first catalog item is authoritative for the section label. Steam
+        # and imported records may not carry a manifest label, so later items
+        # must not overwrite a resolved human name with a technical id.
+        labels.setdefault(section, section_title)
     return tuple(
-        HomeSection(id=name, title=_SECTION_TITLES.get(name, name), items=tuple(items))
+        HomeSection(
+            id=name,
+            title=_SECTION_TITLES.get(name, labels.get(name, name)),
+            items=tuple(items),
+        )
         for name, items in grouped.items()
     )
 

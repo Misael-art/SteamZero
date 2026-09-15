@@ -21,6 +21,7 @@ def test_base_games_are_listed_with_the_canonical_label() -> None:
     )
     assert [g.title for g in games] == ["1969 (Homebrew) (SMS)", "Ridge Racer"]
     assert [g.platform for g in games] == ["master-system", "playstation"]
+    assert [g.platform_label for g in games] == ["Sega Master System", "Sony PlayStation"]
 
 
 def test_update_and_dlc_are_excluded() -> None:

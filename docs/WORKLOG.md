@@ -10656,3 +10656,37 @@ Próxima ação: instrumentar o detalhe do smoke AppImage no daemon e corrigir o
 caminho físico que falha, depois otimizar o p95 do Launcher e repetir a prova
 em três execuções consecutivas. A galeria de save-state continua habilitada
 somente quando um adapter concreto a publica.
+
+## 2026-09-15 — harmonização do Cinema e auditoria física de mídia
+
+Nova frente isolada sobre `5d64d87cd0c04456e62d70573cd7dcd051b819ec`, na
+branch `codex/aura-cinema-visual-finish-2026-09-15`. A auditoria read-only do
+host encontrou 1.124 jogos reais no cache, mas o Launcher ainda expunha IDs
+técnicos de plataforma em parte do cabeçalho e não preservava toda a mídia
+rica ao entrar por busca/detalhes. O PS4 continua declarado como planejado,
+sem shadPS4 instalado e sem conteúdo PS4 no host.
+
+O commit funcional `29afef6` mantém o ID canônico para roteamento e publica o
+nome humano via `PlatformRegistry`; a ponte preserva fanart, logo, ícone,
+screenshots, data e gêneros na busca, e `LauncherMain.qml` encaminha os fatos
+ricos à página de detalhes. Fallbacks continuam textuais quando a mídia não
+existe. A bateria focada passou 50/50.
+
+Na release instalada anterior, o Launcher abriu fullscreen com carousel,
+foco, busca e fallback legível; um jogo real RetroArch também foi lançado e
+capturado em `04-game-session-baseline.png`. Essas capturas são baseline do
+host, não prova da release deste commit. O registro de mídia físico existente
+tem atribuições inconsistentes de plataforma e não foi mutado às cegas; a
+reconciliação global precisa ser feita pelo pipeline canônico.
+
+Gates no candidato: suíte integral `6052 passed, 47 skipped`; a única falha
+inicial foi o catálogo de status com seis digests obsoletos, corrigidos e
+confirmados por `status-check: OK`. Ruff check/format, mypy (279 arquivos),
+independência, fronteiras e testes de status passaram. PR #178 foi aberto; a
+release ainda não foi instalada porque a autenticação Polkit não apresentou
+prompt nas tentativas governadas anteriores. KDE permaneceu intacto.
+
+Pendências honestas: prova física da nova ponte após instalação, ingestão
+real de mídia PS4, p95 físico de frame time dentro de 16,7 ms, save-state,
+troca de disco, bezel/fade e lançamento PS4 real. Os contratos seguem
+allowlisted e degradam visivelmente quando o adapter concreto não os publica.
