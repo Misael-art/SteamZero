@@ -10,7 +10,11 @@
   "exclusivePaths": [
     "docs/09-operations/evidence/2026-09-15-aura-visual-completion",
     "docs/status/items/aura-visual-completion-2026-09-15.json",
-    "docs/status/workstreams/aura-visual-completion-2026-09-15.json"
+    "docs/status/workstreams/aura-visual-completion-2026-09-15.json",
+    "src/steamzero/adapters/component_jobs.py",
+    "src/steamzero/adapters/launcher_ui.py",
+    "tests/unit/test_component_jobs.py",
+    "tests/unit/test_launcher_ui_backend.py"
   ],
   "sharedPaths": [
     "docs/STATUS.md",
@@ -18,6 +22,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Corrigir o smoke físico do shadPS4 com evidência de erro detalhada e repetir o ciclo; depois reduzir o p95 real do Launcher para até 16,7 ms em três medições consecutivas.",
+  "nextAction": "Repetir o ciclo shadPS4 usando o diagnóstico persistido do job; validar o render loop básico em três medições OpenGL consecutivas e atualizar a evidência física.",
   "updatedAt": "2026-09-15"
 }
