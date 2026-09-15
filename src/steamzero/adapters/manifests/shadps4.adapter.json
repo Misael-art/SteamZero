@@ -37,6 +37,11 @@
     ],
     "smokeMode": "appimage-extract"
   },
+  "launch": {
+    "arguments": [
+      "-b"
+    ]
+  },
   "compat": [
     "steamos",
     "bazzite",

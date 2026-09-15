@@ -1997,6 +1997,7 @@ def test_appimage_launch_uses_extract_and_run_when_smoke_uses_extraction(
     # um ZIP, enquanto o payload implantado e executado é um AppImage.
     manifest_data = portable_manifest("1.0.0", payload, source_type="native")
     manifest_data["verify"]["smokeMode"] = "appimage-extract"
+    manifest_data["launch"] = {"arguments": ["-b"]}
     manifest = load_manifest(manifest_data)
     spawned: list[list[str]] = []
     lifecycle = ComponentLifecycle(
@@ -2013,4 +2014,4 @@ def test_appimage_launch_uses_extract_and_run_when_smoke_uses_extraction(
 
     lifecycle.launch("demo-emulator")
 
-    assert spawned == [["/opt/demo.AppImage", "--appimage-extract-and-run"]]
+    assert spawned == [["/opt/demo.AppImage", "--appimage-extract-and-run", "-b"]]
