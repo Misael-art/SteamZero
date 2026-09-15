@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AURA-VISUAL-COMPLETION",
+  "title": "AURA Cinema — fechamento visual e medição na release instalada",
+  "domain": "ui",
+  "implementation": "partial",
+  "integration": "integrated",
+  "verification": "hw",
+  "operation": "degraded",
+  "distribution": "installed",
+  "scopePaths": [
+    "docs/09-operations/evidence/2026-09-15-aura-visual-completion"
+  ],
+  "scopeDigest": "88eba63f2a719fb0546c0792aba254a710c797920f4524b6fba55af9e2d5eb0d",
+  "dependsOn": [
+    "SZ-AURA-CINEMA-COMPLETION",
+    "SZ-AURA-SAVE-STATE-GALLERY",
+    "SZ-AURA-SESSION-OSD",
+    "SZ-THEME-ENGINE",
+    "SZ-PLATFORM-PS4-CATALOG"
+  ],
+  "knownGaps": [
+    "GAP-AURA-CINEMA-PERFORMANCE-P95",
+    "GAP-PLATFORM-PS4-PHYSICAL-INSTALL",
+    "GAP-PLATFORM-PS4-GAME-LAUNCH-PHYSICAL",
+    "GAP-AURA-SAVE-STATE-PHYSICAL"
+  ],
+  "acceptanceCriteria": [
+    "AURA Cinema abre na release instalada com carousel, foco, nome, cabeçalho, relógio e ações de controle visíveis.",
+    "A medição usa a janela Wayland real da release instalada e registra startup, frame time/p95, RSS e VRAM sem alegação offscreen.",
+    "O item PS4 só é promovido após plan/apply/verify físico e lançamento de jogo real; rollback limpo permanece evidência negativa válida.",
+    "Save-state e troca de disco continuam declarados somente quando o adapter concreto fornece a capacidade; fallback não inventa sucesso."
+  ],
+  "evidence": [
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-15-aura-visual-completion/02-entrega-funcional.png",
+      "command": "Release 2.0.0rc1-1d55b4ca4127: steamzero-launcher abriu AURA Cinema na sessão Wayland; captura limpa do carousel, foco central, header AURA/CINEMA, estado online, relógio e rodapé de controle.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-15-aura-visual-completion/performance-installed-1.json",
+      "command": "python3 tools/launcher_perf_probe.py --backend opengl --timeout 25 --out performance-installed-1.json",
+      "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-15-aura-visual-completion/performance-installed-2.json",
+      "command": "Repetição física na mesma release: startup 680 ms, p95 19,902 ms, RSS 359084 KiB e VRAM 108008 KiB.",
+      "result": "failed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/status/items/platform-ps4-physical-install.json",
+      "command": "Release 2.0.0rc1-1d55b4ca4127: component plan/apply shadps4 baixou o zip fixado, mas terminou E-TX-VERIFY-FAILED/smoke-failed; rollback deixou state=missing e state audit clean=true.",
+      "result": "failed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-15-aura-visual-completion/README.md",
+      "command": "steamzero theme status --json; steamzero component status --id shadps4 --json; steamzero doctor --json",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_service_core.py",
+      "command": "Suíte integral: 6046 passed, 47 skipped; três falhas somente por AF_UNIX path too long no TMPDIR do runner. Reexecução dos três testes com TMPDIR=/tmp: 3 passed.",
+      "result": "partial"
+    }
+  ],
+  "activeWorkstreams": [
+    "WS-2026-09-AURA-VISUAL-COMPLETION"
+  ],
+  "nextAction": "Instrumentar o erro detalhado do smoke AppImage, corrigir o caminho que falha no daemon e repetir o apply; em paralelo, otimizar e medir o p95 do Launcher sem alterar a semântica visual nem reduzir acessibilidade.",
+  "updatedAt": "2026-09-15",
+  "notes": "A prova visual foi feita na release ativa sem reiniciar o KDE. A composição está integrada e legível, mas o objetivo não é marcado como pronto porque a meta física de p95 falhou nas quatro amostras e o PS4 sofreu rollback controlado. A galeria de save-state, troca de disco e bezel seguem honestamente dependentes do adapter/sessão que os publica."
+}

@@ -10621,3 +10621,38 @@ passado — notificacao de exit 0 numa suite que saiu 1, `status-check` imprimin
 "evidencia obsoleta" e retornando 0, `GATES_EXTRA=0` vindo do `tail` num `make`
 morto com erro 127, e `MERGE_EXIT=0` num merge que nem rodou por `-F -` nao ler
 stdin. Codigo de saida sem ler a saida teria produzido um relatorio falso.
+
+## 2026-09-15 — fechamento visual AURA na release instalada
+
+Branch `codex/aura-visual-completion-2026-09-15`, base `1d55b4ca`.
+Auditei a linha principal e confirmei que mídia rica, busca tolerante e nome
+apresentado, composição AURA Cinema, OSD, bezel, fade, troca de disco e o
+contrato de save-state já estão integrados. O item novo
+`SZ-AURA-VISUAL-COMPLETION` registra a prova física e mantém o estado
+`partial/degraded` porque duas metas ainda falharam honestamente.
+
+A release governada `2.0.0rc1-1d55b4ca4127` foi instalada com CI verde,
+bundle verificado, daemon convergente e rollback
+`2.0.0rc1-1f030b2d76da`. Nenhum reboot, encerramento ou reinício do KDE foi
+executado. A AURA Cinema abriu na sessão Wayland com carousel, foco central,
+nomes, cabeçalho, conexão, relógio e rodapé de controle; a captura limpa está
+em `docs/09-operations/evidence/2026-09-15-aura-visual-completion/02-entrega-funcional.png`.
+
+O probe físico pós-QML registrou startup de 680–1043 ms, VRAM de
+101–112 MiB e p95 de frame time entre 18,619 e 20,293 ms. Startup e VRAM estão
+dentro dos limites, mas o p95 excede 16,7 ms; não foi promovido como fluido
+certificado. O ciclo governado do shadPS4 baixou e verificou o zip fixado, mas
+terminou em `E-TX-VERIFY-FAILED`; rollback deixou `missing` e `state audit`
+sem órfãos. Sem dump PS4 disponível, nenhum lançamento ou captura foi
+fabricado.
+
+Gates: lint, format, fronteiras, independência, lockfile, matriz e 20 testes
+focados passaram; mypy isolado passou em 279 arquivos. A suíte integral teve
+6046 passed/47 skipped e três falhas apenas por `AF_UNIX path too long`; a
+reexecução dos três testes com `TMPDIR=/tmp` passou 3/3. `make status-check`
+passou após regenerar `STATUS.md`, `ACTIVE-WORK.md` e `COVERAGE.md`.
+
+Próxima ação: instrumentar o detalhe do smoke AppImage no daemon e corrigir o
+caminho físico que falha, depois otimizar o p95 do Launcher e repetir a prova
+em três execuções consecutivas. A galeria de save-state continua habilitada
+somente quando um adapter concreto a publica.

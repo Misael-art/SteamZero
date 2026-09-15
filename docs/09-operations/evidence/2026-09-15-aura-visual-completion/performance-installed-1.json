@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "launcher": "/opt/steamzero/releases/2.0.0rc1-1d55b4ca4127/venv/bin/steamzero-launcher",
+  "backend": "opengl",
+  "surface": "948x593",
+  "startupMs": 1043,
+  "frameTime": {
+    "frames": 360,
+    "avgFrameTimeMs": 16.655,
+    "p50Ms": 16.607,
+    "p95Ms": 18.619,
+    "maxMs": 41.056
+  },
+  "peakRssKb": 368496,
+  "peakVramKb": 109664,
+  "vramMeasured": true,
+  "vramMethod": "drm fdinfo do processo, agrupado por drm-client-id",
+  "note": "frameTime é do render loop FrameAnimation, não de frames apresentados pelo compositor."
+}
