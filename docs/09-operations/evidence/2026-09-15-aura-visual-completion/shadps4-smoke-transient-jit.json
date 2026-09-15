@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "kind": "component-smoke-diagnostic",
+  "observedAt": "2026-09-15",
+  "sourceCommit": "3ad4066",
+  "adapterId": "shadps4",
+  "version": "0.18.0",
+  "artifactSha256": "3cf0f669c089411775a2434a41ca9c391fb7d24c1a1521ee45dd1d36f390c4a4",
+  "command": "ComponentLifecycle._engine_smoke via systemd-run --user transient unit with MemoryDenyWriteExecute=false",
+  "environment": "runtime path under XDG_RUNTIME_DIR, private HOME/XDG roots, APPIMAGELAUNCHER_DISABLE=1",
+  "result": "pass",
+  "previousFailure": "SIGABRT: Xbyak::Error can't protect under steamzero-core.service MemoryDenyWriteExecute=true",
+  "hostMutation": false,
+  "note": "The core hardening remains enabled; only the component transient unit permits JIT. Governed apply and release launch must still be repeated after merge."
+}

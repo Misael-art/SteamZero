@@ -19,6 +19,7 @@ from types import SimpleNamespace
 
 import pytest
 
+import steamzero.adapters.lifecycle as lifecycle_module
 from fixtures.eol_adapter import EOL_ID, EOL_REF, eol_registry
 from steamzero.adapters import input_devices
 from steamzero.adapters.flatpak import FlatpakExecutor, FlatpakPlan, FlatpakState
@@ -1910,3 +1911,104 @@ def test_appimage_extract_smoke_runs_inner_apprun_in_private_directory(
     engine = SimpleNamespace(payload_path=lambda _adapter_id: payload)
 
     ComponentLifecycle._engine_smoke(None, engine, loaded)  # type: ignore[arg-type]
+
+
+def test_daemon_component_handoff_preserves_hardening_and_allowlists_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("STEAMZERO_CLASS", "daemon")
+    monkeypatch.setenv("STEAMZERO_SECRET_SHOULD_NOT_LEAK", "redacted")
+    captured: dict[str, object] = {}
+
+    def fake_popen(argv: Sequence[str], **kwargs: object) -> SimpleNamespace:
+        captured["argv"] = tuple(argv)
+        captured["kwargs"] = kwargs
+        return SimpleNamespace(pid=4242)
+
+    monkeypatch.setattr(lifecycle_module.subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(
+        lifecycle_module.shutil,
+        "which",
+        lambda name: "/usr/bin/systemd-run" if name == "systemd-run" else None,
+    )
+
+    assert lifecycle_module.spawn_detached(("/opt/components/shadps4", "--help")) == 4242
+
+    argv = captured["argv"]
+    assert isinstance(argv, tuple)
+    assert "--property=MemoryDenyWriteExecute=false" in argv
+    assert "--property=NoNewPrivileges=true" in argv
+    assert "--property=ProtectSystem=strict" in argv
+    assert "--property=PrivateTmp=true" in argv
+    assert "--setenv=APPIMAGELAUNCHER_DISABLE=true" in argv
+    assert not any("STEAMZERO_SECRET_SHOULD_NOT_LEAK" in item for item in argv)
+
+
+def test_daemon_smoke_uses_runtime_path_and_transient_jit_unit(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("STEAMZERO_CLASS", "daemon")
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
+    captured: list[tuple[Sequence[str], dict[str, object]]] = []
+
+    def fake_run(command: Sequence[str], **kwargs: object) -> SimpleNamespace:
+        captured.append((command, kwargs))
+        if "--appimage-extract" in command:
+            working_directory = next(
+                item.split("=", 2)[2]
+                for item in command
+                if item.startswith("--property=WorkingDirectory=")
+            )
+            app_run = Path(working_directory) / "squashfs-root" / "AppRun"
+            app_run.parent.mkdir()
+            app_run.write_text("#!/bin/sh\n", encoding="utf-8")
+            app_run.chmod(0o700)
+        return SimpleNamespace(returncode=0, stdout="ok\n")
+
+    monkeypatch.setattr(lifecycle_module.subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        lifecycle_module.shutil,
+        "which",
+        lambda name: "/usr/bin/systemd-run" if name == "systemd-run" else None,
+    )
+    payload = tmp_path / "demo.AppImage"
+    manifest_data = portable_manifest("1.0.0", b"payload", source_type="native")
+    manifest_data["verify"]["smokeMode"] = "appimage-extract"
+    manifest = load_manifest(manifest_data)
+    engine = SimpleNamespace(payload_path=lambda _adapter_id: payload)
+
+    ComponentLifecycle._engine_smoke(None, engine, manifest)  # type: ignore[arg-type]
+
+    assert len(captured) == 2
+    command, kwargs = captured[0]
+    assert "--wait" in command
+    assert "--pipe" in command
+    assert "--property=MemoryDenyWriteExecute=false" in command
+    assert any(item.startswith("--property=WorkingDirectory=") for item in command)
+    assert kwargs["cwd"] is None
+    assert "--setenv=APPIMAGELAUNCHER_DISABLE=1" in command
+
+
+def test_appimage_launch_uses_extract_and_run_when_smoke_uses_extraction(
+    store: state.StateStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    payload = executable_payload()
+    manifest_data = portable_manifest("1.0.0", payload, source_type="appimage")
+    manifest_data["verify"]["smokeMode"] = "appimage-extract"
+    manifest = load_manifest(manifest_data)
+    spawned: list[list[str]] = []
+    lifecycle = ComponentLifecycle(
+        store,
+        AdapterRegistry([manifest]),
+        spawn=lambda argv: (spawned.append(list(argv)), 4242)[1],
+    )
+    monkeypatch.setattr(lifecycle, "status", lambda _adapter_id: {"state": "installed"})
+    monkeypatch.setattr(
+        lifecycle,
+        "_engine",
+        lambda: SimpleNamespace(payload_path=lambda _adapter_id: Path("/opt/demo.AppImage")),
+    )
+
+    lifecycle.launch("demo-emulator")
+
+    assert spawned == [["/opt/demo.AppImage", "--appimage-extract-and-run"]]

@@ -21,6 +21,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "A nova release deve repetir o apply e manter o lançamento real bloqueado até existir dump PS4 no host; a correção do smoke agora é compartilhada com a frente AURA.",
+  "nextAction": "Após o merge de 3ad4066, a nova release deve repetir o apply/verify; o lançamento real continua bloqueado até existir dump PS4 no host.",
   "updatedAt": "2026-09-14"
 }

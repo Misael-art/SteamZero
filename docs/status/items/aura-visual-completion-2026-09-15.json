@@ -26,7 +26,7 @@
     "tests/unit/test_component_jobs.py",
     "tests/unit/test_launcher_ui_backend.py"
   ],
-  "scopeDigest": "f49aa55131c2e23c7a731caa6770f5695942482bb95b680133c27fad0d5aaa19",
+  "scopeDigest": "5711e8f37f8f3fb183d1abc988d80efb8eef47789bb0bb4d6c51d254aa36b12b",
   "dependsOn": [
     "SZ-AURA-CINEMA-COMPLETION",
     "SZ-AURA-SAVE-STATE-GALLERY",
@@ -107,12 +107,18 @@
       "reference": "tests/unit/test_service_core.py",
       "command": "Suíte integral: 6046 passed, 47 skipped; três falhas somente por AF_UNIX path too long no TMPDIR do runner. Reexecução dos três testes com TMPDIR=/tmp: 3 passed.",
       "result": "partial"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-15-aura-visual-completion/shadps4-smoke-transient-jit.json",
+      "command": "Commit 3ad4066: smoke real do AppImage oficial em unidade transitória com W^X liberado somente no componente, runtime path compartilhado e APPIMAGELAUNCHER_DISABLE=1.",
+      "result": "passed"
     }
   ],
   "activeWorkstreams": [
     "WS-2026-09-AURA-VISUAL-COMPLETION"
   ],
-  "nextAction": "Aguardar a release b45f65983a28223ed5b33ef4f64f12a2c29516d1, instalar pelo fluxo governado, repetir o apply do shadPS4 e capturar a janela física; depois reexecutar performance e fechar apenas os gaps com adapter/jogo reais.",
+  "nextAction": "Após o merge de 3ad4066 e nova release governada, repetir o apply/verify do shadPS4, capturar a janela física e provar launch/retorno se houver dump PS4; depois reexecutar performance e manter abertos os gaps sem adapter/jogo reais.",
   "updatedAt": "2026-09-15",
-  "notes": "A prova visual foi feita na release ativa sem reiniciar o KDE. A ponte de nomes e mídia rica está integrada e o OSD agora possui entrada F1/Menu guardada por sessão canônica, com teste QML real. O candidato 2.0.0rc1-a71ba77a7d5d foi preparado/verificado, mas a instalação governada não recebeu autenticação Polkit e não alterou o host. O objetivo não é marcado como pronto porque a meta física de p95 falhou, o PS4 sofreu rollback controlado e faltam capturas físicas de OSD/save-state, troca de disco, bezel e fade com adapter concreto."
+  "notes": "A prova visual foi feita na release ativa sem reiniciar o KDE. A ponte de nomes e mídia rica está integrada e o OSD agora possui entrada F1/Menu guardada por sessão canônica, com teste QML real. O apply do shadPS4 falhava no host por duas fronteiras distintas: FUSE/ALX no launch direto e JIT bloqueado pelo MemoryDenyWriteExecute do core; 3ad4066 entrega o componente em unidade transitória endurecida e usa extract-and-run quando o manifesto prova extração. A correção ainda não foi instalada como release nova. O objetivo não é marcado como pronto porque a meta física de p95 falhou, o PS4 ainda não tem apply/launch físico após a correção e faltam capturas físicas de OSD/save-state, troca de disco, bezel e fade com adapter concreto."
 }
