@@ -36,7 +36,7 @@
     "tests/unit/test_session_overlay.py",
     "tests/unit/test_session_overlay_adapter.py"
   ],
-  "scopeDigest": "06a1b2fe340ae5065ec29c6cca40fd06a113a86ed3e23453a01749e320b2861b",
+  "scopeDigest": "373255f14e8e589337ec00d2fe2b3c37e1b2180edfc8499943f878c6afe332db",
   "dependsOn": [
     "SZ-AURA-SAVE-STATE-GALLERY",
     "SZ-AURA-SESSION-OSD",

@@ -207,6 +207,19 @@ Window {
             shell.forceActiveFocus()
     }
 
+    function toggleSessionOverlay() {
+        if (root.sessionOverlayOpen) {
+            root.closeSessionOverlay()
+            return true
+        }
+        const shell = root._activeLauncherShell()
+        if (!shell || root.model === null || shell.sessionGameId === ""
+                || (shell.launchState !== "launching"
+                    && shell.launchState !== "emulator-visible"))
+            return false
+        return root.openSessionOverlay(shell.sessionGameId)
+    }
+
     function dispatchSessionOverlayAction(actionId, slot, discId) {
         if (root.sessionOverlayPending || !root.sessionOverlayModel)
             return false
@@ -247,10 +260,13 @@ Window {
     Shortcut {
         sequence: "F1"
         enabled: root.model !== null && !root.searching
-        onActivated: {
-            const shell = root._activeLauncherShell()
-            root.openSessionOverlay(shell ? shell.sessionGameId : "")
-        }
+        onActivated: root.toggleSessionOverlay()
+    }
+
+    Shortcut {
+        sequence: "Menu"
+        enabled: root.model !== null && !root.searching
+        onActivated: root.toggleSessionOverlay()
     }
 
     function pollSession() {
