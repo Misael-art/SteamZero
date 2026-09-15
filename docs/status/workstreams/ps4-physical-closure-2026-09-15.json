@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-PS4-PHYSICAL-CLOSURE",
+  "item": "SZ-PLATFORM-PS4-PHYSICAL-INSTALL",
+  "branch": "codex/ps4-aura-physical-closure-2026-09-14",
+  "baseRef": "1f030b2d76da314ee40f9ecc6ff301cbf9e63148",
+  "owner": "codex-ps4-aura-physical",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/adapters/lifecycle.py",
+    "src/steamzero/adapters/manifests/shadps4.adapter.json",
+    "src/steamzero/adapters/component-lock.json",
+    "src/steamzero/schemas/adapter-v1.schema.json",
+    "tests/integration/test_component_lifecycle.py",
+    "docs/09-operations/evidence/2026-09-14-ps4-appimage-smoke-recovery",
+    "docs/status/items/platform-ps4-physical-install.json",
+    "docs/status/workstreams/ps4-physical-closure-2026-09-15.json"
+  ],
+  "sharedPaths": [
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Publicar a correção do smoke AppImage, instalar a release resultante e validar o ciclo do shadPS4; o lançamento de jogo real permanece condicionado à presença de dump PS4 no host.",
+  "updatedAt": "2026-09-14"
+}

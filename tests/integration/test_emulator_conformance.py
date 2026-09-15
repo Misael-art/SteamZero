@@ -35,6 +35,17 @@ PAYLOAD = b"#!/bin/sh\necho conformidade\n"
 PAYLOAD_SHA = hashlib.sha256(PAYLOAD).hexdigest()
 UPDATED = b"#!/bin/sh\necho conformidade 2\n"
 UPDATED_SHA = hashlib.sha256(UPDATED).hexdigest()
+APPIMAGE_PAYLOAD = (
+    b"#!/bin/sh\n"
+    b'if [ "${1:-}" = --appimage-extract ]; then\n'
+    b"  mkdir -p squashfs-root\n"
+    b"  printf '%s\\n' '#!/bin/sh' 'exit 0' > squashfs-root/AppRun\n"
+    b"  chmod 700 squashfs-root/AppRun\n"
+    b"  exit 0\n"
+    b"fi\n"
+    b"echo conformidade\n"
+)
+APPIMAGE_UPDATED = APPIMAGE_PAYLOAD.replace(b"conformidade", b"conformidade 2")
 COMMIT = "a" * 64
 URL = "https://fixtures.invalid/conformidade.AppImage"
 
@@ -112,6 +123,8 @@ def derived(
             # O corpo do membro segue a mesma convenção do sha: padrão ou
             # atualizado.
             member_body = UPDATED if sha == UPDATED_SHA else PAYLOAD
+            if raw.get("verify", {}).get("smokeMode") == "appimage-extract":
+                member_body = APPIMAGE_UPDATED if sha == UPDATED_SHA else APPIMAGE_PAYLOAD
             artifact = _zip_artifact(str(source["payloadPath"]), member_body)
             source["sha256"] = hashlib.sha256(artifact).hexdigest()
             _DERIVED_ARTIFACTS[source["sha256"]] = artifact

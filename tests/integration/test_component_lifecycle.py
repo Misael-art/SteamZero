@@ -15,6 +15,7 @@ import json
 import time
 from collections.abc import Iterator, Sequence
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -1873,3 +1874,30 @@ def test_payloadpath_is_rejected_on_flatpak_and_unsafe_paths() -> None:
     traversal["sources"][0]["payloadPath"] = "../escape.AppImage"
     with pytest.raises(SteamZeroError, match="payloadPath inseguro"):
         load_manifest(traversal)
+
+
+def test_appimage_extract_smoke_runs_inner_apprun_in_private_directory(
+    store: state.StateStore, tmp_path: Path
+) -> None:
+    payload = tmp_path / "demo.AppImage"
+    payload.write_text(
+        "#!/bin/sh\n"
+        'if [ "${1:-}" = --appimage-extract ]; then\n'
+        "  mkdir -p squashfs-root\n"
+        "  printf '%s\\n' '#!/bin/sh' 'test \"${1:-}\" = --help' > squashfs-root/AppRun\n"
+        "  chmod 700 squashfs-root/AppRun\n"
+        "  exit 0\n"
+        "fi\n"
+        "exit 99\n",
+        encoding="utf-8",
+    )
+    payload.chmod(0o700)
+    manifest = portable_manifest("1.0.0", payload.read_bytes(), source_type="native")
+    manifest["verify"] = {
+        "smokeTest": ["--help"],
+        "smokeMode": "appimage-extract",
+    }
+    loaded = load_manifest(manifest)
+    engine = SimpleNamespace(payload_path=lambda _adapter_id: payload)
+
+    ComponentLifecycle._engine_smoke(None, engine, loaded)  # type: ignore[arg-type]
