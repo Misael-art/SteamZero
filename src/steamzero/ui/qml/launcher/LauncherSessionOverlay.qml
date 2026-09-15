@@ -372,6 +372,17 @@ Item {
 
     Keys.onEscapePressed: overlay.saveGalleryOpen ? overlay.closeSaveGallery()
         : overlay.peripheralOpen ? overlay.closePeripheralSurface() : overlay.closeOverlay()
+    Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_F1 || event.key === Qt.Key_Menu) {
+            if (overlay.saveGalleryOpen)
+                overlay.closeSaveGallery()
+            else if (overlay.peripheralOpen)
+                overlay.closePeripheralSurface()
+            else
+                overlay.closeOverlay()
+            event.accepted = true
+        }
+    }
     Keys.onLeftPressed: overlay.saveGalleryOpen ? saveGallery.move("left")
         : overlay.peripheralOpen ? peripheralSurface.move("left") : overlay.move("left")
     Keys.onRightPressed: overlay.saveGalleryOpen ? saveGallery.move("right")

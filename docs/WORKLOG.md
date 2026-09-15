@@ -10708,3 +10708,17 @@ release ativa `2.0.0rc1-1d55b4ca4127`, nenhum processo privilegiado pendente,
 nem prova física do candidato. A próxima ação operacional é repetir o comando
 quando a autenticação Polkit estiver visível; p95, PS4 e as capacidades de
 sessão continuam pendências abertas.
+
+## 2026-09-15 — ligação do OSD à cena fullscreen
+
+Auditoria do `LauncherMain.qml` encontrou um gap funcional: `openSessionOverlay`
+existia, mas o `Shortcut F1` chamava-o diretamente mesmo sem uma sessão
+canônica, e não havia alternância segura para fechar o OSD. Isso deixava a
+galeria de save-state e a troca de disco sem uma entrada utilizável na cena.
+
+Esta frente adiciona `toggleSessionOverlay()`, exige `sessionGameId` e estado
+`launching`/`emulator-visible`, conecta F1 e a tecla Menu, e faz o próprio OSD
+fechar as superfícies filhas antes de encerrar. O harness QML foi executado no
+Qt 6 real: `1 passed`; os harnesses existentes de OSD, galeria de save-state e
+periféricos passaram `3/3`. Isto prova a ligação visual e a guarda de contrato,
+não a capacidade física do adapter no jogo.
