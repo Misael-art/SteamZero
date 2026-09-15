@@ -1877,14 +1877,23 @@ def test_payloadpath_is_rejected_on_flatpak_and_unsafe_paths() -> None:
 
 
 def test_appimage_extract_smoke_runs_inner_apprun_in_private_directory(
-    store: state.StateStore, tmp_path: Path
+    store: state.StateStore, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    missing_home = tmp_path / "missing-home"
+    monkeypatch.setenv("HOME", str(missing_home))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(missing_home / "config"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(missing_home / "data"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(missing_home / "state"))
+    monkeypatch.setenv("XDG_CACHE_HOME", str(missing_home / "cache"))
     payload = tmp_path / "demo.AppImage"
     payload.write_text(
         "#!/bin/sh\n"
         'if [ "${1:-}" = --appimage-extract ]; then\n'
+        '  test -d "$HOME" && test -d "$XDG_CONFIG_HOME" && '
+        'test -d "$XDG_DATA_HOME" && test -d "$XDG_STATE_HOME" && '
+        'test -d "$XDG_CACHE_HOME" || exit 66\n'
         "  mkdir -p squashfs-root\n"
-        "  printf '%s\\n' '#!/bin/sh' 'test \"${1:-}\" = --help' > squashfs-root/AppRun\n"
+        "  printf '%s\\n' '#!/bin/sh' 'test -d \"$HOME\"' 'test -d \"$XDG_CONFIG_HOME\"' 'test -d \"$XDG_DATA_HOME\"' 'test -d \"$XDG_STATE_HOME\"' 'test -d \"$XDG_CACHE_HOME\"' 'test \"${1:-}\" = --help' > squashfs-root/AppRun\n"  # noqa: E501
         "  chmod 700 squashfs-root/AppRun\n"
         "  exit 0\n"
         "fi\n"
