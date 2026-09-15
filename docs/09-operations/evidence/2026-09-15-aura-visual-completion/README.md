@@ -11,8 +11,21 @@ KDE: sessão preservada; nenhum reboot ou encerramento da sessão foi executado.
 - `01-baseline.png`: central AURA UI observada antes da abertura do Launcher.
 - `02-entrega-funcional.png`: AURA Cinema real em fullscreen na sessão Wayland,
   com carousel, foco central, nomes, cabeçalho, estado online, relógio e ações.
+- `04-game-session-baseline.png`: tela real de um jogo RetroArch lançado pelo
+  catálogo; prova o ciclo de sessão do host, não a release candidata.
+- `05-launcher-installed-baseline.png`: baseline do Launcher instalado com
+  carousel, busca e foco; registra o ID técnico de plataforma que o commit
+  `29afef6` corrige na ponte.
+- `07-details-focused.png`: página de detalhes sem mídia, com fallback legível.
+- `08-carousel-art.png`: carousel com capas reais do registro local.
+- `09-search-focused.png` e `10-search-results.png`: busca focada e resultados
+  reais com capas.
+- `11-search-selected.png`: detalhe selecionado com capa; screenshots e
+  fanart continuam dependentes da ingestão do registro canônico.
 
 A captura foi recortada para excluir outras janelas e dados pessoais do desktop.
+`06-details-installed-baseline.png` não é promovida: ficou parcialmente
+encoberta por uma janela externa durante a sessão e não é evidência limpa.
 
 ## Medição física pós-QML
 
