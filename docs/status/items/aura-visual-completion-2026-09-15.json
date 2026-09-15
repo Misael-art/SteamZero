@@ -22,7 +22,7 @@
     "tests/unit/test_component_jobs.py",
     "tests/unit/test_launcher_ui_backend.py"
   ],
-  "scopeDigest": "5a362c0cf4967e43bcb076aa950bcb889231016bb0d7db6742216c35142a434c",
+  "scopeDigest": "35ce0046044fd8ad6e373ebfa35a42d435b48c7d9395165b01ac899c14a465b7",
   "dependsOn": [
     "SZ-AURA-CINEMA-COMPLETION",
     "SZ-AURA-SAVE-STATE-GALLERY",
@@ -75,6 +75,12 @@
       "result": "recorded"
     },
     {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-15-aura-visual-completion/README.md",
+      "command": "release_host.py prepare/verify-bundle para 2.0.0rc1-a71ba77a7d5d passou; install governado aguardou polkit sem autenticação e foi interrompido sem ativação.",
+      "result": "partial"
+    },
+    {
       "kind": "test",
       "reference": "tests/unit/test_service_core.py",
       "command": "Suíte integral: 6046 passed, 47 skipped; três falhas somente por AF_UNIX path too long no TMPDIR do runner. Reexecução dos três testes com TMPDIR=/tmp: 3 passed.",
@@ -84,7 +90,7 @@
   "activeWorkstreams": [
     "WS-2026-09-AURA-VISUAL-COMPLETION"
   ],
-  "nextAction": "Publicar nomes amigáveis de plataforma e o contrato rico de Cinema na home/detalhes; executar gates, instalar a release com autenticação visível e repetir a prova física de mídia, performance e PS4.",
+  "nextAction": "Obter autenticação Polkit visível para instalar 2.0.0rc1-a71ba77a7d5d; depois capturar a release candidata, repetir mídia/performance e executar o ciclo PS4. Otimizar p95 antes de promover o item.",
   "updatedAt": "2026-09-15",
-  "notes": "A prova visual foi feita na release ativa sem reiniciar o KDE. A composição está integrada e legível, mas a auditoria física identificou ids técnicos na seção do Cinema e títulos sem projeção rica de mídia; esta frente corrige a ponte sem inventar arte. O objetivo não é marcado como pronto porque a meta física de p95 falhou, a release nova ainda aguarda autenticação Polkit e o PS4 sofreu rollback controlado. A galeria de save-state, troca de disco e bezel seguem honestamente dependentes do adapter/sessão que os publica."
+  "notes": "A prova visual foi feita na release ativa sem reiniciar o KDE. A ponte de nomes e mídia rica está integrada e os gates pós-merge estão verdes. O candidato 2.0.0rc1-a71ba77a7d5d foi preparado/verificado, mas a instalação governada não recebeu autenticação Polkit e não alterou o host. O objetivo não é marcado como pronto porque a meta física de p95 falhou, PS4 sofreu rollback controlado e ainda faltam capturas candidatas de save-state, troca de disco, bezel e fade com adapter concreto."
 }
