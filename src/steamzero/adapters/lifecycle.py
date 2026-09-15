@@ -1521,11 +1521,12 @@ class ComponentLifecycle:
 
         ``--appimage-extract-and-run`` é o caminho suportado pelo runtime
         AppImage para hosts sem FUSE. Ele também evita que o AppImageLauncher
-        transforme o clique em uma janela de integração. Só é acrescentado
-        quando o smoke do próprio manifesto usa extração, mantendo fontes
-        nativas e AppImages que dependem de outro modo inalterados.
+        transforme o clique em uma janela de integração. A decisão usa o modo
+        de smoke do manifesto, não apenas ``source.type``: o shadPS4 declara a
+        fonte como ``native`` porque o arquivo fixado é um ZIP, cujo membro
+        ``payloadPath`` é o AppImage executável.
         """
-        if route.source_type == "appimage" and manifest.verify_smoke_mode == "appimage-extract":
+        if manifest.verify_smoke_mode == "appimage-extract":
             return ["--appimage-extract-and-run"]
         return []
 
