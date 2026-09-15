@@ -3,15 +3,16 @@
   "kind": "workstream",
   "id": "WS-2026-09-AURA-VISUAL-COMPLETION",
   "item": "SZ-AURA-VISUAL-COMPLETION",
-  "branch": "codex/aura-cinema-visual-finish-2026-09-15",
-  "baseRef": "5d64d87cd0c04456e62d70573cd7dcd051b819ec",
-  "owner": "codex-aura-cinema-visual-finish",
+  "branch": "codex/aura-physical-revalidation-2026-09-15",
+  "baseRef": "b45f65983a28223ed5b33ef4f64f12a2c29516d1",
+  "owner": "codex-aura-physical-revalidation",
   "state": "active",
   "exclusivePaths": [
     "docs/09-operations/evidence/2026-09-15-aura-visual-completion",
     "docs/status/items/aura-visual-completion-2026-09-15.json",
     "docs/status/workstreams/aura-visual-completion-2026-09-15.json",
     "src/steamzero/adapters/component_jobs.py",
+    "src/steamzero/adapters/lifecycle.py",
     "src/steamzero/adapters/launcher_ui.py",
     "src/steamzero/adapters/launcher_catalog.py",
     "src/steamzero/launcher/app.py",
@@ -20,6 +21,7 @@
     "src/steamzero/ui/qml/launcher/LauncherGamePage.qml",
     "src/steamzero/ui/qml/launcher/LauncherHome.qml",
     "tests/unit/test_component_jobs.py",
+    "tests/integration/test_component_lifecycle.py",
     "tests/unit/test_launcher_ui_backend.py",
     "tests/unit/test_launcher_catalog.py",
     "tests/integration/test_launcher_app.py",
@@ -32,6 +34,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Fechar a projeção visual da home com nomes amigáveis de plataforma, metadados na página de detalhes e fallback de mídia; depois reinstalar a release e repetir a prova física.",
+  "nextAction": "Instalar a release b45f65983a28223ed5b33ef4f64f12a2c29516d1 pelo fluxo governado, repetir o apply do shadPS4 e capturar a janela física; manter abertos os gaps que exigem jogo/adapter real.",
   "updatedAt": "2026-09-15"
 }

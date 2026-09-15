@@ -12,6 +12,7 @@
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-15-aura-visual-completion",
     "src/steamzero/adapters/component_jobs.py",
+    "src/steamzero/adapters/lifecycle.py",
     "src/steamzero/adapters/launcher_ui.py",
     "src/steamzero/adapters/launcher_catalog.py",
     "src/steamzero/launcher/app.py",
@@ -20,11 +21,12 @@
     "src/steamzero/ui/qml/launcher/LauncherGamePage.qml",
     "src/steamzero/ui/qml/launcher/LauncherHome.qml",
     "tests/integration/test_launcher_session_overlay_trigger.py",
+    "tests/integration/test_component_lifecycle.py",
     "tests/qml/launcher/check_launcher_session_overlay_trigger.qml",
     "tests/unit/test_component_jobs.py",
     "tests/unit/test_launcher_ui_backend.py"
   ],
-  "scopeDigest": "cc97f6e73cd37e2b7549bc406a2d644f6db1d147d57055f7356e1effd1158c13",
+  "scopeDigest": "f49aa55131c2e23c7a731caa6770f5695942482bb95b680133c27fad0d5aaa19",
   "dependsOn": [
     "SZ-AURA-CINEMA-COMPLETION",
     "SZ-AURA-SAVE-STATE-GALLERY",
@@ -47,6 +49,12 @@
   ],
   "evidence": [
     {
+      "kind": "test",
+      "reference": "tests/integration/test_component_lifecycle.py",
+      "command": "AppImage oficial shadPS4 v0.18.0 executado pelo smoke com HOME/XDG privados e previamente inexistentes; 1 passed.",
+      "result": "passed"
+    },
+    {
       "kind": "hardware",
       "reference": "docs/09-operations/evidence/2026-09-15-aura-visual-completion/02-entrega-funcional.png",
       "command": "Release 2.0.0rc1-1d55b4ca4127: steamzero-launcher abriu AURA Cinema na sessão Wayland; captura limpa do carousel, foco central, header AURA/CINEMA, estado online, relógio e rodapé de controle.",
@@ -62,6 +70,12 @@
       "kind": "hardware",
       "reference": "docs/09-operations/evidence/2026-09-15-aura-visual-completion/performance-installed-2.json",
       "command": "Repetição física na mesma release: startup 680 ms, p95 19,902 ms, RSS 359084 KiB e VRAM 108008 KiB.",
+      "result": "failed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-15-aura-visual-completion/performance-candidate-df1-3.json",
+      "command": "Release 2.0.0rc1-df1f593d4a6, Wayland real, OpenGL: startup 2138 ms, p95 18,439 ms, RSS 381,8 MiB e VRAM 45,0 MiB; threaded p95 21,669 ms também preservado.",
       "result": "failed"
     },
     {
@@ -98,7 +112,7 @@
   "activeWorkstreams": [
     "WS-2026-09-AURA-VISUAL-COMPLETION"
   ],
-  "nextAction": "Obter autenticação Polkit visível para instalar 2.0.0rc1-a71ba77a7d5d; depois capturar a release candidata, repetir mídia/performance e executar o ciclo PS4, validar fisicamente o OSD e otimizar o p95 antes de promover o item.",
+  "nextAction": "Aguardar a release b45f65983a28223ed5b33ef4f64f12a2c29516d1, instalar pelo fluxo governado, repetir o apply do shadPS4 e capturar a janela física; depois reexecutar performance e fechar apenas os gaps com adapter/jogo reais.",
   "updatedAt": "2026-09-15",
   "notes": "A prova visual foi feita na release ativa sem reiniciar o KDE. A ponte de nomes e mídia rica está integrada e o OSD agora possui entrada F1/Menu guardada por sessão canônica, com teste QML real. O candidato 2.0.0rc1-a71ba77a7d5d foi preparado/verificado, mas a instalação governada não recebeu autenticação Polkit e não alterou o host. O objetivo não é marcado como pronto porque a meta física de p95 falhou, o PS4 sofreu rollback controlado e faltam capturas físicas de OSD/save-state, troca de disco, bezel e fade com adapter concreto."
 }
