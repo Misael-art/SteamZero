@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 import socket
 import time
 from collections.abc import Callable, Mapping
@@ -16,6 +17,8 @@ from steamzero.core.errors import SteamZeroError
 
 MAX_SLOT = 31
 DEFAULT_COMMAND_PORT = 55355
+STATE_COMMAND_SETTLE_SECONDS = 0.05
+MAX_RUNTIME_LOG_BYTES = 64 * 1024
 SESSION_CONFIG_NAME = "session-peripherals.cfg"
 BEZEL_CONFIG_NAME = "aura-bezel-overlay.cfg"
 BEZEL_ASSET_NAME = "aura-bezel.svg"
@@ -40,10 +43,20 @@ class SessionPeripheralControl(Protocol):
 SendCommand = Callable[[str], None]
 
 
+def default_retroarch_runtime_log_root() -> Path:
+    """Return the host-visible per-content log root used by RetroArch Flatpak."""
+
+    return Path.home() / ".var/app/org.libretro.RetroArch/config/retroarch/playlists/logs"
+
+
 def prepare_retroarch_session_config() -> Path:
     """Publish bounded session controls and the managed AURA bezel overlay."""
 
     state_root = paths.saves_dir() / "states"
+    # RetroArch falls back to its sandbox default when the override points to
+    # a directory that does not exist. Create the managed root before spawn so
+    # the session adapter and the emulator observe the same state files.
+    fs.ensure_dir(state_root, mode=0o700)
     config_root = paths.config_home() / "retroarch"
     config_path = config_root / SESSION_CONFIG_NAME
     bezel_source = Path(__file__).resolve().parents[1] / "ui" / "assets" / BEZEL_ASSET_NAME
@@ -99,10 +112,10 @@ def _send_udp(command: str, *, host: str, port: int, timeout: float) -> None:
 class RetroArchSessionPeripheral:
     """Use only RetroArch's documented UDP commands and its state files.
 
-    The adapter tracks RetroArch's current state slot from the session start and
-    moves it with the documented ``STATE_SLOT_PLUS``/``STATE_SLOT_MINUS``
-    commands before saving. Loading uses the documented ``LOAD_STATE_SLOT``
-    command, so the gallery can operate on every bounded slot it lists.
+    The adapter restores RetroArch's persisted per-content state slot and moves
+    it with the documented ``STATE_SLOT_PLUS``/``STATE_SLOT_MINUS`` commands
+    before saving. Loading uses the documented ``LOAD_STATE_SLOT`` command, so
+    the gallery can operate on every bounded slot it lists.
     """
 
     def __init__(
@@ -114,6 +127,7 @@ class RetroArchSessionPeripheral:
         send_command: SendCommand | None = None,
         sleep: Callable[[float], None] = time.sleep,
         now: Callable[[], datetime] = lambda: datetime.now(UTC),
+        runtime_log_root: Path | None = None,
     ) -> None:
         self._content_path = Path(content_path)
         self._state_root = Path(state_root)
@@ -126,7 +140,10 @@ class RetroArchSessionPeripheral:
         self._sleep = sleep
         self._now = now
         self._active_disc = 0
-        self._state_slot = 0
+        self._state_subdir: str | None = None
+        self._state_slot = self._read_runtime_state_slot(
+            runtime_log_root or default_retroarch_runtime_log_root()
+        )
         self._discs = self._read_m3u()
 
     def list_save_states(self) -> Mapping[str, Any]:
@@ -163,7 +180,7 @@ class RetroArchSessionPeripheral:
         current = self._state_path(slot)
         if current.is_file() and not current.is_symlink() and current.stat().st_size > 0:
             fs.copy_file_atomic(current, self._backup_path(slot))
-        self._send("SAVE_STATE")
+        self._send_command("SAVE_STATE")
         self._wait_for_state(slot)
         return self._record()
 
@@ -171,7 +188,7 @@ class RetroArchSessionPeripheral:
         self._require_slot(slot)
         if not self._state_path(slot).is_file():
             raise RuntimeError("o slot de save-state ainda não existe")
-        self._send(f"LOAD_STATE_SLOT {slot}")
+        self._send_command(f"LOAD_STATE_SLOT {slot}")
         self._state_slot = slot
         return self._record()
 
@@ -210,18 +227,26 @@ class RetroArchSessionPeripheral:
             raise ValueError("disco fora do conjunto declarado")
         if target == self._active_disc:
             return self._record()
-        self._send("DISK_EJECT_TOGGLE")
+        self._send_command("DISK_EJECT_TOGGLE")
         step = "DISK_NEXT" if target > self._active_disc else "DISK_PREV"
         for _ in range(abs(target - self._active_disc)):
-            self._send(step)
-        self._send("DISK_EJECT_TOGGLE")
+            self._send_command(step)
+        self._send_command("DISK_EJECT_TOGGLE")
         self._active_disc = target
         return self._record()
 
     def _state_path(self, slot: int) -> Path:
         stem = self._content_path.name.rsplit(".", 1)[0]
         suffix = ".state" if slot == 0 else f".state{slot}"
-        return self._state_root / f"{stem}{suffix}"
+        state_directory = self._state_root
+        if self._state_subdir is None:
+            discovered = self._discover_state_subdir(stem)
+            if discovered is not None:
+                self._state_subdir = discovered
+                state_directory = self._state_root / discovered
+        elif self._state_subdir:
+            state_directory = self._state_root / self._state_subdir
+        return state_directory / f"{stem}{suffix}"
 
     def _backup_path(self, slot: int) -> Path:
         stem = self._content_path.name.rsplit(".", 1)[0]
@@ -257,11 +282,89 @@ class RetroArchSessionPeripheral:
                 discs.append(candidate)
         return tuple(discs[:16])
 
+    def _read_runtime_state_slot(self, root: Path) -> int:
+        """Read RetroArch's last per-content slot without modifying its state.
+
+        RetroArch persists the current slot in a ``.lrtl`` file below the core
+        name. The network interface only exposes relative slot movement, so
+        starting from that persisted value is required when a prior session
+        left the cursor on a non-zero slot. Missing, foreign, malformed, or
+        out-of-range logs are deliberately treated as a fresh slot 0.
+        """
+
+        filename = f"{self._content_path.name.rsplit('.', 1)[0]}.lrtl"
+        candidates: list[Path] = []
+        try:
+            direct = root / filename
+            if direct.is_file() and not direct.is_symlink():
+                candidates.append(direct)
+            for entry in sorted(root.iterdir()):
+                if entry.is_symlink() or not entry.is_dir():
+                    continue
+                candidate = entry / filename
+                if candidate.is_file() and not candidate.is_symlink():
+                    candidates.append(candidate)
+        except OSError:
+            return 0
+        for candidate in candidates:
+            try:
+                if candidate.stat().st_size > MAX_RUNTIME_LOG_BYTES:
+                    continue
+                payload = json.loads(candidate.read_text(encoding="utf-8"))
+                if not isinstance(payload, Mapping):
+                    continue
+                value = payload.get("state_slot")
+                if isinstance(value, bool) or not isinstance(value, (str, int)):
+                    continue
+                slot = int(value)
+            except (OSError, TypeError, ValueError, json.JSONDecodeError):
+                continue
+            if -1 <= slot <= 999:
+                self._state_subdir = candidate.parent.name
+                # RetroArch's -1 means its automatic slot. The next PLUS
+                # command selects slot 0, so retain it until selection.
+                return slot
+        return 0
+
+    def _discover_state_subdir(self, stem: str) -> str | None:
+        """Find an existing per-core directory without traversing user data."""
+
+        try:
+            entries = sorted(self._state_root.iterdir())
+        except OSError:
+            return None
+        prefix = f"{stem}.state"
+        for entry in entries:
+            if entry.is_symlink() or not entry.is_dir():
+                continue
+            try:
+                matches = [
+                    path
+                    for path in entry.iterdir()
+                    if path.name == stem or path.name.startswith(prefix)
+                ]
+            except OSError:
+                continue
+            if any(path.is_file() and not path.is_symlink() for path in matches):
+                return entry.name
+        return None
+
     def _select_state_slot(self, slot: int) -> None:
-        step = "STATE_SLOT_PLUS" if slot > self._state_slot else "STATE_SLOT_MINUS"
-        for _ in range(abs(slot - self._state_slot)):
-            self._send(step)
+        if self._state_slot == -1:
+            step = "STATE_SLOT_PLUS"
+            distance = slot + 1
+        else:
+            step = "STATE_SLOT_PLUS" if slot > self._state_slot else "STATE_SLOT_MINUS"
+            distance = abs(slot - self._state_slot)
+        for _ in range(distance):
+            self._send_command(step)
         self._state_slot = slot
+
+    def _send_command(self, command: str) -> None:
+        """Serialize UDP commands so RetroArch cannot drop slot transitions."""
+
+        self._send(command)
+        self._sleep(STATE_COMMAND_SETTLE_SECONDS)
 
     @staticmethod
     def _require_slot(slot: int) -> None:
@@ -282,5 +385,6 @@ __all__ = [
     "SESSION_CONFIG_NAME",
     "RetroArchSessionPeripheral",
     "SessionPeripheralControl",
+    "default_retroarch_runtime_log_root",
     "prepare_retroarch_session_config",
 ]
