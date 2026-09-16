@@ -19,6 +19,24 @@ from steamzero.ports import GameIdentity, MediaCandidate, MediaProviderPort
 
 _log = logging.getLogger(__name__)
 
+# Local imports may target any role consumed by the Cinema read model.  Keep
+# the allowlist here instead of letting MediaPipeline silently invent an
+# extension for an unknown role.  ``boxart`` remains a compatibility alias
+# for the historical cover action.
+_CUSTOM_MEDIA_KINDS = frozenset(
+    {"box2d", "boxart", "fanart", "hero", "screenshot", "video", "marquee", "icon", "logo"}
+)
+
+
+def custom_media_kind(value: object) -> str:
+    """Normalize and validate a local media role before planning an import."""
+    if not isinstance(value, str) or not value.strip():
+        raise SteamZeroError("E-API-SCHEMA", detail="mediaKind precisa ser uma string não vazia")
+    kind = canonical_media_kind(value.strip())
+    if kind not in _CUSTOM_MEDIA_KINDS:
+        raise SteamZeroError("E-API-SCHEMA", detail=f"papel de mídia não permitido: {value}")
+    return kind
+
 
 @dataclass
 class GameMediaState:
@@ -256,16 +274,18 @@ class GameMediaManager:
         title_id: str,
         fingerprint: str,
         canonical_name: str,
+        media_kind: str = "box2d",
     ) -> GameMediaState | None:
         if not src_path.is_file():
             return None
+        kind = custom_media_kind(media_kind)
         result = self._pipeline.collect(
             source=src_path,
             game_id=game_id,
             title_id=title_id,
             fingerprint=fingerprint,
             canonical_name=canonical_name,
-            kind="box2d",
+            kind=kind,
         )
         if not result.success:
             return None
@@ -273,10 +293,11 @@ class GameMediaManager:
         if state is None:
             return None
         master_path = next(iter(result.collected.values()))
-        state.previous_media_path = state.media_path
-        state.media_path = str(master_path)
-        state.media_source = "custom"
-        state.media_kind = "box2d"
+        if kind == "box2d":
+            state.previous_media_path = state.media_path
+            state.media_path = str(master_path)
+            state.media_source = "custom"
+            state.media_kind = kind
         state.metadata_state = "confirmed"
         state.master_state = "collected"
         self._store.save(state)

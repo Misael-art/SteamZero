@@ -513,6 +513,7 @@ def handheld_ui_contracts() -> dict[str, Any]:
                     "approvedPaths": {"type": "array", "items": {"type": "string"}},
                     "steamUserId": {"type": "string"},
                     "mediaKinds": {"type": "array", "items": {"type": "string"}},
+                    "mediaKind": {"type": "string"},
                 },
             ),
         ),

@@ -115,7 +115,7 @@ from steamzero.domain.switch_cheats import (
 )
 from steamzero.domain.switch_content import SwitchContentManager
 from steamzero.domain.switch_library import SwitchLibraryScanner
-from steamzero.domain.switch_media import GameMediaManager, GameMediaState
+from steamzero.domain.switch_media import GameMediaManager, GameMediaState, custom_media_kind
 from steamzero.domain.switch_mods import InstalledMod, ModType, SwitchModManager
 from steamzero.domain.switch_roots import (
     SwitchRootManager,
@@ -3019,6 +3019,7 @@ class EmulationController:
             game_id = action.split(":", 1)[1]
             game = self._current_game(game_id)
             src_path = Path(self._required_string(payload, "path"))
+            media_kind = custom_media_kind(payload.get("mediaKind", "box2d"))
             title_id = str(game.get("titleId", ""))
             fingerprint = str(game.get("fingerprint", ""))
             name = str(game.get("name", ""))
@@ -3038,6 +3039,7 @@ class EmulationController:
                     "fingerprint": fingerprint,
                     "canonical_name": name,
                     "src_path": str(src_path),
+                    "media_kind": media_kind,
                 },
             )
         elif action.startswith("game.media.select:"):
@@ -7158,6 +7160,7 @@ class EmulationController:
                 title_id=meta["title_id"],
                 fingerprint=meta["fingerprint"],
                 canonical_name=meta["canonical_name"],
+                media_kind=meta.get("media_kind", "box2d"),
             )
         )
 
