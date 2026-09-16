@@ -12,9 +12,12 @@
     "src/steamzero/domain/multidisc_artifacts.py",
     "src/steamzero/domain/library.py",
     "src/steamzero/core/migrations/m0022_multidisc_reconciliation.py",
+    "src/steamzero/platform_manifests/21-amiga.platform.json",
+    "src/steamzero/platform_manifests/53-x68000.platform.json",
     "tests/unit/test_multidisc.py",
     "tests/unit/test_multidisc_artifacts.py",
     "tests/unit/test_library_rom_classify.py",
+    "tests/unit/test_multidisc_archive.py",
     "docs/status/items/multidisc-descriptor-reconciliation.json",
     "docs/status/workstreams/multidisc-descriptor-reconciliation-2026-09-16.json"
   ],
@@ -26,6 +29,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Promover a reconciliação para os contratos de conversão e adapters, depois executar a validação física do descritor na release instalada; não alterar o host nesta branch.",
+  "nextAction": "Implementar o contrato de extração/conversão e comprovar PUAE/PX68K; depois executar a validação física do descritor na release instalada; não alterar o host nesta branch.",
   "updatedAt": "2026-09-16"
 }
