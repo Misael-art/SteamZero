@@ -22,7 +22,7 @@ Critério: AC-SD-01/02, AC-OF-01, AC-PR-01/02 em VM; checklist HW iniciado (Q6).
 
 ## Fase 3 — Conteúdo
 
-Entregas: Library (scan/plan/apply incremental, dedupe, multidisco, quarentena), import de dumps (safezip), conversões (CHD/RVZ/CSO/NSZ) com staging/espaço/timeout, BIOS/firmware/keys store central (hash db + links), Saves store + timeline + checkpoints + backups incrementais, cloud sync com fila e conflito não-destrutivo, mídia/scraping com cache e rate limit, migração SSD↔microSD.
+Entregas: Library (scan/plan/apply incremental, dedupe, `MULTIDISC-DESCRIPTOR-RECONCILIATION`, quarentena), import de dumps (safezip), conversões (CHD/RVZ/CSO/NSZ) com staging/espaço/timeout e atualização transacional dos descritores derivados, BIOS/firmware/keys store central (hash db + links), Saves store + timeline + checkpoints + backups incrementais, cloud sync com fila e conflito não-destrutivo, mídia/scraping com cache e rate limit, migração SSD↔microSD.
 Critério: AC-LB-*, AC-BI-*, AC-SV-*; RT-06..11.
 
 ## Fase 4 — Emuladores e frontends

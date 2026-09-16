@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-MULTIDISC-DESCRIPTOR-RECONCILIATION",
+  "title": "Reconciliação de descritor multidisco",
+  "domain": "platform",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "dev",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/domain/multidisc.py",
+    "src/steamzero/domain/multidisc_artifacts.py",
+    "src/steamzero/domain/library.py",
+    "src/steamzero/core/state.py",
+    "src/steamzero/core/migrations/m0022_multidisc_reconciliation.py",
+    "src/steamzero/schemas/platform-manifest-v1.schema.json",
+    "src/steamzero/platform_manifests/07-playstation.platform.json",
+    "tests/unit/test_multidisc.py",
+    "tests/unit/test_multidisc_artifacts.py",
+    "tests/unit/test_library_rom_classify.py"
+  ],
+  "dependsOn": [
+    "SZ-LIBRARY-CANONICAL",
+    "SZ-COMPONENT-LIFECYCLE"
+  ],
+  "knownGaps": [
+    "GAP-MULTIDISC-CONVERSION-ADAPTER-CONTRACT",
+    "GAP-MULTIDISC-PHYSICAL-LAUNCH",
+    "GAP-PLATFORM-PS4-PHYSICAL-INSTALL"
+  ],
+  "acceptanceCriteria": [
+    "O conjunto lógico mantém identidade estável, número/ordem, formato, caminho, hash, formatos aceitos, histórico e estado por disco.",
+    "A associação de uma conversão prioriza identidade do conjunto, número, hash e vínculo explícito; nome normalizado isolado não promove conversão.",
+    "O .m3u gerado é uma projeção com ownership e hash próprios, atualizada por plano transacional; playlist do usuário entra em conflict e nunca é sobrescrita.",
+    "IMG→CHD e ZIP→7Z preservam o conjunto e o disco quando o adapter aceita o formato; caso contrário o estado é needs-platform-contract ou needs-extraction.",
+    "Sem contrato declarativo de plataforma, marcadores de nome permanecem visíveis para revisão e não colapsam silenciosamente em um jogo lógico.",
+    "A prova física do lançamento pelo descritor e do retorno após conversão permanece aberta até promoção de release e conteúdo legítimo no host."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_multidisc.py",
+      "command": "PYTHONPATH=src .venv/bin/python -m pytest tests/unit/test_multidisc.py tests/unit/test_multidisc_artifacts.py -q (11 passed)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_multidisc_artifacts.py",
+      "command": "PYTHONPATH=src .venv/bin/python -m pytest tests/unit/test_multidisc.py tests/unit/test_multidisc_artifacts.py -q (11 passed)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_library_rom_classify.py",
+      "command": "PYTHONPATH=src .venv/bin/python -m pytest tests/unit/test_library_rom_classify.py tests/integration/test_library.py -q (85 passed)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_library.py",
+      "command": "PYTHONPATH=src .venv/bin/python -m pytest tests/unit/test_library_rom_classify.py tests/integration/test_library.py -q (85 passed)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "src/steamzero/domain/multidisc.py",
+      "command": "ruff check; ruff format --check; mypy nos cinco módulos alterados (sem erros)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "src/steamzero/domain/library.py",
+      "command": "ruff check; ruff format --check; mypy nos cinco módulos alterados (sem erros)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "src/steamzero/domain/multidisc_artifacts.py",
+      "command": "ruff check; ruff format --check; mypy nos cinco módulos alterados (sem erros)",
+      "result": "passed"
+    }
+  ],
+  "activeWorkstreams": [
+    "WS-2026-09-MULTIDISC-DESCRIPTOR-RECONCILIATION"
+  ],
+  "scopeDigest": "0a4c26b895bf1c45cca851256daff638436d195b0aee9bcf80d1fe0b119ac8bc",
+  "nextAction": "Integrar o contrato de conversão com cada adapter, persistir a atualização de registry e descritor como uma operação única, promover a release e executar a prova física com jogo multidisco legítimo.",
+  "updatedAt": "2026-09-16",
+  "notes": "A capacidade foi criada como requisito central. PSX declara m3u para cue/chd e o inventário expõe conjuntos declarados; PS4 ainda não declara m3u porque o adapter shadPS4 atual não fornece contrato de troca de disco. Nenhuma playlist ou mídia do usuário foi alterada nesta etapa."
+}
