@@ -10820,3 +10820,27 @@ regenerados. A instalação governada continua sem nova tentativa neste ciclo:
 o polkit não autenticou as tentativas anteriores, e a prova física de PS4
 continua impossível sem jogo PS4 legítimo no host. KDE não foi reiniciado nem
 finalizado.
+
+## 2026-09-16 — fechamento documental da mídia rica e bloqueio de promoção
+
+O núcleo harmonizado de mídia rica foi integrado no `main` pelo PR #192, no
+merge `a5f3ed144f3d44adbf89f4979268e4ec58e35193`, com os commits funcionais
+`cf89de1b` e `5c7793b9`. O contrato agora preserva papéis distintos (capa,
+fanart, screenshots, vídeo, marquee, logo e ícone), propaga a plataforma do
+jogo e rejeita papéis inválidos. Os testes focados passaram (`145 passed`);
+Ruff, formatação, mypy, independência, fronteiras, lockfile, matriz e
+`STATUS-CHECK` passaram. A suíte integral não foi declarada verde por um hang
+reproduzível e pré-existente em `test_library_organize.py`.
+
+Preparei e verifiquei a release `2.0.0rc1-a5f3ed144f3d`, vinculada ao CI do
+main `35108255871`, com rollback conhecido para
+`2.0.0rc1-0bd3942a0d41`. Duas tentativas do único fluxo governado autorizado
+ficaram aguardando autenticação no `pkexec`; foram encerradas sem mutação. A
+release ativa continua `2.0.0rc1-0bd3942a0d41`, o serviço está convergido,
+`state audit` está limpo e não há staging, backups ou journals órfãos. Não há
+captura física pós-apply: a prova de fanart no Launcher instalado permanece
+aberta até a autenticação interativa do operador. A prova PS4 continua aberta
+por falta de conteúdo legítimo no host; não foi fabricada evidência.
+
+`docs/STATUS.md` e `docs/ACTIVE-WORK.md` foram regenerados. KDE não foi
+reiniciado nem finalizado.

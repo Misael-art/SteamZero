@@ -3,8 +3,8 @@
   "kind": "workstream",
   "id": "WS-2026-09-AURA-RICH-MEDIA-PROJECTION",
   "item": "SZ-AURA-RICH-MEDIA-PROJECTION",
-  "branch": "codex/aura-rich-media-projection-2026-09-16",
-  "baseRef": "7e2ef2eb55056c9ec50bb2b00931bcbdfdaae9a4",
+  "branch": "codex/aura-rich-media-closure-2026-09-16",
+  "baseRef": "a5f3ed144f3d44adbf89f4979268e4ec58e35193",
   "owner": "codex-aura-rich-media-projection",
   "state": "active",
   "exclusivePaths": [
@@ -26,6 +26,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Aguardar CI do PR #188; após o merge, publicar a release governada e repetir a prova física no host.",
+  "nextAction": "Repetir a instalação governada após autenticação visível do polkit; validar fanart aplicado no Launcher instalado e capturar a cena. Não fabricar prova PS4: falta conteúdo legítimo no host.",
   "updatedAt": "2026-09-16"
 }
