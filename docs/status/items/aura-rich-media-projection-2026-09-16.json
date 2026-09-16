@@ -16,6 +16,7 @@
     "src/steamzero/domain/media_pipeline.py",
     "src/steamzero/domain/switch_media.py",
     "tests/integration/test_media.py",
+    "tests/integration/test_handheld_production_journey.py",
     "tests/unit/test_expansion_baseline_media.py",
     "tests/unit/test_launcher_media.py"
   ],
@@ -59,7 +60,7 @@
     "WS-2026-09-AURA-RICH-MEDIA-PROJECTION"
   ],
   "nextAction": "Aguardar CI do PR #188; após o merge, publicar a release governada e repetir a prova física no host.",
-  "scopeDigest": "3026310a1cbb0a1d57c6aec4fad61b29d469c385af4e1b320c573f082a5db1f8",
+  "scopeDigest": "16517265530e423501c6dd4c70a4897d4e831860b4090a27d158525194b34d9b",
   "updatedAt": "2026-09-16",
   "notes": "A projeção agora mantém papéis ricos separados, ordena screenshots numerados e publica somente URLs locais dentro da raiz gerenciada."
 }

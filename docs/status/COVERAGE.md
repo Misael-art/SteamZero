@@ -25,7 +25,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AURA-LAUNCHER | 267 | 58 | 41 | hw |  |
 | SZ-AURA-METADATA | 23 | 10 | 10 | unit |  |
 | SZ-AURA-PLATFORM-EXECUTION-PLAN | 5 | 1 | 0 | none |  |
-| SZ-AURA-RICH-MEDIA-PROJECTION | 8 | 3 | 3 | dev |  |
+| SZ-AURA-RICH-MEDIA-PROJECTION | 9 | 3 | 3 | dev |  |
 | SZ-AURA-SAVE-STATE-GALLERY | 15 | 5 | 4 | unit |  |
 | SZ-AURA-SESSION-OSD | 25 | 6 | 4 | hw |  |
 | SZ-AURA-UI | 16 | 5 | 4 | unit |  |

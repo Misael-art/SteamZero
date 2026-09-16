@@ -203,7 +203,9 @@ def test_handheld_journey_from_root_to_transactional_steam_publication(
     )
     selected_game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
     assert selected_game["mediaCandidateIdx"] == 0
-    assert selected_game["mediaSource"] == "scraper"
+    # The search selected an icon, not a new cover. Rich roles are published
+    # to the canonical registry without replacing the legacy poster slot.
+    assert selected_game["mediaSource"] == "scraped"
     assert selected_game["masterState"] == "collected"
     assert selected_game["optimizedState"] == "ready"
     assert fetched == ["https://provider.invalid/example-icon.png"]

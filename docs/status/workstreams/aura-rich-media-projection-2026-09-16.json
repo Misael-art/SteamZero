@@ -16,6 +16,7 @@
     "tests/unit/test_launcher_media.py",
     "tests/unit/test_expansion_baseline_media.py",
     "tests/integration/test_media.py",
+    "tests/integration/test_handheld_production_journey.py",
     "docs/status/items/aura-rich-media-projection-2026-09-16.json",
     "docs/status/workstreams/aura-rich-media-projection-2026-09-16.json"
   ],
