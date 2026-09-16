@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "kind": "aura-launcher-performance",
+  "capturedAt": "2026-09-16T18:14:52-03:00",
+  "release": "2.0.0rc1-d1cbb03a3b66",
+  "sourceCommit": "d1cbb03a3b66930e3df4b46f880716eed0eca40f",
+  "launcher": "/opt/steamzero/releases/2.0.0rc1-d1cbb03a3b66/venv/bin/steamzero-launcher",
+  "backend": "opengl",
+  "surface": "948x593",
+  "startupMs": 695,
+  "frameTime": {
+    "frames": 375,
+    "avgFrameTimeMs": 16.0,
+    "p50Ms": 16.146,
+    "p95Ms": 16.18,
+    "maxMs": 17.165
+  },
+  "peakRssKb": 345940,
+  "peakVramKb": 97548,
+  "vramMeasured": true,
+  "vramMethod": "drm fdinfo do processo, agrupado por drm-client-id",
+  "validation": {
+    "valid": true,
+    "meetsBudget": true,
+    "minimumFrameSamples": 120,
+    "budgets": {
+      "startupMs": 2000,
+      "frameTimeP95Ms": 16.7,
+      "vramKb": 524288
+    }
+  },
+  "note": "Frame time mede o render loop, não frames apresentados pelo compositor."
+}

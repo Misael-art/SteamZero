@@ -5,7 +5,7 @@
   "title": "AURA Launcher — medição física válida de desempenho",
   "domain": "ui",
   "implementation": "partial",
-  "integration": "feature-branch",
+  "integration": "integrated",
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
@@ -14,7 +14,7 @@
     "tests/unit/test_launcher_perf_probe.py",
     "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf"
   ],
-  "scopeDigest": "03befd3150089248255c85d50b84a70183903f9115b5c3b32aa3b5d8b7e1051e",
+  "scopeDigest": "91bf7bbdcf0fe0b65ca4d8367ff1efe3169bb23fa2bbc108bb495142147bd358",
   "dependsOn": [
     "SZ-AURA-LAUNCHER",
     "SZ-AURA-CINEMA-COMPLETION",
@@ -50,12 +50,24 @@
       "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/performance-valid-2.json",
       "command": "repetição na mesma release: startup 1096 ms, 375 frames, p95 16,180 ms, VRAM 98956 KiB",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/performance-final-1.json",
+      "command": "launcher_perf_probe.py na janela Wayland real, release 2.0.0rc1-d1cbb03a3b66, OpenGL: startup 695 ms, 375 frames, p95 16,180 ms, VRAM 97548 KiB",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/performance-final-2.json",
+      "command": "repetição na release final: startup 691 ms, 375 frames, p95 16,243 ms, VRAM 38172 KiB",
+      "result": "passed"
     }
   ],
   "activeWorkstreams": [
     "WS-2026-09-AURA-PERFORMANCE-VALIDATION"
   ],
-  "nextAction": "Repetir a mesma sonda na release que contenha o ciclo visual final e, em seguida, capturar 1280x800 ou registrar formalmente a limitação da superfície real.",
+  "nextAction": "A metodologia e os três sinais foram repetidos na release final e passaram. Permanece a captura visual física do ciclo AURA e, se o host oferecer essa geometria, uma amostra adicional em 1280x800; a superfície efetivamente disponível foi 948x593.",
   "updatedAt": "2026-09-16",
-  "notes": "A medição atual é válida para a janela real 948x593 da release ativa. Ela fecha a metodologia e os três sinais, mas não promove a completude visual: save-state, troca de disco, bezel/fade e captura física do ciclo ainda exigem integração e prova na release correta."
+  "notes": "A medição final é válida para a janela Wayland real 948x593 da release 2.0.0rc1-d1cbb03a3b66. As duas amostras têm startup, frame time/p95 e VRAM observados e passaram os orçamentos. Isso não promove save-state, troca de disco, bezel/fade ou captura visual do ciclo sem prova funcional correspondente."
 }

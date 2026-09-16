@@ -10932,3 +10932,25 @@ DIM/XDF sem confundir o contêiner ZIP com a imagem. A validação de manifestos
 o inventário multidisco passaram com **119 testes**. Nenhuma mídia foi escrita,
 extraída ou reorganizada; o contrato PX68K M3U continua deliberadamente
 bloqueado até haver comprovação do adapter.
+
+## 2026-09-16 — instalação final e medição física pós-merge
+
+O CI do merge `d1cbb03a3b66930e3df4b46f880716eed0eca40f` terminou verde nas
+matrizes Python 3.11, 3.12 e 3.14, no gate visual, wheel e smoke das
+distribuições. A bundle foi preparada com o run `35148842206` e instalada pelo
+fluxo governado, com rollback `2.0.0rc1-4e75cf73b411`; a release ativa passou a
+ser `2.0.0rc1-d1cbb03a3b66`, com daemon confirmando o SHA completo e convergência
+idempotente. Não houve reinício ou finalização do KDE.
+
+Na release final, a sonda usou a janela Wayland real `948x593` e OpenGL, sem
+`offscreen`. Duas execuções válidas passaram os três orçamentos: startup
+`695/691 ms`, 375 frames em cada, p95 `16,180/16,243 ms` e VRAM
+`97.548/38.172 KiB`, medida por DRM fdinfo agrupado por `drm-client-id`. As
+capturas JSON estão em `docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf`.
+
+A instalação e a medição fecham o requisito físico de desempenho para a
+superfície disponível, mas não promovem por inferência a completude do AURA:
+permanece pendente a captura visual funcional do ciclo rico (mídia, save-state,
+troca de disco, bezel/fade) e a prova com jogo/adapter legítimo de Amiga,
+X68000 e PS4. O host reporta `orphanStaging=0`, sem operações pendentes; há um
+backup órfão histórico preservado para revisão, não removido automaticamente.
