@@ -31,9 +31,9 @@ def canonical_media_kind(kind: str) -> str:
     return _KIND_ALIASES.get(kind, kind)
 
 
-def _platform_segment(platform_id: str) -> str:
+def _platform_segment(platform_id: str | None) -> str:
     """Valida o identificador que entra em um caminho gerenciado."""
-    if not _PLATFORM_ID.fullmatch(platform_id):
+    if not isinstance(platform_id, str) or not _PLATFORM_ID.fullmatch(platform_id):
         raise SteamZeroError("E-API-SCHEMA", detail="id de plataforma de mídia inválido")
     return platform_id
 
@@ -131,7 +131,7 @@ class MediaPipeline:
         fingerprint: str,
         canonical_name: str,
         kind: str = "box2d",
-        platform_id: str = "switch",
+        platform_id: str | None = None,
     ) -> CollectionResult:
         result = CollectionResult(game_id=game_id)
         try:
@@ -173,7 +173,7 @@ class MediaPipeline:
         title_id: str,
         fingerprint: str,
         canonical_name: str,
-        platform_id: str = "switch",
+        platform_id: str | None = None,
     ) -> CollectionResult:
         result = CollectionResult(game_id=game_id)
         kind = canonical_media_kind(candidate.media_kind)

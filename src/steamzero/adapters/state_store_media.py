@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from datetime import UTC, datetime
 
@@ -10,6 +11,17 @@ from steamzero.domain.switch_media import GameMediaState, GameMediaStorePort
 class StateStoreGameMediaAdapter(GameMediaStorePort):
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._conn = conn
+        columns = {str(row[1]) for row in conn.execute("PRAGMA table_info(switch_game_media)")}
+        if "platform_id" not in columns:
+            # Fixtures and instalações anteriores à migração formal ainda têm
+            # a tabela v10/v12. Como o nome histórico era exclusivo de Switch,
+            # essas linhas são migradas honestamente para esse escopo; novas
+            # escritas passam a exigir a plataforma no estado.
+            conn.execute(
+                "ALTER TABLE switch_game_media ADD COLUMN platform_id TEXT NOT NULL "
+                "DEFAULT 'switch'"
+            )
+            conn.commit()
 
     def load(self, game_id: str) -> GameMediaState | None:
         row = self._conn.execute(
@@ -23,17 +35,18 @@ class StateStoreGameMediaAdapter(GameMediaStorePort):
         now = datetime.now(UTC).isoformat()
         self._conn.execute(
             """INSERT OR REPLACE INTO switch_game_media
-               (game_id, title_id, title, media_source, media_kind, media_path,
+               (game_id, title_id, title, platform_id, media_source, media_kind, media_path,
                 previous_media_path, developer, version, languages,
                 metadata_state, reason, checked_at,
                 selected_candidate_idx, candidate_json, master_state,
                 optimized_state, steam_view_state, steam_appid,
                 steam_artwork_json, errors_json, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 state.game_id,
                 state.title_id,
                 state.title,
+                self._platform_id(state.platform_id),
                 state.media_source,
                 state.media_kind,
                 state.media_path,
@@ -93,6 +106,7 @@ class StateStoreGameMediaAdapter(GameMediaStorePort):
             game_id=row["game_id"],
             title_id=row["title_id"],
             title=row["title"],
+            platform_id=(str(row["platform_id"]) if row["platform_id"] else "unknown"),
             media_source=row["media_source"],
             media_kind=row["media_kind"],
             media_path=row["media_path"],
@@ -115,3 +129,9 @@ class StateStoreGameMediaAdapter(GameMediaStorePort):
             ),
             errors=(json.loads(row["errors_json"]) if row["errors_json"] else {}),
         )
+
+    @staticmethod
+    def _platform_id(value: str) -> str:
+        if not isinstance(value, str) or not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", value):
+            raise ValueError("platform_id de mídia ausente ou inválido")
+        return value

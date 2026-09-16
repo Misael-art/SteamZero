@@ -43,6 +43,7 @@ class GameMediaState:
     game_id: str
     title_id: str
     title: str
+    platform_id: str = "unknown"
     media_source: str = "fallback"
     media_kind: str = "icon"
     media_path: str | None = None
@@ -150,18 +151,25 @@ class GameMediaManager:
         media_kinds: list[str] | None = None,
         fingerprint: str = "",
         hashes: dict[str, str] | None = None,
+        platform_id: str | None = None,
     ) -> GameMediaState:
         kinds = media_kinds or ["boxart", "grid", "hero", "icon", "logo", "screenshot"]
+        if platform_id is None:
+            raise SteamZeroError("E-API-SCHEMA", detail="busca de mídia exige plataforma declarada")
         state = self._store.load(game_id) or GameMediaState(
-            game_id=game_id, title_id=title_id, title=title
+            game_id=game_id,
+            title_id=title_id,
+            title=title,
+            platform_id=platform_id,
         )
+        state.platform_id = platform_id
         state.metadata_state = "searching"
         self._store.save(state)
 
         identity = GameIdentity(
             game_id=game_id,
             title=title,
-            platform_slug="switch",
+            platform_slug=platform_id,
             title_id=title_id,
             hashes=hashes or {},
         )
@@ -220,11 +228,21 @@ class GameMediaManager:
         return state
 
     def apply_selected_candidate(
-        self, game_id: str, title_id: str, fingerprint: str, canonical_name: str
+        self,
+        game_id: str,
+        title_id: str,
+        fingerprint: str,
+        canonical_name: str,
+        platform_id: str | None = None,
     ) -> GameMediaState | None:
+        if platform_id is None:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail="aplicação de mídia exige plataforma declarada"
+            )
         state = self._store.load(game_id)
         if state is None or state.selected_candidate_idx < 0:
             return None
+        state.platform_id = platform_id
         candidate_data = state.candidates[state.selected_candidate_idx]
         kind = canonical_media_kind(str(candidate_data.get("mediaKind", "boxart")))
         candidate = MediaCandidate(
@@ -244,6 +262,7 @@ class GameMediaManager:
             title_id=title_id,
             fingerprint=fingerprint,
             canonical_name=canonical_name,
+            platform_id=platform_id,
         )
         if not result.success:
             state.metadata_state = "failed"
@@ -275,10 +294,14 @@ class GameMediaManager:
         fingerprint: str,
         canonical_name: str,
         media_kind: str = "box2d",
-        platform_id: str = "switch",
+        platform_id: str | None = None,
     ) -> GameMediaState | None:
         if not src_path.is_file():
             return None
+        if platform_id is None:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail="importação de mídia exige plataforma declarada"
+            )
         kind = custom_media_kind(media_kind)
         result = self._pipeline.collect(
             source=src_path,
@@ -293,7 +316,19 @@ class GameMediaManager:
             return None
         state = self._store.load(game_id)
         if state is None:
-            return None
+            # Imports from the global media surface can target a game that has
+            # never used the legacy cover/search flow.  The canonical registry
+            # is already the source of truth for rich roles, but the read model
+            # still needs a state row so the transaction is observable and
+            # future cover operations have a stable anchor.
+            state = GameMediaState(
+                game_id=game_id,
+                title_id=title_id,
+                title=canonical_name,
+                platform_id=platform_id,
+            )
+        else:
+            state.platform_id = platform_id
         master_path = next(iter(result.collected.values()))
         if kind == "box2d":
             state.previous_media_path = state.media_path

@@ -7,6 +7,7 @@ import pytest
 
 from steamzero.adapters.state_store_media import StateStoreGameMediaAdapter
 from steamzero.core import paths, transaction
+from steamzero.core.errors import SteamZeroError
 from steamzero.domain.media_pipeline import MediaPipeline
 from steamzero.domain.switch_media import GameMediaManager, GameMediaState, GameMediaStorePort
 
@@ -45,7 +46,16 @@ class _FakePipeline:
     def __init__(self) -> None:
         self._registry = _FakeRegistry()
 
-    def collect(self, source, game_id, title_id, fingerprint, canonical_name, kind="box2d"):
+    def collect(
+        self,
+        source,
+        game_id,
+        title_id,
+        fingerprint,
+        canonical_name,
+        kind="box2d",
+        platform_id="switch",
+    ):
         from steamzero.domain.media_pipeline import CollectionResult
 
         return CollectionResult(game_id=game_id, collected={kind: source})
@@ -198,7 +208,7 @@ class TestSearchCandidates:
         store = _FakeStore()
         pipeline = _FakePipeline()
         manager = GameMediaManager(store, pipeline)
-        result = manager.search_candidates("g1", "0100", "Game")
+        result = manager.search_candidates("g1", "0100", "Game", platform_id="switch")
         assert result.candidate_count == 0
         assert result.metadata_state == "degraded"
         assert "fallback local" in result.reason
@@ -233,6 +243,68 @@ class TestSearchCandidates:
         assert result is not None
         assert result.selected_candidate_idx == 1
         assert result.candidates[1]["provider"] == "fake2"
+
+
+def test_custom_rich_import_creates_state_for_non_switch_game(tmp_path: Path) -> None:
+    store = _FakeStore()
+    pipeline = _FakePipeline()
+    manager = GameMediaManager(store, pipeline)
+    fanart = tmp_path / "fanart.jpg"
+    fanart.write_bytes(b"\xff\xd8\xff\xe0" + b"0" * 100)
+
+    imported = manager.import_custom_media(
+        game_id="snes-1",
+        src_path=fanart,
+        title_id="snes-title",
+        fingerprint="f" * 64,
+        canonical_name="Jogo SNES",
+        media_kind="fanart",
+        platform_id="snes",
+    )
+
+    assert imported is not None
+    assert imported.game_id == "snes-1"
+    assert imported.title == "Jogo SNES"
+    assert imported.media_source == "fallback"
+    assert imported.media_kind == "icon"
+    assert store.load("snes-1") is imported
+
+
+def test_custom_rich_import_persists_ps4_platform_in_canonical_registry(tmp_path: Path) -> None:
+    store = _FakeStore()
+    pipeline = MediaPipeline(tmp_path / "media")
+    manager = GameMediaManager(store, pipeline)
+    fanart = tmp_path / "fanart.jpg"
+    fanart.write_bytes(b"\xff\xd8\xff\xe0" + b"0" * 100)
+
+    imported = manager.import_custom_media(
+        game_id="ps4-1",
+        src_path=fanart,
+        title_id="ps4-title",
+        fingerprint="f" * 64,
+        canonical_name="Jogo PS4",
+        media_kind="fanart",
+        platform_id="playstation-4",
+    )
+
+    assert imported is not None
+    assert imported.platform_id == "playstation-4"
+    entry = pipeline.get_registry_entry("ps4-1")
+    assert entry is not None
+    assert entry.platform_id == "playstation-4"
+    assert entry.masters["fanart"].startswith("masters/playstation-4/fanart/")
+
+
+def test_media_operations_reject_missing_platform(tmp_path: Path) -> None:
+    store = _FakeStore()
+    manager = GameMediaManager(store, MediaPipeline(tmp_path / "media"))
+    fanart = tmp_path / "fanart.jpg"
+    fanart.write_bytes(b"\xff\xd8\xff\xe0" + b"0" * 100)
+
+    with pytest.raises(SteamZeroError, match="plataforma declarada"):
+        manager.import_custom_media("unknown", fanart, "tid", "fp", "Unknown")
+    with pytest.raises(SteamZeroError, match="plataforma declarada"):
+        manager.search_candidates("unknown", "tid", "Unknown")
 
 
 def test_prune_orphan_cache_is_transactional_and_rollback_restores_bytes(
@@ -304,6 +376,7 @@ class TestStateStorePersistence:
             game_id="g1",
             title_id="0100",
             title="Game",
+            platform_id="ps4",
             media_source="scraper",
             media_path="/path/to/icon.jpg",
             candidates=[
@@ -326,6 +399,7 @@ class TestStateStorePersistence:
         loaded = adapter.load("g1")
         assert loaded is not None
         assert loaded.game_id == "g1"
+        assert loaded.platform_id == "ps4"
         assert loaded.media_source == "scraper"
         assert loaded.candidate_count == 1
         assert loaded.master_state == "collected"
