@@ -51,6 +51,11 @@ def render_descriptor(logical_set: MultiDiscSet) -> str:
     for disc in sorted(active, key=lambda item: item.disc_number):
         if disc.path is None:
             raise SteamZeroError("E-TX-STALE-PLAN", detail="disco sem caminho atual")
+        if disc.path == disc.archive_path and disc.member_path is not None:
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN",
+                detail="playlist não pode apontar diretamente para container não extraído",
+            )
         if disc.format.casefold() not in {value.casefold() for value in disc.accepted_formats}:
             raise SteamZeroError(
                 "E-TX-STALE-PLAN",

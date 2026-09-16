@@ -26,7 +26,11 @@ from typing import Any
 from steamzero.core import fs, ids, paths, safezip, transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
-from steamzero.domain.multidisc import MultiDiscResolution, resolve_multidisc
+from steamzero.domain.multidisc import (
+    ArchiveAwareMultiDiscResolver,
+    MultiDiscResolution,
+    resolve_multidisc,
+)
 
 _DISC_RE = re.compile(r"\s*\((?:disc|disk)\s*(\d+)\)", re.IGNORECASE)
 
@@ -207,6 +211,9 @@ class RomCandidate:
     platform: str | None
     content_kind: str
     evidence: str
+    member_path: str | None = None
+    multi_disc_set_id: str | None = None
+    multi_disc_state: str | None = None
 
 
 @dataclass(frozen=True)
@@ -643,6 +650,23 @@ class PlatformDirectoryInventory:
                         siblings,
                         root_platform=platform_id,
                     )
+                    multi_disc_manifest = self._scanner.multi_disc_manifest_for(platform_id)
+                    multi_disc_policy = multi_disc_manifest.get("media")
+                    multi_disc_config = (
+                        multi_disc_policy.get("multiDisc")
+                        if isinstance(multi_disc_policy, Mapping)
+                        else None
+                    )
+                    if (
+                        path.suffix.casefold() in {".zip", ".7z"}
+                        and isinstance(multi_disc_config, Mapping)
+                        and multi_disc_config.get("enabled") is True
+                    ):
+                        platform, kind, evidence = (
+                            platform_id,
+                            "base",
+                            "archive-indexed",
+                        )
                     relative_parts = path.relative_to(root).parts[:-1]
                     auxiliary_kind = next(
                         filter(
@@ -690,13 +714,25 @@ class PlatformDirectoryInventory:
         manifest = self._scanner.multi_disc_manifest_for(platform_id)
         if not manifest:
             return ()
-        files = [candidate.path for candidate in candidates if candidate.content_kind == "base"]
-        return resolve_multidisc(
-            platform_id,
-            self._scanner.system_for(platform_id),
-            files,
-            manifest,
+        files = [
+            candidate.path
+            for candidate in candidates
+            if candidate.content_kind == "base"
+            and candidate.path.suffix.casefold() not in {".zip", ".7z"}
+        ]
+        loose = resolve_multidisc(
+            platform_id, self._scanner.system_for(platform_id), files, manifest
         )
+        archives = [
+            candidate.path
+            for candidate in candidates
+            if candidate.content_kind == "base"
+            and candidate.path.suffix.casefold() in {".zip", ".7z"}
+        ]
+        archive_sets = ArchiveAwareMultiDiscResolver(manifest).resolve(
+            platform_id, self._scanner.system_for(platform_id), archives
+        )
+        return (*loose, *archive_sets)
 
     @staticmethod
     def _game_key(
@@ -733,12 +769,37 @@ class PlatformDirectoryInventory:
         multi_disc_sets: Sequence[MultiDiscResolution] = (),
     ) -> list[RomCandidate]:
         chosen: dict[str, RomCandidate] = {}
+        archive_paths: set[Path] = set()
+        for logical_set in multi_disc_sets:
+            archive_parts = [part for part in logical_set.parts if part.archive_path is not None]
+            if not archive_parts:
+                continue
+            archive_paths.update(part.archive_path for part in archive_parts if part.archive_path)
+            source = next(
+                (candidate for candidate in candidates if candidate.path == archive_parts[0].path),
+                None,
+            )
+            if source is None:
+                continue
+            first = archive_parts[0]
+            chosen[f"multi:{logical_set.set_id}"] = RomCandidate(
+                path=source.path,
+                format=source.format,
+                platform=source.platform,
+                content_kind="base",
+                evidence=f"archive-multidisc-{logical_set.state}",
+                member_path=first.member_path,
+                multi_disc_set_id=logical_set.set_id,
+                multi_disc_state=logical_set.state,
+            )
         # CUE/M3U descrevem o conjunto; BIN é só um membro e nunca deve ocupar
         # uma posição extra no carrossel. A ordem posterior mantém o resultado
         # determinístico quando não há descritor preferido.
         priority = {"m3u": 0, "cue": 1, "chd": 2, "iso": 3, "bin": 9}
         for candidate in candidates:
             if candidate.content_kind != "base" or candidate.platform is None:
+                continue
+            if candidate.path in archive_paths:
                 continue
             key = cls._game_key(candidate, root, multi_disc_sets)
             current = chosen.get(key)

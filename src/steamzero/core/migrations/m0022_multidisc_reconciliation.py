@@ -38,6 +38,15 @@ def up(conn: sqlite3.Connection) -> None:
           format                TEXT NOT NULL,
           current_path          TEXT,
           content_hash          TEXT,
+          disc_label            TEXT NOT NULL DEFAULT '',
+          disc_role             TEXT,
+          archive_path          TEXT,
+          member_path           TEXT,
+          member_hash           TEXT,
+          archive_hash          TEXT,
+          source_origin         TEXT NOT NULL DEFAULT 'user' CHECK (
+                                  source_origin IN ('user','generated')
+                                ),
           accepted_formats_json TEXT NOT NULL,
           conversion_history_json TEXT NOT NULL,
           state                 TEXT NOT NULL CHECK (

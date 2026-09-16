@@ -725,11 +725,20 @@ class StateStore:
             "format",
             "current_path",
             "content_hash",
+            "disc_label",
+            "disc_role",
+            "archive_path",
+            "member_path",
+            "member_hash",
+            "archive_hash",
+            "source_origin",
             "accepted_formats_json",
             "conversion_history_json",
             "state",
         )
         row = {column: value.get(column) for column in columns}
+        row["disc_label"] = value.get("disc_label", "")
+        row["source_origin"] = value.get("source_origin", "user")
         placeholders = ",".join(f":{column}" for column in columns)
         updates = ",".join(
             f"{column}=excluded.{column}" for column in columns if column != "identity"

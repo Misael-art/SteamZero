@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import zipfile
 from collections.abc import Callable
 from pathlib import Path
 from typing import ClassVar
@@ -409,6 +410,48 @@ class TestPlatformRomScanner:
 
 
 class TestPlatformDirectoryInventory:
+    def test_amiga_archives_are_indexed_as_one_pending_logical_set(self, tmp_path: Path) -> None:
+        amiga = tmp_path / "amiga600"
+        amiga.mkdir()
+        for number in range(1, 5):
+            with zipfile.ZipFile(amiga / f"Game (Disk {number} of 4).zip", "w") as archive:
+                archive.writestr(f"Game (Disk {number} of 4).adf", bytes([number]))
+
+        row = PlatformDirectoryInventory.from_registry(PlatformRegistry.bundled()).inventory(
+            tmp_path
+        )[0]
+
+        assert row.game_count == 1
+        assert len(row.multi_disc_sets) == 1
+        assert row.multi_disc_sets[0].state == "needs-extraction"
+        assert row.selected_games[0].member_path is not None
+
+    def test_x68000_archive_is_partitioned_into_internal_games(self, tmp_path: Path) -> None:
+        x68000 = tmp_path / "x68000"
+        x68000.mkdir()
+        members: dict[str, bytes] = {}
+        for title, total in (
+            ("Garou Densetsu", 4),
+            ("Garou Densetsu 2", 6),
+            ("Garou Densetsu Special", 9),
+        ):
+            for number in range(1, total + 1):
+                label = chr(ord("A") + number - 1)
+                members[f"{title} (Disk {number} of {total})(Disk {label}).dim"] = bytes([number])
+        with zipfile.ZipFile(x68000 / "Garou I II Special.zip", "w") as archive:
+            for name, payload in members.items():
+                archive.writestr(name, payload)
+
+        row = PlatformDirectoryInventory.from_registry(PlatformRegistry.bundled()).inventory(
+            tmp_path
+        )[0]
+
+        assert row.game_count == 3
+        assert len(row.multi_disc_sets) == 3
+        assert {set_.disc_total for set_ in row.multi_disc_sets} == {4, 6, 9}
+        assert all(set_.state == "needs-platform-contract" for set_ in row.multi_disc_sets)
+        assert len({game.member_path for game in row.selected_games}) == 3
+
     def test_declared_multidisc_contract_exposes_one_logical_set(self, tmp_path: Path) -> None:
         psx = tmp_path / "PSX"
         psx.mkdir()
