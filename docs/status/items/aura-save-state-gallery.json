@@ -30,7 +30,6 @@
     "SZ-AURA-LAUNCHER"
   ],
   "knownGaps": [
-    "GAP-AURA-SAVE-STATE-ADAPTER-ABSENT",
     "GAP-AURA-SAVE-STATE-PHYSICAL"
   ],
   "acceptanceCriteria": [
@@ -64,12 +63,18 @@
       "reference": "tests/qml/launcher/check_launcher_save_state_gallery.qml",
       "command": ".venv/bin/python -m pytest tests/integration/test_qml_handheld_offscreen.py -k save_state_gallery -q",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-retroarch-session-fix/PHYSICAL-VALIDATION-SOURCE.json",
+      "command": "source branch 37d6f7a on host: real RetroArch session listSaveStates -> saveState(3) -> listSaveStates -> loadState(3)",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Criar adapter de sessão para um emulador com save/load state, incluindo backup transacional e prova em jogo real; manter a galeria indisponível nos adapters sem contrato.",
+  "nextAction": "Repetir a prova save/load na release governada instalada; depois fechar a troca de disco somente com um jogo multi-disc real.",
   "activeWorkstreams": [
     "WS-2026-09-AURA-SAVE-STATE-GALLERY"
   ],
-  "updatedAt": "2026-09-14",
-  "notes": "AURA-12 entrega o read model e a superfície visual, não finge captura. O host atual usa adapters sem save-state e deve continuar exibindo indisponibilidade explícita até a implementação concreta."
+  "updatedAt": "2026-09-16",
+  "notes": "O adapter RetroArch agora alinha o cursor ao state_slot persistido pelo conteúdo e à hierarquia states/<core>/<content>; a prova física da branch foi registrada, mas a promoção continua aguardando a release governada."
 }
