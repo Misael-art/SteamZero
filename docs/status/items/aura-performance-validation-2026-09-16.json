@@ -14,7 +14,7 @@
     "tests/unit/test_launcher_perf_probe.py",
     "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf"
   ],
-  "scopeDigest": "87fbaaebbc64b8cc055874cea2741e120c4593efd5ea3aab9e8fe58f9fb160f4",
+  "scopeDigest": "709d84515e61ec4037b99c97320f38658b05f0818a5eab55940c98a657286c36",
   "dependsOn": [
     "SZ-AURA-LAUNCHER",
     "SZ-AURA-CINEMA-COMPLETION",
