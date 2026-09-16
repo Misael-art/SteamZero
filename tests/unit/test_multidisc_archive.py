@@ -118,6 +118,77 @@ def test_duplicate_disk_number_is_conflict_not_first_match(tmp_path: Path) -> No
     assert result[0].state == "conflict"
 
 
+def test_identical_duplicate_member_is_one_canonical_disc(tmp_path: Path) -> None:
+    first = tmp_path / "Game (Disk 1 of 2).zip"
+    duplicate = tmp_path / "Game (Disk 1 of 2) (1).zip"
+    second = tmp_path / "Game (Disk 2 of 2).zip"
+    _zip(first, {"Game (Disk 1 of 2).adf": b"same"})
+    _zip(duplicate, {"Game (Disk 1 of 2).adf": b"same"})
+    _zip(second, {"Game (Disk 2 of 2).adf": b"two"})
+
+    result = ArchiveAwareMultiDiscResolver(
+        _manifest(media=["adf"], patterns=["disc", "disk"], container="extract")
+    ).resolve("amiga", "amiga1200", [first, duplicate, second])
+
+    assert len(result) == 1
+    assert result[0].state == "needs-extraction"
+    assert len(result[0].parts) == 2
+    assert [part.number for part in result[0].parts] == [1, 2]
+
+
+def test_archive_member_hash_is_the_disc_identity(tmp_path: Path) -> None:
+    archive = tmp_path / "Game (Disk 1 of 2).zip"
+    _zip(archive, {"Game (Disk 1 of 2).adf": b"same"})
+
+    inspected = inspect_archive(archive, allowed_formats=["adf"])
+    result = ArchiveAwareMultiDiscResolver(
+        _manifest(media=["adf"], patterns=["disc", "disk"], container="extract")
+    ).resolve("amiga", "amiga1200", [archive])
+
+    assert len(result) == 1
+    assert result[0].parts[0].content_hash == inspected.members[0].member_hash
+    assert inspected.members[0].member_hash != inspected.archive_hash
+
+
+def test_x68000_rejects_incoherent_ordinal_and_letter(tmp_path: Path) -> None:
+    archive = tmp_path / "Garou.zip"
+    _zip(
+        archive,
+        {
+            "Garou (Disk 1 of 2)(Disk B).dim": b"one",
+            "Garou (Disk 2 of 2)(Disk C).dim": b"two",
+        },
+    )
+
+    result = ArchiveAwareMultiDiscResolver(
+        _manifest(
+            media=["dim"],
+            patterns=["disc", "disk", "label", "role"],
+            support="unsupported",
+        )
+    ).resolve("x68000", "x68000", [archive])
+
+    assert result[0].state == "conflict"
+    assert "rótulo" in result[0].reason
+
+
+def test_amiga_variant_suffix_is_conflict_not_two_partial_games(tmp_path: Path) -> None:
+    archives: list[Path] = []
+    for number in range(1, 3):
+        suffix = "[hack]" if number == 1 else ""
+        archive = tmp_path / f"Game (Disk {number} of 2){suffix}.zip"
+        _zip(archive, {f"Game (Disk {number} of 2){suffix}.adf": bytes([number])})
+        archives.append(archive)
+
+    result = ArchiveAwareMultiDiscResolver(
+        _manifest(media=["adf"], patterns=["disc", "disk"], container="extract")
+    ).resolve("amiga", "amiga1200", archives)
+
+    assert len(result) == 1
+    assert result[0].state == "conflict"
+    assert "variantes" in result[0].reason
+
+
 def test_x68000_role_without_ordinal_is_review(tmp_path: Path) -> None:
     archive = tmp_path / "Bahnwelt.zip"
     _zip(
@@ -141,6 +212,7 @@ def test_x68000_role_without_ordinal_is_review(tmp_path: Path) -> None:
     assert result[0].state == "needs-review"
     assert [part.number for part in result[0].parts] == [None, None, None]
     assert {part.disc_role for part in result[0].parts} == {"system", "data"}
+    assert [part.adapter_order for part in result[0].parts] == [1, 2, 3]
 
 
 def test_archive_single_label_is_not_multidisc_without_total(tmp_path: Path) -> None:

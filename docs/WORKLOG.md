@@ -10898,3 +10898,28 @@ publicado na branch `codex/aura-rich-media-global-2026-09-16` para o PR
 `#194` reexecutar seus gates.
 
 Nenhuma instalação, rollback, reinício ou finalização do KDE foi executada.
+
+## 2026-09-16 — endurecimento do resolver archive-aware Amiga/X68000
+
+Corrigi a reconciliação de archives multidisco para tratar o hash do membro
+interno como identidade do disco e o hash do archive como identidade do
+contêiner. Assim, uma troca ZIP→7Z mantém o mesmo conjunto e disco, sem criar
+uma conversão falsa por mudança do arquivo externo. Downloads duplicados com o
+mesmo hash de membro agora são reduzidos a uma fonte canônica determinística;
+variantes com conteúdo diferente continuam preservadas e entram em `conflict`.
+
+A família lógica remove somente sufixos bracketed de hack/tradução para evitar
+que um conjunto Amiga parcialmente variantado seja dividido em dois jogos
+incompletos; a assinatura original permanece registrada e mistura de variantes
+é rejeitada. A validação também confere `Disk N` com `Disk A/B/C`, totais
+incompatíveis e ordem declarada pelo adapter para papéis X68000. Os testes
+focados passaram: **22 passed**. A auditoria read-only dos archives reais
+encontrou o Garou em três conjuntos 4/6/9; o conjunto Amiga de 7 discos com
+duplicata e variantes ficou em `conflict`, e o de 11 discos também foi
+rejeitado por variantes incompatíveis. Nenhum archive foi extraído ou alterado.
+
+O contrato continua deliberadamente conservador: Amiga permanece
+`needs-platform-contract`/`needs-extraction` enquanto PUAE e a geração de M3U
+não forem comprovados; X68000 permanece `needs-platform-contract` e não gera
+playlist automaticamente. A prova de plan/apply/verify com conteúdo legítimo,
+release instalada e captura física continua aberta.

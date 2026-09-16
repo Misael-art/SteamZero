@@ -17,7 +17,7 @@ import unicodedata
 import zipfile
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import IO, Literal
 
@@ -53,6 +53,7 @@ _ROLE_MARKER = re.compile(
 )
 _EMPTY_DELIMITERS = re.compile(r"\(\s*\)|\[\s*\]")
 _WHITESPACE = re.compile(r"\s+")
+_TRAILING_VARIANTS = re.compile(r"(?:\s*\[[^\]]*\])+\s*$")
 
 
 @dataclass(frozen=True)
@@ -193,12 +194,14 @@ class MultiDiscPart:
     member_hash: str | None = None
     archive_hash: str | None = None
     source_origin: Literal["user", "generated"] = "user"
+    order: int | None = None
+    variant_key: str = ""
 
     @property
     def adapter_order(self) -> int | None:
-        """Return the stable order implied by the ordinal contract."""
+        """Return the stable order declared by the adapter contract."""
 
-        return self.number
+        return self.order if self.order is not None else self.number
 
 
 DiscLifecycle = Literal["active", "converted", "missing", "stale", "conflict"]
@@ -224,12 +227,13 @@ class DiscRecord:
     member_hash: str | None = None
     archive_hash: str | None = None
     source_origin: Literal["user", "generated"] = "user"
+    order: int | None = None
 
     @property
     def adapter_order(self) -> int:
         """Return the persisted disc order used by the adapter projection."""
 
-        return self.disc_number
+        return self.order if self.order is not None else self.disc_number
 
     @property
     def identity(self) -> str:
@@ -281,6 +285,17 @@ def _clean_title(value: str) -> str:
 
 def _normalise_title(value: str) -> str:
     return _WHITESPACE.sub(" ", unicodedata.normalize("NFKC", value).casefold()).strip()
+
+
+def _variant_family_title(value: str) -> str:
+    """Remove only trailing bracketed variant tags for family detection.
+
+    Region/year/publisher parentheses remain part of the title.  Bracketed
+    hack, translation and release tags are retained in ``variant_key`` so a
+    mixed set is rejected instead of being silently merged.
+    """
+
+    return _TRAILING_VARIANTS.sub("", value).strip()
 
 
 def parse_disc_marker(stem: str, policy: MultiDiscPolicy) -> tuple[str, DiscMarker] | None:
@@ -540,6 +555,7 @@ def resolve_multidisc(
                 marker.total,
                 _format_for(path),
                 _content_hash(path),
+                order=marker.number,
             )
             for path, marker, _ in entries
         )
@@ -679,19 +695,23 @@ class ArchiveAwareMultiDiscResolver:
                 if parsed is None:
                     continue
                 title, marker = parsed
-                key = _group_key(platform_id, system_id, title)
+                key = _group_key(platform_id, system_id, _variant_family_title(title))
                 part = MultiDiscPart(
                     path=archive,
                     number=marker.number,
                     total=marker.total,
                     format=member.format,
-                    content_hash=member.archive_hash,
+                    # The member is the disc identity.  The outer archive is
+                    # only a transport/container identity; replacing ZIP by
+                    # 7Z must not create a new disc identity.
+                    content_hash=member.member_hash,
                     disc_label=marker.label,
                     disc_role=marker.role,
                     archive_path=archive,
                     member_path=member.member_path,
                     member_hash=member.member_hash,
                     archive_hash=member.archive_hash,
+                    variant_key=_normalise_title(title),
                 )
                 groups[key].append(part)
                 titles[key] = title
@@ -705,19 +725,38 @@ class ArchiveAwareMultiDiscResolver:
                 # a logical multi-disc set. Keep it as a regular archive
                 # candidate until a companion or explicit total appears.
                 continue
+            # A repeated download with the same member hash is one physical
+            # disc with two sources. Keep the deterministic first source;
+            # different hashes for the same ordinal/role remain a conflict.
+            canonical: list[MultiDiscPart] = []
+            seen_members: set[tuple[tuple[object, ...], str | None]] = set()
+            for part in groups[key]:
+                if part.number is not None:
+                    identity: tuple[object, ...] = ("number", part.number)
+                elif part.disc_role is not None:
+                    identity = ("role", part.disc_role, part.disc_label.casefold())
+                else:
+                    identity = ("label", part.disc_label.casefold())
+                member_identity = (identity, part.member_hash or part.content_hash)
+                if member_identity in seen_members:
+                    continue
+                seen_members.add(member_identity)
+                canonical.append(part)
+            ordered = sorted(
+                canonical,
+                key=lambda part: (
+                    part.number is None,
+                    part.number or 0,
+                    self.policy.role_order.index(part.disc_role)
+                    if part.disc_role in self.policy.role_order
+                    else len(self.policy.role_order),
+                    part.disc_label.casefold(),
+                    part.member_path or "",
+                ),
+            )
             parts = tuple(
-                sorted(
-                    groups[key],
-                    key=lambda part: (
-                        part.number is None,
-                        part.number or 0,
-                        self.policy.role_order.index(part.disc_role)
-                        if part.disc_role in self.policy.role_order
-                        else len(self.policy.role_order),
-                        part.disc_label.casefold(),
-                        part.member_path or "",
-                    ),
-                )
+                replace(part, order=part.number if part.number is not None else index)
+                for index, part in enumerate(ordered, start=1)
             )
             state, reason = self._validate_parts(parts)
             resolutions.append(
@@ -740,12 +779,18 @@ class ArchiveAwareMultiDiscResolver:
         identities = [(part.number, part.disc_role, part.disc_label.casefold()) for part in parts]
         if len(identities) != len(set(identities)):
             return "conflict", "há discos ou papéis duplicados com conteúdo divergente"
+        variants = {part.variant_key for part in parts if part.variant_key}
+        if len(variants) > 1:
+            return "conflict", "o conjunto mistura variantes incompatíveis de título"
         numbers = [part.number for part in parts]
         totals = {part.total for part in parts if part.total is not None}
         state: MultiDiscState
         if any(number is None for number in numbers):
             state = "needs-review"
             reason = "papéis sem número exigem ordem explícita do adapter"
+        elif len(totals) > 1:
+            state = "conflict"
+            reason = "o conjunto declara totais incompatíveis"
         elif numbers[0] != 1 or (
             self.policy.requires_continuous_sequence and numbers != list(range(1, len(numbers) + 1))
         ):
@@ -754,6 +799,12 @@ class ArchiveAwareMultiDiscResolver:
         elif len(totals) == 1 and next(iter(totals)) != len(parts):
             state = "incomplete"
             reason = "total declarado não corresponde ao conjunto"
+        elif self.policy.letter_labels_are_ordinal and any(
+            part.disc_label and ord(part.disc_label.upper()) - ord("A") + 1 != part.number
+            for part in parts
+        ):
+            state = "conflict"
+            reason = "o rótulo alfabético não corresponde ao número do disco"
         elif self.policy.adapter_playlist_support == "unsupported":
             state = "needs-platform-contract"
             reason = "o adapter não declara suporte a M3U para estes archives"
@@ -839,6 +890,7 @@ def reconcile_multidisc_set(
                 member_hash=part.member_hash,
                 archive_hash=part.archive_hash,
                 source_origin=part.source_origin,
+                order=part.adapter_order,
             )
         )
     for number, old in previous.items():
@@ -861,6 +913,7 @@ def reconcile_multidisc_set(
                     member_hash=old.member_hash,
                     archive_hash=old.archive_hash,
                     source_origin=old.source_origin,
+                    order=old.order,
                 )
             )
     records.sort(key=lambda disc: disc.disc_number)
