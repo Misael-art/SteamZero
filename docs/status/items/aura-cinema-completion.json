@@ -37,14 +37,14 @@
     "tests/unit/test_session_overlay.py",
     "tests/unit/test_session_overlay_adapter.py"
   ],
-  "scopeDigest": "1a80b8e331bc8ec5a7dd0705ea81db692c1b9d73030f5ddce7d942d6b38dbe77",
+  "scopeDigest": "3ba2cc48a0b62e0f0e43f40327100f02a5679f7fb3d7f4db7d1ad9b930002d11",
   "dependsOn": [
     "SZ-AURA-SAVE-STATE-GALLERY",
     "SZ-AURA-SESSION-OSD",
     "SZ-THEME-ENGINE"
   ],
   "knownGaps": [
-    "GAP-AURA-CINEMA-PERFORMANCE-POST-QML",
+    "GAP-AURA-PERF-1280X800-SURFACE",
     "GAP-AURA-CINEMA-OSD-SAME-CARD-POST-APPLY",
     "GAP-PS4-SCOPE-PHYSICAL-EVIDENCE-PRECEDES",
     "GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
@@ -116,12 +116,48 @@
       "reference": "tests/integration/test_launcher_app.py",
       "command": ".venv/bin/python -m pytest tests/unit/test_session_control.py tests/unit/test_session_overlay.py tests/unit/test_session_overlay_adapter.py tests/unit/test_session_peripherals.py tests/unit/test_save_states.py tests/integration/test_launcher_app.py tests/integration/test_media.py -q",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/README.md",
+      "command": "release 2.0.0rc1-d1cbb03a3b66, janela Wayland real 948x593, OpenGL; duas sondas passaram startup, frame-time p95 e VRAM",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/02-entrega-funcional.png",
+      "command": "release 2.0.0rc1-d1cbb03a3b66, janela Wayland real fullscreen 1280x800; capa central e vizinhas com composição AURA Cinema",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/03-session-game.png",
+      "command": "release 2.0.0rc1-d1cbb03a3b66, jogo NES real no RetroArch/Mesen",
+      "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/04-session-overlay-running.png",
+      "command": "release 2.0.0rc1-d1cbb03a3b66, OSD AURA sobre jogo real; bridge aceitou pause e resume",
+      "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/05-session-paused.png",
+      "command": "release 2.0.0rc1-d1cbb03a3b66, estado suspended exibido na superfície física",
+      "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/06-save-state-gallery.png",
+      "command": "release 2.0.0rc1-d1cbb03a3b66, saveState/loadState aceitos; galeria exibiu fallback SEM CAPTURA",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Promover b6763cd3 pela linha principal; então reinstalar pelo fluxo governado e repetir a captura física do OSD, bezel/fade e a medição pós-QML. PS4 e multi-disc permanecem bloqueados por conteúdo legítimo ausente.",
+  "nextAction": "Instalar a release que contém 82799f5 e repetir o ciclo físico para provar o retorno sem modal órfão. Troca de disco e bezel/fade visual ainda exigem jogo/adapter legítimo; PS4 e multi-disc permanecem bloqueados por conteúdo legítimo ou contrato de adapter.",
   "activeWorkstreams": [
     "WS-2026-09-AURA-CINEMA-COMPLETION"
   ],
   "updatedAt": "2026-09-16",
-  "notes": "Frente de continuação do AURA Launcher/Theme Engine. Não promove AURA UI ou Theme Studio; cobre apenas a cadeia de sessão e a composição fullscreen especificadas no plano."
+  "notes": "Frente de continuação do AURA Launcher/Theme Engine. A medição e a captura visual física final estão registradas, mas não substituem a captura funcional do ciclo nem promovem AURA UI ou Theme Studio; cobrem apenas a cadeia de sessão e a composição fullscreen especificadas no plano."
 }

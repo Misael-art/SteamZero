@@ -202,6 +202,11 @@ Window {
         root.sessionOverlayOpen = false
         root.sessionOverlayError = ""
         root.sessionOverlayModel = null
+        // Terminal recovery may arrive while a modal child surface is open.
+        // Close those children before dropping the model so no stale gallery
+        // or peripheral surface can survive over the restored home.
+        sessionOverlay.closeSaveGallery()
+        sessionOverlay.closePeripheralSurface()
         const shell = root._activeLauncherShell()
         if (shell)
             shell.forceActiveFocus()
@@ -281,7 +286,13 @@ Window {
             if (generation !== root.launchGeneration || status !== 200)
                 return
             try {
-                shell.observeSession(JSON.parse(text))
+                const observation = JSON.parse(text)
+                shell.observeSession(observation)
+                // A terminal session owns the return transition. The OSD is a
+                // child surface of the old session and must not remain over
+                // the restored home after the emulator has closed.
+                if (observation.state === "closed" || observation.state === "failed")
+                    root.closeSessionOverlay()
             } catch (error) {}
         })
     }

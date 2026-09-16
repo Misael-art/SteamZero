@@ -10932,3 +10932,46 @@ DIM/XDF sem confundir o contêiner ZIP com a imagem. A validação de manifestos
 o inventário multidisco passaram com **119 testes**. Nenhuma mídia foi escrita,
 extraída ou reorganizada; o contrato PX68K M3U continua deliberadamente
 bloqueado até haver comprovação do adapter.
+
+## 2026-09-16 — instalação final e medição física pós-merge
+
+O CI do merge `d1cbb03a3b66930e3df4b46f880716eed0eca40f` terminou verde nas
+matrizes Python 3.11, 3.12 e 3.14, no gate visual, wheel e smoke das
+distribuições. A bundle foi preparada com o run `35148842206` e instalada pelo
+fluxo governado, com rollback `2.0.0rc1-4e75cf73b411`; a release ativa passou a
+ser `2.0.0rc1-d1cbb03a3b66`, com daemon confirmando o SHA completo e convergência
+idempotente. Não houve reinício ou finalização do KDE.
+
+Na release final, a sonda usou a janela Wayland real `948x593` e OpenGL, sem
+`offscreen`. Duas execuções válidas passaram os três orçamentos: startup
+`695/691 ms`, 375 frames em cada, p95 `16,180/16,243 ms` e VRAM
+`97.548/38.172 KiB`, medida por DRM fdinfo agrupado por `drm-client-id`. As
+capturas JSON estão em `docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf`.
+
+A instalação e a medição fecham o requisito físico de desempenho para a
+superfície disponível, mas não promovem por inferência a completude do AURA:
+permanece pendente a captura visual funcional do ciclo rico (mídia, save-state,
+troca de disco, bezel/fade) e a prova com jogo/adapter legítimo de Amiga,
+X68000 e PS4. O host reporta `orphanStaging=0`, sem operações pendentes; há um
+backup órfão histórico preservado para revisão, não removido automaticamente.
+
+## 2026-09-16 — captura visual física fullscreen do AURA Cinema
+
+Com autorização explícita do operador, foquei a janela Wayland real da release
+ativa `2.0.0rc1-d1cbb03a3b66` e capturei o fullscreen em `1280x800`. A evidência
+`01-baseline.png` mostra o fallback legível sem arte; `02-entrega-funcional.png`
+mostra três capas locais publicadas em carousel, capa central ampliada,
+vizinhas com escala/opacidade, foco ciano, marca AURA/CINEMA, sistema, estado
+online, relógio e ações de controle. A inspeção visual confirmou que ambas as
+imagens são da janela AURA, não de BlastEm ou do desktop.
+
+Para obter a composição rica sem alterar o acervo, usei somente um arquivo de
+biblioteca temporário com três registros reais já publicados; ele foi removido
+após a captura. O launcher temporário e o daemon de entrada criados para esta
+sessão foram encerrados; as instâncias de QA e o launcher preexistente de
+outras frentes não foram tocados. O KDE não foi reiniciado nem finalizado.
+
+`make status-render` e `make status-check` passaram. A captura visual foi
+retirada dos bloqueios do item de desempenho, mas OSD/save-state, troca de
+disco, bezel/fade durante jogo real e provas PS4/multidisco continuam abertos;
+esta captura não os promove por inferência.

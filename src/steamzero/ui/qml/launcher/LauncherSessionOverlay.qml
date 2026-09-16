@@ -168,9 +168,11 @@ Item {
     z: 30
 
     Rectangle {
+        objectName: "sessionOverlayBackdrop"
         anchors.fill: parent
         color: overlay.highContrast ? "#000000" : "#071019e8"
         opacity: overlay.overlayOpen ? 1 : 0
+        visible: overlay.overlayOpen && !overlay.saveGalleryOpen && !overlay.peripheralOpen
         Behavior on opacity {
             NumberAnimation { duration: overlay.reducedMotion ? 0 : 160 }
         }
@@ -178,6 +180,7 @@ Item {
 
     Rectangle {
         id: panel
+        objectName: "sessionOverlayPanel"
         anchors.centerIn: parent
         width: Math.min(parent.width - 64, 900)
         height: Math.min(parent.height - 64, 650)
@@ -185,6 +188,7 @@ Item {
         color: overlay.highContrast ? "#000000" : "#101c2bfa"
         border.width: overlay.highContrast ? 3 : 1
         border.color: overlay.highContrast ? "#ffffff" : "#2b4963"
+        visible: overlay.overlayOpen && !overlay.saveGalleryOpen && !overlay.peripheralOpen
 
         Column {
             anchors.fill: parent
