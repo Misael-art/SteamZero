@@ -10923,3 +10923,12 @@ O contrato continua deliberadamente conservador: Amiga permanece
 não forem comprovados; X68000 permanece `needs-platform-contract` e não gera
 playlist automaticamente. A prova de plan/apply/verify com conteúdo legítimo,
 release instalada e captura física continua aberta.
+
+## 2026-09-16 — harmonização do contrato X68000 para XDF
+
+O manifesto X68000 passou a declarar `.xdf` explicitamente como realização do
+formato lógico XDF, ao lado de `.img`, e a política de membros de archive aceita
+DIM/XDF sem confundir o contêiner ZIP com a imagem. A validação de manifestos e
+o inventário multidisco passaram com **119 testes**. Nenhuma mídia foi escrita,
+extraída ou reorganizada; o contrato PX68K M3U continua deliberadamente
+bloqueado até haver comprovação do adapter.
