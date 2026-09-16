@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-RETROARCH-SESSION-FIX",
+  "item": "SZ-AURA-CINEMA-COMPLETION",
+  "branch": "codex/aura-retroarch-session-fix-2026-09-16",
+  "baseRef": "3c4b563242a96cb57e4dd77e65d2fcc50a94ff8a",
+  "owner": "codex-aura-retroarch-session-fix",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/adapters/session_peripherals.py",
+    "tests/unit/test_session_peripherals.py",
+    "docs/status/workstreams/aura-retroarch-session-fix-2026-09-16.json",
+    "docs/09-operations/evidence/2026-09-16-aura-retroarch-session-fix"
+  ],
+  "sharedPaths": [
+    "src/steamzero/adapters/session_control.py",
+    "src/steamzero/adapters/session_overlay.py",
+    "src/steamzero/adapters/emulation.py",
+    "docs/status/items/aura-cinema-completion.json",
+    "docs/status/items/aura-save-state-gallery.json",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Promover o adapter para a release governada, repetir save/load na instalação ativa e registrar a evidência física; depois retomar mídia rica, OSD, fade e p95.",
+  "updatedAt": "2026-09-16"
+}

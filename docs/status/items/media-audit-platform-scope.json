@@ -15,7 +15,7 @@
     "src/steamzero/adapters/emulation.py",
     "tests/integration/test_media_audit_platform_scope.py"
   ],
-  "scopeDigest": "631160afef74a96845df63d8526350c17234aa99e8e3a752c26ffc0ed7229c70",
+  "scopeDigest": "ccdebc228727d38d9a5a012cc07ff6286ad4cee9935874a0aa2c57ddf78c0c2b",
   "dependsOn": [
     "SZ-MEDIA-PIPELINE-PLATFORM-SCOPE"
   ],

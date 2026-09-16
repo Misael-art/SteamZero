@@ -32,11 +32,12 @@
     "tests/unit/test_launcher_media.py",
     "tests/integration/test_media.py",
     "docs/09-operations/evidence/2026-09-14-aura-rich-media-installed",
+    "docs/09-operations/evidence/2026-09-16-aura-retroarch-session-fix",
     "tests/unit/test_emulation_controller.py",
     "tests/unit/test_session_overlay.py",
     "tests/unit/test_session_overlay_adapter.py"
   ],
-  "scopeDigest": "373255f14e8e589337ec00d2fe2b3c37e1b2180edfc8499943f878c6afe332db",
+  "scopeDigest": "8703b3659967695cdb68c22104829eb7f3c8c6f7f3c1663571aac206d11f2077",
   "dependsOn": [
     "SZ-AURA-SAVE-STATE-GALLERY",
     "SZ-AURA-SESSION-OSD",

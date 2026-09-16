@@ -22,15 +22,15 @@
     "tests/unit/test_session_overlay_adapter.py",
     "tests/integration/test_launcher_app.py",
     "tests/integration/test_qml_handheld_offscreen.py",
+    "docs/09-operations/evidence/2026-09-16-aura-retroarch-session-fix",
     "tests/qml/launcher/check_launcher_save_state_gallery.qml"
   ],
-  "scopeDigest": "8fb6d387abcaf44d403f4d912593197fd15281127e6ebaf4d91db605f18e0a5b",
+  "scopeDigest": "0ededdb3865e7215f85afe05cf7fcc78dd52d6fe0ac473c593d3a4254149c51d",
   "dependsOn": [
     "SZ-AURA-SESSION-OSD",
     "SZ-AURA-LAUNCHER"
   ],
   "knownGaps": [
-    "GAP-AURA-SAVE-STATE-ADAPTER-ABSENT",
     "GAP-AURA-SAVE-STATE-PHYSICAL"
   ],
   "acceptanceCriteria": [
@@ -64,12 +64,18 @@
       "reference": "tests/qml/launcher/check_launcher_save_state_gallery.qml",
       "command": ".venv/bin/python -m pytest tests/integration/test_qml_handheld_offscreen.py -k save_state_gallery -q",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-retroarch-session-fix/PHYSICAL-VALIDATION-SOURCE.json",
+      "command": "source branch 37d6f7a on host: real RetroArch session listSaveStates -> saveState(3) -> listSaveStates -> loadState(3)",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Criar adapter de sessão para um emulador com save/load state, incluindo backup transacional e prova em jogo real; manter a galeria indisponível nos adapters sem contrato.",
+  "nextAction": "Repetir a prova save/load na release governada instalada; depois fechar a troca de disco somente com um jogo multi-disc real.",
   "activeWorkstreams": [
     "WS-2026-09-AURA-SAVE-STATE-GALLERY"
   ],
-  "updatedAt": "2026-09-14",
-  "notes": "AURA-12 entrega o read model e a superfície visual, não finge captura. O host atual usa adapters sem save-state e deve continuar exibindo indisponibilidade explícita até a implementação concreta."
+  "updatedAt": "2026-09-16",
+  "notes": "O adapter RetroArch agora alinha o cursor ao state_slot persistido pelo conteúdo e à hierarquia states/<core>/<content>; a prova física da branch foi registrada, mas a promoção continua aguardando a release governada."
 }

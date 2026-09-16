@@ -66,6 +66,19 @@ def test_retroarch_session_config_publishes_managed_aura_bezel(
     assert 'fill="none"' in bezel_asset.read_text(encoding="utf-8")
 
 
+def test_retroarch_session_config_creates_managed_state_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(paths, "config_home", lambda: tmp_path / "config")
+    monkeypatch.setattr(paths, "saves_dir", lambda: tmp_path / "saves")
+
+    prepare_retroarch_session_config()
+
+    state_root = tmp_path / "saves" / "states"
+    assert state_root.is_dir()
+    assert state_root.stat().st_mode & 0o777 == 0o700
+
+
 def test_retroarch_save_state_slot_zero_waits_for_a_real_file(tmp_path: Path) -> None:
     commands: list[str] = []
     content = tmp_path / "game.zip"
@@ -120,6 +133,77 @@ def test_retroarch_gallery_saves_and_loads_a_bounded_nonzero_slot(tmp_path: Path
     assert commands == ["STATE_SLOT_PLUS", "STATE_SLOT_PLUS", "SAVE_STATE"]
     assert adapter.load_state(2).state == "running"
     assert commands[-1] == "LOAD_STATE_SLOT 2"
+
+
+def test_retroarch_session_cursor_starts_from_per_content_runtime_log(tmp_path: Path) -> None:
+    content = tmp_path / "game.zip"
+    content.write_bytes(b"content")
+    states = tmp_path / "states"
+    (states / "Core Name").mkdir(parents=True)
+    logs = tmp_path / "logs" / "Core Name"
+    logs.mkdir(parents=True)
+    (logs / "game.lrtl").write_text('{"state_slot":"1"}', encoding="utf-8")
+    commands: list[str] = []
+
+    def send(command: str) -> None:
+        commands.append(command)
+        if command == "SAVE_STATE":
+            (states / "Core Name" / "game.state3").write_bytes(b"slot-three")
+
+    adapter = RetroArchSessionPeripheral(
+        content,
+        states,
+        send_command=send,
+        sleep=lambda _: None,
+        runtime_log_root=tmp_path / "logs",
+    )
+    adapter.save_state(3)
+
+    assert commands == ["STATE_SLOT_PLUS", "STATE_SLOT_PLUS", "SAVE_STATE"]
+
+
+def test_retroarch_invalid_runtime_log_falls_back_to_slot_zero(tmp_path: Path) -> None:
+    content = tmp_path / "game.zip"
+    content.write_bytes(b"content")
+    logs = tmp_path / "logs" / "Core Name"
+    logs.mkdir(parents=True)
+    (logs / "game.lrtl").write_text("not-json", encoding="utf-8")
+
+    adapter = RetroArchSessionPeripheral(
+        content,
+        tmp_path / "states",
+        send_command=lambda _: None,
+        sleep=lambda _: None,
+        runtime_log_root=tmp_path / "logs",
+    )
+
+    assert adapter._state_slot == 0
+
+
+def test_retroarch_slot_commands_are_settled_before_the_next_command(tmp_path: Path) -> None:
+    content = tmp_path / "game.zip"
+    content.write_bytes(b"content")
+    states = tmp_path / "states"
+    states.mkdir()
+    commands: list[str] = []
+    settles: list[float] = []
+
+    def send(command: str) -> None:
+        commands.append(command)
+        if command == "SAVE_STATE":
+            (states / "game.state3").write_bytes(b"slot-three")
+
+    adapter = RetroArchSessionPeripheral(
+        content,
+        states,
+        send_command=send,
+        sleep=settles.append,
+    )
+    adapter.save_state(3)
+
+    assert commands == ["STATE_SLOT_PLUS", "STATE_SLOT_PLUS", "STATE_SLOT_PLUS", "SAVE_STATE"]
+    assert settles[:3] == [0.05, 0.05, 0.05]
+    assert settles[-1] == 0.05
 
 
 def test_retroarch_bounds_save_slots_and_supports_m3u_swap(tmp_path: Path) -> None:

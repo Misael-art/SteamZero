@@ -70,6 +70,7 @@ from steamzero.adapters.session_control import (
 )
 from steamzero.adapters.session_peripherals import (
     RetroArchSessionPeripheral,
+    default_retroarch_runtime_log_root,
     prepare_retroarch_session_config,
 )
 from steamzero.adapters.state_store_media import StateStoreGameMediaAdapter
@@ -1504,7 +1505,9 @@ class EmulationController:
                             and input_devices.RETROARCH_REF in flatpak_ref
                         ):
                             peripheral_control = RetroArchSessionPeripheral(
-                                rom, paths.saves_dir() / "states"
+                                rom,
+                                paths.saves_dir() / "states",
+                                runtime_log_root=default_retroarch_runtime_log_root(),
                             )
                         owner = SessionControlOwner(
                             session_id,

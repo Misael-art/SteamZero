@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "validationType": "source-branch-host-smoke",
+  "sourceCommit": "37d6f7a",
+  "hostReleaseActiveDuringSmoke": "2.0.0rc1-3c4b563242a9",
+  "sessionId": "01M2KVM1F0DN3K17GS10MDTDX5",
+  "game": {
+    "gameId": "ae18c7e53583298461a0edea",
+    "title": "1969 (Homebrew) (SMS",
+    "platform": "master-system",
+    "emulator": "RetroArch",
+    "core": "Genesis Plus GX"
+  },
+  "operations": [
+    {
+      "action": "listSaveStates",
+      "result": "accepted",
+      "observedSlots": [3, 4]
+    },
+    {
+      "action": "saveState",
+      "slot": 3,
+      "result": "accepted",
+      "backupAvailableAfterSave": true
+    },
+    {
+      "action": "loadState",
+      "slot": 3,
+      "result": "accepted"
+    }
+  ],
+  "managedStateFile": "~/.local/share/steamzero/saves/states/Genesis Plus GX/1969 (Homebrew) (SMS).state3",
+  "capture": "01-save-state-real-session.png",
+  "kdeSessionRestarted": false,
+  "promotion": "not-release-proof; repeat after governed release installation"
+}
