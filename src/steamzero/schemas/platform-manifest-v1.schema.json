@@ -409,6 +409,37 @@
           ],
           "description": "native = o container (zip/7z) roda direto no emulador; extract = o conteudo precisa ser extraido antes do lancamento."
         },
+        "multiDisc": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "descriptor",
+            "media",
+            "filenamePatterns",
+            "requiresContinuousSequence"
+          ],
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "descriptor": {"const": "m3u"},
+            "media": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {"type": "string", "pattern": "^[a-z0-9]{1,12}$"}
+            },
+            "filenamePatterns": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "enum": ["disc", "disk", "cd", "side"]
+              }
+            },
+            "requiresContinuousSequence": {"type": "boolean"},
+            "allowSideLabels": {"type": "boolean"}
+          }
+        },
         "auxiliaryContent": {
           "type": "string",
           "enum": [
