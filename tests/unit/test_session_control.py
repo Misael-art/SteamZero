@@ -48,6 +48,24 @@ def _seed_session(database: Path) -> tuple[str, str]:
     return session_id, game_id
 
 
+class _PeripheralControl:
+    def list_peripherals(self) -> dict[str, object]:
+        return {
+            "state": "ready",
+            "selectedBezel": "aura-default",
+            "bezels": [
+                {
+                    "id": "aura-default",
+                    "label": "AURA Cinema",
+                    "assetUrl": "asset://bezels/aura-bezel.svg",
+                    "available": True,
+                    "selected": True,
+                }
+            ],
+            "fade": {"phase": "idle", "progress": 0.0, "durationMs": 180},
+        }
+
+
 def test_remote_control_uses_owner_transitions_and_never_signals_from_ui(tmp_path: Path) -> None:
     database = tmp_path / "state.db"
     session_id, game_id = _seed_session(database)
@@ -135,3 +153,34 @@ def test_control_path_does_not_accept_path_injection() -> None:
         assert "sessionId" in str(exc)
     else:
         raise AssertionError("session id inválido foi aceito")
+
+
+def test_remote_control_projects_complete_session_peripherals(tmp_path: Path) -> None:
+    database = tmp_path / "state.db"
+    session_id, game_id = _seed_session(database)
+    owner = SessionControlOwner(
+        session_id,
+        game_id,
+        os.getpid(),
+        _start_ticks(os.getpid()),
+        store_factory=lambda: StateStore(database),
+        read_start_ticks=_start_ticks,
+        signal_process=lambda _pid, _signum: None,
+        peripheral_control=cast(Any, _PeripheralControl()),
+    )
+    socket_root = tmp_path.parent
+    server = SessionControlServer(owner, control_path(session_id, root=socket_root))
+    server.start()
+    try:
+        remote = resolve_remote_session_control(
+            session_id,
+            game_id,
+            observe=lambda requested: observe_game_session(database, requested),
+            root=socket_root,
+        )
+        assert remote is not None
+        data = remote.list_peripherals()
+        assert data["selectedBezel"] == "aura-default"
+        assert data["bezels"][0]["assetUrl"] == "asset://bezels/aura-bezel.svg"
+    finally:
+        server.close()

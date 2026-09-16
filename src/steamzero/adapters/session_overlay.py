@@ -288,13 +288,15 @@ class SessionOverlayAdapter:
     def _peripheral_surface(control: SessionControl | None, state: str) -> tuple[Any, bool]:
         if control is None:
             return unavailable_peripherals("Nenhuma sessão controlável foi observada."), False
-        list_discs = getattr(control, "list_discs", None)
-        if not callable(list_discs):
+        list_peripherals = getattr(control, "list_peripherals", None)
+        if not callable(list_peripherals):
+            list_peripherals = getattr(control, "list_discs", None)
+        if not callable(list_peripherals):
             return unavailable_peripherals(
                 "O adapter desta sessão não oferece troca de disco."
             ), False
         try:
-            raw = list_discs()
+            raw = list_peripherals()
         except Exception as exc:  # boundary: peripheral failure remains visible
             return unavailable_peripherals(
                 _text(str(exc), fallback="A troca de disco falhou.")

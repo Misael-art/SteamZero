@@ -39,6 +39,8 @@ class SessionPeripheralControl(Protocol):
 
     def swap_disc(self, disc_id: str) -> SessionPeripheralRecord: ...
 
+    def list_peripherals(self) -> Mapping[str, Any]: ...
+
 
 SendCommand = Callable[[str], None]
 
@@ -212,6 +214,33 @@ class RetroArchSessionPeripheral:
                 }
                 for index, path in enumerate(self._discs)
             ],
+        }
+
+    def list_peripherals(self) -> Mapping[str, Any]:
+        """Publish the complete, package-safe peripheral read model.
+
+        The bezel is installed as part of the same managed RetroArch config
+        that owns this adapter.  Only its logical asset URL crosses the
+        session boundary; the private host path remains adapter-owned.
+        """
+
+        discs = self.list_discs()
+        return {
+            "state": "ready",
+            "activeDisc": discs.get("activeDisc"),
+            "discs": discs.get("discs", []),
+            "selectedBezel": "aura-default",
+            "bezels": [
+                {
+                    "id": "aura-default",
+                    "label": "AURA Cinema",
+                    "assetUrl": "asset://bezels/aura-bezel.svg",
+                    "available": True,
+                    "compatible": True,
+                    "selected": True,
+                }
+            ],
+            "fade": {"phase": "idle", "progress": 0.0, "durationMs": 180},
         }
 
     def swap_disc(self, disc_id: str) -> SessionPeripheralRecord:

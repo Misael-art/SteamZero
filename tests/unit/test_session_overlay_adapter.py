@@ -80,6 +80,29 @@ class DiscControl(FakeControl):
         return self.current
 
 
+class PeripheralControl(DiscControl):
+    def list_peripherals(self) -> dict[str, Any]:
+        return {
+            "state": "ready",
+            "activeDisc": 0,
+            "discs": [
+                {"id": "disc-0", "label": "Disco 1", "inserted": True},
+                {"id": "disc-1", "label": "Disco 2", "inserted": False},
+            ],
+            "selectedBezel": "aura-default",
+            "bezels": [
+                {
+                    "id": "aura-default",
+                    "label": "AURA Cinema",
+                    "assetUrl": "asset://bezels/aura-bezel.svg",
+                    "available": True,
+                    "selected": True,
+                }
+            ],
+            "fade": {"phase": "idle", "progress": 0.0, "durationMs": 180},
+        }
+
+
 def make_adapter(control: FakeControl) -> SessionOverlayAdapter:
     def observe(_game_id: str) -> dict[str, Any]:
         return {
@@ -197,3 +220,25 @@ def test_disc_surface_is_available_only_from_a_multi_disc_adapter() -> None:
     assert result.accepted is True
     assert result.disc_id == "disc-1"
     assert control.calls == ["disc:disc-1"]
+
+
+def test_read_model_projects_declared_bezel_and_fade_from_complete_adapter() -> None:
+    control = PeripheralControl(FakeSession())
+    model = make_adapter(control).read_model("game-1", visible=True)
+
+    assert model["peripherals"]["bezels"] == [
+        {
+            "id": "aura-default",
+            "label": "AURA Cinema",
+            "assetUrl": "asset://bezels/aura-bezel.svg",
+            "available": True,
+            "selected": True,
+            "reason": "",
+        }
+    ]
+    assert model["peripherals"]["fade"] == {
+        "phase": "idle",
+        "progress": 0.0,
+        "durationMs": 180,
+        "reducedMotion": False,
+    }
