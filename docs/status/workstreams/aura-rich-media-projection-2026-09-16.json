@@ -25,6 +25,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Executar gates integrais e promover o commit isolado; a ingestão remota continua condicionada a credenciais e arte legítima.",
+  "nextAction": "Aguardar CI do PR #188; após o merge, publicar a release governada e repetir a prova física no host.",
   "updatedAt": "2026-09-16"
 }
