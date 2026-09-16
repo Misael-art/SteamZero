@@ -36,7 +36,7 @@ ES-DE, RetroFE ou BigBox. Ver [AURA-SURFACES](AURA-SURFACES.md).
 ## 4. Requisitos funcionais (síntese; catálogo completo em FEATURE-CATALOG.md)
 
 RF-01 Instalação/atualização/reparo/remoção de emuladores e frontends por manifesto, com staging, checksum, verify e rollback.
-RF-02 Biblioteca: scan incremental, organização, conversão (CHD/RVZ/CSO/NSZ), dedupe, quarentena, multi-disco, migração SSD↔microSD.
+RF-02 Biblioteca: scan incremental, organização, conversão (CHD/RVZ/CSO/NSZ), dedupe, quarentena, multi-disco e `MULTIDISC-DESCRIPTOR-RECONCILIATION` (conjunto lógico estável com `.m3u` derivado e reconciliação transacional de conversões), migração SSD↔microSD.
 RF-03 Store central de BIOS/firmware/keys: hashes, compatibilidade por emulador/versão/região, links seguros, nunca em logs.
 RF-04 Saves: store central, backups incrementais com linha do tempo, checkpoint pré-suspensão, cloud sync com fila offline e resolução de conflitos que preserva ambos os lados.
 RF-05 Mídia/metadados: scraping multi-provedor com cache, rate limit, associação por hash, detecção de órfãos.

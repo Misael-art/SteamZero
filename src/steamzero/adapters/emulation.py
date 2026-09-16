@@ -2994,6 +2994,9 @@ class EmulationController:
         elif action.startswith("game.media.search:"):
             game_id = action.split(":", 1)[1]
             game = self._current_game(game_id)
+            platform_id = self._require_declared_platform(
+                str(game.get("platformId") or game.get("platform") or "")
+            )
             title_id = str(game.get("titleId", ""))
             plan = transaction.plan_write_files(
                 {},
@@ -3009,7 +3012,7 @@ class EmulationController:
                     # A busca de um jogo só não declarava plataforma nenhuma, e
                     # por isso caía inteira no default: toda busca interativa
                     # era uma busca de Switch. A plataforma está aqui.
-                    "platform_slug": str(game.get("platformId") or game.get("platform") or ""),
+                    "platform_slug": platform_id,
                     "media_kinds": payload.get("mediaKinds"),
                     "local_media_source": str(game.get("mediaSource", "fallback")),
                     "local_media_url": str(game.get("coverUrl", "")),
@@ -3018,6 +3021,9 @@ class EmulationController:
         elif action.startswith("game.media.import:"):
             game_id = action.split(":", 1)[1]
             game = self._current_game(game_id)
+            platform_id = self._require_declared_platform(
+                str(game.get("platformId") or game.get("platform") or "")
+            )
             src_path = Path(self._required_string(payload, "path"))
             media_kind = custom_media_kind(payload.get("mediaKind", "box2d"))
             title_id = str(game.get("titleId", ""))
@@ -3040,7 +3046,7 @@ class EmulationController:
                     "canonical_name": name,
                     "src_path": str(src_path),
                     "media_kind": media_kind,
-                    "platform_id": str(game.get("platformId") or game.get("platform") or "switch"),
+                    "platform_id": platform_id,
                 },
             )
         elif action.startswith("game.media.select:"):
@@ -3053,6 +3059,9 @@ class EmulationController:
             game_id = parts[1]
             candidate_idx = int(parts[2])
             game = self._current_game(game_id)
+            platform_id = self._require_declared_platform(
+                str(game.get("platformId") or game.get("platform") or "")
+            )
             plan = transaction.plan_write_files(
                 {},
                 root=paths.data_home(),
@@ -3066,6 +3075,7 @@ class EmulationController:
                     "title_id": str(game.get("titleId", "")),
                     "fingerprint": str(game.get("fingerprint", "")),
                     "canonical_name": str(game.get("name", "")),
+                    "platform_id": platform_id,
                 },
             )
         elif action.startswith("game.media.clear:"):
@@ -6754,6 +6764,7 @@ class EmulationController:
         # plataforma errada e consulta o catálogo do Switch para um jogo de
         # Master System, devolvendo candidatos errados com confiança plausível.
         platform_slug = str(params.get("platform_slug") or "")
+        platform_slug = self._require_declared_platform(platform_slug)
         media_kinds = params.get("media_kinds")
         kinds = media_kinds or [
             "grid",
@@ -6976,6 +6987,20 @@ class EmulationController:
 
         all_games, _unidentified = self._load_library_cache()
         games = self._games_for_platform(all_games, platform_id) if platform_id else all_games
+        if not platform_id:
+            # Escopo global é amplo, mas não é licença para processar registros
+            # sem destino. A mídia desconhecida é reportada pela varredura e
+            # fica fora deste job até que a plataforma seja declarada.
+            games = []
+            for game in all_games:
+                candidate_platform = str(game.get("platformId") or game.get("platform") or "")
+                if not candidate_platform:
+                    continue
+                try:
+                    self._require_declared_platform(candidate_platform)
+                except SteamZeroError:
+                    continue
+                games.append(game)
         total = len(games)
         processed = 0
         skipped = 0
@@ -7061,6 +7086,9 @@ class EmulationController:
                                 title_id=title_id,
                                 fingerprint=str(game.get("fingerprint") or ""),
                                 canonical_name=title,
+                                platform_id=str(
+                                    game.get("platformId") or game.get("platform") or ""
+                                ),
                             )
                             if selected is not None
                             else None
@@ -7162,7 +7190,7 @@ class EmulationController:
                 fingerprint=meta["fingerprint"],
                 canonical_name=meta["canonical_name"],
                 media_kind=meta.get("media_kind", "box2d"),
-                platform_id=meta.get("platform_id", "switch"),
+                platform_id=meta.get("platform_id"),
             )
         )
 
@@ -7179,6 +7207,7 @@ class EmulationController:
                 title_id=meta["title_id"],
                 fingerprint=meta["fingerprint"],
                 canonical_name=meta["canonical_name"],
+                platform_id=meta.get("platform_id"),
             )
             if applied is None:
                 raise SteamZeroError(
@@ -8294,10 +8323,19 @@ class EmulationController:
                             },
                         }
                     )
+                platform_id = str(game.get("platformId") or game.get("platform") or "")
+                fallback_artwork = ""
+                if platform_id:
+                    with suppress(SteamZeroError):
+                        fallback_artwork = PlatformRegistry.bundled().get(platform_id).artwork_asset
                 game.update(
                     {
-                        "platformId": "switch",
-                        "fallbackArtworkUrl": "../assets/switch.svg",
+                        # The catalog cache is multi-platform.  Publishing a
+                        # Switch literal here made every non-Switch title look
+                        # like Switch to AURA even though the scanner had
+                        # already declared its real platform.
+                        "platformId": platform_id,
+                        "fallbackArtworkUrl": fallback_artwork,
                         "emulatorId": emulator_id,
                         "steamSelected": selected.get("steamSelected") is True,
                         "steamPublished": game_id in published,
@@ -8686,6 +8724,13 @@ class EmulationController:
             unidentified = int(data.get("unidentified", 0))
             if data.get("schemaVersion") != 1 or not isinstance(games, list):
                 return [], 0
+            platform_registry = PlatformRegistry.bundled()
+            platform_scanner = PlatformRomScanner.from_manifests(
+                [
+                    {"id": manifest.id, "media": dict(manifest.media)}
+                    for manifest in platform_registry.list()
+                ]
+            )
             valid = []
             for game in games:
                 if not isinstance(game, dict):
@@ -8710,33 +8755,50 @@ class EmulationController:
                     candidate_path.parent,
                 )
                 fmt = str(game.get("format", candidate_path.suffix.lstrip(".").casefold()))
-                kind, _parent, _version, _source = SwitchLibraryScanner.classify(
-                    candidate_path,
-                    root=candidate_root,
-                    fmt=fmt,
-                    title_id=str(title_id) if title_id is not None else None,
-                )
+                resolved_platform = str(game.get("platformId") or game.get("platform") or "")
+                if not resolved_platform:
+                    # Um registro sem plataforma é desconhecido, não Switch.
+                    continue
+                try:
+                    platform_registry.get(resolved_platform)
+                except SteamZeroError:
+                    continue
+                if resolved_platform == "switch":
+                    kind, _parent, _version, _source = SwitchLibraryScanner.classify(
+                        candidate_path,
+                        root=candidate_root,
+                        fmt=fmt,
+                        title_id=str(title_id) if title_id is not None else None,
+                    )
+                else:
+                    try:
+                        siblings = {item.name for item in candidate_path.parent.iterdir()}
+                    except OSError:
+                        siblings = {candidate_path.name}
+                    declared, kind, _evidence = platform_scanner.classify(
+                        candidate_path.name,
+                        siblings,
+                        root_platform=resolved_platform,
+                        path=candidate_path,
+                    )
+                    if declared != resolved_platform:
+                        continue
                 if kind != "base" or game.get("contentKind", "base") != "base":
                     continue
                 normalized = dict(game)
                 normalized["contentKind"] = "base"
-                normalized["name"] = SwitchLibraryScanner.clean_display_name(candidate_path)
+                normalized["name"] = (
+                    SwitchLibraryScanner.clean_display_name(candidate_path)
+                    if resolved_platform == "switch"
+                    else str(game.get("name") or candidate_path.stem)
+                )
                 # A varredura grava a plataforma em `platform`; o lançamento e o
                 # inventário liam `platformId`. A chave não batia, então nenhuma
                 # entrada do acervo real declarava plataforma para quem lança —
                 # e o default silencioso rio abaixo transformava todo jogo em
                 # Switch. Normalizar aqui mantém a tradução num lugar só, na
                 # fronteira onde o cache vira dado de domínio.
-                resolved_platform = str(game.get("platformId") or game.get("platform") or "")
-                if resolved_platform:
-                    normalized["platformId"] = resolved_platform
-                else:
-                    # AUSENTE, não vazio. `""` não é um id de plataforma: o
-                    # schema do read model exige `^[a-z][a-z0-9-]*$`, e publicar
-                    # a string vazia reprovava a validação do workspace inteiro.
-                    # Ausência já significa "não sei", e `launch_game` recusa
-                    # com motivo quando não encontra a chave.
-                    normalized.pop("platformId", None)
+                normalized["platformId"] = resolved_platform
                 valid.append(normalized)
             resolved = max(0, unidentified)
             if key is not None:

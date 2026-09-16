@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-PERFORMANCE-VALIDATION",
+  "item": "SZ-AURA-PERFORMANCE-VALIDATION",
+  "branch": "codex/aura-rich-media-global-2026-09-16",
+  "baseRef": "8580817a",
+  "owner": "codex-aura-rich-media-global",
+  "state": "active",
+  "exclusivePaths": [
+    "tools/launcher_perf_probe.py",
+    "tests/unit/test_launcher_perf_probe.py",
+    "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf",
+    "docs/status/items/aura-performance-validation-2026-09-16.json",
+    "docs/status/workstreams/aura-performance-validation-2026-09-16.json"
+  ],
+  "sharedPaths": [
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Repetir a sonda na release com o ciclo visual final e fechar a lacuna de superfície 1280x800 sem substituir medição física por offscreen.",
+  "updatedAt": "2026-09-16"
+}

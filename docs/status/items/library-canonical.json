@@ -27,7 +27,7 @@
     "tests/unit/test_emulation_workspace.py",
     "tests/unit/test_workspace_composition.py"
   ],
-  "scopeDigest": "fd2eae971ba51364067c751f960bd2a1adf8a21ecfc7d025ec7bb6b15f674731",
+  "scopeDigest": "e2fab1f1628c2cf1bd81954fc4a9276a72d1745e5ce50947b2a39f1ee190d6f7",
   "dependsOn": [],
   "knownGaps": [
     "GAP-LIBRARY-PHYSICAL-CATALOG-COVERAGE",

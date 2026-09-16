@@ -129,6 +129,7 @@ class TestTheComposedWorkspaceCarriesHostState:
                 "name": "Chrono",
                 "state": "ready",
                 "statusLabel": "Pronto para jogar",
+                "platform": "switch",
             }
         ]
         full = build_emulation_workspace(

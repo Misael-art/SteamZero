@@ -155,7 +155,28 @@
         "m3u"
       ]
     },
-    "containerPolicy": "native",
+    "containerPolicy": "extract",
+    "multiDisc": {
+      "enabled": true,
+      "descriptor": "m3u",
+      "media": [
+        "adf",
+        "adz"
+      ],
+      "filenamePatterns": [
+        "disc",
+        "disk"
+      ],
+      "requiresContinuousSequence": true,
+      "orderingModel": "ordinal",
+      "adapterPlaylistSupport": "unproven",
+      "archiveMemberPolicy": {
+        "allowedFormats": [
+          "adf"
+        ],
+        "letterLabelsAreOrdinal": false
+      }
+    },
     "auxiliaryContent": "none"
   },
   "controls": {

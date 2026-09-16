@@ -31,7 +31,7 @@ class MediaMasterEntry:
     title_id: str
     fingerprint: str
     canonical_name: str
-    platform_id: str = "switch"
+    platform_id: str = ""
     aliases: tuple[str, ...] = ()
     region: str = ""
     language: str = ""
@@ -87,10 +87,10 @@ class MediaMasterEntry:
             title_id=d.get("titleId", ""),
             fingerprint=d.get("fingerprint", ""),
             canonical_name=d.get("canonicalName", ""),
-            # Registros v1 não carregavam plataforma. Eles só podiam ter sido
-            # escritos sob masters/switch, portanto o fallback preserva o
-            # layout existente em vez de adivinhar uma plataforma nova.
-            platform_id=d.get("platformId", "switch"),
+            # Registros v1 não carregavam plataforma. A ausência fica
+            # explicitamente desconhecida; não inventamos Switch numa API
+            # genérica.
+            platform_id=d.get("platformId", ""),
             aliases=tuple(d.get("aliases", [])),
             region=d.get("region", ""),
             language=d.get("language", ""),

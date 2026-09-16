@@ -119,6 +119,7 @@ def test_workspace_accepts_visible_game_with_unverified_identity() -> None:
                 "state": "unverified",
                 "statusLabel": "NSP · Title ID não identificado",
                 "emulatorId": None,
+                "platform": "switch",
             }
         ]
     )

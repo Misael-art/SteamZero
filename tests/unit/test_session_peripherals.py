@@ -79,6 +79,28 @@ def test_retroarch_session_config_creates_managed_state_root(
     assert state_root.stat().st_mode & 0o777 == 0o700
 
 
+def test_retroarch_complete_peripheral_projection_uses_logical_bezel_asset(
+    tmp_path: Path,
+) -> None:
+    content = tmp_path / "game.sfc"
+    content.write_bytes(b"content")
+    projection = RetroArchSessionPeripheral(content, tmp_path / "states").list_peripherals()
+
+    assert projection["state"] == "ready"
+    assert projection["selectedBezel"] == "aura-default"
+    assert projection["bezels"] == [
+        {
+            "id": "aura-default",
+            "label": "AURA Cinema",
+            "assetUrl": "asset://bezels/aura-bezel.svg",
+            "available": True,
+            "compatible": True,
+            "selected": True,
+        }
+    ]
+    assert projection["fade"] == {"phase": "idle", "progress": 0.0, "durationMs": 180}
+
+
 def test_retroarch_save_state_slot_zero_waits_for_a_real_file(tmp_path: Path) -> None:
     commands: list[str] = []
     content = tmp_path / "game.zip"

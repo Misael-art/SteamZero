@@ -268,6 +268,7 @@ def test_library_health_plan_runs_bounded_job_and_marks_suspect(
                         "state": "ready",
                         "path": str(rom),
                         "size": 2048,
+                        "platform": "switch",
                     }
                 ],
                 "unidentified": 0,
@@ -476,7 +477,7 @@ def test_legacy_game_setting_survives_rescan_and_keys_gate_is_per_emulator(
     )
 
     enriched = controller._enrich_games(  # type: ignore[attr-defined]
-        [{"id": current_id, "fingerprint": fingerprint}],
+        [{"id": current_id, "fingerprint": fingerprint, "platformId": "snes"}],
         [
             {"id": "eden", "installState": "installed"},
             {"id": "citron", "installState": "installed"},
@@ -488,6 +489,7 @@ def test_legacy_game_setting_survives_rescan_and_keys_gate_is_per_emulator(
     assert enriched[0]["emulatorId"] == "eden"
     assert enriched[0]["steamSelected"] is True
     assert enriched[0]["playAction"]["enabled"] is True
+    assert enriched[0]["platformId"] == "snes"
 
 
 def test_game_settings_win_over_global_defaults_and_global_fills_gaps(
@@ -2445,7 +2447,12 @@ def test_media_job_persists_read_model_in_injected_store(monkeypatch, tmp_path: 
     controller._secret_store = SessionSecretStore()  # type: ignore[attr-defined]
     job = controller._jobs.create(  # type: ignore[attr-defined]
         "media.search",
-        params={"game_id": "g1", "title_id": "0100ABCDEF123000", "title": "Owned"},
+        params={
+            "game_id": "g1",
+            "title_id": "0100ABCDEF123000",
+            "title": "Owned",
+            "platform_slug": "switch",
+        },
     )
 
     completed = controller._jobs.run(job.id)  # type: ignore[attr-defined]
@@ -2573,7 +2580,13 @@ def _plant_library_cache(tmp_path: Path, games: list[dict]) -> Path:
     cache = tmp_path / "data" / "steamzero" / "emulation-library-cache-v1.json"
     cache.parent.mkdir(parents=True, exist_ok=True)
     cache.write_text(
-        json.dumps({"schemaVersion": 1, "games": games}, ensure_ascii=False),
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "games": [dict(game, platform=game.get("platform") or "switch") for game in games],
+            },
+            ensure_ascii=False,
+        ),
         encoding="utf-8",
     )
     return cache
@@ -3819,10 +3832,7 @@ class TestPlatformSurvivesTheLibraryCache:
         del entry["platform"]
         self._cache(controller, tmp_path, entry)
         games, _ = controller._load_library_cache()  # type: ignore[attr-defined]
-        # Contrato refinado em 2026-09-02: a chave fica AUSENTE, não vazia.
-        # `""` não é id de plataforma — o schema do read model exige
-        # `^[a-z][a-z0-9-]*$` e a string vazia reprovava o workspace inteiro.
-        assert "platformId" not in games[0], "ausência não pode virar uma plataforma qualquer"
+        assert games == [], "ausência deve ser rejeitada, nunca convertida em Switch"
 
 
 class TestMediaSearchDoesNotGuessThePlatform:
@@ -3953,11 +3963,8 @@ class TestMediaSearchDoesNotGuessThePlatform:
         assert slugs["7ad91c3e5b2048fa61c07d99"] == "master-system", (
             "a plataforma declarada precisa chegar à busca"
         )
-        # Este é o caso que o default antigo corrompia: sem plataforma, ele
-        # respondia "switch" e mandava a busca ao catálogo errado com toda a
-        # aparência de acerto. O vazio devolve a busca ampla.
-        assert slugs["1c0b7f4a9d3e25b8ff610a42"] == "", (
-            "sem plataforma declarada a busca deve ser ampla, não uma busca de Switch"
+        assert "1c0b7f4a9d3e25b8ff610a42" not in slugs, (
+            "sem plataforma declarada o jogo deve ser rejeitado no lote"
         )
 
     def test_the_single_game_search_declares_the_platform(  # type: ignore[no-untyped-def]
@@ -4012,6 +4019,75 @@ class TestMediaSearchDoesNotGuessThePlatform:
         assert pending[0].metadata["platform_slug"] == "master-system", (
             "sem esta declaração a busca interativa procura no catálogo do Switch"
         )
+
+    def test_global_overwrite_applies_candidate_in_game_platform_scope(
+        self, monkeypatch, tmp_path: Path
+    ) -> None:
+        controller = _controller(monkeypatch, tmp_path)
+        game = {
+            "id": "ps4-game",
+            "titleId": "ps4-title",
+            "name": "Jogo PS4",
+            "fingerprint": "f" * 64,
+            "platform": "playstation-4",
+            "platformId": "playstation-4",
+        }
+        monkeypatch.setattr(controller, "_load_library_cache", lambda: ([game], 0))
+
+        class _MediaStore:
+            def load(self, _game_id: str) -> None:
+                return None
+
+        applied: dict[str, object] = {}
+
+        class _MediaManager:
+            _store = _MediaStore()
+
+            def search_candidates(self, *_args: object, **_kwargs: object) -> object:
+                return object()
+
+            def select_candidate(self, _game_id: str, _index: int) -> object:
+                return object()
+
+            def apply_selected_candidate(self, **kwargs: object) -> object:
+                applied.update(kwargs)
+                return object()
+
+            def optimize_game(self, _game_id: str) -> None:
+                return None
+
+        monkeypatch.setattr(controller, "_media_manager", lambda _store: _MediaManager())
+        monkeypatch.setattr(
+            controller,
+            "_execute_media_search",
+            lambda *_args, **_kwargs: {"provider_errors": {}, "candidate_count": 1},
+        )
+
+        class _Ctx:
+            def safepoint(self) -> None:
+                return None
+
+            def checkpoint(self, _payload: object) -> None:
+                return None
+
+            def set_progress(self, *_args: object, **_kwargs: object) -> None:
+                return None
+
+        from steamzero.jobs.models import Job
+
+        result = controller._media_global_job_handler(  # type: ignore[attr-defined,arg-type]
+            Job(
+                id="job-overwrite-platform",
+                type="media.global",
+                priority=0,
+                state="running",
+                params={"mode": "overwrite", "overwrite": True},
+            ),
+            _Ctx(),
+        )
+
+        assert result["updated"] == 1, (result, applied)
+        assert applied["platform_id"] == "playstation-4"
 
 
 class TestScanAccountsForEveryFile:

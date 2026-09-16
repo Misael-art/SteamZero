@@ -26,6 +26,11 @@ from typing import Any
 from steamzero.core import fs, ids, paths, safezip, transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
+from steamzero.domain.multidisc import (
+    ArchiveAwareMultiDiscResolver,
+    MultiDiscResolution,
+    resolve_multidisc,
+)
 
 _DISC_RE = re.compile(r"\s*\((?:disc|disk)\s*(\d+)\)", re.IGNORECASE)
 
@@ -206,6 +211,9 @@ class RomCandidate:
     platform: str | None
     content_kind: str
     evidence: str
+    member_path: str | None = None
+    multi_disc_set_id: str | None = None
+    multi_disc_state: str | None = None
 
 
 @dataclass(frozen=True)
@@ -242,10 +250,12 @@ class PlatformRomScanner:
         ext_map: dict[str, list[str]],
         platform_formats: dict[str, dict[str, list[str]]] | None = None,
         container_policies: dict[str, str] | None = None,
+        manifests: dict[str, dict[str, Any]] | None = None,
     ) -> None:
         self._ext_map = ext_map
         self._platform_formats = platform_formats or {}
         self._container_policies = container_policies or {}
+        self._manifests = manifests or {}
 
     @classmethod
     def from_manifests(cls, manifests: list[dict[str, Any]]) -> PlatformRomScanner:
@@ -257,7 +267,12 @@ class PlatformRomScanner:
             for m in manifests
             if (m.get("media", {}) or {}).get("containerPolicy")
         }
-        return cls(build_ext_map(manifests), formats_by_platform, policies)
+        return cls(
+            build_ext_map(manifests),
+            formats_by_platform,
+            policies,
+            {str(manifest["id"]): manifest for manifest in manifests},
+        )
 
     def container_policy_for(self, platform_id: str | None) -> str:
         """Política de container declarada (vazio quando não declarada)."""
@@ -270,6 +285,19 @@ class PlatformRomScanner:
         if platform_id is None:
             return {}
         return self._platform_formats.get(platform_id, {})
+
+    def multi_disc_manifest_for(self, platform_id: str | None) -> dict[str, Any]:
+        """Return the immutable manifest projection used by the set resolver."""
+
+        if platform_id is None:
+            return {}
+        return self._manifests.get(platform_id, {})
+
+    def system_for(self, platform_id: str) -> str:
+        systems = self._manifests.get(platform_id, {}).get("systems")
+        if isinstance(systems, list) and systems and isinstance(systems[0], str):
+            return systems[0]
+        return platform_id
 
     def inventory(self, root: Path, *, root_platform: str | None = None) -> list[RomCandidate]:
         results: list[RomCandidate] = []
@@ -512,6 +540,7 @@ class PlatformDirectory:
     selected_games: tuple[RomCandidate, ...]
     auxiliary_content: tuple[RomCandidate, ...]
     skipped_symlinks: int
+    multi_disc_sets: tuple[MultiDiscResolution, ...] = ()
 
 
 class PlatformDirectoryInventory:
@@ -533,7 +562,9 @@ class PlatformDirectoryInventory:
     @classmethod
     def from_registry(cls, registry: Any) -> PlatformDirectoryInventory:
         manifests = list(registry.list())
-        manifest_dicts = [{"id": m.id, "media": dict(m.media)} for m in manifests]
+        manifest_dicts = [
+            {"id": m.id, "systems": list(m.systems), "media": dict(m.media)} for m in manifests
+        ]
         known_ids = {manifest.id for manifest in manifests}
         aliases: dict[str, str] = {}
         for manifest in manifests:
@@ -575,18 +606,20 @@ class PlatformDirectoryInventory:
                 results.append(PlatformDirectory(child, "unmatched", None, 0, (), (), 0))
                 continue
             candidates, skipped = self._inventory_tree(child, platform_id)
-            selected = tuple(self._unique_games(candidates, child))
+            multi_disc_sets = self._resolve_multidisc(candidates, platform_id)
+            selected = tuple(self._unique_games(candidates, child, multi_disc_sets))
             results.append(
                 PlatformDirectory(
                     child,
                     "matched",
                     platform_id,
-                    self._unique_game_count(candidates, child),
+                    self._unique_game_count(candidates, child, multi_disc_sets),
                     selected,
                     tuple(
                         candidate for candidate in candidates if candidate.content_kind != "base"
                     ),
                     skipped,
+                    tuple(multi_disc_sets),
                 )
             )
         return results
@@ -617,6 +650,23 @@ class PlatformDirectoryInventory:
                         siblings,
                         root_platform=platform_id,
                     )
+                    multi_disc_manifest = self._scanner.multi_disc_manifest_for(platform_id)
+                    multi_disc_policy = multi_disc_manifest.get("media")
+                    multi_disc_config = (
+                        multi_disc_policy.get("multiDisc")
+                        if isinstance(multi_disc_policy, Mapping)
+                        else None
+                    )
+                    if (
+                        path.suffix.casefold() in {".zip", ".7z"}
+                        and isinstance(multi_disc_config, Mapping)
+                        and multi_disc_config.get("enabled") is True
+                    ):
+                        platform, kind, evidence = (
+                            platform_id,
+                            "base",
+                            "archive-indexed",
+                        )
                     relative_parts = path.relative_to(root).parts[:-1]
                     auxiliary_kind = next(
                         filter(
@@ -658,18 +708,90 @@ class PlatformDirectoryInventory:
             return "dlc"
         return None
 
+    def _resolve_multidisc(
+        self, candidates: list[RomCandidate], platform_id: str
+    ) -> tuple[MultiDiscResolution, ...]:
+        manifest = self._scanner.multi_disc_manifest_for(platform_id)
+        if not manifest:
+            return ()
+        files = [
+            candidate.path
+            for candidate in candidates
+            if candidate.content_kind == "base"
+            and candidate.path.suffix.casefold() not in {".zip", ".7z"}
+        ]
+        loose = resolve_multidisc(
+            platform_id, self._scanner.system_for(platform_id), files, manifest
+        )
+        archives = [
+            candidate.path
+            for candidate in candidates
+            if candidate.content_kind == "base"
+            and candidate.path.suffix.casefold() in {".zip", ".7z"}
+        ]
+        archive_sets = ArchiveAwareMultiDiscResolver(manifest).resolve(
+            platform_id, self._scanner.system_for(platform_id), archives
+        )
+        return (*loose, *archive_sets)
+
     @staticmethod
-    def _game_key(candidate: RomCandidate, root: Path) -> str:
+    def _game_key(
+        candidate: RomCandidate,
+        root: Path,
+        multi_disc_sets: Sequence[MultiDiscResolution] = (),
+    ) -> str:
+        for logical_set in multi_disc_sets:
+            if logical_set.state == "needs-platform-contract":
+                continue
+            if any(part.path == candidate.path for part in logical_set.parts):
+                return f"multi:{logical_set.set_id}"
         base_title, disc_number = disc_group(candidate.path.stem)
         if disc_number is not None:
-            # Discos em subpastas diferentes ainda pertencem ao mesmo título.
-            return f"disc:{base_title.casefold()}"
+            normalized_base = re.sub(r"\s+", " ", base_title.casefold()).strip()
+            for logical_set in multi_disc_sets:
+                if logical_set.state == "needs-platform-contract":
+                    continue
+                if logical_set.normalized_title == normalized_base:
+                    return f"multi:{logical_set.set_id}"
         parent = candidate.path.parent.relative_to(root).as_posix().casefold()
-        return f"{parent}:{base_title.casefold()}"
+        # Without a declared set contract, every marked file remains visible
+        # for review; a filename marker alone is never a logical association.
+        title_key = (
+            candidate.path.stem.casefold() if disc_number is not None else base_title.casefold()
+        )
+        return f"{parent}:{title_key}"
 
     @classmethod
-    def _unique_games(cls, candidates: list[RomCandidate], root: Path) -> list[RomCandidate]:
+    def _unique_games(
+        cls,
+        candidates: list[RomCandidate],
+        root: Path,
+        multi_disc_sets: Sequence[MultiDiscResolution] = (),
+    ) -> list[RomCandidate]:
         chosen: dict[str, RomCandidate] = {}
+        archive_paths: set[Path] = set()
+        for logical_set in multi_disc_sets:
+            archive_parts = [part for part in logical_set.parts if part.archive_path is not None]
+            if not archive_parts:
+                continue
+            archive_paths.update(part.archive_path for part in archive_parts if part.archive_path)
+            source = next(
+                (candidate for candidate in candidates if candidate.path == archive_parts[0].path),
+                None,
+            )
+            if source is None:
+                continue
+            first = archive_parts[0]
+            chosen[f"multi:{logical_set.set_id}"] = RomCandidate(
+                path=source.path,
+                format=source.format,
+                platform=source.platform,
+                content_kind="base",
+                evidence=f"archive-multidisc-{logical_set.state}",
+                member_path=first.member_path,
+                multi_disc_set_id=logical_set.set_id,
+                multi_disc_state=logical_set.state,
+            )
         # CUE/M3U descrevem o conjunto; BIN é só um membro e nunca deve ocupar
         # uma posição extra no carrossel. A ordem posterior mantém o resultado
         # determinístico quando não há descritor preferido.
@@ -677,7 +799,9 @@ class PlatformDirectoryInventory:
         for candidate in candidates:
             if candidate.content_kind != "base" or candidate.platform is None:
                 continue
-            key = cls._game_key(candidate, root)
+            if candidate.path in archive_paths:
+                continue
+            key = cls._game_key(candidate, root, multi_disc_sets)
             current = chosen.get(key)
             if current is None or (
                 priority.get(candidate.format, 5),
@@ -687,8 +811,13 @@ class PlatformDirectoryInventory:
         return [chosen[key] for key in sorted(chosen)]
 
     @classmethod
-    def _unique_game_count(cls, candidates: list[RomCandidate], root: Path) -> int:
-        return len(cls._unique_games(candidates, root))
+    def _unique_game_count(
+        cls,
+        candidates: list[RomCandidate],
+        root: Path,
+        multi_disc_sets: Sequence[MultiDiscResolution] = (),
+    ) -> int:
+        return len(cls._unique_games(candidates, root, multi_disc_sets))
 
 
 def disc_group(title: str) -> tuple[str, int | None]:

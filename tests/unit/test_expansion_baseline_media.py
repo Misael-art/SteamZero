@@ -192,12 +192,16 @@ def test_pipeline_collect_candidate_optimize_and_registry(
     assert entry is not None and entry.provenance is not None
 
     invalid = MediaPipeline(root, candidate_fetcher=lambda _url: b"invalid")
-    assert invalid.collect_from_candidate(_candidate(), "bad", "tid", "fp", "Bad").failed
+    assert invalid.collect_from_candidate(
+        _candidate(), "bad", "tid", "fp", "Bad", platform_id="switch"
+    ).failed
     offline = MediaPipeline(
         root,
         candidate_fetcher=lambda _url: (_ for _ in ()).throw(OSError("offline")),
     )
-    assert offline.collect_from_candidate(_candidate(), "bad", "tid", "fp", "Bad").failed
+    assert offline.collect_from_candidate(
+        _candidate(), "bad", "tid", "fp", "Bad", platform_id="switch"
+    ).failed
 
     optimized = pipeline.optimize("g", profile="steam-icon")
     assert optimized.success
@@ -216,7 +220,7 @@ def test_platform_layout_migration_moves_registered_master_and_rolls_back(tmp_pa
     source = tmp_path / "source.png"
     source.write_bytes(PNG)
     pipeline = MediaPipeline(root)
-    pipeline.collect(source, "g", "tid", "fp", "Game")
+    pipeline.collect(source, "g", "tid", "fp", "Game", platform_id="switch")
     legacy = next((root / "masters" / "switch").rglob("*.png"))
     orphan = root / "masters" / "switch" / "box2d" / "orphan.png"
     orphan.write_bytes(PNG)
@@ -243,7 +247,7 @@ def test_pipeline_rejects_unsafe_or_failed_optimizer_outputs(tmp_path: Path) -> 
     source = tmp_path / "source.png"
     source.write_bytes(PNG)
     pipeline = MediaPipeline(root, optimizer_tool=lambda _s, _d, _p: False)
-    pipeline.collect(source, "g", "tid", "fp", "Game")
+    pipeline.collect(source, "g", "tid", "fp", "Game", platform_id="switch")
     assert pipeline.optimize("g", "steam-portrait").failed == ["steam-portrait"]
 
     def broken(_src: Path, _dst: Path, _profile: str) -> bool:
@@ -260,6 +264,7 @@ def test_pipeline_rejects_unsafe_or_failed_optimizer_outputs(tmp_path: Path) -> 
             title_id="tid",
             fingerprint="fp",
             canonical_name="Unsafe",
+            platform_id="switch",
             confirmed=True,
             masters={"box2d": "../escape.png"},
         )
@@ -277,7 +282,7 @@ def test_pipeline_views_plans_audit_and_helpers(
         root,
         optimizer_tool=lambda src, dst, _profile: dst.write_bytes(src.read_bytes()) > 0,
     )
-    pipeline.collect(source, "g", "tid", "fp", "Game")
+    pipeline.collect(source, "g", "tid", "fp", "Game", platform_id="switch")
     pipeline.optimize("g", "steam-portrait")
     grid = tmp_path / "grid"
 
@@ -340,6 +345,7 @@ def test_collect_from_candidate_accepts_fanart_and_video_containers(tmp_path: Pa
         "tid",
         "fp",
         "Game",
+        platform_id="switch",
     )
     video = pipeline.collect_from_candidate(
         MediaCandidate("video", "video", "fixture", 1.0, license="CC0"),
@@ -347,6 +353,7 @@ def test_collect_from_candidate_accepts_fanart_and_video_containers(tmp_path: Pa
         "tid",
         "fp",
         "Game",
+        platform_id="switch",
     )
 
     assert fanart.success and fanart.collected["fanart"].suffix == ".jpg"
@@ -390,12 +397,12 @@ def test_rich_candidate_does_not_replace_cover_slot(tmp_path: Path) -> None:
     )
     manager = GameMediaManager(store, pipeline)
 
-    result = manager.apply_selected_candidate(game_id, "tid", "fp", "Game")
+    result = manager.apply_selected_candidate(game_id, "tid", "fp", "Game", platform_id="ps4")
 
     assert result is not None
     assert result.media_path == str(fallback)
     assert result.media_kind == "icon"
-    assert (tmp_path / "media" / "masters" / "switch" / "fanart").is_dir()
+    assert (tmp_path / "media" / "masters" / "ps4" / "fanart").is_dir()
 
 
 def test_download_candidate_enforces_https_and_size(
@@ -444,30 +451,37 @@ def test_media_manager_candidates_mutations_and_wrappers(
             _RemoteProvider(RuntimeError()),
         ],
     )
-    state = manager.search_candidates("g", "tid", "Game", hashes={"sha1": "x"})
+    state = manager.search_candidates(
+        "g", "tid", "Game", hashes={"sha1": "x"}, platform_id="switch"
+    )
     assert state.candidate_count == 1
     assert state.errors
     assert manager.select_candidate("g", -1) is None
     assert manager.select_candidate("g", 0) is not None
-    applied = manager.apply_selected_candidate("g", "tid", "fp", "Game")
+    applied = manager.apply_selected_candidate("g", "tid", "fp", "Game", platform_id="switch")
     assert applied is not None and applied.media_source == "scraper"
 
     pipeline.candidate_result = CollectionResult("g", failed=["fixture"])
-    assert manager.apply_selected_candidate("g", "tid", "fp", "Game") is None
+    assert manager.apply_selected_candidate("g", "tid", "fp", "Game", platform_id="switch") is None
     store.data["g"].selected_candidate_idx = -1
-    assert manager.apply_selected_candidate("g", "tid", "fp", "Game") is None
+    assert manager.apply_selected_candidate("g", "tid", "fp", "Game", platform_id="switch") is None
 
-    assert manager.import_custom_media("g", tmp_path / "missing", "tid", "fp", "Game") is None
+    assert (
+        manager.import_custom_media(
+            "g", tmp_path / "missing", "tid", "fp", "Game", platform_id="switch"
+        )
+        is None
+    )
     custom = tmp_path / "custom.png"
     custom.write_bytes(PNG)
-    imported = manager.import_custom_media("g", custom, "tid", "fp", "Game")
+    imported = manager.import_custom_media("g", custom, "tid", "fp", "Game", platform_id="switch")
     assert imported is not None and imported.media_source == "custom"
     fanart = tmp_path / "fanart.jpg"
     fanart.write_bytes(PNG)
     previous_cover = imported.media_path
     pipeline.collect_result = CollectionResult("g", {"fanart": fanart})
     imported_fanart = manager.import_custom_media(
-        "g", fanart, "tid", "fp", "Game", media_kind="fanart"
+        "g", fanart, "tid", "fp", "Game", media_kind="fanart", platform_id="switch"
     )
     assert imported_fanart is not None
     assert imported_fanart.media_path == previous_cover
@@ -475,7 +489,9 @@ def test_media_manager_candidates_mutations_and_wrappers(
     assert pipeline.collect_kwargs["kind"] == "fanart"
     assert pipeline.collect_kwargs["platform_id"] == "switch"
     with pytest.raises(SteamZeroError, match="papel de mídia não permitido"):
-        manager.import_custom_media("g", fanart, "tid", "fp", "Game", media_kind="shader")
+        manager.import_custom_media(
+            "g", fanart, "tid", "fp", "Game", media_kind="shader", platform_id="switch"
+        )
     assert manager.clear_media("missing") is None
     assert manager.restore_previous("missing") is None
     store.data["g"].previous_media_path = None

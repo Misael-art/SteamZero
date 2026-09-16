@@ -33,7 +33,7 @@
     "pyproject.toml",
     "docs/09-operations/HANDOFF-2026-08-27.md"
   ],
-  "scopeDigest": "8431dc7a3862a28efdf7c04deb6bf687d6bd5e184168536e21ec2d7b964bc5ec",
+  "scopeDigest": "8e7280d0a67be89b6421eab5d9ab994e85355f1490348c6e4a55d0e9d3d90654",
   "dependsOn": [],
   "knownGaps": [
     "DEBT-CI-VISUAL-IMAGE-SEM-SVG"

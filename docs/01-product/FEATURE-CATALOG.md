@@ -27,7 +27,7 @@ Colunas: origem conceitual (de qual projeto vem a melhor referência), fase do r
 | F-LB-01 | Scan incremental read-only com hash e classificação | PhaseZero `library scan` (`linux/emulation/library/scan.py`) | 3 |
 | F-LB-02 | Plan/preview/apply/verify/rollback de organização | PhaseZero `library/{plan,apply}.py` (confirmToken) | 3 |
 | F-LB-03 | Conversões CHD/RVZ/CSO/NSZ com staging, espaço reservado, timeout, original até commit | PhaseZero `rom-optimize` + EmuDeck cobertura de formatos | 3 |
-| F-LB-04 | Dedupe, multi-disco (M3U), incompletos, órfãos, quarentena | RetroDECK M3U validator; PhaseZero media clean | 3 |
+| F-LB-04 | Dedupe, multi-disco e `MULTIDISC-DESCRIPTOR-RECONCILIATION`: conjunto lógico estável, `.m3u` como projeção transacional, conversão IMG→CHD/ZIP→7Z, incompletos, órfãos, quarentena | RetroDECK M3U validator; PhaseZero media clean; contrato SteamZero | 3 |
 | F-LB-05 | Migração SSD↔microSD por UUID com bloqueio de escrita em remoção | PhaseZero removable + RetroDECK move_folder | 3 |
 | F-LB-06 | Proteções: zip bomb, path traversal, symlink inseguro | PhaseZero `library/safezip.py` | 1 |
 

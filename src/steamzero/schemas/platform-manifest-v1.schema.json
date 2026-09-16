@@ -409,6 +409,69 @@
           ],
           "description": "native = o container (zip/7z) roda direto no emulador; extract = o conteudo precisa ser extraido antes do lancamento."
         },
+        "multiDisc": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "descriptor",
+            "media",
+            "filenamePatterns",
+            "requiresContinuousSequence"
+          ],
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "descriptor": {"const": "m3u"},
+            "media": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {"type": "string", "pattern": "^[a-z0-9]{1,12}$"}
+            },
+            "filenamePatterns": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "enum": ["disc", "disk", "cd", "side", "label", "role"]
+              }
+            },
+            "requiresContinuousSequence": {"type": "boolean"},
+            "allowSideLabels": {"type": "boolean"},
+            "orderingModel": {
+              "enum": ["ordinal", "ordinal-and-role", "role"]
+            },
+            "allowedDiscLabels": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"type": "string", "pattern": "^[a-z0-9]{1,12}$"}
+            },
+            "adapterPlaylistSupport": {
+              "enum": ["proven", "unproven", "unsupported"]
+            },
+            "roleOrder": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "enum": ["system", "program", "data", "user", "opening", "ending", "boot", "install"]
+              }
+            },
+            "archiveMemberPolicy": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["allowedFormats", "letterLabelsAreOrdinal"],
+              "properties": {
+                "allowedFormats": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {"type": "string", "pattern": "^[a-z0-9]{1,12}$"}
+                },
+                "letterLabelsAreOrdinal": {"type": "boolean"}
+              }
+            }
+          }
+        },
         "auxiliaryContent": {
           "type": "string",
           "enum": [

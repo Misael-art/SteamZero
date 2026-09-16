@@ -157,6 +157,7 @@ def test_cli_status_plan_apply_roundtrip(
                         "state": "ready",
                         "path": str(rom),
                         "size": rom.stat().st_size,
+                        "platform": "switch",
                     }
                 ],
             }

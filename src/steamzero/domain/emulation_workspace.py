@@ -266,13 +266,14 @@ def build_emulation_workspace(
     # dentro do Switch, as demais plataformas ficavam vazias e o serial
     # `SLUS_005.55` era validado contra o padrão de title id do Switch — a
     # biblioteca mista real do operador reprovava o contrato do workspace.
-    # Sem plataforma declarada o jogo NÃO some: some seria a falha silenciosa
-    # que a seção 8 proíbe. Ele continua na superfície histórica do Switch, que
-    # é onde já estava, até que todo produtor declare a própria plataforma — a
-    # varredura canônica já declara, e o item SZ-LIBRARY-CANONICAL cobra isso.
+    # Sem plataforma declarada o jogo não pode entrar em uma superfície técnica
+    # arbitrária. Ele fica fora deste snapshot e deve voltar pela varredura como
+    # ``unidentified``/rejeitado, com motivo — nunca como Switch por omissão.
     games_by_platform: dict[str, list[dict[str, Any]]] = {}
     for game in games:
-        platform_id = str(game.get("platform") or switch_manifest.id)
+        platform_id = str(game.get("platformId") or game.get("platform") or "")
+        if not platform_id:
+            continue
         games_by_platform.setdefault(platform_id, []).append(dict(game))
     game_rows = games_by_platform.get(switch_manifest.id, [])
     state, status_label, readiness = compute_readiness(requirements, emulators)

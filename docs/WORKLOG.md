@@ -10820,3 +10820,81 @@ regenerados. A instalação governada continua sem nova tentativa neste ciclo:
 o polkit não autenticou as tentativas anteriores, e a prova física de PS4
 continua impossível sem jogo PS4 legítimo no host. KDE não foi reiniciado nem
 finalizado.
+
+## 2026-09-16 — resolver archive-aware para Amiga e X68000
+
+Na branch durável `codex/aura-rich-media-global-2026-09-16`, implementei
+`ArchiveAwareMultiDiscResolver`. O scan agora inspeciona ZIPs por índice, valida
+Zip Slip, symlink, duplicidade, limites de entrada e razão de expansão, calcula
+hash do archive e do membro sem extrair, e preserva `archive_path`,
+`member_path`, `member_hash`, `archive_hash`, papel, rótulo e identidade do
+disco.
+
+Amiga reconhece `Disk N of N` com ADF dentro do ZIP, mantém a política de
+extração gerenciada, separa variantes incompletas e marca duplicatas
+divergentes como conflito. X68000 reconhece simultaneamente ordinal e
+`Disk A/B`, papéis sem ordinal entram em `needs-review`, e um ZIP pode gerar
+vários jogos lógicos: o archive real de Garou foi particionado em conjuntos
+4/6/9, sem gerar uma playlist única de 19 discos. O contrato PX68K M3U segue
+como `needs-platform-contract`; nenhuma extração, playlist ou mídia do usuário
+foi alterada.
+
+Commits: `4fe2fc6` (implementação e regressões) e `7c42440` (status e visões).
+Testes focados: 125 passed; Ruff, formatação, mypy dos módulos tocados,
+independência, fronteiras, component-lock e matriz passaram. A suíte integral
+foi iniciada em duplicidade por engano e ambas as instâncias ficaram sem
+progresso em testes de integração após aproximadamente 17%; foram encerradas
+sem alterar o host. O mypy integral mantém os dois erros pré-existentes em
+`src/steamzero/adapters/session_control.py`; o `STATUS-CHECK` global mantém os
+itens históricos com digests obsoletos fora desta frente.
+
+Nenhuma instalação, rollback, reinício ou finalização do KDE foi executada.
+
+## 2026-09-16 — validação física de orçamento do Launcher AURA
+
+Executei duas medições reais do Launcher instalado, na release
+`2.0.0rc1-a5f3ed144f3d`, usando a superfície Wayland efetiva de `948x593` e
+backend OpenGL. As duas execuções foram válidas: startup de 1106 ms e 1096 ms,
+frame-time p95 de 16,172 ms e 16,180 ms, e VRAM de 68.816 KiB e 98.956 KiB.
+Ambas ficaram abaixo dos limites de startup de 2 s, p95 de 16,7 ms e VRAM de
+512 MiB. A VRAM foi medida por agrupamento de `drm fdinfo`; a evidência não
+reivindica FPS apresentado pelo compositor nem extrapola o resultado para
+1280x800.
+
+O probe passou a validar amostra mínima, startup, p95 e VRAM, com opção
+`--strict-budget`, e ganhou 13 testes focados. A bateria focada de save-state,
+overlay, periféricos, troca de disco e integração QML permaneceu verde em 32
+testes, mas isso é prova automatizada: a captura física do ciclo save/load,
+troca de disco, bezel e fade continua pendente na release governada.
+
+Auditei 250 arquivos de referência do RetroFE sem copiar nenhum para o projeto
+ou para o host: 0 foram classificáveis como importáveis sem proveniência, 182
+ficaram como referência não verificada e 68 como duplicados/ inválidos. A mídia
+rica só poderá ser promovida após origem/licença e integração do catálogo serem
+confirmadas.
+
+Foi criado o item `SZ-AURA-PERFORMANCE-VALIDATION`, com evidências JSON e
+bloqueios explícitos para a superfície 1280x800, captura visual física e ciclo
+de periféricos. A regeneração de status não introduziu erro novo; o
+`STATUS-CHECK` ainda reporta digests históricos obsoletos em itens de outras
+frentes. Nenhuma instalação, rollback, reinício ou finalização do KDE foi
+executada.
+
+## 2026-09-16 — fechamento dos gates após correção do escopo de plataforma
+
+Reexecutei a CI do PR `#194` e reproduzi localmente as 13 falhas reportadas.
+Uma era a expectativa antiga da migração `m0022_multidisc_reconciliation`, uma
+era o catálogo de status com 19 `scopeDigest` obsoletos, seis fixtures de busca
+não declaravam `platform_slug` apesar do contrato agora exigir plataforma, uma
+fixture de credenciais tinha a mesma omissão e quatro fixtures Switch não
+declaravam `platformId`. Corrigi somente esses contratos de teste e os digests
+normativos; não reintroduzi defaults silenciosos para Switch.
+
+Provas focadas após a correção: migração e catálogo `2 passed`, multiprovider
+`17 passed`, credenciais `1 passed`, preservação da verdade Switch `14 passed`,
+`mypy src` sem erros e `STATUS-CHECK: OK`. O benchmark de 10k permaneceu
+inalterado e não foi mascarado com skip. O commit desta sessão será isolado e
+publicado na branch `codex/aura-rich-media-global-2026-09-16` para o PR
+`#194` reexecutar seus gates.
+
+Nenhuma instalação, rollback, reinício ou finalização do KDE foi executada.

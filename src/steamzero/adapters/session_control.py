@@ -20,7 +20,7 @@ from collections.abc import Callable, Mapping
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from steamzero.core import fs, paths
 from steamzero.core.state import StateStore
@@ -153,6 +153,19 @@ class SessionControlOwner:
         self._peripheral_control.swap_disc(disc_id)
         return self._require_current()
 
+    def list_peripherals(self) -> Mapping[str, Any]:
+        if self._peripheral_control is None:
+            raise RuntimeError("o adapter desta sessão não oferece periféricos")
+        list_peripherals = getattr(self._peripheral_control, "list_peripherals", None)
+        if callable(list_peripherals):
+            return cast(Mapping[str, Any], list_peripherals())
+        # Keep the control socket compatible with adapters deployed before
+        # the complete peripheral projection existed.
+        list_discs = getattr(self._peripheral_control, "list_discs", None)
+        if callable(list_discs):
+            return cast(Mapping[str, Any], list_discs())
+        raise RuntimeError("o adapter desta sessão não oferece periféricos")
+
     def _require_current(self) -> SessionControlRecord:
         current = self.current
         if current is None:
@@ -276,6 +289,7 @@ class SessionControlServer:
             "loadState",
             "listDiscs",
             "swapDisc",
+            "listPeripherals",
         }:
             return {
                 "accepted": False,
@@ -305,6 +319,15 @@ class SessionControlServer:
                     "accepted": True,
                     "state": current.state,
                     "data": self.owner.list_discs(),
+                }
+            elif action == "listPeripherals":
+                current = self.owner.current
+                if current is None:
+                    raise RuntimeError("a sessão não está mais disponível")
+                return {
+                    "accepted": True,
+                    "state": current.state,
+                    "data": self.owner.list_peripherals(),
                 }
             elif action in {"saveState", "loadState"}:
                 slot = request.get("slot")
@@ -416,6 +439,9 @@ class RemoteSessionControl:
 
     def swap_disc(self, disc_id: str) -> SessionControlRecord:
         return self._request("swapDisc", discId=disc_id)
+
+    def list_peripherals(self) -> Mapping[str, Any]:
+        return self._request_data("listPeripherals")
 
 
 def control_path(session_id: str, *, root: Path | None = None) -> Path:

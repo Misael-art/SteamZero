@@ -37,7 +37,7 @@
     "tests/unit/test_session_overlay.py",
     "tests/unit/test_session_overlay_adapter.py"
   ],
-  "scopeDigest": "989d3f5acb2288060db424b87430eb9ed0dd84c7123b257cafd8adfb7aff188f",
+  "scopeDigest": "1a80b8e331bc8ec5a7dd0705ea81db692c1b9d73030f5ddce7d942d6b38dbe77",
   "dependsOn": [
     "SZ-AURA-SAVE-STATE-GALLERY",
     "SZ-AURA-SESSION-OSD",
@@ -104,12 +104,24 @@
       "reference": "docs/09-operations/evidence/2026-09-14-aura-rich-media-installed/PHYSICAL-VALIDATION.json",
       "command": "fullscreen AURA fallback, details, real RetroArch launch, native OSD and return focus on release dd222",
       "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_session_control.py",
+      "command": ".venv/bin/python -m pytest tests/unit/test_session_control.py tests/unit/test_session_overlay_adapter.py tests/unit/test_session_peripherals.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_launcher_app.py",
+      "command": ".venv/bin/python -m pytest tests/unit/test_session_control.py tests/unit/test_session_overlay.py tests/unit/test_session_overlay_adapter.py tests/unit/test_session_peripherals.py tests/unit/test_save_states.py tests/integration/test_launcher_app.py tests/integration/test_media.py -q",
+      "result": "passed"
     }
   ],
-  "nextAction": "Publicar a correção de foco da cena Cinema, reinstalar pelo fluxo governado e capturar OSD semântico AURA na mesma sessão/cartão; depois otimizar o p95.",
+  "nextAction": "Promover b6763cd3 pela linha principal; então reinstalar pelo fluxo governado e repetir a captura física do OSD, bezel/fade e a medição pós-QML. PS4 e multi-disc permanecem bloqueados por conteúdo legítimo ausente.",
   "activeWorkstreams": [
     "WS-2026-09-AURA-CINEMA-COMPLETION"
   ],
-  "updatedAt": "2026-09-14",
+  "updatedAt": "2026-09-16",
   "notes": "Frente de continuação do AURA Launcher/Theme Engine. Não promove AURA UI ou Theme Studio; cobre apenas a cadeia de sessão e a composição fullscreen especificadas no plano."
 }

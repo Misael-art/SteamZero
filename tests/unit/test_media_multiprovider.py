@@ -158,6 +158,7 @@ def _run_search(
             "game_id": "game-1",
             "title_id": "0100ABCDEF123000",
             "title": "Game",
+            "platform_slug": "switch",
             "media_kinds": media_kinds,
             "local_media_source": "emulator-cache",
         },

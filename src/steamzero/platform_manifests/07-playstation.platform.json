@@ -159,6 +159,20 @@
       "chd"
     ],
     "containerPolicy": "extract",
+    "multiDisc": {
+      "enabled": true,
+      "descriptor": "m3u",
+      "media": [
+        "cue",
+        "chd"
+      ],
+      "filenamePatterns": [
+        "disc",
+        "disk",
+        "cd"
+      ],
+      "requiresContinuousSequence": true
+    },
     "auxiliaryContent": "none"
   },
   "controls": {

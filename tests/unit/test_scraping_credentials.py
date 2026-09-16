@@ -402,6 +402,7 @@ class TestMediaSearchJobHandlerErrors:
                 "game_id": "test-game",
                 "title_id": "",
                 "title": "Test Game",
+                "platform_slug": "switch",
                 "media_kinds": ["boxart"],
             },
             priority="interactive",

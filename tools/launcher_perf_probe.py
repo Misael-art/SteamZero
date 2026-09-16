@@ -25,6 +25,11 @@ from typing import Any
 
 from theme_perf_probe import _peak_vram_kb, summarize
 
+STARTUP_BUDGET_MS = 2_000.0
+FRAME_P95_BUDGET_MS = 16.7
+VRAM_BUDGET_KB = 512 * 1024
+MIN_FRAME_SAMPLES = 120
+
 
 class _Collector(HTTPServer):
     payload: dict[str, Any] | None = None
@@ -90,6 +95,66 @@ def _rss_kb(pid: int) -> int | None:
     return None
 
 
+def evaluate_budget(
+    report: dict[str, Any],
+    *,
+    startup_budget_ms: float = STARTUP_BUDGET_MS,
+    frame_p95_budget_ms: float = FRAME_P95_BUDGET_MS,
+    vram_budget_kb: int = VRAM_BUDGET_KB,
+    min_frame_samples: int = MIN_FRAME_SAMPLES,
+) -> dict[str, Any]:
+    """Classify measurement quality and budgets without inventing missing data."""
+
+    startup = report.get("startupMs")
+    frame_time = report.get("frameTime")
+    frames = frame_time.get("frames") if isinstance(frame_time, dict) else None
+    p95 = frame_time.get("p95Ms") if isinstance(frame_time, dict) else None
+    vram = report.get("peakVramKb")
+    checks = {
+        "startup": {
+            "observedMs": startup,
+            "budgetMs": startup_budget_ms,
+            "passed": isinstance(startup, (int, float))
+            and not isinstance(startup, bool)
+            and 0 <= startup <= startup_budget_ms,
+        },
+        "frameTimeP95": {
+            "observedMs": p95,
+            "budgetMs": frame_p95_budget_ms,
+            "passed": isinstance(p95, (int, float))
+            and not isinstance(p95, bool)
+            and 0 <= p95 <= frame_p95_budget_ms,
+        },
+        "vram": {
+            "observedKb": vram,
+            "budgetKb": vram_budget_kb,
+            "passed": (
+                isinstance(vram, int) and not isinstance(vram, bool) and 0 <= vram <= vram_budget_kb
+            ),
+        },
+    }
+    valid = (
+        isinstance(startup, (int, float))
+        and not isinstance(startup, bool)
+        and startup >= 0
+        and isinstance(frames, int)
+        and not isinstance(frames, bool)
+        and frames >= min_frame_samples
+        and isinstance(p95, (int, float))
+        and not isinstance(p95, bool)
+        and p95 >= 0
+        and isinstance(vram, int)
+        and not isinstance(vram, bool)
+        and vram >= 0
+    )
+    return {
+        "valid": valid,
+        "minimumFrameSamples": min_frame_samples,
+        "meetsBudget": valid and all(check["passed"] for check in checks.values()),
+        "checks": checks,
+    }
+
+
 def measure(launcher: Path, *, backend: str, timeout: float) -> dict[str, Any]:
     port = _free_port()
     server = _Collector(("127.0.0.1", port), _Handler)
@@ -142,7 +207,7 @@ def measure(launcher: Path, *, backend: str, timeout: float) -> dict[str, Any]:
         if not samples:
             raise RuntimeError("Launcher publicou zero amostras de frame time")
         summary = summarize(samples).to_dict()
-        return {
+        report = {
             "schemaVersion": 1,
             "launcher": str(launcher),
             "backend": backend,
@@ -160,6 +225,8 @@ def measure(launcher: Path, *, backend: str, timeout: float) -> dict[str, Any]:
                 "apresentados pelo compositor."
             ),
         }
+        report["validation"] = evaluate_budget(report)
+        return report
     finally:
         stop.set()
         if process.poll() is None:
@@ -180,6 +247,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--backend", choices=("opengl", "software"), default="opengl")
     parser.add_argument("--timeout", type=float, default=30.0)
     parser.add_argument("--out", type=Path, default=None)
+    parser.add_argument(
+        "--strict-budget",
+        action="store_true",
+        help="retorna erro quando a amostra é inválida ou excede qualquer orçamento",
+    )
     args = parser.parse_args(argv)
     if os.environ.get("QT_QPA_PLATFORM") == "offscreen":
         raise SystemExit("a sonda do Launcher exige uma sessão Wayland real")
@@ -191,7 +263,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.out is not None:
         args.out.write_text(rendered + "\n", encoding="utf-8")
     print(rendered)
-    return 0
+    return 0 if report["validation"]["meetsBudget"] or not args.strict_budget else 2
 
 
 if __name__ == "__main__":

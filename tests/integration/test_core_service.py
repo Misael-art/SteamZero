@@ -743,6 +743,7 @@ def test_daemon_library_health_roundtrip_uses_bounded_job(
                         "state": "ready",
                         "path": str(rom),
                         "size": rom.stat().st_size,
+                        "platform": "switch",
                     }
                 ],
             }
