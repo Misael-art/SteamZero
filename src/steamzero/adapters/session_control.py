@@ -20,7 +20,7 @@ from collections.abc import Callable, Mapping
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from steamzero.core import fs, paths
 from steamzero.core.state import StateStore
@@ -158,12 +158,12 @@ class SessionControlOwner:
             raise RuntimeError("o adapter desta sessão não oferece periféricos")
         list_peripherals = getattr(self._peripheral_control, "list_peripherals", None)
         if callable(list_peripherals):
-            return list_peripherals()
+            return cast(Mapping[str, Any], list_peripherals())
         # Keep the control socket compatible with adapters deployed before
         # the complete peripheral projection existed.
         list_discs = getattr(self._peripheral_control, "list_discs", None)
         if callable(list_discs):
-            return list_discs()
+            return cast(Mapping[str, Any], list_discs())
         raise RuntimeError("o adapter desta sessão não oferece periféricos")
 
     def _require_current(self) -> SessionControlRecord:
