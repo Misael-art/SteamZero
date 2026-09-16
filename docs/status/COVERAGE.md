@@ -25,6 +25,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AURA-LAUNCHER | 267 | 58 | 41 | hw |  |
 | SZ-AURA-METADATA | 23 | 10 | 10 | unit |  |
 | SZ-AURA-PLATFORM-EXECUTION-PLAN | 5 | 1 | 0 | none |  |
+| SZ-AURA-RICH-MEDIA-PROJECTION | 8 | 3 | 3 | dev |  |
 | SZ-AURA-SAVE-STATE-GALLERY | 15 | 5 | 4 | unit |  |
 | SZ-AURA-SESSION-OSD | 25 | 6 | 4 | hw |  |
 | SZ-AURA-UI | 16 | 5 | 4 | unit |  |
@@ -74,4 +75,4 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-UI-PACKAGED-ICONS | 54 | 4 | 2 | unit |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 
-Arquivos em `src/`: **590**. Sob agregador apenas, sem item de capacidade: **287** (48%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
+Arquivos em `src/`: **590**. Sob agregador apenas, sem item de capacidade: **285** (48%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.

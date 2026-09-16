@@ -178,15 +178,15 @@ class MediaPipeline:
         result = CollectionResult(game_id=game_id)
         kind = canonical_media_kind(candidate.media_kind)
         platform_id = _platform_segment(platform_id)
-        ext = MASTER_EXTENSIONS.get(kind, ".png")
         try:
             data = self._candidate_fetcher(candidate.url)
         except (OSError, SteamZeroError) as e:
             result.failed.append(str(e))
             return result
-        if not _validate_image_magic(data):
+        if not _validate_media_magic(data, kind):
             result.failed.append("invalid-magic")
             return result
+        ext = _master_extension(kind, data)
         sha256 = hashlib.sha256(data).hexdigest()
         master_rel = Path("masters") / platform_id / kind / f"{sha256}{ext}"
         master_path = self._media_root / master_rel
@@ -624,6 +624,23 @@ def _validate_image_magic(data: bytes) -> bool:
         or data.startswith(b"\xff\xd8\xff")
         or (data.startswith(b"RIFF") and data[8:12] == b"WEBP")
     )
+
+
+def _validate_video_magic(data: bytes) -> bool:
+    """Recognize bounded container signatures accepted by the media contract."""
+    return (len(data) >= 8 and data[4:8] == b"ftyp") or data.startswith(b"\x1a\x45\xdf\xa3")
+
+
+def _validate_media_magic(data: bytes, kind: str) -> bool:
+    if kind == "video":
+        return _validate_video_magic(data)
+    return _validate_image_magic(data)
+
+
+def _master_extension(kind: str, data: bytes) -> str:
+    if kind == "video" and data.startswith(b"\x1a\x45\xdf\xa3"):
+        return ".webm"
+    return MASTER_EXTENSIONS.get(kind, ".png")
 
 
 def _valid_image_file(path: Path) -> bool:

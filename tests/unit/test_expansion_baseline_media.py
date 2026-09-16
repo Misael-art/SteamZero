@@ -26,6 +26,7 @@ from steamzero.domain.media_pipeline import (
     _steam_stem,
     _valid_image_file,
     _validate_image_magic,
+    _validate_media_magic,
     canonical_media_kind,
 )
 from steamzero.domain.media_registry import MediaMasterEntry
@@ -320,6 +321,79 @@ def test_pipeline_views_plans_audit_and_helpers(
     )
     assert _publish_link(source, fallback_target)
     assert b"SteamZero-Boot-Managed" in fallback_target.read_bytes()
+
+
+def test_collect_from_candidate_accepts_fanart_and_video_containers(tmp_path: Path) -> None:
+    root = tmp_path / "media"
+    payloads = {
+        "fanart": b"\xff\xd8\xffsynthetic-fanart",
+        "video": b"\x00\x00\x00\x18ftypisomsynthetic-video",
+    }
+    pipeline = MediaPipeline(root, candidate_fetcher=lambda url: payloads[url])
+    game_id = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+
+    fanart = pipeline.collect_from_candidate(
+        MediaCandidate("fanart", "fanart", "fixture", 1.0, license="CC0"),
+        game_id,
+        "tid",
+        "fp",
+        "Game",
+    )
+    video = pipeline.collect_from_candidate(
+        MediaCandidate("video", "video", "fixture", 1.0, license="CC0"),
+        game_id,
+        "tid",
+        "fp",
+        "Game",
+    )
+
+    assert fanart.success and fanart.collected["fanart"].suffix == ".jpg"
+    assert video.success and video.collected["video"].suffix == ".mp4"
+    entry = pipeline.get_registry_entry(game_id)
+    assert entry is not None
+    assert set(entry.masters) == {"fanart", "video"}
+    assert _validate_media_magic(payloads["fanart"], "fanart")
+    assert _validate_media_magic(payloads["video"], "video")
+
+
+def test_rich_candidate_does_not_replace_cover_slot(tmp_path: Path) -> None:
+    store = _Store()
+    fallback = tmp_path / "fallback.png"
+    fallback.write_bytes(PNG)
+    game_id = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+    store.save(
+        GameMediaState(
+            game_id,
+            "tid",
+            "Game",
+            media_source="fallback",
+            media_kind="icon",
+            media_path=str(fallback),
+            candidates=[
+                {
+                    "url": "fanart",
+                    "mediaKind": "fanart",
+                    "provider": "fixture",
+                    "confidence": 1.0,
+                    "license": "CC0",
+                }
+            ],
+            candidate_count=1,
+            selected_candidate_idx=0,
+        )
+    )
+    pipeline = MediaPipeline(
+        tmp_path / "media",
+        candidate_fetcher=lambda _url: b"\xff\xd8\xffsynthetic-fanart",
+    )
+    manager = GameMediaManager(store, pipeline)
+
+    result = manager.apply_selected_candidate(game_id, "tid", "fp", "Game")
+
+    assert result is not None
+    assert result.media_path == str(fallback)
+    assert result.media_kind == "icon"
+    assert (tmp_path / "media" / "masters" / "switch" / "fanart").is_dir()
 
 
 def test_download_candidate_enforces_https_and_size(

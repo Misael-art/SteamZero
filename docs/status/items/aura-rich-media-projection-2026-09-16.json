@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AURA-RICH-MEDIA-PROJECTION",
+  "title": "AURA — projeção determinística de mídia rica",
+  "domain": "ui",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "dev",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/adapters/launcher_media.py",
+    "src/steamzero/domain/media.py",
+    "src/steamzero/domain/media_optimizer.py",
+    "src/steamzero/domain/media_pipeline.py",
+    "src/steamzero/domain/switch_media.py",
+    "tests/integration/test_media.py",
+    "tests/unit/test_expansion_baseline_media.py",
+    "tests/unit/test_launcher_media.py"
+  ],
+  "dependsOn": [
+    "SZ-AURA-CINEMA-COMPLETION",
+    "SZ-THEME-ENGINE"
+  ],
+  "knownGaps": [
+    "GAP-AURA-MEDIA-REMOTE-CREDENTIALS",
+    "GAP-AURA-CINEMA-PERFORMANCE-P95",
+    "GAP-AURA-SAVE-STATE-PHYSICAL",
+    "GAP-AURA-DISC-SWAP-PHYSICAL"
+  ],
+  "acceptanceCriteria": [
+    "O registry canônico publica capa e fanart sem transformar um papel em outro.",
+    "Screenshots numerados chegam em ordem determinística ao detalhe.",
+    "Marquee e vídeo são publicados somente como URLs locais gerenciadas e seguras.",
+    "Caminhos inválidos, symlinks e traversal continuam degradando para fallback."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_launcher_media.py",
+      "command": "run_tests_isolated.py tests/unit/test_launcher_media.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_expansion_baseline_media.py",
+      "command": "run_tests_isolated.py tests/unit/test_expansion_baseline_media.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_media.py",
+      "command": "run_tests_isolated.py tests/integration/test_media.py -q",
+      "result": "passed"
+    }
+  ],
+  "activeWorkstreams": [
+    "WS-2026-09-AURA-RICH-MEDIA-PROJECTION"
+  ],
+  "nextAction": "Executar gates integrais e revisar o escopo antes do commit.",
+  "scopeDigest": "3026310a1cbb0a1d57c6aec4fad61b29d469c385af4e1b320c573f082a5db1f8",
+  "updatedAt": "2026-09-16",
+  "notes": "A projeção agora mantém papéis ricos separados, ordena screenshots numerados e publica somente URLs locais dentro da raiz gerenciada."
+}

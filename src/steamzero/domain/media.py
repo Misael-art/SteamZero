@@ -112,6 +112,10 @@ def _media_extension(path: Path, max_bytes: int) -> str | None:
         return ".jpg"
     if header.startswith(b"RIFF") and header[8:12] == b"WEBP":
         return ".webp"
+    if len(header) >= 8 and header[4:8] == b"ftyp":
+        return ".mp4"
+    if header.startswith(b"\x1a\x45\xdf\xa3"):
+        return ".webm"
     return None
 
 

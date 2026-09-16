@@ -15,6 +15,8 @@ from steamzero.domain.media import MediaAssignment, MediaLibrary
 _PNG = b"\x89PNG\r\n\x1a\n" + b"synthetic-png"
 _JPG = b"\xff\xd8\xff" + b"synthetic-jpeg"
 _WEBP = b"RIFF\x00\x00\x00\x00WEBP" + b"synthetic-webp"
+_MP4 = b"\x00\x00\x00\x18ftypisom" + b"synthetic-mp4"
+_WEBM = b"\x1a\x45\xdf\xa3" + b"synthetic-webm"
 
 
 def _assignment(game_id: str, kind: str = "boxart") -> MediaAssignment:
@@ -143,6 +145,17 @@ def test_media_extension_detects_webp(tmp_path: Path) -> None:
 
     ext = _media_extension(target, max_bytes=2**20)
     assert ext == ".webp"
+
+
+def test_media_extension_detects_video_containers(tmp_path: Path) -> None:
+    from steamzero.domain.media import _media_extension
+
+    mp4 = tmp_path / "clip.payload"
+    webm = tmp_path / "clip-webm.payload"
+    fs.write_atomic(mp4, _MP4)
+    fs.write_atomic(webm, _WEBM)
+    assert _media_extension(mp4, max_bytes=2**20) == ".mp4"
+    assert _media_extension(webm, max_bytes=2**20) == ".webm"
 
 
 @pytest.mark.integration

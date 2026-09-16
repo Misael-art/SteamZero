@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-RICH-MEDIA-PROJECTION",
+  "item": "SZ-AURA-RICH-MEDIA-PROJECTION",
+  "branch": "codex/aura-rich-media-projection-2026-09-16",
+  "baseRef": "7e2ef2eb55056c9ec50bb2b00931bcbdfdaae9a4",
+  "owner": "codex-aura-rich-media-projection",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/adapters/launcher_media.py",
+    "src/steamzero/domain/media.py",
+    "src/steamzero/domain/media_optimizer.py",
+    "src/steamzero/domain/media_pipeline.py",
+    "src/steamzero/domain/switch_media.py",
+    "tests/unit/test_launcher_media.py",
+    "tests/unit/test_expansion_baseline_media.py",
+    "tests/integration/test_media.py",
+    "docs/status/items/aura-rich-media-projection-2026-09-16.json",
+    "docs/status/workstreams/aura-rich-media-projection-2026-09-16.json"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Executar gates integrais e promover o commit isolado; a ingestão remota continua condicionada a credenciais e arte legítima.",
+  "updatedAt": "2026-09-16"
+}
