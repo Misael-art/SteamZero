@@ -473,6 +473,7 @@ def test_media_manager_candidates_mutations_and_wrappers(
     assert imported_fanart.media_path == previous_cover
     assert imported_fanart.media_kind == "box2d"
     assert pipeline.collect_kwargs["kind"] == "fanart"
+    assert pipeline.collect_kwargs["platform_id"] == "switch"
     with pytest.raises(SteamZeroError, match="papel de mídia não permitido"):
         manager.import_custom_media("g", fanart, "tid", "fp", "Game", media_kind="shader")
     assert manager.clear_media("missing") is None

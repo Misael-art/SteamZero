@@ -3040,6 +3040,7 @@ class EmulationController:
                     "canonical_name": name,
                     "src_path": str(src_path),
                     "media_kind": media_kind,
+                    "platform_id": str(game.get("platformId") or game.get("platform") or "switch"),
                 },
             )
         elif action.startswith("game.media.select:"):
@@ -7161,6 +7162,7 @@ class EmulationController:
                 fingerprint=meta["fingerprint"],
                 canonical_name=meta["canonical_name"],
                 media_kind=meta.get("media_kind", "box2d"),
+                platform_id=meta.get("platform_id", "switch"),
             )
         )
 

@@ -275,6 +275,7 @@ class GameMediaManager:
         fingerprint: str,
         canonical_name: str,
         media_kind: str = "box2d",
+        platform_id: str = "switch",
     ) -> GameMediaState | None:
         if not src_path.is_file():
             return None
@@ -286,6 +287,7 @@ class GameMediaManager:
             fingerprint=fingerprint,
             canonical_name=canonical_name,
             kind=kind,
+            platform_id=platform_id,
         )
         if not result.success:
             return None

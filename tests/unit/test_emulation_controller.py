@@ -2418,6 +2418,7 @@ def test_media_import_plan_preserves_rich_media_role(monkeypatch, tmp_path: Path
     )
 
     assert controller._pending[plan["planId"]].metadata["media_kind"] == "fanart"  # type: ignore[attr-defined]
+    assert controller._pending[plan["planId"]].metadata["platform_id"] == "switch"  # type: ignore[attr-defined]
 
 
 def test_media_import_plan_rejects_unknown_rich_media_role(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
