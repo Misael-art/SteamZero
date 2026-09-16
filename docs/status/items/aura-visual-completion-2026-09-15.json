@@ -12,6 +12,7 @@
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-15-aura-visual-completion",
     "docs/09-operations/evidence/2026-09-16-aura-cinema-perf-baseline",
+    "docs/09-operations/evidence/2026-09-16-aura-release-89c-install",
     "src/steamzero/adapters/component_jobs.py",
     "src/steamzero/adapters/lifecycle.py",
     "src/steamzero/adapters/launcher_ui.py",
@@ -27,7 +28,7 @@
     "tests/unit/test_component_jobs.py",
     "tests/unit/test_launcher_ui_backend.py"
   ],
-  "scopeDigest": "ce1fc0eafc5559cefd2e04947e786b976816fc2ac76f07ab775b450797f45d7b",
+  "scopeDigest": "1bdba612f82f9f13bba65bcc28c36d5b5f179a97c15a5c351eb2d8c896ef6d65",
   "dependsOn": [
     "SZ-AURA-CINEMA-COMPLETION",
     "SZ-AURA-SAVE-STATE-GALLERY",
@@ -126,12 +127,18 @@
       "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-perf-baseline/01-baseline.json",
       "command": "tools/theme_perf_probe.py na janela Wayland real da release 2.0.0rc1-3c4b563242a9: startup 185 ms, p95 14,587 ms, RSS 151588 KB e VRAM 47268 KB.",
       "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-release-89c-install/01-install-attempt.json",
+      "command": "release_host.py install da candidata 2.0.0rc1-89c237308fb6 com rollback 2.0.0rc1-3c4b563242a9: aguardou polkit e foi interrompido sem ativação; inspeção confirmou estado limpo.",
+      "result": "partial"
     }
   ],
   "activeWorkstreams": [
     "WS-2026-09-AURA-VISUAL-COMPLETION"
   ],
-  "nextAction": "A release candidata 2.0.0rc1-5ecab7d7c2fd está preparada a partir do main pós-merge do PR #188, mas a instalação governada aguarda autenticação do polkit; depois dela, reexecutar a medição na release candidata e capturar o ciclo AURA com mídia rica, OSD/save-state, troca de disco, bezel e fade. Obter conteúdo PS4 legítimo para capturar jogo real em fullscreen, retorno ao mesmo contexto e foco.",
+  "nextAction": "A release candidata 2.0.0rc1-89c237308fb6 está preparada e verificada a partir do main pós-merge do PR #189, mas a instalação governada aguarda autenticação do polkit; depois dela, reexecutar a medição na release candidata e capturar o ciclo AURA com mídia rica, OSD/save-state, troca de disco, bezel e fade. Obter conteúdo PS4 legítimo para capturar jogo real em fullscreen, retorno ao mesmo contexto e foco.",
   "updatedAt": "2026-09-16",
-  "notes": "A prova visual foi feita na release ativa sem reiniciar o KDE. A ponte de nomes e mídia rica está integrada e o OSD agora possui entrada F1/Menu guardada por sessão canônica, com teste QML real. O apply do shadPS4 falhava no host por duas fronteiras distintas: FUSE/AppImageLauncher no launch direto e JIT bloqueado pelo MemoryDenyWriteExecute do core; a correção entrega o componente em unidade transitória endurecida, usa extract-and-run quando o manifesto prova extração e passa a flag -b para Big Picture, com APPIMAGELAUNCHER_DISABLE. A release ativa 2.0.0rc1-3c4b563242a9 está reparada e verificada; a candidata pós-PR #188 2.0.0rc1-5ecab7d7c2fd foi preparada, mas ainda não foi ativada por falta de autenticação do polkit. O host não possui conteúdo de jogo PS4, logo não há alegação de lançamento real nem captura fabricada. O objetivo não é marcado como pronto porque a prova pós-release e as capturas físicas de jogo, OSD/save-state, troca de disco, bezel e fade ainda faltam."
+  "notes": "A prova visual foi feita na release ativa sem reiniciar o KDE. A ponte de nomes e mídia rica está integrada e o OSD agora possui entrada F1/Menu guardada por sessão canônica, com teste QML real. O apply do shadPS4 falhava no host por duas fronteiras distintas: FUSE/AppImageLauncher no launch direto e JIT bloqueado pelo MemoryDenyWriteExecute do core; a correção entrega o componente em unidade transitória endurecida, usa extract-and-run quando o manifesto prova extração e passa a flag -b para Big Picture, com APPIMAGELAUNCHER_DISABLE. A release ativa 2.0.0rc1-3c4b563242a9 está reparada e verificada; a candidata pós-PR #189 2.0.0rc1-89c237308fb6 foi preparada e verificada, mas a instalação aguardou autenticação do polkit e não foi ativada. O host não possui conteúdo de jogo PS4, logo não há alegação de lançamento real nem captura fabricada. O objetivo não é marcado como pronto porque a prova pós-release e as capturas físicas de jogo, OSD/save-state, troca de disco, bezel e fade ainda faltam."
 }

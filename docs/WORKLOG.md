@@ -10774,3 +10774,24 @@ ou operações pendentes. KDE permaneceu intacto.
 PS4 com jogo real, captura pós-release e a prova física de save-state, troca de
 disco, bezel e fade continuam abertas até a autenticação e a interação física
 do operador estarem disponíveis.
+
+## 2026-09-16 — tentativa de promoção da release pós-PR #189
+
+O PR #189 foi mergeado no `main` como `89c237308fb648c84af22a15b1c4326d534f998a`;
+o CI principal `35061166953` terminou com todos os oito jobs verdes. Preparei e
+verifiquei o bundle governado `2.0.0rc1-89c237308fb6`, com rollback
+`2.0.0rc1-3c4b563242a9`.
+
+Com a autorização desta thread, executei o comando governado com o token
+`INSTALAR-2.0.0rc1-89c237308fb6`. O fluxo permaneceu aguardando autenticação
+do polkit; após aproximadamente um minuto não havia `bigsudo`,
+`install_host.py` ou helper polkit ativo. Interrompi apenas o wrapper; a
+inspeção read-only confirmou a release antiga ativa, serviço/socket ativos e
+zero staging, backups, journals, operações pendentes ou jobs stale. KDE não foi
+reiniciado. A tentativa está registrada em
+`docs/09-operations/evidence/2026-09-16-aura-release-89c-install/` e não é
+prova de instalação.
+
+O item AURA foi atualizado para apontar a candidata correta. Permanecem
+pendentes a autenticação, a medição pós-release e as capturas físicas de
+save-state, troca de disco, bezel/fade e jogo PS4 real.
