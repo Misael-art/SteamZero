@@ -72,7 +72,9 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: gallery.highContrast ? "#000000" : "#071019f2"
+        // A galeria é uma superfície modal exclusiva. Deixá-la translúcida
+        // sobre o OSD base duplica títulos, ações e rodapés durante um save.
+        color: gallery.highContrast ? "#000000" : "#071019"
     }
 
     Rectangle {
