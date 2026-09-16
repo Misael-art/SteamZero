@@ -37,7 +37,7 @@
     "tests/unit/test_session_overlay.py",
     "tests/unit/test_session_overlay_adapter.py"
   ],
-  "scopeDigest": "3ba2cc48a0b62e0f0e43f40327100f02a5679f7fb3d7f4db7d1ad9b930002d11",
+  "scopeDigest": "7b03650b3b99e4ebcd5c8453375d2daebe54c247e9c9f9ba600abf404da49305",
   "dependsOn": [
     "SZ-AURA-SAVE-STATE-GALLERY",
     "SZ-AURA-SESSION-OSD",
@@ -152,12 +152,36 @@
       "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/06-save-state-gallery.png",
       "command": "release 2.0.0rc1-d1cbb03a3b66, saveState/loadState aceitos; galeria exibiu fallback SEM CAPTURA",
       "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/SESSION-CYCLE-MAP.json",
+      "command": "release 2.0.0rc1-d70a80f83aae; mapeamento físico bridge -> sessão -> OSD -> save-state -> retorno",
+      "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/13-session-overlay-post-install.png",
+      "command": "release 2.0.0rc1-d70a80f83aae, OSD físico sobre jogo real Switch/Eden",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/19-save-state-gallery-post-install.png",
+      "command": "release 2.0.0rc1-d70a80f83aae, galeria física com slot nativo e fallback SEM CAPTURA em NES/RetroArch",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/23-return-focus-defect-post-install.png",
+      "command": "release 2.0.0rc1-d70a80f83aae, retorno fecha modal mas expõe foco visual stale em uma rota de busca",
+      "result": "partial"
     }
   ],
-  "nextAction": "Instalar a release que contém 82799f5 e repetir o ciclo físico para provar o retorno sem modal órfão. Troca de disco e bezel/fade visual ainda exigem jogo/adapter legítimo; PS4 e multi-disc permanecem bloqueados por conteúdo legítimo ou contrato de adapter.",
+  "nextAction": "Promover ecf26d1 para uma nova release governada e repetir a captura de retorno para provar o foco restaurado. Troca de disco e bezel/fade visual ainda exigem jogo/adapter legítimo; PS4 e multi-disc permanecem bloqueados por conteúdo legítimo ou contrato de adapter.",
   "activeWorkstreams": [
     "WS-2026-09-AURA-CINEMA-COMPLETION"
   ],
   "updatedAt": "2026-09-16",
-  "notes": "Frente de continuação do AURA Launcher/Theme Engine. A medição e a captura visual física final estão registradas, mas não substituem a captura funcional do ciclo nem promovem AURA UI ou Theme Studio; cobrem apenas a cadeia de sessão e a composição fullscreen especificadas no plano."
+  "notes": "Frente de continuação do AURA Launcher/Theme Engine. O ciclo físico pós-instalação foi mapeado e capturado em dois adapters reais; a evidência também registrou honestamente o stale de foco encontrado no retorno por busca. A medição e a captura visual não promovem AURA UI ou Theme Studio; cobrem apenas a cadeia de sessão e a composição fullscreen especificadas no plano."
 }

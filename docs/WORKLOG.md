@@ -10975,3 +10975,29 @@ outras frentes não foram tocados. O KDE não foi reiniciado nem finalizado.
 retirada dos bloqueios do item de desempenho, mas OSD/save-state, troca de
 disco, bezel/fade durante jogo real e provas PS4/multidisco continuam abertos;
 esta captura não os promove por inferência.
+
+## 2026-09-16 — mapeamento e captura física do ciclo AURA instalado
+
+Na release instalada `2.0.0rc1-d70a80f83aae`, sem reiniciar ou finalizar o KDE,
+capturei a janela Wayland real em fullscreen e registrei o encadeamento
+catálogo → detalhes → lançamento → sessão → OSD → pausa → retorno. O Switch/Eden
+foi lançado de fato e produziu as capturas de catálogo com arte, detalhes, jogo,
+OSD, pausa e retorno (`10`–`15`). O NES/RetroArch/Mesen também foi lançado de
+fato; a ponte retornou `accepted=true` para pausa, o read model publicou galeria
+de save-state com slot nativo e fallback `SEM CAPTURA`, e a captura física está
+em `18`–`22`.
+
+O mapa completo, IDs de sessão, superfícies e resultados está em
+`docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/SESSION-CYCLE-MAP.json`.
+A captura `23-return-focus-defect-post-install.png` encontrou um defeito real na
+última costura: o modal é removido, mas uma volta pelo caminho de busca exibe
+`Atualizando seleção…`. A correção `ecf26d1` adiciona `restoreHomeFocus()` no
+LauncherShell, chama-o no fechamento terminal e ganhou regressão QML focada.
+
+O `STATUS-CHECK` foi regenerado e passou. A suíte integral isolada foi iniciada,
+mas os gates estáticos reproduziram apenas achados pré-existentes fora do diff:
+Ruff em `game_stream.py`/`scene_layout.py`, mypy em `gi`/`numpy` e formato na
+fixture `tests/fixtures/roms/mega-drive/test-rom.md`. Troca de disco não foi
+alegada porque os adapters exercitados não a declaram; bezel/fade foram vistos
+no read model, mas não isolados visualmente; PS4 e multi-disc seguem sem prova
+física legítima.
