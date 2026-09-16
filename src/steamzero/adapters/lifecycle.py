@@ -1526,9 +1526,32 @@ class ComponentLifecycle:
         fonte como ``native`` porque o arquivo fixado é um ZIP, cujo membro
         ``payloadPath`` é o AppImage executável.
         """
+        arguments = ComponentLifecycle._declared_launch_arguments(manifest)
         if manifest.verify_smoke_mode == "appimage-extract":
-            return ["--appimage-extract-and-run"]
-        return []
+            return ["--appimage-extract-and-run", *arguments]
+        return arguments
+
+    @staticmethod
+    def _declared_launch_arguments(manifest: AdapterManifest) -> list[str]:
+        """Lê argumentos de launch do manifesto sem abrir uma superfície de shell."""
+        raw = manifest.raw.get("launch")
+        if not isinstance(raw, dict):
+            return []
+        arguments = raw.get("arguments")
+        if arguments is None:
+            return []
+        if not isinstance(arguments, list) or not arguments:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail=f"argumentos de launch inválidos em {manifest.id}"
+            )
+        validated: list[str] = []
+        for item in arguments:
+            if not isinstance(item, str) or not item or "\x00" in item or len(item) > 256:
+                raise SteamZeroError(
+                    "E-API-SCHEMA", detail=f"argumento de launch inválido em {manifest.id}"
+                )
+            validated.append(item)
+        return validated
 
     @staticmethod
     def _open_config_arguments(manifest: AdapterManifest) -> list[str] | None:
