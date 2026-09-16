@@ -152,6 +152,60 @@ def test_reconciliation_keeps_identity_when_img_becomes_chd(tmp_path: Path) -> N
     assert disc.conversion_history[0]["fromHash"] == "old-hash"
 
 
+def test_reconciliation_keeps_member_identity_when_container_changes(tmp_path: Path) -> None:
+    old_archive = tmp_path / "Game.zip"
+    new_archive = tmp_path / "Game.7z"
+    existing = MultiDiscSet(
+        set_id="x68000:x68000:game",
+        platform_id="x68000",
+        system_id="x68000",
+        normalized_title="game",
+        discs=(
+            DiscRecord(
+                "x68000:x68000:game",
+                1,
+                1,
+                "dim",
+                old_archive,
+                "member-hash",
+                ("dim",),
+                "active",
+                member_path="Game/Disk A.dim",
+                member_hash="member-hash",
+                archive_hash="zip-hash",
+            ),
+        ),
+    )
+    resolution = MultiDiscResolution(
+        state="needs-platform-contract",
+        platform_id="x68000",
+        system_id="x68000",
+        normalized_title="game",
+        display_title="Game",
+        group_key="x68000:x68000:game",
+        parts=(
+            MultiDiscPart(
+                new_archive,
+                1,
+                1,
+                "dim",
+                "member-hash",
+                archive_path=new_archive,
+                member_path="Game/Disk A.dim",
+                member_hash="member-hash",
+                archive_hash="7z-hash",
+            ),
+        ),
+    )
+
+    disc = reconcile_multidisc_set(resolution, existing).discs[0]
+
+    assert disc.identity == "x68000:x68000:game:disc-1"
+    assert disc.state == "active"
+    assert disc.content_hash == "member-hash"
+    assert disc.conversion_history == ()
+
+
 def test_archive_conversion_requires_extraction_when_adapter_declares_extract(
     tmp_path: Path,
 ) -> None:

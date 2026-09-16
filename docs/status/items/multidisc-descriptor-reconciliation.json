@@ -98,13 +98,25 @@
       "reference": "src/steamzero/domain/multidisc.py",
       "command": "ArchiveAwareMultiDiscResolver nos archives reais de /home/misael/emulation/roms/amiga600, amiga1200 e x68000",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_multidisc_archive.py",
+      "command": "python3 -m pytest tests/unit/test_multidisc.py tests/unit/test_multidisc_archive.py tests/unit/test_multidisc_artifacts.py -q (22 passed)",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "src/steamzero/domain/multidisc.py",
+      "command": "Auditoria somente leitura dos archives reais: Amiga 7/11 discos e Garou X68000 4/6/9",
+      "result": "passed"
     }
   ],
   "activeWorkstreams": [
     "WS-2026-09-MULTIDISC-DESCRIPTOR-RECONCILIATION"
   ],
-  "scopeDigest": "7ba960a87316077b00968cf2efba5e9ba6ead7cbbcd8ee1036e7f45ae51764f7",
+  "scopeDigest": "17f88ef460d3d847c249c986a252d3d11ba514fe2c6ecbce562dcbc00f6e4ec5",
   "nextAction": "Implementar o contrato de extração/conversão e comprovar PUAE/PX68K; só então executar plan/apply/verify transacional, promover a release e fazer a prova física com jogo multidisco legítimo.",
   "updatedAt": "2026-09-16",
-  "notes": "A capacidade foi criada como requisito central. A camada ArchiveAwareMultiDiscResolver indexa ZIP com hashes de archive/membro, rejeita conteúdo inseguro e decompõe archives X68000 multi-jogo. Amiga usa extração gerenciada; X68000 permanece bloqueado por contrato PX68K M3U não comprovado. Nenhuma playlist, extração ou mídia do usuário foi alterada nesta etapa."
+  "notes": "A capacidade foi criada como requisito central. A camada ArchiveAwareMultiDiscResolver indexa ZIP com hashes de archive/membro, rejeita conteúdo inseguro e decompõe archives X68000 multi-jogo. A identidade do disco agora usa o hash do membro, duplicatas idênticas são canonizadas, variantes incompatíveis são conflito e Disk N↔Disk A/B é validado. Amiga usa extração gerenciada; X68000 permanece bloqueado por contrato PX68K M3U não comprovado. Nenhuma playlist, extração ou mídia do usuário foi alterada nesta etapa."
 }
