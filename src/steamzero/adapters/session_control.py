@@ -156,7 +156,15 @@ class SessionControlOwner:
     def list_peripherals(self) -> Mapping[str, Any]:
         if self._peripheral_control is None:
             raise RuntimeError("o adapter desta sessão não oferece periféricos")
-        return self._peripheral_control.list_peripherals()
+        list_peripherals = getattr(self._peripheral_control, "list_peripherals", None)
+        if callable(list_peripherals):
+            return list_peripherals()
+        # Keep the control socket compatible with adapters deployed before
+        # the complete peripheral projection existed.
+        list_discs = getattr(self._peripheral_control, "list_discs", None)
+        if callable(list_discs):
+            return list_discs()
+        raise RuntimeError("o adapter desta sessão não oferece periféricos")
 
     def _require_current(self) -> SessionControlRecord:
         current = self.current
