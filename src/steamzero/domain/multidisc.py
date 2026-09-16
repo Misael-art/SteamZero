@@ -264,7 +264,10 @@ def resolve_multidisc(
     policy = MultiDiscPolicy.from_manifest(manifest)
     groups: dict[str, list[tuple[Path, DiscMarker, str]]] = defaultdict(list)
     for path in files:
-        if path.suffix.casefold().lstrip(".") in {"m3u", "cue"}:
+        if path.suffix.casefold().lstrip(".") == "m3u":
+            continue
+        if path.suffix.casefold() == ".bin" and path.with_suffix(".cue").is_file():
+            # BIN is a companion of the CUE descriptor, not another disc.
             continue
         parsed = parse_disc_marker(path.stem, policy)
         if parsed is None:

@@ -409,6 +409,39 @@ class TestPlatformRomScanner:
 
 
 class TestPlatformDirectoryInventory:
+    def test_declared_multidisc_contract_exposes_one_logical_set(self, tmp_path: Path) -> None:
+        psx = tmp_path / "PSX"
+        psx.mkdir()
+        for number in (1, 2):
+            (psx / f"Chrono Cross (Disc {number}).cue").write_bytes(b"cue")
+            (psx / f"Chrono Cross (Disc {number}).bin").write_bytes(b"bin")
+
+        row = PlatformDirectoryInventory.from_registry(PlatformRegistry.bundled()).inventory(
+            tmp_path
+        )[0]
+
+        assert row.game_count == 1
+        assert len(row.selected_games) == 1
+        assert len(row.multi_disc_sets) == 1
+        assert row.multi_disc_sets[0].state == "ready"
+        assert [part.number for part in row.multi_disc_sets[0].parts] == [1, 2]
+
+    def test_filename_marker_without_platform_contract_stays_visible_for_review(
+        self, tmp_path: Path
+    ) -> None:
+        snes = tmp_path / "SNES"
+        snes.mkdir()
+        (snes / "Game (Disc 1).sfc").write_bytes(b"one")
+        (snes / "Game (Disc 2).sfc").write_bytes(b"two")
+
+        row = PlatformDirectoryInventory.from_registry(PlatformRegistry.bundled()).inventory(
+            tmp_path
+        )[0]
+
+        assert len(row.multi_disc_sets) == 1
+        assert row.multi_disc_sets[0].state == "needs-platform-contract"
+        assert row.game_count == 2
+
     def test_keeps_manifest_declared_auxiliary_content(self, tmp_path: Path) -> None:
         wiiu = tmp_path / "Wii U"
         (wiiu / "updates").mkdir(parents=True)

@@ -88,6 +88,30 @@ def test_generated_playlist_is_stale_when_a_disc_changes(tmp_path: Path) -> None
     assert descriptor_projection(changed).state == "stale"
 
 
+def test_descriptor_refuses_format_not_accepted_by_adapter(tmp_path: Path) -> None:
+    logical_set = _set(tmp_path)
+    changed = MultiDiscSet(
+        **{
+            **logical_set.__dict__,
+            "discs": (
+                *logical_set.discs[:1],
+                DiscRecord(
+                    "playstation:psx:game",
+                    2,
+                    2,
+                    "img",
+                    logical_set.discs[1].path,
+                    "h2",
+                    ("chd",),
+                    "converted",
+                ),
+            ),
+        }
+    )
+    with pytest.raises(SteamZeroError, match="formato não aceito"):
+        render_descriptor(changed)
+
+
 def test_state_store_persists_set_disc_identity_and_history(tmp_path: Path) -> None:
     db = tmp_path / "state.db"
     with StateStore(db) as store:
