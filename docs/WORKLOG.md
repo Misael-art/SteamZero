@@ -10849,3 +10849,33 @@ sem alterar o host. O mypy integral mantém os dois erros pré-existentes em
 itens históricos com digests obsoletos fora desta frente.
 
 Nenhuma instalação, rollback, reinício ou finalização do KDE foi executada.
+
+## 2026-09-16 — validação física de orçamento do Launcher AURA
+
+Executei duas medições reais do Launcher instalado, na release
+`2.0.0rc1-a5f3ed144f3d`, usando a superfície Wayland efetiva de `948x593` e
+backend OpenGL. As duas execuções foram válidas: startup de 1106 ms e 1096 ms,
+frame-time p95 de 16,172 ms e 16,180 ms, e VRAM de 68.816 KiB e 98.956 KiB.
+Ambas ficaram abaixo dos limites de startup de 2 s, p95 de 16,7 ms e VRAM de
+512 MiB. A VRAM foi medida por agrupamento de `drm fdinfo`; a evidência não
+reivindica FPS apresentado pelo compositor nem extrapola o resultado para
+1280x800.
+
+O probe passou a validar amostra mínima, startup, p95 e VRAM, com opção
+`--strict-budget`, e ganhou 13 testes focados. A bateria focada de save-state,
+overlay, periféricos, troca de disco e integração QML permaneceu verde em 32
+testes, mas isso é prova automatizada: a captura física do ciclo save/load,
+troca de disco, bezel e fade continua pendente na release governada.
+
+Auditei 250 arquivos de referência do RetroFE sem copiar nenhum para o projeto
+ou para o host: 0 foram classificáveis como importáveis sem proveniência, 182
+ficaram como referência não verificada e 68 como duplicados/ inválidos. A mídia
+rica só poderá ser promovida após origem/licença e integração do catálogo serem
+confirmadas.
+
+Foi criado o item `SZ-AURA-PERFORMANCE-VALIDATION`, com evidências JSON e
+bloqueios explícitos para a superfície 1280x800, captura visual física e ciclo
+de periféricos. A regeneração de status não introduziu erro novo; o
+`STATUS-CHECK` ainda reporta digests históricos obsoletos em itens de outras
+frentes. Nenhuma instalação, rollback, reinício ou finalização do KDE foi
+executada.

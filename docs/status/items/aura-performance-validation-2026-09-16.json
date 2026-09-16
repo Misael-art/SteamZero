@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AURA-PERFORMANCE-VALIDATION",
+  "title": "AURA Launcher — medição física válida de desempenho",
+  "domain": "ui",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "hw",
+  "operation": "degraded",
+  "distribution": "installed",
+  "scopePaths": [
+    "tools/launcher_perf_probe.py",
+    "tests/unit/test_launcher_perf_probe.py",
+    "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf"
+  ],
+  "scopeDigest": "03befd3150089248255c85d50b84a70183903f9115b5c3b32aa3b5d8b7e1051e",
+  "dependsOn": [
+    "SZ-AURA-LAUNCHER",
+    "SZ-AURA-CINEMA-COMPLETION",
+    "SZ-THEME-ENGINE"
+  ],
+  "knownGaps": [
+    "GAP-AURA-PERF-1280X800-SURFACE",
+    "GAP-AURA-VISUAL-PHYSICAL-CAPTURE",
+    "GAP-AURA-SESSION-PERIPHERALS-PHYSICAL"
+  ],
+  "acceptanceCriteria": [
+    "A sonda usa a janela Wayland real da release instalada e não o harness offscreen.",
+    "Startup, frame time p95 e VRAM são reportados com método, amostras e identidade da release.",
+    "Amostra sem VRAM, startup ou quantidade mínima de frames não pode ser certificada.",
+    "O relatório separa validade da amostra de cumprimento dos orçamentos de 2 s, 16,7 ms e 512 MiB.",
+    "A evidência física registra a superfície efetivamente medida; não infere FPS apresentado pelo compositor."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_launcher_perf_probe.py",
+      "command": "pytest tests/unit/test_launcher_perf_probe.py tests/unit/test_theme_perf_probe.py -q (13 passed)",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/performance-valid-1.json",
+      "command": "launcher_perf_probe.py na janela Wayland real, release 2.0.0rc1-a5f3ed144f3d, OpenGL: startup 1106 ms, 375 frames, p95 16,172 ms, VRAM 68816 KiB",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/performance-valid-2.json",
+      "command": "repetição na mesma release: startup 1096 ms, 375 frames, p95 16,180 ms, VRAM 98956 KiB",
+      "result": "passed"
+    }
+  ],
+  "activeWorkstreams": [
+    "WS-2026-09-AURA-PERFORMANCE-VALIDATION"
+  ],
+  "nextAction": "Repetir a mesma sonda na release que contenha o ciclo visual final e, em seguida, capturar 1280x800 ou registrar formalmente a limitação da superfície real.",
+  "updatedAt": "2026-09-16",
+  "notes": "A medição atual é válida para a janela real 948x593 da release ativa. Ela fecha a metodologia e os três sinais, mas não promove a completude visual: save-state, troca de disco, bezel/fade e captura física do ciclo ainda exigem integração e prova na release correta."
+}
