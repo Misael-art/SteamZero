@@ -10820,3 +10820,32 @@ regenerados. A instalação governada continua sem nova tentativa neste ciclo:
 o polkit não autenticou as tentativas anteriores, e a prova física de PS4
 continua impossível sem jogo PS4 legítimo no host. KDE não foi reiniciado nem
 finalizado.
+
+## 2026-09-16 — resolver archive-aware para Amiga e X68000
+
+Na branch durável `codex/aura-rich-media-global-2026-09-16`, implementei
+`ArchiveAwareMultiDiscResolver`. O scan agora inspeciona ZIPs por índice, valida
+Zip Slip, symlink, duplicidade, limites de entrada e razão de expansão, calcula
+hash do archive e do membro sem extrair, e preserva `archive_path`,
+`member_path`, `member_hash`, `archive_hash`, papel, rótulo e identidade do
+disco.
+
+Amiga reconhece `Disk N of N` com ADF dentro do ZIP, mantém a política de
+extração gerenciada, separa variantes incompletas e marca duplicatas
+divergentes como conflito. X68000 reconhece simultaneamente ordinal e
+`Disk A/B`, papéis sem ordinal entram em `needs-review`, e um ZIP pode gerar
+vários jogos lógicos: o archive real de Garou foi particionado em conjuntos
+4/6/9, sem gerar uma playlist única de 19 discos. O contrato PX68K M3U segue
+como `needs-platform-contract`; nenhuma extração, playlist ou mídia do usuário
+foi alterada.
+
+Commits: `4fe2fc6` (implementação e regressões) e `7c42440` (status e visões).
+Testes focados: 125 passed; Ruff, formatação, mypy dos módulos tocados,
+independência, fronteiras, component-lock e matriz passaram. A suíte integral
+foi iniciada em duplicidade por engano e ambas as instâncias ficaram sem
+progresso em testes de integração após aproximadamente 17%; foram encerradas
+sem alterar o host. O mypy integral mantém os dois erros pré-existentes em
+`src/steamzero/adapters/session_control.py`; o `STATUS-CHECK` global mantém os
+itens históricos com digests obsoletos fora desta frente.
+
+Nenhuma instalação, rollback, reinício ou finalização do KDE foi executada.
