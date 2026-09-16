@@ -14,7 +14,7 @@
     "tests/unit/test_launcher_perf_probe.py",
     "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf"
   ],
-  "scopeDigest": "91bf7bbdcf0fe0b65ca4d8367ff1efe3169bb23fa2bbc108bb495142147bd358",
+  "scopeDigest": "87fbaaebbc64b8cc055874cea2741e120c4593efd5ea3aab9e8fe58f9fb160f4",
   "dependsOn": [
     "SZ-AURA-LAUNCHER",
     "SZ-AURA-CINEMA-COMPLETION",
@@ -22,7 +22,6 @@
   ],
   "knownGaps": [
     "GAP-AURA-PERF-1280X800-SURFACE",
-    "GAP-AURA-VISUAL-PHYSICAL-CAPTURE",
     "GAP-AURA-SESSION-PERIPHERALS-PHYSICAL"
   ],
   "acceptanceCriteria": [
@@ -62,12 +61,18 @@
       "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/performance-final-2.json",
       "command": "repetição na release final: startup 691 ms, 375 frames, p95 16,243 ms, VRAM 38172 KiB",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/02-entrega-funcional.png",
+      "command": "captura da janela Wayland real fullscreen 1280x800 na release 2.0.0rc1-d1cbb03a3b66, com três capas locais publicadas e foco AURA Cinema",
+      "result": "passed"
     }
   ],
   "activeWorkstreams": [
     "WS-2026-09-AURA-PERFORMANCE-VALIDATION"
   ],
-  "nextAction": "A metodologia e os três sinais foram repetidos na release final e passaram. Permanece a captura visual física do ciclo AURA e, se o host oferecer essa geometria, uma amostra adicional em 1280x800; a superfície efetivamente disponível foi 948x593.",
+  "nextAction": "A captura visual física fullscreen foi concluída. Permanece, se o host oferecer essa geometria ao probe, uma amostra adicional de desempenho em 1280x800 e a prova física dos periféricos de sessão.",
   "updatedAt": "2026-09-16",
-  "notes": "A medição final é válida para a janela Wayland real 948x593 da release 2.0.0rc1-d1cbb03a3b66. As duas amostras têm startup, frame time/p95 e VRAM observados e passaram os orçamentos. Isso não promove save-state, troca de disco, bezel/fade ou captura visual do ciclo sem prova funcional correspondente."
+  "notes": "A medição final é válida para a janela Wayland real 948x593 da release 2.0.0rc1-d1cbb03a3b66. As duas amostras têm startup, frame time/p95 e VRAM observados e passaram os orçamentos. A captura visual física 1280x800 está registrada separadamente; isso não promove save-state, troca de disco, bezel/fade ou prova do ciclo de sessão sem evidência funcional correspondente."
 }

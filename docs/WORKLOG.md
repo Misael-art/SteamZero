@@ -10954,3 +10954,24 @@ permanece pendente a captura visual funcional do ciclo rico (mídia, save-state,
 troca de disco, bezel/fade) e a prova com jogo/adapter legítimo de Amiga,
 X68000 e PS4. O host reporta `orphanStaging=0`, sem operações pendentes; há um
 backup órfão histórico preservado para revisão, não removido automaticamente.
+
+## 2026-09-16 — captura visual física fullscreen do AURA Cinema
+
+Com autorização explícita do operador, foquei a janela Wayland real da release
+ativa `2.0.0rc1-d1cbb03a3b66` e capturei o fullscreen em `1280x800`. A evidência
+`01-baseline.png` mostra o fallback legível sem arte; `02-entrega-funcional.png`
+mostra três capas locais publicadas em carousel, capa central ampliada,
+vizinhas com escala/opacidade, foco ciano, marca AURA/CINEMA, sistema, estado
+online, relógio e ações de controle. A inspeção visual confirmou que ambas as
+imagens são da janela AURA, não de BlastEm ou do desktop.
+
+Para obter a composição rica sem alterar o acervo, usei somente um arquivo de
+biblioteca temporário com três registros reais já publicados; ele foi removido
+após a captura. O launcher temporário e o daemon de entrada criados para esta
+sessão foram encerrados; as instâncias de QA e o launcher preexistente de
+outras frentes não foram tocados. O KDE não foi reiniciado nem finalizado.
+
+`make status-render` e `make status-check` passaram. A captura visual foi
+retirada dos bloqueios do item de desempenho, mas OSD/save-state, troca de
+disco, bezel/fade durante jogo real e provas PS4/multidisco continuam abertos;
+esta captura não os promove por inferência.

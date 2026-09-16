@@ -4,6 +4,15 @@ Execução em 2026-09-16 contra a janela Wayland real do host, sem `offscreen`,
 na release ativa `2.0.0rc1-d1cbb03a3b66` (`d1cbb03a3b66930e3df4b46f880716eed0eca40f`).
 O KDE não foi reiniciado nem finalizado.
 
+Captura visual física realizada na mesma release e na janela Wayland real
+fullscreen (1280x800): `01-baseline.png` registra o fallback legível sem arte;
+`02-entrega-funcional.png` registra o ciclo visual rico com capa central
+ampliada, vizinhas com escala/opacidade, foco ciano, marca AURA/CINEMA,
+sistema, estado online, relógio e ações de controle. O acervo temporário de
+captura usou três registros reais do catálogo e capas locais já publicadas;
+nenhuma arte foi inventada. A captura não promove OSD, save-state, troca de
+disco, bezel ou fade de sessão, que continuam exigindo prova funcional própria.
+
 Comando repetido duas vezes:
 
 ```text
