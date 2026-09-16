@@ -28,7 +28,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AURA-SAVE-STATE-GALLERY | 13 | 4 | 4 | unit |  |
 | SZ-AURA-SESSION-OSD | 25 | 6 | 4 | hw |  |
 | SZ-AURA-UI | 16 | 5 | 4 | unit |  |
-| SZ-AURA-VISUAL-COMPLETION | 33 | 11 | 4 | hw |  |
+| SZ-AURA-VISUAL-COMPLETION | 34 | 12 | 5 | hw |  |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
 | SZ-COMPONENT-LIFECYCLE | 23 | 14 | 12 | hw |  |
@@ -59,7 +59,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-ONLINE-P2P | 37 | 2 | 1 | none |  |
 | SZ-PLATFORM-CORE-PER-SYSTEM | 78 | 4 | 3 | unit |  |
 | SZ-PLATFORM-PS4-CATALOG | 6 | 3 | 3 | unit |  |
-| SZ-PLATFORM-PS4-PHYSICAL-INSTALL | 8 | 2 | 1 | dev |  |
+| SZ-PLATFORM-PS4-PHYSICAL-INSTALL | 8 | 3 | 2 | dev |  |
 | SZ-PLATFORM-REQUIREMENT-SCOPE | 7 | 3 | 2 | unit |  |
 | SZ-PLATFORM-VITA-CATALOG | 5 | 5 | 4 | unit |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |

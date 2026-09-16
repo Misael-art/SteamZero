@@ -45,13 +45,19 @@
       "reference": "docs/09-operations/evidence/2026-09-14-ps4-appimage-smoke-recovery/README.md",
       "command": "Release 2.0.0rc1-1f030b2d76da: component plan/apply do shadPS4 alcançou verify e falhou no smoke direto do AppImage; rollback E-TX-VERIFY-FAILED deixou o estado missing e nenhum staging órfão. A causa e a correção do modo appimage-extract estão registradas.",
       "result": "partial"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-15-aura-visual-completion/shadps4-final-release.json",
+      "command": "Release 2.0.0rc1-3c4b563242a9: repair governado concluído; component status --id shadps4 = installed; component verify --id shadps4 = verified=true; lançamento efetivo usa --appimage-extract-and-run -b com APPIMAGELAUNCHER_DISABLE, sem popup ou processo residual do AppImageLauncher.",
+      "result": "passed"
     }
   ],
-  "nextAction": "A correção de XDG/JIT/ALX está em 3ad4066; após o merge, instalar a release governada, repetir plan/apply/verify e, se houver dump PS4, provar lançamento/retorno ao foco.",
+  "nextAction": "A correção de XDG/JIT e o bypass explícito do AppImageLauncher estão instalados e verificados em 2.0.0rc1-3c4b563242a9. Obter conteúdo PS4 legítimo e provar jogo real em fullscreen, retorno ao AURA e preservação de foco; não promover antes dessa evidência.",
   "activeWorkstreams": [
     "WS-2026-09-PS4-PHYSICAL-CLOSURE"
   ],
-  "updatedAt": "2026-09-14",
-  "notes": "O primeiro apply físico revelou que o payload real é um zip contendo Shadps4-sdl.AppImage. O AppImage direto bloqueia neste host por depender do mount FUSE e o core endurecido aborta o JIT com Xbyak sob MemoryDenyWriteExecute=true; o ALX também interceptava o launch sem bypass explícito. 3ad4066 mantém a política de payload declarativo, roda smoke/launch em unidade transitória endurecida com W^X liberado apenas no componente, usa runtime path compartilhado e extract-and-run com APPIMAGELAUNCHER_DISABLE. O apply governado precisa ser repetido após a release nova. Ainda não existe conteúdo de jogo PS4 no host; portanto não se pode alegar lançamento real nem fabricar captura de fullscreen.",
-  "scopeDigest": "82a7e2752b19092d9f3b63e2c17a5511a2259ff4bb5240345f57587396ff5c05"
+  "updatedAt": "2026-09-16",
+  "notes": "O primeiro apply físico revelou que o payload real é um zip contendo Shadps4-sdl.AppImage. O AppImage direto bloqueava neste host por depender do mount FUSE e o core endurecido abortava o JIT com Xbyak sob MemoryDenyWriteExecute=true; o AppImageLauncher também interceptava o launch sem bypass explícito. A correção está instalada na release 2.0.0rc1-3c4b563242a9: roda smoke/launch em unidade transitória endurecida com W^X liberado apenas no componente, usa runtime path compartilhado, extract-and-run, APPIMAGELAUNCHER_DISABLE e a flag -b do Big Picture. O componente está installed e verified, sem staging órfão nem popup do AppImageLauncher. Ainda não existe conteúdo de jogo PS4 no host; portanto não se pode alegar lançamento real nem fabricar captura de fullscreen.",
+  "scopeDigest": "1723cb5eb5688f99ba4d3ca041fe18d43ad582537eec9ea23f9718689089c907"
 }

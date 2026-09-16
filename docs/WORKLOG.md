@@ -10722,3 +10722,31 @@ fechar as superfícies filhas antes de encerrar. O harness QML foi executado no
 Qt 6 real: `1 passed`; os harnesses existentes de OSD, galeria de save-state e
 periféricos passaram `3/3`. Isto prova a ligação visual e a guarda de contrato,
 não a capacidade física do adapter no jogo.
+
+## 2026-09-16 — nomenclatura AppImageLauncher e fechamento físico do shadPS4
+
+Foi auditada a terminologia do fluxo PS4 após um diagnóstico que usava uma
+abreviação não oficial. Essa abreviação não é componente do SteamZero nem do
+shadPS4; os registros normativos passam a usar exclusivamente `AppImageLauncher`, mantendo
+`APPIMAGELAUNCHER_DISABLE` apenas onde ele é o nome técnico real da variável de
+ambiente. A busca em `docs`, `src` e `tests` não encontrou mais a abreviação
+incorreta.
+
+A release governada `2.0.0rc1-3c4b563242a9`, source commit
+`3c4b563242a96cb57e4dd77e65d2fcc50a94ff8a`, foi instalada sem reiniciar o KDE;
+rollback disponível: `2.0.0rc1-429f91eb655a`. O shadPS4 foi reparado pelo
+plano `01M2KSW0EVRZJA5N9ZVFRYPD8B`, job
+`01M2KSWCFH2BQPYTDMR5D547DP`, e a leitura posterior confirmou `installed`,
+`verified=true`, versão `0.18.0`, staging/backups/journals órfãos iguais a zero
+e nenhuma recuperação pendente.
+
+O lançamento físico do componente executou o payload com
+`--appimage-extract-and-run -b` (Big Picture) e
+`APPIMAGELAUNCHER_DISABLE`; não houve janela de integração do AppImageLauncher,
+processo `zenity` ou processo shadPS4 residual após a parada do componente.
+Esta é a prova de bridge → componente → Big Picture, registrada em
+`docs/09-operations/evidence/2026-09-15-aura-visual-completion/shadps4-final-release.json`.
+Ainda não há conteúdo de jogo PS4 legítimo no host: não foi fabricada captura de
+jogo, retorno ao AURA ou preservação de foco. Permanecem abertos o lançamento
+PS4 real, a captura fullscreen correspondente e os gaps físicos de p95,
+save-state, troca de disco, bezel e fade com adapter concreto.
