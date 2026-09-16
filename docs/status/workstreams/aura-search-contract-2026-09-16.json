@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-SEARCH-CONTRACT",
+  "item": "SZ-AURA-SEARCH-CONTRACT",
+  "branch": "codex/aura-search-bridge-integration-2026-09-16",
+  "baseRef": "df1758de",
+  "owner": "codex-aura-search-bridge-integration",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/domain/catalog_search.py",
+    "src/steamzero/adapters/launcher_ui.py",
+    "src/steamzero/launcher/app.py",
+    "tests/unit/test_catalog_search.py",
+    "tests/integration/test_launcher_search_contract.py",
+    "docs/status/items/aura-search-contract-2026-09-16.json",
+    "docs/status/workstreams/aura-search-contract-2026-09-16.json"
+  ],
+  "sharedPaths": [
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Publicar a integração bridge→catálogo→render; depois executar a prova física na release instalada.",
+  "updatedAt": "2026-09-16"
+}

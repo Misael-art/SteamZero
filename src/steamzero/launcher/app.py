@@ -287,6 +287,32 @@ def _sections_from_catalog(catalog: Sequence[CatalogGame]) -> tuple[HomeSection,
     )
 
 
+def _search_catalog_records(
+    catalog: Sequence[CatalogGame], library: Sequence[Mapping[str, Any]]
+) -> tuple[dict[str, Any], ...]:
+    """Join canonical catalog identity with source scope for bridge search."""
+    source_by_id = {str(record.get("id")): record for record in library if record.get("id")}
+    records: list[dict[str, Any]] = []
+    for game in catalog:
+        record = dict(source_by_id.get(game.id, {}))
+        record.update(
+            {
+                "id": game.id,
+                "title": game.title,
+                "platform": game.platform,
+                "platformLabel": game.platform_label,
+                "titleVariants": list(game.title_variants),
+            }
+        )
+        record.setdefault("platformId", game.platform)
+        record.setdefault("systemId", record.get("system") or game.platform)
+        record.setdefault("system", record.get("systemId") or game.platform)
+        if game.cover_url:
+            record.setdefault("coverUrl", game.cover_url)
+        records.append(record)
+    return tuple(records)
+
+
 def _sections_from_collections(catalog: Sequence[CatalogGame]) -> tuple[HomeSection, ...]:
     """Adiciona uma seção por coleção persistida, com os membros jogáveis.
 
@@ -415,6 +441,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         title_variants={game.id: game.title_variants for game in catalog},
         title_mode=args.title_mode,
         covers=covers,
+        catalog_records=_search_catalog_records(catalog, library),
         metadata=metadata,
         session_observer=observe_session,
         session_overlay=session_overlay,

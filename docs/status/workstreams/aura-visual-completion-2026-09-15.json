@@ -13,20 +13,8 @@
     "docs/status/workstreams/aura-visual-completion-2026-09-15.json",
     "src/steamzero/adapters/component_jobs.py",
     "src/steamzero/adapters/lifecycle.py",
-    "src/steamzero/adapters/launcher_ui.py",
-    "src/steamzero/adapters/launcher_catalog.py",
-    "src/steamzero/launcher/app.py",
-    "src/steamzero/ui/qml/launcher/LauncherMain.qml",
-    "src/steamzero/ui/qml/launcher/LauncherShell.qml",
-    "src/steamzero/ui/qml/launcher/LauncherGamePage.qml",
-    "src/steamzero/ui/qml/launcher/LauncherHome.qml",
     "tests/unit/test_component_jobs.py",
-    "tests/integration/test_component_lifecycle.py",
-    "tests/unit/test_launcher_ui_backend.py",
-    "tests/unit/test_launcher_catalog.py",
-    "tests/integration/test_launcher_app.py",
-    "tests/qml/launcher/check_launcher_game_page.qml",
-    "tests/qml/launcher/check_launcher_covers.qml"
+    "tests/integration/test_component_lifecycle.py"
   ],
   "sharedPaths": [
     "docs/STATUS.md",
