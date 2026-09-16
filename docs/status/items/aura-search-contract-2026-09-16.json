@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AURA-SEARCH-CONTRACT",
+  "title": "Contrato de busca harmonizada do catálogo e mídia",
+  "domain": "media",
+  "implementation": "complete",
+  "integration": "isolated",
+  "verification": "unit",
+  "operation": "ready",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/domain/catalog_search.py",
+    "tests/unit/test_catalog_search.py"
+  ],
+  "scopeDigest": "03e18c12d0377d233a4e4471d1dc3e289e58e93aca19fa69e24b3b98b119858a",
+  "dependsOn": ["SZ-AURA-METADATA"],
+  "knownGaps": [
+    "GAP-AURA-SEARCH-BRIDGE-INTEGRATION",
+    "GAP-AURA-SEARCH-PHYSICAL-PROOF"
+  ],
+  "acceptanceCriteria": [
+    "A consulta normaliza texto sem diferenciar maiúsculas ou acentos e considera variantes de título.",
+    "platformId e systemId são filtros exatos e independentes; a ausência de ambos mantém escopo global.",
+    "A busca de mídia pode restringir o papel sem assumir a plataforma switch.",
+    "A função preserva ordem, identidade dos resultados e não altera registros de entrada.",
+    "A integração no bridge e a prova física permanecem declaradas como próximos passos do owner do Launcher."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_catalog_search.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_catalog_search.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests -q; 6058 passed, 47 skipped, 4 falhas pré-existentes/ambientais e mutação de state home por processos concorrentes",
+      "result": "partial"
+    },
+    {
+      "kind": "test",
+      "reference": "src/steamzero/domain/catalog_search.py",
+      "command": "ruff check/format --check, mypy src e make PY=/mnt/sdcard/Projects/Port_Steam/.venv/bin/python independence boundaries",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Integrar CatalogSearchQuery no bridge/catalogo do Launcher quando o workstream visual liberar seus arquivos exclusivos; depois provar a busca na release instalada.",
+  "activeWorkstreams": ["WS-2026-09-AURA-SEARCH-CONTRACT"],
+  "updatedAt": "2026-09-16",
+  "notes": "Entrega isolada de domínio para harmonizar busca de jogos e mídia sem disputar launcher_ui, launcher_catalog ou QML com a frente paralela."
+}

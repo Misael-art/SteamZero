@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-SEARCH-CONTRACT",
+  "item": "SZ-AURA-SEARCH-CONTRACT",
+  "branch": "codex/aura-search-contract-2026-09-16",
+  "baseRef": "3c4b563",
+  "owner": "codex-aura-search-contract",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/domain/catalog_search.py",
+    "tests/unit/test_catalog_search.py",
+    "docs/status/items/aura-search-contract-2026-09-16.json",
+    "docs/status/workstreams/aura-search-contract-2026-09-16.json"
+  ],
+  "sharedPaths": [
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Rodar gates do domínio e entregar o contrato ao owner do Launcher para integração bridge→catálogo→render.",
+  "updatedAt": "2026-09-16"
+}
