@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "governed-install-attempt",
+  "capturedAt": "2026-09-16",
+  "candidateRelease": "2.0.0rc1-89c237308fb6",
+  "sourceCommit": "89c237308fb648c84af22a15b1c4326d534f998a",
+  "ciRun": "35061166953",
+  "bundle": "/home/misael/Documentos/Codex/2026-09-16/release-89c23730",
+  "rollbackRelease": "2.0.0rc1-3c4b563242a9",
+  "command": "tools/release_host.py --json install --bundle release-89c23730 --rollback-release 2.0.0rc1-3c4b563242a9 --confirm-install INSTALAR-2.0.0rc1-89c237308fb6",
+  "result": "not-activated",
+  "reason": "O fluxo ficou aguardando autenticação do polkit; nenhum helper privilegiado permaneceu ativo e o wrapper foi interrompido pelo operador/agente.",
+  "hostAfter": {
+    "release": "2.0.0rc1-3c4b563242a9",
+    "sourceCommit": "3c4b563242a96cb57e4dd77e65d2fcc50a94ff8a",
+    "service": "active",
+    "socket": "active",
+    "orphanStaging": 0,
+    "orphanBackups": 0,
+    "orphanJournals": 0,
+    "pendingOperations": 0,
+    "staleJobs": 0
+  },
+  "kdeSessionRestarted": false,
+  "promotion": "not-release-proof"
+}

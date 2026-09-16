@@ -29,7 +29,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AURA-SAVE-STATE-GALLERY | 15 | 5 | 4 | unit |  |
 | SZ-AURA-SESSION-OSD | 25 | 6 | 4 | hw |  |
 | SZ-AURA-UI | 16 | 5 | 4 | unit |  |
-| SZ-AURA-VISUAL-COMPLETION | 36 | 13 | 5 | hw |  |
+| SZ-AURA-VISUAL-COMPLETION | 38 | 14 | 5 | hw |  |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
 | SZ-COMPONENT-LIFECYCLE | 23 | 14 | 12 | hw |  |
