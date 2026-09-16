@@ -45,6 +45,54 @@ def test_projects_canonical_media_into_cinema_roles(tmp_path: Path) -> None:
     }
 
 
+def test_projects_rich_roles_and_numbered_screenshots_deterministically(tmp_path: Path) -> None:
+    root = tmp_path / "media"
+    files = {
+        "cover": root / "masters" / "ps4" / "box2d" / "cover.png",
+        "fanart": root / "masters" / "ps4" / "fanart" / "fanart.jpg",
+        "shot1": root / "masters" / "ps4" / "screenshot" / "one.png",
+        "shot2": root / "masters" / "ps4" / "screenshot" / "two.png",
+        "logo": root / "masters" / "ps4" / "logo" / "logo.png",
+        "marquee": root / "masters" / "ps4" / "marquee" / "marquee.png",
+        "video": root / "masters" / "ps4" / "video" / "intro.mp4",
+    }
+    for path in files.values():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(_PNG)
+    registry = root / "registry" / "assignments-v1.json"
+    registry.parent.mkdir()
+    # Deliberately reverse screenshot order: the projection, not input dict
+    # order, owns the order consumed by the detail page.
+    _registry(
+        registry,
+        [
+            {
+                "gameId": "game-ps4",
+                "masters": {
+                    "video": "masters/ps4/video/intro.mp4",
+                    "screenshot2": "masters/ps4/screenshot/two.png",
+                    "logo": "masters/ps4/logo/logo.png",
+                    "screenshot": "masters/ps4/screenshot/one.png",
+                    "marquee": "masters/ps4/marquee/marquee.png",
+                    "fanart": "masters/ps4/fanart/fanart.jpg",
+                    "box2d": "masters/ps4/box2d/cover.png",
+                },
+            }
+        ],
+    )
+
+    projected = launcher_media_metadata(media_root=root)["game-ps4"]
+    assert projected["coverUrl"] == f"file://{files['cover']}"
+    assert projected["fanartUrl"] == f"file://{files['fanart']}"
+    assert projected["screenshotUrls"] == [
+        f"file://{files['shot1']}",
+        f"file://{files['shot2']}",
+    ]
+    assert projected["logoUrl"] == f"file://{files['logo']}"
+    assert projected["marqueeUrl"] == f"file://{files['marquee']}"
+    assert projected["videoUrl"] == f"file://{files['video']}"
+
+
 def test_rejects_paths_outside_managed_root_and_symlinks(tmp_path: Path) -> None:
     root = tmp_path / "media"
     safe = root / "masters" / "nes" / "box2d" / "safe.png"

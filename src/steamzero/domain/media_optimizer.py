@@ -78,8 +78,11 @@ KIND_TO_STEAM_PROFILES: dict[str, list[str]] = {
 
 MASTER_EXTENSIONS: dict[str, str] = {
     "box2d": ".png",
+    "fanart": ".jpg",
     "hero": ".jpg",
     "logo": ".png",
     "icon": ".png",
+    "marquee": ".png",
     "screenshot": ".png",
+    "video": ".mp4",
 }

@@ -51,7 +51,12 @@ def launcher_media_metadata(
             continue
         projected: dict[str, object] = {}
         screenshot_urls: list[str] = []
-        for kind, value in masters.items():
+        # The serialized registry normally sorts master roles, but older
+        # clients do not necessarily do so. Ordering here makes the
+        # carousel/detail page deterministic and keeps screenshot 1 before
+        # screenshot 2 when a future importer uses numbered role names.
+        ordered_masters = sorted(masters.items(), key=lambda item: _media_kind_order(item[0]))
+        for kind, value in ordered_masters:
             if not isinstance(kind, str) or not isinstance(value, str):
                 continue
             url = _managed_media_url(resolved_root, value)
@@ -61,17 +66,38 @@ def launcher_media_metadata(
                 projected["coverUrl"] = url
             elif kind in {"hero", "fanart"} and "fanartUrl" not in projected:
                 projected["fanartUrl"] = url
-            elif kind == "screenshot" and len(screenshot_urls) < _MAX_SCREENSHOTS:
+            elif _is_screenshot_kind(kind) and len(screenshot_urls) < _MAX_SCREENSHOTS:
                 screenshot_urls.append(url)
             elif kind == "logo" and "logoUrl" not in projected:
                 projected["logoUrl"] = url
             elif kind == "icon" and "iconUrl" not in projected:
                 projected["iconUrl"] = url
+            elif kind == "marquee" and "marqueeUrl" not in projected:
+                projected["marqueeUrl"] = url
+            elif kind == "video" and "videoUrl" not in projected:
+                projected["videoUrl"] = url
         if screenshot_urls:
             projected["screenshotUrls"] = screenshot_urls
         if projected:
             result[game_id] = projected
     return result
+
+
+def _is_screenshot_kind(kind: str) -> bool:
+    """Accept the canonical role and numbered roles from older importers."""
+    if kind == "screenshot":
+        return True
+    return kind.startswith("screenshot") and kind[10:].isdigit()
+
+
+def _media_kind_order(kind: object) -> tuple[int, int, str]:
+    """Sort stable roles before numbered screenshot variants."""
+    text = kind if isinstance(kind, str) else ""
+    if text == "screenshot":
+        return (1, 0, text)
+    if _is_screenshot_kind(text):
+        return (1, int(text[10:]), text)
+    return (0, 0, text)
 
 
 def _managed_media_url(root: Path, relative: str) -> str | None:

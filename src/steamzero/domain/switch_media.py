@@ -234,10 +234,16 @@ class GameMediaManager:
             return None
 
         master_path = next(iter(result.collected.values()))
-        state.previous_media_path = state.media_path
-        state.media_path = str(master_path)
-        state.media_source = "scraper"
-        state.media_kind = kind
+        # A candidate search can return fanart, logo, screenshot or video in
+        # addition to a cover. Those roles belong to the canonical registry;
+        # they must not replace the single cover slot consumed by legacy
+        # fallback/UI state, otherwise applying a fanart candidate makes the
+        # carousel feed a landscape image as its poster.
+        if kind == "box2d":
+            state.previous_media_path = state.media_path
+            state.media_path = str(master_path)
+            state.media_source = "scraper"
+            state.media_kind = kind
         state.metadata_state = "confirmed"
         state.master_state = "collected"
         self._store.save(state)
