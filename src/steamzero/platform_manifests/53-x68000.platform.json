@@ -68,18 +68,18 @@
         }
     ],
     "media": {
-        "extensions": ["dim", "img", "d88", "hdm", "m3u", "zip"],
+        "extensions": ["dim", "xdf", "img", "d88", "hdm", "m3u", "zip"],
         "artworkKinds": ["cover", "background", "logo", "icon"],
         "providers": ["screenscraper", "steamgriddb"],
         "nature": "floppy",
-        "formats": {"dim": ["dim"], "xdf": ["img"], "d88": ["d88"], "hdm": ["hdm"], "m3u": ["m3u"]},
+        "formats": {"dim": ["dim"], "xdf": ["img", "xdf"], "d88": ["d88"], "hdm": ["hdm"], "m3u": ["m3u"]},
         "preferredFormat": "d88",
         "conversionTargets": ["d88"],
         "containerPolicy": "extract",
         "multiDisc": {
             "enabled": true,
             "descriptor": "m3u",
-            "media": ["dim", "d88", "hdm", "img"],
+            "media": ["dim", "d88", "hdm", "img", "xdf"],
             "filenamePatterns": ["disc", "disk", "label", "role"],
             "requiresContinuousSequence": true,
             "orderingModel": "ordinal-and-role",
@@ -96,7 +96,7 @@
             ],
             "adapterPlaylistSupport": "unsupported",
             "archiveMemberPolicy": {
-                "allowedFormats": ["dim", "xdf"],
+                "allowedFormats": ["dim", "img", "xdf"],
                 "letterLabelsAreOrdinal": true
             }
         }
