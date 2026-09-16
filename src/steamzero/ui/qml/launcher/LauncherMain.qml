@@ -209,7 +209,7 @@ Window {
         sessionOverlay.closePeripheralSurface()
         const shell = root._activeLauncherShell()
         if (shell)
-            shell.forceActiveFocus()
+            shell.restoreHomeFocus()
     }
 
     function toggleSessionOverlay() {
