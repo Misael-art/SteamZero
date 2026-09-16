@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "kind": "physical-diagnostic",
+  "capturedAt": "2026-09-16T00:33:21-03:00",
+  "release": "2.0.0rc1-3c4b563242a9",
+  "sourceCommit": "3c4b563242a96cb57e4dd77e65d2fcc50a94ff8a",
+  "rollbackAvailable": "2.0.0rc1-429f91eb655a",
+  "adapterId": "shadps4",
+  "componentVersion": "0.18.0",
+  "repair": {
+    "planId": "01M2KSW0EVRZJA5N9ZVFRYPD8B",
+    "jobId": "01M2KSWCFH2BQPYTDMR5D547DP",
+    "result": "completed/verified"
+  },
+  "checks": {
+    "componentStatus": "installed",
+    "componentVerify": "verified=true",
+    "effectiveArguments": ["--appimage-extract-and-run", "-b"],
+    "appImageLauncherIntegrationPopup": false,
+    "appImageLauncherProcessLeftBehind": false,
+    "zenityProcessLeftBehind": false,
+    "orphanStaging": 0,
+    "orphanBackups": 0,
+    "orphanJournals": 0,
+    "pendingRecovery": 0,
+    "kdeRestarted": false
+  },
+  "result": "passed",
+  "limitation": "Não existe conteúdo de jogo PS4 no host; esta prova valida o ciclo do componente e o lançamento Big Picture do shadPS4, não um jogo real nem o retorno ao foco do AURA."
+}
