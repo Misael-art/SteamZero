@@ -10879,3 +10879,22 @@ de periféricos. A regeneração de status não introduziu erro novo; o
 `STATUS-CHECK` ainda reporta digests históricos obsoletos em itens de outras
 frentes. Nenhuma instalação, rollback, reinício ou finalização do KDE foi
 executada.
+
+## 2026-09-16 — fechamento dos gates após correção do escopo de plataforma
+
+Reexecutei a CI do PR `#194` e reproduzi localmente as 13 falhas reportadas.
+Uma era a expectativa antiga da migração `m0022_multidisc_reconciliation`, uma
+era o catálogo de status com 19 `scopeDigest` obsoletos, seis fixtures de busca
+não declaravam `platform_slug` apesar do contrato agora exigir plataforma, uma
+fixture de credenciais tinha a mesma omissão e quatro fixtures Switch não
+declaravam `platformId`. Corrigi somente esses contratos de teste e os digests
+normativos; não reintroduzi defaults silenciosos para Switch.
+
+Provas focadas após a correção: migração e catálogo `2 passed`, multiprovider
+`17 passed`, credenciais `1 passed`, preservação da verdade Switch `14 passed`,
+`mypy src` sem erros e `STATUS-CHECK: OK`. O benchmark de 10k permaneceu
+inalterado e não foi mascarado com skip. O commit desta sessão será isolado e
+publicado na branch `codex/aura-rich-media-global-2026-09-16` para o PR
+`#194` reexecutar seus gates.
+
+Nenhuma instalação, rollback, reinício ou finalização do KDE foi executada.

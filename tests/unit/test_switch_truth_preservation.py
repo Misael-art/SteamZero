@@ -38,6 +38,7 @@ def _games(count: int) -> list[dict[str, Any]]:
             "id": f"jogo-{i}",
             "name": f"Jogo {i}",
             "titleId": f"0100{i:012X}",
+            "platformId": "switch",
             "state": "ready",
             "statusLabel": "Pronto",
         }
