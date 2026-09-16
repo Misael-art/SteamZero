@@ -691,6 +691,65 @@ class StateStore:
         )
         self._conn.execute(sql, row)
 
+    def save_multidisc_set(self, value: dict[str, Any]) -> None:
+        """Persist logical set and descriptor projection metadata."""
+
+        columns = (
+            "id",
+            "game_id",
+            "platform_id",
+            "system_id",
+            "normalized_title",
+            "descriptor_path",
+            "descriptor_kind",
+            "descriptor_origin",
+            "descriptor_hash",
+            "confidence",
+            "sync_state",
+        )
+        row = {column: value.get(column) for column in columns}
+        placeholders = ",".join(f":{column}" for column in columns)
+        updates = ",".join(f"{column}=excluded.{column}" for column in columns if column != "id")
+        sql = (
+            f"INSERT INTO multi_disc_set ({','.join(columns)}) VALUES ({placeholders}) "  # noqa: S608
+            f"ON CONFLICT(id) DO UPDATE SET {updates}"
+        )
+        self._conn.execute(sql, row)
+
+    def save_multidisc_disc(self, value: dict[str, Any]) -> None:
+        columns = (
+            "identity",
+            "set_id",
+            "disc_number",
+            "disc_total",
+            "format",
+            "current_path",
+            "content_hash",
+            "accepted_formats_json",
+            "conversion_history_json",
+            "state",
+        )
+        row = {column: value.get(column) for column in columns}
+        placeholders = ",".join(f":{column}" for column in columns)
+        updates = ",".join(
+            f"{column}=excluded.{column}" for column in columns if column != "identity"
+        )
+        sql = (
+            f"INSERT INTO multi_disc_disc ({','.join(columns)}) VALUES ({placeholders}) "  # noqa: S608
+            f"ON CONFLICT(identity) DO UPDATE SET {updates}"
+        )
+        self._conn.execute(sql, row)
+
+    def get_multidisc_set(self, set_id: str) -> dict[str, Any] | None:
+        row = self._conn.execute("SELECT * FROM multi_disc_set WHERE id=?", (set_id,)).fetchone()
+        return dict(row) if row is not None else None
+
+    def list_multidisc_discs(self, set_id: str) -> list[dict[str, Any]]:
+        rows = self._conn.execute(
+            "SELECT * FROM multi_disc_disc WHERE set_id=? ORDER BY disc_number", (set_id,)
+        ).fetchall()
+        return [dict(row) for row in rows]
+
     def find_rom_by_hash(self, hash_blake2b: str) -> dict[str, Any] | None:
         row = self._conn.execute(
             "SELECT * FROM rom_file WHERE hash_blake2b=?", (hash_blake2b,)

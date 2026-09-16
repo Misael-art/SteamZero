@@ -18,6 +18,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from steamzero.core import fs
+
 MultiDiscState = Literal[
     "ready",
     "incomplete",
@@ -210,6 +212,15 @@ def _format_for(path: Path) -> str:
     return path.suffix.casefold().lstrip(".")
 
 
+def _content_hash(path: Path) -> str | None:
+    """Read the physical content hash without turning scan failures into writes."""
+
+    try:
+        return fs.hash_file(path)
+    except OSError:
+        return None
+
+
 def _group_key(platform_id: str, system_id: str, title: str) -> str:
     return ":".join((platform_id, system_id, _normalise_title(title)))
 
@@ -268,7 +279,14 @@ def resolve_multidisc(
         entries = groups[key]
         title = entries[0][2]
         parts = tuple(
-            MultiDiscPart(path, marker.number, marker.total) for path, marker, _ in entries
+            MultiDiscPart(
+                path,
+                marker.number,
+                marker.total,
+                _format_for(path),
+                _content_hash(path),
+            )
+            for path, marker, _ in entries
         )
         if not policy.enabled or policy.descriptor != "m3u":
             results.append(
@@ -284,7 +302,7 @@ def resolve_multidisc(
             continue
         if len(parts) < 2:
             continue
-        if any(not _safe_regular_file(part.path) for part in parts):
+        if any(not _safe_regular_file(part.path) or part.content_hash is None for part in parts):
             results.append(
                 _resolution(
                     state="ambiguous",
@@ -299,16 +317,12 @@ def resolve_multidisc(
         suffixes = {_format_for(part.path) for part in parts}
         if not suffixes.issubset(policy.media):
             archive_formats = {"zip", "7z", "rar"}
-            if (
-                suffixes & archive_formats
-                and str(
-                    (manifest.get("media") or {}).get("containerPolicy")
-                    if isinstance(manifest.get("media"), Mapping)
-                    else ""
-                )
-                == "extract"
-            ):
-                state = "needs-extraction"
+            media = manifest.get("media")
+            container_policy = (
+                str(media.get("containerPolicy") or "") if isinstance(media, Mapping) else ""
+            )
+            if suffixes & archive_formats and container_policy == "extract":
+                state: MultiDiscState = "needs-extraction"
                 reason = "O adapter exige extração antes de uma playlist m3u."
             else:
                 state = "needs-platform-contract"
@@ -326,7 +340,7 @@ def resolve_multidisc(
             continue
         numbers = [part.number for part in parts]
         if len(numbers) != len(set(numbers)):
-            state: MultiDiscState = "ambiguous"
+            state = "ambiguous"
             reason = "O conjunto contém números de disco duplicados."
         elif numbers[0] != 1 or (
             policy.requires_continuous_sequence and numbers != list(range(1, len(numbers) + 1))
@@ -401,6 +415,12 @@ def reconcile_multidisc_set(
         else:
             state = "active"
             history = old.conversion_history if old is not None else ()
+        accepted_formats = (
+            old.accepted_formats if old is not None else (part.format or _format_for(part.path),)
+        )
+        current_format = part.format or _format_for(part.path)
+        if current_format not in accepted_formats:
+            state = "conflict"
         records.append(
             DiscRecord(
                 set_id=resolution.set_id,
@@ -409,7 +429,7 @@ def reconcile_multidisc_set(
                 format=part.format or _format_for(part.path),
                 path=part.path,
                 content_hash=part.content_hash,
-                accepted_formats=tuple(sorted({part.format or _format_for(part.path)})),
+                accepted_formats=tuple(sorted(set(accepted_formats))),
                 state=state,
                 conversion_history=history,
             )

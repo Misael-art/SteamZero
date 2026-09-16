@@ -64,6 +64,7 @@ def test_resolver_keeps_platform_and_system_in_group_key(tmp_path: Path) -> None
     assert result[0].state == "ready"
     assert result[0].group_key.startswith("playstation:psx:")
     assert [part.number for part in result[0].parts] == [1, 2]
+    assert all(part.content_hash for part in result[0].parts)
 
 
 def test_snes_without_declared_contract_is_not_auto_generated(tmp_path: Path) -> None:
