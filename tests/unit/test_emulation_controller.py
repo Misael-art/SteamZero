@@ -2403,6 +2403,40 @@ def test_media_search_plan_does_not_require_fixed_remote_provider(
     assert isinstance(plan["confirmToken"], str)
 
 
+def test_media_import_plan_preserves_rich_media_role(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    game_id, _title_id = _configured_game(controller, tmp_path)
+    fanart = tmp_path / "fanart.jpg"
+    fanart.write_bytes(b"\xff\xd8\xff\xe0" + b"0" * 60)
+
+    plan = controller.plan_action(
+        {
+            "actionId": f"game.media.import:{game_id}",
+            "path": str(fanart),
+            "mediaKind": "fanart",
+        }
+    )
+
+    assert controller._pending[plan["planId"]].metadata["media_kind"] == "fanart"  # type: ignore[attr-defined]
+    assert controller._pending[plan["planId"]].metadata["platform_id"] == "switch"  # type: ignore[attr-defined]
+
+
+def test_media_import_plan_rejects_unknown_rich_media_role(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    game_id, _title_id = _configured_game(controller, tmp_path)
+    image = tmp_path / "image.png"
+    image.write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 60)
+
+    with pytest.raises(SteamZeroError, match="papel de mídia não permitido"):
+        controller.plan_action(
+            {
+                "actionId": f"game.media.import:{game_id}",
+                "path": str(image),
+                "mediaKind": "shader",
+            }
+        )
+
+
 def test_media_job_persists_read_model_in_injected_store(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     from steamzero.adapters.emulation import SessionSecretStore
     from steamzero.adapters.state_store_media import StateStoreGameMediaAdapter

@@ -97,6 +97,7 @@ class _PipelineFake:
         self._media_root = root
         self.registry: dict[str, object] = {}
         self.optimized: dict[tuple[str, str], Path] = {}
+        self.collect_kwargs: dict[str, object] = {}
         self.collect_result = CollectionResult("g", {"box2d": root / "master.png"})
         self.candidate_result = CollectionResult("g", {"box2d": root / "candidate.png"})
         self.optimize_result = OptimizeResult("g")
@@ -104,7 +105,8 @@ class _PipelineFake:
         self.publish_plan: transaction.Plan | None = None
         self.unpublish_plan: transaction.Plan | None = None
 
-    def collect(self, **_kwargs: object) -> CollectionResult:
+    def collect(self, **kwargs: object) -> CollectionResult:
+        self.collect_kwargs = kwargs
         return self.collect_result
 
     def collect_from_candidate(self, **_kwargs: object) -> CollectionResult:
@@ -460,6 +462,20 @@ def test_media_manager_candidates_mutations_and_wrappers(
     custom.write_bytes(PNG)
     imported = manager.import_custom_media("g", custom, "tid", "fp", "Game")
     assert imported is not None and imported.media_source == "custom"
+    fanart = tmp_path / "fanart.jpg"
+    fanart.write_bytes(PNG)
+    previous_cover = imported.media_path
+    pipeline.collect_result = CollectionResult("g", {"fanart": fanart})
+    imported_fanart = manager.import_custom_media(
+        "g", fanart, "tid", "fp", "Game", media_kind="fanart"
+    )
+    assert imported_fanart is not None
+    assert imported_fanart.media_path == previous_cover
+    assert imported_fanart.media_kind == "box2d"
+    assert pipeline.collect_kwargs["kind"] == "fanart"
+    assert pipeline.collect_kwargs["platform_id"] == "switch"
+    with pytest.raises(SteamZeroError, match="papel de mídia não permitido"):
+        manager.import_custom_media("g", fanart, "tid", "fp", "Game", media_kind="shader")
     assert manager.clear_media("missing") is None
     assert manager.restore_previous("missing") is None
     store.data["g"].previous_media_path = None

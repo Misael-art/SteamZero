@@ -60,7 +60,7 @@
     "WS-2026-09-AURA-RICH-MEDIA-PROJECTION"
   ],
   "nextAction": "Aguardar CI do PR #188; após o merge, publicar a release governada e repetir a prova física no host.",
-  "scopeDigest": "16517265530e423501c6dd4c70a4897d4e831860b4090a27d158525194b34d9b",
+  "scopeDigest": "8154d0469f955eaf22ed46f736436ff96dae282b9f40c3f2d1d35bc02aae4a91",
   "updatedAt": "2026-09-16",
   "notes": "A projeção agora mantém papéis ricos separados, ordena screenshots numerados e publica somente URLs locais dentro da raiz gerenciada."
 }
