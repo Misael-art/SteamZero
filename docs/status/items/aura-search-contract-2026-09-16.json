@@ -5,18 +5,20 @@
   "title": "Contrato de busca harmonizada do catálogo e mídia",
   "domain": "media",
   "implementation": "complete",
-  "integration": "isolated",
-  "verification": "unit",
+  "integration": "integrated",
+  "verification": "dev",
   "operation": "ready",
   "distribution": "not-packaged",
   "scopePaths": [
     "src/steamzero/domain/catalog_search.py",
-    "tests/unit/test_catalog_search.py"
+    "src/steamzero/adapters/launcher_ui.py",
+    "src/steamzero/launcher/app.py",
+    "tests/unit/test_catalog_search.py",
+    "tests/integration/test_launcher_search_contract.py"
   ],
-  "scopeDigest": "03e18c12d0377d233a4e4471d1dc3e289e58e93aca19fa69e24b3b98b119858a",
+  "scopeDigest": "6362bcd5c5b0f8aba9a2938adbe6bd2879c64f396b5a888953cbd98c1bdb62d6",
   "dependsOn": ["SZ-AURA-METADATA"],
   "knownGaps": [
-    "GAP-AURA-SEARCH-BRIDGE-INTEGRATION",
     "GAP-AURA-SEARCH-PHYSICAL-PROOF"
   ],
   "acceptanceCriteria": [
@@ -24,7 +26,7 @@
     "platformId e systemId são filtros exatos e independentes; a ausência de ambos mantém escopo global.",
     "A busca de mídia pode restringir o papel sem assumir a plataforma switch.",
     "A função preserva ordem, identidade dos resultados e não altera registros de entrada.",
-    "A integração no bridge e a prova física permanecem declaradas como próximos passos do owner do Launcher."
+    "A ponte HTTP do Launcher e a busca QML legada usam o mesmo contrato, enquanto a prova física permanece separada."
   ],
   "evidence": [
     {
@@ -44,10 +46,22 @@
       "reference": "src/steamzero/domain/catalog_search.py",
       "command": "ruff check/format --check, mypy src e make PY=/mnt/sdcard/Projects/Port_Steam/.venv/bin/python independence boundaries",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_launcher_search_contract.py",
+      "command": "run_tests_isolated.py tests/unit/test_catalog_search.py tests/integration/test_launcher_search_contract.py tests/integration/test_launcher_app.py -q; 37 passed",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tests/integration/test_library_organize.py",
+      "command": "run_tests_isolated.py tests -x --maxfail=10; Launcher concluído até 17%, depois o teste de organização fica sem saída após 11 passes; reprodução isolada mantém o mesmo ponto",
+      "result": "partial"
     }
   ],
-  "nextAction": "Integrar CatalogSearchQuery no bridge/catalogo do Launcher quando o workstream visual liberar seus arquivos exclusivos; depois provar a busca na release instalada.",
+  "nextAction": "Publicar a branch integrada e, após a release governada, provar busca por nome/filtro na janela real; conteúdo PS4 legítimo ainda é necessário para a prova de jogo.",
   "activeWorkstreams": ["WS-2026-09-AURA-SEARCH-CONTRACT"],
   "updatedAt": "2026-09-16",
-  "notes": "Entrega isolada de domínio para harmonizar busca de jogos e mídia sem disputar launcher_ui, launcher_catalog ou QML com a frente paralela."
+  "notes": "CatalogSearchQuery agora é consumido pelo LauncherBridge e pela rota /search usada pelo QML. Filtros de plataforma, sistema e papel de mídia são independentes; sem filtro não há default Switch. A prova física segue aberta por depender de instalação e interação real."
 }

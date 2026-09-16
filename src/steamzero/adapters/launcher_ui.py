@@ -36,6 +36,7 @@ from steamzero.core.title_variants import (
 from steamzero.core.title_variants import (
     title_variants as build_title_variants,
 )
+from steamzero.domain.catalog_search import CatalogSearchQuery, search_records
 from steamzero.domain.scene_layout import LayoutBounds, LayoutRecipe
 from steamzero.domain.session_overlay import resolve_session_overlay
 from steamzero.launcher.cinema import resolve_cinema_covers
@@ -113,11 +114,22 @@ class _Handler(BaseHTTPRequestHandler):
             self._send(200, body)
             return
         if self.path.startswith("/search?"):
-            query = self._query_param("q")
+            params = self._query_params()
+            query = params.get("query", params.get("q"))
             if query is None:
-                self._send(400, {"error": "parâmetro q ausente"})
+                self._send(400, {"error": "parâmetro query/q ausente"})
                 return
-            self._send(200, self._bridge.search(query))
+            payload: dict[str, str] = {"query": query}
+            for canonical, aliases in (
+                ("platformId", ("platformId", "platform")),
+                ("systemId", ("systemId", "system")),
+                ("mediaKind", ("mediaKind", "kind")),
+            ):
+                for alias in aliases:
+                    if alias in params:
+                        payload[canonical] = params[alias]
+                        break
+            self._send(200, self._bridge.search(payload))
             return
         self._send(404, {"error": "rota desconhecida"})
 
@@ -206,13 +218,17 @@ class _Handler(BaseHTTPRequestHandler):
         )
 
     def _query_param(self, name: str) -> str | None:
+        return self._query_params().get(name)
+
+    def _query_params(self) -> dict[str, str]:
         from urllib.parse import parse_qs, urlsplit
 
         parsed = urlsplit(self.path)
-        values = parse_qs(parsed.query).get(name)
-        if not values:
-            return None
-        return values[0]
+        return {
+            name: values[0]
+            for name, values in parse_qs(parsed.query, keep_blank_values=True).items()
+            if values
+        }
 
     def _send(self, status: int, body: dict[str, Any]) -> None:
         payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
@@ -246,6 +262,7 @@ class LauncherBridge:
         accessibility: Mapping[str, Any] | None = None,
         return_context: Mapping[str, Any] | None = None,
         catalog_summary: Mapping[str, Any] | None = None,
+        catalog_records: Sequence[Mapping[str, Any]] | None = None,
         metadata: Mapping[str, Mapping[str, Any]] | None = None,
         session_observer: Callable[[str], dict[str, Any]] | None = None,
         session_overlay: SessionOverlayAdapter | None = None,
@@ -254,6 +271,11 @@ class LauncherBridge:
         self._titles = dict(titles or {})
         self._covers = dict(covers or {})
         self._metadata = {key: dict(value) for key, value in (metadata or {}).items()}
+        self._catalog_records = {
+            str(record.get("id")): dict(record)
+            for record in (catalog_records or ())
+            if isinstance(record, Mapping) and record.get("id")
+        }
         self._session_observer = session_observer
         self._session_overlay = session_overlay
         self._previous_sessions: dict[str, str | None] = {}
@@ -311,43 +333,90 @@ class LauncherBridge:
             ],
         }
 
-    def search(self, query: str) -> dict[str, Any]:
-        """Filtra a biblioteca por título (case-insensitive, substring).
+    def search(self, query: str | Mapping[str, Any]) -> dict[str, Any]:
+        """Busca catálogo e mídia pelo contrato canônico do domínio.
 
-        A busca vive na ponte porque é ela quem tem o mapa id->título; o QML
-        não duplica o acervo. Devolve o resultado na mesma forma de uma seção
-        (id, title, coverUrl) para que a home renderize um "resultado" sem
-        lógica própria.
+        A ponte continua sendo a dona do mapa id->título, mas não replica as
+        regras de normalização. ``query`` aceita a string legada do QML ou o
+        envelope com filtros independentes da rota HTTP.
         """
-        needle = query.strip().casefold()
-        matches: list[dict[str, Any]] = []
-        if needle:
-            for game_id in self._titles:
-                variants = self._variants_for(game_id)
-                if any(needle in variant.casefold() for variant in variants):
-                    row: dict[str, Any] = {
-                        "id": game_id,
-                        "title": self._display_title(game_id),
-                        "titleVariants": list(variants),
-                        "coverUrl": self._covers.get(game_id, ""),
-                    }
-                    # Search is another Cinema entry point. Preserve only the
-                    # already allowlisted media fields so a result can show
-                    # its rich art without creating a second catalog or
-                    # exposing arbitrary record data to QML.
-                    for key in (
-                        "fanartUrl",
-                        "logoUrl",
-                        "iconUrl",
-                        "screenshotUrls",
-                        "releaseDate",
-                        "genres",
-                    ):
-                        if key in self._metadata.get(game_id, {}):
-                            row[key] = self._metadata[game_id][key]
-                    matches.append(row)
-        matches.sort(key=lambda row: str(row["title"]).casefold())
-        return {"query": query, "games": matches}
+        search_query = (
+            CatalogSearchQuery.from_mapping(query)
+            if isinstance(query, Mapping)
+            else CatalogSearchQuery(text=query)
+        )
+        raw_query = query.get("query", query.get("q", "")) if isinstance(query, Mapping) else query
+        records = tuple(self._search_record(game_id) for game_id in self._titles)
+        matches = (
+            ()
+            if not search_query.text and search_query.is_global
+            else search_records(records, search_query)
+        )
+        projected = [self._search_result(record) for record in matches]
+        projected.sort(key=lambda row: str(row["title"]).casefold())
+        return {"query": str(raw_query), "games": projected}
+
+    def _search_record(self, game_id: str) -> dict[str, Any]:
+        """Join catalog identity and published media for one search record."""
+        record = dict(self._catalog_records.get(game_id, {}))
+        record["id"] = game_id
+        record.setdefault("title", self._titles.get(game_id, game_id))
+        record.setdefault("titleVariants", list(self._variants_for(game_id)))
+        if not record.get("platformId") and not record.get("platform"):
+            record["platform"] = record.get("systemId") or record.get("system") or ""
+        if not record.get("systemId") and not record.get("system"):
+            record["system"] = record.get("platformId") or record.get("platform") or ""
+
+        media = record.get("media")
+        roles = dict(media) if isinstance(media, Mapping) else {}
+        metadata = self._metadata.get(game_id, {})
+        for role, key in (
+            ("cover", "coverUrl"),
+            ("fanart", "fanartUrl"),
+            ("screenshot", "screenshotUrls"),
+            ("marquee", "marqueeUrl"),
+            ("video", "videoUrl"),
+            ("icon", "iconUrl"),
+        ):
+            if (
+                metadata.get(key)
+                or record.get(key)
+                or (self._covers.get(game_id) and role == "cover")
+            ):
+                roles.setdefault(role, True)
+        record["media"] = roles
+        return record
+
+    def _search_result(self, record: Mapping[str, Any]) -> dict[str, Any]:
+        game_id = str(record.get("id", ""))
+        variants = self._variants_for(game_id)
+        row: dict[str, Any] = {
+            "id": game_id,
+            "title": self._display_title(game_id),
+            "titleVariants": list(variants),
+            "coverUrl": self._covers.get(game_id, "")
+            or self._metadata.get(game_id, {}).get("coverUrl", "")
+            or record.get("coverUrl", ""),
+        }
+        for key in (
+            "fanartUrl",
+            "logoUrl",
+            "iconUrl",
+            "marqueeUrl",
+            "videoUrl",
+            "screenshotUrls",
+            "releaseDate",
+            "genres",
+            "platform",
+            "platformId",
+            "platformLabel",
+            "system",
+            "systemId",
+        ):
+            value = self._metadata.get(game_id, {}).get(key, record.get(key))
+            if value not in (None, "", [], {}):
+                row[key] = value
+        return row
 
     def cinema(self, focus_id: str, *, width: float, height: float) -> dict[str, Any]:
         """Resolve only the focused collection; no navigation decision is made here."""

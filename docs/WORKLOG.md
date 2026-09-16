@@ -10795,3 +10795,28 @@ prova de instalação.
 O item AURA foi atualizado para apontar a candidata correta. Permanecem
 pendentes a autenticação, a medição pós-release e as capturas físicas de
 save-state, troca de disco, bezel/fade e jogo PS4 real.
+
+## 2026-09-16 — integração da busca canônica no bridge do AURA
+
+Retomei a frente a partir do `main` em `df1758de` e incorporei o contrato de
+domínio `3bda145e` em uma branch durável. O `LauncherBridge` agora delega a
+normalização a `CatalogSearchQuery`; a rota `/search` mantém o formato legado
+`q` usado pelo QML e também aceita `query`, `platformId/platform`,
+`systemId/system` e `mediaKind/kind`. Os registros do catálogo são ligados à
+ponte no entry point, preservando plataforma, sistema, variantes de título e
+os papéis de mídia publicados; nenhuma busca assume Switch por omissão.
+
+Foram adicionados testes de integração para acentos/variantes, filtros
+independentes, papel `fanart` e compatibilidade da rota HTTP. Os testes focados
+do domínio, ponte e Launcher passaram (`36 passed`); Ruff, formatação, mypy,
+independência, fronteiras, lockfile, matriz e `STATUS-CHECK` passaram. A suíte
+integral foi iniciada, mas a execução ficou sem saída após 11 passes de
+`test_library_organize.py`, inclusive em reprodução isolada; não foi promovida
+como verde nem usada para encobrir o bloqueio ambiental.
+
+O workstream de busca foi transferido para
+`codex/aura-search-bridge-integration-2026-09-16`, com status e visões
+regenerados. A instalação governada continua sem nova tentativa neste ciclo:
+o polkit não autenticou as tentativas anteriores, e a prova física de PS4
+continua impossível sem jogo PS4 legítimo no host. KDE não foi reiniciado nem
+finalizado.
