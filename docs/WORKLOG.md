@@ -10750,3 +10750,27 @@ Ainda não há conteúdo de jogo PS4 legítimo no host: não foi fabricada captu
 jogo, retorno ao AURA ou preservação de foco. Permanecem abertos o lançamento
 PS4 real, a captura fullscreen correspondente e os gaps físicos de p95,
 save-state, troca de disco, bezel e fade com adapter concreto.
+
+## 2026-09-16 — baseline pós-PR #188 e tentativa de promoção
+
+Frente documental isolada na branch `codex/aura-physical-baseline-2026-09-16`,
+sobre o `main` no merge do PR #188 (`5ecab7d7`). A release candidata
+`2.0.0rc1-5ecab7d7c2fd` foi preparada e validada; o CI do merge terminou verde.
+
+Reexecutei `tools/theme_perf_probe.py` na janela Wayland real da release ativa
+`2.0.0rc1-3c4b563242a9`: startup `185 ms`, p95 do render loop `14,587 ms`,
+pico RSS `151588 KB` e VRAM `47268 KB` por DRM fdinfo agrupado por
+`drm-client-id`. O resultado foi registrado em
+`docs/09-operations/evidence/2026-09-16-aura-cinema-perf-baseline/01-baseline.json`
+como baseline-only; não promove a candidata nem afirma FPS apresentado.
+
+O comando governado de instalação foi tentado com o token
+`INSTALAR-2.0.0rc1-5ecab7d7c2fd`, mas o polkit não apresentou autenticação. O
+processo pendente foi encerrado sem mutação; a inspeção confirmou release ativa
+`2.0.0rc1-3c4b563242a9`, serviço/socket ativos, zero staging, backups, journals
+ou operações pendentes. KDE permaneceu intacto.
+
+`project_status.py check` passou após regenerar `STATUS.md` e `COVERAGE.md`.
+PS4 com jogo real, captura pós-release e a prova física de save-state, troca de
+disco, bezel e fade continuam abertas até a autenticação e a interação física
+do operador estarem disponíveis.

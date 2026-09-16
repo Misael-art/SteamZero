@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "performance-baseline",
+  "capturedAt": "2026-09-16",
+  "release": "2.0.0rc1-3c4b563242a9",
+  "sourceCommit": "3c4b563242a96cb57e4dd77e65d2fcc50a94ff8a",
+  "candidateRelease": "2.0.0rc1-5ecab7d7c2fd",
+  "surface": "Wayland real window, 1280x800",
+  "qmlDir": "/opt/steamzero/current/venv/lib/python3.14/site-packages/steamzero/ui/qml",
+  "scenes": 7,
+  "command": "tools/theme_perf_probe.py --qml-dir /opt/steamzero/current/venv/lib/python3.14/site-packages/steamzero/ui/qml --duration 8 --warmup 1 --width 1280 --height 800",
+  "frameTime": {
+    "frames": 480,
+    "avgMs": 13.448,
+    "p50Ms": 13.333,
+    "p95Ms": 14.587,
+    "maxMs": 38.394
+  },
+  "startupMs": 185.0,
+  "peakRssKb": 151588,
+  "peakVramKb": 47268,
+  "vramMeasured": true,
+  "vramMethod": "DRM fdinfo do processo, agrupado por drm-client-id",
+  "status": "baseline-only",
+  "promotion": "not-release-proof; repetir após instalar a candidateRelease",
+  "note": "Frame time mede o render loop, não frames apresentados. Não derivar FPS de tela desta amostra."
+}
