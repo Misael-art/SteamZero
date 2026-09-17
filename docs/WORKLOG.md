@@ -10975,3 +10975,83 @@ outras frentes não foram tocados. O KDE não foi reiniciado nem finalizado.
 retirada dos bloqueios do item de desempenho, mas OSD/save-state, troca de
 disco, bezel/fade durante jogo real e provas PS4/multidisco continuam abertos;
 esta captura não os promove por inferência.
+
+## 2026-09-16 — mapeamento e captura física do ciclo AURA instalado
+
+Na release instalada `2.0.0rc1-d70a80f83aae`, sem reiniciar ou finalizar o KDE,
+capturei a janela Wayland real em fullscreen e registrei o encadeamento
+catálogo → detalhes → lançamento → sessão → OSD → pausa → retorno. O Switch/Eden
+foi lançado de fato e produziu as capturas de catálogo com arte, detalhes, jogo,
+OSD, pausa e retorno (`10`–`15`). O NES/RetroArch/Mesen também foi lançado de
+fato; a ponte retornou `accepted=true` para pausa, o read model publicou galeria
+de save-state com slot nativo e fallback `SEM CAPTURA`, e a captura física está
+em `18`–`22`.
+
+O mapa completo, IDs de sessão, superfícies e resultados está em
+`docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/SESSION-CYCLE-MAP.json`.
+A captura `23-return-focus-defect-post-install.png` encontrou um defeito real na
+última costura: o modal é removido, mas uma volta pelo caminho de busca exibe
+`Atualizando seleção…`. A correção `ecf26d1` adiciona `restoreHomeFocus()` no
+LauncherShell, chama-o no fechamento terminal e ganhou regressão QML focada.
+
+O `STATUS-CHECK` foi regenerado e passou. A suíte integral isolada foi iniciada,
+mas os gates estáticos reproduziram apenas achados pré-existentes fora do diff:
+Ruff em `game_stream.py`/`scene_layout.py`, mypy em `gi`/`numpy` e formato na
+fixture `tests/fixtures/roms/mega-drive/test-rom.md`. Troca de disco não foi
+alegada porque os adapters exercitados não a declaram; bezel/fade foram vistos
+no read model, mas não isolados visualmente; PS4 e multi-disc seguem sem prova
+física legítima.
+
+## 2026-09-16 — investigação H6 e auditoria do estado AURA
+
+O host foi inspecionado somente em leitura: \`staging/\` está vazio, sem staging
+órfão. O Doctor apontou um único \`backup\` órfão, que foi identificado como o
+snapshot legítimo \`state-premigration-2026-09-16T183315.997192+0000.db\`, criado
+pelo \`StateStore\` antes da migração; ele não pertence a uma operação e foi
+preservado.
+
+\`state_audit\` agora reconhece esse padrão protegido e a regressão em
+\`tests/unit/test_state_cleanup.py\` passou com 24 testes. As visões de status
+foram regeneradas e \`make status-check\` passou. O PR #198 reúne a correção
+visual de foco (\`ecf26d1\`) e aguarda merge para uma nova release governada; a
+correção de auditoria ainda não foi instalada no host. Nenhum processo de QA de
+outra frente foi interrompido e o KDE não foi reiniciado nem finalizado.
+
+## 2026-09-16 — harmonização da projeção de mídia rica
+
+A auditoria de ancestralidade confirmou que os commits da projeção rica já
+estão em \`origin/main\` e na release instalada \`2.0.0rc1-d70a80f83aae\`. O item
+\`SZ-AURA-RICH-MEDIA-PROJECTION\` foi corrigido de feature-branch/not-packaged
+para released/installed, com verificação física e as capturas \`10\` (carousel
+com capas reais) e \`11\` (detalhe com capa e ação Jogar). O workstream histórico
+foi fechado; credenciais remotas, fanart/screenshots/vídeo não publicados,
+performance da nova release, save-state físico e disc swap continuam gaps
+honestos. \`STATUS-CHECK\` passou.
+
+## 2026-09-17 — promoção do save-state instalado
+
+A auditoria de status confirmou que o contrato de save-state já está no main e
+na release instalada \`2.0.0rc1-d70a80f83aae\`. O item
+\`SZ-AURA-SAVE-STATE-GALLERY\` foi harmonizado para released/installed/hw:
+\`19-save-state-gallery-post-install.png\` mostra a galeria física com slot,
+timestamp e fallback \`SEM CAPTURA\`, e
+\`20-nes-paused-post-install.png\` confirma a sessão suspensa após ação
+semântica. O gap de save-state físico foi fechado; troca de disco continua
+dependente de conteúdo multidisco e adapter legítimos.
+
+## 2026-09-17 — auditoria de mapeamento e captura visual
+
+Revisei visualmente as capturas do ciclo instalado, sem tocar no launcher de QA
+de outra frente e sem reiniciar ou finalizar o KDE. O jogo NES real está
+comprovado em `22-nes-game-post-install.png`; porém `13`, `14`, `18` e `20`
+mostram o read model de sessão sobre a superfície AURA, não uma composição
+limpa do OSD sobre a janela do emulador. Corrigi o mapa e o item
+`SZ-AURA-CINEMA-COMPLETION` para classificar essa evidência como parcial e
+abrir `GAP-AURA-CINEMA-OSD-IN-GAME-PHYSICAL-CAPTURE`. A galeria em `19` segue
+visualmente comprovada com fallback `SEM CAPTURA`, mas não foi promovida como
+prova de save/load in-game.
+
+O `STATUS-CHECK` foi regenerado e passou. O CI do PR #198 segue em andamento nos
+jobs Python 3.11, 3.12 e 3.14; os gates QML, smoke das distribuições e supply
+chain já passaram. A release ativa continua `2.0.0rc1-d70a80f83aae`; nenhuma
+instalação ou mutação de host foi feita nesta sessão.

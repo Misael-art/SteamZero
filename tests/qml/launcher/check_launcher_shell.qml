@@ -106,6 +106,12 @@ Item {
             harness.check(shell.homeFocus === "continue:celeste",
                           "sem contexto, começa no foco inicial")
 
+            // O retorno de um modal precisa entregar o foco ao componente Home,
+            // não somente ao shell pai; sem isso a cena pode ficar desenhada
+            // com `selectionReady` falso e sem navegação efetiva.
+            harness.check(shell.restoreHomeFocus() === true,
+                          "restaurar o foco da home precisa ser acionável")
+
             // Navega e abre um jogo: o lugar de saída tem de ser lembrado.
             shell.moveHome("right")
             harness.check(shell.homeFocus === "continue:hades", "o shell não moveu o foco")

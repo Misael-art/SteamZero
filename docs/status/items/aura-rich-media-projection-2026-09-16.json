@@ -5,10 +5,10 @@
   "title": "AURA — projeção determinística de mídia rica",
   "domain": "ui",
   "implementation": "partial",
-  "integration": "feature-branch",
-  "verification": "dev",
+  "integration": "released",
+  "verification": "hw",
   "operation": "degraded",
-  "distribution": "not-packaged",
+  "distribution": "installed",
   "scopePaths": [
     "src/steamzero/adapters/launcher_media.py",
     "src/steamzero/domain/media.py",
@@ -38,6 +38,18 @@
   ],
   "evidence": [
     {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/10-switch-catalog-focus.png",
+      "command": "release 2.0.0rc1-d70a80f83aae, janela Wayland real; catálogo AURA com capa central e capas vizinhas",
+      "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/11-game-details-focus.png",
+      "command": "release 2.0.0rc1-d70a80f83aae, detalhe fullscreen com capa local e ação Jogar",
+      "result": "recorded"
+    },
+    {
       "kind": "test",
       "reference": "tests/unit/test_launcher_media.py",
       "command": "run_tests_isolated.py tests/unit/test_launcher_media.py -q",
@@ -59,8 +71,8 @@
   "activeWorkstreams": [
     "WS-2026-09-AURA-RICH-MEDIA-PROJECTION"
   ],
-  "nextAction": "Aguardar CI do PR #188; após o merge, publicar a release governada e repetir a prova física no host.",
+  "nextAction": "Manter a projeção rica na release d70; fechar credenciais remotas e repetir prova física de fanart/screenshots na próxima release. Save-state físico e disc swap permanecem gaps da composição de sessão.",
   "scopeDigest": "19891b0eb0fe23ffb8b8ad4946b8ec550ea3fb988429399b029fac3ee08b0b05",
   "updatedAt": "2026-09-16",
-  "notes": "A projeção agora mantém papéis ricos separados, ordena screenshots numerados e publica somente URLs locais dentro da raiz gerenciada."
+  "notes": "A projeção mantém papéis ricos separados, ordena screenshots numerados e publica somente URLs locais dentro da raiz gerenciada. O código foi integrado ao main e está presente na release d70; as capturas físicas provam o catálogo e o detalhe com arte local. A evidência não infere fanart, screenshots ou vídeo quando o registro ativo não os fornece."
 }

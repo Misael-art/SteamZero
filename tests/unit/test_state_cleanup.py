@@ -80,6 +80,19 @@ def test_plan_publishes_digest_bytes_and_expiry() -> None:
     assert item["relpath"].startswith("staging/")
 
 
+def test_state_migration_backup_is_protected_from_orphan_audit() -> None:
+    """A pre-migration database snapshot is not an operation backup orphan."""
+    migration_backup = paths.backups_dir() / "state-premigration-2026-09-16T183315.997192+0000.db"
+    migration_backup.write_bytes(b"database snapshot")
+
+    with StateStore() as store:
+        store.migrate()
+        report = state_audit.audit(store)
+
+    assert report.orphan_backups == []
+    assert migration_backup.is_file()
+
+
 def test_digest_is_deterministic_and_content_sensitive(tmp_path: Path) -> None:
     a = tmp_path / "a"
     b = tmp_path / "b"

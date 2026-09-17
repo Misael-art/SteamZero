@@ -11,10 +11,12 @@
   "distribution": "installed",
   "scopePaths": [
     "src/steamzero/domain/session_peripherals.py",
+    "src/steamzero/domain/state_audit.py",
     "src/steamzero/adapters/session_peripherals.py",
     "src/steamzero/schemas/session-peripherals-v1.schema.json",
     "src/steamzero/ui/qml/launcher/LauncherSessionPeripherals.qml",
     "tests/unit/test_session_peripherals.py",
+    "tests/unit/test_state_cleanup.py",
     "tests/qml/launcher/check_launcher_session_peripherals.qml",
     "src/steamzero/adapters/session_control.py",
     "src/steamzero/adapters/session_overlay.py",
@@ -37,7 +39,7 @@
     "tests/unit/test_session_overlay.py",
     "tests/unit/test_session_overlay_adapter.py"
   ],
-  "scopeDigest": "3ba2cc48a0b62e0f0e43f40327100f02a5679f7fb3d7f4db7d1ad9b930002d11",
+  "scopeDigest": "15a1b85dd8b89593c8f5f766f6e056292fa96880f889d9d0b58657db4cfc5278",
   "dependsOn": [
     "SZ-AURA-SAVE-STATE-GALLERY",
     "SZ-AURA-SESSION-OSD",
@@ -46,6 +48,7 @@
   "knownGaps": [
     "GAP-AURA-PERF-1280X800-SURFACE",
     "GAP-AURA-CINEMA-OSD-SAME-CARD-POST-APPLY",
+    "GAP-AURA-CINEMA-OSD-IN-GAME-PHYSICAL-CAPTURE",
     "GAP-PS4-SCOPE-PHYSICAL-EVIDENCE-PRECEDES",
     "GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
   ],
@@ -57,6 +60,12 @@
     "A evidência física mostra a versão ativa e distingue sucesso de fallback ou capacidade não disponível."
   ],
   "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_state_cleanup.py",
+      "command": ".venv/bin/python -m pytest tests/unit/test_state_cleanup.py -q",
+      "result": "passed"
+    },
     {
       "kind": "test",
       "reference": "tests/unit/test_session_peripherals.py",
@@ -152,12 +161,36 @@
       "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/06-save-state-gallery.png",
       "command": "release 2.0.0rc1-d1cbb03a3b66, saveState/loadState aceitos; galeria exibiu fallback SEM CAPTURA",
       "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/SESSION-CYCLE-MAP.json",
+      "command": "release 2.0.0rc1-d70a80f83aae; mapeamento físico bridge -> sessão -> OSD -> save-state -> retorno",
+      "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/13-session-overlay-post-install.png",
+      "command": "release 2.0.0rc1-d70a80f83aae, read model do OSD exibido na superfície AURA; janela do emulador não ficou isolada",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/19-save-state-gallery-post-install.png",
+      "command": "release 2.0.0rc1-d70a80f83aae, galeria física com slot nativo e fallback SEM CAPTURA em NES/RetroArch",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/23-return-focus-defect-post-install.png",
+      "command": "release 2.0.0rc1-d70a80f83aae, retorno fecha modal mas expõe foco visual stale em uma rota de busca",
+      "result": "partial"
     }
   ],
-  "nextAction": "Instalar a release que contém 82799f5 e repetir o ciclo físico para provar o retorno sem modal órfão. Troca de disco e bezel/fade visual ainda exigem jogo/adapter legítimo; PS4 e multi-disc permanecem bloqueados por conteúdo legítimo ou contrato de adapter.",
+  "nextAction": "Promover ecf26d1 e a correção da auditoria de snapshot para uma nova release governada; repetir a captura de retorno e o Doctor. Troca de disco e bezel/fade visual ainda exigem jogo/adapter legítimo; PS4 e multi-disc permanecem bloqueados por conteúdo legítimo ou contrato de adapter.",
   "activeWorkstreams": [
     "WS-2026-09-AURA-CINEMA-COMPLETION"
   ],
   "updatedAt": "2026-09-16",
-  "notes": "Frente de continuação do AURA Launcher/Theme Engine. A medição e a captura visual física final estão registradas, mas não substituem a captura funcional do ciclo nem promovem AURA UI ou Theme Studio; cobrem apenas a cadeia de sessão e a composição fullscreen especificadas no plano."
+  "notes": "Frente de continuação do AURA Launcher/Theme Engine. O ciclo físico pós-instalação foi mapeado e capturado em dois adapters reais; a evidência também registrou honestamente o stale de foco encontrado no retorno por busca. A auditoria confirmou que não há staging órfão; o único alerta era o snapshot protegido de pré-migração, agora reconhecido pelo código-fonte e aguardando promoção. A medição e a captura visual não promovem AURA UI ou Theme Studio; cobrem apenas a cadeia de sessão e a composição fullscreen especificadas no plano."
 }

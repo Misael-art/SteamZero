@@ -20,14 +20,14 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-TESTS | 478 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TOOLS | 40 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AURA-ASSET-SANITIZACAO | 2 | 1 | 1 | unit |  |
-| SZ-AURA-CINEMA-COMPLETION | 74 | 16 | 9 | hw |  |
+| SZ-AURA-CINEMA-COMPLETION | 76 | 21 | 11 | hw |  |
 | SZ-AURA-CONTRACTS | 38 | 3 | 3 | unit |  |
 | SZ-AURA-LAUNCHER | 267 | 58 | 41 | hw |  |
 | SZ-AURA-METADATA | 23 | 10 | 10 | unit |  |
-| SZ-AURA-PERFORMANCE-VALIDATION | 13 | 6 | 6 | hw |  |
+| SZ-AURA-PERFORMANCE-VALIDATION | 27 | 8 | 7 | hw |  |
 | SZ-AURA-PLATFORM-EXECUTION-PLAN | 5 | 1 | 0 | none |  |
-| SZ-AURA-RICH-MEDIA-PROJECTION | 9 | 3 | 3 | dev |  |
-| SZ-AURA-SAVE-STATE-GALLERY | 15 | 5 | 4 | unit |  |
+| SZ-AURA-RICH-MEDIA-PROJECTION | 9 | 5 | 3 | hw |  |
+| SZ-AURA-SAVE-STATE-GALLERY | 15 | 7 | 6 | hw |  |
 | SZ-AURA-SEARCH-CONTRACT | 5 | 5 | 3 | dev |  |
 | SZ-AURA-SESSION-OSD | 25 | 6 | 4 | hw |  |
 | SZ-AURA-UI | 16 | 5 | 4 | unit |  |
@@ -78,4 +78,4 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-UI-PACKAGED-ICONS | 54 | 4 | 2 | unit |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 
-Arquivos em `src/`: **595**. Sob agregador apenas, sem item de capacidade: **283** (47%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
+Arquivos em `src/`: **595**. Sob agregador apenas, sem item de capacidade: **282** (47%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.

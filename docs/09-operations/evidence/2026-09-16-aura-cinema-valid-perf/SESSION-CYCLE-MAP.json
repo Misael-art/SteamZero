@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-09-16",
+  "release": {
+    "version": "2.0.0rc1",
+    "provenance": "2.0.0rc1-d70a80f83aae",
+    "sourceCommit": "d70a80f83aae462e516dd1e603ca46289e42ffef",
+    "surface": "1280x801",
+    "windowSystem": "Wayland",
+    "kdeRestarted": false
+  },
+  "gameRuns": [
+    {
+      "gameId": "6f137968a6c4b9de0cf6340d",
+      "title": "Diablo II Resurrected",
+      "platform": "switch",
+      "adapter": "Eden",
+      "sessionId": "01M2P8C106PQ55H384FEM01M23",
+      "stages": [
+        {"stage": "catalog-focus", "evidence": "10-switch-catalog-focus.png"},
+        {"stage": "details", "evidence": "11-game-details-focus.png"},
+        {"stage": "real-game", "evidence": "12-session-game-post-install.png"},
+        {"stage": "session-overlay-read-model", "result": "running; emulator composition not isolated", "evidence": "13-session-overlay-post-install.png"},
+        {"stage": "pause-read-model", "result": "suspended; emulator composition not isolated", "evidence": "14-session-paused-post-install.png"},
+        {"stage": "terminal-return", "result": "closed", "evidence": "15-return-clean-post-install.png"}
+      ],
+      "capabilityReadModel": {
+        "pause": "enabled",
+        "saveState": "disabled: owner refused query",
+        "disc": "disabled: owner refused query",
+        "bezel": "not visually isolated",
+        "fade": {"phase": "idle", "durationMs": 180, "not visually isolated": true}
+      }
+    },
+    {
+      "gameId": "c51dbc23e9b3258b761df058",
+      "title": "'89 Dennou Kyuusei Uranai (Japan)",
+      "platform": "nes-famicom",
+      "adapter": "RetroArch/Mesen",
+      "sessionId": "01M2P8K67MHYVJDQ5ZA03KDW2X",
+      "stages": [
+        {"stage": "real-game", "evidence": "22-nes-game-post-install.png"},
+        {"stage": "session-overlay-read-model", "result": "running; emulator composition not isolated", "evidence": "18-nes-session-overlay-post-install.png"},
+        {"stage": "save-state-gallery", "result": "ready with fallback thumbnail", "evidence": "19-save-state-gallery-post-install.png"},
+        {"stage": "pause-read-model", "result": "accepted=true, suspended; emulator composition not isolated", "evidence": "20-nes-paused-post-install.png"},
+        {"stage": "terminal-return", "result": "closed", "evidence": "23-return-focus-defect-post-install.png"}
+      ],
+      "capabilityReadModel": {
+        "pause": "enabled",
+        "saveState": "enabled",
+        "disc": "disabled: adapter did not declare support",
+        "bezel": "declared aura-default; visual isolation pending",
+        "fade": {"phase": "idle", "durationMs": 180, "visual isolation pending": true}
+      }
+    }
+  ],
+  "bridgeToRender": [
+    "catalog focus -> /cinema read model -> AURA Cinema carousel",
+    "details -> /launch request -> session receipt -> real emulator window",
+    "F1/Menu -> /session?overlay=1 -> LauncherSessionOverlay",
+    "semantic action -> POST /session/action -> adapter -> updated overlay state",
+    "canonical closed -> LauncherMain polling -> modal cleanup -> restored home focus"
+  ],
+  "gaps": [
+    "The installed release still showed a stale 'Atualizando seleção...' label on one return path; restoreHomeFocus was corrected in the source branch and needs a new governed release for physical confirmation.",
+    "The captured session overlay and pause images show the AURA read model, not a clean emulator-window composition; an in-game OSD/bezel/fade capture remains required.",
+    "No legitimate multi-disc game was available for physical disc-swap proof.",
+    "Bezel and fade are present in the allowlisted read model but were not visually isolated in these captures.",
+    "PS4 physical game proof remains blocked by absence of legitimate PS4 content."
+  ]
+}

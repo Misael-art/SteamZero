@@ -155,6 +155,15 @@ Item {
         return home.move(direction)
     }
 
+    function restoreHomeFocus() {
+        // Depois de fechar uma superfície modal, o foco precisa voltar ao
+        // componente que publica o currentFocus semântico. Focar apenas o
+        // shell pai deixa a cena desenhada, mas com selectionReady falso e
+        // teclas de navegação sem destinatário.
+        home.forceActiveFocus()
+        return true
+    }
+
     function openGame(gameId) {
         if (launchState === "launching" || launchState === "emulator-visible")
             return false
