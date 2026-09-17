@@ -6,7 +6,7 @@
   "branch": "codex/aura-rich-media-projection-2026-09-16",
   "baseRef": "7e2ef2eb55056c9ec50bb2b00931bcbdfdaae9a4",
   "owner": "codex-aura-rich-media-projection",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/adapters/launcher_media.py",
     "src/steamzero/domain/media.py",
@@ -26,6 +26,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Aguardar CI do PR #188; após o merge, publicar a release governada e repetir a prova física no host.",
+  "nextAction": "Workstream encerrado após integração no main/release d70; gaps remanescentes seguem no item para próxima promoção.",
   "updatedAt": "2026-09-16"
 }

@@ -11016,3 +11016,14 @@ foram regeneradas e \`make status-check\` passou. O PR #198 reúne a correção
 visual de foco (\`ecf26d1\`) e aguarda merge para uma nova release governada; a
 correção de auditoria ainda não foi instalada no host. Nenhum processo de QA de
 outra frente foi interrompido e o KDE não foi reiniciado nem finalizado.
+
+## 2026-09-16 — harmonização da projeção de mídia rica
+
+A auditoria de ancestralidade confirmou que os commits da projeção rica já
+estão em \`origin/main\` e na release instalada \`2.0.0rc1-d70a80f83aae\`. O item
+\`SZ-AURA-RICH-MEDIA-PROJECTION\` foi corrigido de feature-branch/not-packaged
+para released/installed, com verificação física e as capturas \`10\` (carousel
+com capas reais) e \`11\` (detalhe com capa e ação Jogar). O workstream histórico
+foi fechado; credenciais remotas, fanart/screenshots/vídeo não publicados,
+performance da nova release, save-state físico e disc swap continuam gaps
+honestos. \`STATUS-CHECK\` passou.
