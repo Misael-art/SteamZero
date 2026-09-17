@@ -3,8 +3,8 @@
   "kind": "workstream",
   "id": "WS-2026-09-MULTIDISC-DESCRIPTOR-RECONCILIATION",
   "item": "SZ-MULTIDISC-DESCRIPTOR-RECONCILIATION",
-  "branch": "codex/aura-rich-media-global-2026-09-16",
-  "baseRef": "a5f3ed1",
+  "branch": "codex/aura-multidisc-audit-2026-09-17",
+  "baseRef": "153d3da8b80b93e595a8c227c01fa2ab49918e23",
   "owner": "codex-aura-rich-media-global",
   "state": "active",
   "exclusivePaths": [
@@ -30,5 +30,5 @@
     "docs/WORKLOG.md"
   ],
   "nextAction": "Implementar o contrato de extração/conversão e comprovar PUAE/PX68K; depois executar a validação física do descritor na release instalada; não alterar o host nesta branch.",
-  "updatedAt": "2026-09-16"
+  "updatedAt": "2026-09-17"
 }

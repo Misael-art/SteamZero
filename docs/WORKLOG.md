@@ -11055,3 +11055,30 @@ O `STATUS-CHECK` foi regenerado e passou. O CI do PR #198 segue em andamento nos
 jobs Python 3.11, 3.12 e 3.14; os gates QML, smoke das distribuições e supply
 chain já passaram. A release ativa continua `2.0.0rc1-d70a80f83aae`; nenhuma
 instalação ou mutação de host foi feita nesta sessão.
+
+## 2026-09-17 — auditoria archive-aware do acervo multidisco
+
+O `ArchiveAwareMultiDiscResolver` foi executado em modo somente leitura sobre o
+acervo real. O ZIP X68000 `Garou Densetsu I+II+Special` foi particionado em
+Garou Densetsu (4 discos A–D), Garou Densetsu 2 (6 discos A–F) e Garou Densetsu
+Special (9 discos A–I), cada membro DIM com hash próprio; os três conjuntos
+ficaram corretamente em `needs-platform-contract`, pois PX68K ainda não tem
+contrato M3U comprovado. O conjunto Amiga Super Street Fighter II foi
+classificado como `conflict` por variantes incompatíveis e duplicata `(1)`, sem
+geração de playlist.
+
+A evidência reproduzível está em
+`docs/09-operations/evidence/2026-09-17-multidisc-archive-audit/`. Nenhum
+arquivo do acervo foi extraído, convertido, renomeado ou sobrescrito.
+`STATUS-CHECK` passou. A instalação governada de `2.0.0rc1-153d3da8b80b`
+continua aguardando aprovação do polkit; o host ainda está em d70.
+
+## 2026-09-17 — regressões focadas da cadeia AURA e multidisco
+
+Reexecutei as regressões diretamente relacionadas ao objetivo: sessão/mídia
+(39 testes) e multidisco/archive-aware (88 testes); todos passaram. A operação
+governada continua viva no `pkexec`, sem saída e sem troca de
+`/opt/steamzero/current`, que permanece em `2.0.0rc1-d70a80f83aae`. Não houve
+reinício ou finalização do KDE, nem alteração do acervo real. A prova visual
+nova e a sonda de performance da release `153d3da8b80b` permanecem pendentes
+exclusivamente da autenticação do operador.

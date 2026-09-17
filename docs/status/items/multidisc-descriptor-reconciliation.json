@@ -22,7 +22,8 @@
     "tests/unit/test_multidisc.py",
     "tests/unit/test_multidisc_artifacts.py",
     "tests/unit/test_library_rom_classify.py",
-    "tests/unit/test_multidisc_archive.py"
+    "tests/unit/test_multidisc_archive.py",
+    "docs/09-operations/evidence/2026-09-17-multidisc-archive-audit"
   ],
   "dependsOn": [
     "SZ-LIBRARY-CANONICAL",
@@ -116,12 +117,18 @@
       "reference": "src/steamzero/platform_manifests/53-x68000.platform.json",
       "command": "pytest multidisc + inventário + validação de manifestos (119 passed)",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-17-multidisc-archive-audit/ARCHIVE-AUDIT.json",
+      "command": "ArchiveAwareMultiDiscResolver read-only nos archives reais X68000 Garou e Amiga Super Street Fighter II",
+      "result": "passed"
     }
   ],
   "activeWorkstreams": [
     "WS-2026-09-MULTIDISC-DESCRIPTOR-RECONCILIATION"
   ],
-  "scopeDigest": "399f5b8048c3628ceb310e6f04db5b59c47ac440a05dcc182d02a0eaff670a6d",
+  "scopeDigest": "c72ae49d6595b2e7a9a663359e1cefdab8e214b898c3c56c546cf8cfdd651005",
   "nextAction": "Implementar o contrato de extração/conversão e comprovar PUAE/PX68K; só então executar plan/apply/verify transacional, promover a release e fazer a prova física com jogo multidisco legítimo.",
   "updatedAt": "2026-09-16",
   "notes": "A capacidade foi criada como requisito central. A camada ArchiveAwareMultiDiscResolver indexa ZIP com hashes de archive/membro, rejeita conteúdo inseguro e decompõe archives X68000 multi-jogo. A identidade do disco agora usa o hash do membro, duplicatas idênticas são canonizadas, variantes incompatíveis são conflito e Disk N↔Disk A/B é validado. X68000 declara agora DIM/XDF, aceitando extensões .dim/.xdf/.img sem perder a semântica lógica. Amiga usa extração gerenciada; X68000 permanece bloqueado por contrato PX68K M3U não comprovado. Nenhuma playlist, extração ou mídia do usuário foi alterada nesta etapa."
