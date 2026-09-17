@@ -48,6 +48,30 @@ precisam ser medidos, não estimados a partir do tamanho do PKG.
 
 Plano detalhado e prompt de execução: [PS4-PKG-STORAGE-RECONCILIATION-PLAN](PS4-PKG-STORAGE-RECONCILIATION-PLAN.md).
 
+### F3-PS5 — Catálogo experimental SharpEmu e dumps PS5
+
+O SharpEmu entra como plataforma PS5 independente (`playstation-5`/`ps5`),
+sem ser confundido com PS4/shadPS4. O upstream atualmente aceita pastas de
+dump e lançamento por `eboot.bin`/`.elf`, exige host x64 com Vulkan e publica
+compatibilidade experimental por build; o SteamZero deve mostrar esses estados
+sem promover um runtime instalado a jogo jogável.
+
+O plano cobre fonte Linux `tar.gz` com hash e proveniência, extração segura do
+payload, scanner `ps5dir`, leitura de `param.sfo`, identidade por Title ID,
+separação de módulos `prx`/`sys_module`, classificação explícita de `.pkg`,
+reconciliação base/update/DLC somente quando comprovada, mídia por identidade,
+preflight Vulkan, launch/return com foco preservado, rollback e evidência física.
+O updater interno do SharpEmu não será usado; toda mutação seguirá
+`scan → plan → validate → apply → verify → publish`, preservando a origem.
+
+Critério de saída: fonte e payload verificáveis, ciclo de componente idempotente,
+nenhum arquivo auxiliar exposto como jogo, estados de compatibilidade honestos,
+testes de erro/recuperação verdes e prova física da release instalada. O item
+permanece bloqueado até a extensão segura de `tar.gz`, o hash oficial do asset e
+a autorização do operador para instalação/validação no host.
+
+Plano detalhado: [SHARPEMU-PS5-DEPLOYMENT-PLAN](SHARPEMU-PS5-DEPLOYMENT-PLAN.md).
+
 ## Fase 4 — Emuladores e frontends
 
 Entregas: engine de adapters + schema adapter.json + lockfile de componentes; adapters núcleo (lista PRD §7); templates de config (derivação EmuDeck conforme REUSE-POLICY); adapters de frontend Steam/SRM/ES-DE/RetroArch/RetroDECK/Heroic; ações semânticas de controle + perfis Steam Input; launcher genérico com perfis por jogo.
