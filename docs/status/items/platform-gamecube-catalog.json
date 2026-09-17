@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-PLATFORM-GAMECUBE-CATALOG",
+  "title": "Catálogo de plataforma GameCube (Dolphin)",
+  "domain": "platform",
+  "implementation": "partial",
+  "integration": "isolated",
+  "verification": "none",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/platform_manifests/11-nintendo-console.platform.json",
+    "src/steamzero/adapters/manifests/dolphin.adapter.json",
+    "docs/12-roadmap/GAMECUBE-CONTENT-INGESTION-AND-MEDIA-PLAN.md",
+    "docs/12-roadmap/PROMPT-GAMECUBE-CONTENT-INGESTION-AGENT.md"
+  ],
+  "scopeDigest": "2fe0d0b78926ce4ad4fbd918935cab971586adbde08166164b5091be42ea83f3",
+  "dependsOn": [
+    "SZ-AGG-PLATFORM-MANIFESTS",
+    "SZ-LIBRARY-CANONICAL",
+    "SZ-MEDIA-SCRAPING",
+    "SZ-EMULATION-LONG-OPERATIONS"
+  ],
+  "knownGaps": [
+    "GAP-PLATFORM-GAMECUBE-CONTENT-RESOLVER",
+    "GAP-GAMECUBE-WII-SYSTEM-SEPARATION",
+    "GAP-GAMECUBE-MULTIDISC-RECONCILIATION",
+    "GAP-GAMECUBE-RVZ-OPTIN-CONVERSION",
+    "GAP-PLATFORM-GAMECUBE-PHYSICAL-LAUNCH"
+  ],
+  "acceptanceCriteria": [
+    "Wii e GameCube compartilham Dolphin, mas não identidade, mídia ou controles.",
+    "ISO/GCM, RVZ, GCZ, CISO e WIA são classificados pelo conteúdo real.",
+    "DOL/ELF sem identidade comercial não viram jogos falsos.",
+    "Multi-disc forma um único conjunto lógico.",
+    "RVZ é recomendado, mas sempre opt-in.",
+    "Conversão RVZ não bloqueia interface nem jogo em execução.",
+    "Fonte original permanece ativa até verify e confirmação.",
+    "Falha, cancelamento e rollback não danificam a origem.",
+    "BIOS não é exigida genericamente para jogos GameCube.",
+    "Referências a SD, USB e rede sobrevivem à mudança do ponto de montagem.",
+    "Mídia usa systemId=gamecube e Game ID antes do nome.",
+    "A prova física em release instalada permanece separada e exige autorização do operador."
+  ],
+  "evidence": [],
+  "nextAction": "Aguardar agente dedicado: implementar resolver, multi-disc, conversão RVZ opt-in e read model em módulos próprios sem tocar nas frentes de tema, launcher, Wii, PS3, PS4 ou Vita.",
+  "activeWorkstreams": [
+    "WS-2026-09-GAMECUBE-CATALOG"
+  ],
+  "updatedAt": "2026-09-17",
+  "notes": "Plano documental criado em branch isolada. O manifesto Nintendo Console e o adapter Dolphin são compartilhados com Wii; ainda faltam separação por systemId, reconciliação multi-disc, ingestão GameCube e conversão RVZ opt-in com prioridade e rollback. Nenhuma instalação ou mutação de host foi feita."
+}

@@ -48,6 +48,16 @@ precisam ser medidos, não estimados a partir do tamanho do PKG.
 
 Plano detalhado e prompt de execução: [PS4-PKG-STORAGE-RECONCILIATION-PLAN](PS4-PKG-STORAGE-RECONCILIATION-PLAN.md).
 
+### F3-GAMECUBE — Ingestão, multi-disc e otimização RVZ opt-in
+
+Para GameCube, o usuário seleciona uma raiz, arquivo, disco removível ou compartilhamento. O SteamZero deve separar GameCube de Wii pelo `systemId`, embora ambos usem Dolphin, e reconhecer ISO/GCM, RVZ, GCZ, CISO, WIA, DOL e ELF. WAD, NFS, WiiWare, Virtual Console e NAND não são GameCube sem identificação interna comprovada.
+
+Jogos multi-disc formam um único conjunto lógico por Game ID, número do disco e hash. RVZ é o formato recomendado para economia, mas a conversão é sempre opt-in: o plano mostra tamanho, staging, tempo e economia; o job roda em baixa prioridade, pausa durante jogo, permite cancelar/retomar e só ativa RVZ após verify e confirmação. A origem nunca é apagada automaticamente.
+
+Mídia prioriza `systemId=gamecube` + Game ID. DOL/ELF sem identidade comercial são homebrew, não jogos falsos. Referências de SD/USB/rede usam volume/share + caminho relativo, e o preflight Dolphin decide `ready`.
+
+Plano detalhado e prompt de execução: [GAMECUBE-CONTENT-INGESTION-AND-MEDIA-PLAN](GAMECUBE-CONTENT-INGESTION-AND-MEDIA-PLAN.md) e [PROMPT-GAMECUBE-CONTENT-INGESTION-AGENT](PROMPT-GAMECUBE-CONTENT-INGESTION-AGENT.md).
+
 ## Fase 4 — Emuladores e frontends
 
 Entregas: engine de adapters + schema adapter.json + lockfile de componentes; adapters núcleo (lista PRD §7); templates de config (derivação EmuDeck conforme REUSE-POLICY); adapters de frontend Steam/SRM/ES-DE/RetroArch/RetroDECK/Heroic; ações semânticas de controle + perfis Steam Input; launcher genérico com perfis por jogo.

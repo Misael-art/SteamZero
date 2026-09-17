@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-GAMECUBE-CATALOG",
+  "item": "SZ-PLATFORM-GAMECUBE-CATALOG",
+  "branch": "codex/gamecube-content-ingestion-2026-09-17",
+  "baseRef": "HEAD",
+  "owner": "gamecube-content-agent",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/domain/gamecube_content.py",
+    "src/steamzero/domain/gamecube_identity.py",
+    "src/steamzero/domain/gamecube_conversion.py",
+    "src/steamzero/adapters/gamecube_catalog.py",
+    "tests/unit/test_gamecube_content.py",
+    "tests/unit/test_gamecube_identity.py",
+    "tests/unit/test_gamecube_conversion.py",
+    "tests/integration/test_gamecube_catalog.py",
+    "docs/12-roadmap/GAMECUBE-CONTENT-INGESTION-AND-MEDIA-PLAN.md",
+    "docs/12-roadmap/PROMPT-GAMECUBE-CONTENT-INGESTION-AGENT.md"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Implementar resolver, multi-disc e conversão RVZ opt-in em módulos próprios; solicitar coordenação antes de alterar manifesto compartilhado, library.py, media registry, emulation.py ou launcher.",
+  "updatedAt": "2026-09-17"
+}
