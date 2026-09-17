@@ -24,11 +24,13 @@ from steamzero.core.errors import SteamZeroError
 from steamzero.domain.theme_import_esde import (
     INHERITED_TOKENS,
     MAX_ASSET_BYTES,
+    asset_inventory,
     build_manifest,
     import_report,
     import_scheme,
     map_to_tokens,
     parse_color_schemes,
+    read_asset,
     resolve_assets,
     unsupported_slots,
 )
@@ -146,6 +148,23 @@ class TestImportScheme:
         report = import_report(imported)
         assert report["fidelity"] == "palette+background", "com asset a fidelidade sobe"
         assert report["inherited"] == list(INHERITED_TOKENS)
+
+    def test_asset_inventory_and_read_are_contained_to_the_theme(self, tmp_path: Path) -> None:
+        root = tmp_path / "theme"
+        (root / "wallpapers").mkdir(parents=True)
+        payload = b"background-bytes"
+        (root / "wallpapers" / "neon.webp").write_bytes(payload)
+        plans = resolve_assets("neon", asset_inventory(root))
+
+        assert plans[0].size == len(payload)
+        assert read_asset(root, plans[0]) == payload
+
+        outside = tmp_path / "outside.webp"
+        outside.write_bytes(payload)
+        (root / "wallpapers" / "neon.webp").unlink()
+        (root / "wallpapers" / "neon.webp").symlink_to(outside)
+        with pytest.raises(SteamZeroError, match="asset ausente"):
+            read_asset(root, plans[0])
 
     def test_monochrome_scheme_is_flagged(self) -> None:
         """Alguns esquemas têm identidade na arte, não na paleta.
@@ -393,6 +412,20 @@ class TestTheImportPathTheUserCanActuallyReach:
         assert "accentStrong" in result["derived"], "derivados precisam ser auditaveis"
         session = dashboard.editor_load(str(result["themeId"]))
         assert session["preview"]["resolved"]["color"]["accent"] == "#e94560"
+
+    def test_import_preserves_the_selected_wallpaper(self, tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        dashboard = self._dashboard(tmp_path, monkeypatch)
+        source = self._theme(tmp_path)
+        (source / "wallpapers").mkdir()
+        wallpaper = b"licensed-wallpaper-fixture"
+        (source / "wallpapers" / "vivo.webp").write_bytes(wallpaper)
+
+        result = dashboard.theme_import_esde_apply(str(source), "vivo", "Vivo")
+
+        assert result["fidelity"] == "palette+background"
+        assert result["assets"][0]["sourcePath"] == "wallpapers/vivo.webp"
+        theme_root = Path(result["path"])
+        assert (theme_root / "assets" / "background.webp").read_bytes() == wallpaper
 
     def test_a_directory_without_colors_xml_fails_closed(self, tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
         dashboard = self._dashboard(tmp_path, monkeypatch)

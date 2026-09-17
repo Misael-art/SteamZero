@@ -67,6 +67,7 @@ Rectangle {
     // pedir que a pessoa anote um identificador de 26 caracteres.
     property var lastOperation: ({})
     property var gcPreview: null
+    property var applyPlan: null
 
     color: panel.backgroundColor
     implicitHeight: 560
@@ -155,6 +156,44 @@ Rectangle {
             panel.refresh()
         }, function(error) {
             panel.busyThemeId = ""
+            panel.notified(String((error && (error.detail || error.message)) || error || ""), true)
+        })
+    }
+
+    function beginApplyTheme(themeId, themeName) {
+        panel.requestAction("theme.apply", {"themeId": themeId}, function(response) {
+            if (response && response.alreadyActive === true) {
+                panel.notified(qsTr("Este tema já está ativo."), false)
+                return
+            }
+            panel.applyPlan = {
+                "themeId": themeId,
+                "themeName": themeName,
+                "planId": response && response.planId ? response.planId : "",
+                "confirmToken": response && response.confirmToken ? response.confirmToken : "",
+                "preview": response && response.preview ? response.preview : "",
+                "rollbackGuarantee": response && response.rollbackGuarantee
+                    ? response.rollbackGuarantee : ""
+            }
+            applyDialog.open()
+        }, function(error) {
+            panel.notified(String((error && (error.detail || error.message)) || error || ""), true)
+        })
+    }
+
+    function confirmApplyTheme() {
+        if (!panel.applyPlan || !panel.applyPlan.planId)
+            return
+        panel.requestAction("theme.apply.confirm", {
+            "planId": panel.applyPlan.planId,
+            "confirmToken": panel.applyPlan.confirmToken
+        }, function(_response) {
+            const appliedName = panel.applyPlan.themeName
+            panel.applyPlan = null
+            applyDialog.close()
+            panel.notified(qsTr("Tema ativo: %1").arg(appliedName), false)
+            panel.refresh()
+        }, function(error) {
             panel.notified(String((error && (error.detail || error.message)) || error || ""), true)
         })
     }
@@ -369,6 +408,18 @@ Rectangle {
                                     onClicked: fullscreenScene.openScene(
                                         modelData.id, panel.themeLabel(modelData))
                                 }
+                                DarkButton {
+                                    objectName: "applyButton_" + modelData.id
+                                    visible: modelData.installed === true && modelData.active !== true
+                                    text: qsTr("Aplicar na central")
+                                    enabled: panel.busyThemeId === ""
+                                    Layout.minimumHeight: 48
+                                    Accessible.name: text + " " + (panel.themeLabel(modelData))
+                                    Accessible.description: qsTr(
+                                        "Ativa este tema na central depois de uma confirmação.")
+                                    onClicked: panel.beginApplyTheme(
+                                        modelData.id, panel.themeLabel(modelData))
+                                }
                                 Item { Layout.fillWidth: true }
                                 DarkButton {
                                     objectName: "uninstallButton_" + modelData.id
@@ -535,6 +586,48 @@ Rectangle {
             wrapMode: Text.WordWrap
         }
         onAccepted: panel.applyGarbage()
+    }
+
+    Dialog {
+        id: applyDialog
+        objectName: "applyDialog"
+        anchors.centerIn: parent
+        modal: true
+        title: qsTr("Aplicar tema na central")
+        standardButtons: Dialog.Cancel | Dialog.Ok
+
+        property string confirmLabel: qsTr("Confirmar aplicação")
+
+        contentItem: ColumnLayout {
+            spacing: 10
+            Label {
+                text: panel.applyPlan
+                    ? qsTr("Ativar \"%1\" como aparência da central?")
+                        .arg(panel.applyPlan.themeName || qsTr("tema"))
+                    : ""
+                color: panel.textColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Label {
+                visible: panel.applyPlan && panel.applyPlan.preview
+                text: panel.applyPlan ? String(panel.applyPlan.preview || "") : ""
+                color: panel.mutedColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Label {
+                visible: panel.applyPlan && panel.applyPlan.rollbackGuarantee
+                text: panel.applyPlan
+                    ? qsTr("Rollback: %1").arg(panel.applyPlan.rollbackGuarantee || "") : ""
+                color: panel.mutedColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+        }
+
+        onAccepted: panel.confirmApplyTheme()
+        onRejected: panel.applyPlan = null
     }
 
     // Prévia da cena. Não é confirmação: abre grande porque o que se avalia

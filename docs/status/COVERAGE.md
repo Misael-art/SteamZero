@@ -22,6 +22,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AURA-ASSET-SANITIZACAO | 2 | 1 | 1 | unit |  |
 | SZ-AURA-CINEMA-COMPLETION | 76 | 21 | 11 | hw |  |
 | SZ-AURA-CONTRACTS | 38 | 3 | 3 | unit |  |
+| SZ-AURA-ESDE-ACTIVE-SURFACE | 8 | 3 | 3 | dev |  |
 | SZ-AURA-LAUNCHER | 267 | 58 | 41 | hw |  |
 | SZ-AURA-METADATA | 23 | 10 | 10 | unit |  |
 | SZ-AURA-PERFORMANCE-VALIDATION | 27 | 8 | 7 | hw |  |
@@ -74,8 +75,8 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-THEME-IMPORT-RETROFE | 10 | 10 | 9 | hw |  |
 | SZ-THEME-IMPORT-SURFACE | 4 | 8 | 7 | unit |  |
 | SZ-THEME-STUDIO | 85 | 18 | 15 | hw |  |
-| SZ-UI-DESKTOP-AUDIT | 396 | 43 | 28 | dev |  |
+| SZ-UI-DESKTOP-AUDIT | 397 | 43 | 28 | dev |  |
 | SZ-UI-PACKAGED-ICONS | 54 | 4 | 2 | unit |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 
-Arquivos em `src/`: **595**. Sob agregador apenas, sem item de capacidade: **282** (47%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
+Arquivos em `src/`: **596**. Sob agregador apenas, sem item de capacidade: **282** (47%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.

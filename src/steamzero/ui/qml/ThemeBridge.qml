@@ -60,6 +60,10 @@ QtObject {
         ? resolved.studioGraph : ({})
     readonly property var editorDiagnostics: resolved && resolved.editorDiagnostics
         ? resolved.editorDiagnostics : ([])
+    // URLs já validadas pelo dashboard para assets do tema instalado. O QML
+    // não transforma caminhos declarados em origem por conta própria.
+    readonly property var assetUris: _source && _source.assetUris
+        ? _source.assetUris : ({})
 
     // Cores — alto contraste sobrepõe quando ativo
     readonly property color background: highContrast ? "#000000" : _get("color", "background", "#e7eceb")
