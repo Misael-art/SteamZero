@@ -214,6 +214,23 @@ def test_theme_apply_reports_active_theme_without_creating_plan(tmp_path: Path) 
     assert list((tmp_path / "config").glob("**/*")) == [preference_path]
 
 
+def test_theme_asset_uris_accept_resolved_asset_records(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    theme_root = tmp_path / "themes" / "org.test.esde"
+    asset = theme_root / "assets" / "background.png"
+    asset.parent.mkdir(parents=True)
+    asset.write_bytes(b"png-fixture")
+    monkeypatch.setattr(module.paths, "themes_dir", lambda: tmp_path / "themes")
+
+    uris = DesktopDashboard._theme_asset_uris(
+        "org.test.esde",
+        {"assets": {"background": {"slot": "background", "path": "assets/background.png"}}},
+    )
+
+    assert uris == {"background": asset.resolve().as_uri()}
+
+
 def test_theme_export_uses_confirmed_transaction_and_preserves_target(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
