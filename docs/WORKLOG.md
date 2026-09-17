@@ -11101,3 +11101,34 @@ O `STATUS-CHECK` do item novo está consistente; a base traz seis itens antigos
 com digests obsoletos, registrados como pré-existentes. Vídeo real, read model de
 jogo e prova física da release instalada permanecem gaps abertos; nenhuma
 instalação, reinício ou finalização do KDE ocorreu.
+
+## 2026-09-17 — instalação e validação física da superfície AURA Cinema rica
+
+O PR #205 foi mergeado depois de o CI do `main` terminar verde em todas as
+matrizes Python, smoke das distribuições, gate visual QML e supply chain. Gerei
+a release canônica `2.0.0rc1-41f56fffa17a` a partir de
+`41f56fffa17a9e861bfa64e57153cb792ee47f4b`, com wheel e wheelhouse vinculados
+ao run `35259553387`, e instalei pelo fluxo governado com rollback conhecido
+em `2.0.0rc1-7a7e96f8e4fd`. O daemon convergiu e a verificação idempotente
+passou; Doctor confirmou schema 22, zero operações pendentes e zero artefatos
+órfãos. O KDE não foi reiniciado nem finalizado.
+
+Na release instalada, `07-rich-cinema.png` prova em fullscreen a composição
+Cinema com capa central ampliada, vizinhas, fanart, paleta derivada, logo e
+metadados ricos; `05-entrega-funcional.png` registra a central instalada e
+`06-launcher-aura-cinema.png` preserva o fallback do catálogo real sem mídia.
+A sonda Wayland real registrou startup de 753 ms, frame time p95 de 16,164 ms,
+VRAM de 48.316 KiB e RSS de 342.208 KiB, dentro dos orçamentos definidos.
+
+Uma sessão RetroArch/Mesen real foi lançada com ROM local. O contrato publicou
+galeria de saves, o slot 0 foi criado e ficou carregável, pausa/retomada foram
+aceitas, o bezel AURA foi selecionado e o fade ficou pronto. A sessão foi
+encerrada e persistiu como `closed`. O compositor não expôs uma janela mapeada
+do RetroArch para captura limpa do OSD; as imagens que capturaram outra janela
+foram removidas e não são evidência. O jogo era single-disc, portanto a troca
+de disco permaneceu corretamente indisponível; nenhum suporte foi falsificado.
+
+O item `SZ-AURA-VISUAL-RICH-SURFACE`, as visões de status e a evidência física
+foram atualizados, e `STATUS-CHECK` passou. Permanecem abertos somente a
+captura visual do OSD, a prova física de bezel/fade sobre a janela do jogo e a
+validação com um conjunto multi-disc legítimo.
