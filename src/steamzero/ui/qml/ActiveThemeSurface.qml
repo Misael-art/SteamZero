@@ -13,7 +13,10 @@ Item {
     property bool highContrast: false
 
     anchors.fill: parent
-    z: -100
+    // A ApplicationWindow pinta o próprio fundo antes dos filhos. Um z
+    // negativo colocaria a superfície atrás desse fundo e tornaria o asset
+    // invisível na central instalada.
+    z: 0
     visible: true
 
     Rectangle {
