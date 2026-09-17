@@ -11055,3 +11055,23 @@ O `STATUS-CHECK` foi regenerado e passou. O CI do PR #198 segue em andamento nos
 jobs Python 3.11, 3.12 e 3.14; os gates QML, smoke das distribuições e supply
 chain já passaram. A release ativa continua `2.0.0rc1-d70a80f83aae`; nenhuma
 instalação ou mutação de host foi feita nesta sessão.
+
+## 2026-09-17 — medição física da release 2.0.0rc1-153d3da8b80b
+
+Reexecutei a sonda do AURA Launcher na janela Wayland real da release ativa,
+sem harness offscreen. Duas execuções OpenGL na superfície observada `948x593`
+passaram os orçamentos: startup `1293/1151 ms`, 375 frames em cada, p95
+`16,259/16,299 ms` e VRAM `79.748/77.060 KiB`. O método de VRAM foi DRM
+fdinfo agrupado por `drm-client-id`; o frame time é do `FrameAnimation` do
+render loop e não foi apresentado como FPS do compositor.
+
+Os JSONs `01-performance.json` e `02-performance.json`, além da captura limpa
+`03-launcher-release-153d3da8b80b.png`, estão em
+`docs/09-operations/evidence/2026-09-17-aura-launcher-exit-perf`. O launcher
+temporário foi encerrado após a captura; não restaram processos do Launcher,
+QML ou RetroArch. O KDE não foi reiniciado nem finalizado.
+
+Esta evidência fecha a medição da release ativa, mas não fecha a meta visual
+integral: a release ainda não contém a saída explícita do PR #200, e OSD
+in-game, troca de disco, bezel/fade isolados e a superfície 1280x800 continuam
+pendentes ou dependentes de adapter/conteúdo legítimo.

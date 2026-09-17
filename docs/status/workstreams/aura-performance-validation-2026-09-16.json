@@ -20,6 +20,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Repetir a sonda na release com o ciclo visual final e fechar a lacuna de superfície 1280x800 sem substituir medição física por offscreen.",
-  "updatedAt": "2026-09-16"
+  "nextAction": "A release 2.0.0rc1-153d3da8b80b foi medida duas vezes; repetir após a promoção da saída do Launcher e manter a lacuna 1280x800 honesta.",
+  "updatedAt": "2026-09-17"
 }
