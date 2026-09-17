@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-PLATFORM-PS3-CATALOG",
+  "title": "Catálogo de plataforma PlayStation 3 (RPCS3)",
+  "domain": "platform",
+  "implementation": "planned",
+  "integration": "isolated",
+  "verification": "none",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/platform_manifests/36-playstation-3.platform.json",
+    "src/steamzero/adapters/manifests/rpcs3.adapter.json",
+    "docs/12-roadmap/PS3-CONTENT-INGESTION-AND-MEDIA-PLAN.md",
+    "docs/12-roadmap/PROMPT-PS3-CONTENT-INGESTION-AGENT.md"
+  ],
+  "scopeDigest": "f1124499932cbbb8c9f5ed8491cbc51a93bcc689935ab93fa244f6ffd5975896",
+  "dependsOn": [
+    "SZ-AGG-PLATFORM-MANIFESTS",
+    "SZ-PLATFORM-REQUIREMENT-SCOPE",
+    "SZ-LIBRARY-CANONICAL",
+    "SZ-MEDIA-SCRAPING"
+  ],
+  "knownGaps": [
+    "GAP-PLATFORM-PS3-CONTENT-RESOLVER",
+    "GAP-FIRMWARE-PS3-STORE-NOT-WIRED",
+    "GAP-PLATFORM-PS3-PHYSICAL-LAUNCH"
+  ],
+  "acceptanceCriteria": [
+    "Uma raiz escolhida pelo usuário descobre pasta PS3, ISO e PKG sem renomeação manual.",
+    "PKG é classificado por conteúdo real em base, patch, DLC, demo ou desconhecido.",
+    "RAP/EDAT são associados ao media ID correto e não criam jogos independentes.",
+    "PS3UPDAT.PUP é requisito global deduplicado por hash, não item da biblioteca.",
+    "Variantes físicas e digitais são agrupadas visualmente sem perder title ID/content ID.",
+    "Referências a SD, USB e rede sobrevivem à mudança do ponto de montagem.",
+    "Busca de mídia prioriza title ID/content ID e não promove conflitos automaticamente.",
+    "O plano mostra espaço adicional, preserva origens e permite rollback.",
+    "A entrada só chega a ready após preflight do adapter RPCS3.",
+    "A prova física em release instalada permanece separada e exige autorização do operador."
+  ],
+  "evidence": [],
+  "nextAction": "Aguardar agente dedicado: implementar resolver, store de firmware/licenças e read model em módulos próprios sem tocar nas frentes de tema, launcher ou PS4.",
+  "activeWorkstreams": [
+    "WS-2026-09-PS3-CATALOG"
+  ],
+  "updatedAt": "2026-09-17",
+  "notes": "Plano documental criado em branch isolada. O manifesto PS3 e o adapter RPCS3 existentes cobrem a plataforma e o runtime, mas a ingestão de pasta/ISO/PKG, a reconciliação de RAP/EDAT e o store operacional de firmware ainda não estão fechados. Nenhuma instalação ou mutação de host foi feita."
+}

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-PS3-CATALOG",
+  "item": "SZ-PLATFORM-PS3-CATALOG",
+  "branch": "codex/ps3-content-ingestion-2026-09-17",
+  "baseRef": "HEAD",
+  "owner": "ps3-content-agent",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/domain/ps3_content.py",
+    "src/steamzero/domain/ps3_identity.py",
+    "src/steamzero/adapters/ps3_catalog.py",
+    "tests/unit/test_ps3_content.py",
+    "tests/unit/test_ps3_identity.py",
+    "tests/integration/test_ps3_catalog.py",
+    "docs/12-roadmap/PS3-CONTENT-INGESTION-AND-MEDIA-PLAN.md",
+    "docs/12-roadmap/PROMPT-PS3-CONTENT-INGESTION-AGENT.md"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Implementar o resolver e os stores em módulos próprios; solicitar coordenação antes de alterar library.py, media registry, emulation.py, launcher ou qualquer arquivo de tema.",
+  "updatedAt": "2026-09-17"
+}

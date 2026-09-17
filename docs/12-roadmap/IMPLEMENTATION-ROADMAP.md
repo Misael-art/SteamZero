@@ -48,6 +48,16 @@ precisam ser medidos, não estimados a partir do tamanho do PKG.
 
 Plano detalhado e prompt de execução: [PS4-PKG-STORAGE-RECONCILIATION-PLAN](PS4-PKG-STORAGE-RECONCILIATION-PLAN.md).
 
+### F3-PS3 — Ingestão unificada de conteúdo, firmware, licenças e mídia
+
+Para PS3, o usuário seleciona uma raiz, arquivo, disco removível ou compartilhamento. O SteamZero deve reconhecer pasta de disco, ISO, PKG base, patch, DLC, RAP, EDAT e firmware sem exigir renomeação ou separação manual. A interface agrupa a obra como `Título - Edição [TITLEID]`, mas preserva `gameGroupId`, `mediaId`, title ID, content ID, região, edição e tipo de mídia para lançamento e compatibilidade.
+
+`PS3UPDAT.PUP` é requisito global do RPCS3, não um jogo. RAP/EDAT são dependências de conteúdo digital e não devem ser baixados, fabricados ou tratados como títulos independentes. Pasta PS3, ISO e PKG só ficam `ready` após metadados internos, hashes, firmware, licença e preflight do adapter serem validados.
+
+O fluxo usa referências de volume/share e caminho relativo para SD, USB e rede. O scan não copia nem extrai fontes grandes; staging e instalação em dados do RPCS3 são planejados, mensurados, transacionais e reversíveis. A busca de mídia prioriza title ID/content ID e separa variantes físicas e digitais.
+
+Plano detalhado e prompt de execução: [PS3-CONTENT-INGESTION-AND-MEDIA-PLAN](PS3-CONTENT-INGESTION-AND-MEDIA-PLAN.md) e [PROMPT-PS3-CONTENT-INGESTION-AGENT](PROMPT-PS3-CONTENT-INGESTION-AGENT.md).
+
 ## Fase 4 — Emuladores e frontends
 
 Entregas: engine de adapters + schema adapter.json + lockfile de componentes; adapters núcleo (lista PRD §7); templates de config (derivação EmuDeck conforme REUSE-POLICY); adapters de frontend Steam/SRM/ES-DE/RetroArch/RetroDECK/Heroic; ações semânticas de controle + perfis Steam Input; launcher genérico com perfis por jogo.
