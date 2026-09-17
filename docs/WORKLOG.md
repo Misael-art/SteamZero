@@ -11001,3 +11001,18 @@ fixture `tests/fixtures/roms/mega-drive/test-rom.md`. Troca de disco não foi
 alegada porque os adapters exercitados não a declaram; bezel/fade foram vistos
 no read model, mas não isolados visualmente; PS4 e multi-disc seguem sem prova
 física legítima.
+
+## 2026-09-16 — investigação H6 e auditoria do estado AURA
+
+O host foi inspecionado somente em leitura: \`staging/\` está vazio, sem staging
+órfão. O Doctor apontou um único \`backup\` órfão, que foi identificado como o
+snapshot legítimo \`state-premigration-2026-09-16T183315.997192+0000.db\`, criado
+pelo \`StateStore\` antes da migração; ele não pertence a uma operação e foi
+preservado.
+
+\`state_audit\` agora reconhece esse padrão protegido e a regressão em
+\`tests/unit/test_state_cleanup.py\` passou com 24 testes. As visões de status
+foram regeneradas e \`make status-check\` passou. O PR #198 reúne a correção
+visual de foco (\`ecf26d1\`) e aguarda merge para uma nova release governada; a
+correção de auditoria ainda não foi instalada no host. Nenhum processo de QA de
+outra frente foi interrompido e o KDE não foi reiniciado nem finalizado.

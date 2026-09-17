@@ -24,6 +24,9 @@ from typing import Any
 from steamzero.core import paths
 from steamzero.core.state import StateStore
 
+_MIGRATION_BACKUP_PREFIX = "state-premigration-"
+_MIGRATION_BACKUP_SUFFIX = ".db"
+
 
 @dataclass
 class AuditReport:
@@ -55,6 +58,18 @@ def _children(parent: Path) -> list[str]:
     return sorted(entry.name for entry in parent.iterdir())
 
 
+def _is_migration_backup(name: str) -> bool:
+    """Recognize the protected database snapshot made before a migration.
+
+    These files are recovery artifacts owned by StateStore rather than
+    operation backups. They intentionally remain outside operation so a
+    failed migration can restore the database before any operation journal is
+    available. Treating them as operation orphans made Doctor report a false
+    degraded state after a successful migration.
+    """
+    return name.startswith(_MIGRATION_BACKUP_PREFIX) and name.endswith(_MIGRATION_BACKUP_SUFFIX)
+
+
 def audit(store: StateStore) -> AuditReport:
     """Inspeciona o estado e retorna as inconsistências encontradas.
 
@@ -84,7 +99,7 @@ def audit(store: StateStore) -> AuditReport:
         if name not in known_ops:
             report.orphan_staging.append(name)
     for name in _children(paths.backups_dir()):
-        if name not in known_ops:
+        if name not in known_ops and not _is_migration_backup(name):
             report.orphan_backups.append(name)
     for name in _children(paths.journal_dir()):
         # journals são "<op_id>.jsonl"; compara sem o sufixo.
