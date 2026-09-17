@@ -220,6 +220,7 @@ def _error_server() -> tuple[int, threading.Thread, HTTPServer]:
         "launcher/check_launcher_game_page.qml",
         "launcher/check_launcher_shell.qml",
         "launcher/check_launcher_activation.qml",
+        "launcher/check_launcher_exit.qml",
         "launcher/check_launcher_accessibility.qml",
         "launcher/check_launcher_covers.qml",
         "launcher/check_launcher_session_osd.qml",

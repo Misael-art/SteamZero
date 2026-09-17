@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AURA-LAUNCHER-EXIT",
+  "title": "AURA Launcher — saída explícita e recuperável",
+  "domain": "ui",
+  "implementation": "complete",
+  "integration": "feature-branch",
+  "verification": "dev",
+  "operation": "ready",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/ui/qml/launcher/LauncherHome.qml",
+    "src/steamzero/ui/qml/launcher/LauncherMain.qml",
+    "tests/qml/launcher/check_launcher_activation.qml",
+    "tests/qml/launcher/check_launcher_exit.qml",
+    "tests/integration/test_qml_handheld_offscreen.py"
+  ],
+  "scopeDigest": "2d35f938e829e2ed16c89daa1479546037b1964a579bd789e5f26124eeeddd05",
+  "dependsOn": ["SZ-AURA-LAUNCHER"],
+  "knownGaps": ["GAP-AURA-LAUNCHER-EXIT-PHYSICAL"],
+  "acceptanceCriteria": [
+    "O usuário vê uma ação Sair na home fullscreen e ela é anunciada como botão acessível.",
+    "Ctrl+Q e Alt+F4 abrem confirmação; cancelar mantém o Launcher e confirmar encerra somente o processo do Launcher.",
+    "A saída não reinicia o KDE, não encerra o daemon e não derruba uma sessão de jogo já entregue ao emulador.",
+    "O contrato QML tem regressão que prova a ação e a confirmação sem depender de mouse."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_qml_handheld_offscreen.py",
+      "command": "pytest tests/integration/test_qml_handheld_offscreen.py -k 'launcher' -q; 10 passed",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/launcher/check_launcher_exit.qml",
+      "command": "pytest tests/integration/test_qml_handheld_offscreen.py -k 'launcher_exit or launcher_activation' -q; 2 passed",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "src/steamzero/ui/qml/launcher/LauncherMain.qml",
+      "command": "Atalho global usa Shortcut; confirmação mantém Cancelar como foco inicial e Qt.quit() encerra somente a janela do Launcher",
+      "result": "recorded"
+    }
+  ],
+  "activeWorkstreams": ["WS-2026-09-AURA-LAUNCHER-EXIT"],
+  "nextAction": "Publicar a branch, incluir em uma release governada e provar fisicamente Ctrl+Q/Alt+F4, cancelar e confirmar sem reiniciar o KDE.",
+  "updatedAt": "2026-09-17",
+  "notes": "A home agora oferece Sair como ação acessível; Ctrl+Q e Alt+F4 abrem uma confirmação; Escape/Cancelar preservam a sessão; confirmar chama Qt.quit() apenas no processo do Launcher. A prova física permanece aberta até uma release contendo este commit."
+}

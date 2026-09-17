@@ -11055,3 +11055,31 @@ O `STATUS-CHECK` foi regenerado e passou. O CI do PR #198 segue em andamento nos
 jobs Python 3.11, 3.12 e 3.14; os gates QML, smoke das distribuições e supply
 chain já passaram. A release ativa continua `2.0.0rc1-d70a80f83aae`; nenhuma
 instalação ou mutação de host foi feita nesta sessão.
+
+## 2026-09-17 — saída explícita do AURA Launcher
+
+Por solicitação explícita do operador, encerrei os PIDs `443155`, `443196` e
+`443212` do launcher antigo (`/usr/local/bin/steamzero-launcher`), confirmando
+que não restou processo do launcher/QML/RetroArch. O KDE não foi reiniciado nem
+finalizado.
+
+Na branch `codex/aura-launcher-exit-2026-09-17`, a home fullscreen passou a
+exibir a ação acessível `Sair`; `Ctrl+Q` e `Alt+F4` abrem confirmação; `Escape`,
+`Cancelar` e o retorno preservam o Launcher; `Confirmar saída` chama `Qt.quit()`
+somente para a janela/processo do Launcher, sem tocar no daemon ou na sessão do
+jogo. A regressão cobre ativação, papéis/nomes acessíveis e confirmação sem
+mouse.
+
+Provas de desenvolvimento: os harnesses QML do Launcher passaram (`10 passed`)
+e a prova combinada de ativação/saída passou (`2 passed`). Fronteiras e
+independência passaram. A suíte isolada global avançou até aproximadamente 16%
+e ficou sem saída no trecho ambiental/pré-existente já conhecido; foi
+interrompida sem afetar processos do host. Ruff, formato, mypy e
+`STATUS-CHECK` continuam com os achados pré-existentes documentados fora do
+diff desta frente. O item `SZ-AURA-LAUNCHER-EXIT` registra a prova dev e mantém
+aberto `GAP-AURA-LAUNCHER-EXIT-PHYSICAL` até a instalação de uma release que
+contenha este commit e a captura de confirmar/cancelar no host.
+
+O host permanece na release governada `2.0.0rc1-153d3da8b80b`, com rollback
+`2.0.0rc1-d70a80f83aae`; essa instalação foi convergente e não contém ainda a
+mudança desta branch.
