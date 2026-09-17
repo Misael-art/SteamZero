@@ -48,6 +48,7 @@
   "knownGaps": [
     "GAP-AURA-PERF-1280X800-SURFACE",
     "GAP-AURA-CINEMA-OSD-SAME-CARD-POST-APPLY",
+    "GAP-AURA-CINEMA-OSD-IN-GAME-PHYSICAL-CAPTURE",
     "GAP-PS4-SCOPE-PHYSICAL-EVIDENCE-PRECEDES",
     "GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
   ],
@@ -170,8 +171,8 @@
     {
       "kind": "hardware",
       "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/13-session-overlay-post-install.png",
-      "command": "release 2.0.0rc1-d70a80f83aae, OSD físico sobre jogo real Switch/Eden",
-      "result": "passed"
+      "command": "release 2.0.0rc1-d70a80f83aae, read model do OSD exibido na superfície AURA; janela do emulador não ficou isolada",
+      "result": "partial"
     },
     {
       "kind": "hardware",

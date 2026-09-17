@@ -60,15 +60,19 @@ semânticas de pausa retornaram `accepted=true`; a galeria exibiu o slot nativo
 com fallback `SEM CAPTURA`.
 
 As capturas `07-release-post-install.png`, `10-switch-catalog-focus.png`,
-`11-game-details-focus.png`, `12-session-game-post-install.png`,
-`13-session-overlay-post-install.png`, `14-session-paused-post-install.png` e
-`15-return-clean-post-install.png` mostram a cadeia Switch instalada. As
-capturas `18-nes-session-overlay-post-install.png`,
-`19-save-state-gallery-post-install.png`, `20-nes-paused-post-install.png` e
-`22-nes-game-post-install.png` mostram a cadeia RetroArch instalada.
+`11-game-details-focus.png`, `12-session-game-post-install.png` e
+`15-return-clean-post-install.png` mostram a cadeia visual Switch instalada.
+`22-nes-game-post-install.png` mostra o jogo real RetroArch/Mesen. Já
+`13-session-overlay-post-install.png`, `14-session-paused-post-install.png`,
+`18-nes-session-overlay-post-install.png` e `20-nes-paused-post-install.png`
+registram o read model do controle de sessão sobre a superfície AURA; a
+composição do OSD sobre a janela do emulador não ficou isolada nessas imagens
+e, portanto, continua aberta como prova física.
 
-`23-return-focus-defect-post-install.png` é mantida como evidência de diagnóstico:
-o modal foi removido, mas uma volta pelo caminho de busca ainda deixou o rótulo
-`Atualizando seleção…`. A correção `restoreHomeFocus()` foi implementada na
-branch de trabalho; a instalação governada de uma nova release é necessária antes
-de promover essa correção como prova física.
+`19-save-state-gallery-post-install.png` confirma visualmente a galeria e o
+fallback `SEM CAPTURA`, mas não substitui uma prova de save/load sobre um jogo
+real. `23-return-focus-defect-post-install.png` é mantida como evidência de
+diagnóstico: o modal foi removido, mas uma volta pelo caminho de busca ainda
+deixou o rótulo `Atualizando seleção…`. A correção `restoreHomeFocus()` foi
+implementada na branch de trabalho; a instalação governada de uma nova release
+é necessária antes de promover essa correção como prova física.

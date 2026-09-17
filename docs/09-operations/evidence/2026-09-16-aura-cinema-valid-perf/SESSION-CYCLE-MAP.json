@@ -20,8 +20,8 @@
         {"stage": "catalog-focus", "evidence": "10-switch-catalog-focus.png"},
         {"stage": "details", "evidence": "11-game-details-focus.png"},
         {"stage": "real-game", "evidence": "12-session-game-post-install.png"},
-        {"stage": "osd-running", "evidence": "13-session-overlay-post-install.png"},
-        {"stage": "pause", "result": "suspended", "evidence": "14-session-paused-post-install.png"},
+        {"stage": "session-overlay-read-model", "result": "running; emulator composition not isolated", "evidence": "13-session-overlay-post-install.png"},
+        {"stage": "pause-read-model", "result": "suspended; emulator composition not isolated", "evidence": "14-session-paused-post-install.png"},
         {"stage": "terminal-return", "result": "closed", "evidence": "15-return-clean-post-install.png"}
       ],
       "capabilityReadModel": {
@@ -40,9 +40,9 @@
       "sessionId": "01M2P8K67MHYVJDQ5ZA03KDW2X",
       "stages": [
         {"stage": "real-game", "evidence": "22-nes-game-post-install.png"},
-        {"stage": "osd-running", "evidence": "18-nes-session-overlay-post-install.png"},
+        {"stage": "session-overlay-read-model", "result": "running; emulator composition not isolated", "evidence": "18-nes-session-overlay-post-install.png"},
         {"stage": "save-state-gallery", "result": "ready with fallback thumbnail", "evidence": "19-save-state-gallery-post-install.png"},
-        {"stage": "pause", "result": "accepted=true, suspended", "evidence": "20-nes-paused-post-install.png"},
+        {"stage": "pause-read-model", "result": "accepted=true, suspended; emulator composition not isolated", "evidence": "20-nes-paused-post-install.png"},
         {"stage": "terminal-return", "result": "closed", "evidence": "23-return-focus-defect-post-install.png"}
       ],
       "capabilityReadModel": {
@@ -63,6 +63,7 @@
   ],
   "gaps": [
     "The installed release still showed a stale 'Atualizando seleção...' label on one return path; restoreHomeFocus was corrected in the source branch and needs a new governed release for physical confirmation.",
+    "The captured session overlay and pause images show the AURA read model, not a clean emulator-window composition; an in-game OSD/bezel/fade capture remains required.",
     "No legitimate multi-disc game was available for physical disc-swap proof.",
     "Bezel and fade are present in the allowlisted read model but were not visually isolated in these captures.",
     "PS4 physical game proof remains blocked by absence of legitimate PS4 content."

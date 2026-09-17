@@ -11038,3 +11038,20 @@ timestamp e fallback \`SEM CAPTURA\`, e
 \`20-nes-paused-post-install.png\` confirma a sessão suspensa após ação
 semântica. O gap de save-state físico foi fechado; troca de disco continua
 dependente de conteúdo multidisco e adapter legítimos.
+
+## 2026-09-17 — auditoria de mapeamento e captura visual
+
+Revisei visualmente as capturas do ciclo instalado, sem tocar no launcher de QA
+de outra frente e sem reiniciar ou finalizar o KDE. O jogo NES real está
+comprovado em `22-nes-game-post-install.png`; porém `13`, `14`, `18` e `20`
+mostram o read model de sessão sobre a superfície AURA, não uma composição
+limpa do OSD sobre a janela do emulador. Corrigi o mapa e o item
+`SZ-AURA-CINEMA-COMPLETION` para classificar essa evidência como parcial e
+abrir `GAP-AURA-CINEMA-OSD-IN-GAME-PHYSICAL-CAPTURE`. A galeria em `19` segue
+visualmente comprovada com fallback `SEM CAPTURA`, mas não foi promovida como
+prova de save/load in-game.
+
+O `STATUS-CHECK` foi regenerado e passou. O CI do PR #198 segue em andamento nos
+jobs Python 3.11, 3.12 e 3.14; os gates QML, smoke das distribuições e supply
+chain já passaram. A release ativa continua `2.0.0rc1-d70a80f83aae`; nenhuma
+instalação ou mutação de host foi feita nesta sessão.
