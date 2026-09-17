@@ -144,6 +144,34 @@ Item {
             verify(findChild(scene, "cinemaClock").text.indexOf(":") >= 0)
         }
 
+        function test_cinematic_media_uses_palette_and_degrades_video_to_fanart() {
+            const scene = createTemporaryObject(cinemaComponent, harness, {
+                width: 1280, height: 800,
+                currentFocus: "library:game",
+                accessibility: {visualScale: 1, reducedMotion: false},
+                scene: {
+                    focusId: "library:game", selected: 0, collection: "Biblioteca",
+                    performanceTier: "cinematic", connectionState: "connected",
+                    viewport: {width: 1280, height: 800},
+                    items: [{title: "Cinema", fanartUrl: "file:///missing-fanart.png",
+                             videoUrl: "file:///missing-video.mp4",
+                             palette: {accent: "#a855f7"}}],
+                    layouts: {covers: {entries: [{
+                        x: 420, y: 160, width: 240, height: 360,
+                        scale: 1, opacity: 1, z: 1, highlighted: true, source: ""
+                    }]}}
+                }
+            })
+            verify(scene !== null)
+            compare(scene.videoSource, "file:///missing-video.mp4")
+            compare(String(scene.accentColor), "#a855f7")
+            const video = findChild(scene, "cinemaVideoBackdrop")
+            verify(video !== null)
+            tryCompare(video, "visible", false, 2000)
+            verify(scene.backdropEffects,
+                   "fanart deve permanecer habilitado quando o vídeo não reproduz")
+        }
+
         function test_search_launch_uses_shell_error_and_real_return_context() {
             const scene = createTemporaryObject(sceneComponent, harness)
             scene.model = harness.model

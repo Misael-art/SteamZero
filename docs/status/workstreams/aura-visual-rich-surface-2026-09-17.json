@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-VISUAL-RICH-SURFACE",
+  "item": "SZ-AURA-VISUAL-RICH-SURFACE",
+  "branch": "codex/aura-visual-complete-2026-09-17",
+  "baseRef": "7dcceb1c7ff791d41feaf0435e3608c190b65e7a",
+  "owner": "codex-aura-visual-complete",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/launcher/cinema.py",
+    "src/steamzero/ui/qml/launcher/LauncherCinema.qml",
+    "tests/unit/test_launcher_cinema.py",
+    "tests/qml/launcher/check_launcher_focus_bootstrap.qml",
+    "docs/status/items/aura-visual-rich-surface-2026-09-17.json",
+    "docs/status/workstreams/aura-visual-rich-surface-2026-09-17.json"
+  ],
+  "sharedPaths": [
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Validar a superfície rica na release instalada; anexar captura, métricas Wayland e estados de fallback sem promover save-state/disco sem adapter físico.",
+  "updatedAt": "2026-09-17"
+}

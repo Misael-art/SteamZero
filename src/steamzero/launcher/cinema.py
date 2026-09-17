@@ -7,10 +7,11 @@ render work; it neither removes games from the library nor chooses focus.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, unquote, urlparse
 
 from steamzero.domain.scene_layout import (
     LayoutBounds,
@@ -32,6 +33,57 @@ def _local_asset_url(value: object) -> str | None:
     ):
         return None
     return "file://" + quote(value, safe="/")
+
+
+def _public_asset_url(value: object) -> str | None:
+    """Keep only local/package media URLs safe for the QML boundary.
+
+    Catalog imports may already have resolved a managed media path to a
+    ``file://`` URL, while older records still carry an absolute path.  Treat
+    both forms identically and allow only package URLs from trusted providers;
+    arbitrary HTTP URLs would turn a metadata field into a network side
+    channel for the launcher.
+    """
+
+    if not isinstance(value, str) or not value or "\x00" in value or len(value) > 4096:
+        return None
+    if value.startswith(("asset://", "qrc:/", "data:image/")):
+        return value
+    if value.startswith("file://"):
+        parsed = urlparse(value)
+        decoded = unquote(parsed.path)
+        if parsed.netloc not in {"", "localhost"}:
+            return None
+        return _local_asset_url(decoded)
+    return _local_asset_url(value)
+
+
+_PALETTE_KEYS = (
+    "dominant",
+    "vibrant",
+    "lightVibrant",
+    "darkVibrant",
+    "muted",
+    "lightMuted",
+    "darkMuted",
+    "complementary",
+    "background",
+    "accent",
+    "contrastText",
+)
+_COLOR = re.compile(r"^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$")
+
+
+def _public_palette(value: object) -> dict[str, str]:
+    """Project only finite hex colors from a palette produced by the engine."""
+
+    if not isinstance(value, Mapping):
+        return {}
+    return {
+        key: candidate
+        for key in _PALETTE_KEYS
+        if isinstance(candidate := value.get(key), str) and _COLOR.fullmatch(candidate)
+    }
 
 
 def _bounded_text_list(record: Mapping[str, Any], key: str) -> list[str]:
@@ -78,16 +130,23 @@ def cinema_metadata(record: Mapping[str, Any]) -> dict[str, Any]:
     screenshot_paths = record.get("screenshotUrls")
     if isinstance(screenshot_paths, list):
         screenshots = [
-            url for value in screenshot_paths[:8] if (url := _local_asset_url(value)) is not None
+            url for value in screenshot_paths[:8] if (url := _public_asset_url(value)) is not None
         ]
         if screenshots:
             result["screenshotUrls"] = screenshots
+    for role in ("cover", "fanart", "logo", "icon", "marquee", "video"):
+        direct = _public_asset_url(record.get(role + "Url"))
+        if direct is not None:
+            result[role + "Url"] = direct
+    palette = _public_palette(record.get("palette"))
+    if palette:
+        result["palette"] = palette
     media = record.get("media")
     if isinstance(media, Mapping):
         for role in ("cover", "fanart", "screenshot", "marquee", "video", "icon"):
             asset = media.get(role)
-            path = asset.get("path") if isinstance(asset, Mapping) else None
-            if (url := _local_asset_url(path)) is not None:
+            candidate = asset.get("url", asset.get("path")) if isinstance(asset, Mapping) else asset
+            if (url := _public_asset_url(candidate)) is not None:
                 result[role + "Url"] = url
     return result
 
