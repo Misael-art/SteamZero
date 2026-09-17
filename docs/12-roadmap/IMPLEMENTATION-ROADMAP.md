@@ -25,6 +25,26 @@ Critério: AC-SD-01/02, AC-OF-01, AC-PR-01/02 em VM; checklist HW iniciado (Q6).
 Entregas: Library (scan/plan/apply incremental, dedupe, multidisco, quarentena), import de dumps (safezip), conversões (CHD/RVZ/CSO/NSZ) com staging/espaço/timeout, BIOS/firmware/keys store central (hash db + links), Saves store + timeline + checkpoints + backups incrementais, cloud sync com fila e conflito não-destrutivo, mídia/scraping com cache e rate limit, migração SSD↔microSD.
 Critério: AC-LB-*, AC-BI-*, AC-SV-*; RT-06..11.
 
+### F3-PS4 — Reconciliação de PKG e espaço sem duplicação
+
+Para jogos PS4, a identidade e a apresentação devem permanecer no formato
+`Bloodborne - Game of the Year Edition [CUSA03173]`. O catálogo não renomeia nem
+move os PKGs originais. Ele registra base e patches por conteúdo validado, hash,
+versão, dependência e origem; o diretório gerenciado guarda o manifesto e os
+resultados de instalação, não uma cópia obrigatória dos aproximadamente 30,07 GiB
+de PKG.
+
+O fluxo obrigatório é `scan → plan → apply → verify`, com referência ao arquivo
+original quando possível. Hardlink e reflink só podem ser escolhidos no mesmo
+filesystem; para SD, disco removível, rede ou volumes montados em pontos
+variáveis, a identidade usa volume/share + caminho relativo, nunca caminho
+absoluto fixo. O plano deve exibir o espaço adicional previsto: insignificante
+para referência/link, ou aproximadamente 30,07 GiB quando uma cópia local for
+realmente exigida pelo adapter. Dados extraídos/instalados pelo shadPS4 são uma
+linha separada e precisam ser medidos, não estimados a partir do tamanho do PKG.
+
+Plano detalhado e prompt de execução: [PS4-PKG-STORAGE-RECONCILIATION-PLAN](PS4-PKG-STORAGE-RECONCILIATION-PLAN.md).
+
 ## Fase 4 — Emuladores e frontends
 
 Entregas: engine de adapters + schema adapter.json + lockfile de componentes; adapters núcleo (lista PRD §7); templates de config (derivação EmuDeck conforme REUSE-POLICY); adapters de frontend Steam/SRM/ES-DE/RetroArch/RetroDECK/Heroic; ações semânticas de controle + perfis Steam Input; launcher genérico com perfis por jogo.
