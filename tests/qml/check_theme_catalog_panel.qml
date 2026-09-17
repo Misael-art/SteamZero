@@ -54,6 +54,11 @@ Item {
             else if (actionId === "theme.store.gc")
                 callback({"dryRun": payload.apply !== true, "orphans": 474,
                           "reclaimedBytes": 69324695})
+            else if (actionId === "theme.apply")
+                callback({"planId": "theme-plan-1", "confirmToken": "theme-token-1",
+                          "preview": "troca de aparência", "rollbackGuarantee": "disponível"})
+            else if (actionId === "theme.apply.confirm")
+                callback({"status": "applied", "operationId": "theme-operation-1"})
             else
                 callback({"restoredPrevious": true})
         }
@@ -76,7 +81,7 @@ Item {
         // seguinte, e o sintoma aparece longe da causa: foi assim que o teste
         // de instalar passou a ver zero chamadas por culpa do teste do GC.
         function cleanup() {
-            const dialogs = ["uninstallDialog", "gcDialog", "previewDialog"]
+            const dialogs = ["uninstallDialog", "gcDialog", "previewDialog", "applyDialog"]
             for (let i = 0; i < dialogs.length; ++i) {
                 const dialog = harness.locate(panel, dialogs[i])
                 if (dialog && dialog.visible) {
@@ -94,6 +99,7 @@ Item {
             harness.failNextCall = false
             panel.lastOperation = ({})
             panel.gcPreview = null
+            panel.applyPlan = null
             panel.errorText = ""
             panel.refresh()
             harness.calls = []
@@ -144,6 +150,26 @@ Item {
 
             const install = harness.calls.filter(c => c.id === "theme.catalog.install")
             compare(install[0].payload.overwrite, true)
+        }
+
+        function test_apply_button_plans_and_confirms_the_active_theme() {
+            const button = harness.locate(panel, "applyButton_org.esde.xmb-menu")
+            verify(button !== null && button.visible, "tema instalado deve permitir aplicação")
+
+            mouseClick(button)
+
+            let planned = harness.calls.filter(c => c.id === "theme.apply")
+            compare(planned.length, 1)
+            compare(planned[0].payload.themeId, "org.esde.xmb-menu")
+            const dialog = harness.locate(panel, "applyDialog")
+            verify(dialog !== null)
+            tryVerify(function() { return dialog.opened })
+
+            dialog.accept()
+            let confirmed = harness.calls.filter(c => c.id === "theme.apply.confirm")
+            compare(confirmed.length, 1)
+            compare(confirmed[0].payload.planId, "theme-plan-1")
+            compare(confirmed[0].payload.confirmToken, "theme-token-1")
         }
 
         function test_installed_and_out_of_date_are_distinct_states() {

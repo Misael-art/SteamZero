@@ -40,6 +40,13 @@ ApplicationWindow {
             ? desktopStatus.dashboard.accessibility : null
     }
 
+    ActiveThemeSurface {
+        id: activeThemeSurface
+        assetUris: root._themeBridge.assetUris
+        fallbackColor: root.backgroundColor
+        highContrast: root._themeBridge.highContrast
+    }
+
     // Resolução allowlisted dos assets empacotados. Caminho vindo de manifesto
     // é dado externo e nunca vai direto para Image.source.
     readonly property var packagedAssets: PackagedAssets {}

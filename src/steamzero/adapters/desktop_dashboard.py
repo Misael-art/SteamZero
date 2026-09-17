@@ -400,13 +400,7 @@ def _read_esde_colors(source: str) -> str:
     """
     if not source or "\x00" in source:
         raise SteamZeroError("E-API-SCHEMA", detail="caminho de tema inválido")
-    path = Path(source).expanduser()
-    if path.is_symlink():
-        raise SteamZeroError("E-THEME-MANIFEST", detail="caminho de tema é symlink; recusado")
-    if path.is_dir():
-        path = path / _ESDE_COLORS_FILENAME
-        if path.is_symlink():
-            raise SteamZeroError("E-THEME-MANIFEST", detail="colors.xml é symlink; recusado")
+    path = _esde_source_root(source) / _ESDE_COLORS_FILENAME
     if not path.is_file():
         raise SteamZeroError(
             "E-THEME-NOT-FOUND",
@@ -424,6 +418,18 @@ def _read_esde_colors(source: str) -> str:
         raise SteamZeroError(
             "E-THEME-MANIFEST", detail=f"não foi possível ler {_ESDE_COLORS_FILENAME}: {exc}"
         ) from exc
+
+
+def _esde_source_root(source: str) -> Path:
+    """Resolve a raiz do tema ES-DE, recusando links no limite de confiança."""
+    path = Path(source).expanduser()
+    if path.is_symlink():
+        raise SteamZeroError("E-THEME-MANIFEST", detail="caminho de tema é symlink; recusado")
+    if path.is_file():
+        return path.parent
+    if path.is_dir():
+        return path
+    raise SteamZeroError("E-THEME-NOT-FOUND", detail=f"tema não encontrado em {source}")
 
 
 class DesktopDashboard:
@@ -1670,6 +1676,7 @@ class DesktopDashboard:
                 "detail": None,
             }
         qml_object = resolved.to_theme_qml_object()
+        qml_object["assetUris"] = self._theme_asset_uris(active_id, qml_object)
         return {
             "activeId": active_id,
             "activeName": active_name,
@@ -1679,6 +1686,40 @@ class DesktopDashboard:
             "state": "ready",
             "detail": None,
         }
+
+    @staticmethod
+    def _theme_asset_uris(theme_id: str, qml_object: dict[str, Any]) -> dict[str, str]:
+        """Publica somente assets de um tema instalado sob sua própria raiz.
+
+        A central não recebe caminhos arbitrários do manifesto. O tema editável
+        é resolvido dentro de ``themes_dir/<themeId>`` e só arquivos regulares
+        com extensões de imagem permitidas viram URI; todo o resto degrada para
+        o fundo de tokens.
+        """
+        declared = qml_object.get("assets")
+        if not isinstance(declared, dict):
+            return {}
+        root_path = paths.themes_dir() / theme_id
+        if root_path.is_symlink() or not root_path.is_dir():
+            return {}
+        root = root_path.resolve()
+        allowed = {".png", ".jpg", ".jpeg", ".webp", ".svg"}
+        result: dict[str, str] = {}
+        for slot, value in declared.items():
+            if not isinstance(slot, str) or not isinstance(value, str):
+                continue
+            candidate_path = root_path / value
+            if candidate_path.is_symlink() or not candidate_path.is_file():
+                continue
+            candidate = candidate_path.resolve()
+            try:
+                candidate.relative_to(root)
+            except ValueError:
+                continue
+            if candidate.suffix.casefold() not in allowed or not candidate.is_file():
+                continue
+            result[slot] = candidate.as_uri()
+        return result
 
     def _frontend_shortcut_row(self) -> dict[str, Any]:
         """Linha que publica o SteamZero como atalho da Steam.
@@ -1776,6 +1817,7 @@ class DesktopDashboard:
         um tema morto e deixar o usuário descobrir sozinho.
         """
         colors = _read_esde_colors(source)
+        inventory = theme_import_esde.asset_inventory(_esde_source_root(source))
         schemes = theme_import_esde.parse_color_schemes(colors)
         if not schemes:
             raise SteamZeroError(
@@ -1784,7 +1826,7 @@ class DesktopDashboard:
             )
         entries: list[dict[str, Any]] = []
         for name in sorted(schemes):
-            imported = theme_import_esde.import_scheme(name, colors)
+            imported = theme_import_esde.import_scheme(name, colors, available_assets=inventory)
             entries.append(
                 {
                     # ``scheme`` é o campo canônico do contrato. ``id`` e
@@ -1797,6 +1839,8 @@ class DesktopDashboard:
                     "sourceTags": imported.source_tags,
                     "derived": list(imported.derived),
                     "colors": dict(imported.color),
+                    "assets": [asset.to_dict() for asset in imported.assets],
+                    "fidelity": "palette+background" if imported.assets else "palette-only",
                 }
             )
         return {
@@ -1817,11 +1861,23 @@ class DesktopDashboard:
         sempre quer ajustar antes de ativar.
         """
         colors = _read_esde_colors(source)
-        imported = theme_import_esde.import_scheme(scheme, colors)
+        source_root = _esde_source_root(source)
+        imported = theme_import_esde.import_scheme(
+            scheme,
+            colors,
+            available_assets=theme_import_esde.asset_inventory(source_root),
+        )
         session = self._theme_editor.create(name, "org.steamzero.default")
         session_id = str(session["sessionId"])
         try:
             self._theme_editor.set_tokens(session_id, "color", dict(imported.color))
+            for asset in imported.assets:
+                self._theme_editor.set_asset(
+                    session_id,
+                    asset.slot,
+                    theme_import_esde.read_asset(source_root, asset),
+                    asset.source_path,
+                )
             saved = self._theme_editor.save(session_id)
         except Exception:
             # Falha no meio não pode deixar sessão pendurada nem tema parcial.
@@ -1834,6 +1890,8 @@ class DesktopDashboard:
             "scheme": scheme,
             "isMonochrome": imported.is_monochrome,
             "derived": list(imported.derived),
+            "assets": [asset.to_dict() for asset in imported.assets],
+            "fidelity": "palette+background" if imported.assets else "palette-only",
             "unsupportedSlots": theme_import_esde.unsupported_slots(),
         }
 

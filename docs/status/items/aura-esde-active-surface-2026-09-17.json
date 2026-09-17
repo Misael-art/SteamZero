@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AURA-ESDE-ACTIVE-SURFACE",
+  "title": "Tema ES-DE como superfície ativa da AURA UI",
+  "domain": "themes",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "dev",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopeDigest": "c37824a3d92854d2af65f1a507279681f99b4d7c704267690ccf50a88858e359",
+  "scopePaths": [
+    "src/steamzero/adapters/desktop_dashboard.py",
+    "src/steamzero/domain/theme_import_esde.py",
+    "src/steamzero/ui/qml/ActiveThemeSurface.qml",
+    "src/steamzero/ui/qml/Main.qml",
+    "src/steamzero/ui/qml/ThemeBridge.qml",
+    "src/steamzero/ui/qml/ThemeCatalogPanel.qml",
+    "tests/qml/check_theme_catalog_panel.qml",
+    "tests/unit/test_theme_import_esde.py"
+  ],
+  "dependsOn": [
+    "SZ-THEME-ESDE-SCENE-RENDER",
+    "SZ-THEME-IMPORT-ESDE-LAYOUT"
+  ],
+  "knownGaps": [
+    "GAP-ESDE-ACTIVE-SURFACE-PHYSICAL-INSTALL",
+    "GAP-ESDE-VIDEO-DECODING-PHYSICAL",
+    "GAP-ESDE-REAL-GAME-READ-MODEL"
+  ],
+  "acceptanceCriteria": [
+    "A importação ES-DE preserva o wallpaper do esquema selecionado no pacote editável.",
+    "O catálogo oferece aplicar tema instalado com plano, confirmação e rollback existente.",
+    "A central consome apenas URI de asset validada e mantém fallback legível sem mídia.",
+    "High contrast e reduced motion continuam prevalecendo sobre a estética.",
+    "Vídeo real, dados reais de jogo e prova física na release instalada permanecem explicitamente medidos antes de certificação."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_theme_import_esde.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_import_esde.py tests/unit/test_desktop_dashboard.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_theme_catalog_panel_gestures.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_theme_catalog_panel_gestures.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_qml_handheld_offscreen.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_qml_handheld_offscreen.py tests/integration/test_qml_visual_capture.py -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Publicar a branch, acompanhar gates e executar a prova governada na release instalada com captura do background ativo.",
+  "activeWorkstreams": [
+    "WS-2026-09-ESDE-ACTIVE-SURFACE"
+  ],
+  "updatedAt": "2026-09-17",
+  "notes": "A ponte técnica agora preserva background estático, permite aplicar o tema pela rota transacional existente e renderiza a camada ativa com fallback. A prova física requer release instalada; decoder de vídeo e read model de jogo ainda não foram promovidos."
+}

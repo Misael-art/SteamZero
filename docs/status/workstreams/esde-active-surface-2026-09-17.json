@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-ESDE-ACTIVE-SURFACE",
+  "item": "SZ-AURA-ESDE-ACTIVE-SURFACE",
+  "branch": "codex/aura-esde-active-2026-09-17",
+  "baseRef": "a012146fcbaf796ea437d64810f60d9147279125",
+  "owner": "codex-aura-esde-active",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/ui/qml/ActiveThemeSurface.qml",
+    "tests/unit/test_theme_import_esde.py"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/WORKLOG.md",
+    "src/steamzero/adapters/desktop_dashboard.py",
+    "src/steamzero/domain/theme_import_esde.py",
+    "src/steamzero/ui/qml/Main.qml",
+    "src/steamzero/ui/qml/ThemeBridge.qml",
+    "src/steamzero/ui/qml/ThemeCatalogPanel.qml",
+    "tests/qml/check_theme_catalog_panel.qml"
+  ],
+  "nextAction": "Executar gates integrais, publicar branch e instalar uma release governada para provar aplicação e background ativo; manter vídeo e mídia real como gaps até evidência física.",
+  "updatedAt": "2026-09-17"
+}

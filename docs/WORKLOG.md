@@ -11082,3 +11082,22 @@ governada continua viva no `pkexec`, sem saída e sem troca de
 reinício ou finalização do KDE, nem alteração do acervo real. A prova visual
 nova e a sonda de performance da release `153d3da8b80b` permanecem pendentes
 exclusivamente da autenticação do operador.
+
+## 2026-09-17 — ponte ES-DE para a superfície ativa da AURA UI
+
+Corrigi a perda estrutural do wallpaper na importação ES-DE: o inventário agora
+é limitado aos wallpapers declarados, recusa symlink/travessia, valida tamanho e
+grava o asset no pacote editável junto dos tokens. O catálogo passou a oferecer
+`Aplicar na central`, usando o plano/confirmToken transacional existente e
+mantendo a confirmação explícita. A central recebeu `ActiveThemeSurface`, que
+consome somente URI de imagem validada pelo dashboard, vignette e fallback de
+paleta; alto contraste continua substituindo a arte.
+
+Provas: 98 testes unitários/dashboard, 4 testes QML do catálogo, 96 testes QML
+offscreen/visuais, Ruff, formatação, mypy, independência e fronteiras passaram.
+O gate integral foi iniciado, avançou até cerca de 28% e foi interrompido após
+aproximadamente 24 minutos sem progresso de integração; não houve traceback.
+O `STATUS-CHECK` do item novo está consistente; a base traz seis itens antigos
+com digests obsoletos, registrados como pré-existentes. Vídeo real, read model de
+jogo e prova física da release instalada permanecem gaps abertos; nenhuma
+instalação, reinício ou finalização do KDE ocorreu.

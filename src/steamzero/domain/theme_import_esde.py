@@ -31,6 +31,7 @@ import re
 import xml.etree.ElementTree as ET
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from steamzero.core.errors import SteamZeroError
@@ -97,6 +98,60 @@ class AssetPlan:
             "targetPath": self.target_path,
             "size": self.size,
         }
+
+
+def asset_inventory(source_root: Path) -> dict[str, int]:
+    """Indexa wallpapers declarados pelo ES-DE sem seguir links externos.
+
+    O inventário é deliberadamente estreito: a importação do tema SteamZero
+    promete apenas o background que o contrato de tokens consegue consumir.
+    Não varremos nem copiamos a árvore inteira do tema, que pode conter centenas
+    de megabytes de arte por sistema.
+    """
+    root = source_root.expanduser()
+    if root.is_symlink() or not root.is_dir():
+        raise SteamZeroError("E-THEME-MANIFEST", detail="origem do tema ES-DE inválida")
+    resolved_root = root.resolve()
+    inventory: dict[str, int] = {}
+    for directory in _WALLPAPER_DIRS:
+        folder = root / directory
+        if folder.is_symlink() or not folder.is_dir():
+            continue
+        for candidate in folder.iterdir():
+            if candidate.is_symlink() or not candidate.is_file():
+                continue
+            try:
+                relative = candidate.resolve().relative_to(resolved_root).as_posix()
+            except ValueError:
+                continue
+            if candidate.suffix.casefold() not in {".webp", ".png", ".jpg", ".jpeg"}:
+                continue
+            size = candidate.stat().st_size
+            if 0 < size <= MAX_ASSET_BYTES:
+                inventory[relative] = size
+    return inventory
+
+
+def read_asset(source_root: Path, plan: AssetPlan) -> bytes:
+    """Lê um asset já planejado, conferindo contenção, tipo e tamanho."""
+    root = source_root.expanduser()
+    if root.is_symlink() or not root.is_dir():
+        raise SteamZeroError("E-THEME-MANIFEST", detail="origem do tema ES-DE inválida")
+    resolved_root = root.resolve()
+    candidate = root / plan.source_path
+    if candidate.is_symlink() or not candidate.is_file():
+        raise SteamZeroError("E-THEME-MANIFEST", detail=f"asset ausente: {plan.source_path}")
+    try:
+        candidate.resolve().relative_to(resolved_root)
+    except ValueError as exc:
+        raise SteamZeroError("E-THEME-UNSAFE", detail="asset fora da origem do tema") from exc
+    size = candidate.stat().st_size
+    if size != plan.size or size > MAX_ASSET_BYTES:
+        raise SteamZeroError("E-THEME-MANIFEST", detail=f"tamanho inesperado: {plan.source_path}")
+    try:
+        return candidate.read_bytes()
+    except OSError as exc:
+        raise SteamZeroError("E-THEME-MANIFEST", detail=f"asset ilegível: {exc}") from exc
 
 
 def resolve_assets(scheme: str, available: Mapping[str, int]) -> list[AssetPlan]:
