@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "release": "2.0.0rc1-41f56fffa17a",
+  "sourceCommit": "41f56fffa17a9e861bfa64e57153cb792ee47f4b",
+  "gameId": "1f40d4d28a0476a35c8bbaeb",
+  "sessionId": "01M2RV5XVTKSXWSMAHDAA510SH",
+  "adapter": "RetroArch/Mesen",
+  "observations": [
+    {
+      "state": "running",
+      "saveState": "ready",
+      "saveSlot": 0,
+      "loadAvailable": true,
+      "thumbnailFallback": true,
+      "bezel": "AURA Cinema",
+      "bezelAvailable": true,
+      "bezelSelected": true,
+      "fade": {"phase": "idle", "durationMs": 180},
+      "disc": {"enabled": false, "reason": "jogo sem conjunto multi-disc"}
+    },
+    {"action": "pause", "accepted": true, "resultState": "suspended"},
+    {"action": "pause", "accepted": true, "resultState": "running"},
+    {"state": "closed", "returnSurface": "not-captured", "reason": "RetroArch não publicou janela mapeada no compositor Wayland"}
+  ],
+  "result": "session-contract-observed; visual-OSD-capture-pending"
+}

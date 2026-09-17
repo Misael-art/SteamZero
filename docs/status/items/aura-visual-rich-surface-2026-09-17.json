@@ -5,10 +5,10 @@
   "title": "AURA Cinema — superfície rica integrada e validação física",
   "domain": "ui",
   "implementation": "partial",
-  "integration": "feature-branch",
-  "verification": "dev",
-  "operation": "unknown",
-  "distribution": "not-packaged",
+  "integration": "integrated",
+  "verification": "hw",
+  "operation": "ready",
+  "distribution": "installed",
   "scopePaths": [
     "src/steamzero/launcher/cinema.py",
     "src/steamzero/ui/qml/launcher/LauncherCinema.qml",
@@ -23,10 +23,9 @@
     "SZ-AURA-PERFORMANCE-VALIDATION"
   ],
   "knownGaps": [
-    "GAP-AURA-SAVE-STATE-PHYSICAL",
+    "GAP-AURA-SAVE-STATE-OSD-CAPTURE",
     "GAP-AURA-DISC-SWAP-PHYSICAL",
-    "GAP-AURA-BEZEL-FADE-PHYSICAL",
-    "GAP-AURA-CINEMA-PERFORMANCE-P95"
+    "GAP-AURA-BEZEL-FADE-PHYSICAL"
   ],
   "acceptanceCriteria": [
     "Capa, fanart, logo, screenshots e videoUrl são projetados por URLs locais/package-safe; HTTP arbitrário é rejeitado.",
@@ -43,6 +42,30 @@
       "result": "passed"
     },
     {
+      "kind": "release",
+      "reference": "docs/09-operations/evidence/2026-09-17-aura-esde-active-surface/05-entrega-funcional.png",
+      "command": "release_host.py install --bundle aura-visual-final-41f56fff --rollback-release 2.0.0rc1-7a7e96f8e4fd",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-17-aura-esde-active-surface/07-rich-cinema.png",
+      "command": "Launcher instalado com fixture local de mídia rica em fullscreen",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-17-aura-esde-active-surface/performance-final-2.0.0rc1-41f56fffa17a.json",
+      "command": "launcher_perf_probe.py --backend opengl --timeout 25 na release instalada",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-17-aura-esde-active-surface/session-osd-real.json",
+      "command": "Sessão RetroArch/Mesen real: save slot 0, pausa/retomada, bezel AURA e fade",
+      "result": "recorded"
+    },
+    {
       "kind": "test",
       "reference": "tests/integration/test_launcher_focus_bootstrap.py",
       "command": "QML harness Qt6: cinema com palette/video ausente mantém fallback de fanart e reducedMotion sem travar a cena; 2 passed.",
@@ -52,7 +75,7 @@
   "activeWorkstreams": [
     "WS-2026-09-AURA-VISUAL-RICH-SURFACE"
   ],
-  "nextAction": "Instalar a release final após aprovação polkit, capturar a superfície fullscreen e registrar o ciclo de sessão físico.",
+  "nextAction": "Capturar o OSD sobre uma janela RetroArch mapeada no compositor e validar um conjunto multi-disc legítimo antes de declarar a cadeia física completa.",
   "updatedAt": "2026-09-17",
-  "notes": "Os contratos de sessão e a sonda física já existem em frentes integradas; esta frente fecha a projeção rich-media e a prova conjunta sem alegar suporte de adapter ausente."
+  "notes": "A release instalada prova a superfície Cinema rica e a medição física dentro do orçamento. A sessão real comprovou save-state, pausa/retomada, bezel e fade pelo contrato; não há conjunto multi-disc legítimo no acervo usado e o OSD não publicou janela mapeada para captura visual."
 }
