@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-WII-CATALOG",
+  "item": "SZ-PLATFORM-WII-CATALOG",
+  "branch": "codex/wii-content-ingestion-2026-09-17",
+  "baseRef": "HEAD",
+  "owner": "wii-content-agent",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/domain/wii_content.py",
+    "src/steamzero/domain/wii_identity.py",
+    "src/steamzero/domain/wii_conversion.py",
+    "src/steamzero/adapters/wii_catalog.py",
+    "tests/unit/test_wii_content.py",
+    "tests/unit/test_wii_identity.py",
+    "tests/unit/test_wii_conversion.py",
+    "tests/integration/test_wii_catalog.py",
+    "docs/12-roadmap/WII-CONTENT-INGESTION-AND-MEDIA-PLAN.md",
+    "docs/12-roadmap/PROMPT-WII-CONTENT-INGESTION-AGENT.md"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Implementar resolver, conversão RVZ opt-in e WAD/NAND em módulos próprios; solicitar coordenação antes de alterar library.py, media registry, emulation.py, launcher ou manifesto compartilhado.",
+  "updatedAt": "2026-09-17"
+}

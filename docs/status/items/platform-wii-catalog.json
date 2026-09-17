@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-PLATFORM-WII-CATALOG",
+  "title": "Catálogo de plataforma Wii (Dolphin)",
+  "domain": "platform",
+  "implementation": "partial",
+  "integration": "isolated",
+  "verification": "none",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/platform_manifests/11-nintendo-console.platform.json",
+    "src/steamzero/adapters/manifests/dolphin.adapter.json",
+    "docs/12-roadmap/WII-CONTENT-INGESTION-AND-MEDIA-PLAN.md",
+    "docs/12-roadmap/PROMPT-WII-CONTENT-INGESTION-AGENT.md"
+  ],
+  "scopeDigest": "1fd3fb93f0591c099d71d7c653a69cd999889d0018cc7dcae2d08a66b21847bb",
+  "dependsOn": [
+    "SZ-AGG-PLATFORM-MANIFESTS",
+    "SZ-LIBRARY-CANONICAL",
+    "SZ-MEDIA-SCRAPING",
+    "SZ-EMULATION-LONG-OPERATIONS"
+  ],
+  "knownGaps": [
+    "GAP-PLATFORM-WII-CONTENT-RESOLVER",
+    "GAP-WII-GAMECUBE-SYSTEM-SEPARATION",
+    "GAP-WII-RVZ-OPTIN-CONVERSION",
+    "GAP-WII-WAD-NAND-RECONCILIATION",
+    "GAP-PLATFORM-WII-PHYSICAL-LAUNCH"
+  ],
+  "acceptanceCriteria": [
+    "Wii e GameCube compartilham Dolphin, mas não identidade, mídia ou controles.",
+    "ISO, RVZ, WBFS, CISO, GCZ, WIA, NFS e WAD são classificados pelo conteúdo real.",
+    "RVZ é recomendado, mas sempre opt-in.",
+    "Conversão RVZ não bloqueia interface nem lançamento de jogos.",
+    "Fonte original permanece ativa até verify e confirmação.",
+    "Falha, cancelamento e rollback não danificam a origem.",
+    "WAD e NAND não são tratados como ISO nem como arquivos comuns.",
+    "BIOS não é exigida genericamente para jogos Wii em disco.",
+    "Referências a SD, USB e rede sobrevivem à mudança do ponto de montagem.",
+    "O plano exibe espaço temporário, tamanho final e economia prevista.",
+    "Mídia usa systemId=wii e ID interno antes do nome.",
+    "A prova física em release instalada permanece separada e exige autorização do operador."
+  ],
+  "evidence": [],
+  "nextAction": "Aguardar agente dedicado: implementar resolver, conversão RVZ opt-in, WAD/NAND e read model em módulos próprios sem tocar nas frentes de tema, launcher, PS3, PS4 ou Vita.",
+  "activeWorkstreams": [
+    "WS-2026-09-WII-CATALOG"
+  ],
+  "updatedAt": "2026-09-17",
+  "notes": "Plano documental criado em branch isolada. O manifesto compartilhado Nintendo Console e o adapter Dolphin existem, mas ainda não fecham separação Wii/GameCube, WAD/NAND, formatos adicionais e conversão RVZ opt-in com prioridade e rollback. Nenhuma instalação ou mutação de host foi feita."
+}

@@ -48,6 +48,16 @@ precisam ser medidos, não estimados a partir do tamanho do PKG.
 
 Plano detalhado e prompt de execução: [PS4-PKG-STORAGE-RECONCILIATION-PLAN](PS4-PKG-STORAGE-RECONCILIATION-PLAN.md).
 
+### F3-WII — Ingestão automática, NAND e otimização RVZ opt-in
+
+Para Wii, o usuário seleciona uma raiz, arquivo, disco removível ou compartilhamento. O SteamZero deve separar Wii de GameCube pelo `systemId`, embora ambos usem Dolphin, e reconhecer ISO/GCM, RVZ, WBFS, CISO, GCZ, WIA, NFS, WAD e títulos NAND. Canais, WiiWare, Virtual Console, saves, SD, NAND e cache não podem virar jogos falsos.
+
+RVZ é o formato recomendado para economia de espaço, mas a conversão é sempre opt-in. A fonte original continua ativa; o plano exibe tamanho, staging, tempo e economia; o job roda em baixa prioridade, pausa durante jogo, pode ser cancelado/retomado e só ativa o RVZ após verify e confirmação. A origem nunca é apagada automaticamente.
+
+WAD e NAND usam plan/apply/verify separado, com ownership gerenciado e sem substituir NAND inteira. O manifesto não deve impor BIOS genérica a jogos Wii em disco. Mídia prioriza `systemId=wii` + disc/title ID, e referências de SD/USB/rede usam volume/share + caminho relativo.
+
+Plano detalhado e prompt de execução: [WII-CONTENT-INGESTION-AND-MEDIA-PLAN](WII-CONTENT-INGESTION-AND-MEDIA-PLAN.md) e [PROMPT-WII-CONTENT-INGESTION-AGENT](PROMPT-WII-CONTENT-INGESTION-AGENT.md).
+
 ## Fase 4 — Emuladores e frontends
 
 Entregas: engine de adapters + schema adapter.json + lockfile de componentes; adapters núcleo (lista PRD §7); templates de config (derivação EmuDeck conforme REUSE-POLICY); adapters de frontend Steam/SRM/ES-DE/RetroArch/RetroDECK/Heroic; ações semânticas de controle + perfis Steam Input; launcher genérico com perfis por jogo.
