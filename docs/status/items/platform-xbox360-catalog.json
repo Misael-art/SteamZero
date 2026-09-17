@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-PLATFORM-XBOX360-CATALOG",
+  "title": "Catálogo de plataforma Xbox 360 (Xenia)",
+  "domain": "platform",
+  "implementation": "planned",
+  "integration": "isolated",
+  "verification": "none",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/platform_manifests/38-xbox-360.platform.json",
+    "src/steamzero/adapters/manifests/xenia-canary.adapter.json",
+    "docs/12-roadmap/XBOX360-CONTENT-INGESTION-AND-MEDIA-PLAN.md",
+    "docs/12-roadmap/PROMPT-XBOX360-CONTENT-INGESTION-AGENT.md"
+  ],
+  "scopeDigest": "32b04bbc8c259590a3238878b877327ee6bfd21f6994751d34a7b553ee83d3c7",
+  "dependsOn": [
+    "SZ-AGG-PLATFORM-MANIFESTS",
+    "SZ-LIBRARY-CANONICAL",
+    "SZ-MEDIA-SCRAPING"
+  ],
+  "knownGaps": [
+    "GAP-PLATFORM-XBOX360-CONTENT-RESOLVER",
+    "GAP-PLATFORM-XBOX360-PHYSICAL-LAUNCH"
+  ],
+  "acceptanceCriteria": [
+    "Uma raiz escolhida pelo usuário descobre ISO, XEX extraído, GOD e conteúdo digital sem renomeação manual.",
+    "TITLEID/content ID/media ID resolvem uma identidade lógica; nomes são apenas fallback.",
+    "Arquivo GOD e pasta .data são uma fonte; DLC, updates, cache, saves e perfis não viram jogos independentes.",
+    "Referências a SD, USB e rede sobrevivem à mudança do ponto de montagem sem caminho absoluto como identidade.",
+    "Busca de mídia prioriza plataforma e TITLEID e não promove candidatos conflitantes automaticamente.",
+    "O plano mostra espaço adicional, preserva a origem e permite rollback em falha.",
+    "A entrada só chega a ready após preflight do adapter Xenia.",
+    "A prova física em release instalada permanece separada da implementação e exige autorização do operador."
+  ],
+  "evidence": [],
+  "nextAction": "Aguardar agente dedicado: criar workstream próprio, implementar o resolver por módulos novos e entregar testes focados sem tocar nas frentes de tema/launcher.",
+  "activeWorkstreams": [
+    "WS-2026-09-XBOX360-CATALOG"
+  ],
+  "updatedAt": "2026-09-17",
+  "notes": "Plano documental criado em branch isolada. O adapter Xenia existente declara a plataforma, mas a ingestão ainda não reconcilia automaticamente ISO, XEX, GOD, conteúdo digital e mídia por TITLEID. Nenhuma instalação ou mutação de host foi feita."
+}

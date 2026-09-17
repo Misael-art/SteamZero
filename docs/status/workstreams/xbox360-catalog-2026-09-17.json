@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-XBOX360-CATALOG",
+  "item": "SZ-PLATFORM-XBOX360-CATALOG",
+  "branch": "codex/xbox360-content-ingestion-2026-09-17",
+  "baseRef": "HEAD",
+  "owner": "xbox360-content-agent",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/domain/xbox360_content.py",
+    "src/steamzero/domain/xbox360_identity.py",
+    "src/steamzero/adapters/xbox360_catalog.py",
+    "tests/unit/test_xbox360_content.py",
+    "tests/unit/test_xbox360_identity.py",
+    "tests/integration/test_xbox360_catalog.py",
+    "docs/12-roadmap/XBOX360-CONTENT-INGESTION-AND-MEDIA-PLAN.md",
+    "docs/12-roadmap/PROMPT-XBOX360-CONTENT-INGESTION-AGENT.md"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Implementar o resolver e o read model em módulos próprios; solicitar coordenação antes de alterar library.py, media registry, launcher ou qualquer arquivo de tema.",
+  "updatedAt": "2026-09-17"
+}

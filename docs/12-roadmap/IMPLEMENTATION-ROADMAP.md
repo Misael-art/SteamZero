@@ -48,6 +48,16 @@ precisam ser medidos, não estimados a partir do tamanho do PKG.
 
 Plano detalhado e prompt de execução: [PS4-PKG-STORAGE-RECONCILIATION-PLAN](PS4-PKG-STORAGE-RECONCILIATION-PLAN.md).
 
+### F3-XBOX360 — Ingestão unificada de conteúdo, identidade e mídia
+
+Para Xbox 360, o usuário seleciona uma raiz, arquivo, disco removível ou compartilhamento. O SteamZero deve reconhecer ISO, pasta extraída com XEX, estruturas GOD, conteúdo digital/XBLA, DLC e title updates sem exigir renomeação ou separação manual. Arquivo GOD e sua pasta `.data` são uma fonte única; cache, saves e perfis não são jogos. A identidade primária é o TITLEID, content ID, media ID, edição e região, com nome apresentado como `Título - Edição [TITLEID]`.
+
+O fluxo usa referências relativas e identidade de volume/share para sobreviver a SD, USB, rede e pontos de montagem variáveis. Hardlink/reflink só ocorre no mesmo filesystem. O scan não copia nem extrai fontes grandes; qualquer staging é planejado, mensurado, reversível e validado pelo adapter Xenia antes da publicação.
+
+Busca de mídia prioriza plataforma + TITLEID e só usa o nome como fallback. O plano separa tamanho original, overhead, staging, cache de mídia e dados do emulador. Falhas preservam as fontes e deixam `needs-review`, `missing`, `conflict` ou `unsupported` com causa legível.
+
+Plano detalhado e prompt de execução: [XBOX360-CONTENT-INGESTION-AND-MEDIA-PLAN](XBOX360-CONTENT-INGESTION-AND-MEDIA-PLAN.md) e [PROMPT-XBOX360-CONTENT-INGESTION-AGENT](PROMPT-XBOX360-CONTENT-INGESTION-AGENT.md).
+
 ## Fase 4 — Emuladores e frontends
 
 Entregas: engine de adapters + schema adapter.json + lockfile de componentes; adapters núcleo (lista PRD §7); templates de config (derivação EmuDeck conforme REUSE-POLICY); adapters de frontend Steam/SRM/ES-DE/RetroArch/RetroDECK/Heroic; ações semânticas de controle + perfis Steam Input; launcher genérico com perfis por jogo.
