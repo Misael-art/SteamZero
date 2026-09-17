@@ -11072,3 +11072,13 @@ A evidência reproduzível está em
 arquivo do acervo foi extraído, convertido, renomeado ou sobrescrito.
 `STATUS-CHECK` passou. A instalação governada de `2.0.0rc1-153d3da8b80b`
 continua aguardando aprovação do polkit; o host ainda está em d70.
+
+## 2026-09-17 — regressões focadas da cadeia AURA e multidisco
+
+Reexecutei as regressões diretamente relacionadas ao objetivo: sessão/mídia
+(39 testes) e multidisco/archive-aware (88 testes); todos passaram. A operação
+governada continua viva no `pkexec`, sem saída e sem troca de
+`/opt/steamzero/current`, que permanece em `2.0.0rc1-d70a80f83aae`. Não houve
+reinício ou finalização do KDE, nem alteração do acervo real. A prova visual
+nova e a sonda de performance da release `153d3da8b80b` permanecem pendentes
+exclusivamente da autenticação do operador.
