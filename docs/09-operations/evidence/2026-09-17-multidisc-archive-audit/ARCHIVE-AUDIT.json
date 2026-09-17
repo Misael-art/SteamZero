@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-09-17",
+  "source": "origin/main@153d3da8b80b93e595a8c227c01fa2ab49918e23",
+  "mutation": "read-only",
+  "x68000": {
+    "archive": "Garou Densetsu I+II+Special (1993)(Magical Company).zip",
+    "archiveSha256": "2a0196b8efa2a5beb11a6cb7415463b7d757a6d6541b8a7b51aca4f8598ff68b",
+    "resolverState": "needs-platform-contract",
+    "reason": "o adapter não declara suporte a M3U para estes archives",
+    "sets": [
+      {"title": "Garou Densetsu (1993)(Magical Company)", "discTotal": 4, "labels": ["A", "B", "C", "D"], "memberHashesPresent": true},
+      {"title": "Garou Densetsu 2 (1993)(Magical Company)", "discTotal": 6, "labels": ["A", "B", "C", "D", "E", "F"], "memberHashesPresent": true},
+      {"title": "Garou Densetsu Special (1994)(Magical Company)", "discTotal": 9, "labels": ["A", "B", "C", "D", "E", "F", "G", "H", "I"], "memberHashesPresent": true}
+    ]
+  },
+  "amiga": {
+    "source": "amiga1200/Super Street Fighter II - The New Challengers*.zip",
+    "archiveCount": 8,
+    "resolverState": "conflict",
+    "reason": "o conjunto mistura variantes incompatíveis de título",
+    "discTotal": 7,
+    "memberFormat": "adf",
+    "duplicatePolicy": "review; não escolher por (1)"
+  }
+}
