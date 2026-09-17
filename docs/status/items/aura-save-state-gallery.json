@@ -5,10 +5,10 @@
   "title": "AURA save-state gallery e contrato de slots",
   "domain": "ui",
   "implementation": "partial",
-  "integration": "feature-branch",
-  "verification": "unit",
-  "operation": "unknown",
-  "distribution": "not-packaged",
+  "integration": "released",
+  "verification": "hw",
+  "operation": "degraded",
+  "distribution": "installed",
   "scopePaths": [
     "src/steamzero/domain/save_states.py",
     "src/steamzero/domain/session_overlay.py",
@@ -30,9 +30,7 @@
     "SZ-AURA-SESSION-OSD",
     "SZ-AURA-LAUNCHER"
   ],
-  "knownGaps": [
-    "GAP-AURA-SAVE-STATE-PHYSICAL"
-  ],
+  "knownGaps": [],
   "acceptanceCriteria": [
     "A galeria publica slot, thumbnail, timestamp, playtime, compatibilidade e backup sem expor paths privados.",
     "Save/load exige sessão e jogo correlacionados, slot inteiro limitado e operação semântica allowlisted.",
@@ -70,12 +68,24 @@
       "reference": "docs/09-operations/evidence/2026-09-16-aura-retroarch-session-fix/PHYSICAL-VALIDATION-SOURCE.json",
       "command": "source branch 37d6f7a on host: real RetroArch session listSaveStates -> saveState(3) -> listSaveStates -> loadState(3)",
       "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/19-save-state-gallery-post-install.png",
+      "command": "release 2.0.0rc1-d70a80f83aae; galeria física sobre RetroArch/Mesen com slot nativo, timestamp e fallback SEM CAPTURA",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/20-nes-paused-post-install.png",
+      "command": "release 2.0.0rc1-d70a80f83aae; estado suspended confirmado após ação semântica de sessão",
+      "result": "passed"
     }
   ],
-  "nextAction": "Repetir a prova save/load na release governada instalada; depois fechar a troca de disco somente com um jogo multi-disc real.",
+  "nextAction": "Preservar save/load como capacidade instalada; fechar a troca de disco somente com um jogo multi-disc real e adapter comprovado.",
   "activeWorkstreams": [
     "WS-2026-09-AURA-SAVE-STATE-GALLERY"
   ],
   "updatedAt": "2026-09-16",
-  "notes": "O adapter RetroArch agora alinha o cursor ao state_slot persistido pelo conteúdo e à hierarquia states/<core>/<content>; a prova física da branch foi registrada, mas a promoção continua aguardando a release governada."
+  "notes": "O adapter RetroArch alinha o cursor ao state_slot persistido pelo conteúdo e à hierarquia states/<core>/<content>. A galeria, save/load e pausa foram exercitados em jogo real na release d70; a ausência de thumbnail permanece fallback explícito, não erro."
 }

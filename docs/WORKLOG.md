@@ -11027,3 +11027,14 @@ com capas reais) e \`11\` (detalhe com capa e ação Jogar). O workstream histó
 foi fechado; credenciais remotas, fanart/screenshots/vídeo não publicados,
 performance da nova release, save-state físico e disc swap continuam gaps
 honestos. \`STATUS-CHECK\` passou.
+
+## 2026-09-17 — promoção do save-state instalado
+
+A auditoria de status confirmou que o contrato de save-state já está no main e
+na release instalada \`2.0.0rc1-d70a80f83aae\`. O item
+\`SZ-AURA-SAVE-STATE-GALLERY\` foi harmonizado para released/installed/hw:
+\`19-save-state-gallery-post-install.png\` mostra a galeria física com slot,
+timestamp e fallback \`SEM CAPTURA\`, e
+\`20-nes-paused-post-install.png\` confirma a sessão suspensa após ação
+semântica. O gap de save-state físico foi fechado; troca de disco continua
+dependente de conteúdo multidisco e adapter legítimos.

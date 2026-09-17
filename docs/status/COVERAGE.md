@@ -27,7 +27,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AURA-PERFORMANCE-VALIDATION | 27 | 8 | 7 | hw |  |
 | SZ-AURA-PLATFORM-EXECUTION-PLAN | 5 | 1 | 0 | none |  |
 | SZ-AURA-RICH-MEDIA-PROJECTION | 9 | 5 | 3 | hw |  |
-| SZ-AURA-SAVE-STATE-GALLERY | 15 | 5 | 4 | unit |  |
+| SZ-AURA-SAVE-STATE-GALLERY | 15 | 7 | 6 | hw |  |
 | SZ-AURA-SEARCH-CONTRACT | 5 | 5 | 3 | dev |  |
 | SZ-AURA-SESSION-OSD | 25 | 6 | 4 | hw |  |
 | SZ-AURA-UI | 16 | 5 | 4 | unit |  |
