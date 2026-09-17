@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-PLATFORM-PSVITA-CATALOG",
+  "title": "Catálogo de plataforma PlayStation Vita (Vita3K)",
+  "domain": "platform",
+  "implementation": "partial",
+  "integration": "isolated",
+  "verification": "none",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/platform_manifests/47-playstation-vita.platform.json",
+    "src/steamzero/adapters/manifests/vita3k.adapter.json",
+    "docs/12-roadmap/PSVITA-CONTENT-INGESTION-AND-MEDIA-PLAN.md",
+    "docs/12-roadmap/PROMPT-PSVITA-CONTENT-INGESTION-AGENT.md"
+  ],
+  "scopeDigest": "afd5ae21c5724a491e26b4172cbf6d8e643362cdc79724d4d8956a9cf1340d34",
+  "dependsOn": [
+    "SZ-AGG-PLATFORM-MANIFESTS",
+    "SZ-PLATFORM-REQUIREMENT-SCOPE",
+    "SZ-LIBRARY-CANONICAL",
+    "SZ-MEDIA-SCRAPING"
+  ],
+  "knownGaps": [
+    "GAP-PLATFORM-PSVITA-CONTENT-RESOLVER",
+    "GAP-FIRMWARE-PSVITA-STORE-NOT-WIRED",
+    "GAP-KEYS-PSVITA-STORE-NOT-WIRED",
+    "GAP-PLATFORM-PSVITA-PHYSICAL-LAUNCH"
+  ],
+  "acceptanceCriteria": [
+    "Uma raiz escolhida pelo usuário descobre pasta, VPK, ZIP, VCI e PKG sem renomeação manual.",
+    "param.sfo/title ID/content ID determinam a identidade; nomes são apenas fallback.",
+    "Vitamin é recusado e Maidump fica em revisão, sem falsa prontidão.",
+    "Firmware, pacote de fontes, keys e licença são requisitos separados do jogo.",
+    "Variantes regionais e digitais preservam seus IDs e fontes.",
+    "Referências a SD, USB e rede sobrevivem à mudança do ponto de montagem.",
+    "Busca de mídia prioriza title ID/content ID e não promove conflitos automaticamente.",
+    "O plano mostra espaço adicional, preserva a origem e permite rollback.",
+    "A entrada só chega a ready após preflight do Vita3K.",
+    "A prova física em release instalada permanece separada e exige autorização do operador."
+  ],
+  "evidence": [],
+  "nextAction": "Aguardar agente dedicado: implementar resolver, stores de requisitos e read model em módulos próprios sem tocar nas frentes de tema, launcher, PS3 ou PS4.",
+  "activeWorkstreams": [
+    "WS-2026-09-PSVITA-CATALOG"
+  ],
+  "updatedAt": "2026-09-17",
+  "notes": "Plano documental criado em branch isolada. O manifesto e o adapter Vita3K existentes tornam a plataforma observável, mas a ingestão por conteúdo, o store operacional de firmware/keys/licença e a validação física ainda permanecem abertos. Nenhuma instalação ou mutação de host foi feita."
+}

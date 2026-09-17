@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-PSVITA-CATALOG",
+  "item": "SZ-PLATFORM-PSVITA-CATALOG",
+  "branch": "codex/psvita-content-ingestion-2026-09-17",
+  "baseRef": "HEAD",
+  "owner": "psvita-content-agent",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/domain/psvita_content.py",
+    "src/steamzero/domain/psvita_identity.py",
+    "src/steamzero/adapters/psvita_catalog.py",
+    "tests/unit/test_psvita_content.py",
+    "tests/unit/test_psvita_identity.py",
+    "tests/integration/test_psvita_catalog.py",
+    "docs/12-roadmap/PSVITA-CONTENT-INGESTION-AND-MEDIA-PLAN.md",
+    "docs/12-roadmap/PROMPT-PSVITA-CONTENT-INGESTION-AGENT.md"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Implementar resolver e stores em módulos próprios; solicitar coordenação antes de alterar library.py, media registry, emulation.py, launcher ou qualquer arquivo de tema.",
+  "updatedAt": "2026-09-17"
+}

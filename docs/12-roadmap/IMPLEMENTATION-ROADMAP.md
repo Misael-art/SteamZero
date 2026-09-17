@@ -48,6 +48,16 @@ precisam ser medidos, não estimados a partir do tamanho do PKG.
 
 Plano detalhado e prompt de execução: [PS4-PKG-STORAGE-RECONCILIATION-PLAN](PS4-PKG-STORAGE-RECONCILIATION-PLAN.md).
 
+### F3-PSVITA — Ingestão unificada de conteúdo, firmware, keys e mídia
+
+Para PS Vita, o usuário seleciona uma raiz, arquivo, disco removível ou compartilhamento. O SteamZero deve reconhecer pasta extraída, VPK, ZIP, VCI, PKG, NoNpDrm e FAGDec sem exigir renomeação ou extração manual. Vitamin é `unsupported` e Maidump fica em `needs-review`, conforme o contrato do Vita3K. A interface agrupa a obra como `Título - Edição [TITLE_ID]`, preservando title ID, content ID, região, edição e source kind.
+
+Firmware, pacote de fontes, keys e licença/zrif são requisitos separados e fornecidos pelo usuário; não são jogos nem devem ser fabricados ou baixados pelo produto. O scan lê `sce_sys/param.sfo`, associa updates/DLC por identidade e só publica `ready` após integridade, requisitos e preflight Vita3K.
+
+O fluxo usa volume/share e caminho relativo para SD, USB e rede. O scan não duplica nem extrai conteúdo grande; staging e instalação são planejados, mensurados e reversíveis. A busca de mídia prioriza plataforma + title ID/content ID e mantém variantes regionais separadas.
+
+Plano detalhado e prompt de execução: [PSVITA-CONTENT-INGESTION-AND-MEDIA-PLAN](PSVITA-CONTENT-INGESTION-AND-MEDIA-PLAN.md) e [PROMPT-PSVITA-CONTENT-INGESTION-AGENT](PROMPT-PSVITA-CONTENT-INGESTION-AGENT.md).
+
 ## Fase 4 — Emuladores e frontends
 
 Entregas: engine de adapters + schema adapter.json + lockfile de componentes; adapters núcleo (lista PRD §7); templates de config (derivação EmuDeck conforme REUSE-POLICY); adapters de frontend Steam/SRM/ES-DE/RetroArch/RetroDECK/Heroic; ações semânticas de controle + perfis Steam Input; launcher genérico com perfis por jogo.
