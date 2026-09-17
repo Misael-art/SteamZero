@@ -44,6 +44,40 @@ def test_metadata_projects_only_known_fields_without_fabricating_absent_values()
     )
 
 
+def test_metadata_accepts_resolved_rich_media_urls_without_opening_network_access() -> None:
+    from steamzero.launcher.cinema import cinema_metadata
+
+    result = cinema_metadata(
+        {
+            "coverUrl": "file:///art/cover%20one.png",
+            "fanartUrl": "asset://media/fanart",
+            "logoUrl": "qrc:/themes/aura/logo.svg",
+            "videoUrl": "https://example.org/not-allowed.mp4",
+            "palette": {
+                "accent": "#a855f7",
+                "vibrant": "#c084fc",
+                "background": "#0b1020",
+                "unsafe": "red",
+            },
+            "screenshotUrls": ["file:///art/shot%201.png", "https://example.org/shot.png"],
+            "media": {"video": {"url": "asset://media/preview"}},
+        }
+    )
+
+    assert result == {
+        "coverUrl": "file:///art/cover%20one.png",
+        "fanartUrl": "asset://media/fanart",
+        "logoUrl": "qrc:/themes/aura/logo.svg",
+        "screenshotUrls": ["file:///art/shot%201.png"],
+        "videoUrl": "asset://media/preview",
+        "palette": {
+            "accent": "#a855f7",
+            "vibrant": "#c084fc",
+            "background": "#0b1020",
+        },
+    }
+
+
 @pytest.mark.parametrize("count", [0, 1, 2, 3, 6, 7, 8, 512, 1131])
 def test_window_is_bounded_unique_and_keeps_selected_game(count: int) -> None:
     items = [{"id": str(index)} for index in range(count)]

@@ -19,7 +19,12 @@ Item {
     readonly property string performanceTier: scene && scene.performanceTier
         ? String(scene.performanceTier) : "balanced"
     readonly property bool backdropEffects: !highContrast && performanceTier !== "low"
-    readonly property color accentColor: highContrast ? "#55d8ff" : "#22d3ee"
+    readonly property var selectedPalette: selectedGame && selectedGame.palette
+        && typeof selectedGame.palette === "object" ? selectedGame.palette : ({})
+    readonly property color accentColor: highContrast ? "#55d8ff"
+        : _safeColor(selectedPalette.accent || selectedPalette.vibrant, "#22d3ee")
+    readonly property string videoSource: performanceTier === "cinematic"
+        ? String(selectedGame.videoUrl || "") : ""
     readonly property string connectionState: scene && scene.connectionState
         ? String(scene.connectionState) : "connected"
     property int clockTick: 0
@@ -47,6 +52,54 @@ Item {
     // autoridade da LauncherHome; estes sinais transportam a intenção de
     // controle sem duplicar a resolução de vizinhos no tema.
     signal moveRequested(string direction)
+
+    function _safeColor(value, fallback) {
+        if (typeof value !== "string")
+            return fallback
+        const candidate = value.trim()
+        return /^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$/.test(candidate)
+            ? candidate : fallback
+    }
+
+    function _destroyVideo() {
+        if (videoBackdrop.player !== null) {
+            videoBackdrop.player.destroy()
+            videoBackdrop.player = null
+        }
+        videoBackdrop.ready = false
+    }
+
+    function _loadVideo(source) {
+        _destroyVideo()
+        if (source === "" || highContrast || reducedMotion)
+            return
+        // QtMultimedia é opcional no host. O objeto é criado dinamicamente para
+        // que uma instalação sem o plugin de vídeo mantenha a cena navegável e
+        // revele o fanart/capa como fallback, em vez de falhar ao importar QML.
+        const qml = 'import QtQuick; import QtMultimedia; Item {'
+            + ' id: root; property url clip; property bool ready: false;'
+            + ' anchors.fill: parent;'
+            + ' MediaPlayer { id: mp; source: root.clip; loops: MediaPlayer.Infinite;'
+            + ' videoOutput: out; onMediaStatusChanged: root.ready ='
+            + ' mediaStatus === MediaPlayer.LoadedMedia ||'
+            + ' mediaStatus === MediaPlayer.BufferedMedia;'
+            + ' onErrorChanged: if (error !== MediaPlayer.NoError) root.ready = false;'
+            + ' Component.onCompleted: play() }'
+            + ' VideoOutput { id: out; anchors.fill: parent;'
+            + ' fillMode: VideoOutput.PreserveAspectCrop } }'
+        try {
+            const item = Qt.createQmlObject(qml, videoBackdrop, "auraCinemaVideo")
+            item.clip = source
+            videoBackdrop.player = item
+        } catch (error) {
+            // O fallback visual abaixo continua sendo a fonte da verdade.
+            videoBackdrop.player = null
+        }
+    }
+
+    onVideoSourceChanged: _loadVideo(videoSource)
+    onHighContrastChanged: _loadVideo(videoSource)
+    onReducedMotionChanged: _loadVideo(videoSource)
 
     Timer {
         id: clockRefresh
@@ -90,6 +143,19 @@ Item {
             {"type": "blur", "parameters": {"radius": 28}},
             {"type": "vignette", "parameters": {"color": "#02060b", "strength": 0.72}}
         ] : []
+    }
+    Item {
+        id: videoBackdrop
+        objectName: "cinemaVideoBackdrop"
+        anchors.fill: parent
+        z: 1
+        property var player: null
+        property bool ready: false
+        visible: ready && !cinema.highContrast && cinema.videoSource !== ""
+        opacity: cinema.performanceTier === "cinematic" ? 0.28 : 0
+        // A troca de jogo deve descartar o player anterior imediatamente para
+        // não manter áudio/vídeo de uma seleção que já perdeu o foco.
+        Component.onCompleted: cinema._loadVideo(cinema.videoSource)
     }
     // Véus de leitura: mantém arte como elemento principal, mas protege
     // título, chips e rodapé em capas claras ou sem paleta publicada.
@@ -201,6 +267,18 @@ Item {
                         fillMode: Image.PreserveAspectFit
                         effects: !card.modelData.highlighted && cinema.performanceTier === "cinematic"
                             ? [{"type": "blur", "parameters": {"radius": 12}}] : []
+                    }
+                    Image {
+                        anchors.centerIn: parent
+                        width: parent.width * 0.78
+                        height: parent.height * 0.28
+                        visible: card.modelData.highlighted
+                            && String(card.game.logoUrl || "") !== ""
+                        source: String(card.game.logoUrl || "")
+                        fillMode: Image.PreserveAspectFit
+                        asynchronous: true
+                        sourceSize: Qt.size(Math.ceil(width * 2), Math.ceil(height * 2))
+                        opacity: 0.94
                     }
                     Text {
                         anchors.fill: parent
