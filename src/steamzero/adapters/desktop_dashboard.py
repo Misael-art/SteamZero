@@ -1706,9 +1706,16 @@ class DesktopDashboard:
         allowed = {".png", ".jpg", ".jpeg", ".webp", ".svg"}
         result: dict[str, str] = {}
         for slot, value in declared.items():
-            if not isinstance(slot, str) or not isinstance(value, str):
+            if not isinstance(slot, str):
                 continue
-            candidate_path = root_path / value
+            # O read model de temas preserva a proveniência do asset como
+            # {slot, path}; temas legados podem publicar apenas o path.
+            relative_path = value if isinstance(value, str) else None
+            if isinstance(value, dict) and isinstance(value.get("path"), str):
+                relative_path = value["path"]
+            if not relative_path:
+                continue
+            candidate_path = root_path / relative_path
             if candidate_path.is_symlink() or not candidate_path.is_file():
                 continue
             candidate = candidate_path.resolve()
