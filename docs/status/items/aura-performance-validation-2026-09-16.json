@@ -12,9 +12,10 @@
   "scopePaths": [
     "tools/launcher_perf_probe.py",
     "tests/unit/test_launcher_perf_probe.py",
-    "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf"
+    "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf",
+    "docs/09-operations/evidence/2026-09-17-aura-launcher-exit-perf"
   ],
-  "scopeDigest": "cbdc3e8f86d6516602b7af3364458bc161046476bcc925a5cc11fb5066d70901",
+  "scopeDigest": "3e5bd6e076568925d57ab85bd0394f5a4d717d65588b1efda0c4e381b3e7343c",
   "dependsOn": [
     "SZ-AURA-LAUNCHER",
     "SZ-AURA-CINEMA-COMPLETION",
@@ -79,12 +80,30 @@
       "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/SESSION-CYCLE-MAP.json",
       "command": "registro da superfície física e da separação entre métricas de desempenho e estados funcionais de sessão",
       "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-17-aura-launcher-exit-perf/01-performance.json",
+      "command": "launcher_perf_probe.py na janela Wayland real, release 2.0.0rc1-153d3da8b80b, OpenGL: superfície 948x593, startup 1293 ms, 375 frames, p95 16,259 ms, VRAM 79748 KiB",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-17-aura-launcher-exit-perf/02-performance.json",
+      "command": "repetição na mesma release: startup 1151 ms, 375 frames, p95 16,299 ms, VRAM 77060 KiB",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-17-aura-launcher-exit-perf/03-launcher-release-153d3da8b80b.png",
+      "command": "captura da janela AURA Launcher real na release 2.0.0rc1-153d3da8b80b; superfície observada 948x593",
+      "result": "passed"
     }
   ],
   "activeWorkstreams": [
     "WS-2026-09-AURA-PERFORMANCE-VALIDATION"
   ],
-  "nextAction": "A captura visual física fullscreen foi concluída. Permanece, se o host oferecer essa geometria ao probe, uma amostra adicional de desempenho em 1280x800 e a prova física dos periféricos de sessão.",
-  "updatedAt": "2026-09-16",
-  "notes": "A medição final é válida para a janela Wayland real 948x593 da release 2.0.0rc1-d1cbb03a3b66. As duas amostras têm startup, frame time/p95 e VRAM observados e passaram os orçamentos. A captura física pós-instalação 1280x801 e o mapa do ciclo estão registrados separadamente; isso não promove bezel/fade visual isolado nem troca de disco sem evidência funcional correspondente."
+  "nextAction": "Repetir a sonda na release final que contenha a saída explícita do Launcher; a superfície física disponível continua 948x593, e periféricos de sessão, bezel/fade e troca de disco permanecem capacidades separadas.",
+  "updatedAt": "2026-09-17",
+  "notes": "Duas novas medições válidas foram executadas na release instalada 2.0.0rc1-153d3da8b80b, em janela Wayland real OpenGL 948x593: startup 1293/1151 ms, p95 16,259/16,299 ms, 375 frames e VRAM 79.748/77.060 KiB; ambas passaram os orçamentos. A captura PNG da mesma janela está registrada em 03-launcher-release-153d3da8b80b.png. Isso não promove bezel/fade visual isolado, OSD in-game ou troca de disco."
 }
