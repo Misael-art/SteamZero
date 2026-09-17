@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AURA-VISUAL-RICH-SURFACE",
+  "title": "AURA Cinema — superfície rica integrada e validação física",
+  "domain": "ui",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "dev",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/launcher/cinema.py",
+    "src/steamzero/ui/qml/launcher/LauncherCinema.qml",
+    "tests/unit/test_launcher_cinema.py",
+    "tests/qml/launcher/check_launcher_focus_bootstrap.qml"
+  ],
+  "scopeDigest": "639244a9a3f9832b99146dbd69d1d465936764b33beff98f04551e92b4ba86d9",
+  "dependsOn": [
+    "SZ-AURA-VISUAL-COMPLETION",
+    "SZ-AURA-SAVE-STATE-GALLERY",
+    "SZ-AURA-SESSION-OSD",
+    "SZ-AURA-PERFORMANCE-VALIDATION"
+  ],
+  "knownGaps": [
+    "GAP-AURA-SAVE-STATE-PHYSICAL",
+    "GAP-AURA-DISC-SWAP-PHYSICAL",
+    "GAP-AURA-BEZEL-FADE-PHYSICAL",
+    "GAP-AURA-CINEMA-PERFORMANCE-P95"
+  ],
+  "acceptanceCriteria": [
+    "Capa, fanart, logo, screenshots e videoUrl são projetados por URLs locais/package-safe; HTTP arbitrário é rejeitado.",
+    "Vídeo cinematográfico é opcional e degrada para fanart/capa quando o plugin ou o arquivo não reproduz.",
+    "Galeria de save-state, troca de disco, bezel e fade só aparecem como disponíveis quando o adapter da sessão os declara.",
+    "Medição final usa a janela Wayland da release instalada e registra startup, frame time p95, RSS e VRAM observada.",
+    "High contrast e reducedMotion prevalecem sobre vídeo, blur e transições."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_launcher_cinema.py",
+      "command": "pytest tests/unit/test_launcher_cinema.py tests/unit/test_launcher_media.py tests/integration/test_launcher_app.py tests/integration/test_launcher_focus_bootstrap.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_launcher_focus_bootstrap.py",
+      "command": "QML harness Qt6: cinema com palette/video ausente mantém fallback de fanart e reducedMotion sem travar a cena; 2 passed.",
+      "result": "passed"
+    }
+  ],
+  "activeWorkstreams": [
+    "WS-2026-09-AURA-VISUAL-RICH-SURFACE"
+  ],
+  "nextAction": "Instalar a release final após aprovação polkit, capturar a superfície fullscreen e registrar o ciclo de sessão físico.",
+  "updatedAt": "2026-09-17",
+  "notes": "Os contratos de sessão e a sonda física já existem em frentes integradas; esta frente fecha a projeção rich-media e a prova conjunta sem alegar suporte de adapter ausente."
+}
