@@ -185,6 +185,15 @@ FocusScope {
             font.pixelSize: 20
         }
 
+        Text {
+            width: parent.width
+            text: qsTr("Ctrl+Q · Sair")
+            color: home._hc("#8b93a8", "#c6d0db")
+            font.pixelSize: 12 * Math.max(1, Number(home.accessibility.visualScale || 1))
+            horizontalAlignment: Text.AlignRight
+            Accessible.name: qsTr("Atalho para sair do Launcher")
+        }
+
         // Reconciliação do acervo. O texto se monta a partir do que a varredura
         // REALMENTE contou: exigir `filesFound` para exibir qualquer coisa
         // escondia justamente o caso com mais a explicar — um cache sem esse
@@ -382,6 +391,42 @@ FocusScope {
                     event.accepted = true
             }
         }
+    }
+
+    Rectangle {
+        id: exitAction
+        objectName: "launcherExitButton"
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 24
+        width: 132
+        height: 44
+        radius: 8
+        color: home._hc("#0b1622", "#000000")
+        border.width: activeFocus ? 3 : 1
+        border.color: activeFocus
+            ? home._hc("#22d3ee", "#55d8ff") : home._hc("#68839b", "#68839b")
+        focus: false
+        activeFocusOnTab: true
+        Accessible.name: qsTr("Sair")
+        Accessible.role: Accessible.Button
+        Accessible.description: qsTr("Pedir confirmação para fechar o AURA Launcher")
+
+        function activate() {
+            return home.activateAction("app.exit")
+        }
+
+        Text {
+            anchors.centerIn: parent
+            text: qsTr("Sair")
+            color: home._hc("#f2f6fb", "#ffffff")
+            font.pixelSize: 14 * Math.max(1, Number(home.accessibility.visualScale || 1))
+        }
+
+        TapHandler { onTapped: exitAction.activate() }
+        Keys.onReturnPressed: exitAction.activate()
+        Keys.onEnterPressed: exitAction.activate()
+        Keys.onSpacePressed: exitAction.activate()
     }
 
     // A chave do nó é montada do mesmo jeito no domínio e aqui. Um dia isso

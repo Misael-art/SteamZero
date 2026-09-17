@@ -15,6 +15,7 @@ Item {
     property var activated: []
     property var feedback: []
     property var emptyActions: []
+    property var actions: []
 
     function check(condition, message) {
         checkIndex += 1
@@ -65,6 +66,7 @@ Item {
             harness.activated.push(gameId + "@" + focusId)
         }
         onFeedbackRequested: function(kind) { harness.feedback.push(kind) }
+        onActionRequested: function(actionId) { harness.actions.push(actionId) }
     }
 
     LauncherHome {
@@ -164,6 +166,31 @@ Item {
             harness.check(harness.emptyActions.length === 1
                           && harness.emptyActions[0] === "library.retry",
                           "a ação vazia precisa chegar ao shell")
+
+            shell.back()
+            exitCooldown.start()
+        }
+    }
+
+    Timer {
+        id: exitCooldown
+        interval: 220
+        running: false
+        repeat: false
+        onTriggered: {
+            var home = findByObjectName(shell, "launcherHome")
+            var exitButton = findByObjectName(home, "launcherExitButton")
+            harness.check(exitButton !== null, "a home precisa exibir a ação Sair")
+            if (exitButton !== null) {
+                harness.check(exitButton.Accessible.role === Accessible.Button,
+                              "Sair precisa anunciar papel de botão")
+                harness.check(exitButton.Accessible.name === "Sair",
+                              "Sair precisa anunciar nome estável")
+                harness.check(exitButton.activate() === true,
+                              "a ação visual Sair precisa ser ativável")
+            }
+            harness.check(harness.actions.length === 1 && harness.actions[0] === "app.exit",
+                          "Sair precisa chegar ao shell como app.exit")
             Qt.exit(harness.failures === 0 ? 0 : 1)
         }
     }

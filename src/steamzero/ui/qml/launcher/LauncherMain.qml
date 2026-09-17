@@ -22,6 +22,7 @@ Window {
     property string token: ""
     property var model: null
     property string failure: ""
+    property bool exitPromptOpen: false
     property var cinemaScene: null
     property int cinemaRequest: 0
     // A ponte é local; três segundos distinguem indisponibilidade de uma
@@ -514,6 +515,37 @@ Window {
         root._start()
     }
 
+    function _requestExit() {
+        root.exitPromptOpen = true
+    }
+
+    function _cancelExit() {
+        root.exitPromptOpen = false
+    }
+
+    function _confirmExit() {
+        root.exitPromptOpen = false
+        // O daemon e o emulador têm ciclos de vida próprios; sair fecha apenas
+        // esta janela/processo do Launcher.
+        Qt.quit()
+    }
+
+    Shortcut {
+        sequence: "Ctrl+Q"
+        onActivated: root._requestExit()
+    }
+
+    Shortcut {
+        sequence: "Alt+F4"
+        onActivated: root._requestExit()
+    }
+
+    Shortcut {
+        sequence: "Esc"
+        enabled: root.exitPromptOpen
+        onActivated: root._cancelExit()
+    }
+
     Component.onCompleted: {
         root.api = _argument("--steamzero-api")
         root.token = _argument("--steamzero-token")
@@ -716,6 +748,8 @@ Window {
                 onActionRequested: function(actionId) {
                     if (actionId === "library.add" || actionId === "library.retry")
                         root._retry()
+                    else if (actionId === "app.exit")
+                        root._requestExit()
                 }
             }
         }
@@ -743,5 +777,102 @@ Window {
             root.dispatchSessionOverlayAction("disc", undefined, discId)
         }
         onCloseRequested: root.closeSessionOverlay()
+    }
+
+    Rectangle {
+        id: exitPrompt
+        anchors.fill: parent
+        z: 100
+        visible: root.exitPromptOpen
+        color: "#02060bee"
+        focus: visible
+        Accessible.name: qsTr("Confirmar saída")
+        Accessible.role: Accessible.Dialog
+        Accessible.description: qsTr("Confirme ou cancele o encerramento do AURA Launcher")
+
+        Keys.onLeftPressed: cancelExitButton.forceActiveFocus()
+        Keys.onRightPressed: confirmExitButton.forceActiveFocus()
+        Keys.onEscapePressed: root._cancelExit()
+
+        onVisibleChanged: {
+            if (visible)
+                cancelExitButton.forceActiveFocus()
+        }
+
+        Column {
+            anchors.centerIn: parent
+            width: Math.min(parent.width - 48, 520)
+            spacing: 18
+
+            Text {
+                width: parent.width
+                text: qsTr("Sair do AURA Launcher?")
+                color: "#f2f6fb"
+                font.pixelSize: 26 * Math.max(1, Number(root.accessibility.visualScale || 1))
+                horizontalAlignment: Text.AlignHCenter
+            }
+
+            Text {
+                width: parent.width
+                text: qsTr("O daemon e o jogo já iniciado continuam protegidos.")
+                color: "#c6d0db"
+                font.pixelSize: 15 * Math.max(1, Number(root.accessibility.visualScale || 1))
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.Wrap
+            }
+
+            Row {
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: 12
+
+                Rectangle {
+                    id: cancelExitButton
+                    objectName: "launcherExitCancel"
+                    width: 148
+                    height: 48
+                    radius: 8
+                    color: "#0b1622"
+                    border.width: activeFocus ? 3 : 1
+                    border.color: activeFocus ? "#55d8ff" : "#68839b"
+                    focus: root.exitPromptOpen
+                    Accessible.name: qsTr("Cancelar saída")
+                    Accessible.role: Accessible.Button
+                    Text {
+                        anchors.centerIn: parent
+                        text: qsTr("Cancelar")
+                        color: "#ffffff"
+                        font.pixelSize: 14
+                    }
+                    TapHandler { onTapped: root._cancelExit() }
+                    Keys.onReturnPressed: root._cancelExit()
+                    Keys.onEnterPressed: root._cancelExit()
+                    Keys.onSpacePressed: root._cancelExit()
+                }
+
+                Rectangle {
+                    id: confirmExitButton
+                    objectName: "launcherExitConfirm"
+                    width: 148
+                    height: 48
+                    radius: 8
+                    color: "#11344a"
+                    border.width: activeFocus ? 3 : 1
+                    border.color: activeFocus ? "#55d8ff" : "#68839b"
+                    focus: false
+                    Accessible.name: qsTr("Confirmar saída")
+                    Accessible.role: Accessible.Button
+                    Text {
+                        anchors.centerIn: parent
+                        text: qsTr("Sair")
+                        color: "#ffffff"
+                        font.pixelSize: 14
+                    }
+                    TapHandler { onTapped: root._confirmExit() }
+                    Keys.onReturnPressed: root._confirmExit()
+                    Keys.onEnterPressed: root._confirmExit()
+                    Keys.onSpacePressed: root._confirmExit()
+                }
+            }
+        }
     }
 }

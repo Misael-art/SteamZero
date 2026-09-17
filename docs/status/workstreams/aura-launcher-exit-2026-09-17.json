@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-LAUNCHER-EXIT",
+  "item": "SZ-AURA-LAUNCHER-EXIT",
+  "branch": "codex/aura-launcher-exit-2026-09-17",
+  "baseRef": "153d3da8b80b93e595a8c227c01fa2ab49918e23",
+  "owner": "codex-aura-launcher-exit",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/ui/qml/launcher/LauncherHome.qml",
+    "src/steamzero/ui/qml/launcher/LauncherMain.qml",
+    "tests/qml/launcher/check_launcher_activation.qml",
+    "tests/qml/launcher/check_launcher_exit.qml",
+    "tests/integration/test_qml_handheld_offscreen.py"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Executar gates integrais, publicar a branch e preparar release governada para prova física da saída.",
+  "updatedAt": "2026-09-17"
+}
