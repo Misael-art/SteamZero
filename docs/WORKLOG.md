@@ -11132,3 +11132,32 @@ O item `SZ-AURA-VISUAL-RICH-SURFACE`, as visões de status e a evidência físic
 foram atualizados, e `STATUS-CHECK` passou. Permanecem abertos somente a
 captura visual do OSD, a prova física de bezel/fade sobre a janela do jogo e a
 validação com um conjunto multi-disc legítimo.
+
+## 2026-09-18 — promoção, instalação e captura pós-correção do OSD AURA
+
+O PR #207 foi mergeado após o CI do branch e da ponta de `main` terminarem
+verdes (run `35296217607`): Python 3.11/3.12/3.14, smoke das distribuições,
+wheel/supply chain e gate visual QML. A release canônica
+`2.0.0rc1-b396aaedcc64` foi preparada de `main` limpo, com wheel hash
+`0d17161cbf472b666bb59b32be036f5a2b3324a9f3e06b6931d77d73a2e719b1`, e
+instalada pelo fluxo governado com rollback
+`2.0.0rc1-7a7e96f8e4fd`. O daemon confirmou o commit
+`b396aaedcc64df1eeae68a9143fdb1dfa6345f6e`, a verificação idempotente passou,
+e não houve reinício nem finalização do KDE.
+
+O ajuste `e785aaf7` isolou o `LauncherSessionOverlay` como camada modal opaca,
+com z-order e clipping explícitos. Em jogo NES real na release instalada,
+`24-aura-osd-fixed.png` mostra o estado `running`, foco em `Galeria de saves`,
+ações de carregar save/trocar disco e nenhuma imagem da página subjacente
+vazando para o OSD. O PNG foi recortado à janela AURA para não guardar o
+desktop do operador. O staging auditado antes e depois da instalação ficou
+limpo; Doctor confirmou zero operações pendentes e zero staging/backup/journal
+órfãos.
+
+A sonda Wayland/OpenGL real foi refeita duas vezes em
+`perf-installed-b396aaed.json` e `perf-installed-b396aaed-rerun.json`.
+Startup (886/1494 ms) e VRAM (82.960/89.520 KiB) passaram; o p95 do render
+loop ficou em 16,959/16,918 ms, acima do orçamento de 16,7 ms. O resultado foi
+registrado como parcial, sem promover uma meta de performance não atingida.
+O item `SZ-AURA-CINEMA-COMPLETION`, o README da evidência, `STATUS.md` e
+`ACTIVE-WORK.md` foram regenerados; `STATUS-CHECK: OK`.
