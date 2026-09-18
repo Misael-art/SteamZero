@@ -16,7 +16,7 @@ from steamzero.domain.platforms import PlatformRegistry
 def test_catalog_is_complete_unique_and_truthful() -> None:
     experiences = CanonicalExperienceRegistry.bundled().list()
 
-    assert len(experiences) == 155
+    assert len(experiences) == 156
     assert len({item.id for item in experiences}) == len(experiences)
     assert {item.kind for item in experiences} == {
         "hardware",
@@ -30,6 +30,7 @@ def test_catalog_is_complete_unique_and_truthful() -> None:
     }
     assert not any(item.status == "certified" for item in experiences)
     assert CanonicalExperienceRegistry.bundled().get("playstation-4").status == "experimental"
+    assert CanonicalExperienceRegistry.bundled().get("playstation-5").status == "experimental"
     assert CanonicalExperienceRegistry.bundled().get("store-xbox-pc").status == "unavailable"
 
 
@@ -47,6 +48,7 @@ def test_requested_historical_experiences_are_not_collapsed() -> None:
         "mega-drive-enhanced",
         "atari-jaguar-cd",
         "playstation-4",
+        "playstation-5",
         "engine-mugen",
         "pc-dos",
         "store-steam",

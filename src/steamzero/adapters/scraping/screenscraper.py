@@ -130,6 +130,7 @@ _PLATFORMS_WITHOUT_SYSTEMEID = frozenset(
         "playstation-4",  # o ScreenScraper lista PS4, mas o ID não foi
         # conferido contra payload real (API exige credenciais); a busca de
         # mídia não filtra por plataforma até o ID ser sancionado
+        "playstation-5",  # sem ID conferido contra payload real
         "quake",
         "supervision",
         "thomson",

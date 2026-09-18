@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "id": "playstation-5",
+  "kind": "emulated",
+  "name": "Sony PlayStation 5",
+  "shortName": "PlayStation 5",
+  "iconKey": "playstation-5",
+  "artworkAsset": "../assets/playstation-5.svg",
+  "requirements": [],
+  "systems": [
+    "ps5"
+  ],
+  "capabilities": [
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "state": "ready",
+      "detail": "Catálogo experimental para dumps PS5 em pasta, com identidade por Title ID.",
+      "action": null
+    },
+    {
+      "id": "requirements",
+      "label": "Sistema",
+      "state": "ready",
+      "detail": "O runtime valida arquitetura x64 e GPU/driver Vulkan antes do lançamento.",
+      "action": null
+    },
+    {
+      "id": "graphics",
+      "label": "Vídeo e desempenho",
+      "state": "planned",
+      "detail": "Compatibilidade é experimental e deve ser exibida por build e título.",
+      "action": null
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "state": "ready",
+      "detail": "Perfil DualSense declarativo e reversível.",
+      "action": {
+        "id": "controls.profile.activate",
+        "label": "Selecionar perfil",
+        "requiresConfirmation": true
+      }
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "state": "planned",
+      "detail": "Mídia será vinculada por plataforma e Title ID, sem inventar compatibilidade.",
+      "action": null
+    }
+  ],
+  "areas": [
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "iconKey": "dashboard",
+      "capabilityId": "overview"
+    },
+    {
+      "id": "keysFirmware",
+      "label": "Sistema",
+      "iconKey": "key",
+      "capabilityId": "requirements"
+    },
+    {
+      "id": "graphicsPerformance",
+      "label": "Vídeo e desempenho",
+      "iconKey": "video-display",
+      "capabilityId": "graphics"
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "iconKey": "gamepad",
+      "capabilityId": "controls"
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "iconKey": "image",
+      "capabilityId": "media"
+    }
+  ],
+  "emulators": [
+    {
+      "id": "sharpemu",
+      "name": "SharpEmu",
+      "adapterId": "sharpemu",
+      "precedence": 1,
+      "role": "primary",
+      "launch": {
+        "gameArgs": [
+          "{rom}"
+        ]
+      }
+    }
+  ],
+  "media": {
+    "extensions": [
+      "bin",
+      "elf",
+      "pkg"
+    ],
+    "artworkKinds": [
+      "cover",
+      "background",
+      "logo",
+      "icon",
+      "video"
+    ],
+    "providers": [
+      "screenscraper",
+      "steamgriddb"
+    ],
+    "nature": "optical",
+    "formats": {
+      "ps5dir": [
+        "bin",
+        "elf"
+      ],
+      "pkg": [
+        "pkg"
+      ]
+    },
+    "preferredFormat": "ps5dir",
+    "containerPolicy": "native",
+    "auxiliaryContent": "both",
+    "auxiliaryBinding": "titleid"
+  },
+  "controls": {
+    "profiles": [
+      "dualsense"
+    ],
+    "maxPlayers": 4,
+    "specialized": [
+      "touchpad",
+      "motion",
+      "adaptive-triggers"
+    ]
+  },
+  "timing": {
+    "standards": [
+      "ntsc",
+      "pal"
+    ],
+    "defaultStandard": null,
+    "unknownFallback": "unknown-explicit"
+  },
+  "presets": [
+    {
+      "id": "como-era",
+      "label": "Como era",
+      "state": "planned",
+      "detail": "Saída de console original quando o runtime suportar o título."
+    },
+    {
+      "id": "equilibrado",
+      "label": "Equilibrado",
+      "state": "planned",
+      "detail": "Configuração conservadora com compatibilidade prioritária."
+    },
+    {
+      "id": "melhorado",
+      "label": "Melhorado",
+      "state": "planned",
+      "detail": "Aprimoramentos opt-in após medição no hardware."
+    }
+  ],
+  "cloud": null
+}

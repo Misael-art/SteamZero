@@ -90,9 +90,11 @@ def test_every_active_emulator_declares_the_mandatory_lifecycle() -> None:
     assert violations == [], f"emulador ativo com ciclo incompleto: {violations}"
     # 15 -> 16 em 2026-09-02: `vita3k` entrou com o ciclo completo, ao
     # catalogar PlayStation Vita. 16 -> 17 em 2026-09-10: `shadps4` entrou
-    # com o ciclo completo, ao catalogar PlayStation 4. `violations == []`
+    # com o ciclo completo, ao catalogar PlayStation 4. 17 -> 18 em 2026-09-17:
+    # `sharpemu` entrou com o ciclo completo, ao catalogar PlayStation 5.
+    # `violations == []`
     # acima prova que o novo adapter declara todas as capacidades obrigatórias.
-    assert active == 17, "o denominador mudou; revise a matriz antes de seguir"
+    assert active == 18, "o denominador mudou; revise a matriz antes de seguir"
 
 
 def test_the_gate_refuses_an_active_emulator_missing_a_mandatory_capability() -> None:

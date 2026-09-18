@@ -125,6 +125,15 @@ def classify_rom(
 ) -> tuple[str | None, str, str]:
     ext = Path(name).suffix.lower()
 
+    if root_platform in {"playstation-5", "ps5"}:
+        lowered = Path(name).name.casefold()
+        if ext == ".pkg":
+            return None, "unknown", "ps5-pkg-unresolved"
+        if ext == ".bin" and lowered != "eboot.bin":
+            return None, "unknown", "ps5-auxiliary-bin"
+        if ext not in {".bin", ".elf"}:
+            return None, "unknown", "ps5-unsupported-entry"
+
     if ext in _ARCHIVE_EXTS:
         # A lista de extensões comprimidas era um veto fixo: qualquer .zip/.7z
         # saía do catálogo antes de qualquer pergunta. Mas 45 dos 63 manifestos

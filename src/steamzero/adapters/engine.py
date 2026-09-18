@@ -14,7 +14,7 @@ from typing import Protocol
 from urllib.parse import urlparse
 
 from steamzero.adapters.registry import AdapterManifest, AdapterRegistry, AdapterSource
-from steamzero.core import crypto, fs, paths, transaction
+from steamzero.core import crypto, fs, paths, safetar, transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.net import NetworkFailure, fetch_bytes
 from steamzero.core.state import StateStore
@@ -414,16 +414,40 @@ class AdapterEngine:
 
     @staticmethod
     def _extract_member(adapter_id: str, artifact: Path, source: AdapterSource) -> bytes:
-        """Lê o membro declarado de um artefato zipado.
+        """Lê o membro declarado de um artefato empacotado.
 
-        Só o membro `payloadPath` é lido — o zip nunca é extraído por inteiro
-        e o conteúdo implantado é escrito pela transação a partir do cache,
-        verificado pelo checksum do próprio membro.
+        O formato é parte do contrato do manifesto. ZIP usa leitura direta; tar.gz
+        percorre o arquivo com as mesmas recusas de traversal, links e nós de
+        dispositivo do ``safetar``. O payload implantado é escrito pela
+        transação a partir do cache e verificado pelo checksum do próprio membro.
         """
         if source.payload_path is None:
             raise SteamZeroError(
                 "E-SUPPLY-CHECKSUM", detail=f"fonte {adapter_id} sem membro declarado"
             )
+        if source.archive_format == "tar.gz":
+            payload: bytes | None = None
+            for member in safetar.iter_members(artifact):
+                if member.path != source.payload_path:
+                    continue
+                if payload is not None:
+                    raise SteamZeroError(
+                        "E-SUPPLY-CHECKSUM",
+                        detail=(
+                            f"artefato de {adapter_id} contém membro duplicado "
+                            f"{source.payload_path}"
+                        ),
+                    )
+                payload = member.payload
+            if payload is None:
+                raise SteamZeroError(
+                    "E-SUPPLY-CHECKSUM",
+                    detail=(
+                        f"artefato de {adapter_id} não contém o membro declarado "
+                        f"{source.payload_path}"
+                    ),
+                )
+            return payload
         try:
             with zipfile.ZipFile(artifact) as bundle:
                 if source.payload_path not in bundle.namelist():

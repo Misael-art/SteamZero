@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-PLATFORM-PS5-CATALOG",
+  "title": "Catálogo experimental de plataforma PlayStation 5 (SharpEmu)",
+  "domain": "platform",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "docs/12-roadmap/SHARPEMU-PS5-DEPLOYMENT-PLAN.md",
+    "docs/12-roadmap/IMPLEMENTATION-ROADMAP.md",
+    "src/steamzero/adapters/manifests/sharpemu.adapter.json",
+    "src/steamzero/platform_manifests/65-playstation-5.platform.json",
+    "src/steamzero/input_profiles/30-dualsense.input.json",
+    "src/steamzero/adapters/discovery/ps5_sfo.py",
+    "src/steamzero/ui/assets/playstation-5.svg",
+    "src/steamzero/ui/assets/sharpemu.svg",
+    "tests/unit/test_platform_ps5_catalog.py",
+    "tests/unit/test_ps5_sfo.py",
+    "tests/unit/test_sharpemu_tarball.py"
+  ],
+  "scopeDigest": "789e10afc7a92cdeced26a6b537f48b47afe5891b4bba8810b77d25b2eff4aad",
+  "dependsOn": [
+    "SZ-AGG-PLATFORM-MANIFESTS",
+    "SZ-COMPONENT-LIFECYCLE",
+    "SZ-LIBRARY-CANONICAL",
+    "SZ-AURA-LAUNCHER"
+  ],
+  "knownGaps": [
+    "GAP-SHARPEMU-PHYSICAL-VALIDATION"
+  ],
+  "acceptanceCriteria": [
+    "SharpEmu possui manifesto PS5, adapter, sistema ps5, perfil DualSense e entrada no catálogo canônico.",
+    "A fonte Linux oficial tem URL, tag, commit, SHA-256, licença e payload verificáveis antes de entrar no lockfile.",
+    "O engine extrai tar.gz com allowlist, limites, recusa de traversal/symlink/hardlink e ciclo idempotente de rollback.",
+    "A pasta ps5dir reconhece eboot.bin e param.sfo sem expor prx, sys_module ou binários auxiliares como jogos.",
+    "PKG, dumps incompletos, origem ausente e compatibilidade não testada permanecem em estados explícitos e recuperáveis.",
+    "Launch/return valida Vulkan e arquitetura, gerencia uma única sessão e restaura o foco do launcher.",
+    "A release instalada é validada com dump legal do operador e evidência PNG antes de qualquer promoção verified-hw."
+  ],
+  "evidence": [
+    {
+      "kind": "design",
+      "reference": "docs/12-roadmap/SHARPEMU-PS5-DEPLOYMENT-PLAN.md",
+      "command": "Plano de implantação SharpEmu/PS5 registrado no roadmap em 2026-09-17.",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_platform_ps5_catalog.py",
+      "command": "pytest focused PS5 catalog, param.sfo identity, safe tar.gz and inventory",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Executar a prova física autorizada com um dump legal PS5, Vulkan funcional e captura PNG; manter compatibilidade por build sem promover verified-hw.",
+  "activeWorkstreams": [
+    "WS-2026-09-PS5-SHARPEMU"
+  ],
+  "updatedAt": "2026-09-17",
+  "notes": "Implementação parcial em branch própria: SharpEmu possui manifesto, lockfile, plataforma, perfil DualSense, catálogo canônico, extração segura tar.gz, parser PS5 param.sfo/Title ID e classificação ps5dir que não expõe módulos PRX, binários auxiliares ou PKG como jogo. O SharpEmu permanece experimental; não há instalação no host nem promoção verified-hw."
+}
