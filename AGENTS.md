@@ -25,6 +25,31 @@ o token exato mostrado pelo comando. Falha de autenticação, CI, hash,
 proveniência, convergência ou idempotência encerra o fluxo; o agente não continua
 com comandos manuais equivalentes.
 
+### Continuidade durante autenticação pendente
+
+Uma instalação governada que permaneça aguardando aprovação interativa do
+`pkexec` não deve paralisar o restante do trabalho. Se a autorização não for
+concluída dentro de um timeout operacional curto (por padrão, 90 segundos), o
+agente pode interromper somente a tentativa de instalação que ele próprio
+iniciou, incluindo seus wrappers descendentes (`release_host.py`, `bigsudo`,
+`pkexec` e `install_host.py`), usando os PIDs/PGID identificados na própria
+execução. Não pode encerrar processos de terceiros, usar outro caminho
+privilegiado, nem deixar uma tentativa sem supervisão que possa aplicar uma
+release horas depois.
+
+Após o cancelamento, o agente deve confirmar de forma read-only a release ativa,
+o estado do serviço e `state audit`, registrar a tentativa como
+`authentication-pending`/bloqueada e prosseguir imediatamente com tarefas
+independentes que não mutem o host. A autorização posterior não é consumida
+retroativamente: quando o operador aprovar, o agente retoma em um novo ponto de
+checagem, repete os preflights obrigatórios e solicita/exibe um token novo para
+uma nova tentativa governada. Nenhuma instalação é considerada concluída antes
+de `current`, daemon, versão e convergência confirmarem a release esperada.
+
+Esse mecanismo não reinicia, finaliza ou altera a sessão do KDE; também não
+altera a exigência de que reboot físico e ações exclusivas do operador
+continuem sendo feitos pelo operador.
+
 > Incidente 2026-07-19: um agente de UI instalou uma release construída de árvore
 > desatualizada (sem os entry points de Game Mode). O boot direto caiu no greeter
 > por dois dias de trabalho. O preflight do instalador hoje bloqueia essa ativação
