@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AURA-LAUNCHER-EXIT",
+  "title": "AURA Launcher — saída explícita por controle",
+  "domain": "ui",
+  "implementation": "complete",
+  "integration": "feature-branch",
+  "verification": "dev",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/ui/qml/launcher/LauncherShell.qml",
+    "src/steamzero/ui/qml/launcher/LauncherMain.qml",
+    "tests/qml/launcher/check_launcher_shell.qml"
+  ],
+  "dependsOn": ["SZ-AURA-LAUNCHER"],
+  "knownGaps": ["GAP-AURA-LAUNCHER-EXIT-PHYSICAL"],
+  "acceptanceCriteria": [
+    "Escape na home emite uma saída sem depender de mouse ou de janela decorada.",
+    "Escape na página de jogo continua voltando à home e não encerra o Launcher.",
+    "A cena raiz liga a saída semântica ao encerramento do processo QML."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/qml/launcher/check_launcher_shell.qml",
+      "command": "test_qml_handheld_harness: 34 passed, 14 deselected",
+      "result": "passed"
+    }
+  ],
+  "activeWorkstreams": ["WS-2026-09-AURA-LAUNCHER-EXIT"],
+  "nextAction": "Integrar na main, publicar release governada e repetir Escape na instalação ativa.",
+  "scopeDigest": "d4ce7073a4aac94be3f4bc5bcc58de2515359ea325f8186daa8a3ab9a0812edd",
+  "updatedAt": "2026-09-18",
+  "notes": "Correção isolada: antes, Escape na home chamava back() sem efeito e não havia caminho de saída por controle."
+}

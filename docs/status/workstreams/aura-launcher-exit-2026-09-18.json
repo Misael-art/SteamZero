@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-LAUNCHER-EXIT",
+  "item": "SZ-AURA-LAUNCHER-EXIT",
+  "branch": "codex/aura-launcher-exit-2026-09-18",
+  "baseRef": "a71c2b5e17cd753164f746dbef2281d14b064a60",
+  "owner": "codex-aura-launcher-exit",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/ui/qml/launcher/LauncherShell.qml",
+    "src/steamzero/ui/qml/launcher/LauncherMain.qml",
+    "tests/qml/launcher/check_launcher_shell.qml",
+    "docs/status/items/aura-launcher-exit.json",
+    "docs/status/workstreams/aura-launcher-exit-2026-09-18.json"
+  ],
+  "sharedPaths": [
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Executar gates, abrir PR e instalar uma release governada para a prova física de Escape.",
+  "updatedAt": "2026-09-18"
+}
