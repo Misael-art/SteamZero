@@ -5,6 +5,10 @@
   versão `26.05.05-0223` distribuída pelo BigLinux.
 - `steamzero-mark.png`: marca original gerada para o SteamZero em 2026-07-16,
   distribuída sob a mesma licença GPL-3.0 do projeto.
+- `aura-bezel.svg` é a fonte declarativa do contorno AURA Cinema, original do
+  SteamZero e distribuída sob GPL-3.0-or-later. `aura-bezel.png` é o derivado
+  raster empacotado para cores RetroArch que não renderizam SVG em overlays;
+  ambos devem permanecer sincronizados pela mesma receita de composição.
 - `arcade.svg`, `nintendo-3ds.svg` e `wii-u.svg`: fallbacks geométricos originais
   do SteamZero, distribuídos sob GPL-3.0-or-later; não reproduzem artwork nem
   logotipos oficiais de terceiros.

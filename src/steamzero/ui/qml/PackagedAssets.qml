@@ -25,6 +25,7 @@ QtObject {
     readonly property var allowed: [
         "amazon-luna.svg",
         "arcade.svg",
+        "aura-bezel.png",
         "aura-bezel.svg",
         "azahar.svg",
         "cemu.png",

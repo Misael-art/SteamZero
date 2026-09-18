@@ -21,7 +21,8 @@ STATE_COMMAND_SETTLE_SECONDS = 0.05
 MAX_RUNTIME_LOG_BYTES = 64 * 1024
 SESSION_CONFIG_NAME = "session-peripherals.cfg"
 BEZEL_CONFIG_NAME = "aura-bezel-overlay.cfg"
-BEZEL_ASSET_NAME = "aura-bezel.svg"
+BEZEL_SOURCE_NAME = "aura-bezel.svg"
+BEZEL_ASSET_NAME = "aura-bezel.png"
 
 
 class SessionPeripheralRecord(Protocol):
@@ -61,13 +62,19 @@ def prepare_retroarch_session_config() -> Path:
     fs.ensure_dir(state_root, mode=0o700)
     config_root = paths.config_home() / "retroarch"
     config_path = config_root / SESSION_CONFIG_NAME
-    bezel_source = Path(__file__).resolve().parents[1] / "ui" / "assets" / BEZEL_ASSET_NAME
+    asset_root = Path(__file__).resolve().parents[1] / "ui" / "assets"
+    bezel_source = asset_root / BEZEL_SOURCE_NAME
+    bezel_asset_source = asset_root / BEZEL_ASSET_NAME
     if bezel_source.is_symlink() or not bezel_source.is_file():
         raise SteamZeroError(
-            "E-COMPONENT-DEGRADED", detail=f"asset de bezel AURA ausente: {BEZEL_ASSET_NAME}"
+            "E-COMPONENT-DEGRADED", detail=f"fonte de bezel AURA ausente: {BEZEL_SOURCE_NAME}"
+        )
+    if bezel_asset_source.is_symlink() or not bezel_asset_source.is_file():
+        raise SteamZeroError(
+            "E-COMPONENT-DEGRADED", detail=f"derivado de bezel AURA ausente: {BEZEL_ASSET_NAME}"
         )
     bezel_asset = config_root / BEZEL_ASSET_NAME
-    fs.copy_file_atomic(bezel_source, bezel_asset)
+    fs.copy_file_atomic(bezel_asset_source, bezel_asset)
     bezel_config = config_root / BEZEL_CONFIG_NAME
     fs.write_atomic_text(
         bezel_config,
