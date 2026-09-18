@@ -35,11 +35,12 @@
     "tests/integration/test_media.py",
     "docs/09-operations/evidence/2026-09-14-aura-rich-media-installed",
     "docs/09-operations/evidence/2026-09-16-aura-retroarch-session-fix",
+    "docs/09-operations/evidence/2026-09-17-aura-esde-active-surface",
     "tests/unit/test_emulation_controller.py",
     "tests/unit/test_session_overlay.py",
     "tests/unit/test_session_overlay_adapter.py"
   ],
-  "scopeDigest": "12a564e4ad3205cf34136765c13fd1c51a3c06559f8a2cc3c59bf258cf9309c6",
+  "scopeDigest": "d7e41a00b10c42466eb1542e6bb1f0a4eb2a012c0552fe473f6a992af2f2a0f9",
   "dependsOn": [
     "SZ-AURA-SAVE-STATE-GALLERY",
     "SZ-AURA-SESSION-OSD",
@@ -47,8 +48,6 @@
   ],
   "knownGaps": [
     "GAP-AURA-PERF-1280X800-SURFACE",
-    "GAP-AURA-CINEMA-OSD-SAME-CARD-POST-APPLY",
-    "GAP-AURA-CINEMA-OSD-IN-GAME-PHYSICAL-CAPTURE",
     "GAP-PS4-SCOPE-PHYSICAL-EVIDENCE-PRECEDES",
     "GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
   ],
@@ -185,12 +184,30 @@
       "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/23-return-focus-defect-post-install.png",
       "command": "release 2.0.0rc1-d70a80f83aae, retorno fecha modal mas expõe foco visual stale em uma rota de busca",
       "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-17-aura-esde-active-surface/24-aura-osd-fixed.png",
+      "command": "release 2.0.0rc1-b396aaedcc64, jogo NES real em execução; OSD AURA focado com save-state/troca de disco declarados e sem bleed da superfície subjacente",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-17-aura-esde-active-surface/perf-installed-b396aaed.json",
+      "command": "release 2.0.0rc1-b396aaedcc64, launcher_perf_probe em Wayland/OpenGL real; startup 886 ms, p95 16.959 ms, VRAM 82960 KiB",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-17-aura-esde-active-surface/perf-installed-b396aaed-rerun.json",
+      "command": "release 2.0.0rc1-b396aaedcc64, repetição Wayland/OpenGL real; startup 1494 ms, p95 16.918 ms, VRAM 89520 KiB",
+      "result": "partial"
     }
   ],
-  "nextAction": "Promover ecf26d1 e a correção da auditoria de snapshot para uma nova release governada; repetir a captura de retorno e o Doctor. Troca de disco e bezel/fade visual ainda exigem jogo/adapter legítimo; PS4 e multi-disc permanecem bloqueados por conteúdo legítimo ou contrato de adapter.",
+  "nextAction": "Investigar o p95 acima de 16,7 ms na superfície Wayland real e repetir em uma sessão de referência; troca de disco e bezel/fade visual ainda exigem jogo/adapter legítimo; PS4 e multi-disc permanecem bloqueados por conteúdo legítimo ou contrato de adapter.",
   "activeWorkstreams": [
     "WS-2026-09-AURA-CINEMA-COMPLETION"
   ],
-  "updatedAt": "2026-09-16",
-  "notes": "Frente de continuação do AURA Launcher/Theme Engine. O ciclo físico pós-instalação foi mapeado e capturado em dois adapters reais; a evidência também registrou honestamente o stale de foco encontrado no retorno por busca. A auditoria confirmou que não há staging órfão; o único alerta era o snapshot protegido de pré-migração, agora reconhecido pelo código-fonte e aguardando promoção. A medição e a captura visual não promovem AURA UI ou Theme Studio; cobrem apenas a cadeia de sessão e a composição fullscreen especificadas no plano."
+  "updatedAt": "2026-09-18",
+  "notes": "Frente de continuação do AURA Launcher/Theme Engine. A release 2.0.0rc1-b396aaedcc64 foi instalada pelo fluxo governado, o daemon convergiu e a captura física pós-patch confirmou o OSD isolado sobre jogo real. O Doctor ficou degraded apenas pelos avisos de permissão de boot/input, sem blockers, staging, backup ou journal órfãos. A medição Wayland/OpenGL é válida: startup e VRAM passaram, mas o p95 repetido ficou acima de 16,7 ms e permanece aberto. A medição e a captura visual não promovem AURA UI ou Theme Studio; cobrem apenas a cadeia de sessão e a composição fullscreen especificadas no plano."
 }
