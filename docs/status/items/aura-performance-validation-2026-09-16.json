@@ -79,12 +79,18 @@
       "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/SESSION-CYCLE-MAP.json",
       "command": "registro da superfície física e da separação entre métricas de desempenho e estados funcionais de sessão",
       "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-18-aura-bezel-installed/03-performance-installed.json",
+      "command": "release 2.0.0rc1-a71c2b5e17cd, probe Wayland/OpenGL real em 948x593; startup 724 ms, p95 16.515 ms, VRAM 103692 KiB, meetsBudget=true",
+      "result": "passed"
     }
   ],
   "activeWorkstreams": [
     "WS-2026-09-AURA-PERFORMANCE-VALIDATION"
   ],
-  "nextAction": "A captura visual física fullscreen foi concluída. Permanece, se o host oferecer essa geometria ao probe, uma amostra adicional de desempenho em 1280x800 e a prova física dos periféricos de sessão.",
+  "nextAction": "Amostra a71 validada em 948x593; permanece, se o host oferecer essa geometria ao probe, uma amostra adicional em 1280x800 e a prova física dos periféricos de sessão.",
   "updatedAt": "2026-09-16",
-  "notes": "A medição final é válida para a janela Wayland real 948x593 da release 2.0.0rc1-d1cbb03a3b66. As duas amostras têm startup, frame time/p95 e VRAM observados e passaram os orçamentos. A captura física pós-instalação 1280x801 e o mapa do ciclo estão registrados separadamente; isso não promove bezel/fade visual isolado nem troca de disco sem evidência funcional correspondente."
+  "notes": "A medição a71 é válida para a janela Wayland real 948x593 da release 2.0.0rc1-a71c2b5e17cd. A amostra tem startup, frame time/p95 e VRAM observados e passou os orçamentos. A referência 1280x800 continua sem prova; bezel/fade visual isolado e troca de disco seguem capacidades próprias."
 }
