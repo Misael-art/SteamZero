@@ -20,7 +20,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-TESTS | 478 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TOOLS | 40 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AURA-ASSET-SANITIZACAO | 2 | 1 | 1 | unit |  |
-| SZ-AURA-CINEMA-COMPLETION | 90 | 24 | 12 | hw |  |
+| SZ-AURA-CINEMA-COMPLETION | 94 | 27 | 15 | hw |  |
 | SZ-AURA-CONTRACTS | 38 | 3 | 3 | unit |  |
 | SZ-AURA-ESDE-ACTIVE-SURFACE | 8 | 3 | 3 | dev |  |
 | SZ-AURA-LAUNCHER | 267 | 58 | 41 | hw |  |
@@ -28,7 +28,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AURA-PERFORMANCE-VALIDATION | 27 | 8 | 7 | hw |  |
 | SZ-AURA-PLATFORM-EXECUTION-PLAN | 5 | 1 | 0 | none |  |
 | SZ-AURA-RICH-MEDIA-PROJECTION | 9 | 5 | 3 | hw |  |
-| SZ-AURA-SAVE-STATE-GALLERY | 15 | 7 | 6 | hw |  |
+| SZ-AURA-SAVE-STATE-GALLERY | 15 | 8 | 7 | hw |  |
 | SZ-AURA-SEARCH-CONTRACT | 5 | 5 | 3 | dev |  |
 | SZ-AURA-SESSION-OSD | 25 | 6 | 4 | hw |  |
 | SZ-AURA-UI | 16 | 5 | 4 | unit |  |
@@ -76,8 +76,8 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-THEME-IMPORT-RETROFE | 10 | 10 | 9 | hw |  |
 | SZ-THEME-IMPORT-SURFACE | 4 | 8 | 7 | unit |  |
 | SZ-THEME-STUDIO | 85 | 18 | 15 | hw |  |
-| SZ-UI-DESKTOP-AUDIT | 397 | 43 | 28 | dev |  |
-| SZ-UI-PACKAGED-ICONS | 54 | 4 | 2 | unit |  |
+| SZ-UI-DESKTOP-AUDIT | 398 | 43 | 28 | dev |  |
+| SZ-UI-PACKAGED-ICONS | 55 | 4 | 2 | unit |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 
-Arquivos em `src/`: **596**. Sob agregador apenas, sem item de capacidade: **282** (47%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
+Arquivos em `src/`: **597**. Sob agregador apenas, sem item de capacidade: **282** (47%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
