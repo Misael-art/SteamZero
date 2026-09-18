@@ -165,12 +165,21 @@ Item {
 
     visible: overlay.overlayOpen
     focus: overlay.overlayOpen
-    z: 30
+    // A sessão pode deixar a página de detalhes visível no mesmo frame em que
+    // o modal abre. Este é um limite de composição, não só de foco: manter o
+    // overlay numa camada explícita e recortada evita que o conteúdo abaixo
+    // atravesse a superfície durante a troca de estado.
+    z: 100
+    clip: true
+    layer.enabled: true
 
     Rectangle {
         objectName: "sessionOverlayBackdrop"
         anchors.fill: parent
-        color: overlay.highContrast ? "#000000" : "#071019e8"
+        // O OSD precisa ser uma superfície legível sobre a página e sobre
+        // qualquer janela de retorno. Opacidade total impede vazamento de
+        // títulos/metadados por trás do contraste cinematográfico.
+        color: overlay.highContrast ? "#000000" : "#071019"
         opacity: overlay.overlayOpen ? 1 : 0
         visible: overlay.overlayOpen && !overlay.saveGalleryOpen && !overlay.peripheralOpen
         Behavior on opacity {
@@ -189,6 +198,8 @@ Item {
         border.width: overlay.highContrast ? 3 : 1
         border.color: overlay.highContrast ? "#ffffff" : "#2b4963"
         visible: overlay.overlayOpen && !overlay.saveGalleryOpen && !overlay.peripheralOpen
+        z: 1
+        opacity: 1
 
         Column {
             anchors.fill: parent
