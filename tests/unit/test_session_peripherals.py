@@ -61,7 +61,9 @@ def test_retroarch_session_config_publishes_managed_aura_bezel(
     assert "SteamZero-Session-Managed: true" in text
     assert 'input_overlay_enable = "true"' in text
     assert f'input_overlay = "{bezel_config}"' in text
-    assert bezel_config.read_text(encoding="utf-8").startswith("# SteamZero-Session-Managed: true")
+    bezel_text = bezel_config.read_text(encoding="utf-8")
+    assert bezel_text.startswith("# SteamZero-Session-Managed: true")
+    assert 'overlays = "1"' in bezel_text
     assert bezel_asset.is_file()
     assert bezel_asset.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
 

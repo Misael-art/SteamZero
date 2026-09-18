@@ -81,6 +81,7 @@ def prepare_retroarch_session_config() -> Path:
         "\n".join(
             (
                 "# SteamZero-Session-Managed: true",
+                'overlays = "1"',
                 f'overlay0_overlay = "{bezel_asset}"',
                 'overlay0_full_screen = "true"',
                 'overlay0_normalized = "true"',
