@@ -5,6 +5,11 @@
 **Estado:** planejado; nenhuma implementação ou instalação é declarada  
 **Data do plano:** 2026-09-17
 
+**Implementação atual:** parcial em `codex/platform-ps5-sharpemu`; contrato
+declarativo, lockfile, payload `tar.gz`, identidade `param.sfo`, scanner
+`ps5dir`, catálogo e perfil DualSense implementados. A instalação física e a
+promoção de compatibilidade continuam pendentes.
+
 ## 1. Decisão de produto
 
 Integrar o SharpEmu como uma plataforma PS5 experimental e independente. Ele não

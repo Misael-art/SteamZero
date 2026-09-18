@@ -327,7 +327,14 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 256,
-          "description": "Membro unico dentro do artefato zipado que se torna o payload executavel. O sha256 declarado continua sendo o do artefato inteiro."
+          "description": "Membro unico dentro do artefato declarado que se torna o payload executavel. O sha256 declarado continua sendo o do artefato inteiro."
+        },
+        "archiveFormat": {
+          "enum": [
+            "zip",
+            "tar.gz"
+          ],
+          "description": "Formato do artefato quando payloadPath aponta para um membro empacotado."
         }
       },
       "allOf": [
@@ -363,6 +370,18 @@
             }
           },
           "then": false
+        },
+        {
+          "if": {
+            "required": [
+              "archiveFormat"
+            ]
+          },
+          "then": {
+            "required": [
+              "payloadPath"
+            ]
+          }
         }
       ]
     }

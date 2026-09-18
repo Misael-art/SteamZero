@@ -5,6 +5,7 @@ import zlib
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
+from steamzero.adapters.discovery.ps5_sfo import read_ps5_identity
 from steamzero.core import fs
 from steamzero.domain.game_identity import (
     GameIdentity,
@@ -173,6 +174,8 @@ def read_game_identity(
             return _read_gc_wii(path, reader)
         if platform == "playstation-3":
             return _read_ps3(path, reader)
+        if platform == "playstation-5":
+            return read_ps5_identity(path)
     except OSError:
         return None, "read-failed"
     return None, "no-reader"
