@@ -37,11 +37,12 @@
     "docs/09-operations/evidence/2026-09-14-aura-rich-media-installed",
     "docs/09-operations/evidence/2026-09-16-aura-retroarch-session-fix",
     "docs/09-operations/evidence/2026-09-17-aura-esde-active-surface",
+    "docs/09-operations/evidence/2026-09-18-aura-bezel-installed",
     "tests/unit/test_emulation_controller.py",
     "tests/unit/test_session_overlay.py",
     "tests/unit/test_session_overlay_adapter.py"
   ],
-  "scopeDigest": "a540f582033ad4969a235a22699ed63f3dbd08ac9579c9264ecb04abcaa8428a",
+  "scopeDigest": "998f4d8732b7301a31b0bfd36901db638cdb37d82032c475919e0e84cabff794",
   "dependsOn": [
     "SZ-AURA-SAVE-STATE-GALLERY",
     "SZ-AURA-SESSION-OSD",

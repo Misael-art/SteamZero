@@ -272,6 +272,7 @@ Item {
         currentFocus: shell.homeFocus
         accessibility: shell.accessibility
         onCurrentFocusChanged: shell.homeFocus = currentFocus
+        onEscapeRequested: shell.handleEscape()
         onGameActivated: function(gameId) {
             if (!shell.openGame(gameId))
                 shell.feedbackRequested("activation-failed")

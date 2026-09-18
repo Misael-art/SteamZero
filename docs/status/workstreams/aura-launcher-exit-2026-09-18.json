@@ -3,14 +3,16 @@
   "kind": "workstream",
   "id": "WS-2026-09-AURA-LAUNCHER-EXIT",
   "item": "SZ-AURA-LAUNCHER-EXIT",
-  "branch": "codex/aura-launcher-exit-2026-09-18",
-  "baseRef": "a71c2b5e17cd753164f746dbef2281d14b064a60",
+  "branch": "codex/aura-launcher-exit-focus-2026-09-18",
+  "baseRef": "f98a1a12a46baa4c3cb806f95ae625522b05c286",
   "owner": "codex-aura-launcher-exit",
   "state": "active",
   "exclusivePaths": [
     "src/steamzero/ui/qml/launcher/LauncherShell.qml",
     "src/steamzero/ui/qml/launcher/LauncherMain.qml",
+    "src/steamzero/ui/qml/launcher/LauncherHome.qml",
     "tests/qml/launcher/check_launcher_shell.qml",
+    "tests/qml/launcher/check_launcher_gestures.qml",
     "docs/status/items/aura-launcher-exit.json",
     "docs/status/workstreams/aura-launcher-exit-2026-09-18.json"
   ],
@@ -20,6 +22,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Executar gates, abrir PR e instalar uma release governada para a prova física de Escape.",
+  "nextAction": "Executar gates, abrir PR e instalar uma release governada para repetir a prova física de Escape com foco real.",
   "updatedAt": "2026-09-18"
 }
