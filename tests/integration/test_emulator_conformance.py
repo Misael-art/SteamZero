@@ -65,6 +65,18 @@ def _zip_artifact(member_name: str, member_body: bytes) -> bytes:
     return buffer.getvalue()
 
 
+def _tar_artifact(member_name: str, member_body: bytes) -> bytes:
+    import io
+    import tarfile
+
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w:gz") as bundle:
+        info = tarfile.TarInfo(member_name)
+        info.size = len(member_body)
+        bundle.addfile(info, io.BytesIO(member_body))
+    return buffer.getvalue()
+
+
 def emulator_ids() -> list[str]:
     """Os `kind=emulator` do registry. Sem lista fixa, de propósito.
 
@@ -118,14 +130,18 @@ def derived(
         source["version"] = version
         source["url"] = URL
         if source.get("payloadPath"):
-            # Fonte com membro declarado (shadps4): o FakeArtifacts precisa
-            # servir o ZIP declarado, e o pin é o checksum do zip inteiro.
+            # Fonte com membro declarado (shadps4/SharpEmu): o FakeArtifacts
+            # precisa servir o archive declarado, e o pin é o checksum do
+            # archive inteiro.
             # O corpo do membro segue a mesma convenção do sha: padrão ou
             # atualizado.
             member_body = UPDATED if sha == UPDATED_SHA else PAYLOAD
             if raw.get("verify", {}).get("smokeMode") == "appimage-extract":
                 member_body = APPIMAGE_UPDATED if sha == UPDATED_SHA else APPIMAGE_PAYLOAD
-            artifact = _zip_artifact(str(source["payloadPath"]), member_body)
+            artifact_builder = (
+                _tar_artifact if source.get("archiveFormat") == "tar.gz" else _zip_artifact
+            )
+            artifact = artifact_builder(str(source["payloadPath"]), member_body)
             source["sha256"] = hashlib.sha256(artifact).hexdigest()
             _DERIVED_ARTIFACTS[source["sha256"]] = artifact
         else:

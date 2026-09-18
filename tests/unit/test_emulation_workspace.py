@@ -53,15 +53,15 @@ def test_switch_workspace_matches_versioned_contract() -> None:
     assert set(platform["areaData"]) == {area["id"] for area in platform["areas"]}
     assert platform["emulators"][0]["name"] == "Eden"
     assert platform["emulators"][0]["state"] == "ready"
-    assert len(payload["canonicalExperiences"]) == 155
+    assert len(payload["canonicalExperiences"]) == 156
     assert (
         next(item for item in payload["canonicalExperiences"] if item["id"] == "game-boy-color")[
             "technicalPlatformId"
         ]
         == "nintendo-handheld"
     )
-    # 62 -> 63 em 2026-09-10: playstation-4 catalogada.
-    assert len(payload["platforms"]) == 63
+    # 63 -> 64 em 2026-09-17: playstation-5 catalogada.
+    assert len(payload["platforms"]) == 64
     assert payload["platforms"][1]["areas"][0]["id"] == "overview"
     cloud_platforms = [p for p in payload["platforms"] if p.get("cloud")]
     assert any(p["cloud"]["allowedHosts"] == ["luna.amazon.com"] for p in cloud_platforms)
@@ -75,7 +75,8 @@ def test_switch_workspace_matches_versioned_contract() -> None:
     # reusar a do PSP. Arte distinta por plataforma é o que esta contagem
     # protege — duas plataformas com o mesmo asset exibiriam o logo errado.
     # 22 -> 23 em 2026-09-10: playstation-4 ganhou arte própria.
-    assert len({item["fallbackArtworkAsset"] for item in payload["platforms"]}) == 23
+    # 23 -> 24 em 2026-09-17: playstation-5 ganhou arte própria.
+    assert len({item["fallbackArtworkAsset"] for item in payload["platforms"]}) == 24
 
 
 def test_global_management_keeps_technical_and_editorial_counts_distinct() -> None:
@@ -93,11 +94,11 @@ def test_global_management_keeps_technical_and_editorial_counts_distinct() -> No
         media_providers=[],
     )
 
-    assert global_management["technicalPlatformCount"] == 63
-    # 63 -> 64 em 2026-09-10: playstation-4 ganhou technicalPlatformId no
+    assert global_management["technicalPlatformCount"] == 64
+    # 64 -> 65 em 2026-09-10: playstation-4 ganhou technicalPlatformId no
     # catálogo canônico e passou a contar como destino editorial.
-    assert global_management["editorialDestinationCount"] == 64
-    assert global_management["editorialExperienceCount"] == 155
+    assert global_management["editorialDestinationCount"] == 65
+    assert global_management["editorialExperienceCount"] == 156
     assert global_management["editorialSource"]["id"] == "steam"
     assert global_management["platformCards"][0]["gameCount"] == 1
     # Sem facts de lifecycle nenhuma linha declara `installable`, então o card
