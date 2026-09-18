@@ -561,11 +561,12 @@ class TestMetadataOnlyPlanning:
     ) -> None:
         registry = AdapterRegistry.bundled()
         manifests = registry.list()
-        # 34 -> 35 em 2026-09-10: `shadps4` entrou ao completar PlayStation 4.
+        # 34 -> 35 em 2026-09-10: `shadps4` entrou ao completar PlayStation 4;
+        # 35 -> 36 em 2026-09-17: `sharpemu` entrou ao completar PlayStation 5.
         # O numero fica na asserção, não no nome do teste: um nome
         # que crava o denominador envelhece a cada componente novo e passa
         # a mentir antes de reprovar.
-        assert len(manifests) == 35
+        assert len(manifests) == 36
         artifacts = FakeArtifacts({})
         flatpak = FakeFlatpak()
         lifecycle = ComponentLifecycle(

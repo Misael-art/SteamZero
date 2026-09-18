@@ -110,6 +110,9 @@ def test_bundled_registry_covers_required_platforms_with_unique_artwork() -> Non
         # GAP-PLATFORM-PS4-ABSENT; emulacao emergente via shadPS4 (zip Linux
         # fixado por SHA-256, sem Flathub/AppImage upstream).
         "playstation-4",
+        # PS5 catalogada em 2026-09-17: SharpEmu experimental, com dump em
+        # pasta e fonte Linux tar.gz fixada por SHA-256.
+        "playstation-5",
     ]
     artwork = [manifest.artwork_asset for manifest in manifests]
     shared_artwork = {asset for asset in artwork if artwork.count(asset) > 1}

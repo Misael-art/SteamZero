@@ -27,6 +27,7 @@ class IdentityScheme(Enum):
     GC_GAME_ID = "gc-game-id"
     WII_GAME_ID = "wii-game-id"
     PS3_TITLE_ID = "ps3-title-id"
+    PS5_TITLE_ID = "ps5-title-id"
     WIIU_PRODUCT_ID = "wiiu-product-id"
     PS2_ELF_CRC32 = "ps2-elf-crc32"
     UNKNOWN = "unknown"
@@ -48,6 +49,7 @@ _SCHEME_PATTERNS: dict[IdentityScheme, re.Pattern[str]] = {
     IdentityScheme.GC_GAME_ID: re.compile(r"^[A-Za-z0-9]{4}[A-Za-z0-9]{2}$"),
     IdentityScheme.WII_GAME_ID: re.compile(r"^[A-Za-z0-9]{4}[A-Za-z0-9]{2}$"),
     IdentityScheme.PS3_TITLE_ID: re.compile(r"^[A-Za-z0-9]{4,9}$"),
+    IdentityScheme.PS5_TITLE_ID: re.compile(r"^PPS[A-Z][0-9A-Z]{5,12}(?:_[0-9A-Z]{2})?$"),
     IdentityScheme.WIIU_PRODUCT_ID: re.compile(r"^[A-Za-z0-9]{4,9}$"),
     IdentityScheme.PS2_ELF_CRC32: re.compile(r"^[0-9A-Fa-f]{8}$"),
     IdentityScheme.UNKNOWN: re.compile(r"^.*$", re.DOTALL),
@@ -63,6 +65,7 @@ _SCHEME_PLATFORMS: dict[IdentityScheme, frozenset[str]] = {
     IdentityScheme.GC_GAME_ID: frozenset({"nintendo-console"}),
     IdentityScheme.WII_GAME_ID: frozenset({"nintendo-console"}),
     IdentityScheme.PS3_TITLE_ID: frozenset({"playstation-3"}),
+    IdentityScheme.PS5_TITLE_ID: frozenset({"playstation-5"}),
     IdentityScheme.WIIU_PRODUCT_ID: frozenset({"wii-u"}),
     IdentityScheme.PS2_ELF_CRC32: frozenset({"playstation-2"}),
     IdentityScheme.UNKNOWN: frozenset(),

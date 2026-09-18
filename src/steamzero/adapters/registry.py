@@ -36,6 +36,7 @@ class AdapterSource:
     sha256: str | None = None
     end_of_life: bool = False
     payload_path: str | None = None
+    archive_format: str | None = None
 
 
 @dataclass(frozen=True)
@@ -192,6 +193,9 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
             sha256=source.get("sha256"),
             end_of_life=source.get("endOfLife", False),
             payload_path=source.get("payloadPath"),
+            archive_format=source.get(
+                "archiveFormat", "zip" if source.get("payloadPath") else None
+            ),
         )
         for source in data["sources"]
     )
@@ -246,6 +250,16 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
                     "E-API-SCHEMA",
                     detail=f"adapter {data['id']} tem payloadPath inseguro",
                 )
+            if source.archive_format not in {"zip", "tar.gz"}:
+                raise SteamZeroError(
+                    "E-API-SCHEMA",
+                    detail=f"adapter {data['id']} declara formato de archive inválido",
+                )
+        elif source.archive_format is not None:
+            raise SteamZeroError(
+                "E-API-SCHEMA",
+                detail=f"adapter {data['id']} declara archiveFormat sem payloadPath",
+            )
 
     platforms = tuple(data["platforms"])
     core = _parse_core(data.get("core"), data["id"], data["kind"], sources)

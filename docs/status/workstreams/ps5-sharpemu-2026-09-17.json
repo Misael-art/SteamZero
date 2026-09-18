@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-PS5-SHARPEMU",
+  "item": "SZ-PLATFORM-PS5-CATALOG",
+  "branch": "codex/platform-ps5-sharpemu",
+  "baseRef": "dea35ad8",
+  "owner": "codex-platform-ps5",
+  "state": "active",
+  "exclusivePaths": [
+    "docs/12-roadmap/SHARPEMU-PS5-DEPLOYMENT-PLAN.md",
+    "docs/status/items/platform-ps5-catalog.json",
+    "docs/status/workstreams/ps5-sharpemu-2026-09-17.json",
+    "src/steamzero/adapters/manifests/sharpemu.adapter.json",
+    "src/steamzero/platform_manifests/65-playstation-5.platform.json",
+    "src/steamzero/input_profiles/30-dualsense.input.json",
+    "src/steamzero/adapters/discovery/ps5_sfo.py",
+    "src/steamzero/ui/assets/playstation-5.svg",
+    "src/steamzero/ui/assets/sharpemu.svg",
+    "tests/unit/test_platform_ps5_catalog.py",
+    "tests/unit/test_ps5_sfo.py",
+    "tests/unit/test_sharpemu_tarball.py"
+  ],
+  "sharedPaths": [
+    "docs/12-roadmap/IMPLEMENTATION-ROADMAP.md",
+    "src/steamzero/adapters/engine.py",
+    "src/steamzero/adapters/registry.py",
+    "src/steamzero/adapters/lifecycle.py",
+    "src/steamzero/adapters/component-lock.json",
+    "src/steamzero/adapters/discovery/format_parsers.py",
+    "src/steamzero/domain/game_identity.py",
+    "src/steamzero/domain/library.py",
+    "src/steamzero/canonical_experiences/catalog-v1.json",
+    "src/steamzero/schemas/adapter-v1.schema.json",
+    "src/steamzero/ui/qml/PackagedAssets.qml",
+    "docs/status/COVERAGE.md",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Fechar a prova física autorizada do SharpEmu e registrar a captura PNG; mudanças compartilhadas de engine/schema/catalog/lifecycle devem ser revisadas no merge.",
+  "updatedAt": "2026-09-17"
+}
