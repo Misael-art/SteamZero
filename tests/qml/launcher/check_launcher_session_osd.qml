@@ -74,6 +74,21 @@ Item {
         onTriggered: {
             overlay.openOverlay(harness.baseModel)
             harness.check(overlay.visible, "o OSD precisa abrir como superfície visível")
+            harness.check(overlay.z === 100 && overlay.clip,
+                          "o OSD precisa ocupar a camada superior e ser recortado")
+            var backdrop = null
+            var panel = null
+            for (var childIndex = 0; childIndex < overlay.children.length; ++childIndex) {
+                var child = overlay.children[childIndex]
+                if (child.objectName === "sessionOverlayBackdrop")
+                    backdrop = child
+                if (child.objectName === "sessionOverlayPanel")
+                    panel = child
+            }
+            harness.check(backdrop !== null && backdrop.color.a >= 0.99,
+                          "o backdrop precisa ser opaco para impedir vazamento da página")
+            harness.check(panel !== null && panel.opacity >= 0.99 && panel.z === 1,
+                          "o painel precisa ser uma camada opaca acima do backdrop")
             harness.check(overlay.currentActionId === "pause",
                           "o foco publicado pelo bridge precisa chegar à cena")
             harness.check(overlay.actions.length === 4,

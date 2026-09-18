@@ -25,7 +25,7 @@
     "docs/09-operations/evidence/2026-09-16-aura-retroarch-session-fix",
     "tests/qml/launcher/check_launcher_save_state_gallery.qml"
   ],
-  "scopeDigest": "f2fc9f09d675518ac2575bd0c43f09a0a70bbf725539740fccc038d9e3f5ccd4",
+  "scopeDigest": "71155722cf36f6e6f2624d2ba9e5ec99a1a81da6a74b183d5309e2a88e6a3a85",
   "dependsOn": [
     "SZ-AURA-SESSION-OSD",
     "SZ-AURA-LAUNCHER"
