@@ -682,6 +682,7 @@ Window {
                 accessibility: root.accessibility
                 resolveGamePage: function(gameId) { return root._resolveGamePage(gameId) }
                 returnContext: root.model.returnContext || null
+                onExitRequested: Qt.quit()
                 onLaunchRequested: function(gameId, focusId) {
                     ++root.launchGeneration
                     root._request("POST", "/launch",

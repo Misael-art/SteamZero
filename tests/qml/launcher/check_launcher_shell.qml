@@ -66,6 +66,7 @@ Item {
     }
 
     property var launched: []
+    property int exitRequests: 0
 
     LauncherShell {
         id: shell
@@ -73,6 +74,7 @@ Item {
         focusMap: harness.focusMap
         sections: harness.sections
         resolveGamePage: harness.pageFor
+        onExitRequested: harness.exitRequests += 1
         onLaunchRequested: function(gameId, focusId) {
             harness.launched.push(gameId + "@" + focusId)
         }
@@ -111,6 +113,8 @@ Item {
             // com `selectionReady` falso e sem navegação efetiva.
             harness.check(shell.restoreHomeFocus() === true,
                           "restaurar o foco da home precisa ser acionável")
+            harness.check(shell.handleEscape() === true && harness.exitRequests === 1,
+                          "Escape na home precisa oferecer saída do Launcher")
 
             // Navega e abre um jogo: o lugar de saída tem de ser lembrado.
             shell.moveHome("right")
