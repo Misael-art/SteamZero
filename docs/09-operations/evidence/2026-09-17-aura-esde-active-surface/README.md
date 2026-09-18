@@ -18,13 +18,23 @@ Rollback: `2.0.0rc1-7a7e96f8e4fd`
 - `24-aura-osd-fixed.png`: jogo NES real em execução na release instalada;
   OSD AURA focado, com save-state e troca de disco como capacidades declaradas,
   sem vazamento da página subjacente.
+- `25-current-osd.png`: nova sessão real na mesma release, com o jogo
+  `\'89 Dennou Kyuusei Uranai (Japan)`, foco em `Galeria de saves` e `Trocar
+  disco` corretamente indisponível para conteúdo single-disc.
+- `26-save-gallery.png`: galeria física de save-state, com slot nativo, foco,
+  timestamp e fallback explícito `SEM CAPTURA`.
 - `perf-installed-b396aaed.json` e `perf-installed-b396aaed-rerun.json`:
   sondas Wayland reais da release instalada, com startup, frame time/p95, RSS e
-  VRAM. Startup e VRAM passaram; p95 observado foi `16,918–16,959 ms` contra o
-  orçamento de `16,7 ms`, então o gap de performance permanece aberto.
+  VRAM. As duas primeiras amostras ficaram acima do orçamento de p95; a
+  terceira amostra em `perf-installed-b396aaed-third.json` passou em todos os
+  limites na superfície real `948x593`: startup `1130 ms`, p95 `16,181 ms` e
+  VRAM `99468 KiB`. O gap específico da superfície de referência `1280x800`
+  permanece aberto.
 - `session-osd-real.json`: observação autenticada da sessão RetroArch real;
-  save-state, pausa/retomada, bezel e fade foram exercitados pelo contrato.
+  save-state, pausa/retomada e fallback de troca de disco foram exercitados
+  pelo contrato. O bezel visual raster ainda aguarda a nova release após o
+  merge da compatibilidade PNG.
 
-As capturas intermediárias da sessão foram descartadas; somente a imagem `24`
-foi mantida como prova física pós-instalação. O PNG foi recortado à janela AURA
-para não persistir o desktop do operador.
+As capturas foram recortadas à janela AURA para não persistir o desktop do
+operador. A captura do emulador com a dock foi descartada e não é usada como
+prova de bezel.

@@ -29,6 +29,7 @@
     "tests/integration/test_qml_handheld_offscreen.py",
     "src/steamzero/adapters/emulation.py",
     "src/steamzero/ui/assets/aura-bezel.svg",
+    "src/steamzero/ui/assets/aura-bezel.png",
     "src/steamzero/ui/qml/PackagedAssets.qml",
     "src/steamzero/adapters/launcher_media.py",
     "tests/unit/test_launcher_media.py",
@@ -40,7 +41,7 @@
     "tests/unit/test_session_overlay.py",
     "tests/unit/test_session_overlay_adapter.py"
   ],
-  "scopeDigest": "d7e41a00b10c42466eb1542e6bb1f0a4eb2a012c0552fe473f6a992af2f2a0f9",
+  "scopeDigest": "600dae5ba36bf38174a76218ee860b5190aa569c0b0fac30e598e7fdee0c51b1",
   "dependsOn": [
     "SZ-AURA-SAVE-STATE-GALLERY",
     "SZ-AURA-SESSION-OSD",
@@ -202,12 +203,30 @@
       "reference": "docs/09-operations/evidence/2026-09-17-aura-esde-active-surface/perf-installed-b396aaed-rerun.json",
       "command": "release 2.0.0rc1-b396aaedcc64, repetição Wayland/OpenGL real; startup 1494 ms, p95 16.918 ms, VRAM 89520 KiB",
       "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-17-aura-esde-active-surface/25-current-osd.png",
+      "command": "release 2.0.0rc1-b396aaedcc64, jogo NES real; OSD isolado com foco em Galeria de saves e Trocar disco indisponível para single-disc",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-17-aura-esde-active-surface/26-save-gallery.png",
+      "command": "release 2.0.0rc1-b396aaedcc64, galeria física com slot nativo, timestamp e fallback SEM CAPTURA",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-17-aura-esde-active-surface/perf-installed-b396aaed-third.json",
+      "command": "release 2.0.0rc1-b396aaedcc64, terceira sonda Wayland/OpenGL real em 948x593; startup 1130 ms, p95 16.181 ms, VRAM 99468 KiB, meetsBudget=true",
+      "result": "passed"
     }
   ],
-  "nextAction": "Investigar o p95 acima de 16,7 ms na superfície Wayland real e repetir em uma sessão de referência; troca de disco e bezel/fade visual ainda exigem jogo/adapter legítimo; PS4 e multi-disc permanecem bloqueados por conteúdo legítimo ou contrato de adapter.",
+  "nextAction": "Instalar a correção raster do bezel após o merge e repetir a captura visual; manter aberto o orçamento na superfície de referência 1280x800, a troca de disco com jogo multi-disc legítimo e a prova física PS4.",
   "activeWorkstreams": [
     "WS-2026-09-AURA-CINEMA-COMPLETION"
   ],
   "updatedAt": "2026-09-18",
-  "notes": "Frente de continuação do AURA Launcher/Theme Engine. A release 2.0.0rc1-b396aaedcc64 foi instalada pelo fluxo governado, o daemon convergiu e a captura física pós-patch confirmou o OSD isolado sobre jogo real. O Doctor ficou degraded apenas pelos avisos de permissão de boot/input, sem blockers, staging, backup ou journal órfãos. A medição Wayland/OpenGL é válida: startup e VRAM passaram, mas o p95 repetido ficou acima de 16,7 ms e permanece aberto. A medição e a captura visual não promovem AURA UI ou Theme Studio; cobrem apenas a cadeia de sessão e a composição fullscreen especificadas no plano."
+  "notes": "Frente de continuação do AURA Launcher/Theme Engine. A release 2.0.0rc1-b396aaedcc64 foi instalada pelo fluxo governado, o daemon convergiu e as capturas físicas confirmaram OSD isolado e galeria de saves sobre jogo real. A medição Wayland/OpenGL é válida: a terceira amostra passou startup, p95 e VRAM na superfície real 948x593; a referência 1280x800 continua sem prova. A compatibilidade raster do bezel está em PR #209 e ainda não foi instalada. A medição e a captura visual não promovem AURA UI ou Theme Studio; cobrem apenas a cadeia de sessão e a composição fullscreen especificadas no plano."
 }

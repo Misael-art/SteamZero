@@ -16,7 +16,7 @@
     "tests/unit/test_packaged_assets.py",
     "docs/09-operations/evidence/2026-09-04-release-cf9c47e7"
   ],
-  "scopeDigest": "28fe000b8d99ad055797cad39417bf22af58999a8f29cc58163d39d1daed2348",
+  "scopeDigest": "d776af745934a0175b366e03cdd00f2e7a308a679ac27c5a5986166986718bf0",
   "dependsOn": [
     "SZ-UI-DESKTOP-AUDIT"
   ],
