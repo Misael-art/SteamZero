@@ -12,7 +12,9 @@
   "scopePaths": [
     "src/steamzero/ui/qml/launcher/LauncherShell.qml",
     "src/steamzero/ui/qml/launcher/LauncherMain.qml",
-    "tests/qml/launcher/check_launcher_shell.qml"
+    "src/steamzero/ui/qml/launcher/LauncherHome.qml",
+    "tests/qml/launcher/check_launcher_shell.qml",
+    "tests/qml/launcher/check_launcher_gestures.qml"
   ],
   "dependsOn": ["SZ-AURA-LAUNCHER"],
   "knownGaps": ["GAP-AURA-LAUNCHER-EXIT-PHYSICAL"],
@@ -24,14 +26,14 @@
   "evidence": [
     {
       "kind": "test",
-      "reference": "tests/qml/launcher/check_launcher_shell.qml",
-      "command": "test_qml_handheld_harness: 34 passed, 14 deselected",
+      "reference": "tests/qml/launcher/check_launcher_gestures.qml",
+      "command": "test_launcher_card_gestures: 2 passed; Escape real chega ao boundary da Home",
       "result": "passed"
     }
   ],
   "activeWorkstreams": ["WS-2026-09-AURA-LAUNCHER-EXIT"],
-  "nextAction": "Integrar na main, publicar release governada e repetir Escape na instalação ativa.",
-  "scopeDigest": "d4ce7073a4aac94be3f4bc5bcc58de2515359ea325f8186daa8a3ab9a0812edd",
+  "nextAction": "Integrar na main, publicar release governada e repetir Escape com o foco real da Home na instalação ativa.",
+  "scopeDigest": "eb12ad72d9e21c205cab0cc435aa5dc7dc8728bbff2466cb27237f1146e800d5",
   "updatedAt": "2026-09-18",
-  "notes": "Correção isolada: antes, Escape na home chamava back() sem efeito e não havia caminho de saída por controle."
+  "notes": "Correção isolada: além do caminho semântico do shell, a Home captura Escape no foco efetivo e o encaminha ao pedido de saída; o teste de gesto usa keyClick real."
 }

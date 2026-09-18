@@ -13,8 +13,9 @@
     "tools/launcher_perf_probe.py",
     "tests/unit/test_launcher_perf_probe.py",
     "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf"
+    ,"docs/09-operations/evidence/2026-09-18-aura-bezel-installed"
   ],
-  "scopeDigest": "cbdc3e8f86d6516602b7af3364458bc161046476bcc925a5cc11fb5066d70901",
+  "scopeDigest": "e0ad30a0252fa0fd712f1307de7904fbad6fd7fd8fa7fbc62b99dc79bba4b7a7",
   "dependsOn": [
     "SZ-AURA-LAUNCHER",
     "SZ-AURA-CINEMA-COMPLETION",

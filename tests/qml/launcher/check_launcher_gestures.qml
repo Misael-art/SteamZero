@@ -24,6 +24,7 @@ Item {
     height: 800
 
     property var launched: []
+    property int escapeRequests: 0
 
     readonly property var sections: [
         {"id": "library", "title": "Biblioteca", "items": [
@@ -56,6 +57,7 @@ Item {
             anchors.fill: parent
             focusMap: harness.focusMap
             sections: harness.sections
+            onEscapeRequested: harness.escapeRequests += 1
             onGameActivated: function(gameId, focusId) {
                 harness.launched.push({"gameId": gameId, "focusId": focusId})
             }
@@ -86,6 +88,7 @@ Item {
 
         function init() {
             harness.launched = []
+            harness.escapeRequests = 0
             home.activationLocked = false
             stage.requestActivate()
             // Sem janela ativa não existe foco de teclado, e sem foco a tecla
@@ -134,6 +137,15 @@ Item {
                       "a primeira tecla precisa ativar")
             compare(harness.launched.length, 1,
                     "duas teclas dentro do debounce não podem abrir o jogo duas vezes")
+        }
+
+        function test_escape_key_reaches_the_home_boundary() {
+            home.forceActiveFocus()
+            tryVerify(function() { return home.activeFocus }, 2000,
+                      "a home precisa ter foco para receber Escape")
+            keyClick(Qt.Key_Escape)
+            tryVerify(function() { return harness.escapeRequests === 1 }, 2000,
+                      "Escape real não chegou ao limite de saída da Home")
         }
     }
 }

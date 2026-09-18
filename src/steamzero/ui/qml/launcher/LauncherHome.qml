@@ -85,6 +85,7 @@ FocusScope {
     signal gameActivated(string gameId, string focusId)
     signal actionActivated(string actionId)
     signal feedbackRequested(string kind)
+    signal escapeRequested()
 
     Timer {
         id: activationCooldown
@@ -156,6 +157,9 @@ FocusScope {
     Keys.onDownPressed: move("down")
     Keys.onLeftPressed: move("left")
     Keys.onRightPressed: move("right")
+    Keys.onEscapePressed: {
+        home.escapeRequested()
+    }
     Keys.onPressed: function(event) {
         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter
                 || event.key === Qt.Key_Space) {
