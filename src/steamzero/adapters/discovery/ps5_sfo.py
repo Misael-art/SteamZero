@@ -17,6 +17,7 @@ _MAX_SFO_BYTES = 1024 * 1024
 _MAX_ENTRIES = 256
 _STRING_FORMAT = 0x0204
 _TARGET_KEYS = frozenset({"TITLE_ID", "TITLE"})
+_BOOT_ENTRY = "eboot.bin"
 
 
 @dataclass(frozen=True)
@@ -79,6 +80,8 @@ def parse_sfo(data: bytes) -> Ps5Sfo | None:
 
 def read_ps5_identity(executable: Path) -> tuple[GameIdentity | None, str]:
     """Busca ``sce_sys/param.sfo`` acima do executável sem seguir symlinks."""
+    if executable.name.casefold() != _BOOT_ENTRY or executable.is_symlink():
+        return None, "ps5-non-boot-entry"
     for parent in executable.parents:
         if executable.anchor and parent == Path(executable.anchor):
             break
