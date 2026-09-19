@@ -53,12 +53,18 @@
       "reference": "tests/unit/test_platform_ps5_catalog.py",
       "command": "pytest focused PS5 catalog, param.sfo identity, safe tar.gz and inventory",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_adapters.py",
+      "command": "run_tests_isolated.py PS5, adapter, conformance, manifest, capability and catalog tests",
+      "result": "passed"
     }
   ],
   "nextAction": "Executar a prova física autorizada com um dump legal PS5, Vulkan funcional e captura PNG; manter compatibilidade por build sem promover verified-hw.",
   "activeWorkstreams": [
     "WS-2026-09-PS5-SHARPEMU"
   ],
-  "updatedAt": "2026-09-17",
-  "notes": "Implementação parcial em branch própria: SharpEmu possui manifesto, lockfile, plataforma, perfil DualSense, catálogo canônico, extração segura tar.gz, parser PS5 param.sfo/Title ID e classificação ps5dir que não expõe módulos PRX, binários auxiliares ou PKG como jogo. O SharpEmu permanece experimental; não há instalação no host nem promoção verified-hw."
+  "updatedAt": "2026-09-18",
+  "notes": "Implementação parcial em branch própria: SharpEmu possui manifesto, lockfile, plataforma, perfil DualSense, catálogo canônico, extração segura tar.gz, parser PS5 param.sfo/Title ID endurecido contra tabelas sobrepostas, comprimentos inválidos e tipos não-string, e classificação ps5dir que não expõe módulos PRX, binários auxiliares ou PKG como jogo. O SharpEmu permanece experimental; não há instalação no host nem promoção verified-hw."
 }
