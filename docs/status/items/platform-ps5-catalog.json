@@ -16,14 +16,16 @@
     "src/steamzero/platform_manifests/65-playstation-5.platform.json",
     "src/steamzero/input_profiles/30-dualsense.input.json",
     "src/steamzero/adapters/discovery/ps5_sfo.py",
+    "src/steamzero/adapters/ps5_runtime.py",
     "src/steamzero/ui/assets/playstation-5.svg",
     "src/steamzero/ui/assets/sharpemu.svg",
     "docs/09-operations/evidence/2026-09-19-ps5-host-baseline",
     "tests/unit/test_platform_ps5_catalog.py",
+    "tests/unit/test_ps5_runtime.py",
     "tests/unit/test_ps5_sfo.py",
     "tests/unit/test_sharpemu_tarball.py"
   ],
-  "scopeDigest": "2e4fed72fecbfc8e17f0e49e066d3f2d8c11b7f90088fcc96c3d270dab949175",
+  "scopeDigest": "2b20a332393da2b48a67a757859aafea41c5acbd0d64cda081df7d30633f57c9",
   "dependsOn": [
     "SZ-AGG-PLATFORM-MANIFESTS",
     "SZ-COMPONENT-LIFECYCLE",
@@ -78,9 +80,21 @@
       "reference": "docs/09-operations/evidence/2026-09-19-ps5-host-baseline/README.md",
       "command": "uname -m; vulkaninfo --summary; release_host.py inspect (read-only) em 2026-09-19",
       "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_ps5_runtime.py",
+      "command": "pytest focused: x86_64/Vulkan válido, arquitetura/ferramenta ausente, saída inválida, retorno não-zero e timeout",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_emulation_controller.py",
+      "command": "pytest focused: launch PS5 recusa runtime sem Vulkan antes de qualquer spawn; full runner fechou com 6163 passed/47 skipped e a consistência passou após render",
+      "result": "passed"
     }
   ],
-  "nextAction": "Preparar release governada somente após autorização explícita e, com dump legal PS5, executar a prova física; baseline read-only confirmou x86_64/Vulkan RADV, enquanto SharpEmu ainda está ausente no host. Capturar PNG e manter compatibilidade por build sem promover verified-hw.",
+  "nextAction": "Revisar o handoff compartilhado de emulation.py no merge; o commit 173d3c95 conecta o preflight PS5 de arquitetura/Vulkan ao launch antes do spawn. Preparar release governada somente após autorização explícita e, com dump legal PS5, executar a prova física; baseline read-only confirmou x86_64/Vulkan RADV, enquanto SharpEmu ainda está ausente no host. Capturar PNG e manter compatibilidade por build sem promover verified-hw.",
   "activeWorkstreams": [
     "WS-2026-09-PS5-SHARPEMU"
   ],

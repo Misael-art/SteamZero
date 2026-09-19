@@ -15,9 +15,11 @@
     "src/steamzero/platform_manifests/65-playstation-5.platform.json",
     "src/steamzero/input_profiles/30-dualsense.input.json",
     "src/steamzero/adapters/discovery/ps5_sfo.py",
+    "src/steamzero/adapters/ps5_runtime.py",
     "src/steamzero/ui/assets/playstation-5.svg",
     "src/steamzero/ui/assets/sharpemu.svg",
     "tests/unit/test_platform_ps5_catalog.py",
+    "tests/unit/test_ps5_runtime.py",
     "tests/unit/test_ps5_sfo.py",
     "tests/unit/test_sharpemu_tarball.py"
   ],
@@ -28,6 +30,7 @@
     "src/steamzero/adapters/lifecycle.py",
     "src/steamzero/adapters/component-lock.json",
     "src/steamzero/adapters/discovery/format_parsers.py",
+    "src/steamzero/adapters/emulation.py",
     "src/steamzero/domain/game_identity.py",
     "src/steamzero/domain/library.py",
     "src/steamzero/canonical_experiences/catalog-v1.json",
@@ -38,6 +41,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Software PS5 avançado até c1c9c9b na branch de integração codex/platform-ps5-sharpemu-mainline: ELF genérico agora fica ps5-elf-unresolved e não vira jogo por extensão; revisar o handoff compartilhado de library.py no merge. Diagnóstico read-only de 2026-09-19 confirmou x86_64/Vulkan RADV e SharpEmu ausente no host. Depois, com autorização e dump legal, fechar a prova física e capturar PNG.",
+  "nextAction": "Software PS5 avançado até 173d3c95 na branch de integração codex/platform-ps5-sharpemu-mainline: ELF genérico permanece ps5-elf-unresolved e o preflight de launch recusa arquitetura/Vulkan não prontos antes do spawn; revisar o handoff compartilhado de emulation.py/library.py no merge. Diagnóstico read-only de 2026-09-19 confirmou x86_64/Vulkan RADV e SharpEmu ausente no host. Depois, com autorização e dump legal, fechar a prova física e capturar PNG.",
   "updatedAt": "2026-09-19"
 }

@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "d70803692e958487aa73d6b70939cf9e7fe24b3d42cc761a293472430efe77fc",
+  "scopeDigest": "60f62e13c81fc52cbe33e3ef196d9d83700932f140acc4d6fc84dd47b874aaf5",
   "scopePaths": [
     "src/steamzero/cli/main.py",
     "src/steamzero/adapters/emulation.py",

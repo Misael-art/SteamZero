@@ -11180,3 +11180,26 @@ O diagnóstico read-only de 2026-09-19 confirmou arquitetura `x86_64` e
 Vulkan 1.4/RADV AMD funcionais no host, mas o componente SharpEmu ainda está
 ausente e a release ativa não corresponde à branch de integração. Nenhuma
 instalação, publicação ou alteração privilegiada foi feita.
+
+## 2026-09-19 — preflight de runtime PS5 antes do spawn
+
+Na branch `codex/platform-ps5-sharpemu-mainline`, o commit `173d3c95` adiciona
+um probe somente leitura para arquitetura `x86_64`/`amd64` e `vulkaninfo --summary`.
+O launch PS5 agora recusa antes do spawn quando a arquitetura, a ferramenta ou
+a saída Vulkan não são válidas, com razão estável (`ps5-architecture-unsupported`,
+`ps5-vulkan-tool-missing` ou `ps5-vulkan-probe-failed`). O caminho compartilhado
+`emulation.py` foi mantido mínimo e o handoff foi registrado no workstream.
+
+Provas: 5 testes unitários do probe, 1 teste do preflight no controller e o
+conjunto focado do controller/runtime com 142 testes passaram; mypy, Ruff,
+formatação, independência, fronteiras, component-lock e capability-matrix
+passaram. A suíte isolada integral terminou com `6163 passed, 47 skipped` e
+uma falha de consistência documental causada pelas visões de status ainda não
+regeneradas durante esta sessão; após renderizar as visões, o teste de
+consistência foi repetido separadamente. O runner deixou o estado real
+inalterado. Nenhuma instalação, publicação, reinício ou mutação de host foi
+executada.
+
+A prova física permanece pendente: SharpEmu não está instalado no host, e ainda
+são necessários autorização governada, dump PS5 legal, captura PNG de sucesso,
+erro controlado e recuperação antes de qualquer promoção `verified-hw`.
