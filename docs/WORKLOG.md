@@ -11175,3 +11175,8 @@ skipped`; Ruff, formatação, mypy, independência, fronteiras, component-lock,
 capability-matrix e `STATUS-CHECK` passaram. Nenhuma instalação, publicação,
 reinício ou alteração de host foi executada. A prova física com dump legal,
 Vulkan e PNG permanece pendente do operador.
+
+O diagnóstico read-only de 2026-09-19 confirmou arquitetura `x86_64` e
+Vulkan 1.4/RADV AMD funcionais no host, mas o componente SharpEmu ainda está
+ausente e a release ativa não corresponde à branch de integração. Nenhuma
+instalação, publicação ou alteração privilegiada foi feita.

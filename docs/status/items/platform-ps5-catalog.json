@@ -71,9 +71,15 @@
       "reference": "tests/unit/test_platform_ps5_catalog.py",
       "command": "pytest focused: ELF sem identidade PS5 permanece ps5-elf-unresolved, sem promoção por extensão",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-19-ps5-host-baseline/README.md",
+      "command": "uname -m; vulkaninfo --summary; release_host.py inspect (read-only) em 2026-09-19",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Executar a prova física autorizada com um dump legal PS5, Vulkan funcional e captura PNG; manter compatibilidade por build sem promover verified-hw.",
+  "nextAction": "Preparar release governada somente após autorização explícita e, com dump legal PS5, executar a prova física; baseline read-only confirmou x86_64/Vulkan RADV, enquanto SharpEmu ainda está ausente no host. Capturar PNG e manter compatibilidade por build sem promover verified-hw.",
   "activeWorkstreams": [
     "WS-2026-09-PS5-SHARPEMU"
   ],
