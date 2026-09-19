@@ -85,6 +85,12 @@
       "result": "recorded"
     },
     {
+      "kind": "diagnostic",
+      "reference": "tools/release_host.py",
+      "command": "release_host.py --json inspect em 2026-09-19 após os gates: release ativa 2.0.0rc1-f98a1a12a46b, daemon/doctor/estado íntegros e SharpEmu ausente",
+      "result": "recorded"
+    },
+    {
       "kind": "test",
       "reference": "tests/unit/test_ps5_runtime.py",
       "command": "pytest focused: x86_64/Vulkan válido, arquitetura/ferramenta ausente, saída inválida, retorno não-zero e timeout",

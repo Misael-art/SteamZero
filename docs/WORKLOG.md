@@ -11235,3 +11235,14 @@ de catálogo/runtime e o harness QML real passaram; mypy, Ruff e formatação
 passaram nos arquivos alterados. Nenhuma instalação, publicação, reinício ou
 mutação de host foi executada; a prova física com dump legal e PNG continua
 pendente.
+
+## 2026-09-19 — inspeção read-only pós-gates PS5
+
+Após os gates, `release_host.py --json inspect` confirmou que a release ativa
+continua `2.0.0rc1-f98a1a12a46b`, com daemon convergente, integridade do estado,
+staging/backup/journal sem órfãos e SharpEmu ausente. A branch de integração
+está limpa e contém os commits `c3c3369` e `0d599ff`, mas ainda não corresponde
+à release instalada; não houve tentativa de instalação, rollback, publicação ou
+reinício. A suíte integral posterior fechou com `6168 passed, 47 skipped`, e
+independência, fronteiras, component-lock, capability-matrix e `STATUS-CHECK`
+permaneceram verdes.
