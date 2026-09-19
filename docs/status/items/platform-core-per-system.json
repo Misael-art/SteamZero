@@ -21,7 +21,7 @@
     "tests/unit/test_emulation_controller.py",
     "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun"
   ],
-  "scopeDigest": "692e7ef51cac3e21368195e2bd89afa09b6113e00084927a57027eb949d79b48",
+  "scopeDigest": "d0e7361834c039970cc60d11c13a8e166a035b3c9bba6ef97bac6047adcdcdb9",
   "dependsOn": [
     "SZ-LIBRARY-CANONICAL",
     "SZ-AGG-PLATFORM-MANIFESTS"

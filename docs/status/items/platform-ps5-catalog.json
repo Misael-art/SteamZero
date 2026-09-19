@@ -17,15 +17,18 @@
     "src/steamzero/input_profiles/30-dualsense.input.json",
     "src/steamzero/adapters/discovery/ps5_sfo.py",
     "src/steamzero/adapters/ps5_runtime.py",
+    "src/steamzero/adapters/ps5_compatibility.py",
+    "src/steamzero/adapters/ps5_compatibility.json",
     "src/steamzero/ui/assets/playstation-5.svg",
     "src/steamzero/ui/assets/sharpemu.svg",
     "docs/09-operations/evidence/2026-09-19-ps5-host-baseline",
     "tests/unit/test_platform_ps5_catalog.py",
     "tests/unit/test_ps5_runtime.py",
+    "tests/unit/test_ps5_compatibility.py",
     "tests/unit/test_ps5_sfo.py",
     "tests/unit/test_sharpemu_tarball.py"
   ],
-  "scopeDigest": "2b20a332393da2b48a67a757859aafea41c5acbd0d64cda081df7d30633f57c9",
+  "scopeDigest": "e611d3753affde7e38135dd0975d9305bd1a3032a5645a3a0f5b4f9b5dc84d02",
   "dependsOn": [
     "SZ-AGG-PLATFORM-MANIFESTS",
     "SZ-COMPONENT-LIFECYCLE",
@@ -98,12 +101,18 @@
       "reference": "tests/integration/test_qml_handheld_offscreen.py",
       "command": "pytest -q -k check_emulation: badge de compatibilidade mostra build observada e razão sem promover estado unknown",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_ps5_compatibility.py",
+      "command": "pytest focused: snapshot oficial pinned com 46 relatórios; status só é promovido com Title ID, build e OS exatos",
+      "result": "passed"
     }
   ],
-  "nextAction": "Revisar o handoff compartilhado de emulation.py/Emulation.qml no merge; o commit d6e8af7 publica por jogo o estado SharpEmu unknown, a build observada e a razão de compatibilidade ainda não publicada, enquanto 173d3c95 conecta o preflight PS5 de arquitetura/Vulkan ao launch antes do spawn. Preparar release governada somente após autorização explícita e, com dump legal PS5, executar a prova física; baseline read-only confirmou x86_64/Vulkan RADV, enquanto SharpEmu ainda está ausente no host. Capturar PNG e manter compatibilidade por build sem promover verified-hw.",
+  "nextAction": "Revisar o handoff compartilhado de emulation.py/Emulation.qml no merge; o commit c3c3369 publica o snapshot oficial pinned e só promove o estado SharpEmu quando Title ID, build e OS coincidem, enquanto d6e8af7 mantém a apresentação explícita e 173d3c95 conecta o preflight PS5 de arquitetura/Vulkan ao launch antes do spawn. Preparar release governada somente após autorização explícita e, com dump legal PS5, executar a prova física; baseline read-only confirmou x86_64/Vulkan RADV, enquanto SharpEmu ainda está ausente no host. Capturar PNG e manter compatibilidade por build sem promover verified-hw.",
   "activeWorkstreams": [
     "WS-2026-09-PS5-SHARPEMU"
   ],
   "updatedAt": "2026-09-19",
-  "notes": "Implementação parcial em branch própria: SharpEmu possui manifesto, lockfile, plataforma, perfil DualSense, catálogo canônico, extração segura tar.gz, parser PS5 param.sfo/Title ID endurecido contra tabelas sobrepostas, comprimentos inválidos e tipos não-string, e classificação ps5dir que não expõe módulos PRX, binários auxiliares ou PKG como jogo. ELF genérico sem identidade PS5 permanece explicitamente ps5-elf-unresolved e não é promovido por extensão. Containers de dump zip/7z/tar.gz permanecem explicitamente em needs-extraction. O catálogo agora publica compatibilidade por jogo com estado unknown, build SharpEmu observada quando disponível e razão explícita; a fonte oficial por título/build ainda não foi integrada. O SharpEmu permanece experimental; não há instalação no host nem promoção verified-hw."
+  "notes": "Implementação parcial em branch própria: SharpEmu possui manifesto, lockfile, plataforma, perfil DualSense, catálogo canônico, extração segura tar.gz, parser PS5 param.sfo/Title ID endurecido contra tabelas sobrepostas, comprimentos inválidos e tipos não-string, e classificação ps5dir que não expõe módulos PRX, binários auxiliares ou PKG como jogo. ELF genérico sem identidade PS5 permanece explicitamente ps5-elf-unresolved e não é promovido por extensão. Containers de dump zip/7z/tar.gz permanecem explicitamente em needs-extraction. O catálogo agora resolve o snapshot oficial pinned de 46 relatórios por Title ID, build e OS, promovendo o estado somente em correspondência exata e explicando qualquer divergência como unknown. O SharpEmu permanece experimental; não há instalação no host nem promoção verified-hw."
 }

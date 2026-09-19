@@ -11219,3 +11219,19 @@ passou com `1 passed, 47 deselected`. O handoff compartilhado foi registrado
 para `emulation.py`, `Emulation.qml` e `check_emulation.qml`. Nenhuma
 instalação, publicação, reinício ou mutação de host foi executada; a prova
 física com SharpEmu instalado, dump legal e PNG continua pendente.
+
+## 2026-09-19 — snapshot oficial de compatibilidade PS5 por build e OS
+
+Na branch `codex/platform-ps5-sharpemu-mainline`, o commit `c3c3369` adiciona
+um snapshot versionado dos 46 relatórios públicos do site oficial SharpEmu,
+fixado ao commit `5a6f37843b8d3eab8cd6dde95d147e9b3f6d529a`. O resolver consulta
+Title ID, build do runtime e sistema operacional do host; só promove o status
+oficial em correspondência exata. Relatórios Windows/macOS não são transferidos
+para Linux, e divergências preservam `unknown` com build testada, OS, data e
+causa para a UI.
+
+Provas: 3 testes do resolver, 2 testes PS5 do controller, 9 testes adicionais
+de catálogo/runtime e o harness QML real passaram; mypy, Ruff e formatação
+passaram nos arquivos alterados. Nenhuma instalação, publicação, reinício ou
+mutação de host foi executada; a prova física com dump legal e PNG continua
+pendente.

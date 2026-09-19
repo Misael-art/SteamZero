@@ -7,8 +7,10 @@
 
 **Implementação atual:** parcial em `codex/platform-ps5-sharpemu`; contrato
 declarativo, lockfile, payload `tar.gz`, identidade `param.sfo`, scanner
-`ps5dir`, catálogo e perfil DualSense implementados. A instalação física e a
-promoção de compatibilidade continuam pendentes.
+`ps5dir`, catálogo, perfil DualSense e snapshot pinned dos 46 relatórios
+públicos de compatibilidade implementados. A promoção só ocorre para Title ID,
+build e sistema operacional exatos; a instalação física e a prova Linux
+continuam pendentes.
 
 ## 1. Decisão de produto
 
@@ -220,6 +222,11 @@ logs, retorno ao launcher, restauração de foco e recuperação de processo.
 Adicionar card experimental, compatibilidade por build, filtros, fallback de
 artwork e mensagens de bloqueio. Não promover Theme Engine, Theme Studio ou
 AURA Launcher por consequência desta integração.
+
+O snapshot empacotado em `src/steamzero/adapters/ps5_compatibility.json` é
+fixado ao commit do site oficial e mantém o estado `unknown` quando o relatório
+é de outra build ou outro sistema operacional. Nenhum resultado Windows/macOS
+é promovido automaticamente para o host Linux.
 
 ### Onda PS5-6 — validação e release
 
