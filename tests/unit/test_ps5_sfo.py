@@ -7,6 +7,8 @@ from __future__ import annotations
 import struct
 from pathlib import Path
 
+import pytest
+
 from steamzero.adapters.discovery.ps5_sfo import parse_sfo, read_ps5_identity
 from steamzero.domain.game_identity import IdentityScheme
 
@@ -91,3 +93,38 @@ def test_read_ps5_identity_rejects_symlinked_param_sfo(tmp_path: Path) -> None:
 
     assert identity is None
     assert diagnosis == "ps5-param-sfo-missing"
+
+
+@pytest.mark.parametrize(
+    ("values", "expected"),
+    [
+        ({"TITLE": "Sem ID"}, "ps5-title-id-missing"),
+        ({"TITLE_ID": "INVALID", "TITLE": "ID inválido"}, "ps5-title-id-invalid"),
+    ],
+)
+def test_read_ps5_identity_reports_unusable_title_id(
+    tmp_path: Path, values: dict[str, str], expected: str
+) -> None:
+    dump = tmp_path / "Game"
+    (dump / "sce_sys").mkdir(parents=True)
+    (dump / "sce_sys" / "param.sfo").write_bytes(_sfo(values))
+    executable = dump / "eboot.bin"
+    executable.write_bytes(b"ELF")
+
+    identity, diagnosis = read_ps5_identity(executable)
+
+    assert identity is None
+    assert diagnosis == expected
+
+
+def test_read_ps5_identity_reports_corrupt_sfo(tmp_path: Path) -> None:
+    dump = tmp_path / "Game"
+    (dump / "sce_sys").mkdir(parents=True)
+    (dump / "sce_sys" / "param.sfo").write_bytes(b"not-an-sfo")
+    executable = dump / "eboot.bin"
+    executable.write_bytes(b"ELF")
+
+    identity, diagnosis = read_ps5_identity(executable)
+
+    assert identity is None
+    assert diagnosis == "ps5-param-sfo-invalid"
