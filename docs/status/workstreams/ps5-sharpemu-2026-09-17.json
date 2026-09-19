@@ -38,6 +38,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Fechar a prova física autorizada do SharpEmu e registrar a captura PNG; mudanças compartilhadas de engine/schema/catalog/lifecycle devem ser revisadas no merge.",
-  "updatedAt": "2026-09-17"
+  "nextAction": "Software PS5 avançado até c1c9c9b na branch de integração codex/platform-ps5-sharpemu-mainline: ELF genérico agora fica ps5-elf-unresolved e não vira jogo por extensão; revisar o handoff compartilhado de library.py no merge. Depois, fechar a prova física autorizada do SharpEmu com dump legal, Vulkan funcional e captura PNG.",
+  "updatedAt": "2026-09-19"
 }

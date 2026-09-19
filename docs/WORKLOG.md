@@ -11161,3 +11161,17 @@ loop ficou em 16,959/16,918 ms, acima do orçamento de 16,7 ms. O resultado foi
 registrado como parcial, sem promover uma meta de performance não atingida.
 O item `SZ-AURA-CINEMA-COMPLETION`, o README da evidência, `STATUS.md` e
 `ACTIVE-WORK.md` foram regenerados; `STATUS-CHECK: OK`.
+
+## 2026-09-19 — hardening do scanner PS5 e handoff de integração
+
+Na branch `codex/platform-ps5-sharpemu-mainline`, corrigi a promoção indevida
+de qualquer arquivo `.elf` como jogo PS5: sem identidade PS5 observável, o
+scanner agora registra `ps5-elf-unresolved`; `eboot.bin` continua sendo a
+entrada estrutural aceita. A regressão foi adicionada ao catálogo PS5 e o
+workstream registra o handoff no commit `c1c9c9b`.
+
+Provas: 87 testes focados PS5/biblioteca; suíte integral `6158 passed, 47
+skipped`; Ruff, formatação, mypy, independência, fronteiras, component-lock,
+capability-matrix e `STATUS-CHECK` passaram. Nenhuma instalação, publicação,
+reinício ou alteração de host foi executada. A prova física com dump legal,
+Vulkan e PNG permanece pendente do operador.
