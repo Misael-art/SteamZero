@@ -46,6 +46,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Software PS5 avançado até c3c3369 na branch de integração codex/platform-ps5-sharpemu-mainline: ELF genérico permanece ps5-elf-unresolved, o preflight de launch recusa arquitetura/Vulkan não prontos antes do spawn e o snapshot oficial pinned resolve cada relatório por Title ID, build e OS exatos, mantendo unknown com causa em qualquer divergência; revisar o handoff compartilhado de emulation.py/Emulation.qml/library.py no merge. Diagnóstico read-only de 2026-09-19 confirmou x86_64/Vulkan RADV e SharpEmu ausente no host. Depois, com autorização e dump legal, fechar a prova física e capturar PNG.",
+  "nextAction": "Software PS5 avançado até 7f2de9b na branch de integração codex/platform-ps5-sharpemu-mainline: ELF genérico permanece ps5-elf-unresolved, o preflight de launch recusa arquitetura/Vulkan não prontos antes do spawn, o snapshot oficial pinned resolve cada relatório por Title ID/build/OS exatos e o inventário publica contentState complete, content-incomplete ou source-missing com causa recuperável; revisar o handoff compartilhado de emulation.py/Emulation.qml/library.py no merge. Diagnóstico read-only de 2026-09-19 confirmou x86_64/Vulkan RADV e SharpEmu ausente no host. Depois, com autorização e dump legal, fechar a prova física e capturar PNG.",
   "updatedAt": "2026-09-19"
 }

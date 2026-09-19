@@ -212,6 +212,10 @@ particionamento de auxiliares.
 Adicionar deduplicação, fontes removíveis/rede, arquivos compactados, conteúdo
 incompleto e reconciliação base/update/DLC somente onde houver evidência.
 
+O inventário publica `contentState` explícito: `complete`,
+`content-incomplete` ou `source-missing`, preservando a causa recuperável no
+card sem transformar ausência de `param.sfo` em jogo pronto.
+
 ### Onda PS5-4 — preflight e launch/return
 
 Integrar seleção de executável, validação Vulkan, sessão gerenciada, captura de

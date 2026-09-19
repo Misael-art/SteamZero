@@ -11246,3 +11246,16 @@ está limpa e contém os commits `c3c3369` e `0d599ff`, mas ainda não correspon
 reinício. A suíte integral posterior fechou com `6168 passed, 47 skipped`, e
 independência, fronteiras, component-lock, capability-matrix e `STATUS-CHECK`
 permaneceram verdes.
+
+## 2026-09-19 — estados recuperáveis de conteúdo PS5
+
+Na branch `codex/platform-ps5-sharpemu-mainline`, o commit `7f2de9b` fecha a
+lacuna de apresentação de conteúdo: o inventário mantém o estado legado para
+compatibilidade e publica em paralelo `contentState=complete`,
+`content-incomplete` ou `source-missing`, com causa concreta. A ausência de
+`param.sfo` não vira jogo pronto, e uma origem removida não é tratada como dump
+válido; o card QML mostra a orientação recuperável.
+
+Provas focadas: 7 testes PS5/controller, QML real, Ruff e formatação passaram.
+Nenhuma instalação, publicação, reinício ou mutação de host foi executada; a
+prova física com dump legal e PNG continua pendente.
