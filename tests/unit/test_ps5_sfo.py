@@ -127,6 +127,38 @@ def test_read_ps5_identity_rejects_symlinked_boot_entry(tmp_path: Path) -> None:
     assert diagnosis == "ps5-non-boot-entry"
 
 
+def test_read_ps5_identity_rejects_symlinked_sce_sys_directory(tmp_path: Path) -> None:
+    dump = tmp_path / "Game"
+    dump.mkdir()
+    external = tmp_path / "external-sce-sys"
+    external.mkdir()
+    (external / "param.sfo").write_bytes(_sfo({"TITLE_ID": "PPSA12345_00", "TITLE": "External"}))
+    (dump / "sce_sys").symlink_to(external, target_is_directory=True)
+    executable = dump / "eboot.bin"
+    executable.write_bytes(b"ELF")
+
+    identity, diagnosis = read_ps5_identity(executable)
+
+    assert identity is None
+    assert diagnosis == "ps5-param-sfo-path-symlink"
+
+
+def test_read_ps5_identity_rejects_symlinked_dump_ancestor(tmp_path: Path) -> None:
+    external = tmp_path / "external-dump"
+    (external / "sce_sys").mkdir(parents=True)
+    (external / "sce_sys" / "param.sfo").write_bytes(
+        _sfo({"TITLE_ID": "PPSA12345_00", "TITLE": "External"})
+    )
+    linked_dump = tmp_path / "linked-dump"
+    linked_dump.symlink_to(external, target_is_directory=True)
+    executable = linked_dump / "eboot.bin"
+
+    identity, diagnosis = read_ps5_identity(executable)
+
+    assert identity is None
+    assert diagnosis == "ps5-dump-path-symlink"
+
+
 @pytest.mark.parametrize(
     ("values", "expected"),
     [
