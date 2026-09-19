@@ -50,7 +50,15 @@ def detect_format(name: str, formats: Mapping[str, Sequence[str]] | None = None)
     return "unknown"
 
 
-_ARCHIVE_EXTS = frozenset({".zip", ".7z"})
+_ARCHIVE_SUFFIXES = frozenset({".zip", ".7z", ".tar.gz"})
+
+
+def _archive_suffix(name: str) -> str | None:
+    lowered = name.casefold()
+    for suffix in sorted(_ARCHIVE_SUFFIXES, key=len, reverse=True):
+        if lowered.endswith(suffix):
+            return suffix
+    return None
 
 # `containerPolicy` do manifesto: `native` = o container roda direto no
 # emulador; `extract` = o conteúdo precisa ser extraído antes do lançamento.
@@ -124,6 +132,7 @@ def classify_rom(
     container_policies: Mapping[str, str] | None = None,
 ) -> tuple[str | None, str, str]:
     ext = Path(name).suffix.lower()
+    archive_suffix = _archive_suffix(name)
 
     if root_platform in {"playstation-5", "ps5"}:
         lowered = Path(name).name.casefold()
@@ -131,10 +140,10 @@ def classify_rom(
             return None, "unknown", "ps5-pkg-unresolved"
         if ext == ".bin" and lowered != "eboot.bin":
             return None, "unknown", "ps5-auxiliary-bin"
-        if ext not in {".bin", ".elf"}:
+        if ext not in {".bin", ".elf"} and archive_suffix is None:
             return None, "unknown", "ps5-unsupported-entry"
 
-    if ext in _ARCHIVE_EXTS:
+    if archive_suffix is not None:
         # A lista de extensões comprimidas era um veto fixo: qualquer .zip/.7z
         # saía do catálogo antes de qualquer pergunta. Mas 45 dos 63 manifestos
         # declaram `zip` entre as extensões da plataforma, e 22 declaram
