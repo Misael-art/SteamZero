@@ -11276,3 +11276,16 @@ Ruff, formatação, mypy, independência, fronteiras, component-lock e
 capability-matrix passaram. Nenhuma instalação, publicação, reinício ou
 mutação de host foi executada; a prova física com dump legal e PNG continua
 pendente.
+
+## 2026-09-19 — origem PS5 apresentada no card
+
+O card de emulação agora consome `sourceIdentity` para mostrar o tipo da
+origem (local, removível ou rede) e apenas o caminho relativo do entrypoint.
+Assim, o usuário recebe contexto para recuperar um dump sem expor ou usar o
+caminho absoluto como identidade.
+
+Prova: `test_qml_handheld_offscreen.py -k check_emulation` passou com origem
+removível e caminho relativo; a suíte integral fechou com 6.171 passed/47
+skipped, com a única falha inicial sendo o digest amplo do item de auditoria
+QML, corrigido e validado por `test_project_status` (10 passed). Nenhuma
+instalação ou mutação de host foi executada; a prova física continua pendente.

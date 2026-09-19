@@ -172,6 +172,9 @@ O card do jogo deve mostrar:
 - origem e estado do conteúdo;
 - ação concreta para corrigir o bloqueio.
 
+Para PS5, a origem exibida usa somente `sourceIdentity.sourceKind` e
+`sourceIdentity.relativePath`; o caminho absoluto nunca é renderizado no card.
+
 Falhas de arte, rede, Vulkan, runtime, permissões ou conteúdo não podem produzir
 tela vazia. A ausência de `param.sfo` ou de metadados não deve destruir a
 identidade já encontrada; deve reduzir a confiança e explicar a pendência.
