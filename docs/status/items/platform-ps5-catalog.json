@@ -22,7 +22,7 @@
     "tests/unit/test_ps5_sfo.py",
     "tests/unit/test_sharpemu_tarball.py"
   ],
-  "scopeDigest": "b3dca9db64fb115c97033f1850c8d93453bb3b5adaa5fe22dd5e5eb88d36c487",
+  "scopeDigest": "02c0402e47ce17820b348128a193dc3f222b556d7014b90b9b3a7b8203348ddf",
   "dependsOn": [
     "SZ-AGG-PLATFORM-MANIFESTS",
     "SZ-COMPONENT-LIFECYCLE",
@@ -72,5 +72,5 @@
     "WS-2026-09-PS5-SHARPEMU"
   ],
   "updatedAt": "2026-09-18",
-  "notes": "Implementação parcial em branch própria: SharpEmu possui manifesto, lockfile, plataforma, perfil DualSense, catálogo canônico, extração segura tar.gz, parser PS5 param.sfo/Title ID endurecido contra tabelas sobrepostas, comprimentos inválidos e tipos não-string, e classificação ps5dir que não expõe módulos PRX, binários auxiliares ou PKG como jogo. O SharpEmu permanece experimental; não há instalação no host nem promoção verified-hw."
+  "notes": "Implementação parcial em branch própria: SharpEmu possui manifesto, lockfile, plataforma, perfil DualSense, catálogo canônico, extração segura tar.gz, parser PS5 param.sfo/Title ID endurecido contra tabelas sobrepostas, comprimentos inválidos e tipos não-string, e classificação ps5dir que não expõe módulos PRX, binários auxiliares ou PKG como jogo. Containers de dump zip/7z/tar.gz permanecem explicitamente em needs-extraction. O SharpEmu permanece experimental; não há instalação no host nem promoção verified-hw."
 }
