@@ -5,6 +5,7 @@
 from steamzero.adapters.ps5_compatibility import (
     Ps5CompatibilityCatalog,
     Ps5CompatibilityRecord,
+    _ps5_source_namespace,
     build_ps5_source_identity,
     bundled_ps5_compatibility,
     resolve_ps5_compatibility,
@@ -120,3 +121,11 @@ def test_source_identity_uses_relative_path_and_entrypoint_hash_not_absolute_pat
     changed = build_ps5_source_identity(eboot, root, title_id="PPSA12345_00")
     assert changed["stableId"] != first["stableId"]
     assert changed["entrypointSha256"] != first["entrypointSha256"]
+
+
+def test_unobserved_source_namespace_never_uses_absolute_path(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    first = _ps5_source_namespace(tmp_path / "missing-a", "removable")
+    second = _ps5_source_namespace(tmp_path / "missing-b", "removable")
+
+    assert first == second
+    assert str(tmp_path) not in first

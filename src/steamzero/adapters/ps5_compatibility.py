@@ -38,8 +38,9 @@ def _ps5_source_namespace(root: Path, source_kind: str) -> str:
         token = f"{source_kind}\0{observed.st_dev}\0{observed.st_ino}"
     except OSError:
         # O inventário só chama isto para uma origem existente; este fallback
-        # mantém a falha explícita sem vazar o caminho absoluto para a UI.
-        token = f"{source_kind}\0path\0{root.as_posix()}"
+        # mantém a falha explícita sem transformar o caminho absoluto em
+        # identidade, nem mesmo sob a forma de hash.
+        token = f"{source_kind}\0unknown-namespace"
     return hashlib.sha256(token.encode("utf-8")).hexdigest()[:24]
 
 
