@@ -11289,3 +11289,14 @@ removível e caminho relativo; a suíte integral fechou com 6.171 passed/47
 skipped, com a única falha inicial sendo o digest amplo do item de auditoria
 QML, corrigido e validado por `test_project_status` (10 passed). Nenhuma
 instalação ou mutação de host foi executada; a prova física continua pendente.
+
+## 2026-09-19 — relações base/update/DLC PS5
+
+O inventário PS5 agora tem prova vertical para diretórios `updates` e `dlc`:
+quando a associação nominal é única, o conteúdo é contado na base sem criar
+cards duplicados; a fonte continua somente leitura e conteúdo sem base segue
+fora dos jogos lançáveis.
+
+Prova focada: `test_library_scan_ps5_associates_update_and_dlc_without_duplicate_games`
+passou. O fechamento físico continua dependente de SharpEmu instalado, dump
+legal e captura PNG.

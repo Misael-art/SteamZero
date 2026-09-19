@@ -225,6 +225,10 @@ relativo, tamanho e SHA-256 do entrypoint. O `id` não depende do caminho
 absoluto nem do timestamp; falha de hash degrada a identidade sem apagar a
 origem.
 
+Diretórios `updates` e `dlc` são classificados como conteúdo auxiliar e só
+entram na base quando a associação nominal é única; sem base correspondente,
+permanecem fora dos jogos lançáveis e contam como conteúdo não associado.
+
 ### Onda PS5-4 — preflight e launch/return
 
 Integrar seleção de executável, validação Vulkan, sessão gerenciada, captura de
