@@ -22,7 +22,7 @@
     "tests/unit/test_ps5_sfo.py",
     "tests/unit/test_sharpemu_tarball.py"
   ],
-  "scopeDigest": "02c0402e47ce17820b348128a193dc3f222b556d7014b90b9b3a7b8203348ddf",
+  "scopeDigest": "54c510461786c2488cce8d140e687030669f7bc0d79fe91130d3d7e481cfd8f7",
   "dependsOn": [
     "SZ-AGG-PLATFORM-MANIFESTS",
     "SZ-COMPONENT-LIFECYCLE",
@@ -65,12 +65,18 @@
       "reference": "tests/integration/test_adapters.py",
       "command": "run_tests_isolated.py PS5, adapter, conformance, manifest, capability and catalog tests",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_platform_ps5_catalog.py",
+      "command": "pytest focused: ELF sem identidade PS5 permanece ps5-elf-unresolved, sem promoção por extensão",
+      "result": "passed"
     }
   ],
   "nextAction": "Executar a prova física autorizada com um dump legal PS5, Vulkan funcional e captura PNG; manter compatibilidade por build sem promover verified-hw.",
   "activeWorkstreams": [
     "WS-2026-09-PS5-SHARPEMU"
   ],
-  "updatedAt": "2026-09-18",
-  "notes": "Implementação parcial em branch própria: SharpEmu possui manifesto, lockfile, plataforma, perfil DualSense, catálogo canônico, extração segura tar.gz, parser PS5 param.sfo/Title ID endurecido contra tabelas sobrepostas, comprimentos inválidos e tipos não-string, e classificação ps5dir que não expõe módulos PRX, binários auxiliares ou PKG como jogo. Containers de dump zip/7z/tar.gz permanecem explicitamente em needs-extraction. O SharpEmu permanece experimental; não há instalação no host nem promoção verified-hw."
+  "updatedAt": "2026-09-19",
+  "notes": "Implementação parcial em branch própria: SharpEmu possui manifesto, lockfile, plataforma, perfil DualSense, catálogo canônico, extração segura tar.gz, parser PS5 param.sfo/Title ID endurecido contra tabelas sobrepostas, comprimentos inválidos e tipos não-string, e classificação ps5dir que não expõe módulos PRX, binários auxiliares ou PKG como jogo. ELF genérico sem identidade PS5 permanece explicitamente ps5-elf-unresolved e não é promovido por extensão. Containers de dump zip/7z/tar.gz permanecem explicitamente em needs-extraction. O SharpEmu permanece experimental; não há instalação no host nem promoção verified-hw."
 }

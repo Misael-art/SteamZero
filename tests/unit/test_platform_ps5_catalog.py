@@ -53,6 +53,11 @@ def test_ps5_scanner_accepts_only_executable_entries() -> None:
     assert scanner.classify("package.pkg", {"package.pkg"}, root_platform="playstation-5")[2] == (
         "ps5-pkg-unresolved"
     )
+    assert scanner.classify("game.elf", {"game.elf"}, root_platform="playstation-5") == (
+        None,
+        "unknown",
+        "ps5-elf-unresolved",
+    )
     assert scanner.classify("dump.zip", {"dump.zip"}, root_platform="playstation-5") == (
         None,
         "unknown",

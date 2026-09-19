@@ -141,7 +141,13 @@ def classify_rom(
             return None, "unknown", "ps5-pkg-unresolved"
         if ext == ".bin" and lowered != "eboot.bin":
             return None, "unknown", "ps5-auxiliary-bin"
-        if ext not in {".bin", ".elf"} and archive_suffix is None:
+        if ext == ".elf":
+            # Um ELF genérico não prova que é um executável PS5. O formato
+            # alternativo só pode entrar no catálogo depois de uma identidade
+            # PS5 observável; promover por extensão fabricaria jogos a partir
+            # de ferramentas, módulos ou dumps de outra plataforma.
+            return None, "unknown", "ps5-elf-unresolved"
+        if ext != ".bin" and archive_suffix is None:
             return None, "unknown", "ps5-unsupported-entry"
 
     if archive_suffix is not None:
