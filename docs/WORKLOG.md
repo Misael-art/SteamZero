@@ -11336,3 +11336,13 @@ produzindo falhas de IPC e de custódia transacional em testes gerais. O
 diretório temporário criado para essa tentativa foi removido. A cobertura PS5
 focada e o harness QML continuam sendo a evidência válida desta branch; não há
 defeito PS5 deduzido desses erros de infraestrutura.
+
+## 2026-09-19 — suíte integral concluída em runtime compatível
+
+Com `TMPDIR=/tmp`, cujo tmpfs oferece espaço suficiente e preserva o contrato
+de runtime privado, `make VENV=/mnt/sdcard/Projects/Port_Steam/.venv test`
+terminou com exit 0 após coletar 6.221 testes, sem falhas reportadas. Os gates
+Ruff, formatação, mypy, independência, fronteiras, component-lock,
+capability-matrix e `STATUS-CHECK` também passaram novamente. Nenhum arquivo de
+código foi alterado nesta validação; a diferença entre as tentativas foi apenas
+o runtime temporário compatível.
