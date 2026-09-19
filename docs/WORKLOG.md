@@ -11300,3 +11300,14 @@ fora dos jogos lançáveis.
 Prova focada: `test_library_scan_ps5_associates_update_and_dlc_without_duplicate_games`
 passou. O fechamento físico continua dependente de SharpEmu instalado, dump
 legal e captura PNG.
+
+## 2026-09-19 — fallback de namespace PS5 sem caminho
+
+O fallback de observação da origem foi endurecido: quando `stat(root)` falha,
+o namespace passa a ser `unknown-namespace`, sem derivar identidade sequer de
+um hash do caminho absoluto.
+
+Prova focada: `test_unobserved_source_namespace_never_uses_absolute_path` passou;
+a suíte integral fechou com 6.173 passed/47 skipped e a única falha foi o
+digest do próprio item PS5, corrigido e validado por `test_project_status` (10
+passed). Nenhuma mutação de host foi executada.

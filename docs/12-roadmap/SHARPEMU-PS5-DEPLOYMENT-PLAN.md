@@ -224,6 +224,8 @@ Para preservar a origem entre remontagens, cada entrypoint PS5 também publica
 relativo, tamanho e SHA-256 do entrypoint. O `id` não depende do caminho
 absoluto nem do timestamp; falha de hash degrada a identidade sem apagar a
 origem.
+Se o namespace do volume não puder ser observado, a identidade degrada para
+`unknown-namespace` e não deriva nenhum token do caminho absoluto.
 
 Diretórios `updates` e `dlc` são classificados como conteúdo auxiliar e só
 entram na base quando a associação nominal é única; sem base correspondente,
