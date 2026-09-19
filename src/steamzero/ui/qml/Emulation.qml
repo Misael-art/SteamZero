@@ -545,7 +545,9 @@ Item {
     function compatibilityLabel(state) {
         const labels = {
             "perfect": qsTr("Perfeito"), "compatible": qsTr("Perfeito"),
-            "playable": qsTr("Jogável"), "broken": qsTr("Quebrado"),
+            "playable": qsTr("Jogável"), "nothing": qsTr("Nada"),
+            "boots": qsTr("Inicializa"), "menus": qsTr("Menus"),
+            "ingame": qsTr("Em jogo"), "broken": qsTr("Quebrado"),
             "failed": qsTr("Quebrado"), "unknown": qsTr("Não avaliado")
         }
         return labels[state] || qsTr("Não avaliado")
@@ -557,6 +559,8 @@ Item {
         let detail = emulatorName + ": " + compatibilityLabel(compatibilityState(game, emulatorId))
         if (value && value.build)
             detail += qsTr(" • build %1").arg(String(value.build))
+        if (value && value.testedBuild && value.testedBuild !== value.build)
+            detail += qsTr(" • teste %1").arg(String(value.testedBuild))
         if (value && value.reason)
             detail += qsTr(" • %1").arg(String(value.reason))
         return detail

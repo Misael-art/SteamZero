@@ -1473,12 +1473,15 @@ def test_ps5_catalog_publishes_explicit_unverified_compatibility_build(
         ]
     )
 
-    assert rows[0]["compatibility"] == {
-        "sharpemu": {
-            "state": "unknown",
-            "build": "0.0.3-release.4",
-            "reason": "Compatibilidade por título/build ainda não publicada.",
-        }
+    assert rows[0]["compatibility"]["sharpemu"] == {
+        "state": "unknown",
+        "build": "0.0.3-release.4",
+        "testedBuild": None,
+        "testedOs": None,
+        "testedDate": None,
+        "gameVersion": None,
+        "source": "https://sharpemu.app/compatibility/",
+        "reason": "Title ID PS5 ausente; compatibilidade não pode ser consultada.",
     }
     assert "compatibility" not in rows[1]
 

@@ -13,6 +13,7 @@ import shutil
 import signal
 import sqlite3
 import subprocess
+import sys
 import threading
 import time
 from collections.abc import Callable, Mapping, Sequence
@@ -56,6 +57,7 @@ from steamzero.adapters.mods.ns_emu_mod_downloader import NsEmuModDownloaderSour
 from steamzero.adapters.mods.semd_source import SemdSource
 from steamzero.adapters.mods.state_store_mods import StateStoreModsAdapter
 from steamzero.adapters.preservation import PreservationService, PreservationTarget
+from steamzero.adapters.ps5_compatibility import resolve_ps5_compatibility
 from steamzero.adapters.ps5_runtime import Ps5RuntimeReadiness, check_ps5_runtime
 from steamzero.adapters.registry import AdapterRegistry
 from steamzero.adapters.resource_probe import parse_stat as parse_proc_stat
@@ -852,10 +854,9 @@ class EmulationController:
     ) -> list[dict[str, Any]]:
         """Publica compatibilidade PS5 como estado explícito, nunca como palpite.
 
-        A fonte oficial de compatibilidade por título/build ainda não está
-        integrada. O card precisa dizer isso por jogo e preservar a build
-        observada do runtime quando houver uma, em vez de deixar a UI inferir
-        um estado vazio ou anunciar sucesso.
+        O snapshot público é consultado apenas para combinações exatas de
+        Title ID, build e sistema operacional. O card preserva a build
+        observada e a causa quando o relatório não pode ser promovido.
         """
         published: list[dict[str, Any]] = []
         for raw_game in games:
@@ -864,14 +865,22 @@ class EmulationController:
             if platform_id == "playstation-5":
                 compatibility = game.get("compatibility")
                 values = dict(compatibility) if isinstance(compatibility, Mapping) else {}
-                build = self._emulator_versions.get("sharpemu")
+                versions = getattr(self, "_emulator_versions", {})
+                build = versions.get("sharpemu")
+                runtime_os = (
+                    "linux"
+                    if sys.platform.startswith("linux")
+                    else "macos"
+                    if sys.platform == "darwin"
+                    else "windows"
+                )
                 values.setdefault(
                     "sharpemu",
-                    {
-                        "state": "unknown",
-                        "build": build if build and build != "unknown" else None,
-                        "reason": "Compatibilidade por título/build ainda não publicada.",
-                    },
+                    resolve_ps5_compatibility(
+                        str(game.get("titleId")) if game.get("titleId") else None,
+                        build,
+                        runtime_os=runtime_os,
+                    ),
                 )
                 game["compatibility"] = values
             published.append(game)

@@ -644,6 +644,8 @@ Window {
         object.selectedGame.compatibility = {"eden": {"state": "unknown", "build": "0.0.3", "reason": "não publicada"}}
         check(object.compatibilityDetail(object.selectedGame, "eden", "Eden").indexOf("0.0.3") >= 0,
               "compatibilidade deve publicar a build observada no detalhe")
+        check(object.compatibilityLabel("menus") === "Menus",
+              "compatibilidade deve preservar os estados oficiais do SharpEmu")
         check(object.gamePlayAction(object.selectedGame).enabled === true,
               "Jogar deve consumir a ação publicada pelo backend")
         object.pendingEmulatorGameId = object.selectedGame.id
