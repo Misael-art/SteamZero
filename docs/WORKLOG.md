@@ -11311,3 +11311,20 @@ Prova focada: `test_unobserved_source_namespace_never_uses_absolute_path` passou
 a suíte integral fechou com 6.173 passed/47 skipped e a única falha foi o
 digest do próprio item PS5, corrigido e validado por `test_project_status` (10
 passed). Nenhuma mutação de host foi executada.
+
+## 2026-09-19 — fechamento de gates e limite de infraestrutura
+
+Os gates estáticos da branch `codex/platform-ps5-sharpemu-mainline` passaram:
+Ruff, formatação, mypy, independência, fronteiras, component-lock,
+capability-matrix e `STATUS-CHECK`. A suíte integral foi executada com 6.221
+testes coletados, mas terminou inconclusiva por `OSError: [Errno 28] No space
+left on device` durante capturas QML em temporários do harness; os `F/E`
+subsequentes são efeitos dessa falha de infraestrutura, não falhas de contrato
+PS5. A cobertura focada posterior passou com `27 passed, 6 deselected` nos
+testes PS5/escopo/storage e `1 passed, 47 deselected` no harness real
+`check_emulation.qml`.
+
+Nenhuma instalação, publicação, reinício, rollback ou mutação de host foi
+executada. O host continua com `2.0.0rc1-f98a1a12a46b`, SharpEmu ausente e a
+prova física com dump legal, hardware compatível e PNG permanece pendente como
+`HARD-EXTERNAL-SUBITEM`; não resta ação local segura adicional nesta frente.
