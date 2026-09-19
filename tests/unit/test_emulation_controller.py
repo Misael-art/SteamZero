@@ -1460,6 +1460,29 @@ def test_ps5_launch_preflight_refuses_without_runtime_readiness(
         controller._launch_preflight("ps5-game")  # type: ignore[attr-defined]
 
 
+def test_ps5_catalog_publishes_explicit_unverified_compatibility_build(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    controller._emulator_versions = {"sharpemu": "0.0.3-release.4"}  # type: ignore[attr-defined]
+
+    rows = controller._publish_ps5_compatibility(  # type: ignore[attr-defined]
+        [
+            {"id": "ps5-game", "platform": "playstation-5", "name": "Demo PS5"},
+            {"id": "switch-game", "platform": "switch", "name": "Demo Switch"},
+        ]
+    )
+
+    assert rows[0]["compatibility"] == {
+        "sharpemu": {
+            "state": "unknown",
+            "build": "0.0.3-release.4",
+            "reason": "Compatibilidade por título/build ainda não publicada.",
+        }
+    }
+    assert "compatibility" not in rows[1]
+
+
 def test_runtime_prepare_mutes_interactive_update_checks(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     home = tmp_path / "home"
     monkeypatch.setattr(Path, "home", classmethod(lambda _cls: home))

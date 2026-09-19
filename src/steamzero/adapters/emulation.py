@@ -683,6 +683,7 @@ class EmulationController:
         switch_games = self._enrich_controls(switch_games)
         enriched_by_id = {str(game.get("id")): game for game in switch_games}
         games = [enriched_by_id.get(str(game.get("id")), dict(game)) for game in raw_games]
+        games = self._publish_ps5_compatibility(games)
         content = self._content.list_records()
         integrity = self._content.integrity_report()
         physical_dock = self._physical_dock(desktop_status)
@@ -845,6 +846,36 @@ class EmulationController:
         workspace["jobs"] = self.list_jobs()
         contracts.validate(workspace, "emulation-workspace-v1.schema.json")
         return workspace
+
+    def _publish_ps5_compatibility(
+        self, games: Sequence[Mapping[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Publica compatibilidade PS5 como estado explícito, nunca como palpite.
+
+        A fonte oficial de compatibilidade por título/build ainda não está
+        integrada. O card precisa dizer isso por jogo e preservar a build
+        observada do runtime quando houver uma, em vez de deixar a UI inferir
+        um estado vazio ou anunciar sucesso.
+        """
+        published: list[dict[str, Any]] = []
+        for raw_game in games:
+            game = dict(raw_game)
+            platform_id = str(game.get("platformId") or game.get("platform") or "")
+            if platform_id == "playstation-5":
+                compatibility = game.get("compatibility")
+                values = dict(compatibility) if isinstance(compatibility, Mapping) else {}
+                build = self._emulator_versions.get("sharpemu")
+                values.setdefault(
+                    "sharpemu",
+                    {
+                        "state": "unknown",
+                        "build": build if build and build != "unknown" else None,
+                        "reason": "Compatibilidade por título/build ainda não publicada.",
+                    },
+                )
+                game["compatibility"] = values
+            published.append(game)
+        return published
 
     def _platform_facts_provider(self, registry: AdapterRegistry) -> Callable[[str], EmulatorFacts]:
         """Fatos reais de cada adapter, para o composer de plataforma.

@@ -551,6 +551,17 @@ Item {
         return labels[state] || qsTr("Não avaliado")
     }
 
+    function compatibilityDetail(game, emulatorId, emulatorName) {
+        const compatibility = game && game.compatibility ? game.compatibility : {}
+        const value = compatibility[emulatorId]
+        let detail = emulatorName + ": " + compatibilityLabel(compatibilityState(game, emulatorId))
+        if (value && value.build)
+            detail += qsTr(" • build %1").arg(String(value.build))
+        if (value && value.reason)
+            detail += qsTr(" • %1").arg(String(value.reason))
+        return detail
+    }
+
     function compatibilityColor(state) {
         if (state === "perfect" || state === "compatible")
             return greenColor
@@ -2849,8 +2860,8 @@ Item {
                                                         font.bold: true
                                                     }
                                                     ToolTip.visible: compatibilityHover.hovered
-                                                    ToolTip.text: modelData.name + ": "
-                                                        + page.compatibilityLabel(parent.compatibility)
+                                                    ToolTip.text: page.compatibilityDetail(
+                                                        gameRow.modelData, modelData.id, modelData.name)
                                                     HoverHandler { id: compatibilityHover }
                                                 }
                                             }
