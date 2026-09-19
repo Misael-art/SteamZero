@@ -18,11 +18,12 @@
     "src/steamzero/adapters/discovery/ps5_sfo.py",
     "src/steamzero/ui/assets/playstation-5.svg",
     "src/steamzero/ui/assets/sharpemu.svg",
+    "docs/09-operations/evidence/2026-09-19-ps5-host-baseline",
     "tests/unit/test_platform_ps5_catalog.py",
     "tests/unit/test_ps5_sfo.py",
     "tests/unit/test_sharpemu_tarball.py"
   ],
-  "scopeDigest": "54c510461786c2488cce8d140e687030669f7bc0d79fe91130d3d7e481cfd8f7",
+  "scopeDigest": "2e4fed72fecbfc8e17f0e49e066d3f2d8c11b7f90088fcc96c3d270dab949175",
   "dependsOn": [
     "SZ-AGG-PLATFORM-MANIFESTS",
     "SZ-COMPONENT-LIFECYCLE",

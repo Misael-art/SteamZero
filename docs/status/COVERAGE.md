@@ -67,7 +67,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-PLATFORM-CORE-PER-SYSTEM | 78 | 4 | 3 | unit |  |
 | SZ-PLATFORM-PS4-CATALOG | 6 | 3 | 3 | unit |  |
 | SZ-PLATFORM-PS4-PHYSICAL-INSTALL | 8 | 3 | 2 | dev |  |
-| SZ-PLATFORM-PS5-CATALOG | 11 | 6 | 4 | unit |  |
+| SZ-PLATFORM-PS5-CATALOG | 12 | 6 | 4 | unit |  |
 | SZ-PLATFORM-REQUIREMENT-SCOPE | 7 | 3 | 2 | unit |  |
 | SZ-PLATFORM-VITA-CATALOG | 5 | 5 | 4 | unit |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
