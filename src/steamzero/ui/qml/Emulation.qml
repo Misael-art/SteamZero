@@ -566,6 +566,12 @@ Item {
         return detail
     }
 
+    function contentDetail(game) {
+        if (!game || !game.contentState || game.contentState === "complete")
+            return ""
+        return game.contentReason || qsTr("Conteúdo PS5 requer revisão")
+    }
+
     function compatibilityColor(state) {
         if (state === "perfect" || state === "compatible")
             return greenColor
@@ -2636,7 +2642,15 @@ Item {
                                                     === false
                                                     ? page.amberColor : page.mutedColor
                                                 font.pixelSize: 11
-                                                elide: Text.ElideRight
+                                            elide: Text.ElideRight
+                                            Layout.fillWidth: true
+                                            }
+                                            Label {
+                                                visible: page.contentDetail(compactGameCard.modelData) !== ""
+                                                text: page.contentDetail(compactGameCard.modelData)
+                                                color: page.amberColor
+                                                font.pixelSize: 10
+                                                wrapMode: Text.WordWrap
                                                 Layout.fillWidth: true
                                             }
                                             Label {
@@ -2839,6 +2853,14 @@ Item {
                                                 ? page.amberColor : page.mutedColor
                                             font.pixelSize: 11
                                             elide: Text.ElideRight
+                                            Layout.fillWidth: true
+                                        }
+                                        Label {
+                                            visible: page.contentDetail(gameRow.modelData) !== ""
+                                            text: page.contentDetail(gameRow.modelData)
+                                            color: page.amberColor
+                                            font.pixelSize: 10
+                                            wrapMode: Text.WordWrap
                                             Layout.fillWidth: true
                                         }
                                         RowLayout {

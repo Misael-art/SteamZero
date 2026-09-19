@@ -1486,6 +1486,44 @@ def test_ps5_catalog_publishes_explicit_unverified_compatibility_build(
     assert "compatibility" not in rows[1]
 
 
+def test_ps5_catalog_publishes_recoverable_content_state(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    eboot = tmp_path / "roms" / "ps5" / "Demo" / "eboot.bin"
+    eboot.parent.mkdir(parents=True)
+    eboot.write_bytes(b"ELF")
+
+    rows = controller._publish_ps5_content_state(  # type: ignore[attr-defined]
+        [
+            {
+                "id": "complete",
+                "platform": "playstation-5",
+                "path": str(eboot),
+                "identityVerified": True,
+                "identityDiagnosis": "ps5-param-sfo",
+            },
+            {
+                "id": "incomplete",
+                "platform": "playstation-5",
+                "path": str(eboot),
+                "identityVerified": False,
+                "identityDiagnosis": "ps5-param-sfo-missing",
+            },
+            {
+                "id": "missing",
+                "platform": "playstation-5",
+                "path": str(tmp_path / "gone" / "eboot.bin"),
+            },
+        ]
+    )
+
+    assert rows[0]["contentState"] == "complete"
+    assert rows[1]["contentState"] == "content-incomplete"
+    assert rows[1]["contentAvailability"] == "degraded"
+    assert rows[2]["contentState"] == "source-missing"
+    assert rows[2]["contentAvailability"] == "missing"
+    assert "Origem ausente" in rows[2]["statusLabel"]
+
+
 def test_runtime_prepare_mutes_interactive_update_checks(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     home = tmp_path / "home"
     monkeypatch.setattr(Path, "home", classmethod(lambda _cls: home))

@@ -57,7 +57,10 @@ from steamzero.adapters.mods.ns_emu_mod_downloader import NsEmuModDownloaderSour
 from steamzero.adapters.mods.semd_source import SemdSource
 from steamzero.adapters.mods.state_store_mods import StateStoreModsAdapter
 from steamzero.adapters.preservation import PreservationService, PreservationTarget
-from steamzero.adapters.ps5_compatibility import resolve_ps5_compatibility
+from steamzero.adapters.ps5_compatibility import (
+    resolve_ps5_compatibility,
+    resolve_ps5_content_status,
+)
 from steamzero.adapters.ps5_runtime import Ps5RuntimeReadiness, check_ps5_runtime
 from steamzero.adapters.registry import AdapterRegistry
 from steamzero.adapters.resource_probe import parse_stat as parse_proc_stat
@@ -685,6 +688,7 @@ class EmulationController:
         switch_games = self._enrich_controls(switch_games)
         enriched_by_id = {str(game.get("id")): game for game in switch_games}
         games = [enriched_by_id.get(str(game.get("id")), dict(game)) for game in raw_games]
+        games = self._publish_ps5_content_state(games)
         games = self._publish_ps5_compatibility(games)
         content = self._content.list_records()
         integrity = self._content.integrity_report()
@@ -883,6 +887,40 @@ class EmulationController:
                     ),
                 )
                 game["compatibility"] = values
+            published.append(game)
+        return published
+
+    def _publish_ps5_content_state(
+        self, games: Sequence[Mapping[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Publica origem e completude do dump PS5 sem mudar o estado legado."""
+        published: list[dict[str, Any]] = []
+        for raw_game in games:
+            game = dict(raw_game)
+            platform_id = str(game.get("platformId") or game.get("platform") or "")
+            if platform_id == "playstation-5":
+                content = resolve_ps5_content_status(
+                    str(game.get("path")) if game.get("path") else None,
+                    identity_verified=game.get("identityVerified") is True,
+                    identity_diagnosis=(
+                        str(game.get("identityDiagnosis"))
+                        if game.get("identityDiagnosis")
+                        else None
+                    ),
+                )
+                game.update(content)
+                label = (
+                    "Origem ausente"
+                    if content["contentState"] == "source-missing"
+                    else (
+                        "Conteúdo incompleto"
+                        if content["contentState"] == "content-incomplete"
+                        else "Conteúdo identificado"
+                    )
+                )
+                status_label = str(game.get("statusLabel") or "PS5")
+                if label not in status_label:
+                    game["statusLabel"] = f"{status_label} · {label}"
             published.append(game)
         return published
 

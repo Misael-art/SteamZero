@@ -7,6 +7,7 @@ from steamzero.adapters.ps5_compatibility import (
     Ps5CompatibilityRecord,
     bundled_ps5_compatibility,
     resolve_ps5_compatibility,
+    resolve_ps5_content_status,
 )
 
 
@@ -64,3 +65,25 @@ def test_resolution_explains_missing_title_id() -> None:
     assert result["state"] == "unknown"
     assert result["build"] == "0.0.3-release.4"
     assert "Title ID PS5 ausente" in result["reason"]
+
+
+def test_content_status_distinguishes_missing_source_and_incomplete_dump(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    eboot = tmp_path / "eboot.bin"
+    eboot.write_bytes(b"ELF")
+
+    complete = resolve_ps5_content_status(
+        str(eboot), identity_verified=True, identity_diagnosis="ps5-param-sfo"
+    )
+    assert complete["contentState"] == "complete"
+
+    incomplete = resolve_ps5_content_status(
+        str(eboot), identity_verified=False, identity_diagnosis="ps5-param-sfo-missing"
+    )
+    assert incomplete["contentState"] == "content-incomplete"
+    assert "param-sfo-missing" in incomplete["contentReason"]
+
+    missing = resolve_ps5_content_status(
+        str(tmp_path / "gone"), identity_verified=False, identity_diagnosis=None
+    )
+    assert missing["contentState"] == "source-missing"
+    assert missing["contentAvailability"] == "missing"

@@ -646,6 +646,10 @@ Window {
               "compatibilidade deve publicar a build observada no detalhe")
         check(object.compatibilityLabel("menus") === "Menus",
               "compatibilidade deve preservar os estados oficiais do SharpEmu")
+        object.selectedGame.contentState = "content-incomplete"
+        object.selectedGame.contentReason = "param.sfo ausente"
+        check(object.contentDetail(object.selectedGame).indexOf("param.sfo") >= 0,
+              "card PS5 deve explicar dump incompleto")
         check(object.gamePlayAction(object.selectedGame).enabled === true,
               "Jogar deve consumir a ação publicada pelo backend")
         object.pendingEmulatorGameId = object.selectedGame.id

@@ -9,6 +9,7 @@ import json
 import re
 from dataclasses import dataclass
 from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 from steamzero.domain.game_identity import IdentityScheme, validate_identity_value
@@ -168,3 +169,45 @@ def resolve_ps5_compatibility(
             f"em {record.tested_date}."
         )
     return result
+
+
+def resolve_ps5_content_status(
+    path: str | None,
+    *,
+    identity_verified: bool,
+    identity_diagnosis: str | None,
+) -> dict[str, str]:
+    """Classifica a disponibilidade do dump sem promover conteúdo incompleto.
+
+    ``state`` do workspace continua compatível com consumidores existentes;
+    estes campos paralelos dão à UI uma causa específica e recuperável.
+    """
+    if not isinstance(path, str) or not path.strip():
+        return {
+            "contentState": "source-missing",
+            "contentAvailability": "missing",
+            "contentReason": "Origem PS5 ausente; reanexe a pasta do dump.",
+        }
+    source = Path(path)
+    try:
+        source_available = source.is_file() and not source.is_symlink()
+    except OSError:
+        source_available = False
+    if not source_available:
+        return {
+            "contentState": "source-missing",
+            "contentAvailability": "missing",
+            "contentReason": "Origem PS5 ausente; reanexe a pasta do dump.",
+        }
+    if identity_verified and identity_diagnosis == "ps5-param-sfo":
+        return {
+            "contentState": "complete",
+            "contentAvailability": "available",
+            "contentReason": "Dump PS5 identificado por param.sfo.",
+        }
+    diagnosis = identity_diagnosis or "ps5-identity-unverified"
+    return {
+        "contentState": "content-incomplete",
+        "contentAvailability": "degraded",
+        "contentReason": f"Dump PS5 incompleto; identidade pendente ({diagnosis}).",
+    }
