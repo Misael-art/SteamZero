@@ -95,6 +95,38 @@ def test_read_ps5_identity_rejects_symlinked_param_sfo(tmp_path: Path) -> None:
     assert diagnosis == "ps5-param-sfo-missing"
 
 
+def test_read_ps5_identity_ignores_auxiliary_entry(tmp_path: Path) -> None:
+    dump = tmp_path / "Game"
+    (dump / "sce_sys").mkdir(parents=True)
+    (dump / "sce_sys" / "param.sfo").write_bytes(
+        _sfo({"TITLE_ID": "PPSA12345_00", "TITLE": "Demo PS5"})
+    )
+    auxiliary = dump / "module.prx"
+    auxiliary.write_bytes(b"module")
+
+    identity, diagnosis = read_ps5_identity(auxiliary)
+
+    assert identity is None
+    assert diagnosis == "ps5-non-boot-entry"
+
+
+def test_read_ps5_identity_rejects_symlinked_boot_entry(tmp_path: Path) -> None:
+    dump = tmp_path / "Game"
+    (dump / "sce_sys").mkdir(parents=True)
+    (dump / "sce_sys" / "param.sfo").write_bytes(
+        _sfo({"TITLE_ID": "PPSA12345_00", "TITLE": "Demo PS5"})
+    )
+    real_boot = tmp_path / "real-eboot.bin"
+    real_boot.write_bytes(b"ELF")
+    executable = dump / "eboot.bin"
+    executable.symlink_to(real_boot)
+
+    identity, diagnosis = read_ps5_identity(executable)
+
+    assert identity is None
+    assert diagnosis == "ps5-non-boot-entry"
+
+
 @pytest.mark.parametrize(
     ("values", "expected"),
     [
