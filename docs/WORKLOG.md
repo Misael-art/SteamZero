@@ -11346,3 +11346,18 @@ Ruff, formatação, mypy, independência, fronteiras, component-lock,
 capability-matrix e `STATUS-CHECK` também passaram novamente. Nenhum arquivo de
 código foi alterado nesta validação; a diferença entre as tentativas foi apenas
 o runtime temporário compatível.
+
+## 2026-09-19 — auditoria final read-only do host PS5
+
+`release_host.py inspect` confirmou novamente a release ativa
+`2.0.0rc1-f98a1a12a46b`, proveniência/daemon/estado persistente íntegros e
+nenhum staging, backup, journal ou operação pendente. O inventário mantém
+`sharpemu` ausente; as divergências globais são apenas HEAD/host anteriores à
+última release tagueada. Não houve instalação, rollback, reboot ou mutação de
+host.
+
+Com todo o software PS5 implementado e os gates verdes, resta exclusivamente a
+validação física com autorização governada, SharpEmu presente, dump legal,
+hardware compatível e PNG. Esse subitem permanece
+`HARD-EXTERNAL-SUBITEM`; não há outra ação local segura pertencente a esta
+frente.
