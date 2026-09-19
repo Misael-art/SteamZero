@@ -60,6 +60,7 @@ def _archive_suffix(name: str) -> str | None:
             return suffix
     return None
 
+
 # `containerPolicy` do manifesto: `native` = o container roda direto no
 # emulador; `extract` = o conteúdo precisa ser extraído antes do lançamento.
 # A ausência não é um terceiro valor com semântica: é falta de declaração, e
