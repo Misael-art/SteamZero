@@ -11328,3 +11328,11 @@ Nenhuma instalação, publicação, reinício, rollback ou mutação de host foi
 executada. O host continua com `2.0.0rc1-f98a1a12a46b`, SharpEmu ausente e a
 prova física com dump legal, hardware compatível e PNG permanece pendente como
 `HARD-EXTERNAL-SUBITEM`; não resta ação local segura adicional nesta frente.
+
+Uma segunda tentativa da suíte integral usando `TMPDIR` em volume dedicado foi
+descartada como ambiente inválido: o volume não satisfaz o contrato de runtime
+seguro (`XDG runtime inseguro`) nem oferece `renameat2/RENAME_NOREPLACE`,
+produzindo falhas de IPC e de custódia transacional em testes gerais. O
+diretório temporário criado para essa tentativa foi removido. A cobertura PS5
+focada e o harness QML continuam sendo a evidência válida desta branch; não há
+defeito PS5 deduzido desses erros de infraestrutura.
