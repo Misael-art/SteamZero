@@ -83,9 +83,13 @@ def read_ps5_identity(executable: Path) -> tuple[GameIdentity | None, str]:
     if executable.name.casefold() != _BOOT_ENTRY or executable.is_symlink():
         return None, "ps5-non-boot-entry"
     for parent in executable.parents:
+        if parent.is_symlink():
+            return None, "ps5-dump-path-symlink"
         if executable.anchor and parent == Path(executable.anchor):
             break
         metadata = parent / "sce_sys" / "param.sfo"
+        if metadata.parent.is_symlink():
+            return None, "ps5-param-sfo-path-symlink"
         if not metadata.is_file() or metadata.is_symlink():
             continue
         try:
