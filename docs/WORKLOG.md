@@ -11259,3 +11259,20 @@ válido; o card QML mostra a orientação recuperável.
 Provas focadas: 7 testes PS5/controller, QML real, Ruff e formatação passaram.
 Nenhuma instalação, publicação, reinício ou mutação de host foi executada; a
 prova física com dump legal e PNG continua pendente.
+
+## 2026-09-19 — identidade resiliente de origem PS5
+
+Na branch `codex/platform-ps5-sharpemu-mainline`, a auditoria do plano PS5
+encontrou que o inventário ainda derivava o `id` do caminho absoluto. A correção
+passou a publicar `sourceIdentity` com namespace opaco de volume ou
+compartilhamento, caminho relativo, tamanho e SHA-256 do `eboot.bin`; mudanças
+de timestamp ou enriquecimento posterior do `param.sfo` não trocam o id, e a
+origem permanece intocada.
+
+Provas: 9 testes PS5/controller focados, 6.171 testes integrais e 47 skips
+documentados; o primeiro runner só falhou no catálogo de status por digests
+compartilhados obsoletos, corrigidos e validados por `test_project_status`.
+Ruff, formatação, mypy, independência, fronteiras, component-lock e
+capability-matrix passaram. Nenhuma instalação, publicação, reinício ou
+mutação de host foi executada; a prova física com dump legal e PNG continua
+pendente.

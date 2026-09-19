@@ -216,6 +216,12 @@ O inventário publica `contentState` explícito: `complete`,
 `content-incomplete` ou `source-missing`, preservando a causa recuperável no
 card sem transformar ausência de `param.sfo` em jogo pronto.
 
+Para preservar a origem entre remontagens, cada entrypoint PS5 também publica
+`sourceIdentity` com namespace opaco de volume/compartilhamento, caminho
+relativo, tamanho e SHA-256 do entrypoint. O `id` não depende do caminho
+absoluto nem do timestamp; falha de hash degrada a identidade sem apagar a
+origem.
+
 ### Onda PS5-4 — preflight e launch/return
 
 Integrar seleção de executável, validação Vulkan, sessão gerenciada, captura de

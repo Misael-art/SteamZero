@@ -25,7 +25,7 @@
     "src/steamzero/adapters/cheats",
     "docs/diagnostics/evidence/SZ-EMULATION-ENHANCEMENTS"
   ],
-  "scopeDigest": "0b98e4fdca5440a107ad4f0f491194e4b779d605afeb4223d05bd201d999e62c",
+  "scopeDigest": "4474b3aaac0a044b1585c1257e7faeee6958bd37a18887a1d0712e41d3160804",
   "dependsOn": [
     "SZ-EMULATION-M10"
   ],
