@@ -572,6 +572,22 @@ Item {
         return game.contentReason || qsTr("Conteúdo PS5 requer revisão")
     }
 
+    function sourceDetail(game) {
+        if (!game || (game.platformId !== "playstation-5" && game.platform !== "playstation-5"))
+            return ""
+        const source = game.sourceIdentity
+        if (!source)
+            return ""
+        const labels = {
+            "local": qsTr("Origem local"),
+            "removable": qsTr("Origem removível"),
+            "network": qsTr("Origem de rede")
+        }
+        const kind = labels[String(source.sourceKind)] || qsTr("Origem PS5")
+        const relativePath = source.relativePath ? String(source.relativePath) : ""
+        return relativePath !== "" ? kind + " • " + relativePath : kind
+    }
+
     function compatibilityColor(state) {
         if (state === "perfect" || state === "compatible")
             return greenColor
@@ -2654,6 +2670,14 @@ Item {
                                                 Layout.fillWidth: true
                                             }
                                             Label {
+                                                visible: page.sourceDetail(compactGameCard.modelData) !== ""
+                                                text: page.sourceDetail(compactGameCard.modelData)
+                                                color: page.mutedColor
+                                                font.pixelSize: 10
+                                                elide: Text.ElideMiddle
+                                                Layout.fillWidth: true
+                                            }
+                                            Label {
                                                 text: "%1 • %2".arg(
                                                     String(compactGameCard.modelData.format
                                                         || "—").toUpperCase()).arg(
@@ -2861,6 +2885,14 @@ Item {
                                             color: page.amberColor
                                             font.pixelSize: 10
                                             wrapMode: Text.WordWrap
+                                            Layout.fillWidth: true
+                                        }
+                                        Label {
+                                            visible: page.sourceDetail(gameRow.modelData) !== ""
+                                            text: page.sourceDetail(gameRow.modelData)
+                                            color: page.mutedColor
+                                            font.pixelSize: 10
+                                            elide: Text.ElideMiddle
                                             Layout.fillWidth: true
                                         }
                                         RowLayout {

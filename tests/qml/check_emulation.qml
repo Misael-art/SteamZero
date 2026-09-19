@@ -650,6 +650,15 @@ Window {
         object.selectedGame.contentReason = "param.sfo ausente"
         check(object.contentDetail(object.selectedGame).indexOf("param.sfo") >= 0,
               "card PS5 deve explicar dump incompleto")
+        object.selectedGame.platformId = "playstation-5"
+        object.selectedGame.sourceIdentity = {
+            "sourceKind": "removable",
+            "relativePath": "Demo/eboot.bin"
+        }
+        check(object.sourceDetail(object.selectedGame).indexOf("Origem removível") >= 0,
+              "card PS5 deve mostrar o tipo da origem")
+        check(object.sourceDetail(object.selectedGame).indexOf("Demo/eboot.bin") >= 0,
+              "card PS5 deve mostrar somente o caminho relativo da origem")
         check(object.gamePlayAction(object.selectedGame).enabled === true,
               "Jogar deve consumir a ação publicada pelo backend")
         object.pendingEmulatorGameId = object.selectedGame.id
