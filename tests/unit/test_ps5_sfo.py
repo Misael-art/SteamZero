@@ -45,6 +45,22 @@ def test_parse_sfo_returns_ps5_title_id() -> None:
     assert parsed.title_id == "PPSA12345_00"
 
 
+def test_parse_sfo_rejects_overlapping_tables_and_invalid_lengths() -> None:
+    overlapping = bytearray(_sfo({"TITLE_ID": "PPSA12345_00"}))
+    struct.pack_into("<I", overlapping, 8, 20)
+    assert parse_sfo(bytes(overlapping)) is None
+
+    invalid_length = bytearray(_sfo({"TITLE_ID": "PPSA12345_00"}))
+    struct.pack_into("<I", invalid_length, 20 + 8, 1)
+    assert parse_sfo(bytes(invalid_length)) is None
+
+
+def test_parse_sfo_rejects_non_string_target_fields() -> None:
+    invalid_format = bytearray(_sfo({"TITLE_ID": "PPSA12345_00"}))
+    struct.pack_into("<H", invalid_format, 20 + 2, 0x0004)
+    assert parse_sfo(bytes(invalid_format)) is None
+
+
 def test_read_ps5_identity_finds_sce_sys_without_following_symlink(tmp_path: Path) -> None:
     dump = tmp_path / "Game"
     (dump / "sce_sys").mkdir(parents=True)

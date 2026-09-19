@@ -15,6 +15,8 @@ _HEADER = struct.Struct("<4s4I")
 _INDEX = struct.Struct("<2H3I")
 _MAX_SFO_BYTES = 1024 * 1024
 _MAX_ENTRIES = 256
+_STRING_FORMAT = 0x0204
+_TARGET_KEYS = frozenset({"TITLE_ID", "TITLE"})
 
 
 @dataclass(frozen=True)
@@ -31,27 +33,47 @@ def parse_sfo(data: bytes) -> Ps5Sfo | None:
     if magic != _MAGIC or entry_count > _MAX_ENTRIES:
         return None
     table_end = _HEADER.size + entry_count * _INDEX.size
-    if table_end > len(data) or key_offset >= len(data) or data_offset >= len(data):
+    if (
+        table_end > len(data)
+        or key_offset < table_end
+        or key_offset > len(data)
+        or data_offset < key_offset
+        or data_offset > len(data)
+    ):
         return None
     values: dict[str, str] = {}
     for offset in range(_HEADER.size, table_end, _INDEX.size):
-        key_rel, _format, value_len, value_max, value_rel = _INDEX.unpack_from(data, offset)
+        key_rel, value_format, value_len, value_max, value_rel = _INDEX.unpack_from(data, offset)
         key_start = key_offset + key_rel
         value_start = data_offset + value_rel
-        if key_start >= len(data) or value_start >= len(data):
+        if (
+            key_start < key_offset
+            or key_start >= data_offset
+            or value_start < data_offset
+            or value_start > len(data)
+            or value_len > value_max
+            or value_len > len(data) - value_start
+        ):
             return None
-        key_end = data.find(b"\x00", key_start, len(data))
+        key_end = data.find(b"\x00", key_start, data_offset)
         if key_end < 0:
-            return None
-        end = value_start + min(value_len, value_max)
-        if end > len(data):
             return None
         try:
             key = data[key_start:key_end].decode("utf-8", errors="strict")
-            value = data[value_start:end].split(b"\x00", 1)[0].decode("utf-8", errors="replace")
         except UnicodeError:
             return None
-        values[key] = value
+        if key not in _TARGET_KEYS:
+            continue
+        if value_format != _STRING_FORMAT:
+            return None
+        try:
+            values[key] = (
+                data[value_start : value_start + value_len]
+                .split(b"\x00", 1)[0]
+                .decode("utf-8", errors="strict")
+            )
+        except UnicodeError:
+            return None
     return Ps5Sfo(values.get("TITLE_ID"), values.get("TITLE"))
 
 
