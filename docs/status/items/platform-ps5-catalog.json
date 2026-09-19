@@ -49,6 +49,12 @@
       "result": "recorded"
     },
     {
+      "kind": "release",
+      "reference": "docs/12-roadmap/SHARPEMU-PS5-DEPLOYMENT-PLAN.md",
+      "command": "API oficial da release v0.0.3-release.4: asset Linux x64, 61166621 bytes, build commit 6d4e5b4 e digest sha256:8fbbfb1fb2a0e7fca5df683bfb8e6149c0e4b2c3e2272c5324e2dee3f0f5e26d; manifesto e lockfile conferidos.",
+      "result": "passed"
+    },
+    {
       "kind": "test",
       "reference": "tests/unit/test_platform_ps5_catalog.py",
       "command": "pytest focused PS5 catalog, param.sfo identity, safe tar.gz and inventory",
