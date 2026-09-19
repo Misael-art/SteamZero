@@ -1739,6 +1739,37 @@ def test_library_scan_ps5_source_identity_survives_path_reconciliation(
     assert str(root) not in source["relativePath"]
 
 
+def test_library_scan_ps5_associates_update_and_dlc_without_duplicate_games(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    root = tmp_path / "platform-roms"
+    base = root / "ps5" / "Demo" / "eboot.bin"
+    update = root / "ps5" / "updates" / "Demo" / "eboot.bin"
+    dlc = root / "ps5" / "dlc" / "Demo" / "eboot.bin"
+    for path, payload in (
+        (base, b"base"),
+        (update, b"update"),
+        (dlc, b"dlc"),
+    ):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(payload)
+
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(root)}),
+    )
+    result = controller.scan_library()
+    assert result["games"] == 1
+    assert result["updates"] == 1
+    assert result["dlcs"] == 1
+    cached = json.loads(controller._library_cache_path.read_text(encoding="utf-8"))  # type: ignore[attr-defined]
+    assert len(cached["games"]) == 1
+    assert cached["games"][0]["platform"] == "playstation-5"
+    assert cached["games"][0]["updateCount"] == 1
+    assert cached["games"][0]["dlcCount"] == 1
+
+
 def test_missing_registered_root_remains_visible_and_arbitrary_id_is_refused(
     monkeypatch, tmp_path: Path
 ) -> None:  # type: ignore[no-untyped-def]
