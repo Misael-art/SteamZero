@@ -76,3 +76,18 @@ def test_read_ps5_identity_finds_sce_sys_without_following_symlink(tmp_path: Pat
     assert identity.scheme is IdentityScheme.PS5_TITLE_ID
     assert identity.value == "PPSA12345_00"
     assert diagnosis == "ps5-param-sfo"
+
+
+def test_read_ps5_identity_rejects_symlinked_param_sfo(tmp_path: Path) -> None:
+    dump = tmp_path / "Game"
+    (dump / "sce_sys").mkdir(parents=True)
+    outside = tmp_path / "outside-param.sfo"
+    outside.write_bytes(_sfo({"TITLE_ID": "PPSA12345_00", "TITLE": "External"}))
+    (dump / "sce_sys" / "param.sfo").symlink_to(outside)
+    executable = dump / "eboot.bin"
+    executable.write_bytes(b"ELF")
+
+    identity, diagnosis = read_ps5_identity(executable)
+
+    assert identity is None
+    assert diagnosis == "ps5-param-sfo-missing"
