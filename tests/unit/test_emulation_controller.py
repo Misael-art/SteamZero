@@ -17,6 +17,7 @@ import pytest
 from steamzero.adapters import emulation, input_devices
 from steamzero.adapters.converters import NszToolManager, nsz_tool_manifest
 from steamzero.adapters.emulation import EmulationController
+from steamzero.adapters.ps5_runtime import Ps5RuntimeReadiness
 from steamzero.api.contracts import validate
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
@@ -1419,6 +1420,44 @@ def test_launch_preflight_uses_core_for_identified_system(monkeypatch, tmp_path:
 
     assert selected == ["atari800"]
     assert preflight["core_path"] == tmp_path / "atari800_libretro.so"
+
+
+def test_ps5_launch_preflight_refuses_without_runtime_readiness(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    rom = tmp_path / "ps5" / "eboot.bin"
+    rom.parent.mkdir()
+    rom.write_bytes(b"eboot")
+    game = {
+        "id": "ps5-game",
+        "name": "Jogo PS5",
+        "path": str(rom),
+        "platformId": "playstation-5",
+        "format": "bin",
+        "contentKind": "base",
+    }
+    monkeypatch.setattr(controller, "_current_game", lambda _game_id: game)
+    monkeypatch.setattr(controller, "_load_game_settings", lambda strict=False: {})
+    monkeypatch.setattr(
+        controller,
+        "_settings_for_game_with_global",
+        lambda _game, _settings: {"emulatorId": "sharpemu"},
+    )
+    monkeypatch.setattr(controller, "_require_launchable_emulator", lambda _id: None)
+    monkeypatch.setattr(
+        controller,
+        "_emulator_source",
+        lambda _id: ("appimage", None, tmp_path / "SharpEmu"),
+    )
+    monkeypatch.setattr(
+        controller,
+        "_ps5_runtime_probe",
+        lambda: Ps5RuntimeReadiness(False, "x86_64", False, "ps5-vulkan-probe-failed"),
+    )
+
+    with pytest.raises(SteamZeroError, match="ps5-vulkan-probe-failed"):
+        controller._launch_preflight("ps5-game")  # type: ignore[attr-defined]
 
 
 def test_runtime_prepare_mutes_interactive_update_checks(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]

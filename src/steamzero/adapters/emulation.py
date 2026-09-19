@@ -56,6 +56,7 @@ from steamzero.adapters.mods.ns_emu_mod_downloader import NsEmuModDownloaderSour
 from steamzero.adapters.mods.semd_source import SemdSource
 from steamzero.adapters.mods.state_store_mods import StateStoreModsAdapter
 from steamzero.adapters.preservation import PreservationService, PreservationTarget
+from steamzero.adapters.ps5_runtime import Ps5RuntimeReadiness, check_ps5_runtime
 from steamzero.adapters.registry import AdapterRegistry
 from steamzero.adapters.resource_probe import parse_stat as parse_proc_stat
 from steamzero.adapters.rom_metadata.emulator_cache import EmulatorCacheReader
@@ -478,12 +479,14 @@ class EmulationController:
         retroarch_controls: input_devices.RetroArchControls | None = None,
         cloud_platforms: CloudPlatformService | None = None,
         flatpak_factory: Callable[[], FlatpakCLI] = FlatpakCLI,
+        ps5_runtime_probe: Callable[[], Ps5RuntimeReadiness] | None = None,
     ) -> None:
         self._store_factory = store_factory
         self._registry_factory = registry_factory
         self._artifacts = artifacts or HttpsArtifactPort()
         self._flatpak_factory = flatpak_factory
         self._which = which
+        self._ps5_runtime_probe = ps5_runtime_probe or (lambda: check_ps5_runtime(which=which))
         self._spawn = spawn
         self._read_start_ticks = read_start_ticks
         self._process_waiter = (
@@ -1388,6 +1391,20 @@ class EmulationController:
                 ),
             )
         source_type, flatpak_ref, payload = self._emulator_source(emulator_id)
+        if platform_id == "playstation-5":
+            probe = getattr(self, "_ps5_runtime_probe", None)
+            if probe is None:
+
+                def probe() -> Ps5RuntimeReadiness:
+                    return check_ps5_runtime(which=getattr(self, "_which", shutil.which))
+
+            readiness = probe()
+            if not readiness.ready:
+                detail = (
+                    "SharpEmu requer arquitetura x86_64 e Vulkan funcionais; "
+                    f"{readiness.reason or 'preflight do runtime recusado'}"
+                )
+                raise SteamZeroError("E-COMPONENT-DEGRADED", detail=detail)
         if payload is not None and self._managed_process_groups(payload):
             raise SteamZeroError(
                 "E-COMPONENT-DEGRADED", detail=f"{emulator_id} já está em execução"
