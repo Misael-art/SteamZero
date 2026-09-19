@@ -58,6 +58,7 @@ from steamzero.adapters.mods.semd_source import SemdSource
 from steamzero.adapters.mods.state_store_mods import StateStoreModsAdapter
 from steamzero.adapters.preservation import PreservationService, PreservationTarget
 from steamzero.adapters.ps5_compatibility import (
+    build_ps5_source_identity,
     resolve_ps5_compatibility,
     resolve_ps5_content_status,
 )
@@ -2224,8 +2225,24 @@ class EmulationController:
                 fingerprint = hashlib.sha256(
                     f"{pm.path}\0{stat.st_size}\0{stat.st_mtime_ns}".encode()
                 ).hexdigest()
-                stable_id = hashlib.sha256(str(pm.path).encode()).hexdigest()[:24]
                 game_identity, identity_diag = read_game_identity(pm.path, platform=pm.platform)
+                ps5_source_identity: dict[str, Any] = {}
+                if pm.platform == "playstation-5":
+                    try:
+                        ps5_source_identity = build_ps5_source_identity(
+                            pm.path,
+                            root,
+                            title_id=game_identity.value if game_identity is not None else None,
+                        )
+                    except (OSError, ValueError):
+                        # A disappearing or malformed source remains visible by
+                        # its legacy fallback until the next scan; no absolute
+                        # path is published as the PS5 identity.
+                        ps5_source_identity = {}
+                stable_id = str(
+                    ps5_source_identity.get("stableId")
+                    or hashlib.sha256(str(pm.path).encode()).hexdigest()[:24]
+                )
                 discovered[str(pm.path)] = {
                     "id": stable_id,
                     "titleId": game_identity.value if game_identity is not None else None,
@@ -2256,6 +2273,7 @@ class EmulationController:
                     "coverUrl": None,
                     "mediaSource": None,
                     "platform": pm.platform,
+                    **({"sourceIdentity": ps5_source_identity} if ps5_source_identity else {}),
                     # O sistema fica AO LADO da plataforma, nunca no lugar dela:
                     # `platformId` continua resolvendo emulador e launch, que é
                     # o caminho recém-estabilizado. `systemId` existe para

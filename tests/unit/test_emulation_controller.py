@@ -1712,6 +1712,33 @@ def test_library_scan_enriches_platform_games_with_identity_seam(
     assert game["state"] == "ready"
 
 
+def test_library_scan_ps5_source_identity_survives_path_reconciliation(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    root = tmp_path / "platform-roms"
+    eboot = root / "ps5" / "Demo" / "eboot.bin"
+    eboot.parent.mkdir(parents=True)
+    eboot.write_bytes(b"PS5-entrypoint")
+
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(root)}),
+    )
+    result = controller.scan_library()
+    assert result["games"] == 1
+    cached = json.loads(controller._library_cache_path.read_text(encoding="utf-8"))  # type: ignore[attr-defined]
+    game = cached["games"][0]
+    source = game["sourceIdentity"]
+
+    assert game["platform"] == "playstation-5"
+    assert game["id"] == source["stableId"]
+    assert source["sourceKind"] == "local"
+    assert source["relativePath"] == "ps5/Demo/eboot.bin"
+    assert source["entrypointSha256"]
+    assert str(root) not in source["relativePath"]
+
+
 def test_missing_registered_root_remains_visible_and_arbitrary_id_is_refused(
     monkeypatch, tmp_path: Path
 ) -> None:  # type: ignore[no-untyped-def]

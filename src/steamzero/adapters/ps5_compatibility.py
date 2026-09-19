@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib.resources
 import json
 import re
@@ -18,6 +19,82 @@ _TITLE_ID_RE = re.compile(r"^PPS[A-Z][0-9A-Z]{5,12}(?:_[0-9A-Z]{2})?$")
 _STATUSES = frozenset({"nothing", "boots", "menus", "ingame", "playable"})
 _OPERATING_SYSTEMS = frozenset({"linux", "macos", "windows"})
 _SOURCE_URL = "https://sharpemu.app/compatibility/"
+
+
+def _ps5_source_kind(root: Path) -> str:
+    """Classifica a origem sem publicar o caminho físico do usuário."""
+    normalized = root.as_posix().casefold()
+    if normalized.startswith(("//", "/net/")) or "/gvfs/" in normalized:
+        return "network"
+    if normalized.startswith(("/media/", "/run/media/", "/mnt/")):
+        return "removable"
+    return "local"
+
+
+def _ps5_source_namespace(root: Path, source_kind: str) -> str:
+    """Produz um namespace opaco que sobrevive à troca do ponto de montagem."""
+    try:
+        observed = root.stat()
+        token = f"{source_kind}\0{observed.st_dev}\0{observed.st_ino}"
+    except OSError:
+        # O inventário só chama isto para uma origem existente; este fallback
+        # mantém a falha explícita sem vazar o caminho absoluto para a UI.
+        token = f"{source_kind}\0path\0{root.as_posix()}"
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()[:24]
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def build_ps5_source_identity(
+    path: Path,
+    root: Path,
+    *,
+    title_id: str | None,
+) -> dict[str, Any]:
+    """Descreve uma entrada PS5 sem usar o caminho absoluto como identidade.
+
+    O hash é do entrypoint que será lançado. O namespace identifica o volume
+    ou compartilhamento observado, enquanto ``relativePath`` permite
+    reconciliar o mesmo dump após uma remontagem em outro ponto.
+    """
+    relative_path = path.relative_to(root).as_posix()
+    stat = path.stat()
+    source_kind = _ps5_source_kind(root)
+    source_namespace = _ps5_source_namespace(root, source_kind)
+    try:
+        entrypoint_sha256: str | None = _sha256_file(path)
+    except OSError:
+        entrypoint_sha256 = None
+    identity_material = "\0".join(
+        (
+            "ps5-source-v1",
+            source_kind,
+            source_namespace,
+            relative_path,
+            str(stat.st_size),
+            entrypoint_sha256 or "unavailable",
+        )
+    )
+    stable_id = hashlib.sha256(identity_material.encode("utf-8")).hexdigest()[:24]
+    source_identity: dict[str, Any] = {
+        "sourceKind": source_kind,
+        "volumeId": source_namespace if source_kind != "network" else None,
+        "shareId": source_namespace if source_kind == "network" else None,
+        "titleId": title_id,
+        "relativePath": relative_path,
+        "sizeBytes": stat.st_size,
+        "entrypointSha256": entrypoint_sha256,
+        "identityState": "verified" if entrypoint_sha256 else "degraded",
+        "identityReason": None if entrypoint_sha256 else "ps5-entrypoint-hash-failed",
+        "stableId": stable_id,
+    }
+    return source_identity
 
 
 @dataclass(frozen=True)

@@ -5,6 +5,7 @@
 from steamzero.adapters.ps5_compatibility import (
     Ps5CompatibilityCatalog,
     Ps5CompatibilityRecord,
+    build_ps5_source_identity,
     bundled_ps5_compatibility,
     resolve_ps5_compatibility,
     resolve_ps5_content_status,
@@ -87,3 +88,35 @@ def test_content_status_distinguishes_missing_source_and_incomplete_dump(tmp_pat
     )
     assert missing["contentState"] == "source-missing"
     assert missing["contentAvailability"] == "missing"
+
+
+def test_source_identity_uses_relative_path_and_entrypoint_hash_not_absolute_path(
+    tmp_path,
+) -> None:  # type: ignore[no-untyped-def]
+    root = tmp_path / "roms" / "ps5"
+    eboot = root / "Demo" / "eboot.bin"
+    eboot.parent.mkdir(parents=True)
+    eboot.write_bytes(b"ELF-v1")
+
+    first = build_ps5_source_identity(eboot, root, title_id="PPSA12345_00")
+    assert first["sourceKind"] == "local"
+    assert first["volumeId"] is not None
+    assert first["shareId"] is None
+    assert first["relativePath"] == "Demo/eboot.bin"
+    assert first["sizeBytes"] == 6
+    assert first["identityState"] == "verified"
+    assert first["entrypointSha256"]
+    assert str(root) not in first["relativePath"]
+
+    # A timestamp-only change must not create a new game identity.
+    eboot.touch()
+    second = build_ps5_source_identity(eboot, root, title_id="PPSA12345_00")
+    assert second["stableId"] == first["stableId"]
+    enriched = build_ps5_source_identity(eboot, root, title_id="PPSA54321_00")
+    assert enriched["stableId"] == first["stableId"]
+    assert enriched["titleId"] == "PPSA54321_00"
+
+    eboot.write_bytes(b"ELF-v2")
+    changed = build_ps5_source_identity(eboot, root, title_id="PPSA12345_00")
+    assert changed["stableId"] != first["stableId"]
+    assert changed["entrypointSha256"] != first["entrypointSha256"]
