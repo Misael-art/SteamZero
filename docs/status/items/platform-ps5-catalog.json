@@ -92,12 +92,18 @@
       "reference": "tests/unit/test_emulation_controller.py",
       "command": "pytest focused: launch PS5 recusa runtime sem Vulkan antes de qualquer spawn; full runner fechou com 6163 passed/47 skipped e a consistência passou após render",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_qml_handheld_offscreen.py",
+      "command": "pytest -q -k check_emulation: badge de compatibilidade mostra build observada e razão sem promover estado unknown",
+      "result": "passed"
     }
   ],
-  "nextAction": "Revisar o handoff compartilhado de emulation.py no merge; o commit 173d3c95 conecta o preflight PS5 de arquitetura/Vulkan ao launch antes do spawn. Preparar release governada somente após autorização explícita e, com dump legal PS5, executar a prova física; baseline read-only confirmou x86_64/Vulkan RADV, enquanto SharpEmu ainda está ausente no host. Capturar PNG e manter compatibilidade por build sem promover verified-hw.",
+  "nextAction": "Revisar o handoff compartilhado de emulation.py/Emulation.qml no merge; o commit d6e8af7 publica por jogo o estado SharpEmu unknown, a build observada e a razão de compatibilidade ainda não publicada, enquanto 173d3c95 conecta o preflight PS5 de arquitetura/Vulkan ao launch antes do spawn. Preparar release governada somente após autorização explícita e, com dump legal PS5, executar a prova física; baseline read-only confirmou x86_64/Vulkan RADV, enquanto SharpEmu ainda está ausente no host. Capturar PNG e manter compatibilidade por build sem promover verified-hw.",
   "activeWorkstreams": [
     "WS-2026-09-PS5-SHARPEMU"
   ],
   "updatedAt": "2026-09-19",
-  "notes": "Implementação parcial em branch própria: SharpEmu possui manifesto, lockfile, plataforma, perfil DualSense, catálogo canônico, extração segura tar.gz, parser PS5 param.sfo/Title ID endurecido contra tabelas sobrepostas, comprimentos inválidos e tipos não-string, e classificação ps5dir que não expõe módulos PRX, binários auxiliares ou PKG como jogo. ELF genérico sem identidade PS5 permanece explicitamente ps5-elf-unresolved e não é promovido por extensão. Containers de dump zip/7z/tar.gz permanecem explicitamente em needs-extraction. O SharpEmu permanece experimental; não há instalação no host nem promoção verified-hw."
+  "notes": "Implementação parcial em branch própria: SharpEmu possui manifesto, lockfile, plataforma, perfil DualSense, catálogo canônico, extração segura tar.gz, parser PS5 param.sfo/Title ID endurecido contra tabelas sobrepostas, comprimentos inválidos e tipos não-string, e classificação ps5dir que não expõe módulos PRX, binários auxiliares ou PKG como jogo. ELF genérico sem identidade PS5 permanece explicitamente ps5-elf-unresolved e não é promovido por extensão. Containers de dump zip/7z/tar.gz permanecem explicitamente em needs-extraction. O catálogo agora publica compatibilidade por jogo com estado unknown, build SharpEmu observada quando disponível e razão explícita; a fonte oficial por título/build ainda não foi integrada. O SharpEmu permanece experimental; não há instalação no host nem promoção verified-hw."
 }

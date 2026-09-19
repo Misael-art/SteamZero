@@ -11203,3 +11203,19 @@ executada.
 A prova física permanece pendente: SharpEmu não está instalado no host, e ainda
 são necessários autorização governada, dump PS5 legal, captura PNG de sucesso,
 erro controlado e recuperação antes de qualquer promoção `verified-hw`.
+
+## 2026-09-19 — compatibilidade PS5 explícita por jogo/build
+
+Na branch `codex/platform-ps5-sharpemu-mainline`, o commit `d6e8af7` fecha o
+contrato de apresentação que faltava no catálogo PS5: cada jogo PS5 publica o
+estado SharpEmu como `unknown`, conserva a build observada do runtime quando
+disponível e mostra a razão de compatibilidade por título/build ainda não
+publicada. A UI QML usa esses dados no detalhe da badge, sem inferir sucesso;
+registros de outras plataformas não recebem compatibilidade PS5.
+
+Provas: `tests/unit/test_emulation_controller.py -k 'ps5_'` passou com 2
+testes; o harness QML real `test_qml_handheld_offscreen.py -k check_emulation`
+passou com `1 passed, 47 deselected`. O handoff compartilhado foi registrado
+para `emulation.py`, `Emulation.qml` e `check_emulation.qml`. Nenhuma
+instalação, publicação, reinício ou mutação de host foi executada; a prova
+física com SharpEmu instalado, dump legal e PNG continua pendente.
