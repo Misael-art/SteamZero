@@ -13,7 +13,7 @@
     "docs/09-operations/evidence/2026-09-20-aura-current-release",
     "docs/09-operations/evidence/2026-09-20-aura-rich-media-release"
   ],
-  "scopeDigest": "4493484f79f486324a8508bd3865609a96f07d1ae2d187f30c605bd3ea2dea9f",
+  "scopeDigest": "aea723a4602271d04362b59b6eac60b137dbadb90fc4614da94006d9759caf40",
   "dependsOn": [
     "SZ-AURA-LAUNCHER",
     "SZ-AURA-PERFORMANCE-VALIDATION",

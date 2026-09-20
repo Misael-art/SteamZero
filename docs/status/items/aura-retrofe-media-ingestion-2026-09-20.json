@@ -59,6 +59,6 @@
   ],
   "nextAction": "Manter ambiguidades e itens sem match em revisão; não promover escolhas sem confirmação do operador.",
   "updatedAt": "2026-09-20",
-  "scopeDigest": "a5769af13f445282b01915024bc37b863a33f4fafc3346cbe70427a36cc6154c",
+  "scopeDigest": "2ecd98cfb6d688b8302dea058ec6ecaa20702785bbf13cea4d75f69717984186",
   "notes": "A implementação foi aplicada na release 2.0.0rc1-3acc2104dd5a: 79 assets seguros importados, 3 ambiguidades e 165 sem match preservados sem escolha automática. A prova visual mostra fanart e capa reais; assignments com plataforma divergente continuam rejeitados pelo bridge."
 }

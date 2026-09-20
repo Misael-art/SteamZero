@@ -6,6 +6,14 @@
   "session": "Wayland",
   "backend": "opengl",
   "mediaRoot": "/home/misael/.local/share/steamzero/media",
+  "releaseHostPostCheck": {
+    "ok": false,
+    "error": "doctor pós-ativação declarou schema incompatível: host=22, alvo=20",
+    "hostSchema": 22,
+    "bundleTargetSchema": 20,
+    "service": "active",
+    "activeReleaseConfirmed": true
+  },
   "ingestion": {
     "sourceRoot": "/home/misael/emulation/frontend/RetroFE/collections",
     "accepted": 79,

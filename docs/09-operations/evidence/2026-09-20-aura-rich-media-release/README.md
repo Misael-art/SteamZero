@@ -3,6 +3,11 @@
 Release observada: `2.0.0rc1-3acc2104dd5a`, commit de origem
 `3acc2104dd5af8862b0ee2a21065fa387acd7720`, Wayland/OpenGL.
 
+O fluxo governado ativou a release e confirmou serviço ativo/Doctor convergente,
+mas o pós-check do instalador registrou a incompatibilidade de schema do bundle
+(`host=22`, `alvo=20`). Esse diagnóstico não foi ocultado; a release efetiva e
+o commit de origem foram conferidos read-only depois da ativação.
+
 O importador RetroFE executou plan-first e aplicou somente 79 decisões seguras
 na raiz gerenciada de mídia. Houve 3 ambiguidades e 165 itens sem correspondência;
 nenhum foi escolhido ou sobrescrito automaticamente. As origens permaneceram

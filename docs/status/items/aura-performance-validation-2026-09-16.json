@@ -16,7 +16,7 @@
     ,"docs/09-operations/evidence/2026-09-18-aura-bezel-installed",
     "docs/09-operations/evidence/2026-09-20-aura-rich-media-release"
   ],
-  "scopeDigest": "22eb43e9c36dfb1d72e0023b0e5ae6d1939ef63c39abdeea6eea74a8960f8d21",
+  "scopeDigest": "d5d4b56d09d4c5a46f02c4aba0b47c41c81cee6cb5ccdb6eef2e662c9638d7b7",
   "dependsOn": [
     "SZ-AURA-LAUNCHER",
     "SZ-AURA-CINEMA-COMPLETION",
