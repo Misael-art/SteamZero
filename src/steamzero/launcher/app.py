@@ -422,7 +422,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
 
     metadata = {}
-    registry_media = launcher_media_metadata(media_root=paths.media_dir())
+    registry_media = launcher_media_metadata(
+        media_root=paths.media_dir(),
+        platform_by_game={game.id: game.platform for game in catalog},
+    )
     for record in library:
         game_id = record.get("id")
         if not game_id:

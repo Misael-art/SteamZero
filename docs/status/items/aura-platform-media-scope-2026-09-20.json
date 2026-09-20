@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AURA-PLATFORM-MEDIA-SCOPE",
+  "title": "AURA — projeção de mídia com escopo de plataforma",
+  "domain": "media",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "ready",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/adapters/launcher_media.py",
+    "tests/unit/test_launcher_media.py"
+  ],
+  "scopeDigest": "3d76aa9a14165763778948226ddb8645c7944ba3146b9e548614250f51276cff",
+  "dependsOn": [
+    "SZ-AURA-RICH-MEDIA-PROJECTION",
+    "SZ-AURA-SEARCH-CONTRACT"
+  ],
+  "knownGaps": [
+    "GAP-AURA-PLATFORM-MEDIA-PHYSICAL-PROOF"
+  ],
+  "acceptanceCriteria": [
+    "A mídia só é projetada quando platformId do registry coincide com a plataforma canônica do jogo.",
+    "Registro sem platformId ou com plataforma incompatível degrada para fallback legível e não vaza masters de outra plataforma.",
+    "A validação preserva a segurança de caminho, symlink e traversal já existente.",
+    "O contrato mantém projeção global para jogos sem registro de mídia e não assume Switch."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_launcher_media.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_launcher_media.py tests/integration/test_launcher_app.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "/home/misael/.local/share/steamzero/media/registry/assignments-v1.json",
+      "command": "projeção read-only com catálogo atual; 51 entradas registradas como Switch foram rejeitadas para jogos não-Switch",
+      "result": "passed"
+    }
+  ],
+  "activeWorkstreams": [
+    "WS-2026-09-AURA-PLATFORM-MEDIA-SCOPE"
+  ],
+  "nextAction": "Integrar na release governada e repetir a captura física com mídia corretamente escopada.",
+  "updatedAt": "2026-09-20",
+  "notes": "A auditoria física da release atual encontrou capas NES projetadas a partir de masters/switch. O bloqueio ocorre na projeção do registry; nenhuma mídia de usuário será apagada ou reclassificada por esta frente."
+}
