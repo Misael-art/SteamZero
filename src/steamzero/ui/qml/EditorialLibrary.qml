@@ -49,6 +49,13 @@ Item {
         return mediaRecipes && mediaRecipes[role] ? mediaRecipes[role] : ({})
     }
 
+    function requirementAction(kind) {
+        if (!selectedSystem || !selectedSystem.requirements)
+            return null
+        var requirement = selectedSystem.requirements[kind]
+        return requirement && requirement.action ? requirement.action : null
+    }
+
     function typeSize(role, compactFactor) {
         const fallback = {
             "display": 36, "heading": 24, "title": 20, "body": 16,
@@ -809,6 +816,7 @@ Item {
                             ]
                             delegate: Rectangle {
                                 required property var modelData
+                                property var action: root.requirementAction(modelData.kind)
                                 color: root.surfaceColor
                                 radius: 12
                                 border.color: root.stateColor(root.requirementState(modelData.kind))
@@ -826,16 +834,11 @@ Item {
                                         Layout.fillWidth: true
                                     }
                                     EditorialButton {
-                                        visible: root.selectedSystem.requirements
-                                            && root.selectedSystem.requirements[modelData.kind]
-                                            && root.selectedSystem.requirements[modelData.kind].action
-                                        enabled: visible
-                                            && root.selectedSystem.requirements[modelData.kind].action.enabled !== false
-                                        text: root.selectedSystem.requirements[modelData.kind].action
-                                            ? root.selectedSystem.requirements[modelData.kind].action.label : ""
+                                        visible: action !== null
+                                        enabled: action !== null && action.enabled !== false
+                                        text: action ? action.label : ""
                                         Layout.fillWidth: true
-                                        onClicked: root.actionRequested(
-                                            root.selectedSystem.requirements[modelData.kind].action)
+                                        onClicked: root.actionRequested(action)
                                     }
                                 }
                             }

@@ -16,7 +16,7 @@
     "tests/integration/test_emulation_storage.py",
     "tests/integration/test_emulation_storage_platform_scope.py"
   ],
-  "scopeDigest": "2783d5195bd1e64348e7ee9fa0b78f1119469fbb930b996f385d3c6352911423",
+  "scopeDigest": "ace05476fdd9e2641057d34e8f23a39bc625b7bba125eac9cbd07e5d08b451a3",
   "dependsOn": [
     "SZ-EMULATION-STORAGE-READMODEL",
     "SZ-EMULATION-PLATFORM-SCOPE"
