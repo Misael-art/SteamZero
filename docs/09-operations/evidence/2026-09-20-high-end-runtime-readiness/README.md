@@ -22,6 +22,10 @@ Esta etapa registra e implementa preflights antes do spawn:
 ## Estado físico observado
 
 - Release ativa observada: `2.0.0rc1`.
+- Snapshot read-only de componentes após o commit: shadPS4 e SharpEmu aparecem
+  instalados; Xenia Canary permanece `degraded` por divergência do deployment;
+  xemu aparece `unavailable` porque a consulta Flatpak falhou, sem qualquer
+  tentativa de reparar ou instalar automaticamente.
 - `7z` está disponível para backend seguro de archives; a materialização ainda
   depende de ação explícita e job assíncrono, sem modificar a origem.
 - O acervo contém Xbox ISO, Xbox 360 payload/configuração, 14 archives X68000,

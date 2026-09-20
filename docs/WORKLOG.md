@@ -11631,3 +11631,9 @@ mypy, independência e boundaries passaram. A suíte integral isolada permanece
 sem processo/rodapé em 16%, sem traceback atribuível a esta alteração. Isso foi
 registrado como diagnóstico de infraestrutura, sem enfraquecer testes. A
 release ativa continua `2.0.0rc1`; nenhum host foi instalado ou alterado.
+
+Snapshot read-only posterior: shadPS4 e SharpEmu aparecem instalados; Xenia
+Canary segue `degraded` por divergência de deployment; xemu aparece
+`unavailable` porque a consulta Flatpak falhou. A frente não tentou reparar,
+instalar ou alterar o host. Esse estado retorna ao ciclo governado quando houver
+autorização explícita e a causa externa estiver disponível.
