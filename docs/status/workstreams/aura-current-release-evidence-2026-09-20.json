@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-CURRENT-RELEASE-EVIDENCE",
+  "item": "SZ-AURA-CURRENT-RELEASE-EVIDENCE",
+  "branch": "codex/aura-completion-2026-09-20",
+  "baseRef": "c3b14a040b7c5774f10aa7ec402c6d48250066e1",
+  "owner": "codex-aura-completion-2026-09-20",
+  "state": "closed",
+  "exclusivePaths": [
+    "docs/09-operations/evidence/2026-09-20-aura-current-release",
+    "docs/status/items/aura-current-release-evidence-2026-09-20.json",
+    "docs/status/workstreams/aura-current-release-evidence-2026-09-20.json"
+  ],
+  "sharedPaths": [
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Entregar a medição e captura aos owners das superfícies AURA; não declarar completude antes das provas específicas de mídia rica, sessão e adapter.",
+  "updatedAt": "2026-09-20"
+}
