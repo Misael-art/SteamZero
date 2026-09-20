@@ -44,7 +44,9 @@ def test_descriptor_is_deterministic_and_uses_relative_active_paths(tmp_path: Pa
     assert content == (
         f"{OWNERSHIP_MARKER}\n"
         "# SteamZero-MultiDisc-Set: playstation:psx:game\n"
+        "# SteamZero-MultiDisc-Disc: playstation:psx:game:disc-1\n"
         "Game (Disc 1).chd\n"
+        "# SteamZero-MultiDisc-Disc: playstation:psx:game:disc-2\n"
         "Game (Disc 2).chd\n"
     )
     projection = descriptor_projection(logical_set)

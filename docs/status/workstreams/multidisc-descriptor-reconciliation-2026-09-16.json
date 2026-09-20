@@ -6,7 +6,7 @@
   "branch": "codex/aura-multidisc-audit-2026-09-17",
   "baseRef": "153d3da8b80b93e595a8c227c01fa2ab49918e23",
   "owner": "codex-aura-rich-media-global",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/domain/multidisc.py",
     "src/steamzero/domain/multidisc_artifacts.py",
@@ -29,6 +29,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Implementar o contrato de extração/conversão e comprovar PUAE/PX68K; depois executar a validação física do descritor na release instalada; não alterar o host nesta branch.",
-  "updatedAt": "2026-09-17"
+  "nextAction": "Frente histórica encerrada; a identidade do descritor e a troca de disco seguem no workstream de sessão multidisco.",
+  "updatedAt": "2026-09-20"
 }

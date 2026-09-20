@@ -11376,3 +11376,26 @@ integral posterior coletou 6.223 testes e terminou sem falhas na repetição com
 `test_status_keeps_full_emulation_model_across_http_thread`, que passou
 isoladamente em 6,47 s e não se reproduziu na repetição integral. O commit
 funcional é `ce887e6`; nenhum host foi instalado ou mutado.
+
+## 2026-09-20 — identidade estável na troca de disco AURA
+
+A frente `WS-2026-09-MULTIDISC-SESSION-DISC-IDENTITY` passou a preservar a
+identidade lógica de cada disco no descritor gerenciado: além do caminho, o
+`.m3u` publica comentários `SteamZero-MultiDisc-Disc` com `set_id:disc-N`.
+`RetroArchSessionPeripheral` lê essa identidade, a publica no read model e
+aceita a troca por id persistente; M3Us legados continuam usando apenas o
+fallback posicional limitado. A ordem do descritor usa a ordem declarada pelo
+adapter, não ordenação alfabética.
+
+Provas focadas: `54 passed` na cadeia multidisco, biblioteca, periféricos e
+overlay; a suíte integral terminou com `6174 passed, 47 skipped, 4 failed`.
+As quatro falhas são ambientais e pré-existentes (`AF_UNIX path too long` nos
+testes de sockets pelo caminho profundo do temporário do harness). Ruff,
+formatação, mypy, independência, fronteiras e `STATUS-CHECK` passaram. O
+`state audit` pós-run está limpo e o estado real não mudou.
+
+Na verificação física somente leitura foi encontrado o conjunto Amiga real
+`Super Street Fighter II Turbo` com 11 ADFs. O PUAE existente iniciou, mas o
+host não possui o Kickstart legal `kick34005.A500`; a execução foi encerrada
+sem alterar ROMs, KDE ou a instalação. A prova física de eject/insert/retorno
+continua aberta como `GAP-AURA-DISC-SWAP-PHYSICAL`.
