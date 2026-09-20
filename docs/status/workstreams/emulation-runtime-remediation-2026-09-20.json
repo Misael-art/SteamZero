@@ -21,6 +21,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Aguardar integração coordenada da sintaxe declarativa do PCSX2; deixar a extração Amiga/X68000 e a prova física M3U/save-state para os workstreams donos, mantendo esta frente nos gates e documentação.",
+  "nextAction": "Entregar o patch de materialização assíncrona e aguardar release governada para repetir PCSX2, M3U, save/load e retorno físico.",
   "updatedAt": "2026-09-20"
 }

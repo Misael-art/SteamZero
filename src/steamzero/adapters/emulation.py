@@ -56,6 +56,10 @@ from steamzero.adapters.mods.mod_installer import FilesystemModInstaller
 from steamzero.adapters.mods.ns_emu_mod_downloader import NsEmuModDownloaderSource
 from steamzero.adapters.mods.semd_source import SemdSource
 from steamzero.adapters.mods.state_store_mods import StateStoreModsAdapter
+from steamzero.adapters.multidisc_materializer import (
+    MaterializationRequest,
+    MultiDiscMaterializer,
+)
 from steamzero.adapters.preservation import PreservationService, PreservationTarget
 from steamzero.adapters.ps5_compatibility import (
     build_ps5_source_identity,
@@ -592,6 +596,7 @@ class EmulationController:
         manager.register("mod.catalog.prepare", self._mod_catalog_prepare_job_handler)
         manager.register("rom.scan", self._rom_scan_job_handler)
         manager.register("library.scan", self._library_scan_job_handler)
+        manager.register("multidisc.materialize", self._multidisc_materialize_job_handler)
         manager.register("library.bitrot", self._bitrot_job_handler)
         for job_type in ("content.import", "nsz.convert", "steam.publish"):
             manager.register(job_type, self._completed_operation_job_handler)
@@ -2250,17 +2255,42 @@ class EmulationController:
                 if row.disposition == "matched"
                 for item in row.auxiliary_content
             )
-            directory_report.extend(
-                {
-                    "root": str(row.path),
-                    "disposition": row.disposition,
-                    "platformId": row.platform_id,
-                    "gameCount": row.game_count,
-                    "selectedCount": len(row.selected_games),
-                    "skippedSymlinks": row.skipped_symlinks,
-                }
-                for row in directory_rows
-            )
+            for row in directory_rows:
+                multidisc_sets = []
+                for logical_set in row.multi_disc_sets:
+                    source_paths = sorted(
+                        {
+                            str(part.archive_path or part.path)
+                            for part in logical_set.parts
+                            if part.path is not None
+                        }
+                    )
+                    multidisc_sets.append(
+                        {
+                            "setId": logical_set.set_id,
+                            "title": logical_set.display_title,
+                            "state": logical_set.state,
+                            "reason": logical_set.reason,
+                            "sourcePaths": source_paths,
+                            "systemId": (
+                                platform_scanner.system_for(row.platform_id)
+                                if row.platform_id is not None
+                                else None
+                            ),
+                        }
+                    )
+                directory_report.append(
+                    {
+                        "root": str(row.path),
+                        "libraryRoot": str(root),
+                        "disposition": row.disposition,
+                        "platformId": row.platform_id,
+                        "gameCount": row.game_count,
+                        "selectedCount": len(row.selected_games),
+                        "skippedSymlinks": row.skipped_symlinks,
+                        "multiDiscSets": multidisc_sets,
+                    }
+                )
             all_platform_matches: list[Any] = []
             seen_platform_paths: set[str] = set()
             for candidate in (
@@ -2589,6 +2619,16 @@ class EmulationController:
             "ignoredReasons": ignored_reasons,
             "platformCounts": platform_counts,
             "roots": len(roots),
+            "materializationCandidates": [
+                {
+                    **candidate,
+                    "libraryRoot": row.get("libraryRoot"),
+                    "platformId": row.get("platformId"),
+                }
+                for row in directory_report
+                for candidate in row.get("multiDiscSets", [])
+                if candidate.get("state") in {"needs-extraction", "needs-platform-contract"}
+            ],
         }
         payload = {
             "schemaVersion": 1,
@@ -2648,6 +2688,44 @@ class EmulationController:
                 "Verificação somente leitura de até 8 arquivos, 2 GiB e 20 segundos. "
                 "Divergências serão marcadas como suspect; nenhum conteúdo será "
                 "reparado, removido ou substituído."
+            )
+        elif action == "multidisc.materialize":
+            platform_id = self._required_string(payload, "platformId")
+            system_id = self._required_string(payload, "systemId")
+            materialization_title = self._required_string(payload, "title")
+            library_root = Path(self._required_string(payload, "libraryRoot"))
+            source_paths = self._required_paths(payload, "sourcePaths")
+            registered_roots = {Path(path).resolve(strict=False) for path in self.library_roots()}
+            if library_root.resolve(strict=False) not in registered_roots:
+                raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="raiz não registrada")
+            manifest = PlatformRegistry.bundled().get(platform_id)
+            request = MaterializationRequest(
+                platform_id=platform_id,
+                system_id=system_id,
+                title=materialization_title,
+                source_paths=tuple(source_paths),
+                library_root=library_root,
+                manifest={"media": dict(manifest.media)},
+            )
+            inspection = MultiDiscMaterializer().inspect(request)
+            if inspection.state not in {"ready", "ready-unverified", "needs-extraction"}:
+                raise SteamZeroError("E-CONTENT-INCOMPLETE", detail=inspection.reason)
+            plan = transaction.plan_write_files(
+                {},
+                root=paths.data_home(),
+                kind="emulation.multidisc.materialize",
+                requirements_extra={
+                    "materializationState": inspection.state,
+                    "destination": str(inspection.destination),
+                },
+            )
+            self._pending[plan.plan_id] = _PendingMutation(
+                "multidisc-materialize", request.to_mapping()
+            )
+            plan_extra["preview"] = (
+                "A operação será executada em job assíncrono: validação, staging, "
+                "extração/cópia, publicação atômica do M3U e verificação. "
+                f"Destino gerenciado: {inspection.destination}"
             )
         elif action == "library.projection.repair":
             plan, removed, total = self._projection_repair_plan()
@@ -3550,6 +3628,17 @@ class EmulationController:
                 self._start_background_job(job.id)
                 response["jobId"] = job.id
                 response["job"] = self._job_view(self._jobs.get(job.id) or job)
+            elif pending.kind == "multidisc-materialize":
+                job = self._jobs.create(
+                    "multidisc.materialize",
+                    params=dict(pending.metadata),
+                    priority="background",
+                    created_by="ui",
+                    constraints={"forbiddenDuringGameplay": True},
+                )
+                self._start_background_job(job.id)
+                response["jobId"] = job.id
+                response["job"] = self._job_view(self._jobs.get(job.id) or job)
             elif pending.kind == "media-cache-open":
                 response.update(self._open_media_cache())
             elif pending.kind == "library-root-open":
@@ -3713,6 +3802,7 @@ class EmulationController:
             "media.global",
             "extras.catalog.search",
             "mod.catalog.prepare",
+            "multidisc.materialize",
         }:
             self._start_background_job(replacement.id)
         else:
@@ -3740,6 +3830,7 @@ class EmulationController:
             runner.register("media.global", self._media_global_job_handler)
             runner.register("extras.catalog.search", self._extra_catalog_search_job_handler)
             runner.register("mod.catalog.prepare", self._mod_catalog_prepare_job_handler)
+            runner.register("multidisc.materialize", self._multidisc_materialize_job_handler)
             with self._background_lock:
                 self._background_runners[job_id] = runner
             try:
@@ -6680,6 +6771,23 @@ class EmulationController:
 
     def _library_scan_job_handler(self, _job: Job, ctx: JobContext) -> dict[str, Any]:
         return self._scan_library_now(ctx)
+
+    def _multidisc_materialize_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
+        request = MaterializationRequest.from_mapping(job.params)
+        ctx.set_progress("inspect", current=0, total=1, unit="sets")
+        result = MultiDiscMaterializer().run(
+            request,
+            safepoint=ctx.safepoint,
+            progress=lambda current, total, item: ctx.set_progress(
+                "materialize",
+                current=current,
+                total=total,
+                unit="discs",
+                current_item=item,
+            ),
+        )
+        ctx.set_progress("done", current=1, total=1, unit="sets")
+        return result
 
     def _bitrot_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
         return self._bitrot.verify_sample(

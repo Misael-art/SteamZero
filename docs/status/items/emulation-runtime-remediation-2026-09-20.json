@@ -14,7 +14,7 @@
     "tests/unit/test_emulation_runtime_remediation.py",
     "docs/09-operations/evidence/2026-09-20-emulation-runtime-remediation"
   ],
-  "scopeDigest": "443dd1b913f3ed59782cedf5a53c7a9be58f3bb298cc76df0c57cd2d7012a210",
+  "scopeDigest": "d28b6bc30b75efa7d6fff88f3c5cee5a3b34f8f010e605b685db330539608937",
   "dependsOn": [
     "SZ-EMULATION-REAL-DUMP-VALIDATION",
     "SZ-COMPONENT-LIFECYCLE",
@@ -67,7 +67,7 @@
   "activeWorkstreams": [
     "WS-2026-09-EMULATION-RUNTIME-REMEDIATION"
   ],
-  "nextAction": "Executar gates integrais e manter abertos os handoffs de PCSX2, extração Amiga/X68000 e prova física multidisco/saves.",
+  "nextAction": "Integrar a materialização multidisco assíncrona; depois promover uma release governada para provar PCSX2, M3U, save/load e retorno físico.",
   "updatedAt": "2026-09-20",
   "notes": "O firmware oficial Sony só pode ser obtido mediante confirmação explícita do operador e verificação; nenhuma instalação de host, download proprietário ou reboot foi executado."
 }
