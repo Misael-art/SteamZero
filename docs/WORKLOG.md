@@ -11376,3 +11376,148 @@ integral posterior coletou 6.223 testes e terminou sem falhas na repetição com
 `test_status_keeps_full_emulation_model_across_http_thread`, que passou
 isoladamente em 6,47 s e não se reproduziu na repetição integral. O commit
 funcional é `ce887e6`; nenhum host foi instalado ou mutado.
+
+## 2026-09-20 — inventário e primeiro ciclo de dumps reais
+
+Foi criado o worktree isolado `codex/emulation-system-validation-2026-09-19` e
+registrado `WS-2026-09-EMULATION-REAL-DUMP-VALIDATION`. A varredura canônica
+executada pelo controlador da release ativa `2.0.0rc1-c3b14a040b7c` terminou
+com sucesso: 1.156 jogos, 15.706 arquivos, 20 updates, 144 DLCs e 0 erros.
+Archives não associados (1.316 `archive-platform-unknown` e 34
+`archive-unclassified`) ficaram sem extração, em revisão explícita.
+
+O 3DO foi classificado como `installed-not-played`: o CHD real existe e o
+`libretro-opera` 1.22.2 devolve `verified=true`, mas a BIOS obrigatória
+`panafz1.bin` não está presente. Isso é `HARD-EXTERNAL-SUBITEM` somente para o
+lançamento do 3DO. O próximo sistema tratável foi Famicom/NES: o
+`libretro-mesen` 1.22.2 foi verificado, o dump `.nes` foi lançado pela rota
+`emulation launch`, a janela RetroArch/Mesen mostrou gameplay real, o socket
+aceitou `listPeripherals`, `pause` e `resume`, e Alt+F4 encerrou o jogo sem
+sessões ativas restantes.
+
+Evidências PNG: `03-gameplay-famicom.png` e `04-recovery-famicom.png` em
+`docs/09-operations/evidence/2026-09-19-real-dump-inventory/`. O retorno ao
+AURA Launcher não foi alegado porque o launch ocorreu no desktop disponível;
+a prova de foco do Launcher permanece independente. `make status-check` passou
+após corrigir o vocabulário de verificação e remover a auto-referência do
+scopeDigest. Nenhuma ROM foi alterada e nenhum install/rollback/reboot/push foi
+executado. Próximo item: Master System com `.sms` nativo e
+`libretro-genesis-plus-gx`.
+
+O item seguinte também foi fechado: Master System com o dump nativo
+`1969 (Homebrew) (SMS).sms`, `libretro-genesis-plus-gx` 1.22.2 verificado,
+gameplay real visível e controles `listPeripherals`/`pause`/`resume` aceitos.
+Alt+F4 encerrou o emulador e o lifecycle ficou sem sessões ativas; evidências
+`05-gameplay-mastersystem.png` e `06-recovery-mastersystem.png`. Próximo item
+seguro: Dreamcast com CHD/CDI e runtime declarado.
+
+Dreamcast e Nintendo 3DS também foram exercitados. Dreamcast/Flycast abriu o
+CHD de Ikaruga e mostrou a tela inicial, mas a entrada não alcançou a janela
+Wayland para iniciar a partida; o item ficou `installed-not-played`. O
+`listPeripherals` foi recusado de forma controlada, `pause`/`resume` passaram e
+o lifecycle foi encerrado sem sessão ativa. Azahar abriu um `.3ds` real de
+Dragon Ball Z Extreme Butoden e mostrou a tela do jogo, porém sem prova de
+entrada interativa; `pause`/`resume` passaram, `listPeripherals` foi recusado e
+o grupo identificado do PID foi encerrado com SIGTERM, deixando o lifecycle
+vazio. Evidências: `07`, `10`, `11` e `12` no diretório do item. Próximo item
+seguro: PlayStation 2 com CHD nativo e PCSX2 verificado.
+
+PS2 revelou um defeito local real: a release ativa montou `--fullscreen` no
+argv do PCSX2, e a janela devolveu `Unknown parameter: "fullscreen"`. A
+regressão foi escrita primeiro e falhou; a menor correção no manifesto
+`30-playstation-2.platform.json` trocou para `-fullscreen`. O teste focado
+passou de 1 falha/140 passes para 141 passes, com o runner confirmando que o
+state home real permaneceu byte/metadado estável. A evidência `13` registra o
+erro controlado e `14` a recuperação. Como a release ativa não foi alterada,
+PS2 permanece `installed-not-played` até promoção governada; a próxima ação
+segura é PS3 com ISO nativo e RPCS3.
+
+Errata de governança do mesmo ciclo: o protótipo que trocava `--fullscreen`
+por `-fullscreen` foi retirado antes do commit porque o teste compartilhado
+`tests/unit/test_emulation_controller.py` está sob ownership ativo de
+`WS-2026-08-ERROR-CATALOG-AUDIT`. O defeito físico continua reproduzido e o
+handoff é `SOFT-COORDINATION`; nenhuma alteração de outra frente foi mantida
+nesta branch. A sequência independente prossegue no PS3.
+
+PS3 foi exercitado em seguida com o ISO nativo de Ratchet & Clank e RPCS3
+verificado (`27d554ca...`). O launch pela rota SteamZero abriu a tela inicial
+do RPCS3 exigindo o firmware do PlayStation 3; não houve gameplay ou contrato
+de periféricos disponível. O subitem foi classificado como `missing-runtime` e
+`HARD-EXTERNAL-SUBITEM`, sem suspender a frente. O grupo exato do launch foi
+encerrado com SIGTERM, a sessão persistida terminou fechada e o lifecycle ficou
+vazio; evidências `15-gameplay-ps3.png` e `16-recovery-ps3.png`. Nenhuma ROM
+foi movida, extraída, sobrescrita ou apagada. Próximo item seguro: ISO nativo
+de GameCube com Dolphin verificado; firmware do PS3 e handoff PS2 permanecem
+itens separados.
+
+GameCube foi o item seguinte: Dolphin verificado (`377c3e63...`) abriu o ISO
+de Twilight Princess e renderizou a tela de saúde seguida da sequência de
+abertura real. A tentativa de input pelo desktop não produziu prova confiável
+de controle interativo; portanto a classificação permanece
+`installed-not-played`. O socket de controle não estava disponível quando
+consultado após o spawn gráfico. O PGID exato `603063` foi encerrado com
+SIGTERM, a sessão terminou fechada com 134 segundos observados e o lifecycle
+ficou vazio. Evidências `17`, `18` e `19`; nenhum dos Dolphin preexistentes no
+host foi tocado. Próximo item independente: Xbox com ISO e xemu verificado.
+
+Xbox foi exercitado com xemu verificado (`2f8b8889...`) e o ISO de OutRun
+2006. O emulador abriu a tela controlada `Configure machine settings to get
+started`, sem boot do jogo; a classificação é `missing-runtime` para a
+configuração/firmware legítimos da máquina, um `HARD-EXTERNAL-SUBITEM`. O
+PGID exato `642766` foi encerrado com SIGTERM, a sessão terminou fechada com
+39 segundos observados e o lifecycle ficou vazio. Evidências `20` e `21`;
+nenhum arquivo persistente ou ROM foi alterado. Próximo item independente:
+Wii com RVZ e Dolphin verificado.
+
+Wii foi exercitado com o RVZ de Tatsunoko vs. Capcom no Dolphin verificado.
+O boot chegou ao aviso de segurança do Wii Remote; após avançar, o título
+devolveu o erro controlado de configuração “You cannot use other Controllers
+with a Nintendo GameCube Controller connected to Controller Socket 1”. O item
+ficou `needs-review`/`HARD-EXTERNAL-SUBITEM` por depender de configuração de
+periférico Wii, sem alegar gameplay. O PGID `652340` foi encerrado com SIGTERM,
+a sessão terminou fechada com 63 segundos observados e o lifecycle ficou
+vazio. Evidências `22`, `23` e `24`; nenhum arquivo persistente ou ROM foi
+alterado. Próximo item independente: Wii U com WUA e Cemu verificado.
+
+Wii U foi exercitado com o WUA menor de Nano Assault Neo no Cemu verificado
+(`cbadbaba...`). O título real e uma tela de seleção foram renderizados após
+avanço, mas não houve prova de partida interativa; classificação
+`installed-not-played`. O contrato de sessão devolveu a recusa controlada
+`AURA-SESSION-CONTROL-REQUEST-002` para os pedidos tentados. O PGID `661653`
+foi encerrado com SIGTERM, a sessão terminou fechada com 64 segundos
+observados e o lifecycle ficou vazio. Evidências `25`, `26` e `27`; nenhum
+arquivo persistente ou ROM foi alterado. Próximo item independente: Nintendo
+Switch com NSP e runtime verificado.
+
+Switch foi exercitado com o NSP menor de Nintendo World Championships NES
+Edition no Eden primário verificado (`0.2.1-steamdeck`); Citron e Ryubing
+também passaram verify. O título/menu real foi renderizado, mas os pedidos de
+controle devolveram `AURA-SESSION-CONTROL-REQUEST-002`, sem prova de gameplay.
+O PGID `671921` foi encerrado com SIGTERM, a sessão terminou fechada com 79
+segundos observados e o lifecycle ficou vazio. Evidências `28` e `30`; nenhum
+arquivo persistente ou NSP foi alterado. PS4/PS5 permanecem subitens de
+`unsupported-content`/`needs-review` em leitura: os artefatos presentes são
+`.rar`/`.exfat`, enquanto os manifestos ativos aceitam `pkg`/`elf`/`bin`; não
+haverá extração. Próxima ação segura: registrar esse diagnóstico e avançar em
+outro sistema com formato/runtime suportados.
+
+SNES foi exercitado com o ZIP de Chrono Trigger no `libretro-snes9x` 1.22.2
+verificado. RetroArch renderizou uma tela interna real de jogo (“Battle Mode /
+Active / Wait”); os pedidos de controle devolveram recusa controlada, mas a
+prova visual é suficiente para `gameplay-proven` sem alegar controle físico.
+O PGID `683846` foi encerrado com SIGTERM, a sessão terminou fechada com 41
+segundos observados e o lifecycle ficou vazio. Evidências `31` e `32`; nenhum
+ZIP foi extraído ou alterado. Próximo item seguro: Game Boy com GB nativo e
+mGBA verificado.
+
+Game Boy foi exercitado após corrigir um game-id incorreto que gerou a recusa
+pré-launch `E-TX-STALE-PLAN` (“jogo não encontrado”); nada foi alterado nessa
+tentativa. O launch correto abriu o `.gb` nativo de Metroid II no mGBA
+verificado e mostrou a tela real de título, mas a entrada não avançou para
+gameplay e o controle devolveu `AURA-SESSION-CONTROL-REQUEST-002`. O PGID
+`692061` foi encerrado com SIGTERM, a sessão terminou fechada com 53 segundos
+observados e o lifecycle ficou vazio. Evidências `33`, `34` e `35`; nenhum
+arquivo persistente ou ROM foi alterado. PS4/PS5 continuam em
+`unsupported-content`/`needs-review` sem extração; a frente segue pronta para
+outro formato/runtime suportado.
+mGBA verificado.

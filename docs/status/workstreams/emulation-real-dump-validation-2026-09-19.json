@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-EMULATION-REAL-DUMP-VALIDATION",
+  "item": "SZ-EMULATION-REAL-DUMP-VALIDATION",
+  "branch": "codex/emulation-system-validation-2026-09-19",
+  "baseRef": "HEAD",
+  "owner": "codex-emulation-system-validation",
+  "state": "active",
+  "exclusivePaths": [
+    "docs/status/items/emulation-real-dump-validation-2026-09-19.json",
+    "docs/status/workstreams/emulation-real-dump-validation-2026-09-19.json",
+    "docs/09-operations/evidence/2026-09-19-real-dump-inventory"
+  ],
+  "sharedPaths": [
+    "docs/status/COVERAGE.md",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md",
+    "src/steamzero/adapters/emulation.py",
+    "src/steamzero/domain/library.py",
+    "src/steamzero/adapters/discovery/format_parsers.py"
+  ],
+  "nextAction": "Game Boy classificado como installed-not-played após título observado, com recuperação limpa. Registrar PS4/PS5 como unsupported-content/needs-review sem extração; manter a frente pronta para outro formato/runtime suportado e aguardar release governada somente para repetir PS2.",
+  "updatedAt": "2026-09-19"
+}
