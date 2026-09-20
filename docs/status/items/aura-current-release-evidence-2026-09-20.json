@@ -11,16 +11,16 @@
   "distribution": "installed",
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-20-aura-current-release",
-    "docs/09-operations/evidence/2026-09-20-aura-rich-media-release"
+    "docs/09-operations/evidence/2026-09-20-aura-rich-media-release",
+    "docs/09-operations/evidence/2026-09-20-aura-session-osd-installed"
   ],
-  "scopeDigest": "aea723a4602271d04362b59b6eac60b137dbadb90fc4614da94006d9759caf40",
+  "scopeDigest": "9b88e681519d95bee0944a249f579dfa08d317542e4856c53985688e49f57044",
   "dependsOn": [
     "SZ-AURA-LAUNCHER",
     "SZ-AURA-PERFORMANCE-VALIDATION",
     "SZ-AURA-CINEMA-COMPLETION"
   ],
   "knownGaps": [
-    "GAP-AURA-SESSION-OSD-CURRENT-RELEASE",
     "GAP-AURA-DISC-SWAP-INSTALLED-RELEASE"
   ],
   "acceptanceCriteria": [
@@ -48,12 +48,18 @@
       "reference": "docs/09-operations/evidence/2026-09-20-aura-rich-media-release/PHYSICAL-VALIDATION.json",
       "command": "release 2.0.0rc1-3acc2104dd5a com fanart/capa reais e medição válida pós-ingestão",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-20-aura-session-osd-installed/PHYSICAL-VALIDATION.json",
+      "command": "release 2.0.0rc1-3acc2104dd5a: Blaster Master lançado pelo Launcher, OSD running, galeria de saves com fallback vazio, retorno ao mesmo contexto e jogo recuperado",
+      "result": "passed"
     }
   ],
   "activeWorkstreams": [
     "WS-2026-09-AURA-CURRENT-RELEASE-EVIDENCE"
   ],
-  "nextAction": "Repetir a captura específica de OSD e troca de disco pelo Launcher desta release.",
+  "nextAction": "Repetir a troca de disco pelo Launcher desta release com um jogo multi-disc legítimo; OSD e galeria já têm captura física.",
   "updatedAt": "2026-09-20",
-  "notes": "A release 2.0.0rc1-3acc2104dd5a agora tem prova específica de mídia rica e desempenho. OSD visual e troca de disco pelo Launcher instalado permanecem abertos."
+  "notes": "A release 2.0.0rc1-3acc2104dd5a agora tem prova específica de mídia rica, desempenho, OSD de sessão, galeria de saves e retorno ao mesmo contexto. Troca de disco pelo Launcher instalado permanece aberta porque o título usado na captura é single-disc."
 }

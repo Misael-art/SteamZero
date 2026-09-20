@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "3c9173c71a1e09a1bd3fbfd3ebd8e7b400ad484d52c056c210808553526d0124",
+  "scopeDigest": "552a727d2e657a70a0d62f977515046ccb80569df7b4d348d80b6fe0ccdd933c",
   "scopePaths": [
     "src/steamzero/domain/session_overlay.py",
     "tests/unit/test_session_overlay.py",
@@ -28,14 +28,14 @@
     "src/steamzero/core/state.py",
     "tests/unit/test_session_control.py",
     "tests/integration/test_launcher_session_composition.py",
-    "docs/09-operations/evidence/2026-09-13-aura-session-composition"
+    "docs/09-operations/evidence/2026-09-13-aura-session-composition",
+    "docs/09-operations/evidence/2026-09-20-aura-session-osd-installed"
   ],
   "dependsOn": [
     "SZ-AURA-CONTRACTS",
     "SZ-AURA-LAUNCHER"
   ],
   "knownGaps": [
-    "GAP-AURA-SAVE-STATE-UI",
     "GAP-PS4-SCOPE-PHYSICAL-EVIDENCE-PRECEDES",
     "GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
   ],
@@ -82,10 +82,16 @@
       "reference": "tests/qml/launcher/check_launcher_session_osd.qml",
       "command": ".venv/bin/python -m pytest tests/integration/test_qml_handheld_offscreen.py -k session_osd -q",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-20-aura-session-osd-installed/PHYSICAL-VALIDATION.json",
+      "command": "Release 2.0.0rc1-3acc2104dd5a: OSD running, galeria de saves vazia com fallback, fechamento e recuperação do mesmo jogo após lançamento pelo Launcher",
+      "result": "passed"
     }
   ],
-  "nextAction": "Abrir a frente AURA-12 para save-state gallery; preservar as ações sem adapter como indisponíveis e medir frame time/VRAM/startup somente com probe da janela LauncherMain.",
+  "nextAction": "Preservar a galeria e as ações sem adapter como indisponíveis; fechar a prova de troca de disco somente com jogo multi-disc legítimo pelo Launcher instalado.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-13",
-  "notes": "A10 da execução AURA. Esta frente começa pelo contrato semântico para impedir que o tema invente pausa, volume ou saves. Não promove Theme Engine, Launcher ou capacidade física por si só. A release 2.0.0rc1-79af5e5b20d5 fechou a composição física do OSD de pausa/retomada. O catálogo real ainda publica fallback sem mídia; save-state gallery e outras ações continuam dependentes dos adapters."
+  "updatedAt": "2026-09-20",
+  "notes": "A10 da execução AURA. O contrato semântico continua impedindo que o tema invente pausa, volume ou saves. A release 2.0.0rc1-3acc2104dd5a adiciona prova física do OSD e da galeria de saves pelo Launcher instalado sobre jogo real; ações sem adapter permanecem visíveis e desabilitadas. Troca de disco segue dependente de um jogo multi-disc legítimo."
 }

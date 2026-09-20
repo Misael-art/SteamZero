@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "kind": "physical-validation",
+  "itemId": "SZ-AURA-CURRENT-RELEASE-EVIDENCE",
+  "release": "2.0.0rc1-3acc2104dd5a",
+  "sourceCommit": "3acc2104dd5af8862b0ee2a21065fa387acd7720",
+  "surface": "AURA Launcher / LauncherMain.qml / Wayland fullscreen",
+  "game": {
+    "title": "Blaster Master (USA) (Translated PtBr)",
+    "gameId": "6f71cb69c753c1712e001c9a",
+    "platformId": "nes-famicom",
+    "emulator": "RetroArch/Mesen",
+    "launchRoute": "steamzero-launcher -> emulation launch"
+  },
+  "steps": [
+    {
+      "step": "launch",
+      "result": "passed",
+      "reference": "01-game-via-launcher.png",
+      "sha256": "642751450456b7a7b127640359256b8afa0087d0ceae197363d61525fc43f74e"
+    },
+    {
+      "step": "osd-running",
+      "result": "passed",
+      "state": "running",
+      "reference": "02-osd-running.png",
+      "sha256": "87416b177f318cbe21a37444d707f0323b01a73f204dedfeb8d774fdf85983d6"
+    },
+    {
+      "step": "save-state-gallery-fallback",
+      "result": "passed",
+      "state": "empty-with-explanation",
+      "reference": "03-save-gallery-empty-fallback.png",
+      "sha256": "9f6275a1d8cecd9df6ef903b0c448ca0bd210afd708d9c9f1c81a21112d21421"
+    },
+    {
+      "step": "close-osd-and-return-context",
+      "result": "passed",
+      "reference": "04-return-details.png",
+      "sha256": "0562a65c29537a3609943b4cb6d72de7efaabcf5501bb8701beb8c739e25f224"
+    },
+    {
+      "step": "game-recovered",
+      "result": "passed",
+      "reference": "05-game-recovered.png",
+      "sha256": "7a17a2e9549adf2db7f185ffc1c32cadf14d2d3a195eaea779c5f5252c1bc2fb"
+    }
+  ],
+  "capability_observation": {
+    "discSwap": "disabled-single-disc",
+    "saveState": "empty-fallback",
+    "osd": "rendered-and-focused",
+    "returnContext": "same-game-details"
+  },
+  "host": {
+    "kdeRestarted": false,
+    "rebooted": false,
+    "kdeMutated": false
+  },
+  "remainingGap": "GAP-AURA-DISC-SWAP-INSTALLED-RELEASE"
+}
