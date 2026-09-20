@@ -21,6 +21,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Integrar a identidade estável no descritor e executar prova física com conteúdo multidisco legítimo.",
+  "nextAction": "Promover a branch em release governada e repetir a captura pelo Launcher instalado; a prova do adapter com PUAE real foi concluída.",
   "updatedAt": "2026-09-20"
 }

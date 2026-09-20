@@ -11472,3 +11472,24 @@ isolada, mas a primeira falha reproduzível foi ambiental:
 (`Errno 28`, 1035 passed e 44 skipped antes da falha). O estado real foi
 comparado pelo runner e permaneceu idêntico. A captura PNG pós-instalação com
 fanart/capa reais permanece aberta até a promoção e instalação governadas.
+
+## 2026-09-20 — prova física do contrato multidisco AURA
+
+Foi executado o ciclo físico com conteúdo legítimo Amiga: quatro ADFs reais de
+Street Fighter II, PUAE 5.3.1 em RetroArch Flatpak 1.22.2, modelo A1200 e
+Kickstart A1200. O `RetroArchSessionPeripheral` leu o `.m3u` gerenciado,
+publicou as quatro identidades persistentes e confirmou `eject → next → insert`
+para 1→2 e `eject → previous → insert` para 2→1. O log do PUAE e o read model
+confirmaram `activeDisc: 0 → 1 → 0`.
+
+As capturas ordenadas estão em
+`docs/09-operations/evidence/2026-09-20-aura-multidisc-physical/`:
+`01-baseline.png`, `02-delivery.png` e `03-recovery.png`, com hashes no
+`PHYSICAL-VALIDATION.json`. Os ZIPs de origem foram preservados; a extração
+ocorreu somente em `/tmp`.
+
+Limite de promoção: a prova exercitou o adapter real a partir do commit
+`3acc2104dd5af8862b0ee2a21065fa387acd7720`, mas a release ativa permaneceu
+`2.0.0rc1-c3b14a040b7c`, porque o instalador governado aguardou autenticação
+sem exibir o prompt. Nenhuma instalação, rollback, reinício ou mutação do KDE
+foi executada. A repetição pelo Launcher instalado continua aberta.

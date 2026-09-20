@@ -21,7 +21,7 @@
   "knownGaps": [
     "GAP-AURA-RICH-MEDIA-CURRENT-RELEASE",
     "GAP-AURA-SESSION-OSD-CURRENT-RELEASE",
-    "GAP-AURA-DISC-SWAP-PHYSICAL"
+    "GAP-AURA-DISC-SWAP-INSTALLED-RELEASE"
   ],
   "acceptanceCriteria": [
     "A captura vem da janela AURA instalada em uma sessão Wayland real.",

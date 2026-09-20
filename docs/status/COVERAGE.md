@@ -37,7 +37,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AURA-SESSION-OSD | 25 | 6 | 4 | hw |  |
 | SZ-AURA-UI | 16 | 5 | 4 | unit |  |
 | SZ-AURA-VISUAL-COMPLETION | 38 | 14 | 5 | hw |  |
-| SZ-AURA-VISUAL-RICH-SURFACE | 4 | 6 | 5 | hw |  |
+| SZ-AURA-VISUAL-RICH-SURFACE | 4 | 7 | 6 | hw |  |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
 | SZ-COMPONENT-LIFECYCLE | 23 | 14 | 12 | hw |  |
@@ -66,7 +66,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-MEDIA-PROVIDER-PLATFORM-FILTER | 10 | 2 | 2 | unit |  |
 | SZ-MEDIA-SCRAPING | 29 | 7 | 7 | unit |  |
 | SZ-MULTIDISC-DESCRIPTOR-RECONCILIATION | 15 | 13 | 13 | dev |  |
-| SZ-MULTIDISC-SESSION-DISC-IDENTITY | 4 | 2 | 2 | unit |  |
+| SZ-MULTIDISC-SESSION-DISC-IDENTITY | 9 | 3 | 3 | hw |  |
 | SZ-ONLINE-P2P | 37 | 2 | 1 | none |  |
 | SZ-PLATFORM-CORE-PER-SYSTEM | 78 | 4 | 3 | unit |  |
 | SZ-PLATFORM-PS4-CATALOG | 6 | 3 | 3 | unit |  |

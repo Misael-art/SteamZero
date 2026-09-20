@@ -5,23 +5,24 @@
   "title": "AURA — identidade estável no descritor e na troca de disco",
   "domain": "ui",
   "implementation": "partial",
-  "integration": "feature-branch",
-  "verification": "unit",
+  "integration": "integrated",
+  "verification": "hw",
   "operation": "ready",
   "distribution": "not-packaged",
   "scopePaths": [
     "src/steamzero/domain/multidisc_artifacts.py",
     "src/steamzero/adapters/session_peripherals.py",
     "tests/unit/test_multidisc_artifacts.py",
-    "tests/unit/test_session_peripherals.py"
+    "tests/unit/test_session_peripherals.py",
+    "docs/09-operations/evidence/2026-09-20-aura-multidisc-physical"
   ],
-  "scopeDigest": "54ed727b5df9a93651f83a3b80bb2cdb1df9e294b1bc7fe477a1cd287fae9d6c",
+  "scopeDigest": "be84e2feb219909fa085a58ec97076ba75a2b8328c8341d5e719639b5401722c",
   "dependsOn": [
     "SZ-MULTIDISC-DESCRIPTOR-RECONCILIATION",
     "SZ-AURA-SESSION-OSD"
   ],
   "knownGaps": [
-    "GAP-AURA-DISC-SWAP-PHYSICAL"
+    "GAP-AURA-DISC-SWAP-INSTALLED-RELEASE"
   ],
   "acceptanceCriteria": [
     "Descritores gerados preservam a identidade set:disc de cada entrada em comentário compatível com M3U.",
@@ -42,12 +43,18 @@
       "reference": "tests/unit/test_session_peripherals.py",
       "command": "descritor gerenciado com dois discos convertidos publica ids estáveis e troca pelo id persistente",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-20-aura-multidisc-physical/PHYSICAL-VALIDATION.json",
+      "command": "RetroArchSessionPeripheral real + PUAE real: eject/next/insert disc 1→2 e eject/previous/insert disc 2→1",
+      "result": "passed"
     }
   ],
   "activeWorkstreams": [
     "WS-2026-09-MULTIDISC-SESSION-DISC-IDENTITY"
   ],
-  "nextAction": "Integrar na release governada e executar a prova física com um jogo multidisco legítimo e adapter compatível.",
+  "nextAction": "Promover a branch em release governada e repetir a mesma captura pelo Launcher instalado; o adapter e o ciclo físico já foram comprovados.",
   "updatedAt": "2026-09-20",
-  "notes": "A tentativa física local com PUAE encontrou o conjunto Amiga real de 11 ADFs, mas a instalação não possui o Kickstart necessário; nenhum conteúdo original foi alterado. A lacuna permanece física, não é promovida por fixture."
+  "notes": "Prova física concluída com o conjunto real Street Fighter II (4 ADFs), PUAE 5.3.1 e Kickstart A1200: o adapter publicou ids estáveis e confirmou 1→2→1 com capturas PNG. A release instalada ainda não contém o checkout 3acc2104, portanto a promoção no Launcher instalado permanece aberta."
 }

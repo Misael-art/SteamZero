@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "kind": "aura-multidisc-physical-validation",
+  "observedAt": "2026-09-20",
+  "sourceCommit": "3acc2104dd5af8862b0ee2a21065fa387acd7720",
+  "installedRelease": "2.0.0rc1-c3b14a040b7c",
+  "installedReleaseContainsSourceCommit": false,
+  "sourceMutation": false,
+  "emulator": {
+    "frontend": "RetroArch Flatpak 1.22.2",
+    "core": "PUAE 5.3.1",
+    "coreSha256": "ebfb55ca1e909bffdb0d9c133d619f998e20c4aa0a7e05c1e481da93a286ce8c",
+    "model": "A1200",
+    "kickstart": "kick40068.A1200",
+    "playlistEntries": 4
+  },
+  "logicalSet": {
+    "setId": "amiga:street-fighter-ii-world-warrior:1992",
+    "platformId": "amiga",
+    "discs": [
+      "amiga:street-fighter-ii-world-warrior:1992:disc-1",
+      "amiga:street-fighter-ii-world-warrior:1992:disc-2",
+      "amiga:street-fighter-ii-world-warrior:1992:disc-3",
+      "amiga:street-fighter-ii-world-warrior:1992:disc-4"
+    ]
+  },
+  "sequence": [
+    {"phase": "before", "activeDisc": 0},
+    {"phase": "swap-to-disc-2", "activeDisc": 1, "commands": ["DISK_EJECT_TOGGLE", "DISK_NEXT", "DISK_EJECT_TOGGLE"]},
+    {"phase": "swap-back-disc-1", "activeDisc": 0, "commands": ["DISK_EJECT_TOGGLE", "DISK_PREV", "DISK_EJECT_TOGGLE"]}
+  ],
+  "evidence": [
+    {"file": "01-baseline.png", "sha256": "91cb4fc8e69d132805d0c1cf8b761f8cc33715e3e725c81b1cb230183f4cf19b"},
+    {"file": "02-delivery.png", "sha256": "b4a6737f2bd3642280f44baab6de6f05901fd5adbdd23d5c4a906d305ae128dd"},
+    {"file": "03-recovery.png", "sha256": "ad775286feccf8e79df13b58f063c21892387d24a36b709a2a1f5f73095042ed"}
+  ],
+  "adapterProof": "RetroArchSessionPeripheral",
+  "installedLauncherProof": false
+}
