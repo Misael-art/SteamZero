@@ -246,3 +246,34 @@ def test_retroarch_bounds_save_slots_and_supports_m3u_swap(tmp_path: Path) -> No
     assert adapter.list_discs()["discs"][1]["label"] == "disc-two.cue"
     adapter.swap_disc("disc-1")
     assert commands == ["DISK_EJECT_TOGGLE", "DISK_NEXT", "DISK_EJECT_TOGGLE"]
+
+
+def test_retroarch_managed_m3u_preserves_stable_disc_identity(tmp_path: Path) -> None:
+    first = tmp_path / "converted-disc-one.chd"
+    second = tmp_path / "converted-disc-two.chd"
+    first.write_bytes(b"disc-one")
+    second.write_bytes(b"disc-two")
+    playlist = tmp_path / "game.m3u"
+    playlist.write_text(
+        "\n".join(
+            (
+                "# SteamZero-MultiDisc-Managed: true",
+                "# SteamZero-MultiDisc-Set: psx:game",
+                "# SteamZero-MultiDisc-Disc: psx:game:disc-1",
+                first.name,
+                "# SteamZero-MultiDisc-Disc: psx:game:disc-2",
+                second.name,
+                "",
+            )
+        ),
+        encoding="utf-8",
+    )
+    commands: list[str] = []
+    adapter = RetroArchSessionPeripheral(
+        playlist, tmp_path / "states", send_command=commands.append, sleep=lambda _: None
+    )
+
+    discs = adapter.list_discs()["discs"]
+    assert [entry["id"] for entry in discs] == ["psx:game:disc-1", "psx:game:disc-2"]
+    adapter.swap_disc("psx:game:disc-2")
+    assert commands == ["DISK_EJECT_TOGGLE", "DISK_NEXT", "DISK_EJECT_TOGGLE"]

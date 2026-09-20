@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-MULTIDISC-SESSION-DISC-IDENTITY",
+  "title": "AURA — identidade estável no descritor e na troca de disco",
+  "domain": "ui",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "ready",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/domain/multidisc_artifacts.py",
+    "src/steamzero/adapters/session_peripherals.py",
+    "tests/unit/test_multidisc_artifacts.py",
+    "tests/unit/test_session_peripherals.py"
+  ],
+  "scopeDigest": "54ed727b5df9a93651f83a3b80bb2cdb1df9e294b1bc7fe477a1cd287fae9d6c",
+  "dependsOn": [
+    "SZ-MULTIDISC-DESCRIPTOR-RECONCILIATION",
+    "SZ-AURA-SESSION-OSD"
+  ],
+  "knownGaps": [
+    "GAP-AURA-DISC-SWAP-PHYSICAL"
+  ],
+  "acceptanceCriteria": [
+    "Descritores gerados preservam a identidade set:disc de cada entrada em comentário compatível com M3U.",
+    "A troca de disco usa a identidade persistente quando presente e mantém fallback posicional limitado para M3Us legados.",
+    "Conversão de caminho não cria um novo disco lógico nem perde a ordem declarada.",
+    "O read model não expõe caminho privado e rejeita identificadores fora do conjunto.",
+    "A operação física só é promovida após um jogo multidisco legítimo e um adapter real confirmarem eject/insert/retorno."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_multidisc_artifacts.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_multidisc.py tests/unit/test_multidisc_archive.py tests/unit/test_multidisc_artifacts.py tests/unit/test_session_peripherals.py tests/unit/test_session_overlay_adapter.py tests/integration/test_library.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_session_peripherals.py",
+      "command": "descritor gerenciado com dois discos convertidos publica ids estáveis e troca pelo id persistente",
+      "result": "passed"
+    }
+  ],
+  "activeWorkstreams": [
+    "WS-2026-09-MULTIDISC-SESSION-DISC-IDENTITY"
+  ],
+  "nextAction": "Integrar na release governada e executar a prova física com um jogo multidisco legítimo e adapter compatível.",
+  "updatedAt": "2026-09-20",
+  "notes": "A tentativa física local com PUAE encontrou o conjunto Amiga real de 11 ADFs, mas a instalação não possui o Kickstart necessário; nenhum conteúdo original foi alterado. A lacuna permanece física, não é promovida por fixture."
+}

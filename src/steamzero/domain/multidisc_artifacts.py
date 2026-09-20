@@ -48,7 +48,7 @@ def render_descriptor(logical_set: MultiDiscSet) -> str:
         raise SteamZeroError("E-TX-STALE-PLAN", detail="playlist não pode ocultar disco ausente")
     root = logical_set.descriptor_path.parent
     lines = [OWNERSHIP_MARKER, f"# SteamZero-MultiDisc-Set: {logical_set.set_id}"]
-    for disc in sorted(active, key=lambda item: item.disc_number):
+    for disc in sorted(active, key=lambda item: item.adapter_order):
         if disc.path is None:
             raise SteamZeroError("E-TX-STALE-PLAN", detail="disco sem caminho atual")
         if disc.path == disc.archive_path and disc.member_path is not None:
@@ -61,6 +61,11 @@ def render_descriptor(logical_set: MultiDiscSet) -> str:
                 "E-TX-STALE-PLAN",
                 detail=f"formato não aceito pelo adapter: {disc.format}",
             )
+        # Comments are part of the managed descriptor contract, not the
+        # emulator payload.  They preserve the stable logical identity when a
+        # converted path replaces the physical file, while remaining ignored
+        # by M3U consumers that do not know SteamZero metadata.
+        lines.append(f"# SteamZero-MultiDisc-Disc: {disc.identity}")
         lines.append(_safe_relative_path(disc.path, root))
     return "\n".join(lines) + "\n"
 
