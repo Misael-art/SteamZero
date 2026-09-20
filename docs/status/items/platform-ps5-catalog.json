@@ -26,9 +26,10 @@
     "tests/unit/test_ps5_runtime.py",
     "tests/unit/test_ps5_compatibility.py",
     "tests/unit/test_ps5_sfo.py",
-    "tests/unit/test_sharpemu_tarball.py"
+    "tests/unit/test_sharpemu_tarball.py",
+    "docs/09-operations/evidence/2026-09-20-ps5-dump-identity"
   ],
-  "scopeDigest": "febb5261200192f2beaf8c6eaa0935369d17ee7048450b51052ad01ef7e013a9",
+  "scopeDigest": "de7dd636235344c0020d21b1cdddc43935cba2604fe5b312d390e7d0d0346a0a",
   "dependsOn": [
     "SZ-AGG-PLATFORM-MANIFESTS",
     "SZ-COMPONENT-LIFECYCLE",
@@ -42,7 +43,7 @@
     "SharpEmu possui manifesto PS5, adapter, sistema ps5, perfil DualSense e entrada no catálogo canônico.",
     "A fonte Linux oficial tem URL, tag, commit, SHA-256, licença e payload verificáveis antes de entrar no lockfile.",
     "O engine extrai tar.gz com allowlist, limites, recusa de traversal/symlink/hardlink e ciclo idempotente de rollback.",
-    "A pasta ps5dir reconhece eboot.bin e param.sfo sem expor prx, sys_module ou binários auxiliares como jogos.",
+    "A pasta ps5dir reconhece eboot.bin e param.sfo/param.json sem expor prx, sys_module ou binários auxiliares como jogos.",
     "PKG, dumps incompletos, origem ausente e compatibilidade não testada permanecem em estados explícitos e recuperáveis.",
     "Launch/return valida Vulkan e arquitetura, gerencia uma única sessão e restaura o foco do launcher.",
     "A release instalada é validada com dump legal do operador e evidência PNG antes de qualquer promoção verified-hw."
@@ -149,12 +150,18 @@
       "reference": "tests/unit/test_ps5_compatibility.py",
       "command": "pytest focused: classifica raízes removíveis/rede e separa volumeId/shareId na sourceIdentity PS5",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-20-ps5-dump-identity/identity.json",
+      "command": "RAR listado/extraído em temporário e imagem exFAT montada com guestmount --ro; leitura de eboot.bin + sce_sys/param.json",
+      "result": "passed"
     }
   ],
-  "nextAction": "Revisar o handoff compartilhado de emulation.py/Emulation.qml no merge; o inventário associa updates/DLC à base sem duplicar jogos, publica sourceIdentity PS5 resiliente a remontagem e o card mostra tipo de origem/caminho relativo, enquanto 7f2de9b publica contentState complete/content-incomplete/source-missing com causa recuperável, c3c3369 publica o snapshot oficial pinned e só promove o estado SharpEmu quando Title ID, build e OS coincidem, d6e8af7 mantém a apresentação explícita e 173d3c95 conecta o preflight PS5 de arquitetura/Vulkan ao launch antes do spawn. Preparar release governada somente após autorização explícita e, com dump legal PS5, executar a prova física; baseline read-only confirmou x86_64/Vulkan RADV, enquanto SharpEmu ainda está ausente no host. Capturar PNG e manter compatibilidade por build sem promover verified-hw.",
+  "nextAction": "Publicar a correção param.json, preparar release governada somente após os gates e, com os dumps do operador, instalar SharpEmu, lançar PPSA02801 ou PPSA02929 e capturar PNG. Não promover verified-hw antes da prova física.",
   "activeWorkstreams": [
     "WS-2026-09-PS5-SHARPEMU"
   ],
   "updatedAt": "2026-09-19",
-  "notes": "Implementação parcial em branch própria: SharpEmu possui manifesto, lockfile, plataforma, perfil DualSense, catálogo canônico, extração segura tar.gz, parser PS5 param.sfo/Title ID endurecido contra tabelas sobrepostas, comprimentos inválidos e tipos não-string, e classificação ps5dir que não expõe módulos PRX, binários auxiliares ou PKG como jogo. ELF genérico sem identidade PS5 permanece explicitamente ps5-elf-unresolved e não é promovido por extensão. Containers de dump zip/7z/tar.gz permanecem explicitamente em needs-extraction. O catálogo agora resolve o snapshot oficial pinned de 46 relatórios por Title ID, build e OS, promovendo o estado somente em correspondência exata e explicando qualquer divergência como unknown; o inventário diferencia content-incomplete de source-missing, preserva a causa no card, associa updates/DLC à base sem duplicar jogos e publica sourceIdentity com namespace opaco, caminho relativo, tamanho e SHA-256 do entrypoint, sem usar o caminho absoluto como id; quando o namespace não é observável, usa unknown-namespace sem derivar o caminho. Os cards PS5 mostram o tipo de origem e o caminho relativo sem renderizar o caminho absoluto. O SharpEmu permanece experimental; não há instalação no host nem promoção verified-hw."
+  "notes": "Implementação parcial em branch própria: SharpEmu possui manifesto, lockfile, plataforma, perfil DualSense, catálogo canônico, extração segura tar.gz, parser PS5 param.sfo/param.json + Title ID endurecido contra tabelas sobrepostas, comprimentos inválidos, tipos não-string e JSON arbitrário, e classificação ps5dir que não expõe módulos PRX, binários auxiliares ou PKG como jogo. ELF genérico sem identidade PS5 permanece explicitamente ps5-elf-unresolved e não é promovido por extensão. Containers de dump zip/7z/tar.gz permanecem explicitamente em needs-extraction. A identidade param.json foi provada nos dumps reais PPSA02801 (imagem exFAT somente leitura) e PPSA02929 (RAR extraído em temporário), sem mutação da origem. O catálogo resolve o snapshot oficial pinned de 46 relatórios por Title ID, build e OS, promovendo o estado somente em correspondência exata e explicando qualquer divergência como unknown; o inventário diferencia content-incomplete de source-missing, preserva a causa no card, associa updates/DLC à base sem duplicar jogos e publica sourceIdentity com namespace opaco, caminho relativo, tamanho e SHA-256 do entrypoint, sem usar o caminho absoluto como id; quando o namespace não é observável, usa unknown-namespace sem derivar o caminho. Os cards PS5 mostram o tipo de origem e o caminho relativo sem renderizar o caminho absoluto. O SharpEmu permanece experimental; não há instalação no host nem promoção verified-hw."
 }

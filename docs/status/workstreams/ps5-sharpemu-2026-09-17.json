@@ -3,9 +3,9 @@
   "kind": "workstream",
   "id": "WS-2026-09-PS5-SHARPEMU",
   "item": "SZ-PLATFORM-PS5-CATALOG",
-  "branch": "codex/platform-ps5-sharpemu",
-  "baseRef": "dea35ad8",
-  "owner": "codex-platform-ps5",
+  "branch": "codex/ps5-param-json-physical",
+  "baseRef": "41180f3a9d5efe58649082e55e531250f14a8005",
+  "owner": "codex-ps5-param-json-physical",
   "state": "active",
   "exclusivePaths": [
     "docs/12-roadmap/SHARPEMU-PS5-DEPLOYMENT-PLAN.md",
@@ -24,7 +24,8 @@
     "tests/unit/test_ps5_runtime.py",
     "tests/unit/test_ps5_compatibility.py",
     "tests/unit/test_ps5_sfo.py",
-    "tests/unit/test_sharpemu_tarball.py"
+    "tests/unit/test_sharpemu_tarball.py",
+    "docs/09-operations/evidence/2026-09-20-ps5-dump-identity"
   ],
   "sharedPaths": [
     "docs/12-roadmap/IMPLEMENTATION-ROADMAP.md",
@@ -46,6 +47,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Software PS5 avançado com associações base/update/DLC, sourceIdentity resiliente e origem relativa apresentada no card na branch de integração codex/platform-ps5-sharpemu-mainline: ELF genérico permanece ps5-elf-unresolved, o preflight de launch recusa arquitetura/Vulkan não prontos antes do spawn, o snapshot oficial pinned resolve cada relatório por Title ID/build/OS exatos e o inventário publica contentState complete, content-incomplete ou source-missing com causa recuperável; revisar o handoff compartilhado de emulation.py/Emulation.qml/library.py no merge. Diagnóstico read-only de 2026-09-19 confirmou x86_64/Vulkan RADV e SharpEmu ausente no host. Depois, com autorização e dump legal, fechar a prova física e capturar PNG.",
-  "updatedAt": "2026-09-19"
+  "nextAction": "Publicar o fallback seguro param.json, executar gates e preparar a release governada. Depois, com SharpEmu instalado e os dumps PPSA02801/PPSA02929, fechar a prova física com lançamento real e captura PNG.",
+  "updatedAt": "2026-09-20"
 }

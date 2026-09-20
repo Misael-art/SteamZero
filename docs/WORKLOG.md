@@ -11377,19 +11377,47 @@ integral posterior coletou 6.223 testes e terminou sem falhas na repetição com
 isoladamente em 6,47 s e não se reproduziu na repetição integral. O commit
 funcional é `ce887e6`; nenhum host foi instalado ou mutado.
 
-## 2026-09-20 — revalidação física da superfície AURA instalada
+## 2026-09-20 — identidade estável na troca de disco AURA
 
-Registrei uma amostra nova da release instalada `2.0.0rc1-c3b14a040b7c` em
-`docs/09-operations/evidence/2026-09-20-aura-current-release/`. A sonda física
-mediu startup de 1191 ms, 375 frames, frame-time p95 de 16,163 ms e VRAM de
-13.664 KiB, dentro dos orçamentos definidos. A captura PNG da janela Wayland
-tem 1280×801 e comprova o carousel/foco da superfície AURA; ela também deixa
-explícito que fanart/vídeo ainda estão em fallback nesta release.
+A frente `WS-2026-09-MULTIDISC-SESSION-DISC-IDENTITY` passou a preservar a
+identidade lógica de cada disco no descritor gerenciado: além do caminho, o
+`.m3u` publica comentários `SteamZero-MultiDisc-Disc` com `set_id:disc-N`.
+`RetroArchSessionPeripheral` lê essa identidade, a publica no read model e
+aceita a troca por id persistente; M3Us legados continuam usando apenas o
+fallback posicional limitado. A ordem do descritor usa a ordem declarada pelo
+adapter, não ordenação alfabética.
 
-`STATUS-CHECK` passou e `tests/unit/test_project_status.py` passou com 10
-testes. Nenhuma instalação, rollback, reinício ou mutação do KDE foi executada;
-o próximo ciclo deve repetir a medição após a release de mídia rica e fechar a
-lacuna de geometria 1280×800, se o host a disponibilizar.
+Provas focadas: `54 passed` na cadeia multidisco, biblioteca, periféricos e
+overlay; a suíte integral terminou com `6174 passed, 47 skipped, 4 failed`.
+As quatro falhas são ambientais e pré-existentes (`AF_UNIX path too long` nos
+testes de sockets pelo caminho profundo do temporário do harness). Ruff,
+formatação, mypy, independência, fronteiras e `STATUS-CHECK` passaram. O
+`state audit` pós-run está limpo e o estado real não mudou.
+
+Na verificação física somente leitura foi encontrado o conjunto Amiga real
+`Super Street Fighter II Turbo` com 11 ADFs. O PUAE existente iniciou, mas o
+host não possui o Kickstart legal `kick34005.A500`; a execução foi encerrada
+sem alterar ROMs, KDE ou a instalação. A prova física de eject/insert/retorno
+continua aberta como `GAP-AURA-DISC-SWAP-PHYSICAL`.
+
+## 2026-09-20 — identidade PS5 em dumps reais do operador
+
+O leitor de identidade SharpEmu passou a aceitar `sce_sys/param.json` como
+fallback controlado quando `param.sfo` não existe. A promoção continua exigindo
+`eboot.bin`, diretório `sce_sys` não-simbólico, JSON limitado e `titleId` textual
+válido; `param.sfo` permanece prioritário quando presente.
+
+Provas focadas: `23 passed` em `test_ps5_sfo.py` e
+`test_ps5_compatibility.py`. Os dumps reais PPSA02929 (RAR5, extraído apenas em
+temporário) e PPSA02801 (imagem exFAT montada com `guestmount --ro`) foram
+reconhecidos como `ps5-param-json`; nenhuma origem foi alterada. Ruff,
+formatação, mypy, independência, fronteiras, component-lock, matriz e
+`STATUS-CHECK` passaram.
+
+A suíte integral foi inconclusiva e interrompida após começar a acumular
+falhas ambientais quando `/run/user/1000` atingiu 100% de uso; o estado real
+antes/depois permaneceu idêntico. A prova de lançamento SharpEmu e a captura
+PNG seguem pendentes até publicar esta correção em uma release governada.
 
 ## 2026-09-20 — projeção AURA de mídia escopada por plataforma
 
@@ -11406,17 +11434,15 @@ registros antigos de Switch usados por jogos de outras plataformas; a nova
 regra os bloqueia sem vazamento de artefatos. A captura física pós-instalação
 com mídia rica permanece `GAP-AURA-PLATFORM-MEDIA-PHYSICAL-PROOF`.
 
-## 2026-09-20 — identidade estável na troca de disco AURA
+## 2026-09-20 — revalidação física da superfície AURA instalada
 
-A identidade lógica de cada disco passou a viajar no descritor gerenciado: o
-`.m3u` publica comentários `SteamZero-MultiDisc-Disc` com `set_id:disc-N`.
-`RetroArchSessionPeripheral` lê essa identidade, publica o id no read model e
-aceita a troca por id persistente; M3Us legados mantêm fallback posicional
-limitado. A ordem usa o adapter, não ordenação alfabética.
+Registrei uma amostra nova da release instalada `2.0.0rc1-c3b14a040b7c`. A
+sonda física mediu startup de 1191 ms, 375 frames, frame-time p95 de 16,163 ms
+e VRAM de 13.664 KiB, dentro dos orçamentos definidos. A captura PNG da janela
+Wayland tem 1280×801 e comprova o carousel/foco da superfície AURA; fanart e
+vídeo permanecem explicitamente em fallback nesta release.
 
-Provas focadas: `54 passed`; a suíte integral terminou com `6174 passed, 47
-skipped, 4 failed`, falhas ambientais de `AF_UNIX path too long`. Ruff,
-formatação, mypy, independência, fronteiras e `STATUS-CHECK` passaram. A
-verificação Amiga somente leitura encontrou 11 ADFs, mas o host não possui o
-Kickstart legal `kick34005.A500`; a prova física de eject/insert/retorno segue
-aberta como `GAP-AURA-DISC-SWAP-PHYSICAL`.
+`STATUS-CHECK` passou e `tests/unit/test_project_status.py` passou com 10
+testes. Nenhuma instalação, rollback, reinício ou mutação do KDE foi executada;
+o próximo ciclo deve repetir a medição após a release de mídia rica e fechar a
+lacuna de geometria 1280×800, se o host a disponibilizar.

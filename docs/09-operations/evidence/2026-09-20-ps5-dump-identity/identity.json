@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "kind": "ps5-dump-identity",
+  "observedAt": "2026-09-20",
+  "sourceMutation": false,
+  "reader": "steamzero.adapters.discovery.ps5_sfo.read_ps5_identity",
+  "metadataFallback": "sce_sys/param.json",
+  "dumps": [
+    {
+      "sourceLabel": "[PS5]_PPSA02929_Dreaming_Sarah.rar",
+      "transport": "rar5",
+      "temporaryLayout": "PPSA02929-app0/eboot.bin",
+      "metadata": "PPSA02929-app0/sce_sys/param.json",
+      "titleId": "PPSA02929",
+      "diagnosis": "ps5-param-json"
+    },
+    {
+      "sourceLabel": "[PS5]_PPSA02801_New_Joe_and_Mac_Caveman_Ninja_v1.03.exfat",
+      "transport": "exfat-image",
+      "mountMode": "guestmount --ro",
+      "temporaryLayout": "eboot.bin",
+      "metadata": "sce_sys/param.json",
+      "titleId": "PPSA02801",
+      "diagnosis": "ps5-param-json"
+    }
+  ],
+  "launchVerified": false,
+  "nextStep": "Instalar uma release governada com SharpEmu e capturar o lançamento de um dump real."
+}

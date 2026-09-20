@@ -6,7 +6,7 @@
 **Data do plano:** 2026-09-17
 
 **Implementação atual:** parcial em `codex/platform-ps5-sharpemu`; contrato
-declarativo, lockfile, payload `tar.gz`, identidade `param.sfo`, scanner
+declarativo, lockfile, payload `tar.gz`, identidade `param.sfo`/`param.json`, scanner
 `ps5dir`, catálogo, perfil DualSense e snapshot pinned dos 46 relatórios
 públicos de compatibilidade implementados. A promoção só ocorre para Title ID,
 build e sistema operacional exatos; a instalação física e a prova Linux
@@ -115,7 +115,7 @@ roms/
     └── Nome do jogo/
         ├── eboot.bin
         ├── sce_sys/
-        │   └── param.sfo
+        │   └── param.sfo (ou param.json em dumps convertidos)
         └── módulos e dados do dump
 ```
 
@@ -123,7 +123,8 @@ roms/
 |---|---|---|
 | pasta com `eboot.bin` | `ps5dir` / base | candidato de jogo após preflight |
 | `.elf` reconhecido | `ps5dir` / base | candidato apenas com identidade PS5 |
-| `sce_sys/param.sfo` | metadado | Title ID, título, versão e região quando observáveis |
+| `sce_sys/param.sfo` | metadado canônico | Title ID, título, versão e região quando observáveis |
+| `sce_sys/param.json` | metadado declarativo de fallback | Title ID e versão em dumps extraídos/convertidos; só é aceito com `eboot.bin` |
 | `prx`, `sys_module` | auxiliar | nunca criar jogo separado |
 | outros `.bin` | auxiliar/desconhecido | não tratar extensão genérica como executável |
 | `.pkg` | `unsupported` ou `needs-extraction` | não prometer suporte sem parser e teste real |
@@ -207,7 +208,7 @@ entrega, o adapter não deve declarar instalação funcional.
 ### Onda PS5-2 — catálogo e identidade
 
 Adicionar manifesto, adapter, DualSense, asset e catálogo. Implementar o
-scanner `ps5dir`, leitura controlada de `param.sfo`, distinção de `eboot.bin` e
+scanner `ps5dir`, leitura controlada de `param.sfo`/`param.json`, distinção de `eboot.bin` e
 particionamento de auxiliares.
 
 ### Onda PS5-3 — relações e biblioteca
@@ -217,7 +218,7 @@ incompleto e reconciliação base/update/DLC somente onde houver evidência.
 
 O inventário publica `contentState` explícito: `complete`,
 `content-incomplete` ou `source-missing`, preservando a causa recuperável no
-card sem transformar ausência de `param.sfo` em jogo pronto.
+card sem transformar ausência de `param.sfo`/`param.json` em jogo pronto.
 
 Para preservar a origem entre remontagens, cada entrypoint PS5 também publica
 `sourceIdentity` com namespace opaco de volume/compartilhamento, caminho
