@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-HIGH-END-RUNTIME-READINESS",
+  "item": "SZ-EMULATION-HIGH-END-RUNTIME-READINESS",
+  "branch": "codex/emulation-system-validation-2026-09-19",
+  "baseRef": "50b3f503e840b227ae900dc32a1a6eae4746ad0f",
+  "owner": "codex-emulation-system-validation",
+  "state": "active",
+  "exclusivePaths": [
+    "docs/status/items/high-end-runtime-readiness-2026-09-20.json",
+    "docs/status/workstreams/high-end-runtime-readiness-2026-09-20.json",
+    "docs/09-operations/evidence/2026-09-20-high-end-runtime-readiness",
+    "src/steamzero/adapters/console_runtime_readiness.py",
+    "tests/unit/test_console_runtime_readiness.py"
+  ],
+  "sharedPaths": [
+    "src/steamzero/adapters/emulation.py",
+    "tests/unit/test_emulation_runtime_remediation.py",
+    "docs/status/COVERAGE.md",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Executar gates focados e integrais; registrar o handoff do contrato M3U X68000 e manter PS4/PS5/Xbox prontos para a próxima prova física autorizada.",
+  "updatedAt": "2026-09-20"
+}

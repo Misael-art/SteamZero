@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from steamzero.adapters.console_runtime_readiness import XboxRuntimeReadiness
 from steamzero.adapters.emulation import EmulationController
 from steamzero.core import paths
 from steamzero.core.errors import SteamZeroError
@@ -88,6 +89,83 @@ def test_ps3_missing_firmware_is_actionable_before_spawn(
 
     assert error.value.code == "E-CONTENT-FW-MISSING"
     assert "playstation.com" in error.value.detail
+
+
+def test_xbox_machine_configuration_blocks_before_spawn(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    controller = _controller(monkeypatch, tmp_path)
+    rom = tmp_path / "roms" / "xbox" / "Outrun.iso"
+    rom.parent.mkdir(parents=True)
+    rom.write_bytes(b"iso")
+    game = {
+        "id": "xbox-game",
+        "name": "OutRun",
+        "path": str(rom),
+        "platformId": "xbox",
+        "format": "iso",
+        "contentKind": "base",
+    }
+    monkeypatch.setattr(controller, "_current_game", lambda _game_id: game)
+    monkeypatch.setattr(controller, "_load_game_settings", lambda strict=False: {})
+    monkeypatch.setattr(
+        controller,
+        "_settings_for_game_with_global",
+        lambda _game, _settings: {"emulatorId": "xemu"},
+    )
+    monkeypatch.setattr(controller, "_require_launchable_emulator", lambda _id: None)
+    monkeypatch.setattr(
+        controller,
+        "_emulator_source",
+        lambda _id: ("flatpak", "app.xemu.xemu", None),
+    )
+    monkeypatch.setattr(
+        controller,
+        "_xemu_runtime_probe",
+        lambda: XboxRuntimeReadiness(
+            False,
+            True,
+            ("flash", "mcpx", "hdd"),
+            "xbox-machine-files-missing",
+        ),
+    )
+
+    with pytest.raises(SteamZeroError, match="xbox-machine-files-missing") as error:
+        controller._launch_preflight("xbox-game")  # type: ignore[attr-defined]
+
+    assert error.value.code == "E-COMPONENT-DEGRADED"
+    assert "flash, mcpx, hdd" in error.value.detail
+
+
+def test_archive_without_materialization_is_refused_before_emulator(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    controller = _controller(monkeypatch, tmp_path)
+    archive = tmp_path / "roms" / "ps4" / "Game.rar"
+    archive.parent.mkdir(parents=True)
+    archive.write_bytes(b"rar")
+    game = {
+        "id": "ps4-archive",
+        "name": "Jogo PS4",
+        "path": str(archive),
+        "platformId": "playstation-4",
+        "format": "rar",
+        "contentKind": "base",
+        "evidence": "archive-needs-extraction",
+    }
+    monkeypatch.setattr(controller, "_current_game", lambda _game_id: game)
+    monkeypatch.setattr(controller, "_load_game_settings", lambda strict=False: {})
+    monkeypatch.setattr(
+        controller,
+        "_settings_for_game_with_global",
+        lambda _game, _settings: {"emulatorId": "shadps4"},
+    )
+    monkeypatch.setattr(controller, "_require_launchable_emulator", lambda _id: None)
+
+    with pytest.raises(SteamZeroError, match="materializado") as error:
+        controller._launch_preflight("ps4-archive")  # type: ignore[attr-defined]
+
+    assert error.value.code == "E-CONTENT-INCOMPLETE"
 
 
 def test_pcsx2_runtime_flag_is_normalized_only_at_spawn_boundary() -> None:
