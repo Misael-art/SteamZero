@@ -7,6 +7,8 @@ from __future__ import annotations
 import struct
 from pathlib import Path
 
+import pytest
+
 from steamzero.adapters.discovery.ps5_sfo import parse_sfo, read_ps5_identity
 from steamzero.domain.game_identity import IdentityScheme
 
@@ -45,6 +47,22 @@ def test_parse_sfo_returns_ps5_title_id() -> None:
     assert parsed.title_id == "PPSA12345_00"
 
 
+def test_parse_sfo_rejects_overlapping_tables_and_invalid_lengths() -> None:
+    overlapping = bytearray(_sfo({"TITLE_ID": "PPSA12345_00"}))
+    struct.pack_into("<I", overlapping, 8, 20)
+    assert parse_sfo(bytes(overlapping)) is None
+
+    invalid_length = bytearray(_sfo({"TITLE_ID": "PPSA12345_00"}))
+    struct.pack_into("<I", invalid_length, 20 + 8, 1)
+    assert parse_sfo(bytes(invalid_length)) is None
+
+
+def test_parse_sfo_rejects_non_string_target_fields() -> None:
+    invalid_format = bytearray(_sfo({"TITLE_ID": "PPSA12345_00"}))
+    struct.pack_into("<H", invalid_format, 20 + 2, 0x0004)
+    assert parse_sfo(bytes(invalid_format)) is None
+
+
 def test_read_ps5_identity_finds_sce_sys_without_following_symlink(tmp_path: Path) -> None:
     dump = tmp_path / "Game"
     (dump / "sce_sys").mkdir(parents=True)
@@ -60,3 +78,117 @@ def test_read_ps5_identity_finds_sce_sys_without_following_symlink(tmp_path: Pat
     assert identity.scheme is IdentityScheme.PS5_TITLE_ID
     assert identity.value == "PPSA12345_00"
     assert diagnosis == "ps5-param-sfo"
+
+
+def test_read_ps5_identity_rejects_symlinked_param_sfo(tmp_path: Path) -> None:
+    dump = tmp_path / "Game"
+    (dump / "sce_sys").mkdir(parents=True)
+    outside = tmp_path / "outside-param.sfo"
+    outside.write_bytes(_sfo({"TITLE_ID": "PPSA12345_00", "TITLE": "External"}))
+    (dump / "sce_sys" / "param.sfo").symlink_to(outside)
+    executable = dump / "eboot.bin"
+    executable.write_bytes(b"ELF")
+
+    identity, diagnosis = read_ps5_identity(executable)
+
+    assert identity is None
+    assert diagnosis == "ps5-param-sfo-missing"
+
+
+def test_read_ps5_identity_ignores_auxiliary_entry(tmp_path: Path) -> None:
+    dump = tmp_path / "Game"
+    (dump / "sce_sys").mkdir(parents=True)
+    (dump / "sce_sys" / "param.sfo").write_bytes(
+        _sfo({"TITLE_ID": "PPSA12345_00", "TITLE": "Demo PS5"})
+    )
+    auxiliary = dump / "module.prx"
+    auxiliary.write_bytes(b"module")
+
+    identity, diagnosis = read_ps5_identity(auxiliary)
+
+    assert identity is None
+    assert diagnosis == "ps5-non-boot-entry"
+
+
+def test_read_ps5_identity_rejects_symlinked_boot_entry(tmp_path: Path) -> None:
+    dump = tmp_path / "Game"
+    (dump / "sce_sys").mkdir(parents=True)
+    (dump / "sce_sys" / "param.sfo").write_bytes(
+        _sfo({"TITLE_ID": "PPSA12345_00", "TITLE": "Demo PS5"})
+    )
+    real_boot = tmp_path / "real-eboot.bin"
+    real_boot.write_bytes(b"ELF")
+    executable = dump / "eboot.bin"
+    executable.symlink_to(real_boot)
+
+    identity, diagnosis = read_ps5_identity(executable)
+
+    assert identity is None
+    assert diagnosis == "ps5-non-boot-entry"
+
+
+def test_read_ps5_identity_rejects_symlinked_sce_sys_directory(tmp_path: Path) -> None:
+    dump = tmp_path / "Game"
+    dump.mkdir()
+    external = tmp_path / "external-sce-sys"
+    external.mkdir()
+    (external / "param.sfo").write_bytes(_sfo({"TITLE_ID": "PPSA12345_00", "TITLE": "External"}))
+    (dump / "sce_sys").symlink_to(external, target_is_directory=True)
+    executable = dump / "eboot.bin"
+    executable.write_bytes(b"ELF")
+
+    identity, diagnosis = read_ps5_identity(executable)
+
+    assert identity is None
+    assert diagnosis == "ps5-param-sfo-path-symlink"
+
+
+def test_read_ps5_identity_rejects_symlinked_dump_ancestor(tmp_path: Path) -> None:
+    external = tmp_path / "external-dump"
+    (external / "sce_sys").mkdir(parents=True)
+    (external / "sce_sys" / "param.sfo").write_bytes(
+        _sfo({"TITLE_ID": "PPSA12345_00", "TITLE": "External"})
+    )
+    linked_dump = tmp_path / "linked-dump"
+    linked_dump.symlink_to(external, target_is_directory=True)
+    executable = linked_dump / "eboot.bin"
+
+    identity, diagnosis = read_ps5_identity(executable)
+
+    assert identity is None
+    assert diagnosis == "ps5-dump-path-symlink"
+
+
+@pytest.mark.parametrize(
+    ("values", "expected"),
+    [
+        ({"TITLE": "Sem ID"}, "ps5-title-id-missing"),
+        ({"TITLE_ID": "INVALID", "TITLE": "ID inválido"}, "ps5-title-id-invalid"),
+    ],
+)
+def test_read_ps5_identity_reports_unusable_title_id(
+    tmp_path: Path, values: dict[str, str], expected: str
+) -> None:
+    dump = tmp_path / "Game"
+    (dump / "sce_sys").mkdir(parents=True)
+    (dump / "sce_sys" / "param.sfo").write_bytes(_sfo(values))
+    executable = dump / "eboot.bin"
+    executable.write_bytes(b"ELF")
+
+    identity, diagnosis = read_ps5_identity(executable)
+
+    assert identity is None
+    assert diagnosis == expected
+
+
+def test_read_ps5_identity_reports_corrupt_sfo(tmp_path: Path) -> None:
+    dump = tmp_path / "Game"
+    (dump / "sce_sys").mkdir(parents=True)
+    (dump / "sce_sys" / "param.sfo").write_bytes(b"not-an-sfo")
+    executable = dump / "eboot.bin"
+    executable.write_bytes(b"ELF")
+
+    identity, diagnosis = read_ps5_identity(executable)
+
+    assert identity is None
+    assert diagnosis == "ps5-param-sfo-invalid"

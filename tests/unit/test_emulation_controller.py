@@ -17,6 +17,7 @@ import pytest
 from steamzero.adapters import emulation, input_devices
 from steamzero.adapters.converters import NszToolManager, nsz_tool_manifest
 from steamzero.adapters.emulation import EmulationController
+from steamzero.adapters.ps5_runtime import Ps5RuntimeReadiness
 from steamzero.api.contracts import validate
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
@@ -1421,6 +1422,108 @@ def test_launch_preflight_uses_core_for_identified_system(monkeypatch, tmp_path:
     assert preflight["core_path"] == tmp_path / "atari800_libretro.so"
 
 
+def test_ps5_launch_preflight_refuses_without_runtime_readiness(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    rom = tmp_path / "ps5" / "eboot.bin"
+    rom.parent.mkdir()
+    rom.write_bytes(b"eboot")
+    game = {
+        "id": "ps5-game",
+        "name": "Jogo PS5",
+        "path": str(rom),
+        "platformId": "playstation-5",
+        "format": "bin",
+        "contentKind": "base",
+    }
+    monkeypatch.setattr(controller, "_current_game", lambda _game_id: game)
+    monkeypatch.setattr(controller, "_load_game_settings", lambda strict=False: {})
+    monkeypatch.setattr(
+        controller,
+        "_settings_for_game_with_global",
+        lambda _game, _settings: {"emulatorId": "sharpemu"},
+    )
+    monkeypatch.setattr(controller, "_require_launchable_emulator", lambda _id: None)
+    monkeypatch.setattr(
+        controller,
+        "_emulator_source",
+        lambda _id: ("appimage", None, tmp_path / "SharpEmu"),
+    )
+    monkeypatch.setattr(
+        controller,
+        "_ps5_runtime_probe",
+        lambda: Ps5RuntimeReadiness(False, "x86_64", False, "ps5-vulkan-probe-failed"),
+    )
+
+    with pytest.raises(SteamZeroError, match="ps5-vulkan-probe-failed"):
+        controller._launch_preflight("ps5-game")  # type: ignore[attr-defined]
+
+
+def test_ps5_catalog_publishes_explicit_unverified_compatibility_build(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    controller._emulator_versions = {"sharpemu": "0.0.3-release.4"}  # type: ignore[attr-defined]
+
+    rows = controller._publish_ps5_compatibility(  # type: ignore[attr-defined]
+        [
+            {"id": "ps5-game", "platform": "playstation-5", "name": "Demo PS5"},
+            {"id": "switch-game", "platform": "switch", "name": "Demo Switch"},
+        ]
+    )
+
+    assert rows[0]["compatibility"]["sharpemu"] == {
+        "state": "unknown",
+        "build": "0.0.3-release.4",
+        "testedBuild": None,
+        "testedOs": None,
+        "testedDate": None,
+        "gameVersion": None,
+        "source": "https://sharpemu.app/compatibility/",
+        "reason": "Title ID PS5 ausente; compatibilidade não pode ser consultada.",
+    }
+    assert "compatibility" not in rows[1]
+
+
+def test_ps5_catalog_publishes_recoverable_content_state(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    eboot = tmp_path / "roms" / "ps5" / "Demo" / "eboot.bin"
+    eboot.parent.mkdir(parents=True)
+    eboot.write_bytes(b"ELF")
+
+    rows = controller._publish_ps5_content_state(  # type: ignore[attr-defined]
+        [
+            {
+                "id": "complete",
+                "platform": "playstation-5",
+                "path": str(eboot),
+                "identityVerified": True,
+                "identityDiagnosis": "ps5-param-sfo",
+            },
+            {
+                "id": "incomplete",
+                "platform": "playstation-5",
+                "path": str(eboot),
+                "identityVerified": False,
+                "identityDiagnosis": "ps5-param-sfo-missing",
+            },
+            {
+                "id": "missing",
+                "platform": "playstation-5",
+                "path": str(tmp_path / "gone" / "eboot.bin"),
+            },
+        ]
+    )
+
+    assert rows[0]["contentState"] == "complete"
+    assert rows[1]["contentState"] == "content-incomplete"
+    assert rows[1]["contentAvailability"] == "degraded"
+    assert rows[2]["contentState"] == "source-missing"
+    assert rows[2]["contentAvailability"] == "missing"
+    assert "Origem ausente" in rows[2]["statusLabel"]
+
+
 def test_runtime_prepare_mutes_interactive_update_checks(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     home = tmp_path / "home"
     monkeypatch.setattr(Path, "home", classmethod(lambda _cls: home))
@@ -1607,6 +1710,64 @@ def test_library_scan_enriches_platform_games_with_identity_seam(
     assert game["identityDiagnosis"] == "pvd-serial"
     assert game["identityVerified"] is True
     assert game["state"] == "ready"
+
+
+def test_library_scan_ps5_source_identity_survives_path_reconciliation(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    root = tmp_path / "platform-roms"
+    eboot = root / "ps5" / "Demo" / "eboot.bin"
+    eboot.parent.mkdir(parents=True)
+    eboot.write_bytes(b"PS5-entrypoint")
+
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(root)}),
+    )
+    result = controller.scan_library()
+    assert result["games"] == 1
+    cached = json.loads(controller._library_cache_path.read_text(encoding="utf-8"))  # type: ignore[attr-defined]
+    game = cached["games"][0]
+    source = game["sourceIdentity"]
+
+    assert game["platform"] == "playstation-5"
+    assert game["id"] == source["stableId"]
+    assert source["sourceKind"] == "local"
+    assert source["relativePath"] == "ps5/Demo/eboot.bin"
+    assert source["entrypointSha256"]
+    assert str(root) not in source["relativePath"]
+
+
+def test_library_scan_ps5_associates_update_and_dlc_without_duplicate_games(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    root = tmp_path / "platform-roms"
+    base = root / "ps5" / "Demo" / "eboot.bin"
+    update = root / "ps5" / "updates" / "Demo" / "eboot.bin"
+    dlc = root / "ps5" / "dlc" / "Demo" / "eboot.bin"
+    for path, payload in (
+        (base, b"base"),
+        (update, b"update"),
+        (dlc, b"dlc"),
+    ):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(payload)
+
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(root)}),
+    )
+    result = controller.scan_library()
+    assert result["games"] == 1
+    assert result["updates"] == 1
+    assert result["dlcs"] == 1
+    cached = json.loads(controller._library_cache_path.read_text(encoding="utf-8"))  # type: ignore[attr-defined]
+    assert len(cached["games"]) == 1
+    assert cached["games"][0]["platform"] == "playstation-5"
+    assert cached["games"][0]["updateCount"] == 1
+    assert cached["games"][0]["dlcCount"] == 1
 
 
 def test_missing_registered_root_remains_visible_and_arbitrary_id_is_refused(

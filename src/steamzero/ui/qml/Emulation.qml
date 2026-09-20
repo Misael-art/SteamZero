@@ -545,10 +545,47 @@ Item {
     function compatibilityLabel(state) {
         const labels = {
             "perfect": qsTr("Perfeito"), "compatible": qsTr("Perfeito"),
-            "playable": qsTr("Jogável"), "broken": qsTr("Quebrado"),
+            "playable": qsTr("Jogável"), "nothing": qsTr("Nada"),
+            "boots": qsTr("Inicializa"), "menus": qsTr("Menus"),
+            "ingame": qsTr("Em jogo"), "broken": qsTr("Quebrado"),
             "failed": qsTr("Quebrado"), "unknown": qsTr("Não avaliado")
         }
         return labels[state] || qsTr("Não avaliado")
+    }
+
+    function compatibilityDetail(game, emulatorId, emulatorName) {
+        const compatibility = game && game.compatibility ? game.compatibility : {}
+        const value = compatibility[emulatorId]
+        let detail = emulatorName + ": " + compatibilityLabel(compatibilityState(game, emulatorId))
+        if (value && value.build)
+            detail += qsTr(" • build %1").arg(String(value.build))
+        if (value && value.testedBuild && value.testedBuild !== value.build)
+            detail += qsTr(" • teste %1").arg(String(value.testedBuild))
+        if (value && value.reason)
+            detail += qsTr(" • %1").arg(String(value.reason))
+        return detail
+    }
+
+    function contentDetail(game) {
+        if (!game || !game.contentState || game.contentState === "complete")
+            return ""
+        return game.contentReason || qsTr("Conteúdo PS5 requer revisão")
+    }
+
+    function sourceDetail(game) {
+        if (!game || (game.platformId !== "playstation-5" && game.platform !== "playstation-5"))
+            return ""
+        const source = game.sourceIdentity
+        if (!source)
+            return ""
+        const labels = {
+            "local": qsTr("Origem local"),
+            "removable": qsTr("Origem removível"),
+            "network": qsTr("Origem de rede")
+        }
+        const kind = labels[String(source.sourceKind)] || qsTr("Origem PS5")
+        const relativePath = source.relativePath ? String(source.relativePath) : ""
+        return relativePath !== "" ? kind + " • " + relativePath : kind
     }
 
     function compatibilityColor(state) {
@@ -2621,7 +2658,23 @@ Item {
                                                     === false
                                                     ? page.amberColor : page.mutedColor
                                                 font.pixelSize: 11
-                                                elide: Text.ElideRight
+                                            elide: Text.ElideRight
+                                            Layout.fillWidth: true
+                                            }
+                                            Label {
+                                                visible: page.contentDetail(compactGameCard.modelData) !== ""
+                                                text: page.contentDetail(compactGameCard.modelData)
+                                                color: page.amberColor
+                                                font.pixelSize: 10
+                                                wrapMode: Text.WordWrap
+                                                Layout.fillWidth: true
+                                            }
+                                            Label {
+                                                visible: page.sourceDetail(compactGameCard.modelData) !== ""
+                                                text: page.sourceDetail(compactGameCard.modelData)
+                                                color: page.mutedColor
+                                                font.pixelSize: 10
+                                                elide: Text.ElideMiddle
                                                 Layout.fillWidth: true
                                             }
                                             Label {
@@ -2826,6 +2879,22 @@ Item {
                                             elide: Text.ElideRight
                                             Layout.fillWidth: true
                                         }
+                                        Label {
+                                            visible: page.contentDetail(gameRow.modelData) !== ""
+                                            text: page.contentDetail(gameRow.modelData)
+                                            color: page.amberColor
+                                            font.pixelSize: 10
+                                            wrapMode: Text.WordWrap
+                                            Layout.fillWidth: true
+                                        }
+                                        Label {
+                                            visible: page.sourceDetail(gameRow.modelData) !== ""
+                                            text: page.sourceDetail(gameRow.modelData)
+                                            color: page.mutedColor
+                                            font.pixelSize: 10
+                                            elide: Text.ElideMiddle
+                                            Layout.fillWidth: true
+                                        }
                                         RowLayout {
                                             Layout.fillWidth: true
                                             spacing: 5
@@ -2849,8 +2918,8 @@ Item {
                                                         font.bold: true
                                                     }
                                                     ToolTip.visible: compatibilityHover.hovered
-                                                    ToolTip.text: modelData.name + ": "
-                                                        + page.compatibilityLabel(parent.compatibility)
+                                                    ToolTip.text: page.compatibilityDetail(
+                                                        gameRow.modelData, modelData.id, modelData.name)
                                                     HoverHandler { id: compatibilityHover }
                                                 }
                                             }

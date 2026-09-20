@@ -125,7 +125,7 @@
       ]
     },
     "preferredFormat": "ps5dir",
-    "containerPolicy": "native",
+    "containerPolicy": "extract",
     "auxiliaryContent": "both",
     "auxiliaryBinding": "titleid"
   },

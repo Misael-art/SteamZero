@@ -7,8 +7,10 @@
 
 **Implementação atual:** parcial em `codex/platform-ps5-sharpemu`; contrato
 declarativo, lockfile, payload `tar.gz`, identidade `param.sfo`, scanner
-`ps5dir`, catálogo e perfil DualSense implementados. A instalação física e a
-promoção de compatibilidade continuam pendentes.
+`ps5dir`, catálogo, perfil DualSense e snapshot pinned dos 46 relatórios
+públicos de compatibilidade implementados. A promoção só ocorre para Title ID,
+build e sistema operacional exatos; a instalação física e a prova Linux
+continuam pendentes.
 
 ## 1. Decisão de produto
 
@@ -170,6 +172,9 @@ O card do jogo deve mostrar:
 - origem e estado do conteúdo;
 - ação concreta para corrigir o bloqueio.
 
+Para PS5, a origem exibida usa somente `sourceIdentity.sourceKind` e
+`sourceIdentity.relativePath`; o caminho absoluto nunca é renderizado no card.
+
 Falhas de arte, rede, Vulkan, runtime, permissões ou conteúdo não podem produzir
 tela vazia. A ausência de `param.sfo` ou de metadados não deve destruir a
 identidade já encontrada; deve reduzir a confiança e explicar a pendência.
@@ -210,6 +215,22 @@ particionamento de auxiliares.
 Adicionar deduplicação, fontes removíveis/rede, arquivos compactados, conteúdo
 incompleto e reconciliação base/update/DLC somente onde houver evidência.
 
+O inventário publica `contentState` explícito: `complete`,
+`content-incomplete` ou `source-missing`, preservando a causa recuperável no
+card sem transformar ausência de `param.sfo` em jogo pronto.
+
+Para preservar a origem entre remontagens, cada entrypoint PS5 também publica
+`sourceIdentity` com namespace opaco de volume/compartilhamento, caminho
+relativo, tamanho e SHA-256 do entrypoint. O `id` não depende do caminho
+absoluto nem do timestamp; falha de hash degrada a identidade sem apagar a
+origem.
+Se o namespace do volume não puder ser observado, a identidade degrada para
+`unknown-namespace` e não deriva nenhum token do caminho absoluto.
+
+Diretórios `updates` e `dlc` são classificados como conteúdo auxiliar e só
+entram na base quando a associação nominal é única; sem base correspondente,
+permanecem fora dos jogos lançáveis e contam como conteúdo não associado.
+
 ### Onda PS5-4 — preflight e launch/return
 
 Integrar seleção de executável, validação Vulkan, sessão gerenciada, captura de
@@ -220,6 +241,11 @@ logs, retorno ao launcher, restauração de foco e recuperação de processo.
 Adicionar card experimental, compatibilidade por build, filtros, fallback de
 artwork e mensagens de bloqueio. Não promover Theme Engine, Theme Studio ou
 AURA Launcher por consequência desta integração.
+
+O snapshot empacotado em `src/steamzero/adapters/ps5_compatibility.json` é
+fixado ao commit do site oficial e mantém o estado `unknown` quando o relatório
+é de outra build ou outro sistema operacional. Nenhum resultado Windows/macOS
+é promovido automaticamente para o host Linux.
 
 ### Onda PS5-6 — validação e release
 

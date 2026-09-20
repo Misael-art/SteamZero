@@ -11161,3 +11161,218 @@ loop ficou em 16,959/16,918 ms, acima do orçamento de 16,7 ms. O resultado foi
 registrado como parcial, sem promover uma meta de performance não atingida.
 O item `SZ-AURA-CINEMA-COMPLETION`, o README da evidência, `STATUS.md` e
 `ACTIVE-WORK.md` foram regenerados; `STATUS-CHECK: OK`.
+
+## 2026-09-19 — hardening do scanner PS5 e handoff de integração
+
+Na branch `codex/platform-ps5-sharpemu-mainline`, corrigi a promoção indevida
+de qualquer arquivo `.elf` como jogo PS5: sem identidade PS5 observável, o
+scanner agora registra `ps5-elf-unresolved`; `eboot.bin` continua sendo a
+entrada estrutural aceita. A regressão foi adicionada ao catálogo PS5 e o
+workstream registra o handoff no commit `c1c9c9b`.
+
+Provas: 87 testes focados PS5/biblioteca; suíte integral `6158 passed, 47
+skipped`; Ruff, formatação, mypy, independência, fronteiras, component-lock,
+capability-matrix e `STATUS-CHECK` passaram. Nenhuma instalação, publicação,
+reinício ou alteração de host foi executada. A prova física com dump legal,
+Vulkan e PNG permanece pendente do operador.
+
+O diagnóstico read-only de 2026-09-19 confirmou arquitetura `x86_64` e
+Vulkan 1.4/RADV AMD funcionais no host, mas o componente SharpEmu ainda está
+ausente e a release ativa não corresponde à branch de integração. Nenhuma
+instalação, publicação ou alteração privilegiada foi feita.
+
+## 2026-09-19 — preflight de runtime PS5 antes do spawn
+
+Na branch `codex/platform-ps5-sharpemu-mainline`, o commit `173d3c95` adiciona
+um probe somente leitura para arquitetura `x86_64`/`amd64` e `vulkaninfo --summary`.
+O launch PS5 agora recusa antes do spawn quando a arquitetura, a ferramenta ou
+a saída Vulkan não são válidas, com razão estável (`ps5-architecture-unsupported`,
+`ps5-vulkan-tool-missing` ou `ps5-vulkan-probe-failed`). O caminho compartilhado
+`emulation.py` foi mantido mínimo e o handoff foi registrado no workstream.
+
+Provas: 5 testes unitários do probe, 1 teste do preflight no controller e o
+conjunto focado do controller/runtime com 142 testes passaram; mypy, Ruff,
+formatação, independência, fronteiras, component-lock e capability-matrix
+passaram. A suíte isolada integral terminou com `6163 passed, 47 skipped` e
+uma falha de consistência documental causada pelas visões de status ainda não
+regeneradas durante esta sessão; após renderizar as visões, o teste de
+consistência foi repetido separadamente. O runner deixou o estado real
+inalterado. Nenhuma instalação, publicação, reinício ou mutação de host foi
+executada.
+
+A prova física permanece pendente: SharpEmu não está instalado no host, e ainda
+são necessários autorização governada, dump PS5 legal, captura PNG de sucesso,
+erro controlado e recuperação antes de qualquer promoção `verified-hw`.
+
+## 2026-09-19 — compatibilidade PS5 explícita por jogo/build
+
+Na branch `codex/platform-ps5-sharpemu-mainline`, o commit `d6e8af7` fecha o
+contrato de apresentação que faltava no catálogo PS5: cada jogo PS5 publica o
+estado SharpEmu como `unknown`, conserva a build observada do runtime quando
+disponível e mostra a razão de compatibilidade por título/build ainda não
+publicada. A UI QML usa esses dados no detalhe da badge, sem inferir sucesso;
+registros de outras plataformas não recebem compatibilidade PS5.
+
+Provas: `tests/unit/test_emulation_controller.py -k 'ps5_'` passou com 2
+testes; o harness QML real `test_qml_handheld_offscreen.py -k check_emulation`
+passou com `1 passed, 47 deselected`. O handoff compartilhado foi registrado
+para `emulation.py`, `Emulation.qml` e `check_emulation.qml`. Nenhuma
+instalação, publicação, reinício ou mutação de host foi executada; a prova
+física com SharpEmu instalado, dump legal e PNG continua pendente.
+
+## 2026-09-19 — snapshot oficial de compatibilidade PS5 por build e OS
+
+Na branch `codex/platform-ps5-sharpemu-mainline`, o commit `c3c3369` adiciona
+um snapshot versionado dos 46 relatórios públicos do site oficial SharpEmu,
+fixado ao commit `5a6f37843b8d3eab8cd6dde95d147e9b3f6d529a`. O resolver consulta
+Title ID, build do runtime e sistema operacional do host; só promove o status
+oficial em correspondência exata. Relatórios Windows/macOS não são transferidos
+para Linux, e divergências preservam `unknown` com build testada, OS, data e
+causa para a UI.
+
+Provas: 3 testes do resolver, 2 testes PS5 do controller, 9 testes adicionais
+de catálogo/runtime e o harness QML real passaram; mypy, Ruff e formatação
+passaram nos arquivos alterados. Nenhuma instalação, publicação, reinício ou
+mutação de host foi executada; a prova física com dump legal e PNG continua
+pendente.
+
+## 2026-09-19 — inspeção read-only pós-gates PS5
+
+Após os gates, `release_host.py --json inspect` confirmou que a release ativa
+continua `2.0.0rc1-f98a1a12a46b`, com daemon convergente, integridade do estado,
+staging/backup/journal sem órfãos e SharpEmu ausente. A branch de integração
+está limpa e contém os commits `c3c3369` e `0d599ff`, mas ainda não corresponde
+à release instalada; não houve tentativa de instalação, rollback, publicação ou
+reinício. A suíte integral posterior fechou com `6168 passed, 47 skipped`, e
+independência, fronteiras, component-lock, capability-matrix e `STATUS-CHECK`
+permaneceram verdes.
+
+## 2026-09-19 — estados recuperáveis de conteúdo PS5
+
+Na branch `codex/platform-ps5-sharpemu-mainline`, o commit `7f2de9b` fecha a
+lacuna de apresentação de conteúdo: o inventário mantém o estado legado para
+compatibilidade e publica em paralelo `contentState=complete`,
+`content-incomplete` ou `source-missing`, com causa concreta. A ausência de
+`param.sfo` não vira jogo pronto, e uma origem removida não é tratada como dump
+válido; o card QML mostra a orientação recuperável.
+
+Provas focadas: 7 testes PS5/controller, QML real, Ruff e formatação passaram.
+Nenhuma instalação, publicação, reinício ou mutação de host foi executada; a
+prova física com dump legal e PNG continua pendente.
+
+## 2026-09-19 — identidade resiliente de origem PS5
+
+Na branch `codex/platform-ps5-sharpemu-mainline`, a auditoria do plano PS5
+encontrou que o inventário ainda derivava o `id` do caminho absoluto. A correção
+passou a publicar `sourceIdentity` com namespace opaco de volume ou
+compartilhamento, caminho relativo, tamanho e SHA-256 do `eboot.bin`; mudanças
+de timestamp ou enriquecimento posterior do `param.sfo` não trocam o id, e a
+origem permanece intocada.
+
+Provas: 9 testes PS5/controller focados, 6.171 testes integrais e 47 skips
+documentados; o primeiro runner só falhou no catálogo de status por digests
+compartilhados obsoletos, corrigidos e validados por `test_project_status`.
+Ruff, formatação, mypy, independência, fronteiras, component-lock e
+capability-matrix passaram. Nenhuma instalação, publicação, reinício ou
+mutação de host foi executada; a prova física com dump legal e PNG continua
+pendente.
+
+## 2026-09-19 — origem PS5 apresentada no card
+
+O card de emulação agora consome `sourceIdentity` para mostrar o tipo da
+origem (local, removível ou rede) e apenas o caminho relativo do entrypoint.
+Assim, o usuário recebe contexto para recuperar um dump sem expor ou usar o
+caminho absoluto como identidade.
+
+Prova: `test_qml_handheld_offscreen.py -k check_emulation` passou com origem
+removível e caminho relativo; a suíte integral fechou com 6.171 passed/47
+skipped, com a única falha inicial sendo o digest amplo do item de auditoria
+QML, corrigido e validado por `test_project_status` (10 passed). Nenhuma
+instalação ou mutação de host foi executada; a prova física continua pendente.
+
+## 2026-09-19 — relações base/update/DLC PS5
+
+O inventário PS5 agora tem prova vertical para diretórios `updates` e `dlc`:
+quando a associação nominal é única, o conteúdo é contado na base sem criar
+cards duplicados; a fonte continua somente leitura e conteúdo sem base segue
+fora dos jogos lançáveis.
+
+Prova focada: `test_library_scan_ps5_associates_update_and_dlc_without_duplicate_games`
+passou. O fechamento físico continua dependente de SharpEmu instalado, dump
+legal e captura PNG.
+
+## 2026-09-19 — fallback de namespace PS5 sem caminho
+
+O fallback de observação da origem foi endurecido: quando `stat(root)` falha,
+o namespace passa a ser `unknown-namespace`, sem derivar identidade sequer de
+um hash do caminho absoluto.
+
+Prova focada: `test_unobserved_source_namespace_never_uses_absolute_path` passou;
+a suíte integral fechou com 6.173 passed/47 skipped e a única falha foi o
+digest do próprio item PS5, corrigido e validado por `test_project_status` (10
+passed). Nenhuma mutação de host foi executada.
+
+## 2026-09-19 — fechamento de gates e limite de infraestrutura
+
+Os gates estáticos da branch `codex/platform-ps5-sharpemu-mainline` passaram:
+Ruff, formatação, mypy, independência, fronteiras, component-lock,
+capability-matrix e `STATUS-CHECK`. A suíte integral foi executada com 6.221
+testes coletados, mas terminou inconclusiva por `OSError: [Errno 28] No space
+left on device` durante capturas QML em temporários do harness; os `F/E`
+subsequentes são efeitos dessa falha de infraestrutura, não falhas de contrato
+PS5. A cobertura focada posterior passou com `27 passed, 6 deselected` nos
+testes PS5/escopo/storage e `1 passed, 47 deselected` no harness real
+`check_emulation.qml`.
+
+Nenhuma instalação, publicação, reinício, rollback ou mutação de host foi
+executada. O host continua com `2.0.0rc1-f98a1a12a46b`, SharpEmu ausente e a
+prova física com dump legal, hardware compatível e PNG permanece pendente como
+`HARD-EXTERNAL-SUBITEM`; não resta ação local segura adicional nesta frente.
+
+Uma segunda tentativa da suíte integral usando `TMPDIR` em volume dedicado foi
+descartada como ambiente inválido: o volume não satisfaz o contrato de runtime
+seguro (`XDG runtime inseguro`) nem oferece `renameat2/RENAME_NOREPLACE`,
+produzindo falhas de IPC e de custódia transacional em testes gerais. O
+diretório temporário criado para essa tentativa foi removido. A cobertura PS5
+focada e o harness QML continuam sendo a evidência válida desta branch; não há
+defeito PS5 deduzido desses erros de infraestrutura.
+
+## 2026-09-19 — suíte integral concluída em runtime compatível
+
+Com `TMPDIR=/tmp`, cujo tmpfs oferece espaço suficiente e preserva o contrato
+de runtime privado, `make VENV=/mnt/sdcard/Projects/Port_Steam/.venv test`
+terminou com exit 0 após coletar 6.221 testes, sem falhas reportadas. Os gates
+Ruff, formatação, mypy, independência, fronteiras, component-lock,
+capability-matrix e `STATUS-CHECK` também passaram novamente. Nenhum arquivo de
+código foi alterado nesta validação; a diferença entre as tentativas foi apenas
+o runtime temporário compatível.
+
+## 2026-09-19 — auditoria final read-only do host PS5
+
+`release_host.py inspect` confirmou novamente a release ativa
+`2.0.0rc1-f98a1a12a46b`, proveniência/daemon/estado persistente íntegros e
+nenhum staging, backup, journal ou operação pendente. O inventário mantém
+`sharpemu` ausente; as divergências globais são apenas HEAD/host anteriores à
+última release tagueada. Não houve instalação, rollback, reboot ou mutação de
+host.
+
+Com todo o software PS5 implementado e os gates verdes, resta exclusivamente a
+validação física com autorização governada, SharpEmu presente, dump legal,
+hardware compatível e PNG. Esse subitem permanece
+`HARD-EXTERNAL-SUBITEM`; não há outra ação local segura pertencente a esta
+frente.
+
+## 2026-09-19 — identidade PS5 removível e de rede
+
+O próximo item tratável da frente PS5 fechou a lacuna de prova para origens
+removíveis e de rede. Os testes agora cobrem a classificação de raízes
+`/run/media`/`/mnt`, shares `//`/`/net`, o particionamento mutuamente exclusivo
+de `volumeId` e `shareId` e a diferenciação do `stableId` por tipo de origem.
+O contrato continua sem caminho absoluto na identidade.
+
+Provas: `tests/unit/test_ps5_compatibility.py` passou com `8 passed`; a suíte
+integral posterior coletou 6.223 testes e terminou sem falhas na repetição com
+`TMPDIR=/tmp`. O primeiro runner dessa alteração teve um timeout isolado em
+`test_status_keeps_full_emulation_model_across_http_thread`, que passou
+isoladamente em 6,47 s e não se reproduziu na repetição integral. O commit
+funcional é `ce887e6`; nenhum host foi instalado ou mutado.

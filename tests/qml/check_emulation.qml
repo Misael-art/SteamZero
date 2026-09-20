@@ -641,6 +641,24 @@ Window {
         check(object.selectedGame.id === "a", "seleção da linha deve atualizar o painel do jogo")
         check(object.compatibilityState(object.selectedGame, "eden") === "unknown",
               "compatibilidade ausente não pode ser inventada")
+        object.selectedGame.compatibility = {"eden": {"state": "unknown", "build": "0.0.3", "reason": "não publicada"}}
+        check(object.compatibilityDetail(object.selectedGame, "eden", "Eden").indexOf("0.0.3") >= 0,
+              "compatibilidade deve publicar a build observada no detalhe")
+        check(object.compatibilityLabel("menus") === "Menus",
+              "compatibilidade deve preservar os estados oficiais do SharpEmu")
+        object.selectedGame.contentState = "content-incomplete"
+        object.selectedGame.contentReason = "param.sfo ausente"
+        check(object.contentDetail(object.selectedGame).indexOf("param.sfo") >= 0,
+              "card PS5 deve explicar dump incompleto")
+        object.selectedGame.platformId = "playstation-5"
+        object.selectedGame.sourceIdentity = {
+            "sourceKind": "removable",
+            "relativePath": "Demo/eboot.bin"
+        }
+        check(object.sourceDetail(object.selectedGame).indexOf("Origem removível") >= 0,
+              "card PS5 deve mostrar o tipo da origem")
+        check(object.sourceDetail(object.selectedGame).indexOf("Demo/eboot.bin") >= 0,
+              "card PS5 deve mostrar somente o caminho relativo da origem")
         check(object.gamePlayAction(object.selectedGame).enabled === true,
               "Jogar deve consumir a ação publicada pelo backend")
         object.pendingEmulatorGameId = object.selectedGame.id

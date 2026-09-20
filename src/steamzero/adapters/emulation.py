@@ -13,6 +13,7 @@ import shutil
 import signal
 import sqlite3
 import subprocess
+import sys
 import threading
 import time
 from collections.abc import Callable, Mapping, Sequence
@@ -56,6 +57,12 @@ from steamzero.adapters.mods.ns_emu_mod_downloader import NsEmuModDownloaderSour
 from steamzero.adapters.mods.semd_source import SemdSource
 from steamzero.adapters.mods.state_store_mods import StateStoreModsAdapter
 from steamzero.adapters.preservation import PreservationService, PreservationTarget
+from steamzero.adapters.ps5_compatibility import (
+    build_ps5_source_identity,
+    resolve_ps5_compatibility,
+    resolve_ps5_content_status,
+)
+from steamzero.adapters.ps5_runtime import Ps5RuntimeReadiness, check_ps5_runtime
 from steamzero.adapters.registry import AdapterRegistry
 from steamzero.adapters.resource_probe import parse_stat as parse_proc_stat
 from steamzero.adapters.rom_metadata.emulator_cache import EmulatorCacheReader
@@ -478,12 +485,14 @@ class EmulationController:
         retroarch_controls: input_devices.RetroArchControls | None = None,
         cloud_platforms: CloudPlatformService | None = None,
         flatpak_factory: Callable[[], FlatpakCLI] = FlatpakCLI,
+        ps5_runtime_probe: Callable[[], Ps5RuntimeReadiness] | None = None,
     ) -> None:
         self._store_factory = store_factory
         self._registry_factory = registry_factory
         self._artifacts = artifacts or HttpsArtifactPort()
         self._flatpak_factory = flatpak_factory
         self._which = which
+        self._ps5_runtime_probe = ps5_runtime_probe or (lambda: check_ps5_runtime(which=which))
         self._spawn = spawn
         self._read_start_ticks = read_start_ticks
         self._process_waiter = (
@@ -680,6 +689,8 @@ class EmulationController:
         switch_games = self._enrich_controls(switch_games)
         enriched_by_id = {str(game.get("id")): game for game in switch_games}
         games = [enriched_by_id.get(str(game.get("id")), dict(game)) for game in raw_games]
+        games = self._publish_ps5_content_state(games)
+        games = self._publish_ps5_compatibility(games)
         content = self._content.list_records()
         integrity = self._content.integrity_report()
         physical_dock = self._physical_dock(desktop_status)
@@ -842,6 +853,77 @@ class EmulationController:
         workspace["jobs"] = self.list_jobs()
         contracts.validate(workspace, "emulation-workspace-v1.schema.json")
         return workspace
+
+    def _publish_ps5_compatibility(
+        self, games: Sequence[Mapping[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Publica compatibilidade PS5 como estado explícito, nunca como palpite.
+
+        O snapshot público é consultado apenas para combinações exatas de
+        Title ID, build e sistema operacional. O card preserva a build
+        observada e a causa quando o relatório não pode ser promovido.
+        """
+        published: list[dict[str, Any]] = []
+        for raw_game in games:
+            game = dict(raw_game)
+            platform_id = str(game.get("platformId") or game.get("platform") or "")
+            if platform_id == "playstation-5":
+                compatibility = game.get("compatibility")
+                values = dict(compatibility) if isinstance(compatibility, Mapping) else {}
+                versions = getattr(self, "_emulator_versions", {})
+                build = versions.get("sharpemu")
+                runtime_os = (
+                    "linux"
+                    if sys.platform.startswith("linux")
+                    else "macos"
+                    if sys.platform == "darwin"
+                    else "windows"
+                )
+                values.setdefault(
+                    "sharpemu",
+                    resolve_ps5_compatibility(
+                        str(game.get("titleId")) if game.get("titleId") else None,
+                        build,
+                        runtime_os=runtime_os,
+                    ),
+                )
+                game["compatibility"] = values
+            published.append(game)
+        return published
+
+    def _publish_ps5_content_state(
+        self, games: Sequence[Mapping[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Publica origem e completude do dump PS5 sem mudar o estado legado."""
+        published: list[dict[str, Any]] = []
+        for raw_game in games:
+            game = dict(raw_game)
+            platform_id = str(game.get("platformId") or game.get("platform") or "")
+            if platform_id == "playstation-5":
+                content = resolve_ps5_content_status(
+                    str(game.get("path")) if game.get("path") else None,
+                    identity_verified=game.get("identityVerified") is True,
+                    identity_diagnosis=(
+                        str(game.get("identityDiagnosis"))
+                        if game.get("identityDiagnosis")
+                        else None
+                    ),
+                )
+                game.update(content)
+                label = (
+                    "Origem ausente"
+                    if content["contentState"] == "source-missing"
+                    else (
+                        "Conteúdo incompleto"
+                        if content["contentState"] == "content-incomplete"
+                        else "Conteúdo identificado"
+                    )
+                )
+                status_label = str(game.get("statusLabel") or "PS5")
+                if label not in status_label:
+                    game["statusLabel"] = f"{status_label} · {label}"
+            published.append(game)
+        return published
 
     def _platform_facts_provider(self, registry: AdapterRegistry) -> Callable[[str], EmulatorFacts]:
         """Fatos reais de cada adapter, para o composer de plataforma.
@@ -1388,6 +1470,20 @@ class EmulationController:
                 ),
             )
         source_type, flatpak_ref, payload = self._emulator_source(emulator_id)
+        if platform_id == "playstation-5":
+            probe = getattr(self, "_ps5_runtime_probe", None)
+            if probe is None:
+
+                def probe() -> Ps5RuntimeReadiness:
+                    return check_ps5_runtime(which=getattr(self, "_which", shutil.which))
+
+            readiness = probe()
+            if not readiness.ready:
+                detail = (
+                    "SharpEmu requer arquitetura x86_64 e Vulkan funcionais; "
+                    f"{readiness.reason or 'preflight do runtime recusado'}"
+                )
+                raise SteamZeroError("E-COMPONENT-DEGRADED", detail=detail)
         if payload is not None and self._managed_process_groups(payload):
             raise SteamZeroError(
                 "E-COMPONENT-DEGRADED", detail=f"{emulator_id} já está em execução"
@@ -2129,8 +2225,24 @@ class EmulationController:
                 fingerprint = hashlib.sha256(
                     f"{pm.path}\0{stat.st_size}\0{stat.st_mtime_ns}".encode()
                 ).hexdigest()
-                stable_id = hashlib.sha256(str(pm.path).encode()).hexdigest()[:24]
                 game_identity, identity_diag = read_game_identity(pm.path, platform=pm.platform)
+                ps5_source_identity: dict[str, Any] = {}
+                if pm.platform == "playstation-5":
+                    try:
+                        ps5_source_identity = build_ps5_source_identity(
+                            pm.path,
+                            root,
+                            title_id=game_identity.value if game_identity is not None else None,
+                        )
+                    except (OSError, ValueError):
+                        # A disappearing or malformed source remains visible by
+                        # its legacy fallback until the next scan; no absolute
+                        # path is published as the PS5 identity.
+                        ps5_source_identity = {}
+                stable_id = str(
+                    ps5_source_identity.get("stableId")
+                    or hashlib.sha256(str(pm.path).encode()).hexdigest()[:24]
+                )
                 discovered[str(pm.path)] = {
                     "id": stable_id,
                     "titleId": game_identity.value if game_identity is not None else None,
@@ -2161,6 +2273,7 @@ class EmulationController:
                     "coverUrl": None,
                     "mediaSource": None,
                     "platform": pm.platform,
+                    **({"sourceIdentity": ps5_source_identity} if ps5_source_identity else {}),
                     # O sistema fica AO LADO da plataforma, nunca no lugar dela:
                     # `platformId` continua resolvendo emulador e launch, que é
                     # o caminho recém-estabilizado. `systemId` existe para
