@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-RETROFE-MEDIA-INGESTION",
+  "item": "SZ-AURA-RETROFE-MEDIA-INGESTION",
+  "branch": "codex/aura-rich-media-ingestion-2026-09-20",
+  "baseRef": "f683957a952c24056092516cc1af17760c68910a",
+  "owner": "codex-aura-rich-media-ingestion",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/domain/retrofe_media_import.py",
+    "tools/import_retrofe_media.py",
+    "tests/unit/test_retrofe_media_import.py",
+    "docs/12-roadmap/AURA-RICH-MEDIA-INGESTION.md",
+    "docs/status/items/aura-retrofe-media-ingestion-2026-09-20.json",
+    "docs/status/workstreams/aura-retrofe-media-ingestion-2026-09-20.json"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Promover por release governada; aplicar o plano e capturar capa/fanart reais no AURA Launcher.",
+  "updatedAt": "2026-09-20"
+}
