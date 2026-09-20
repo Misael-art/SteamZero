@@ -11570,3 +11570,33 @@ captura de recuperação não encontrou processo gráfico persistente. Evidênci
 `36-gameplay-gamegear.png` e `37-recovery-gamegear.png`. PS4/PS5 seguem em
 `unsupported-content`/`needs-review` sem extração. Próxima ação: seguir para o
 próximo sistema com core instalado e formato diretamente suportado.
+
+## 2026-09-20 — Materialização assíncrona de multidisco e archives
+
+O operador corrigiu o critério de aceite: a ausência de `.m3u` não pode deixar
+uma jornada multidisco sem solução. Foi criada a capacidade
+`SZ-MULTIDISC-MATERIALIZATION-INGESTION`, sem editar os arquivos exclusivos do
+workstream de reconciliação ou do adapter de periféricos. A ação
+`multidisc.materialize` valida a origem, cria um job assíncrono, usa staging,
+preserva hashes, extrai ZIP e archives que tenham backend `7z`/`7zz` seguro,
+publica discos derivados e `.m3u` gerenciado por transação, e recusa conflito,
+traversal, symlink, zip bomb, cancelamento e ausência de backend sem tocar o
+acervo original.
+
+O scan agora publica candidatos multidisco com `setId`, título, estado, motivo,
+`sourcePaths`, `systemId` e `libraryRoot`; a UI pode confirmar a materialização
+sem adivinhar identidade. X68000 permanece `needs-platform-contract` porque seu
+manifesto ainda declara M3U unsupported. Save/load state, backup e swap de
+disco continuam nos adapters existentes; esta frente não alterou o ownership
+do `session_peripherals.py`.
+
+Provas focadas: 6 testes do materializador e 145 testes de remediação/controller
+passaram. Ruff, format, mypy, independência e boundaries passaram. A suíte
+isolada integral foi iniciada e chegou a 27%, mas o runner encerrou sem entregar
+o rodapé final; não foi declarada como gate verde. O status-check desta branch
+fica limpo para os itens desta frente; permanecem apenas digests obsoletos de
+outros workstreams. A leitura atual do host, somente leitura, reportou release
+`2.0.0rc1` e nenhum `.m3u`; uma observação anterior de playlist Amiga não foi
+reproduzida e não é evidência física atual. Não houve instalação, rollback,
+download proprietário, push ou reboot. Próxima ação: release governada e prova
+física do materializador, lançamento M3U, save/load e retorno.
