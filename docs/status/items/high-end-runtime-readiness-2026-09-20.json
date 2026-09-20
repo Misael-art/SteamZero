@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-EMULATION-HIGH-END-RUNTIME-READINESS",
+  "title": "Prontidão resiliente de PS4, PS5, X68000 e Xbox",
+  "domain": "emulation",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/adapters/console_runtime_readiness.py",
+    "src/steamzero/adapters/emulation.py",
+    "tests/unit/test_console_runtime_readiness.py",
+    "tests/unit/test_emulation_runtime_remediation.py",
+    "docs/09-operations/evidence/2026-09-20-high-end-runtime-readiness"
+  ],
+  "scopeDigest": "daf286675b137a8a43c00d7b2be19a9584aa1503d7e4e191d6a0b3d37ae9c99a",
+  "dependsOn": [
+    "SZ-PLATFORM-PS4-CATALOG",
+    "SZ-PLATFORM-PS5-CATALOG",
+    "SZ-MULTIDISC-DESCRIPTOR-RECONCILIATION",
+    "SZ-MULTIDISC-MATERIALIZATION-INGESTION"
+  ],
+  "knownGaps": [
+    "GAP-PLATFORM-PS4-PHYSICAL-INSTALL",
+    "GAP-SHARPEMU-PHYSICAL-VALIDATION",
+    "GAP-MULTIDISC-PLATFORM-CONTRACT-X68000",
+    "GAP-XBOX-MACHINE-FIRMWARE",
+    "GAP-XBOX360-RUNTIME-DEPLOYMENT"
+  ],
+  "acceptanceCriteria": [
+    "PS4 e PS5 não recebem archives brutos no emulador; conteúdo compactado fica em estado recuperável até materialização e identidade válidas.",
+    "PS5 continua exigindo arquitetura x86_64 e Vulkan antes do spawn, sem alegar compatibilidade física quando SharpEmu está ausente.",
+    "X68000 permanece catalogado e seus conjuntos archive são expostos como pendência de contrato, sem fabricar M3U incompatível.",
+    "Xbox só inicia xemu quando a configuração eeprom, flash, mcpx e hdd aponta para arquivos regulares existentes; a falha é somente leitura e acionável.",
+    "Xbox 360 continua recusando o spawn quando Xenia está degradado, preservando a causa do deployment divergente.",
+    "Cada bloqueio físico remanescente tem evidência read-only e próxima ação explícita, sem mutação do host."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_console_runtime_readiness.py",
+      "command": "pytest focused: xemu sem arquivos de máquina, configuração completa e TOML inválido (3 passed)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_emulation_runtime_remediation.py",
+      "command": "pytest ampliado: controller, PS4, PS5, multidisco, materializador e classificação (253 passed)",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tools/run_tests_isolated.py",
+      "command": "Suíte integral isolada tentada; lotes com falhas/erros e repetição -x encerrou sem processo/rodapé em 16%",
+      "result": "partial"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-20-high-end-runtime-readiness/README.md",
+      "command": "Inspeção read-only de release, componentes, acervo e configuração Flatpak xemu em 2026-09-20",
+      "result": "partial"
+    }
+  ],
+  "activeWorkstreams": [
+    "WS-2026-09-HIGH-END-RUNTIME-READINESS"
+  ],
+  "nextAction": "Aguardar integração das frentes PS4/PS5 e do contrato X68000; com autorização, instalar release governada, importar somente firmware/dumps legais e repetir provas físicas. Enquanto isso, materializar archives pelo job assíncrono e manter Xbox/Xbox 360 em preflight seguro.",
+  "updatedAt": "2026-09-20",
+  "notes": "A ausência de firmware/arquivos de máquina Xbox, SharpEmu no host, conteúdo PS4/PS5 jogável e suporte M3U PX68K não é mascarada como erro genérico. O contrato X68000 pertence a outra frente; o handoff é SOFT-COORDINATION e a execução segura continua nos demais sistemas."
+}

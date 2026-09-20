@@ -11600,3 +11600,34 @@ outros workstreams. A leitura atual do host, somente leitura, reportou release
 reproduzida e não é evidência física atual. Não houve instalação, rollback,
 download proprietário, push ou reboot. Próxima ação: release governada e prova
 física do materializador, lançamento M3U, save/load e retorno.
+## 2026-09-20 — Prontidão resiliente de consoles de alta exigência
+
+Frente `WS-2026-09-HIGH-END-RUNTIME-READINESS`, branch
+`codex/emulation-system-validation-2026-09-19`, sobre `50b3f503`.
+
+Registrei o diagnóstico dos itens PS4, PS5, X68000, Xbox e Xbox 360 e avancei no
+que é seguro no checkout. O preflight de launch agora recusa archives brutos
+antes do spawn, preservando a origem para a materialização assíncrona; PS5
+mantém a validação de arquitetura/Vulkan; e xemu consulta, sem escrever, a
+configuração nativa/Flatpak e exige eeprom, flash, mcpx e hdd regulares. No host
+foi observado apenas `eeprom_path`, então a tela `Configure machine settings`
+permanece corretamente classificada como configuração ausente, não jogo.
+
+X68000 continua catalogado com 14 archives, mas o contrato M3U/PX68K pertence à
+frente de reconciliação de descritores e segue em `SOFT-COORDINATION`; não foi
+fabricado um M3U nem alterado manifesto de outra frente. Xenia Canary segue
+degradado por divergência de deployment e não recebe spawn. Nenhuma instalação,
+rollback, download de firmware, reboot ou mutação do host foi executado.
+
+Evidência: `docs/09-operations/evidence/2026-09-20-high-end-runtime-readiness`.
+Testes focados cobrem configuração xemu ausente/completa/inválida, bloqueio
+Xbox antes do spawn e bloqueio de RAR PS4 sem materialização. Próxima ação:
+executar gates, atualizar os índices de status e preparar a integração com as
+frentes PS4/PS5/X68000.
+
+Fechamento da etapa: a regressão ampliada passou com 253 testes; Ruff, format,
+mypy, independência e boundaries passaram. A suíte integral isolada permanece
+`inconclusive`: um lote apresentou falhas/erros e a repetição com `-x` terminou
+sem processo/rodapé em 16%, sem traceback atribuível a esta alteração. Isso foi
+registrado como diagnóstico de infraestrutura, sem enfraquecer testes. A
+release ativa continua `2.0.0rc1`; nenhum host foi instalado ou alterado.

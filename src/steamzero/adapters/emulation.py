@@ -28,6 +28,10 @@ from steamzero.adapters import input_devices, lifecycle
 from steamzero.adapters.cheats.cheat_installer import FsCheatInstaller
 from steamzero.adapters.cheats.nsecm_source import NsecmSource
 from steamzero.adapters.cheats.state_store_cheats import StateStoreCheatsAdapter
+from steamzero.adapters.console_runtime_readiness import (
+    XboxRuntimeReadiness,
+    check_xemu_runtime,
+)
 from steamzero.adapters.converters import (
     NszConverter,
     NszToolManager,
@@ -490,6 +494,7 @@ class EmulationController:
         cloud_platforms: CloudPlatformService | None = None,
         flatpak_factory: Callable[[], FlatpakCLI] = FlatpakCLI,
         ps5_runtime_probe: Callable[[], Ps5RuntimeReadiness] | None = None,
+        xemu_runtime_probe: Callable[[], XboxRuntimeReadiness] | None = None,
     ) -> None:
         self._store_factory = store_factory
         self._registry_factory = registry_factory
@@ -497,6 +502,7 @@ class EmulationController:
         self._flatpak_factory = flatpak_factory
         self._which = which
         self._ps5_runtime_probe = ps5_runtime_probe or (lambda: check_ps5_runtime(which=which))
+        self._xemu_runtime_probe = xemu_runtime_probe or check_xemu_runtime
         self._spawn = spawn
         self._read_start_ticks = read_start_ticks
         self._process_waiter = (
@@ -1465,6 +1471,15 @@ class EmulationController:
         rom = Path(str(game["path"]))
 
         archive_evidence = str(game.get("evidence") or "")
+        archive_suffixes = (".7z", ".rar", ".zip", ".tar.gz", ".tar.bz2", ".tar.xz")
+        if rom.name.casefold().endswith(archive_suffixes) and archive_evidence != "archive-native":
+            raise SteamZeroError(
+                "E-CONTENT-INCOMPLETE",
+                detail=(
+                    "archive detectado, mas ainda não foi materializado para um formato "
+                    "consumível; use a ação assíncrona de preparação e tente novamente"
+                ),
+            )
         if archive_evidence.startswith("archive-multidisc-"):
             state = archive_evidence.removeprefix("archive-multidisc-")
             if state != "ready":
@@ -1519,6 +1534,16 @@ class EmulationController:
                     "SharpEmu requer arquitetura x86_64 e Vulkan funcionais; "
                     f"{readiness.reason or 'preflight do runtime recusado'}"
                 )
+                raise SteamZeroError("E-COMPONENT-DEGRADED", detail=detail)
+        if platform_id == "xbox" and emulator_id == "xemu":
+            readiness = self._xemu_runtime_probe()
+            if not readiness.ready:
+                missing = ", ".join(readiness.missing)
+                detail = "xemu requer configuração da máquina virtual do Xbox"
+                if missing:
+                    detail += f"; arquivos ausentes: {missing}"
+                if readiness.reason:
+                    detail += f" ({readiness.reason})"
                 raise SteamZeroError("E-COMPONENT-DEGRADED", detail=detail)
         if payload is not None and self._managed_process_groups(payload):
             raise SteamZeroError(
