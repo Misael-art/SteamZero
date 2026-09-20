@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-CURRENT-REVALIDATION",
+  "item": "SZ-AURA-CURRENT-RELEASE-REVALIDATION-2026-09-20",
+  "branch": "codex/aura-perf-evidence-2026-09-20",
+  "baseRef": "87d75d90",
+  "owner": "codex-aura-current-release-revalidation",
+  "state": "closed",
+  "exclusivePaths": [
+    "docs/09-operations/evidence/2026-09-20-aura-current-release",
+    "docs/status/items/aura-current-release-revalidation-2026-09-20.json",
+    "docs/status/workstreams/aura-current-release-revalidation-2026-09-20.json"
+  ],
+  "sharedPaths": [
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "A evidência foi integrada neste branch; repetir após a próxima release de mídia rica.",
+  "updatedAt": "2026-09-20"
+}

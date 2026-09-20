@@ -11376,3 +11376,17 @@ integral posterior coletou 6.223 testes e terminou sem falhas na repetição com
 `test_status_keeps_full_emulation_model_across_http_thread`, que passou
 isoladamente em 6,47 s e não se reproduziu na repetição integral. O commit
 funcional é `ce887e6`; nenhum host foi instalado ou mutado.
+
+## 2026-09-20 — revalidação física da superfície AURA instalada
+
+Registrei uma amostra nova da release instalada `2.0.0rc1-c3b14a040b7c` em
+`docs/09-operations/evidence/2026-09-20-aura-current-release/`. A sonda física
+mediu startup de 1191 ms, 375 frames, frame-time p95 de 16,163 ms e VRAM de
+13.664 KiB, dentro dos orçamentos definidos. A captura PNG da janela Wayland
+tem 1280×801 e comprova o carousel/foco da superfície AURA; ela também deixa
+explícito que fanart/vídeo ainda estão em fallback nesta release.
+
+`STATUS-CHECK` passou e `tests/unit/test_project_status.py` passou com 10
+testes. Nenhuma instalação, rollback, reinício ou mutação do KDE foi executada;
+o próximo ciclo deve repetir a medição após a release de mídia rica e fechar a
+lacuna de geometria 1280×800, se o host a disponibilizar.
