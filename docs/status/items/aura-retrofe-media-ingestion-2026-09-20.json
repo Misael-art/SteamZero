@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AURA-RETROFE-MEDIA-INGESTION",
+  "title": "AURA — ingestão segura de mídia local RetroFE",
+  "domain": "ui",
+  "implementation": "complete",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/domain/retrofe_media_import.py",
+    "tools/import_retrofe_media.py",
+    "tests/unit/test_retrofe_media_import.py",
+    "docs/12-roadmap/AURA-RICH-MEDIA-INGESTION.md"
+  ],
+  "dependsOn": [
+    "SZ-AURA-RICH-MEDIA-PROJECTION",
+    "SZ-AURA-CINEMA-COMPLETION"
+  ],
+  "knownGaps": [
+    "GAP-AURA-RICH-MEDIA-PHYSICAL-CAPTURE",
+    "GAP-AURA-RICH-MEDIA-INTEGRATION-RELEASE"
+  ],
+  "acceptanceCriteria": [
+    "Plan identifica coleção e plataforma sem assumir Switch.",
+    "Match de título ignora acentos e caixa, mas empates ficam em revisão.",
+    "Symlinks, extensões não suportadas e coleções auxiliares não entram no plano.",
+    "Apply publica masters por hash e preserva papeis existentes por padrão.",
+    "Uma release instalada exibe capa e fanart reais em fullscreen com captura PNG."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_retrofe_media_import.py",
+      "command": "pytest tests/unit/test_retrofe_media_import.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/12-roadmap/AURA-RICH-MEDIA-INGESTION.md",
+      "command": "import_retrofe_media.py --library ~/.local/share/steamzero/emulation-library-cache-v1.json --source-root /home/misael/emulation/frontend/RetroFE/collections",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/12-roadmap/AURA-RICH-MEDIA-INGESTION.md",
+      "command": "import_retrofe_media.py ... --apply --media-root /tmp/aura-rich-media-apply-check",
+      "result": "recorded"
+    }
+  ],
+  "activeWorkstreams": [
+    "WS-2026-09-AURA-RETROFE-MEDIA-INGESTION"
+  ],
+  "nextAction": "Promover a branch por release governada; aplicar o plano na raiz de mídia do host e registrar captura PNG com capa/fanart reais.",
+  "updatedAt": "2026-09-20",
+  "scopeDigest": "fc64db170f489f2eda9457d1522ed382f7a599ab416bbb875a31742fd16b305b",
+  "notes": "A implementação é local e plan-first. A ausência de captura instalada permanece aberta; o bloqueio atual de instalação é a autenticação interativa pkexec, não o importador."
+}

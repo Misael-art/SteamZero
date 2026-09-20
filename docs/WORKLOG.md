@@ -11446,3 +11446,29 @@ vídeo permanecem explicitamente em fallback nesta release.
 testes. Nenhuma instalação, rollback, reinício ou mutação do KDE foi executada;
 o próximo ciclo deve repetir a medição após a release de mídia rica e fechar a
 lacuna de geometria 1280×800, se o host a disponibilizar.
+
+## 2026-09-20 — ingestão plan-first de mídia RetroFE para AURA
+
+Criei o workstream `WS-2026-09-AURA-RETROFE-MEDIA-INGESTION` e a capacidade
+`SZ-AURA-RETROFE-MEDIA-INGESTION`. O novo importador
+`src/steamzero/domain/retrofe_media_import.py` conecta coleções RetroFE
+conhecidas ao `gameId`/`platformId` da biblioteca canônica, normaliza acentos e
+caixa, rejeita empates, symlinks e diretórios auxiliares e publica masters
+endereçados por hash apenas após um plano explícito. O CLI
+`tools/import_retrofe_media.py` separa `plan` de `--apply`; o apply preserva
+papéis já existentes e não remove a origem.
+
+No acervo real de `/home/misael/emulation/frontend/RetroFE/collections`, a
+varredura registrou 79 aceitos, 3 ambiguidades e 165 sem match seguro. O apply
+foi executado somente em raiz temporária: 79 masters importados, 0 falhas e 0
+sobrescritas. A release/raiz de mídia do host não foi alterada e nenhuma ação
+privilegiada, reinício ou mutação do KDE ocorreu.
+
+Provas: `tests/unit/test_retrofe_media_import.py` — 8 passed; Ruff,
+formatação, mypy, fronteiras, independência, component-lock, matriz de
+capacidades e `STATUS-CHECK` passaram. A suíte integral foi tentada de forma
+isolada, mas a primeira falha reproduzível foi ambiental:
+`test_10k_fixture_apply_and_rollback_benchmark` esgotou `/run/user/1000`
+(`Errno 28`, 1035 passed e 44 skipped antes da falha). O estado real foi
+comparado pelo runner e permaneceu idêntico. A captura PNG pós-instalação com
+fanart/capa reais permanece aberta até a promoção e instalação governadas.
