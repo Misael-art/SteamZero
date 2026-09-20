@@ -12,7 +12,7 @@
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-19-real-dump-inventory"
   ],
-  "scopeDigest": "93f32c2efbf82a56d13a03e67ddbd9ccd8d9cd94335fdaead16bb51b6f25ced7",
+  "scopeDigest": "d633427eab8ae6737e6cc0b6fb98e8919a22fec8bf08d037b29434f03551692b",
   "dependsOn": [
     "SZ-COMPONENT-LIFECYCLE",
     "SZ-LIBRARY-CANONICAL",
@@ -215,12 +215,36 @@
       "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/35-recovery-gameboy.png",
       "command": "controle devolveu recusa controlada e o grupo RetroArch foi encerrado por SIGTERM; lifecycle terminou sem sessão ativa.",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/README.md",
+      "command": "scan canônico da release 2.0.0rc1-3acc2104dd5a confirmou x68000=14 e amiga=5; emulation launch do X68000 70ad5c99b995b71161460340 falhou antes do spawn com E-TX-STALE-PLAN porque o filtro de archives descartou o registro.",
+      "result": "partial"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/README.md",
+      "command": "Saturn foi confirmado com 18 CHDs e o manifesto 39-sega-saturn exige mednafen_saturn; component list da release ativa 2.0.0rc1-3acc2104dd5a não contém esse core, portanto não houve tentativa de instalação ou launch fora do fluxo governado.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/36-gameplay-gamegear.png",
+      "command": "emulation launch do ZIP Berlin no Kabe no RetroArch/Genesis Plus GX 1.22.2; a tela real do jogo foi renderizada, sem prova de avanço interativo.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/37-recovery-gamegear.png",
+      "command": "PGID 2161300 encerrado com SIGTERM e captura posterior; não restou processo gráfico do emulador em execução.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Registrar PS4/PS5 como unsupported-content/needs-review somente em leitura e manter a frente pronta para outro sistema com formato/runtime suportados; não extrair .rar/.exfat.",
+  "nextAction": "Manter X68000/Amiga em SOFT-COORDINATION por filtro de archives compartilhado, manter Saturn em missing-runtime por core ausente, registrar PS4/PS5 sem extração e avançar para o próximo sistema com core instalado e formato diretamente suportado.",
   "activeWorkstreams": [
     "WS-2026-09-EMULATION-REAL-DUMP-VALIDATION"
   ],
-  "updatedAt": "2026-09-19",
-  "notes": "Inventário e treze ciclos físicos/diagnósticos concluídos. Famicom/NES, Master System e SNES têm gameplay real observado; Dreamcast, 3DS, PS3, GameCube, Wii U, Switch e Game Boy têm boot/renderização real sem gameplay interativo; Xbox parou na configuração de máquina do xemu e Wii parou em erro controlado de arranjo de controles. PS4/PS5 têm apenas artefatos não lançáveis para os manifestos atuais e permanecem unsupported-content/needs-review sem extração. PS2 revelou o flag incompatível `--fullscreen` e o handoff de correção está separado por ownership ativo de arquivo compartilhado. 3DO tem core verificado, mas BIOS ausente; PS3 requer firmware legítimo, Xbox configuração/firmware legítimos e Wii periférico/configuração compatíveis. Nenhuma ROM original foi movida, extraída, sobrescrita ou apagada; archives não associados permanecem em needs-review/unsupported-content."
+  "updatedAt": "2026-09-20",
+  "notes": "Inventário, quatorze ciclos físicos e diagnósticos de archives/runtime concluídos. Famicom/NES, Master System e SNES têm gameplay real observado; Dreamcast, 3DS, PS3, GameCube, Wii U, Switch e Game Boy têm boot/renderização real sem gameplay interativo; Game Gear abriu tela real sem prova de avanço; Xbox parou na configuração de máquina do xemu e Wii parou em erro controlado de arranjo de controles. X68000=14 e Amiga=5 foram confirmados, mas o filtro de archives compartilhado impede launch antes do spawn; handoff SOFT-COORDINATION registrado. Saturn=18 foi confirmado, mas mednafen_saturn não está instalado na release ativa e permanece missing-runtime. PS4/PS5 têm apenas artefatos não lançáveis para os manifestos atuais e permanecem unsupported-content/needs-review sem extração. PS2 revelou o flag incompatível `--fullscreen` e o handoff de correção está separado por ownership ativo de arquivo compartilhado. Nenhuma ROM original foi movida, extraída, sobrescrita ou apagada; archives não associados permanecem em needs-review/unsupported-content."
 }

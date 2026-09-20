@@ -11521,3 +11521,28 @@ arquivo persistente ou ROM foi alterado. PS4/PS5 continuam em
 `unsupported-content`/`needs-review` sem extração; a frente segue pronta para
 outro formato/runtime suportado.
 mGBA verificado.
+
+## 2026-09-20 — Inventário X68000/Amiga e ciclo Game Gear
+
+O operador apontou a ausência de X68000, Amiga e outros sistemas no avanço da
+validação. Reconfirmei na release ativa `2.0.0rc1-3acc2104dd5a` que o scan
+canônico tem 14 arquivos de X68000 e 5 de Amiga. O lançamento do X68000 foi
+reproduzido duas vezes com `game-id=70ad5c99b995b71161460340` e falhou antes do
+spawn com `E-TX-STALE-PLAN`, porque `_load_library_cache` reclassifica archives
+e descarta os registros. O mesmo contrato impede a tentativa segura do Amiga;
+`libretro-puae` está instalado, mas Kickstart é exigida pelo manifesto. A causa
+fica registrada como `SOFT-COORDINATION` no shared-path
+`src/steamzero/adapters/emulation.py`, sob handoff com a frente PS5; não houve
+extração, alteração de ROM ou patch concorrente.
+
+Saturn também foi catalogado com 18 CHDs. O manifesto exige
+`mednafen_saturn`, porém `component list` da release ativa não apresenta esse
+core; o item permanece `missing-runtime` e não foi feita instalação manual.
+Como próximo item tratável, o Game Gear foi lançado pelo SteamZero usando o
+ZIP real de Berlin no Kabe e `libretro-genesis-plus-gx` 1.22.2 verificado. A
+tela do jogo foi renderizada, sem prova de avanço interativo, portanto
+`installed-not-played`; o PGID exato `2161300` foi encerrado com SIGTERM e a
+captura de recuperação não encontrou processo gráfico persistente. Evidências
+`36-gameplay-gamegear.png` e `37-recovery-gamegear.png`. PS4/PS5 seguem em
+`unsupported-content`/`needs-review` sem extração. Próxima ação: seguir para o
+próximo sistema com core instalado e formato diretamente suportado.

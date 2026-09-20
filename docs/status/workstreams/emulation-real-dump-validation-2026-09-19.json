@@ -21,6 +21,6 @@
     "src/steamzero/domain/library.py",
     "src/steamzero/adapters/discovery/format_parsers.py"
   ],
-  "nextAction": "Game Boy classificado como installed-not-played após título observado, com recuperação limpa. Registrar PS4/PS5 como unsupported-content/needs-review sem extração; manter a frente pronta para outro formato/runtime suportado e aguardar release governada somente para repetir PS2.",
-  "updatedAt": "2026-09-19"
+  "nextAction": "X68000=14 e Amiga=5 confirmados; launch de archive reproduz E-TX-STALE-PLAN antes do spawn. Manter handoff SOFT-COORDINATION no emulation.py compartilhado, manter Saturn em missing-runtime por mednafen_saturn ausente, registrar PS4/PS5 sem extração e avançar para o próximo sistema com core instalado e formato diretamente suportado.",
+  "updatedAt": "2026-09-20"
 }
