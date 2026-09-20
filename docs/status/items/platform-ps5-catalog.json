@@ -143,6 +143,12 @@
       "reference": "tests/unit/test_ps5_compatibility.py",
       "command": "pytest focused: namespace de origem PS5 não deriva identidade do caminho absoluto quando o volume não pode ser observado",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_ps5_compatibility.py",
+      "command": "pytest focused: classifica raízes removíveis/rede e separa volumeId/shareId na sourceIdentity PS5",
+      "result": "passed"
     }
   ],
   "nextAction": "Revisar o handoff compartilhado de emulation.py/Emulation.qml no merge; o inventário associa updates/DLC à base sem duplicar jogos, publica sourceIdentity PS5 resiliente a remontagem e o card mostra tipo de origem/caminho relativo, enquanto 7f2de9b publica contentState complete/content-incomplete/source-missing com causa recuperável, c3c3369 publica o snapshot oficial pinned e só promove o estado SharpEmu quando Title ID, build e OS coincidem, d6e8af7 mantém a apresentação explícita e 173d3c95 conecta o preflight PS5 de arquitetura/Vulkan ao launch antes do spawn. Preparar release governada somente após autorização explícita e, com dump legal PS5, executar a prova física; baseline read-only confirmou x86_64/Vulkan RADV, enquanto SharpEmu ainda está ausente no host. Capturar PNG e manter compatibilidade por build sem promover verified-hw.",

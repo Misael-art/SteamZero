@@ -11361,3 +11361,18 @@ validação física com autorização governada, SharpEmu presente, dump legal,
 hardware compatível e PNG. Esse subitem permanece
 `HARD-EXTERNAL-SUBITEM`; não há outra ação local segura pertencente a esta
 frente.
+
+## 2026-09-19 — identidade PS5 removível e de rede
+
+O próximo item tratável da frente PS5 fechou a lacuna de prova para origens
+removíveis e de rede. Os testes agora cobrem a classificação de raízes
+`/run/media`/`/mnt`, shares `//`/`/net`, o particionamento mutuamente exclusivo
+de `volumeId` e `shareId` e a diferenciação do `stableId` por tipo de origem.
+O contrato continua sem caminho absoluto na identidade.
+
+Provas: `tests/unit/test_ps5_compatibility.py` passou com `8 passed`; a suíte
+integral posterior coletou 6.223 testes e terminou sem falhas na repetição com
+`TMPDIR=/tmp`. O primeiro runner dessa alteração teve um timeout isolado em
+`test_status_keeps_full_emulation_model_across_http_thread`, que passou
+isoladamente em 6,47 s e não se reproduziu na repetição integral. O commit
+funcional é `ce887e6`; nenhum host foi instalado ou mutado.
