@@ -11518,3 +11518,21 @@ mídia. A evidência está em
 O KDE não foi reiniciado nem finalizado. Permanecem abertos a captura do OSD
 AURA sobre uma janela RetroArch mapeada e a repetição do ciclo de troca de
 disco pelo Launcher instalado.
+
+## 2026-09-20 — prova física controlada do SharpEmu com dump PS5
+
+Com a release instalada `2.0.0rc1-3acc2104dd5a` e o componente SharpEmu
+`0.0.3-release.4` verificado pelo ciclo governado de componentes, lancei o
+dump real do operador `PPSA02929` (Dreaming Sarah). O loader abriu o
+`eboot.bin`, leu `sce_sys/param.json`, identificou Title ID `PPSA02929` e
+versão `01.000.000`, mas a execução do guest terminou com `Access Violation`
+após um import HLE não encontrado (`ORBIS_GEN2_ERROR_NOT_FOUND`). Nenhuma cena
+renderizada ou captura PNG de sucesso foi alegada.
+
+A prova negativa está em
+`docs/09-operations/evidence/2026-09-20-ps5-sharpemu-physical/`, com o
+`PHYSICAL-VALIDATION.json` e o diagnóstico controlado. O dump original não
+foi alterado e a identidade física continua comprovada separadamente. O
+`GAP-SHARPEMU-PHYSICAL-VALIDATION` permanece aberto até uma versão compatível
+do runtime ou outro dump chegar a uma cena renderizada. O KDE não foi
+reiniciado, finalizado ou mutado.

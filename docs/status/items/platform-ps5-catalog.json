@@ -27,9 +27,10 @@
     "tests/unit/test_ps5_compatibility.py",
     "tests/unit/test_ps5_sfo.py",
     "tests/unit/test_sharpemu_tarball.py",
-    "docs/09-operations/evidence/2026-09-20-ps5-dump-identity"
+    "docs/09-operations/evidence/2026-09-20-ps5-dump-identity",
+    "docs/09-operations/evidence/2026-09-20-ps5-sharpemu-physical"
   ],
-  "scopeDigest": "de7dd636235344c0020d21b1cdddc43935cba2604fe5b312d390e7d0d0346a0a",
+  "scopeDigest": "9fc6ba90935edf2ee8ac6743101e8875381605d1f1604c930c23b51cc46ca58e",
   "dependsOn": [
     "SZ-AGG-PLATFORM-MANIFESTS",
     "SZ-COMPONENT-LIFECYCLE",
@@ -156,12 +157,18 @@
       "reference": "docs/09-operations/evidence/2026-09-20-ps5-dump-identity/identity.json",
       "command": "RAR listado/extraído em temporário e imagem exFAT montada com guestmount --ro; leitura de eboot.bin + sce_sys/param.json",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-20-ps5-sharpemu-physical/PHYSICAL-VALIDATION.json",
+      "command": "Release instalada lançou o dump PPSA02929: loader abriu eboot.bin e leu param.json, mas o guest terminou com Access Violation após import HLE não encontrado; nenhum PNG de sucesso foi alegado.",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Publicar a correção param.json, preparar release governada somente após os gates e, com os dumps do operador, instalar SharpEmu, lançar PPSA02801 ou PPSA02929 e capturar PNG. Não promover verified-hw antes da prova física.",
+  "nextAction": "Manter GAP-SHARPEMU-PHYSICAL-VALIDATION aberto; repetir a prova com SharpEmu compatível ou outro dump e capturar PNG somente quando uma cena real for renderizada.",
   "activeWorkstreams": [
     "WS-2026-09-PS5-SHARPEMU"
   ],
-  "updatedAt": "2026-09-19",
-  "notes": "Implementação parcial em branch própria: SharpEmu possui manifesto, lockfile, plataforma, perfil DualSense, catálogo canônico, extração segura tar.gz, parser PS5 param.sfo/param.json + Title ID endurecido contra tabelas sobrepostas, comprimentos inválidos, tipos não-string e JSON arbitrário, e classificação ps5dir que não expõe módulos PRX, binários auxiliares ou PKG como jogo. ELF genérico sem identidade PS5 permanece explicitamente ps5-elf-unresolved e não é promovido por extensão. Containers de dump zip/7z/tar.gz permanecem explicitamente em needs-extraction. A identidade param.json foi provada nos dumps reais PPSA02801 (imagem exFAT somente leitura) e PPSA02929 (RAR extraído em temporário), sem mutação da origem. O catálogo resolve o snapshot oficial pinned de 46 relatórios por Title ID, build e OS, promovendo o estado somente em correspondência exata e explicando qualquer divergência como unknown; o inventário diferencia content-incomplete de source-missing, preserva a causa no card, associa updates/DLC à base sem duplicar jogos e publica sourceIdentity com namespace opaco, caminho relativo, tamanho e SHA-256 do entrypoint, sem usar o caminho absoluto como id; quando o namespace não é observável, usa unknown-namespace sem derivar o caminho. Os cards PS5 mostram o tipo de origem e o caminho relativo sem renderizar o caminho absoluto. O SharpEmu permanece experimental; não há instalação no host nem promoção verified-hw."
+  "updatedAt": "2026-09-20",
+  "notes": "Implementação integrada na main: SharpEmu possui manifesto, lockfile, plataforma, perfil DualSense, catálogo canônico, extração segura tar.gz, parser PS5 param.sfo/param.json + Title ID endurecido contra tabelas sobrepostas, comprimentos inválidos, tipos não-string e JSON arbitrário, e classificação ps5dir que não expõe módulos PRX, binários auxiliares ou PKG como jogo. ELF genérico sem identidade PS5 permanece explicitamente ps5-elf-unresolved e não é promovido por extensão. Containers de dump zip/7z/tar.gz permanecem explicitamente em needs-extraction. A identidade param.json foi provada nos dumps reais PPSA02801 (imagem exFAT somente leitura) e PPSA02929 (RAR extraído em temporário), sem mutação da origem. O catálogo resolve o snapshot oficial pinned de 46 relatórios por Title ID, build e OS, promovendo o estado somente em correspondência exata e explicando qualquer divergência como unknown; o inventário diferencia content-incomplete de source-missing, preserva a causa no card, associa updates/DLC à base sem duplicar jogos e publica sourceIdentity com namespace opaco, caminho relativo, tamanho e SHA-256 do entrypoint, sem usar o caminho absoluto como id; quando o namespace não é observável, usa unknown-namespace sem derivar o caminho. Os cards PS5 mostram o tipo de origem e o caminho relativo sem renderizar o caminho absoluto. SharpEmu foi instalado e verificado pelo ciclo de componentes na release 2.0.0rc1-3acc2104dd5a; o lançamento real do PPSA02929 alcançou o loader e a leitura de param.json, mas terminou em Access Violation por import HLE não encontrado. GAP-SHARPEMU-PHYSICAL-VALIDATION permanece aberto e não há promoção verified-hw."
 }
