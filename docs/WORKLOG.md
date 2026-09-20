@@ -11510,6 +11510,30 @@ segundos observados e o lifecycle ficou vazio. Evidências `31` e `32`; nenhum
 ZIP foi extraído ou alterado. Próximo item seguro: Game Boy com GB nativo e
 mGBA verificado.
 
+## 2026-09-20 — Remediação de runtimes e contratos de pré-lançamento
+
+Registrado o diagnóstico dos gargalos apontados pelo operador no item
+`SZ-EMULATION-RUNTIME-REMEDIATION`. O cache de launch agora preserva registros
+`archive-multidisc-*` reconhecidos pela reconciliação; conjuntos que ainda
+exigem extração são recusados antes do spawn com `E-CONTENT-INCOMPLETE`, em vez
+de desaparecerem como `E-TX-STALE-PLAN`. O preflight de PlayStation 3 exige
+`PS3UPDAT.PUP` validado no store e apresenta a orientação da fonte oficial Sony;
+o importador transacional aceita esse arquivo local e não baixa firmware
+silenciosamente. A compatibilidade final do PCSX2 normaliza `--fullscreen` para
+`-fullscreen` somente na fronteira de spawn, mantendo o handoff da expectativa
+de manifesto/teste com o workstream de catálogo de erros.
+
+Save/load state, backup de slot e troca de disco M3U existentes foram
+reconfirmados por inspeção; o acervo real não possui `.m3u` e não há prova
+física de troca multidisco a registrar. Não houve instalação, rollback, push,
+download proprietário ou reboot. Provas focadas: 4 testes novos, 78 de
+classificação/launch, 141 do controller e 17 de firmware; a suíte integral
+fechou com 6174 passed, 47 skipped e 6 falhas no primeiro fechamento (uma
+asserção QML introduzida pelo novo filtro, corrigida e reprovada novamente com
+sucesso; 15 digests obsoletos no catálogo e sockets UNIX com path longo
+permaneceram externos/baseline). Ruff, format, mypy, independência e fronteiras
+passaram.
+
 Game Boy foi exercitado após corrigir um game-id incorreto que gerou a recusa
 pré-launch `E-TX-STALE-PLAN` (“jogo não encontrado”); nada foi alterado nessa
 tentativa. O launch correto abriu o `.gb` nativo de Metroid II no mGBA

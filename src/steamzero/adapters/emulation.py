@@ -1243,6 +1243,20 @@ class EmulationController:
             )
         return list(self._appimage_argv(payload, *args))
 
+    @staticmethod
+    def _runtime_compat_argv(emulator_id: str, argv: Sequence[str]) -> list[str]:
+        """Aplica compatibilidade do binário sem falsificar o perfil declarativo.
+
+        A versão PCSX2 observada na validação real rejeita ``--fullscreen`` e
+        aceita ``-fullscreen``. O manifesto/teste de contrato ainda é
+        compartilhado com o catálogo de erros; normalizar no último ponto antes
+        do spawn mantém a decisão registrada e evita enviar uma flag conhecida
+        como inválida ao executável instalado.
+        """
+        if emulator_id != "pcsx2":
+            return list(argv)
+        return ["-fullscreen" if item == "--fullscreen" else item for item in argv]
+
     def launch_emulator(self, emulator_id: str) -> dict[str, Any]:
         self._require_launchable_emulator(emulator_id)
         platform = self._primary_platform_for(emulator_id)
@@ -1264,6 +1278,7 @@ class EmulationController:
             flatpak_ref=flatpak_ref,
             payload=payload,
         )
+        argv = self._runtime_compat_argv(emulator_id, argv)
         if payload is not None and self._managed_process_groups(payload):
             raise SteamZeroError(
                 "E-COMPONENT-DEGRADED", detail=f"{emulator_id} já está em execução"
@@ -1444,6 +1459,22 @@ class EmulationController:
             )
         rom = Path(str(game["path"]))
 
+        archive_evidence = str(game.get("evidence") or "")
+        if archive_evidence.startswith("archive-multidisc-"):
+            state = archive_evidence.removeprefix("archive-multidisc-")
+            if state != "ready":
+                raise SteamZeroError(
+                    "E-CONTENT-INCOMPLETE",
+                    detail=(
+                        "conjunto multidisco reconhecido, mas ainda requer "
+                        f"extração/conversão governada ({state}); nenhum archive será "
+                        "enviado diretamente ao emulador"
+                    ),
+                )
+
+        if platform_id == "playstation-3":
+            self._require_platform_firmware(platform_id)
+
         # Switch: classificação base/update/dlc e keys são restritos ao Switch.
         # Jogo não-Switch nunca exige prod.keys e nunca passa pelo scanner
         # Switch (a ROM já foi validada/classificada no scan da biblioteca).
@@ -1562,6 +1593,7 @@ class EmulationController:
                 core_path=core_path,
                 session_config=session_config,
             )
+            argv = self._runtime_compat_argv(emulator_id, argv)
         except SteamZeroError as exc:
             raise LaunchNotStartedError(exc) from exc
 
@@ -2027,6 +2059,41 @@ class EmulationController:
             seen.add(absolute)
             result.append(absolute)
         return result
+
+    def _require_platform_firmware(self, platform_id: str) -> None:
+        """Bloqueia antes do spawn quando a plataforma exige firmware local.
+
+        RPCS3 exibe uma tela própria quando ``PS3UPDAT.PUP`` não foi instalado.
+        Deixar a decisão para o emulador transforma uma dependência conhecida em
+        um falso launch. O store continua sendo a fonte de verdade e o arquivo
+        precisa existir na projeção antes de ser considerado presente.
+        """
+        if self._platform_firmware_version(platform_id) is not None:
+            return
+        raise SteamZeroError(
+            "E-CONTENT-FW-MISSING",
+            detail=(
+                "RPCS3 requer PS3UPDAT.PUP. Importe o firmware oficial que você já "
+                "possui pela tela de primeira execução; a origem oficial é "
+                "https://www.playstation.com/pt-br/support/hardware/ps3/system-software/"
+            ),
+        )
+
+    def _platform_firmware_version(self, platform_id: str) -> str | None:
+        with self._store_factory() as store:
+            store.migrate()
+            rows = store.list_firmware_key_items(platform_id, kind="firmware")
+        for row in rows:
+            if str(row.get("state") or "") != "present":
+                continue
+            relpath = str(row.get("relpath") or "")
+            if not relpath or Path(relpath).is_absolute() or ".." in Path(relpath).parts:
+                continue
+            candidate = paths.firmware_dir() / relpath
+            if candidate.is_file() and candidate.name.casefold() == "ps3updat.pup":
+                version = str(row.get("version") or "").strip()
+                return version or "presente"
+        return None
 
     def scan_library(self) -> dict[str, Any]:
         job = self._jobs.create(
@@ -6291,23 +6358,36 @@ class EmulationController:
     def _plan_firmware(self, selected: Path, version: str) -> transaction.Plan:
         if not _FIRMWARE_VERSION.fullmatch(version):
             raise SteamZeroError("E-API-SCHEMA", detail="versão de firmware inválida")
-        candidates = self._selected_files(selected, suffixes={".nca"}, allow_single_any=True)
+        ps3_firmware = selected.is_file() and selected.name.casefold() == "ps3updat.pup"
+        candidates = (
+            [selected]
+            if ps3_firmware
+            else self._selected_files(selected, suffixes={".nca"}, allow_single_any=True)
+        )
         total = sum(path.stat().st_size for path in candidates)
         if not candidates or len(candidates) > _MAX_IMPORT_FILES or total > _MAX_IMPORT_BYTES:
             raise SteamZeroError(
                 "E-CONTENT-UNSAFE-ARCHIVE", detail="conjunto de firmware fora dos limites"
             )
+        if ps3_firmware and total <= 0:
+            raise SteamZeroError("E-CONTENT-INCOMPLETE", detail="PS3UPDAT.PUP está vazio")
+        platform_id = "playstation-3" if ps3_firmware else "switch"
         copies: list[tuple[Path, Path]] = []
         for source in candidates:
             digest = fs.hash_file(source, algo="sha256")
-            targets = [
-                paths.firmware_dir() / "switch" / version / f"{digest}.nca",
-                *(
-                    self._firmware_projection_targets(digest)
-                    if paths.data_home().resolve().is_relative_to(Path.home().resolve())
-                    else ()
-                ),
-            ]
+            if ps3_firmware:
+                targets = [
+                    paths.firmware_dir() / platform_id / version / "PS3UPDAT.PUP",
+                ]
+            else:
+                targets = [
+                    paths.firmware_dir() / platform_id / version / f"{digest}.nca",
+                    *(
+                        self._firmware_projection_targets(digest)
+                        if paths.data_home().resolve().is_relative_to(Path.home().resolve())
+                        else ()
+                    ),
+                ]
             copies.extend(self._new_copy_targets(source, targets, digest))
         digest_set = hashlib.sha256(
             "".join(sorted(target.name for _, target in copies)).encode()
@@ -6319,7 +6399,17 @@ class EmulationController:
             else transaction.plan_write_files({}, root=root, kind="emulation.firmware-import")
         )
         self._pending[plan.plan_id] = _PendingMutation(
-            "firmware", {"version": version, "digest": digest_set, "relpath": f"switch/{version}"}
+            "firmware",
+            {
+                "version": version,
+                "digest": digest_set,
+                "platform_id": platform_id,
+                "relpath": (
+                    f"{platform_id}/{version}/PS3UPDAT.PUP"
+                    if ps3_firmware
+                    else f"{platform_id}/{version}"
+                ),
+            },
         )
         return plan
 
@@ -6454,14 +6544,19 @@ class EmulationController:
 
     def _persist_import(self, pending: _PendingMutation) -> None:
         metadata = pending.metadata
+        platform_id = str(metadata.get("platform_id") or "switch")
         with self._store_factory() as store:
             store.migrate()
-            store.save_platform({"id": "switch", "name": "Nintendo Switch"})
+            try:
+                platform_name = PlatformRegistry.bundled().get(platform_id).name
+            except KeyError:
+                platform_name = platform_id
+            store.save_platform({"id": platform_id, "name": platform_name})
             store.save_firmware_key_item(
                 {
                     "id": ids.new_ulid(),
                     "kind": pending.kind,
-                    "platform_id": "switch",
+                    "platform_id": platform_id,
                     "hash_truncated": str(metadata["digest"])[:12],
                     "state": "present",
                     "keyset": "prod" if pending.kind == "key" else None,
@@ -8186,6 +8281,7 @@ class EmulationController:
         emulator_states = {
             str(row["id"]): str(row.get("installState") or "unverified") for row in emulators
         }
+        platform_firmware_versions: dict[str, str | None] = {}
         enriched: list[dict[str, Any]] = []
         with self._store_factory() as store:
             store.migrate()
@@ -8226,7 +8322,15 @@ class EmulationController:
                     and isinstance(emulator_id, str)
                     and self._key_projection_valid(emulator_id)
                 )
-                firmware_ready = firmware.get("status") == "ok"
+                platform_id = str(game.get("platformId") or game.get("platform") or "")
+                if platform_id == "playstation-3":
+                    if platform_id not in platform_firmware_versions:
+                        platform_firmware_versions[platform_id] = self._platform_firmware_version(
+                            platform_id
+                        )
+                    firmware_ready = platform_firmware_versions[platform_id] is not None
+                else:
+                    firmware_ready = firmware.get("status") == "ok"
                 launch_ready = emulator_ready and keys_ready and firmware_ready
                 if emulator_state == "unconfigured":
                     play_reason = "Selecione um emulador para este jogo."
@@ -8239,7 +8343,11 @@ class EmulationController:
                 elif not keys_ready:
                     play_reason = f"Sincronize prod.keys com {emulator_id}."
                 elif not firmware_ready:
-                    play_reason = "Importe e valide o firmware antes de jogar."
+                    play_reason = (
+                        "Importe PS3UPDAT.PUP pela fonte oficial da Sony antes de jogar."
+                        if platform_id == "playstation-3"
+                        else "Importe e valide o firmware antes de jogar."
+                    )
                 else:
                     play_reason = None
                 launch_readiness = {
@@ -8884,16 +8992,27 @@ class EmulationController:
                         title_id=str(title_id) if title_id is not None else None,
                     )
                 else:
+                    archive_evidence = str(game.get("evidence") or "")
+                    reconciled_archive = archive_evidence.startswith(
+                        "archive-multidisc-"
+                    ) and candidate_path.suffix.casefold() in {".zip", ".7z"}
+                    if reconciled_archive:
+                        kind = "base"
+                        declared: str | None = resolved_platform
+                    else:
+                        declared = ""
+                        kind = "unknown"
                     try:
                         siblings = {item.name for item in candidate_path.parent.iterdir()}
                     except OSError:
                         siblings = {candidate_path.name}
-                    declared, kind, _evidence = platform_scanner.classify(
-                        candidate_path.name,
-                        siblings,
-                        root_platform=resolved_platform,
-                        path=candidate_path,
-                    )
+                    if not reconciled_archive:
+                        declared, kind, _evidence = platform_scanner.classify(
+                            candidate_path.name,
+                            siblings,
+                            root_platform=resolved_platform,
+                            path=candidate_path,
+                        )
                     if declared != resolved_platform:
                         continue
                 if kind != "base" or game.get("contentKind", "base") != "base":

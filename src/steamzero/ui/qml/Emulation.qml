@@ -1381,7 +1381,7 @@ Item {
         nameFilters: pendingAction && pendingAction.id === "keys.import"
             ? [qsTr("Keys e arquivos compactados (*.keys *.zip)"), qsTr("Todos os arquivos (*)")]
             : pendingAction && pendingAction.id === "firmware.import"
-                ? [qsTr("Firmware e arquivos compactados (*.nca *.zip)"), qsTr("Todos os arquivos (*)")]
+                ? [qsTr("Firmware PS3/Sony (*.pup *.nca *.zip)"), qsTr("Todos os arquivos (*)")]
                 : pendingAction && pendingAction.id === "mod.import"
                     ? [qsTr("Pacotes de mod (*.zip)"), qsTr("Todos os arquivos (*)")]
                     : pendingAction && pendingAction.id === "cheat.import"

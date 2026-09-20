@@ -17,7 +17,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-PRIVILEGED | 7 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SCHEMAS | 53 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SERVICE-API | 11 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-TESTS | 483 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-TESTS | 484 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TOOLS | 40 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AURA-ASSET-SANITIZACAO | 2 | 1 | 1 | unit |  |
 | SZ-AURA-CINEMA-COMPLETION | 98 | 29 | 17 | hw |  |
@@ -45,6 +45,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-EMULATION-PLATFORM-CONTEXT | 3 | 4 | 2 | unit |  |
 | SZ-EMULATION-PLATFORM-SCOPE | 2 | 5 | 4 | unit |  |
 | SZ-EMULATION-REAL-DUMP-VALIDATION | 36 | 35 | 18 | hw |  |
+| SZ-EMULATION-RUNTIME-REMEDIATION | 3 | 5 | 4 | unit |  |
 | SZ-EMULATION-STORAGE-MANAGEMENT | 2 | 3 | 2 | unit |  |
 | SZ-EMULATION-STORAGE-PLATFORM-SCOPE | 5 | 3 | 2 | unit |  |
 | SZ-EMULATION-STORAGE-READMODEL | 6 | 6 | 5 | unit |  |
