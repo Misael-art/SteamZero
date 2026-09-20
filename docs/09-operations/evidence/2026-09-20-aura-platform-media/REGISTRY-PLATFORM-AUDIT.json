@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "kind": "aura-platform-media-audit",
+  "mode": "read-only",
+  "source": "host media registry supplied to the launcher",
+  "result": {
+    "incompatibleEntriesRejected": 51,
+    "reason": "registry platformId did not match the canonical catalog platform",
+    "userMediaDeleted": false,
+    "userMediaReclassified": false,
+    "fallbackPreserved": true
+  },
+  "note": "The source path and private host identifiers are intentionally omitted; this artifact records only the bounded diagnostic result."
+}

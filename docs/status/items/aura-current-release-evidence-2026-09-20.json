@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AURA-CURRENT-RELEASE-EVIDENCE",
+  "title": "AURA — evidência física da release instalada",
+  "domain": "ui",
+  "implementation": "complete",
+  "integration": "integrated",
+  "verification": "hw",
+  "operation": "ready",
+  "distribution": "installed",
+  "scopePaths": [
+    "docs/09-operations/evidence/2026-09-20-aura-current-release"
+  ],
+  "scopeDigest": "27bd9863b44f8a93401547f9cd357fc5bd327e102b56d3cb966a6916baf3039e",
+  "dependsOn": [
+    "SZ-AURA-LAUNCHER",
+    "SZ-AURA-PERFORMANCE-VALIDATION",
+    "SZ-AURA-CINEMA-COMPLETION"
+  ],
+  "knownGaps": [
+    "GAP-AURA-RICH-MEDIA-CURRENT-RELEASE",
+    "GAP-AURA-SESSION-OSD-CURRENT-RELEASE",
+    "GAP-AURA-DISC-SWAP-PHYSICAL"
+  ],
+  "acceptanceCriteria": [
+    "A captura vem da janela AURA instalada em uma sessão Wayland real.",
+    "A identidade da release, a superfície efetiva e os hashes dos artefatos são registrados.",
+    "Startup, frame time p95, amostras e VRAM são medidos pela sonda real.",
+    "Fallback sem mídia não é apresentado como ingestão rica concluída.",
+    "A captura não promove capacidades de sessão sem prova do adapter correspondente."
+  ],
+  "evidence": [
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-20-aura-current-release/01-launcher-fullscreen.png",
+      "command": "spectacle -a -b -n na janela AURA instalada; release 2.0.0rc1-c3b14a040b7c; superfície 1280x800",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-20-aura-current-release/02-performance.json",
+      "command": "launcher_perf_probe.py em Wayland/OpenGL real: startup 1096 ms, 375 frames, p95 16.169 ms, VRAM 13460 KiB",
+      "result": "passed"
+    }
+  ],
+  "activeWorkstreams": [
+    "WS-2026-09-AURA-CURRENT-RELEASE-EVIDENCE"
+  ],
+  "nextAction": "Entregar a prova aos owners da mídia rica e da sessão; repetir captura específica após promoção dessas capacidades.",
+  "updatedAt": "2026-09-20",
+  "notes": "A prova fecha somente o baseline físico da release atual. Não declara AURA visualmente completa enquanto os gaps de mídia rica, OSD e troca de disco permanecerem sem prova específica."
+}

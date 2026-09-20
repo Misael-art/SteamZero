@@ -11391,6 +11391,21 @@ testes. Nenhuma instalação, rollback, reinício ou mutação do KDE foi execut
 o próximo ciclo deve repetir a medição após a release de mídia rica e fechar a
 lacuna de geometria 1280×800, se o host a disponibilizar.
 
+## 2026-09-20 — projeção AURA de mídia escopada por plataforma
+
+Foi fechado o item `SZ-AURA-PLATFORM-MEDIA-SCOPE`: a projeção do registry agora
+exige `platformId` e só aceita a entrada quando ele coincide com a plataforma
+canônica do jogo; registros sem identidade ou herdados de outra plataforma são
+rejeitados e degradam para o fallback legível. A aplicação fornece o mapa
+canônico jogo→plataforma ao adapter. Nenhuma entrada do registry foi apagada ou
+reclassificada.
+
+Provas: testes focados `34 passed`; Ruff, formatação, mypy, independência,
+fronteiras e `STATUS-CHECK` passaram. A auditoria read-only encontrou 51
+registros antigos de Switch usados por jogos de outras plataformas; a nova
+regra os bloqueia sem vazamento de artefatos. A captura física pós-instalação
+com mídia rica permanece `GAP-AURA-PLATFORM-MEDIA-PHYSICAL-PROOF`.
+
 ## 2026-09-20 — identidade estável na troca de disco AURA
 
 A identidade lógica de cada disco passou a viajar no descritor gerenciado: o

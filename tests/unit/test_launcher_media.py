@@ -27,6 +27,7 @@ def test_projects_canonical_media_into_cinema_roles(tmp_path: Path) -> None:
         [
             {
                 "gameId": "game-1",
+                "platformId": "nes-famicom",
                 "masters": {
                     "box2d": "masters/nes/box2d/cover.png",
                     "hero": "masters/nes/hero/hero.jpg",
@@ -36,7 +37,7 @@ def test_projects_canonical_media_into_cinema_roles(tmp_path: Path) -> None:
         ],
     )
 
-    assert launcher_media_metadata(media_root=root) == {
+    assert launcher_media_metadata(media_root=root, platform_by_game={"game-1": "nes-famicom"}) == {
         "game-1": {
             "coverUrl": f"file://{cover}",
             "fanartUrl": f"file://{hero}",
@@ -68,6 +69,7 @@ def test_projects_rich_roles_and_numbered_screenshots_deterministically(tmp_path
         [
             {
                 "gameId": "game-ps4",
+                "platformId": "playstation-4",
                 "masters": {
                     "video": "masters/ps4/video/intro.mp4",
                     "screenshot2": "masters/ps4/screenshot/two.png",
@@ -81,7 +83,9 @@ def test_projects_rich_roles_and_numbered_screenshots_deterministically(tmp_path
         ],
     )
 
-    projected = launcher_media_metadata(media_root=root)["game-ps4"]
+    projected = launcher_media_metadata(
+        media_root=root, platform_by_game={"game-ps4": "playstation-4"}
+    )["game-ps4"]
     assert projected["coverUrl"] == f"file://{files['cover']}"
     assert projected["fanartUrl"] == f"file://{files['fanart']}"
     assert projected["screenshotUrls"] == [
@@ -109,6 +113,7 @@ def test_rejects_paths_outside_managed_root_and_symlinks(tmp_path: Path) -> None
         [
             {
                 "gameId": "game-1",
+                "platformId": "nes-famicom",
                 "masters": {
                     "box2d": "masters/nes/box2d/../box2d/safe.png",
                     "hero": str(outside),
@@ -118,13 +123,60 @@ def test_rejects_paths_outside_managed_root_and_symlinks(tmp_path: Path) -> None
         ],
     )
 
-    assert launcher_media_metadata(media_root=root) == {}
+    assert (
+        launcher_media_metadata(media_root=root, platform_by_game={"game-1": "nes-famicom"}) == {}
+    )
 
 
 def test_malformed_or_missing_registry_degrades_to_empty(tmp_path: Path) -> None:
     root = tmp_path / "media"
-    assert launcher_media_metadata(media_root=root) == {}
+    assert launcher_media_metadata(media_root=root, platform_by_game={}) == {}
     registry = root / "registry" / "assignments-v1.json"
     registry.parent.mkdir(parents=True)
     registry.write_text("not-json", encoding="utf-8")
-    assert launcher_media_metadata(media_root=root) == {}
+    assert launcher_media_metadata(media_root=root, platform_by_game={}) == {}
+
+
+def test_rejects_media_registered_for_another_platform(tmp_path: Path) -> None:
+    root = tmp_path / "media"
+    cover = root / "masters" / "switch" / "box2d" / "cover.png"
+    cover.parent.mkdir(parents=True)
+    cover.write_bytes(_PNG)
+    registry = root / "registry" / "assignments-v1.json"
+    registry.parent.mkdir()
+    _registry(
+        registry,
+        [
+            {
+                "gameId": "nes-game",
+                "platformId": "switch",
+                "masters": {"box2d": "masters/switch/box2d/cover.png"},
+            }
+        ],
+    )
+
+    assert (
+        launcher_media_metadata(media_root=root, platform_by_game={"nes-game": "nes-famicom"}) == {}
+    )
+
+
+def test_rejects_media_without_platform_identity(tmp_path: Path) -> None:
+    root = tmp_path / "media"
+    cover = root / "masters" / "nes-famicom" / "box2d" / "cover.png"
+    cover.parent.mkdir(parents=True)
+    cover.write_bytes(_PNG)
+    registry = root / "registry" / "assignments-v1.json"
+    registry.parent.mkdir()
+    _registry(
+        registry,
+        [
+            {
+                "gameId": "nes-game",
+                "masters": {"box2d": "masters/nes-famicom/box2d/cover.png"},
+            }
+        ],
+    )
+
+    assert (
+        launcher_media_metadata(media_root=root, platform_by_game={"nes-game": "nes-famicom"}) == {}
+    )

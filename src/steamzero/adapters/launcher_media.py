@@ -22,6 +22,7 @@ _MAX_RELATIVE_PATH = 512
 def launcher_media_metadata(
     *,
     media_root: Path,
+    platform_by_game: Mapping[str, str],
     assignments_path: Path | None = None,
 ) -> dict[str, dict[str, object]]:
     """Return safe ``game_id -> Cinema`` media fields from the registry.
@@ -29,7 +30,10 @@ def launcher_media_metadata(
     ``assignments-v1.json`` is the canonical source of truth.  The registry
     stores paths relative to ``media_root``; the resulting ``file://`` URLs are
     limited to regular files beneath that root and only to managed media
-    directories.  A malformed registry degrades to an empty projection.
+    directories.  ``platform_by_game`` is the canonical catalog scope: a
+    registry entry without a matching ``platformId`` is rejected instead of
+    inheriting the historical Switch default.  A malformed registry degrades
+    to an empty projection.
     """
     registry_path = assignments_path or (media_root / "registry" / "assignments-v1.json")
     try:
@@ -46,8 +50,18 @@ def launcher_media_metadata(
         if not isinstance(raw, Mapping):
             continue
         game_id = raw.get("gameId")
+        registered_platform = raw.get("platformId")
         masters = raw.get("masters")
-        if not isinstance(game_id, str) or not game_id or not isinstance(masters, Mapping):
+        expected_platform = platform_by_game.get(game_id) if isinstance(game_id, str) else None
+        if (
+            not isinstance(game_id, str)
+            or not game_id
+            or not isinstance(expected_platform, str)
+            or not expected_platform
+            or not isinstance(registered_platform, str)
+            or registered_platform != expected_platform
+            or not isinstance(masters, Mapping)
+        ):
             continue
         projected: dict[str, object] = {}
         screenshot_urls: list[str] = []
