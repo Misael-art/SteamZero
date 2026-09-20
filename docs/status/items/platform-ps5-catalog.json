@@ -28,7 +28,7 @@
     "tests/unit/test_ps5_sfo.py",
     "tests/unit/test_sharpemu_tarball.py"
   ],
-  "scopeDigest": "feaac79a434637aea5e433f1c54344a39c80554e7279fc1e2edb0e1924a72612",
+  "scopeDigest": "63fc659b367d0e3bde21651c5bb94c2a3ed08eb7cb246c21fd97afafef366257",
   "dependsOn": [
     "SZ-AGG-PLATFORM-MANIFESTS",
     "SZ-COMPONENT-LIFECYCLE",

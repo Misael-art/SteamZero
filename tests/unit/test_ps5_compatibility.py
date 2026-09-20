@@ -2,9 +2,12 @@
 # Copyright (C) 2026 SteamZero contributors
 """Contrato do snapshot público de compatibilidade SharpEmu/PS5."""
 
+from pathlib import Path
+
 from steamzero.adapters.ps5_compatibility import (
     Ps5CompatibilityCatalog,
     Ps5CompatibilityRecord,
+    _ps5_source_kind,
     _ps5_source_namespace,
     build_ps5_source_identity,
     bundled_ps5_compatibility,
@@ -129,3 +132,39 @@ def test_unobserved_source_namespace_never_uses_absolute_path(tmp_path) -> None:
 
     assert first == second
     assert str(tmp_path) not in first
+
+
+def test_source_kind_recognizes_removable_network_and_local_roots() -> None:
+    assert _ps5_source_kind(Path("/run/media/misael/deck/roms")) == "removable"
+    assert _ps5_source_kind(Path("/mnt/ps5-dump/roms")) == "removable"
+    assert _ps5_source_kind(Path("//nas.example/roms")) == "network"
+    assert _ps5_source_kind(Path("/net/nas/roms")) == "network"
+    assert _ps5_source_kind(Path("/opt/roms")) == "local"
+
+
+def test_source_identity_separates_removable_volume_and_network_share(
+    tmp_path, monkeypatch
+) -> None:  # type: ignore[no-untyped-def]
+    root = tmp_path / "roms" / "ps5"
+    eboot = root / "Demo" / "eboot.bin"
+    eboot.parent.mkdir(parents=True)
+    eboot.write_bytes(b"ELF-v1")
+
+    monkeypatch.setattr(
+        "steamzero.adapters.ps5_compatibility._ps5_source_kind",
+        lambda _root: "removable",
+    )
+    removable = build_ps5_source_identity(eboot, root, title_id="PPSA12345_00")
+    assert removable["sourceKind"] == "removable"
+    assert removable["volumeId"]
+    assert removable["shareId"] is None
+
+    monkeypatch.setattr(
+        "steamzero.adapters.ps5_compatibility._ps5_source_kind",
+        lambda _root: "network",
+    )
+    network = build_ps5_source_identity(eboot, root, title_id="PPSA12345_00")
+    assert network["sourceKind"] == "network"
+    assert network["volumeId"] is None
+    assert network["shareId"]
+    assert network["stableId"] != removable["stableId"]
