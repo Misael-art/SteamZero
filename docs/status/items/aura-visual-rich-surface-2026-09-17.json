@@ -76,12 +76,18 @@
       "reference": "docs/09-operations/evidence/2026-09-20-aura-multidisc-physical/PHYSICAL-VALIDATION.json",
       "command": "RetroArchSessionPeripheral real + PUAE real: jogo multidisco Street Fighter II com troca 1→2→1 e captura PNG",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-20-aura-rich-media-release/PHYSICAL-VALIDATION.json",
+      "command": "Launcher instalado em 2.0.0rc1-3acc2104dd5a com fanart/capa reais, ingestão aplicada e p95/VRAM válidos",
+      "result": "passed"
     }
   ],
   "activeWorkstreams": [
     "WS-2026-09-AURA-VISUAL-RICH-SURFACE"
   ],
-  "nextAction": "Promover a prova de troca de disco para a release governada; depois capturar o OSD sobre uma janela RetroArch mapeada no compositor e repetir a medição após a ingestão rica.",
+  "nextAction": "Capturar o OSD AURA sobre uma janela RetroArch mapeada no compositor e repetir a troca de disco pelo Launcher instalado.",
   "updatedAt": "2026-09-20",
-  "notes": "A release instalada prova a superfície Cinema rica e a medição física dentro do orçamento. A sessão real comprovou save-state, pausa/retomada, bezel e fade pelo contrato; o ciclo multidisco foi agora comprovado com jogo legítimo e adapter real fora da release instalada. OSD visual e promoção física no Launcher permanecem abertos."
+  "notes": "A release instalada prova a superfície Cinema rica, ingestão de fanart/capa e medição física dentro do orçamento. A sessão real comprovou save-state, pausa/retomada, bezel e fade pelo contrato; o ciclo multidisco foi comprovado fora da release. OSD visual e troca pelo Launcher instalado permanecem abertos."
 }

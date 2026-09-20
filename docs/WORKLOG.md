@@ -11493,3 +11493,28 @@ Limite de promoção: a prova exercitou o adapter real a partir do commit
 `2.0.0rc1-c3b14a040b7c`, porque o instalador governado aguardou autenticação
 sem exibir o prompt. Nenhuma instalação, rollback, reinício ou mutação do KDE
 foi executada. A repetição pelo Launcher instalado continua aberta.
+
+## 2026-09-20 — promoção física de mídia rica e medição AURA
+
+O fluxo governado ativou a release `2.0.0rc1-3acc2104dd5a`, com daemon e
+Doctor convergentes; o comando reportou apenas a divergência de schema do
+bundle (`host=22`, `alvo=20`) no pós-check, sem reboot ou rollback. A origem
+`/home/misael/emulation/frontend/RetroFE/collections` foi processada em
+plan-first e o apply publicou 79 masters seguros na raiz gerenciada, sem
+sobrescrever mídia existente e sem escolher 3 ambiguidades ou 165 itens sem
+match.
+
+A janela Wayland real do Launcher foi capturada com mídia efetiva:
+`01-fanart-fullscreen.png` mostra fanart de Mega Man 8; `02-cover-fullscreen.png`
+mostra capa de Blaster Master. A medição pós-ingestão em
+`03-performance.json` registrou startup 840 ms, 375 frames, p95 16,167 ms e
+VRAM 58.736 KiB; todos os orçamentos foram atendidos.
+
+O assignment legado de Astyanax com `platformId: switch` foi recusado quando o
+catálogo declarou `nes-famicom`, mantendo fallback honesto e sem vazamento de
+mídia. A evidência está em
+`docs/09-operations/evidence/2026-09-20-aura-rich-media-release/`.
+
+O KDE não foi reiniciado nem finalizado. Permanecem abertos a captura do OSD
+AURA sobre uma janela RetroArch mapeada e a repetição do ciclo de troca de
+disco pelo Launcher instalado.

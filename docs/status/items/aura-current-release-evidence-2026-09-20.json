@@ -10,16 +10,16 @@
   "operation": "ready",
   "distribution": "installed",
   "scopePaths": [
-    "docs/09-operations/evidence/2026-09-20-aura-current-release"
+    "docs/09-operations/evidence/2026-09-20-aura-current-release",
+    "docs/09-operations/evidence/2026-09-20-aura-rich-media-release"
   ],
-  "scopeDigest": "27bd9863b44f8a93401547f9cd357fc5bd327e102b56d3cb966a6916baf3039e",
+  "scopeDigest": "4493484f79f486324a8508bd3865609a96f07d1ae2d187f30c605bd3ea2dea9f",
   "dependsOn": [
     "SZ-AURA-LAUNCHER",
     "SZ-AURA-PERFORMANCE-VALIDATION",
     "SZ-AURA-CINEMA-COMPLETION"
   ],
   "knownGaps": [
-    "GAP-AURA-RICH-MEDIA-CURRENT-RELEASE",
     "GAP-AURA-SESSION-OSD-CURRENT-RELEASE",
     "GAP-AURA-DISC-SWAP-INSTALLED-RELEASE"
   ],
@@ -42,12 +42,18 @@
       "reference": "docs/09-operations/evidence/2026-09-20-aura-current-release/02-performance.json",
       "command": "launcher_perf_probe.py em Wayland/OpenGL real: startup 1096 ms, 375 frames, p95 16.169 ms, VRAM 13460 KiB",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-20-aura-rich-media-release/PHYSICAL-VALIDATION.json",
+      "command": "release 2.0.0rc1-3acc2104dd5a com fanart/capa reais e medição válida pós-ingestão",
+      "result": "passed"
     }
   ],
   "activeWorkstreams": [
     "WS-2026-09-AURA-CURRENT-RELEASE-EVIDENCE"
   ],
-  "nextAction": "Entregar a prova aos owners da mídia rica e da sessão; repetir captura específica após promoção dessas capacidades.",
+  "nextAction": "Repetir a captura específica de OSD e troca de disco pelo Launcher desta release.",
   "updatedAt": "2026-09-20",
-  "notes": "A prova fecha somente o baseline físico da release atual. Não declara AURA visualmente completa enquanto os gaps de mídia rica, OSD e troca de disco permanecerem sem prova específica."
+  "notes": "A release 2.0.0rc1-3acc2104dd5a agora tem prova específica de mídia rica e desempenho. OSD visual e troca de disco pelo Launcher instalado permanecem abertos."
 }
