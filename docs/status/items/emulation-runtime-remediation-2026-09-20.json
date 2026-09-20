@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-EMULATION-RUNTIME-REMEDIATION",
+  "title": "Remediação resiliente de runtimes, firmware, multidisco e saves",
+  "domain": "emulation",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/adapters/emulation.py",
+    "tests/unit/test_emulation_runtime_remediation.py",
+    "docs/09-operations/evidence/2026-09-20-emulation-runtime-remediation"
+  ],
+  "scopeDigest": "443dd1b913f3ed59782cedf5a53c7a9be58f3bb298cc76df0c57cd2d7012a210",
+  "dependsOn": [
+    "SZ-EMULATION-REAL-DUMP-VALIDATION",
+    "SZ-COMPONENT-LIFECYCLE",
+    "SZ-MULTIDISC-DESCRIPTOR-RECONCILIATION"
+  ],
+  "knownGaps": [
+    "GAP-RPCS3-OFFICIAL-FIRMWARE-USER-CONSENT",
+    "GAP-PCSX2-REAL-LAUNCH-PHYSICAL",
+    "GAP-MULTIDISC-REAL-DUMP-PHYSICAL"
+  ],
+  "acceptanceCriteria": [
+    "Containers multidisco reconhecidos pelo contrato do manifesto não desaparecem entre a varredura e o pré-lançamento.",
+    "RPCS3 recusa o lançamento antes do spawn quando PS3UPDAT.PUP não está validado e publica orientação de primeira execução acionável.",
+    "O fluxo de firmware não baixa nem instala conteúdo proprietário sem confirmação explícita e mantém o importador local existente.",
+    "A flag incompatível do PCSX2 fica registrada como handoff de coordenação, sem quebrar o teste pertencente ao catálogo de erros.",
+    "Save-state, load-state e troca de disco permanecem escopados aos adapters que os suportam; ausência de dump multidisco completo fica explícita."
+  ],
+  "evidence": [
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/README.md",
+      "command": "Validação real de 2026-09-19/20",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-20-emulation-runtime-remediation/README.md",
+      "command": "Diagnóstico dos gargalos e handoffs",
+      "result": "partial"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_emulation_runtime_remediation.py",
+      "command": "pytest -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_emulation_controller.py",
+      "command": "pytest -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_keys_firmware.py",
+      "command": "pytest -q",
+      "result": "passed"
+    }
+  ],
+  "activeWorkstreams": [
+    "WS-2026-09-EMULATION-RUNTIME-REMEDIATION"
+  ],
+  "nextAction": "Executar gates integrais e manter abertos os handoffs de PCSX2, extração Amiga/X68000 e prova física multidisco/saves.",
+  "updatedAt": "2026-09-20",
+  "notes": "O firmware oficial Sony só pode ser obtido mediante confirmação explícita do operador e verificação; nenhuma instalação de host, download proprietário ou reboot foi executado."
+}
