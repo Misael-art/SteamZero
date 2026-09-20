@@ -22,7 +22,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AURA-ASSET-SANITIZACAO | 2 | 1 | 1 | unit |  |
 | SZ-AURA-CINEMA-COMPLETION | 98 | 29 | 17 | hw |  |
 | SZ-AURA-CONTRACTS | 38 | 3 | 3 | unit |  |
-| SZ-AURA-CURRENT-RELEASE-EVIDENCE | 10 | 3 | 3 | hw |  |
+| SZ-AURA-CURRENT-RELEASE-EVIDENCE | 17 | 4 | 4 | hw |  |
 | SZ-AURA-ESDE-ACTIVE-SURFACE | 8 | 3 | 3 | dev |  |
 | SZ-AURA-LAUNCHER | 267 | 58 | 41 | hw |  |
 | SZ-AURA-LAUNCHER-EXIT | 5 | 1 | 1 | dev |  |
@@ -32,12 +32,12 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AURA-PLATFORM-MEDIA-SCOPE | 3 | 2 | 2 | unit |  |
 | SZ-AURA-RETROFE-MEDIA-INGESTION | 9 | 4 | 2 | hw |  |
 | SZ-AURA-RICH-MEDIA-PROJECTION | 9 | 5 | 3 | hw |  |
-| SZ-AURA-SAVE-STATE-GALLERY | 15 | 8 | 7 | hw |  |
+| SZ-AURA-SAVE-STATE-GALLERY | 22 | 9 | 8 | hw |  |
 | SZ-AURA-SEARCH-CONTRACT | 5 | 5 | 3 | dev |  |
-| SZ-AURA-SESSION-OSD | 25 | 6 | 4 | hw |  |
+| SZ-AURA-SESSION-OSD | 32 | 7 | 5 | hw |  |
 | SZ-AURA-UI | 16 | 5 | 4 | unit |  |
 | SZ-AURA-VISUAL-COMPLETION | 38 | 14 | 5 | hw |  |
-| SZ-AURA-VISUAL-RICH-SURFACE | 4 | 8 | 7 | hw |  |
+| SZ-AURA-VISUAL-RICH-SURFACE | 11 | 9 | 8 | hw |  |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
 | SZ-COMPONENT-LIFECYCLE | 23 | 14 | 12 | hw |  |

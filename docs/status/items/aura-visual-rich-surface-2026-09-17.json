@@ -13,9 +13,10 @@
     "src/steamzero/launcher/cinema.py",
     "src/steamzero/ui/qml/launcher/LauncherCinema.qml",
     "tests/unit/test_launcher_cinema.py",
-    "tests/qml/launcher/check_launcher_focus_bootstrap.qml"
+    "tests/qml/launcher/check_launcher_focus_bootstrap.qml",
+    "docs/09-operations/evidence/2026-09-20-aura-session-osd-installed"
   ],
-  "scopeDigest": "639244a9a3f9832b99146dbd69d1d465936764b33beff98f04551e92b4ba86d9",
+  "scopeDigest": "42fe72ce56d653728094c2965aa923c21531ef5586a04a99c36f959903c392a6",
   "dependsOn": [
     "SZ-AURA-VISUAL-COMPLETION",
     "SZ-AURA-SAVE-STATE-GALLERY",
@@ -23,7 +24,6 @@
     "SZ-AURA-PERFORMANCE-VALIDATION"
   ],
   "knownGaps": [
-    "GAP-AURA-SAVE-STATE-OSD-CAPTURE",
     "GAP-AURA-DISC-SWAP-INSTALLED-RELEASE",
     "GAP-AURA-BEZEL-FADE-PHYSICAL"
   ],
@@ -82,12 +82,18 @@
       "reference": "docs/09-operations/evidence/2026-09-20-aura-rich-media-release/PHYSICAL-VALIDATION.json",
       "command": "Launcher instalado em 2.0.0rc1-3acc2104dd5a com fanart/capa reais, ingestão aplicada e p95/VRAM válidos",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-20-aura-session-osd-installed/PHYSICAL-VALIDATION.json",
+      "command": "Launcher instalado em 2.0.0rc1-3acc2104dd5a: jogo real, OSD de sessão, galeria de saves e retorno ao contexto",
+      "result": "passed"
     }
   ],
   "activeWorkstreams": [
     "WS-2026-09-AURA-VISUAL-RICH-SURFACE"
   ],
-  "nextAction": "Capturar o OSD AURA sobre uma janela RetroArch mapeada no compositor e repetir a troca de disco pelo Launcher instalado.",
+  "nextAction": "Repetir a troca de disco pelo Launcher instalado com um jogo multi-disc legítimo; OSD e galeria já estão capturados na release atual.",
   "updatedAt": "2026-09-20",
-  "notes": "A release instalada prova a superfície Cinema rica, ingestão de fanart/capa e medição física dentro do orçamento. A sessão real comprovou save-state, pausa/retomada, bezel e fade pelo contrato; o ciclo multidisco foi comprovado fora da release. OSD visual e troca pelo Launcher instalado permanecem abertos."
+  "notes": "A release instalada prova a superfície Cinema rica, ingestão de fanart/capa, medição física dentro do orçamento, OSD e galeria de saves sobre jogo real. A sessão real comprovou save-state, pausa/retomada, bezel e fade pelo contrato; o ciclo multidisco foi comprovado fora da release. Troca de disco pelo Launcher instalado permanece aberta."
 }

@@ -11536,3 +11536,27 @@ foi alterado e a identidade física continua comprovada separadamente. O
 `GAP-SHARPEMU-PHYSICAL-VALIDATION` permanece aberto até uma versão compatível
 do runtime ou outro dump chegar a uma cena renderizada. O KDE não foi
 reiniciado, finalizado ou mutado.
+
+## 2026-09-20 — OSD e galeria de saves na release instalada
+
+Na release `2.0.0rc1-3acc2104dd5a`, o jogo real `Blaster Master (USA)
+(Translated PtBr)` foi lançado pela rota oficial do AURA Launcher usando
+RetroArch/Mesen. A janela Wayland do jogo foi observada, o Launcher foi
+reativado sobre a sessão e F1 abriu o OSD AURA com `Estado: running`, foco e
+ações semânticas.
+
+Com foco em `Galeria de saves`, Enter abriu a galeria e exibiu o fallback
+legível `Nenhum save-state foi criado para esta sessão`; não houve slot ou
+sucesso inventado. Esc fechou a galeria e o OSD, devolvendo o detalhe do mesmo
+jogo e, em seguida, a janela do jogo continuou executando.
+
+As capturas e hashes estão em
+`docs/09-operations/evidence/2026-09-20-aura-session-osd-installed/`:
+`01-game-via-launcher.png`, `02-osd-running.png`,
+`03-save-gallery-empty-fallback.png`, `04-return-details.png` e
+`05-game-recovered.png`.
+
+O botão `Trocar disco` foi observado desabilitado para o título single-disc;
+isso confirma o fallback correto, mas não fecha a prova de troca em jogo
+multi-disc pelo Launcher instalado. Essa lacuna permanece aberta. O KDE não
+foi reiniciado, finalizado ou mutado.
