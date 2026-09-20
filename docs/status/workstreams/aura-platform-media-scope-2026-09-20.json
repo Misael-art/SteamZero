@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-PLATFORM-MEDIA-SCOPE",
+  "item": "SZ-AURA-PLATFORM-MEDIA-SCOPE",
+  "branch": "codex/aura-platform-media-scope-2026-09-20",
+  "baseRef": "bd9831f1",
+  "owner": "codex-aura-platform-media-scope",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/adapters/launcher_media.py",
+    "tests/unit/test_launcher_media.py",
+    "docs/status/items/aura-platform-media-scope-2026-09-20.json",
+    "docs/status/workstreams/aura-platform-media-scope-2026-09-20.json"
+  ],
+  "sharedPaths": [
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Integrar a projeção escopada na release governada e repetir a captura física.",
+  "updatedAt": "2026-09-20"
+}

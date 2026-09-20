@@ -11418,3 +11418,18 @@ A suíte integral foi inconclusiva e interrompida após começar a acumular
 falhas ambientais quando `/run/user/1000` atingiu 100% de uso; o estado real
 antes/depois permaneceu idêntico. A prova de lançamento SharpEmu e a captura
 PNG seguem pendentes até publicar esta correção em uma release governada.
+
+## 2026-09-20 — projeção AURA de mídia escopada por plataforma
+
+Foi fechado o item `SZ-AURA-PLATFORM-MEDIA-SCOPE`: a projeção do registry agora
+exige `platformId` e só aceita a entrada quando ele coincide com a plataforma
+canônica do jogo; registros sem identidade ou herdados de outra plataforma são
+rejeitados e degradam para o fallback legível. A aplicação fornece o mapa
+canônico jogo→plataforma ao adapter. Nenhuma entrada do registry foi apagada ou
+reclassificada.
+
+Provas: testes focados `34 passed`; Ruff, formatação, mypy, independência,
+fronteiras e `STATUS-CHECK` passaram. A auditoria read-only encontrou 51
+registros antigos de Switch usados por jogos de outras plataformas; a nova
+regra os bloqueia sem vazamento de artefatos. A captura física pós-instalação
+com mídia rica permanece `GAP-AURA-PLATFORM-MEDIA-PHYSICAL-PROOF`.
