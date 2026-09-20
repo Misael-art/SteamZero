@@ -22,7 +22,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AURA-ASSET-SANITIZACAO | 2 | 1 | 1 | unit |  |
 | SZ-AURA-CINEMA-COMPLETION | 98 | 29 | 17 | hw |  |
 | SZ-AURA-CONTRACTS | 38 | 3 | 3 | unit |  |
-| SZ-AURA-CURRENT-RELEASE-EVIDENCE | 3 | 2 | 2 | hw |  |
+| SZ-AURA-CURRENT-RELEASE-EVIDENCE | 5 | 2 | 2 | hw |  |
 | SZ-AURA-ESDE-ACTIVE-SURFACE | 8 | 3 | 3 | dev |  |
 | SZ-AURA-LAUNCHER | 267 | 58 | 41 | hw |  |
 | SZ-AURA-LAUNCHER-EXIT | 5 | 1 | 1 | dev |  |

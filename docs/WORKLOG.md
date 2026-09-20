@@ -11377,33 +11377,34 @@ integral posterior coletou 6.223 testes e terminou sem falhas na repetição com
 isoladamente em 6,47 s e não se reproduziu na repetição integral. O commit
 funcional é `ce887e6`; nenhum host foi instalado ou mutado.
 
+## 2026-09-20 — revalidação física da superfície AURA instalada
+
+Registrei uma amostra nova da release instalada `2.0.0rc1-c3b14a040b7c` em
+`docs/09-operations/evidence/2026-09-20-aura-current-release/`. A sonda física
+mediu startup de 1191 ms, 375 frames, frame-time p95 de 16,163 ms e VRAM de
+13.664 KiB, dentro dos orçamentos definidos. A captura PNG da janela Wayland
+tem 1280×801 e comprova o carousel/foco da superfície AURA; ela também deixa
+explícito que fanart/vídeo ainda estão em fallback nesta release.
+
+`STATUS-CHECK` passou e `tests/unit/test_project_status.py` passou com 10
+testes. Nenhuma instalação, rollback, reinício ou mutação do KDE foi executada;
+o próximo ciclo deve repetir a medição após a release de mídia rica e fechar a
+lacuna de geometria 1280×800, se o host a disponibilizar.
+
 ## 2026-09-20 — projeção AURA de mídia escopada por plataforma
 
-Foi fechado o item `SZ-AURA-PLATFORM-MEDIA-SCOPE` na branch
-`codex/aura-platform-media-scope-2026-09-20`. A projeção do registry agora exige
-`platformId` e só aceita a entrada quando ele coincide com a plataforma
+Foi fechado o item `SZ-AURA-PLATFORM-MEDIA-SCOPE`: a projeção do registry agora
+exige `platformId` e só aceita a entrada quando ele coincide com a plataforma
 canônica do jogo; registros sem identidade ou herdados de outra plataforma são
-rejeitados e degradam para o fallback legível. A aplicação passou a fornecer o
-mapa canônico jogo→plataforma ao adapter. Nenhuma entrada do registry foi
-apagada ou reclassificada.
+rejeitados e degradam para o fallback legível. A aplicação fornece o mapa
+canônico jogo→plataforma ao adapter. Nenhuma entrada do registry foi apagada ou
+reclassificada.
 
 Provas: testes focados `34 passed`; Ruff, formatação, mypy, independência,
-fronteiras e `STATUS-CHECK` passaram. A suíte integral terminou com
-`6174 passed, 47 skipped, 4 failed`; as quatro falhas são pré-existentes e
-ambientais (`AF_UNIX path too long` nos testes de sockets devido ao caminho
-profundo do temporário do harness). O estado real antes/depois permaneceu
-idêntico e `state audit` terminou limpo. O primeiro runner integral havia
-falhado por falta de espaço; o temporário órfão foi removido com escopo exato,
-sem alterar o projeto ou dados do usuário.
-
-A auditoria física read-only encontrou 51 registros antigos de Switch usados
-por jogos de outras plataformas; a nova regra os bloqueia sem vazamento de
-artefatos. A release instalada continua
-`2.0.0rc1-c3b14a040b7c`; a instalação governada da release seguinte não foi
-concluída porque a autorização/prompt de privilégio não foi aceito. Não houve
-reinício do KDE, rollback ou mutação de host. A captura física pós-instalação
-com mídia rica corretamente escopada permanece
-`GAP-AURA-PLATFORM-MEDIA-PHYSICAL-PROOF`.
+fronteiras e `STATUS-CHECK` passaram. A auditoria read-only encontrou 51
+registros antigos de Switch usados por jogos de outras plataformas; a nova
+regra os bloqueia sem vazamento de artefatos. A captura física pós-instalação
+com mídia rica permanece `GAP-AURA-PLATFORM-MEDIA-PHYSICAL-PROOF`.
 
 ## 2026-09-20 — identidade estável na troca de disco AURA
 

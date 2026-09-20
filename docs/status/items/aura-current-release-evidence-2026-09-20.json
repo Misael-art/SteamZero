@@ -12,7 +12,7 @@
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-20-aura-current-release"
   ],
-  "scopeDigest": "00dcdaa4d85fc98e19e861fe357e540fced0faddb5ddca560cc2872f9451d0b2",
+  "scopeDigest": "27bd9863b44f8a93401547f9cd357fc5bd327e102b56d3cb966a6916baf3039e",
   "dependsOn": [
     "SZ-AURA-LAUNCHER",
     "SZ-AURA-PERFORMANCE-VALIDATION",
