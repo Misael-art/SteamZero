@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "kind": "physical-validation",
+  "itemId": "SZ-PLATFORM-PS5-CATALOG",
+  "result": "controlled-failure",
+  "release": "2.0.0rc1-3acc2104dd5a",
+  "sourceCommit": "3acc2104dd5af8862b0ee2a21065fa387acd7720",
+  "component": {
+    "id": "sharpemu",
+    "version": "0.0.3-release.4",
+    "verification": "installed-and-verified"
+  },
+  "dump": {
+    "titleId": "PPSA02929",
+    "title": "Dreaming Sarah",
+    "version": "01.000.000",
+    "origin": "operator-provided-real-dump",
+    "sourcePreserved": true
+  },
+  "launch": {
+    "loaderOpenedEboot": true,
+    "paramJsonRead": true,
+    "renderedGameScene": false,
+    "error": "Access Violation",
+    "diagnostic": "guest execution stopped after an unmapped HLE import (ORBIS_GEN2_ERROR_NOT_FOUND)",
+    "successPng": null
+  },
+  "host": {
+    "kdeRestarted": false,
+    "rebooted": false,
+    "kdeMutated": false
+  },
+  "nextAction": "Keep GAP-SHARPEMU-PHYSICAL-VALIDATION open until a compatible SharpEmu runtime or dump produces a rendered scene and PNG evidence."
+}

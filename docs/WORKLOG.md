@@ -11472,3 +11472,67 @@ isolada, mas a primeira falha reproduzível foi ambiental:
 (`Errno 28`, 1035 passed e 44 skipped antes da falha). O estado real foi
 comparado pelo runner e permaneceu idêntico. A captura PNG pós-instalação com
 fanart/capa reais permanece aberta até a promoção e instalação governadas.
+
+## 2026-09-20 — prova física do contrato multidisco AURA
+
+Foi executado o ciclo físico com conteúdo legítimo Amiga: quatro ADFs reais de
+Street Fighter II, PUAE 5.3.1 em RetroArch Flatpak 1.22.2, modelo A1200 e
+Kickstart A1200. O `RetroArchSessionPeripheral` leu o `.m3u` gerenciado,
+publicou as quatro identidades persistentes e confirmou `eject → next → insert`
+para 1→2 e `eject → previous → insert` para 2→1. O log do PUAE e o read model
+confirmaram `activeDisc: 0 → 1 → 0`.
+
+As capturas ordenadas estão em
+`docs/09-operations/evidence/2026-09-20-aura-multidisc-physical/`:
+`01-baseline.png`, `02-delivery.png` e `03-recovery.png`, com hashes no
+`PHYSICAL-VALIDATION.json`. Os ZIPs de origem foram preservados; a extração
+ocorreu somente em `/tmp`.
+
+Limite de promoção: a prova exercitou o adapter real a partir do commit
+`3acc2104dd5af8862b0ee2a21065fa387acd7720`, mas a release ativa permaneceu
+`2.0.0rc1-c3b14a040b7c`, porque o instalador governado aguardou autenticação
+sem exibir o prompt. Nenhuma instalação, rollback, reinício ou mutação do KDE
+foi executada. A repetição pelo Launcher instalado continua aberta.
+
+## 2026-09-20 — promoção física de mídia rica e medição AURA
+
+O fluxo governado ativou a release `2.0.0rc1-3acc2104dd5a`, com daemon e
+Doctor convergentes; o comando reportou apenas a divergência de schema do
+bundle (`host=22`, `alvo=20`) no pós-check, sem reboot ou rollback. A origem
+`/home/misael/emulation/frontend/RetroFE/collections` foi processada em
+plan-first e o apply publicou 79 masters seguros na raiz gerenciada, sem
+sobrescrever mídia existente e sem escolher 3 ambiguidades ou 165 itens sem
+match.
+
+A janela Wayland real do Launcher foi capturada com mídia efetiva:
+`01-fanart-fullscreen.png` mostra fanart de Mega Man 8; `02-cover-fullscreen.png`
+mostra capa de Blaster Master. A medição pós-ingestão em
+`03-performance.json` registrou startup 840 ms, 375 frames, p95 16,167 ms e
+VRAM 58.736 KiB; todos os orçamentos foram atendidos.
+
+O assignment legado de Astyanax com `platformId: switch` foi recusado quando o
+catálogo declarou `nes-famicom`, mantendo fallback honesto e sem vazamento de
+mídia. A evidência está em
+`docs/09-operations/evidence/2026-09-20-aura-rich-media-release/`.
+
+O KDE não foi reiniciado nem finalizado. Permanecem abertos a captura do OSD
+AURA sobre uma janela RetroArch mapeada e a repetição do ciclo de troca de
+disco pelo Launcher instalado.
+
+## 2026-09-20 — prova física controlada do SharpEmu com dump PS5
+
+Com a release instalada `2.0.0rc1-3acc2104dd5a` e o componente SharpEmu
+`0.0.3-release.4` verificado pelo ciclo governado de componentes, lancei o
+dump real do operador `PPSA02929` (Dreaming Sarah). O loader abriu o
+`eboot.bin`, leu `sce_sys/param.json`, identificou Title ID `PPSA02929` e
+versão `01.000.000`, mas a execução do guest terminou com `Access Violation`
+após um import HLE não encontrado (`ORBIS_GEN2_ERROR_NOT_FOUND`). Nenhuma cena
+renderizada ou captura PNG de sucesso foi alegada.
+
+A prova negativa está em
+`docs/09-operations/evidence/2026-09-20-ps5-sharpemu-physical/`, com o
+`PHYSICAL-VALIDATION.json` e o diagnóstico controlado. O dump original não
+foi alterado e a identidade física continua comprovada separadamente. O
+`GAP-SHARPEMU-PHYSICAL-VALIDATION` permanece aberto até uma versão compatível
+do runtime ou outro dump chegar a uma cena renderizada. O KDE não foi
+reiniciado, finalizado ou mutado.

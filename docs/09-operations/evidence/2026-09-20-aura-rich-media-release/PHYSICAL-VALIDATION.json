@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-20",
+  "release": "2.0.0rc1-3acc2104dd5a",
+  "sourceCommit": "3acc2104dd5af8862b0ee2a21065fa387acd7720",
+  "session": "Wayland",
+  "backend": "opengl",
+  "mediaRoot": "/home/misael/.local/share/steamzero/media",
+  "releaseHostPostCheck": {
+    "ok": false,
+    "error": "doctor pós-ativação declarou schema incompatível: host=22, alvo=20",
+    "hostSchema": 22,
+    "bundleTargetSchema": 20,
+    "service": "active",
+    "activeReleaseConfirmed": true
+  },
+  "ingestion": {
+    "sourceRoot": "/home/misael/emulation/frontend/RetroFE/collections",
+    "accepted": 79,
+    "ambiguous": 3,
+    "unmatched": 165,
+    "applied": 79,
+    "failed": 0,
+    "overwritten": 0,
+    "preservedExisting": true,
+    "ambiguousResolution": "not automatic"
+  },
+  "captures": [
+    {
+      "file": "01-fanart-fullscreen.png",
+      "game": "Mega Man 8 (JP Edition) (USA)",
+      "gameId": "900e1c398256d4428ea9be42",
+      "media": "fanart",
+      "sha256": "8ccb162e18b6535e751b2e62e6cf1d1bddd9b9d1ad9255b338b76d0e98f1eb02"
+    },
+    {
+      "file": "02-cover-fullscreen.png",
+      "game": "Blaster Master (USA) (Translated PtBr)",
+      "gameId": "6f71cb69c753c1712e001c9a",
+      "media": "box2d",
+      "sha256": "7162e3fc9a784d2e8b47246a26d9532becd863c1ab40ca8975fe9abd78fd8a51"
+    }
+  ],
+  "performance": {
+    "file": "03-performance.json",
+    "startupMs": 840,
+    "frames": 375,
+    "frameTimeP95Ms": 16.167,
+    "peakVramKb": 58736,
+    "budgets": {
+      "startupMs": 2000,
+      "frameTimeP95Ms": 16.7,
+      "vramKb": 524288
+    },
+    "meetsBudget": true
+  },
+  "platformScopeObservation": "An existing Astyanax assignment declared platformId switch while the catalog declares nes-famicom; projection rejected it and showed the honest fallback. No cross-platform media was exposed.",
+  "kdeSessionRestarted": false
+}

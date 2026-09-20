@@ -5,24 +5,22 @@
   "title": "AURA — ingestão segura de mídia local RetroFE",
   "domain": "ui",
   "implementation": "complete",
-  "integration": "feature-branch",
-  "verification": "unit",
-  "operation": "degraded",
-  "distribution": "not-packaged",
+  "integration": "integrated",
+  "verification": "hw",
+  "operation": "ready",
+  "distribution": "installed",
   "scopePaths": [
     "src/steamzero/domain/retrofe_media_import.py",
     "tools/import_retrofe_media.py",
     "tests/unit/test_retrofe_media_import.py",
-    "docs/12-roadmap/AURA-RICH-MEDIA-INGESTION.md"
+    "docs/12-roadmap/AURA-RICH-MEDIA-INGESTION.md",
+    "docs/09-operations/evidence/2026-09-20-aura-rich-media-release"
   ],
   "dependsOn": [
     "SZ-AURA-RICH-MEDIA-PROJECTION",
     "SZ-AURA-CINEMA-COMPLETION"
   ],
-  "knownGaps": [
-    "GAP-AURA-RICH-MEDIA-PHYSICAL-CAPTURE",
-    "GAP-AURA-RICH-MEDIA-INTEGRATION-RELEASE"
-  ],
+  "knownGaps": [],
   "acceptanceCriteria": [
     "Plan identifica coleção e plataforma sem assumir Switch.",
     "Match de título ignora acentos e caixa, mas empates ficam em revisão.",
@@ -48,13 +46,19 @@
       "reference": "docs/12-roadmap/AURA-RICH-MEDIA-INGESTION.md",
       "command": "import_retrofe_media.py ... --apply --media-root /tmp/aura-rich-media-apply-check",
       "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-20-aura-rich-media-release/PHYSICAL-VALIDATION.json",
+      "command": "release 2.0.0rc1-3acc2104dd5a: apply seguro de 79 assets e captura real de fanart/capa no Launcher fullscreen",
+      "result": "passed"
     }
   ],
   "activeWorkstreams": [
     "WS-2026-09-AURA-RETROFE-MEDIA-INGESTION"
   ],
-  "nextAction": "Promover a branch por release governada; aplicar o plano na raiz de mídia do host e registrar captura PNG com capa/fanart reais.",
+  "nextAction": "Manter ambiguidades e itens sem match em revisão; não promover escolhas sem confirmação do operador.",
   "updatedAt": "2026-09-20",
-  "scopeDigest": "fc64db170f489f2eda9457d1522ed382f7a599ab416bbb875a31742fd16b305b",
-  "notes": "A implementação é local e plan-first. A ausência de captura instalada permanece aberta; o bloqueio atual de instalação é a autenticação interativa pkexec, não o importador."
+  "scopeDigest": "2ecd98cfb6d688b8302dea058ec6ecaa20702785bbf13cea4d75f69717984186",
+  "notes": "A implementação foi aplicada na release 2.0.0rc1-3acc2104dd5a: 79 assets seguros importados, 3 ambiguidades e 165 sem match preservados sem escolha automática. A prova visual mostra fanart e capa reais; assignments com plataforma divergente continuam rejeitados pelo bridge."
 }

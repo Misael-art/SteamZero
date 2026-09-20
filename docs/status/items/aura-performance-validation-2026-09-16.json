@@ -13,9 +13,10 @@
     "tools/launcher_perf_probe.py",
     "tests/unit/test_launcher_perf_probe.py",
     "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf"
-    ,"docs/09-operations/evidence/2026-09-18-aura-bezel-installed"
+    ,"docs/09-operations/evidence/2026-09-18-aura-bezel-installed",
+    "docs/09-operations/evidence/2026-09-20-aura-rich-media-release"
   ],
-  "scopeDigest": "e0ad30a0252fa0fd712f1307de7904fbad6fd7fd8fa7fbc62b99dc79bba4b7a7",
+  "scopeDigest": "d5d4b56d09d4c5a46f02c4aba0b47c41c81cee6cb5ccdb6eef2e662c9638d7b7",
   "dependsOn": [
     "SZ-AURA-LAUNCHER",
     "SZ-AURA-CINEMA-COMPLETION",
@@ -86,12 +87,18 @@
       "reference": "docs/09-operations/evidence/2026-09-18-aura-bezel-installed/03-performance-installed.json",
       "command": "release 2.0.0rc1-a71c2b5e17cd, probe Wayland/OpenGL real em 948x593; startup 724 ms, p95 16.515 ms, VRAM 103692 KiB, meetsBudget=true",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-20-aura-rich-media-release/03-performance.json",
+      "command": "release 2.0.0rc1-3acc2104dd5a, probe Wayland/OpenGL real em 948x593; startup 840 ms, 375 frames, p95 16.167 ms, VRAM 58736 KiB, meetsBudget=true",
+      "result": "passed"
     }
   ],
   "activeWorkstreams": [
     "WS-2026-09-AURA-PERFORMANCE-VALIDATION"
   ],
-  "nextAction": "Amostra a71 validada em 948x593; permanece, se o host oferecer essa geometria ao probe, uma amostra adicional em 1280x800 e a prova física dos periféricos de sessão.",
-  "updatedAt": "2026-09-16",
-  "notes": "A medição a71 é válida para a janela Wayland real 948x593 da release 2.0.0rc1-a71c2b5e17cd. A amostra tem startup, frame time/p95 e VRAM observados e passou os orçamentos. A referência 1280x800 continua sem prova; bezel/fade visual isolado e troca de disco seguem capacidades próprias."
+  "nextAction": "Preservar a amostra válida da release 3acc; uma amostra adicional em 1280x800 e a prova visual dos periféricos de sessão permanecem abertas.",
+  "updatedAt": "2026-09-20",
+  "notes": "A medição 3acc é válida para a janela Wayland real 948x593: startup, frame time/p95 e VRAM observados, todos dentro dos orçamentos. A referência 1280x800 continua sem prova; bezel/fade visual isolado e troca de disco seguem capacidades próprias."
 }

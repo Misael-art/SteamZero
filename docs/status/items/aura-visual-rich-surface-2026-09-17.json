@@ -24,7 +24,7 @@
   ],
   "knownGaps": [
     "GAP-AURA-SAVE-STATE-OSD-CAPTURE",
-    "GAP-AURA-DISC-SWAP-PHYSICAL",
+    "GAP-AURA-DISC-SWAP-INSTALLED-RELEASE",
     "GAP-AURA-BEZEL-FADE-PHYSICAL"
   ],
   "acceptanceCriteria": [
@@ -70,12 +70,24 @@
       "reference": "tests/integration/test_launcher_focus_bootstrap.py",
       "command": "QML harness Qt6: cinema com palette/video ausente mantém fallback de fanart e reducedMotion sem travar a cena; 2 passed.",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-20-aura-multidisc-physical/PHYSICAL-VALIDATION.json",
+      "command": "RetroArchSessionPeripheral real + PUAE real: jogo multidisco Street Fighter II com troca 1→2→1 e captura PNG",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-20-aura-rich-media-release/PHYSICAL-VALIDATION.json",
+      "command": "Launcher instalado em 2.0.0rc1-3acc2104dd5a com fanart/capa reais, ingestão aplicada e p95/VRAM válidos",
+      "result": "passed"
     }
   ],
   "activeWorkstreams": [
     "WS-2026-09-AURA-VISUAL-RICH-SURFACE"
   ],
-  "nextAction": "Capturar o OSD sobre uma janela RetroArch mapeada no compositor e validar um conjunto multi-disc legítimo antes de declarar a cadeia física completa.",
-  "updatedAt": "2026-09-17",
-  "notes": "A release instalada prova a superfície Cinema rica e a medição física dentro do orçamento. A sessão real comprovou save-state, pausa/retomada, bezel e fade pelo contrato; não há conjunto multi-disc legítimo no acervo usado e o OSD não publicou janela mapeada para captura visual."
+  "nextAction": "Capturar o OSD AURA sobre uma janela RetroArch mapeada no compositor e repetir a troca de disco pelo Launcher instalado.",
+  "updatedAt": "2026-09-20",
+  "notes": "A release instalada prova a superfície Cinema rica, ingestão de fanart/capa e medição física dentro do orçamento. A sessão real comprovou save-state, pausa/retomada, bezel e fade pelo contrato; o ciclo multidisco foi comprovado fora da release. OSD visual e troca pelo Launcher instalado permanecem abertos."
 }

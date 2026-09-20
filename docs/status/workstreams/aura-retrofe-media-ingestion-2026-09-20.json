@@ -6,7 +6,7 @@
   "branch": "codex/aura-rich-media-ingestion-2026-09-20",
   "baseRef": "f683957a952c24056092516cc1af17760c68910a",
   "owner": "codex-aura-rich-media-ingestion",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/domain/retrofe_media_import.py",
     "tools/import_retrofe_media.py",
@@ -21,6 +21,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Promover por release governada; aplicar o plano e capturar capa/fanart reais no AURA Launcher.",
+  "nextAction": "Preservar o comportamento plan-first; revisar manualmente ambiguidades antes de novas aplicações.",
   "updatedAt": "2026-09-20"
 }
