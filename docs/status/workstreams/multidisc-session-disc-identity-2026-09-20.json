@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-MULTIDISC-SESSION-DISC-IDENTITY",
+  "item": "SZ-MULTIDISC-SESSION-DISC-IDENTITY",
+  "branch": "codex/aura-disc-swap-contract-2026-09-20",
+  "baseRef": "87d75d90",
+  "owner": "codex-aura-disc-swap-contract",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/domain/multidisc_artifacts.py",
+    "src/steamzero/adapters/session_peripherals.py",
+    "tests/unit/test_multidisc_artifacts.py",
+    "tests/unit/test_session_peripherals.py",
+    "docs/status/items/multidisc-session-disc-identity.json",
+    "docs/status/workstreams/multidisc-session-disc-identity-2026-09-20.json"
+  ],
+  "sharedPaths": [
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Integrar a identidade estável no descritor e executar prova física com conteúdo multidisco legítimo.",
+  "updatedAt": "2026-09-20"
+}

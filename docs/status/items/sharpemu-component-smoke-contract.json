@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-SHARPEMU-COMPONENT-SMOKE-CONTRACT",
+  "title": "Contrato de verificação do componente SharpEmu",
+  "domain": "platform",
+  "implementation": "complete",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "ready",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/adapters/manifests/sharpemu.adapter.json",
+    "src/steamzero/adapters/component-lock.json",
+    "tests/unit/test_sharpemu_verify_contract.py"
+  ],
+  "scopeDigest": "ac7be9dc52d4216b2ec64c45ed1fc320f1d868b68e2da4d266e52c681d2e0161",
+  "dependsOn": ["SZ-PLATFORM-PS5-CATALOG", "SZ-COMPONENT-LIFECYCLE"],
+  "knownGaps": ["GAP-SHARPEMU-PHYSICAL-VALIDATION"],
+  "acceptanceCriteria": [
+    "O smoke do SharpEmu aceita os códigos documentados pelo binário para --help.",
+    "Uma divergência real de saída continua falhando e aciona rollback transacional.",
+    "A prova física só é promovida após componente instalado, dump legal lançado e PNG capturado."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_sharpemu_verify_contract.py",
+      "command": "run_tests_isolated.py tests/unit/test_sharpemu_verify_contract.py tests/unit/test_sharpemu_tarball.py -q; 6 passed",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Executar gates, publicar a correção e reaplicar o componente SharpEmu na release governada; depois validar o dump PS5 e capturar a evidência física.",
+  "activeWorkstreams": ["WS-2026-09-SHARPEMU-COMPONENT-SMOKE"],
+  "updatedAt": "2026-09-20",
+  "notes": "O asset oficial retorna Usage: SharpEmu com exit code 1 para --help. O apply anterior fez rollback com E-TX-VERIFY-FAILED porque o manifesto aceitava somente 0."
+}
