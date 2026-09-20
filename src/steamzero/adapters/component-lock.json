@@ -344,7 +344,7 @@
     },
     {
       "id": "sharpemu",
-      "manifestHash": "264c05d1276360e92abf1c7295a39f2f28ddfcd2200467c221fb1765f37197bf",
+      "manifestHash": "09e809074fd36160d8ccb03dc1c48e25622e7abe2f925389e7099172834a47c2",
       "source": {
         "type": "native",
         "version": "0.0.3-release.4",

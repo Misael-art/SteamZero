@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-SHARPEMU-COMPONENT-SMOKE",
+  "item": "SZ-SHARPEMU-COMPONENT-SMOKE-CONTRACT",
+  "branch": "codex/ps5-component-tar-path",
+  "baseRef": "c3b14a04",
+  "owner": "codex-ps5-component-smoke",
+  "state": "active",
+  "exclusivePaths": [
+    "tests/unit/test_sharpemu_verify_contract.py",
+    "docs/status/items/sharpemu-component-smoke-contract.json",
+    "docs/status/workstreams/sharpemu-component-smoke-2026-09-20.json"
+  ],
+  "sharedPaths": [
+    "src/steamzero/adapters/component-lock.json",
+    "src/steamzero/adapters/manifests/sharpemu.adapter.json",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Executar teste focado e gates; publicar a correção para a release governada e repetir component plan/apply/verify sem reiniciar o KDE.",
+  "updatedAt": "2026-09-20"
+}
