@@ -64,6 +64,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-MEDIA-PROVIDER-PLATFORM-FILTER | 10 | 2 | 2 | unit |  |
 | SZ-MEDIA-SCRAPING | 29 | 7 | 7 | unit |  |
 | SZ-MULTIDISC-DESCRIPTOR-RECONCILIATION | 15 | 13 | 13 | dev |  |
+| SZ-MULTIDISC-SESSION-DISC-IDENTITY | 4 | 2 | 2 | unit |  |
 | SZ-ONLINE-P2P | 37 | 2 | 1 | none |  |
 | SZ-PLATFORM-CORE-PER-SYSTEM | 78 | 4 | 3 | unit |  |
 | SZ-PLATFORM-PS4-CATALOG | 6 | 3 | 3 | unit |  |

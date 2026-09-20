@@ -11390,3 +11390,18 @@ explícito que fanart/vídeo ainda estão em fallback nesta release.
 testes. Nenhuma instalação, rollback, reinício ou mutação do KDE foi executada;
 o próximo ciclo deve repetir a medição após a release de mídia rica e fechar a
 lacuna de geometria 1280×800, se o host a disponibilizar.
+
+## 2026-09-20 — identidade estável na troca de disco AURA
+
+A identidade lógica de cada disco passou a viajar no descritor gerenciado: o
+`.m3u` publica comentários `SteamZero-MultiDisc-Disc` com `set_id:disc-N`.
+`RetroArchSessionPeripheral` lê essa identidade, publica o id no read model e
+aceita a troca por id persistente; M3Us legados mantêm fallback posicional
+limitado. A ordem usa o adapter, não ordenação alfabética.
+
+Provas focadas: `54 passed`; a suíte integral terminou com `6174 passed, 47
+skipped, 4 failed`, falhas ambientais de `AF_UNIX path too long`. Ruff,
+formatação, mypy, independência, fronteiras e `STATUS-CHECK` passaram. A
+verificação Amiga somente leitura encontrou 11 ADFs, mas o host não possui o
+Kickstart legal `kick34005.A500`; a prova física de eject/insert/retorno segue
+aberta como `GAP-AURA-DISC-SWAP-PHYSICAL`.

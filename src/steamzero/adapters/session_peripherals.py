@@ -8,6 +8,7 @@ import json
 import socket
 import time
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
@@ -23,6 +24,15 @@ SESSION_CONFIG_NAME = "session-peripherals.cfg"
 BEZEL_CONFIG_NAME = "aura-bezel-overlay.cfg"
 BEZEL_SOURCE_NAME = "aura-bezel.svg"
 BEZEL_ASSET_NAME = "aura-bezel.png"
+DISC_ID_MARKER = "# SteamZero-MultiDisc-Disc:"
+
+
+@dataclass(frozen=True)
+class _DiscReference:
+    """Bounded M3U entry retaining the generated logical disc identity."""
+
+    identity: str
+    path: Path
 
 
 class SessionPeripheralRecord(Protocol):
@@ -214,13 +224,14 @@ class RetroArchSessionPeripheral:
             "activeDisc": self._active_disc,
             "discs": [
                 {
-                    "id": f"disc-{index}",
-                    "label": path.name,
+                    "id": disc.identity,
+                    "label": disc.path.name,
+                    "index": index,
                     "available": True,
                     "compatible": True,
                     "inserted": index == self._active_disc,
                 }
-                for index, path in enumerate(self._discs)
+                for index, disc in enumerate(self._discs)
             ],
         }
 
@@ -254,13 +265,21 @@ class RetroArchSessionPeripheral:
     def swap_disc(self, disc_id: str) -> SessionPeripheralRecord:
         if len(self._discs) < 2:
             raise RuntimeError("o jogo não oferece troca de disco")
-        if not isinstance(disc_id, str) or not disc_id.startswith("disc-"):
+        if not isinstance(disc_id, str) or not disc_id:
             raise ValueError("identificador de disco inválido")
-        try:
-            target = int(disc_id[5:])
-        except ValueError as exc:
-            raise ValueError("identificador de disco inválido") from exc
-        if not 0 <= target < len(self._discs):
+        target = next(
+            (index for index, disc in enumerate(self._discs) if disc.identity == disc_id),
+            None,
+        )
+        # User-authored M3Us have no managed identity marker.  Keep their
+        # legacy positional ids bounded, while generated descriptors use the
+        # stable set/disc identity above.
+        if target is None and disc_id.startswith("disc-"):
+            try:
+                target = int(disc_id[5:])
+            except ValueError as exc:
+                raise ValueError("identificador de disco inválido") from exc
+        if target is None or not 0 <= target < len(self._discs):
             raise ValueError("disco fora do conjunto declarado")
         if target == self._active_disc:
             return self._record()
@@ -297,7 +316,7 @@ class RetroArchSessionPeripheral:
             self._sleep(0.1)
         raise RuntimeError("RetroArch não publicou o save-state no diretório gerenciado")
 
-    def _read_m3u(self) -> tuple[Path, ...]:
+    def _read_m3u(self) -> tuple[_DiscReference, ...]:
         if self._content_path.suffix.casefold() != ".m3u":
             return ()
         try:
@@ -306,17 +325,28 @@ class RetroArchSessionPeripheral:
             lines = self._content_path.read_text(encoding="utf-8", errors="replace").splitlines()
         except OSError:
             return ()
-        discs: list[Path] = []
+        discs: list[_DiscReference] = []
+        pending_identity: str | None = None
         for line in lines:
             value = line.strip()
-            if not value or value.startswith("#"):
+            if not value:
+                continue
+            if value.startswith(DISC_ID_MARKER):
+                identity = value[len(DISC_ID_MARKER) :].strip()
+                if 1 <= len(identity) <= 256 and "\n" not in identity and "\r" not in identity:
+                    pending_identity = identity
+                continue
+            if value.startswith("#"):
                 continue
             raw_candidate = self._content_path.parent / value
             if raw_candidate.is_symlink() or not raw_candidate.is_file():
+                pending_identity = None
                 continue
             candidate = raw_candidate.resolve()
             if candidate.is_file():
-                discs.append(candidate)
+                identity = pending_identity or f"disc-{len(discs)}"
+                discs.append(_DiscReference(identity, candidate))
+            pending_identity = None
         return tuple(discs[:16])
 
     def _read_runtime_state_slot(self, root: Path) -> int:
