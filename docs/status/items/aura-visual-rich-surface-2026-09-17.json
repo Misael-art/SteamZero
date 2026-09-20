@@ -14,9 +14,10 @@
     "src/steamzero/ui/qml/launcher/LauncherCinema.qml",
     "tests/unit/test_launcher_cinema.py",
     "tests/qml/launcher/check_launcher_focus_bootstrap.qml",
-    "docs/09-operations/evidence/2026-09-20-aura-session-osd-installed"
+    "docs/09-operations/evidence/2026-09-20-aura-session-osd-installed",
+    "docs/09-operations/evidence/2026-09-20-aura-multidisc-launcher-installed"
   ],
-  "scopeDigest": "42fe72ce56d653728094c2965aa923c21531ef5586a04a99c36f959903c392a6",
+  "scopeDigest": "c17a0dc9a61621592697c3fd6cb65e72f9ae1c3ae516a5406f58371b69a83c51",
   "dependsOn": [
     "SZ-AURA-VISUAL-COMPLETION",
     "SZ-AURA-SAVE-STATE-GALLERY",
@@ -79,6 +80,12 @@
     },
     {
       "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-20-aura-multidisc-launcher-installed/PHYSICAL-VALIDATION.json",
+      "command": "Release 2.0.0rc1-7af569b5fbba: Launcher bridge com PUAE real, IDs persistentes e troca 1→2→1; UI também exerceu erro controlado e retorno",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
       "reference": "docs/09-operations/evidence/2026-09-20-aura-rich-media-release/PHYSICAL-VALIDATION.json",
       "command": "Launcher instalado em 2.0.0rc1-3acc2104dd5a com fanart/capa reais, ingestão aplicada e p95/VRAM válidos",
       "result": "passed"
@@ -93,7 +100,7 @@
   "activeWorkstreams": [
     "WS-2026-09-AURA-VISUAL-RICH-SURFACE"
   ],
-  "nextAction": "Repetir a troca de disco pelo Launcher instalado com um jogo multi-disc legítimo; OSD e galeria já estão capturados na release atual.",
+  "nextAction": "Repetir a captura visual do OSD/troca de disco com um processo PUAE que permaneça vivo; o contrato do bridge instalado já confirmou 1→2→1 e a UI confirmou recuperação controlada.",
   "updatedAt": "2026-09-20",
-  "notes": "A release instalada prova a superfície Cinema rica, ingestão de fanart/capa, medição física dentro do orçamento, OSD e galeria de saves sobre jogo real. A sessão real comprovou save-state, pausa/retomada, bezel e fade pelo contrato; o ciclo multidisco foi comprovado fora da release. Troca de disco pelo Launcher instalado permanece aberta."
+  "notes": "A release instalada prova a superfície Cinema rica, ingestão de fanart/capa, medição física dentro do orçamento, OSD e galeria de saves sobre jogo real. O Launcher instalado também publicou a sessão multidisco real e aceitou 1→2→1 por IDs persistentes. Nesta repetição, o frame PUAE ficou cinza e uma tentativa posterior encerrou com LAUNCHER-LAUNCH-FAILED-001 controlado; por isso a lacuna visual do OSD/troca permanece aberta, sem alegar renderização do jogo."
 }

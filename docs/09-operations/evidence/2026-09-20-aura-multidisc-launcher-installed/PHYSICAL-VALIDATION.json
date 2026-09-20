@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "kind": "aura-multidisc-launcher-installed-validation",
+  "observedAt": "2026-09-20",
+  "sourceCommit": "7af569b5fbba906404d822192077a31890e29b07",
+  "installedRelease": "2.0.0rc1-7af569b5fbba",
+  "installedReleaseContainsSourceCommit": true,
+  "sourceMutation": false,
+  "emulator": {
+    "frontend": "RetroArch Flatpak 1.22.2",
+    "core": "PUAE 5.3.0",
+    "model": "A1200",
+    "kickstart": "kick40068.A1200",
+    "playlistEntries": 4
+  },
+  "logicalSet": {
+    "setId": "amiga:street-fighter-ii-world-warrior:1992",
+    "platformId": "amiga",
+    "discs": [
+      "amiga:street-fighter-ii-world-warrior:1992:disc-1",
+      "amiga:street-fighter-ii-world-warrior:1992:disc-2",
+      "amiga:street-fighter-ii-world-warrior:1992:disc-3",
+      "amiga:street-fighter-ii-world-warrior:1992:disc-4"
+    ]
+  },
+  "sequence": [
+    {"phase": "before", "activeDisc": 0},
+    {"phase": "swap-to-disc-2", "activeDisc": 1, "operation": "disc"},
+    {"phase": "swap-back-disc-1", "activeDisc": 0, "operation": "disc"}
+  ],
+  "launcher": {
+    "requestId": "01M2ZKBAX9XDEN06V88YN06V5Q",
+    "sessionId": "01M2ZKBDG0DR1PWGFNVW10EPPD",
+    "route": "/session/action",
+    "accepted": true,
+    "installedLauncherProof": true,
+    "uiLaunchRecovery": "LAUNCHER-LAUNCH-FAILED-001 controlled error after PUAE exit"
+  },
+  "evidence": [
+    {"file": "01-baseline.png", "sha256": "979cfde5ac9bdf9c4a8daa8514cbbb5f337e692fddd985b09fa7b8a3a8750337"},
+    {"file": "02-entrega-funcional.png", "sha256": "d559fbec85b469e65e944138ad7bf6a40a0c4909ecb36cbc0077716361bb9bab"},
+    {"file": "03-recuperacao.png", "sha256": "2b07929098520cb45179267a74246e606a9a03a6eaa26e88dd3753118a8364f3"}
+  ],
+  "adapterProof": "RetroArchSessionPeripheral via installed Launcher bridge",
+  "visualGameFrame": "not-confirmed-grey-frame",
+  "kdeRestarted": false
+}

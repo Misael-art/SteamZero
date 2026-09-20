@@ -11560,3 +11560,28 @@ O botão `Trocar disco` foi observado desabilitado para o título single-disc;
 isso confirma o fallback correto, mas não fecha a prova de troca em jogo
 multi-disc pelo Launcher instalado. Essa lacuna permanece aberta. O KDE não
 foi reiniciado, finalizado ou mutado.
+
+## 2026-09-20 — repetição instalada do ciclo multidisco AURA
+
+A release governada `2.0.0rc1-7af569b5fbba`, proveniente exatamente de
+`7af569b5fbba906404d822192077a31890e29b07`, foi verificada como convergente no
+host. Com uma fixture temporária baseada no M3U gerenciado de Street Fighter II
+e quatro ADFs, o bridge do Launcher observou PUAE/RetroArch real e publicou as
+identidades persistentes `amiga:street-fighter-ii-world-warrior:1992:disc-1..4`.
+As ações de sessão confirmaram `activeDisc: 0 → 1 → 0` para troca ao disco 2 e
+retorno ao disco 1.
+
+A UI exibiu a entrada em preparação e também o erro controlado
+`LAUNCHER-LAUNCH-FAILED-001` quando uma tentativa posterior encontrou o PUAE
+encerrado; não houve tela preta, perda de foco nem reinício do KDE. A captura
+do PUAE mostrou a janela e o bezel AURA, mas o frame do jogo ficou cinza nesta
+fixture. Portanto a evidência fecha a publicação/troca no bridge instalado,
+mas não a renderização visual do jogo nem a abertura visual do OSD nessa
+execução. A próxima ação é repetir com um processo PUAE persistente para obter
+essa captura de UI.
+
+As capturas e o diagnóstico estão em
+`docs/09-operations/evidence/2026-09-20-aura-multidisc-launcher-installed/`.
+O cache canônico foi restaurado e a fixture temporária foi movida para a
+lixeira; os dumps originais permaneceram intactos. Nenhuma reinicialização ou
+finalização do KDE ocorreu.
