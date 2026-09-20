@@ -72,7 +72,7 @@
     "WS-2026-09-AURA-RICH-MEDIA-PROJECTION"
   ],
   "nextAction": "Manter a projeção rica na release d70; fechar credenciais remotas e repetir prova física de fanart/screenshots na próxima release. Save-state físico e disc swap permanecem gaps da composição de sessão.",
-  "scopeDigest": "19891b0eb0fe23ffb8b8ad4946b8ec550ea3fb988429399b029fac3ee08b0b05",
+  "scopeDigest": "74252e1a809b3c6806e12254c9b4fc88af70c751c91c3ab78071d49add31ebfd",
   "updatedAt": "2026-09-16",
   "notes": "A projeção mantém papéis ricos separados, ordena screenshots numerados e publica somente URLs locais dentro da raiz gerenciada. O código foi integrado ao main e está presente na release d70; as capturas físicas provam o catálogo e o detalhe com arte local. A evidência não infere fanart, screenshots ou vídeo quando o registro ativo não os fornece."
 }

@@ -11377,25 +11377,45 @@ integral posterior coletou 6.223 testes e terminou sem falhas na repetição com
 isoladamente em 6,47 s e não se reproduziu na repetição integral. O commit
 funcional é `ce887e6`; nenhum host foi instalado ou mutado.
 
+## 2026-09-20 — projeção AURA de mídia escopada por plataforma
+
+Foi fechado o item `SZ-AURA-PLATFORM-MEDIA-SCOPE` na branch
+`codex/aura-platform-media-scope-2026-09-20`. A projeção do registry agora exige
+`platformId` e só aceita a entrada quando ele coincide com a plataforma
+canônica do jogo; registros sem identidade ou herdados de outra plataforma são
+rejeitados e degradam para o fallback legível. A aplicação passou a fornecer o
+mapa canônico jogo→plataforma ao adapter. Nenhuma entrada do registry foi
+apagada ou reclassificada.
+
+Provas: testes focados `34 passed`; Ruff, formatação, mypy, independência,
+fronteiras e `STATUS-CHECK` passaram. A suíte integral terminou com
+`6174 passed, 47 skipped, 4 failed`; as quatro falhas são pré-existentes e
+ambientais (`AF_UNIX path too long` nos testes de sockets devido ao caminho
+profundo do temporário do harness). O estado real antes/depois permaneceu
+idêntico e `state audit` terminou limpo. O primeiro runner integral havia
+falhado por falta de espaço; o temporário órfão foi removido com escopo exato,
+sem alterar o projeto ou dados do usuário.
+
+A auditoria física read-only encontrou 51 registros antigos de Switch usados
+por jogos de outras plataformas; a nova regra os bloqueia sem vazamento de
+artefatos. A release instalada continua
+`2.0.0rc1-c3b14a040b7c`; a instalação governada da release seguinte não foi
+concluída porque a autorização/prompt de privilégio não foi aceito. Não houve
+reinício do KDE, rollback ou mutação de host. A captura física pós-instalação
+com mídia rica corretamente escopada permanece
+`GAP-AURA-PLATFORM-MEDIA-PHYSICAL-PROOF`.
+
 ## 2026-09-20 — identidade estável na troca de disco AURA
 
-A frente `WS-2026-09-MULTIDISC-SESSION-DISC-IDENTITY` passou a preservar a
-identidade lógica de cada disco no descritor gerenciado: além do caminho, o
+A identidade lógica de cada disco passou a viajar no descritor gerenciado: o
 `.m3u` publica comentários `SteamZero-MultiDisc-Disc` com `set_id:disc-N`.
-`RetroArchSessionPeripheral` lê essa identidade, a publica no read model e
-aceita a troca por id persistente; M3Us legados continuam usando apenas o
-fallback posicional limitado. A ordem do descritor usa a ordem declarada pelo
-adapter, não ordenação alfabética.
+`RetroArchSessionPeripheral` lê essa identidade, publica o id no read model e
+aceita a troca por id persistente; M3Us legados mantêm fallback posicional
+limitado. A ordem usa o adapter, não ordenação alfabética.
 
-Provas focadas: `54 passed` na cadeia multidisco, biblioteca, periféricos e
-overlay; a suíte integral terminou com `6174 passed, 47 skipped, 4 failed`.
-As quatro falhas são ambientais e pré-existentes (`AF_UNIX path too long` nos
-testes de sockets pelo caminho profundo do temporário do harness). Ruff,
-formatação, mypy, independência, fronteiras e `STATUS-CHECK` passaram. O
-`state audit` pós-run está limpo e o estado real não mudou.
-
-Na verificação física somente leitura foi encontrado o conjunto Amiga real
-`Super Street Fighter II Turbo` com 11 ADFs. O PUAE existente iniciou, mas o
-host não possui o Kickstart legal `kick34005.A500`; a execução foi encerrada
-sem alterar ROMs, KDE ou a instalação. A prova física de eject/insert/retorno
-continua aberta como `GAP-AURA-DISC-SWAP-PHYSICAL`.
+Provas focadas: `54 passed`; a suíte integral terminou com `6174 passed, 47
+skipped, 4 failed`, falhas ambientais de `AF_UNIX path too long`. Ruff,
+formatação, mypy, independência, fronteiras e `STATUS-CHECK` passaram. A
+verificação Amiga somente leitura encontrou 11 ADFs, mas o host não possui o
+Kickstart legal `kick34005.A500`; a prova física de eject/insert/retorno segue
+aberta como `GAP-AURA-DISC-SWAP-PHYSICAL`.

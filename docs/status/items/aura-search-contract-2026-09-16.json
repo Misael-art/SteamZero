@@ -16,7 +16,7 @@
     "tests/unit/test_catalog_search.py",
     "tests/integration/test_launcher_search_contract.py"
   ],
-  "scopeDigest": "6362bcd5c5b0f8aba9a2938adbe6bd2879c64f396b5a888953cbd98c1bdb62d6",
+  "scopeDigest": "5be6593b30578a1b920075d7c27ad823b108ba53d70cdfde9a3bfd75641e5351",
   "dependsOn": ["SZ-AURA-METADATA"],
   "knownGaps": [
     "GAP-AURA-SEARCH-PHYSICAL-PROOF"
