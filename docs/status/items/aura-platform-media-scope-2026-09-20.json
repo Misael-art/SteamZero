@@ -36,7 +36,7 @@
     },
     {
       "kind": "diagnostic",
-      "reference": "/home/misael/.local/share/steamzero/media/registry/assignments-v1.json",
+      "reference": "docs/09-operations/evidence/2026-09-20-aura-platform-media/REGISTRY-PLATFORM-AUDIT.json",
       "command": "projeção read-only com catálogo atual; 51 entradas registradas como Switch foram rejeitadas para jogos não-Switch",
       "result": "passed"
     }
