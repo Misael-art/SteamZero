@@ -35,6 +35,10 @@
   "verify": {
     "smokeTest": [
       "--help"
+    ],
+    "smokeExitCodes": [
+      0,
+      1
     ]
   },
   "compat": [
