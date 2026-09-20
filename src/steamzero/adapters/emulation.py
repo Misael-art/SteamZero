@@ -63,6 +63,7 @@ from steamzero.adapters.mods.state_store_mods import StateStoreModsAdapter
 from steamzero.adapters.multidisc_materializer import (
     ArchiveMaterializationRequest,
     ArchiveMaterializer,
+    MaterializationInspection,
     MaterializationRequest,
     MultiDiscMaterializer,
 )
@@ -2744,7 +2745,7 @@ class EmulationController:
             if library_root.resolve(strict=False) not in registered_roots:
                 raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="raiz não registrada")
             manifest = PlatformRegistry.bundled().get(platform_id)
-            request = ArchiveMaterializationRequest(
+            archive_request = ArchiveMaterializationRequest(
                 platform_id=platform_id,
                 system_id=system_id,
                 title=materialization_title,
@@ -2752,25 +2753,25 @@ class EmulationController:
                 library_root=library_root,
                 manifest={"media": dict(manifest.media)},
             )
-            inspection = ArchiveMaterializer().inspect(request)
-            if inspection.state != "needs-extraction":
-                raise SteamZeroError("E-CONTENT-INCOMPLETE", detail=inspection.reason)
+            archive_inspection = ArchiveMaterializer().inspect(archive_request)
+            if archive_inspection.state != "needs-extraction":
+                raise SteamZeroError("E-CONTENT-INCOMPLETE", detail=archive_inspection.reason)
             plan = transaction.plan_write_files(
                 {},
                 root=paths.data_home(),
                 kind="emulation.archive.materialize",
                 requirements_extra={
-                    "materializationState": inspection.state,
-                    "destination": str(inspection.destination),
+                    "materializationState": archive_inspection.state,
+                    "destination": str(archive_inspection.destination),
                 },
             )
             self._pending[plan.plan_id] = _PendingMutation(
-                "archive-materialize", request.to_mapping()
+                "archive-materialize", archive_request.to_mapping()
             )
             plan_extra["preview"] = (
                 "A operação validará o archive, extrairá em staging isolado, verificará "
                 "os membros e publicará a árvore derivada atomicamente. "
-                f"Destino gerenciado: {inspection.destination}"
+                f"Destino gerenciado: {archive_inspection.destination}"
             )
         elif action == "multidisc.materialize":
             platform_id = self._required_string(payload, "platformId")
@@ -2782,7 +2783,7 @@ class EmulationController:
             if library_root.resolve(strict=False) not in registered_roots:
                 raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="raiz não registrada")
             manifest = PlatformRegistry.bundled().get(platform_id)
-            request = MaterializationRequest(
+            request: MaterializationRequest = MaterializationRequest(
                 platform_id=platform_id,
                 system_id=system_id,
                 title=materialization_title,
@@ -2790,7 +2791,7 @@ class EmulationController:
                 library_root=library_root,
                 manifest={"media": dict(manifest.media)},
             )
-            inspection = MultiDiscMaterializer().inspect(request)
+            inspection: MaterializationInspection = MultiDiscMaterializer().inspect(request)
             if inspection.state not in {"ready", "ready-unverified", "needs-extraction"}:
                 raise SteamZeroError("E-CONTENT-INCOMPLETE", detail=inspection.reason)
             plan = transaction.plan_write_files(
