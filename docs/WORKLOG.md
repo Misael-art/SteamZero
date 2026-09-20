@@ -11595,3 +11595,32 @@ retorno pelo Launcher e os bloqueios externos de firmware, arquivos de máquina,
 runtime SharpEmu/Xenia, core Saturn e contrato PX68K. Nenhuma instalação,
 rollback, download proprietário, reboot ou mutação do KDE foi executada nesta
 integração.
+
+## 2026-09-20 — download assistido do firmware oficial PS3
+
+Na branch `codex/ps3-assisted-firmware-download-2026-09-20`, foi entregue o
+item `SZ-PS3-OFFICIAL-FIRMWARE-DOWNLOAD`. O requisito de firmware do Sony
+PlayStation 3 agora expõe uma ação de UI que gera um plano transacional e exige
+confirmação explícita antes de qualquer conexão de rede. O plano é limitado à
+URL HTTPS oficial exata da Sony para a versão 4.93 e continua separado da
+importação local de BIOS, keys, ROMs e dumps.
+
+O job `firmware.download` implementa os estados source-confirmed, downloading,
+downloaded, verified, staged e installed; reporta progresso por bytes; coopera
+com pausa/cancelamento; baixa para staging isolado; rejeita nome divergente,
+arquivo truncado, symlink e excesso de tamanho; calcula SHA-256 observado; e
+publica `PS3UPDAT.PUP` com `source-verification.json` por apply transacional.
+Firmware anterior é preservado pelo backup da transação e o `operation_id` é
+espelhado no store do executor para manter rollback e a FK do job válidos mesmo
+quando o store é injetado separadamente. A política permanece
+`source-verified`, pois a página oficial consultada não publica SHA-256; o
+hash observado é registrado sem ser apresentado como hash-pinned.
+
+Provas: 10 testes focados passaram, incluindo ausência de rede antes do apply,
+download controlado após confirmação, validação de origem/nome/hash, publicação
+do artefato e metadados, além da recusa de payload truncado sem publicação.
+Ruff check/format nos arquivos tocados passou. O
+`STATUS-CHECK` mantém apenas digests obsoletos pré-existentes de outros itens;
+o novo item está documentado e sem evidência ausente. Nenhuma instalação de
+release, download real, alteração de host, atualização de console PS3, reboot
+ou mutação do KDE foi executada.

@@ -345,6 +345,17 @@ def platform_placeholder(manifest: PlatformManifest) -> dict[str, Any]:
 
 def _declared_requirement(kind: str, platform_name: str) -> dict[str, Any]:
     label = "Keys" if kind == "keys" else "Firmware"
+    action = (
+        {
+            "id": "firmware.download",
+            "label": "Baixar e instalar firmware oficial da Sony",
+            "reason": None,
+            "requiresConfirmation": True,
+            "enabled": True,
+        }
+        if kind == "firmware" and platform_name == "Sony PlayStation 3"
+        else None
+    )
     return {
         "kind": kind,
         "status": "unverified",
@@ -352,4 +363,5 @@ def _declared_requirement(kind: str, platform_name: str) -> dict[str, Any]:
         "installed": None,
         "detail": f"{label} de {platform_name} ainda não verificado neste host.",
         "blocksPlay": False,
+        "action": action,
     }

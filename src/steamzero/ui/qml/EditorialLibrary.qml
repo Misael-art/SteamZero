@@ -43,6 +43,7 @@ Item {
 
     signal launchSteamRequested(string gameId)
     signal openSteamConfigurationRequested(string gameId)
+    signal actionRequested(var action)
 
     function mediaRecipe(role) {
         return mediaRecipes && mediaRecipes[role] ? mediaRecipes[role] : ({})
@@ -823,6 +824,18 @@ Item {
                                         wrapMode: Text.WordWrap
                                         maximumLineCount: 2
                                         Layout.fillWidth: true
+                                    }
+                                    EditorialButton {
+                                        visible: root.selectedSystem.requirements
+                                            && root.selectedSystem.requirements[modelData.kind]
+                                            && root.selectedSystem.requirements[modelData.kind].action
+                                        enabled: visible
+                                            && root.selectedSystem.requirements[modelData.kind].action.enabled !== false
+                                        text: root.selectedSystem.requirements[modelData.kind].action
+                                            ? root.selectedSystem.requirements[modelData.kind].action.label : ""
+                                        Layout.fillWidth: true
+                                        onClicked: root.actionRequested(
+                                            root.selectedSystem.requirements[modelData.kind].action)
                                     }
                                 }
                             }

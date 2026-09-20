@@ -1233,7 +1233,7 @@ ApplicationWindow {
             })
             return
         }
-        if (["library.root.add", "keys.import", "keys.repair", "firmware.import", "nsz.install", "nsz.convert",
+        if (["library.root.add", "keys.import", "keys.repair", "firmware.import", "firmware.download", "nsz.install", "nsz.convert",
                 "content.update.import", "content.dlc.import", "content.save.import",
                 "content.shader.import", "storage.recover", "game.emulator.set",
                 "mod.import", "cheat.import",
@@ -6087,6 +6087,9 @@ ApplicationWindow {
                                     root.sectionIndex = root.sectionIndexOf("steam")
                                     if (gameIndex >= 0)
                                         steamGameplayPage.gameIndex = gameIndex
+                                }
+                                onActionRequested: function(action) {
+                                    root.performEmulationAction(action)
                                 }
                             }
                         }

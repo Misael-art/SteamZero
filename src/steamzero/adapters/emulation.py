@@ -97,7 +97,14 @@ from steamzero.adapters.storage_summary import collect_storage_summary
 from steamzero.api import contracts
 from steamzero.core import fs, ids, journal, paths, safezip, transaction
 from steamzero.core.errors import LaunchNotStartedError, SteamZeroError, provider_error_category
-from steamzero.core.net import NetworkFailure, fetch_bytes
+from steamzero.core.net import (
+    HttpClient,
+    NetworkFailure,
+    NetworkPolicy,
+    RetryPolicy,
+    fetch_bytes,
+    transfer_observer,
+)
 from steamzero.core.secret import Secret
 from steamzero.core.session_state import SESSION_OWNER
 from steamzero.core.state import StateStore
@@ -123,6 +130,16 @@ from steamzero.domain.library import (
 from steamzero.domain.media_pipeline import MediaPipeline
 from steamzero.domain.platform_composer import EmulatorFacts
 from steamzero.domain.platforms import PlatformRegistry
+from steamzero.domain.ps3_firmware import (
+    PS3_FIRMWARE_MAX_BYTES,
+    PS3_FIRMWARE_MIN_BYTES,
+    PS3_FIRMWARE_PLATFORM,
+    PS3_FIRMWARE_SOURCE_HOST,
+    PS3_FIRMWARE_SOURCE_URL,
+    PS3_FIRMWARE_VERSION,
+    Ps3FirmwareSource,
+    validate_ps3_firmware,
+)
 from steamzero.domain.scraping_providers import PROVIDERS, allowed_external_url, provider_by_id
 from steamzero.domain.switch_cheats import (
     CheatType,
@@ -606,6 +623,7 @@ class EmulationController:
         manager.register("library.scan", self._library_scan_job_handler)
         manager.register("multidisc.materialize", self._multidisc_materialize_job_handler)
         manager.register("library.bitrot", self._bitrot_job_handler)
+        manager.register("firmware.download", self._firmware_download_job_handler)
         for job_type in ("content.import", "nsz.convert", "steam.publish"):
             manager.register(job_type, self._completed_operation_job_handler)
 
@@ -2896,6 +2914,10 @@ class EmulationController:
                 Path(self._required_string(payload, "path")),
                 self._required_string(payload, "version"),
             )
+        elif action == "firmware.download":
+            plan = self._plan_firmware_download(
+                self._optional_string(payload, "version") or PS3_FIRMWARE_VERSION
+            )
         elif action == "bios.import":
             plan = self._plan_bios_import(
                 Path(self._required_string(payload, "path")),
@@ -3715,6 +3737,20 @@ class EmulationController:
                 self._start_background_job(job.id)
                 response["jobId"] = job.id
                 response["job"] = self._job_view(self._jobs.get(job.id) or job)
+            elif pending.kind == "firmware-download":
+                job = self._jobs.create(
+                    "firmware.download",
+                    params=dict(pending.metadata),
+                    priority="interactive",
+                    created_by="ui",
+                    constraints={
+                        "forbiddenDuringGameplay": True,
+                        "requiresNetwork": True,
+                    },
+                )
+                self._start_background_job(job.id)
+                response["jobId"] = job.id
+                response["job"] = self._job_view(self._jobs.get(job.id) or job)
             elif pending.kind == "media-cache-open":
                 response.update(self._open_media_cache())
             elif pending.kind == "library-root-open":
@@ -3880,6 +3916,7 @@ class EmulationController:
             "mod.catalog.prepare",
             "multidisc.materialize",
             "archive.materialize",
+            "firmware.download",
         }:
             self._start_background_job(replacement.id)
         else:
@@ -3909,6 +3946,7 @@ class EmulationController:
             runner.register("mod.catalog.prepare", self._mod_catalog_prepare_job_handler)
             runner.register("multidisc.materialize", self._multidisc_materialize_job_handler)
             runner.register("archive.materialize", self._archive_materialize_job_handler)
+            runner.register("firmware.download", self._firmware_download_job_handler)
             with self._background_lock:
                 self._background_runners[job_id] = runner
             try:
@@ -6582,6 +6620,41 @@ class EmulationController:
         )
         return plan
 
+    def _plan_firmware_download(self, version: str) -> transaction.Plan:
+        """Planeja um download assistido, sem abrir a rede antes da confirmação."""
+        source = Ps3FirmwareSource(version=version)
+        source.validate()
+        if version != PS3_FIRMWARE_VERSION:
+            raise SteamZeroError(
+                "E-CONTENT-FW-INCOMPAT",
+                detail=f"a fonte oficial disponível está fixada na versão {PS3_FIRMWARE_VERSION}",
+            )
+        plan = transaction.plan_write_files(
+            {},
+            root=paths.data_home(),
+            kind="emulation.firmware-download",
+            requirements_extra={
+                "platformId": PS3_FIRMWARE_PLATFORM,
+                "version": version,
+                "sourceUrl": source.url,
+                "sourcePolicy": source.integrity_policy,
+                "requiresNetwork": True,
+                "requiresExplicitConfirmation": True,
+            },
+        )
+        self._pending[plan.plan_id] = _PendingMutation(
+            "firmware-download",
+            {
+                "platformId": source.platform_id,
+                "version": source.version,
+                "sourceUrl": source.url,
+                "sourceHost": source.host,
+                "integrityPolicy": source.integrity_policy,
+                "filename": source.filename,
+            },
+        )
+        return plan
+
     def _plan_bios_import(
         self, selected: Path, platform_id: str, adapter_id: str
     ) -> transaction.Plan:
@@ -6923,6 +6996,122 @@ class EmulationController:
             }
         ctx.set_progress("done", current=1, total=1, unit="archives")
         return result
+
+    def _firmware_download_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
+        """Baixa, valida e instala somente o firmware PS3 oficial declarado."""
+        source = Ps3FirmwareSource(
+            platform_id=str(job.params.get("platformId") or PS3_FIRMWARE_PLATFORM),
+            version=str(job.params.get("version") or PS3_FIRMWARE_VERSION),
+            filename=str(job.params.get("filename") or "PS3UPDAT.PUP"),
+            url=str(job.params.get("sourceUrl") or PS3_FIRMWARE_SOURCE_URL),
+            host=str(job.params.get("sourceHost") or PS3_FIRMWARE_SOURCE_HOST),
+            integrity_policy=str(job.params.get("integrityPolicy") or "source-verified"),
+        )
+        source.validate()
+        operation_id = f"{job.id}-ps3-firmware"
+        staging_root = paths.staging_for(operation_id)
+        staged = staging_root / source.filename
+        try:
+            fs.ensure_dir(staging_root)
+            ctx.set_progress("source-confirmed", current=0, total=1, unit="firmware")
+            policy = NetworkPolicy(
+                allowed_hosts=frozenset({source.host}),
+                timeout_seconds=60.0,
+                max_bytes=PS3_FIRMWARE_MAX_BYTES,
+                retry=RetryPolicy(attempts=3),
+            )
+            ctx.set_progress("downloading", current=0, total=0, unit="bytes")
+            try:
+                with transfer_observer(
+                    progress=lambda current, total: ctx.set_progress(
+                        "downloading",
+                        current=current,
+                        total=total,
+                        unit="bytes",
+                        current_item=source.filename,
+                    ),
+                    cancel_check=ctx.safepoint,
+                ):
+                    HttpClient().download(
+                        source.url,
+                        staged,
+                        policy=policy,
+                        headers={"Accept": "application/octet-stream"},
+                    )
+            except NetworkFailure as exc:
+                raise SteamZeroError(exc.code, detail=exc.detail) from exc
+            ctx.safepoint()
+            ctx.set_progress("downloaded", current=1, total=1, unit="firmware")
+            artifact = validate_ps3_firmware(
+                staged,
+                source,
+                min_bytes=PS3_FIRMWARE_MIN_BYTES,
+                max_bytes=PS3_FIRMWARE_MAX_BYTES,
+            )
+            ctx.set_progress("verified", current=1, total=1, unit="firmware")
+            destination = (
+                paths.firmware_dir() / source.platform_id / source.version / source.filename
+            )
+            metadata_path = destination.parent / "source-verification.json"
+            metadata = artifact.metadata()
+            root = self._compatible_root({destination: b"", metadata_path: metadata})
+            plan = transaction.plan_copy_files(
+                [(staged, destination)],
+                root=root,
+                kind="emulation.firmware-download.install",
+                writes={metadata_path: metadata},
+                replace_existing=True,
+                requirements_extra={
+                    "sourceUrl": source.url,
+                    "sourcePolicy": source.integrity_policy,
+                    "sha256": artifact.sha256,
+                    "version": source.version,
+                },
+            )
+            ctx.set_progress("staged", current=1, total=1, unit="firmware")
+            applied = transaction.apply(plan.plan_id, plan.confirm_token)
+            job.operation_id = applied.operation_id
+            with self._store_factory() as store:
+                store.migrate()
+                # O executor de jobs pode usar um StateStore injetado (como
+                # nos testes e em hosts com store separado). Espelhar a
+                # operação aqui mantém a FK job.operation_id válida e deixa
+                # o rollback recuperável nesse mesmo store.
+                store.save_operation(
+                    applied.operation_id,
+                    journal_path=str(paths.journal_path(applied.operation_id)),
+                    state="committed",
+                    backup_path=str(paths.backup_for(applied.operation_id)),
+                )
+                store.save_platform({"id": source.platform_id, "name": "Sony PlayStation 3"})
+                store.save_firmware_key_item(
+                    {
+                        "id": ids.new_ulid(),
+                        "kind": "firmware",
+                        "platform_id": source.platform_id,
+                        "hash_truncated": artifact.sha256[:12],
+                        "state": "present",
+                        "keyset": None,
+                        "revision": None,
+                        "version": source.version,
+                        "relpath": f"{source.platform_id}/{source.version}/{source.filename}",
+                        "last_validated": datetime.now(UTC).isoformat(),
+                    }
+                )
+            ctx.set_progress("installed", current=1, total=1, unit="firmware")
+            return {
+                "status": "ready",
+                "platformId": source.platform_id,
+                "version": source.version,
+                "filename": source.filename,
+                "source": "Sony Interactive Entertainment",
+                "sourcePolicy": source.integrity_policy,
+                "sha256": artifact.sha256,
+                "sizeBytes": artifact.size,
+                "operationId": applied.operation_id,
+            }
+        finally:
+            fs.remove_tree(staging_root)
 
     def _bitrot_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
         return self._bitrot.verify_sample(
@@ -9472,6 +9661,7 @@ class EmulationController:
             "planId": plan.plan_id,
             "confirmToken": plan.confirm_token,
             "action": action,
+            "kind": plan.kind,
             "preview": plan.preview,
             "rollbackGuarantee": plan.rollback_guarantee,
             "requirements": plan.requirements,
