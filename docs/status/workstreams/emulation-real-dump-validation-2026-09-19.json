@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-EMULATION-REAL-DUMP-VALIDATION",
+  "item": "SZ-EMULATION-REAL-DUMP-VALIDATION",
+  "branch": "codex/emulation-system-validation-2026-09-19",
+  "baseRef": "HEAD",
+  "owner": "codex-emulation-system-validation",
+  "state": "active",
+  "exclusivePaths": [
+    "docs/status/items/emulation-real-dump-validation-2026-09-19.json",
+    "docs/status/workstreams/emulation-real-dump-validation-2026-09-19.json",
+    "docs/09-operations/evidence/2026-09-19-real-dump-inventory"
+  ],
+  "sharedPaths": [
+    "docs/status/COVERAGE.md",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md",
+    "src/steamzero/adapters/emulation.py",
+    "src/steamzero/domain/library.py",
+    "src/steamzero/adapters/discovery/format_parsers.py"
+  ],
+  "nextAction": "X68000=14 e Amiga=5 confirmados; launch de archive reproduz E-TX-STALE-PLAN antes do spawn. Manter handoff SOFT-COORDINATION no emulation.py compartilhado, manter Saturn em missing-runtime por mednafen_saturn ausente, registrar PS4/PS5 sem extração e avançar para o próximo sistema com core instalado e formato diretamente suportado.",
+  "updatedAt": "2026-09-20"
+}

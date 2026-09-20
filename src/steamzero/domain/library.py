@@ -50,7 +50,7 @@ def detect_format(name: str, formats: Mapping[str, Sequence[str]] | None = None)
     return "unknown"
 
 
-_ARCHIVE_SUFFIXES = frozenset({".zip", ".7z", ".tar.gz"})
+_ARCHIVE_SUFFIXES = frozenset({".zip", ".7z", ".rar", ".tar.gz", ".tar.bz2", ".tar.xz"})
 
 
 def _archive_suffix(name: str) -> str | None:
@@ -682,8 +682,12 @@ class PlatformDirectoryInventory:
                         if isinstance(multi_disc_policy, Mapping)
                         else None
                     )
+                    archive_name = path.name.casefold()
+                    archive_candidate = any(
+                        archive_name.endswith(suffix) for suffix in _ARCHIVE_SUFFIXES
+                    )
                     if (
-                        path.suffix.casefold() in {".zip", ".7z"}
+                        archive_candidate
                         and isinstance(multi_disc_config, Mapping)
                         and multi_disc_config.get("enabled") is True
                     ):
@@ -691,6 +695,21 @@ class PlatformDirectoryInventory:
                             platform_id,
                             "base",
                             "archive-indexed",
+                        )
+                    elif (
+                        archive_candidate
+                        and self._scanner.container_policy_for(platform_id) == _CONTAINER_EXTRACT
+                    ):
+                        # Containers extract-only permanecem visíveis como
+                        # conteúdo recuperável. Antes eles eram descartados
+                        # pelo scanner e o usuário não tinha título, motivo ou
+                        # caminho para iniciar a preparação — especialmente
+                        # RAR de PS4/PS5. O preflight continua recusando spawn
+                        # até a materialização validada.
+                        platform, kind, evidence = (
+                            platform_id,
+                            "base",
+                            "archive-needs-extraction",
                         )
                     relative_parts = path.relative_to(root).parts[:-1]
                     auxiliary_kind = next(
@@ -707,7 +726,7 @@ class PlatformDirectoryInventory:
                     fmt = detect_format(
                         filename, self._scanner.formats_for(platform or platform_id) or None
                     )
-                    if fmt == "unknown" and evidence == "archive-native":
+                    if fmt == "unknown" and evidence.startswith("archive-"):
                         fmt = path.suffix.lower().lstrip(".")
                     candidates.append(
                         RomCandidate(

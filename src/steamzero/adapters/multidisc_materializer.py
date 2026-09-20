@@ -10,6 +10,7 @@ pela transação do SteamZero e deixa a playlist anterior intacta em falha.
 
 from __future__ import annotations
 
+import json
 import re
 import shutil
 import subprocess
@@ -94,6 +95,43 @@ class MaterializationRequest:
 
 
 @dataclass(frozen=True)
+class ArchiveMaterializationRequest:
+    """Pedido para materializar um archive que contém um único jogo lógico."""
+
+    platform_id: str
+    system_id: str
+    title: str
+    source_path: Path
+    library_root: Path
+    manifest: Mapping[str, object]
+
+    def to_mapping(self) -> dict[str, Any]:
+        return {
+            "platformId": self.platform_id,
+            "systemId": self.system_id,
+            "title": self.title,
+            "sourcePath": str(self.source_path),
+            "libraryRoot": str(self.library_root),
+            "manifest": dict(self.manifest),
+        }
+
+    @classmethod
+    def from_mapping(cls, value: Mapping[str, Any]) -> ArchiveMaterializationRequest:
+        manifest = value.get("manifest")
+        source = value.get("sourcePath")
+        if not isinstance(manifest, Mapping) or not isinstance(source, str) or not source:
+            raise SteamZeroError("E-API-SCHEMA", detail="sourcePath ou manifest inválido")
+        return cls(
+            platform_id=str(value.get("platformId") or ""),
+            system_id=str(value.get("systemId") or ""),
+            title=str(value.get("title") or ""),
+            source_path=Path(source),
+            library_root=Path(str(value.get("libraryRoot") or "")),
+            manifest=dict(manifest),
+        )
+
+
+@dataclass(frozen=True)
 class MaterializationInspection:
     state: MaterializationState
     reason: str
@@ -110,6 +148,15 @@ class PreparedMaterialization:
     plan: transaction.Plan | None
     descriptor_path: Path
     source_hashes: Mapping[Path, str]
+
+
+@dataclass(frozen=True)
+class ArchiveMaterializationInspection:
+    state: Literal["needs-extraction", "current", "conflict", "unsafe", "unsupported-content"]
+    reason: str
+    destination: Path
+    manifest_path: Path
+    extractor: str
 
 
 def _normalise(value: str) -> str:
@@ -219,6 +266,59 @@ def _external_member_bytes(archive: Path, member: str, *, executable: str) -> by
     return b"".join(chunks)
 
 
+def _external_archive_members(archive: Path, *, executable: str) -> tuple[tuple[str, int], ...]:
+    """Lista qualquer membro regular de 7z/RAR com limites de segurança."""
+
+    completed = subprocess.run(  # noqa: S603 - argv sem shell e executável allowlisted
+        [executable, "l", "-slt", "-y", str(archive)],
+        capture_output=True,
+        check=False,
+        text=True,
+        timeout=_SEVEN_ZIP_TIMEOUT,
+    )
+    if completed.returncode != 0:
+        raise SteamZeroError("E-CONTENT-UNSAFE-ARCHIVE", detail=completed.stderr[-400:])
+    entries: list[tuple[str, int]] = []
+    seen: set[str] = set()
+    total = 0
+    current: dict[str, str] = {}
+    for line in [*completed.stdout.splitlines(), ""]:
+        if line.strip():
+            key, separator, value = line.partition("=")
+            if separator:
+                current[key] = value
+            continue
+        name = current.get("Path", "")
+        attributes = current.get("Attributes", "")
+        if name and not any(flag in attributes for flag in ("D", "L", "H")):
+            relative = fs.validate_relative_entry(name)
+            rendered = relative.as_posix()
+            if rendered in seen:
+                raise SteamZeroError(
+                    "E-CONTENT-UNSAFE-ARCHIVE", detail=f"membro duplicado: {rendered}"
+                )
+            size = int(current.get("Size", "0"))
+            if size < 0 or size > safezip.DEFAULT_LIMITS.max_entry_bytes:
+                raise SteamZeroError(
+                    "E-CONTENT-UNSAFE-ARCHIVE", detail=f"membro excede o teto: {rendered}"
+                )
+            total += size
+            if total > safezip.DEFAULT_LIMITS.max_total_bytes:
+                raise SteamZeroError(
+                    "E-CONTENT-UNSAFE-ARCHIVE", detail="total do archive excede o teto"
+                )
+            seen.add(rendered)
+            entries.append((rendered, size))
+        current = {}
+    if not entries:
+        raise SteamZeroError("E-CONTENT-INCOMPLETE", detail="archive não contém arquivos regulares")
+    if len(entries) > safezip.DEFAULT_LIMITS.max_entries:
+        raise SteamZeroError(
+            "E-CONTENT-UNSAFE-ARCHIVE", detail="contagem de entradas excede o teto"
+        )
+    return tuple(entries)
+
+
 def _external_resolutions(
     request: MaterializationRequest, policy: MultiDiscPolicy, executable: str
 ) -> tuple[MultiDiscResolution, ...]:
@@ -284,6 +384,207 @@ def _external_resolutions(
             )
         )
     return tuple(results)
+
+
+class ArchiveMaterializer:
+    """Publica um archive de jogo único em uma árvore derivada gerenciada."""
+
+    def destination(self, request: ArchiveMaterializationRequest) -> Path:
+        return (
+            request.library_root
+            / ".steamzero"
+            / "derived"
+            / _slug(request.platform_id)
+            / _slug(request.title)
+        )
+
+    def inspect(self, request: ArchiveMaterializationRequest) -> ArchiveMaterializationInspection:
+        _validate_source_paths(
+            MaterializationRequest(
+                request.platform_id,
+                request.system_id,
+                request.title,
+                (request.source_path,),
+                request.library_root,
+                request.manifest,
+            )
+        )
+        destination = self.destination(request)
+        manifest_path = destination / ".steamzero-archive.json"
+        media = request.manifest.get("media")
+        container_policy = media.get("containerPolicy") if isinstance(media, Mapping) else None
+        if container_policy != "extract":
+            return ArchiveMaterializationInspection(
+                "unsupported-content",
+                "a plataforma não declarou containerPolicy=extract para este archive",
+                destination,
+                manifest_path,
+                "none",
+            )
+        name = request.source_path.name.casefold()
+        if not any(name.endswith(suffix) for suffix in _ARCHIVE_SUFFIXES):
+            return ArchiveMaterializationInspection(
+                "unsupported-content",
+                "formato de archive não suportado para materialização",
+                destination,
+                manifest_path,
+                "none",
+            )
+        extractor = _archive_backend(request.source_path)
+        if extractor == "unavailable":
+            return ArchiveMaterializationInspection(
+                "unsupported-content",
+                "archive RAR/7z requer o backend 7z/7zz, que não está disponível",
+                destination,
+                manifest_path,
+                extractor,
+            )
+        try:
+            if extractor == "zip":
+                inspection = inspect_archive(request.source_path, limits=safezip.DEFAULT_LIMITS)
+                if inspection.state != "ready":
+                    return ArchiveMaterializationInspection(
+                        "unsafe" if inspection.state == "unsafe" else "conflict",
+                        inspection.reason or "archive ZIP inválido",
+                        destination,
+                        manifest_path,
+                        extractor,
+                    )
+            else:
+                executable = shutil.which("7z") or shutil.which("7zz")
+                if executable is None:
+                    raise SteamZeroError("E-CONTENT-UNSUPPORTED", detail="backend 7z ausente")
+                _external_archive_members(request.source_path, executable=executable)
+        except (OSError, ValueError, zipfile.BadZipFile, SteamZeroError) as exc:
+            return ArchiveMaterializationInspection(
+                "unsafe" if isinstance(exc, SteamZeroError) else "conflict",
+                str(exc),
+                destination,
+                manifest_path,
+                extractor,
+            )
+        if destination.exists():
+            if destination.is_symlink() or not destination.is_dir():
+                return ArchiveMaterializationInspection(
+                    "conflict",
+                    "destino derivado não é um diretório regular",
+                    destination,
+                    manifest_path,
+                    extractor,
+                )
+            if manifest_path.is_symlink() or not manifest_path.is_file():
+                return ArchiveMaterializationInspection(
+                    "conflict",
+                    "destino derivado já existe sem ownership SteamZero",
+                    destination,
+                    manifest_path,
+                    extractor,
+                )
+            try:
+                marker = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError) as exc:
+                return ArchiveMaterializationInspection(
+                    "conflict",
+                    f"manifesto derivado inválido: {exc}",
+                    destination,
+                    manifest_path,
+                    extractor,
+                )
+            if marker.get("ownership") != "SteamZero-Archive-Managed: true":
+                return ArchiveMaterializationInspection(
+                    "conflict",
+                    "destino derivado não possui ownership SteamZero",
+                    destination,
+                    manifest_path,
+                    extractor,
+                )
+            state: Literal["needs-extraction", "current"] = "needs-extraction"
+        else:
+            state = "needs-extraction"
+        return ArchiveMaterializationInspection(
+            state,
+            "archive precisa de materialização gerenciada",
+            destination,
+            manifest_path,
+            extractor,
+        )
+
+    def run(
+        self,
+        request: ArchiveMaterializationRequest,
+        *,
+        safepoint: Callable[[], None] | None = None,
+        progress: Callable[[int, int, str], None] | None = None,
+    ) -> dict[str, Any]:
+        inspection = self.inspect(request)
+        if inspection.state == "current":
+            return {"status": "current", "destination": str(inspection.destination)}
+        if inspection.state != "needs-extraction":
+            raise SteamZeroError("E-CONTENT-INCOMPLETE", detail=inspection.reason)
+        operation_id = ids.new_ulid()
+        staging_root = paths.staging_for(operation_id)
+        source_hash = fs.hash_file(request.source_path)
+        try:
+            if safepoint is not None:
+                safepoint()
+            if inspection.extractor == "zip":
+                staged_files = safezip.extract_safe(
+                    request.source_path, operation_id, limits=safezip.DEFAULT_LIMITS
+                )
+            else:
+                executable = shutil.which("7z") or shutil.which("7zz")
+                if executable is None:
+                    raise SteamZeroError("E-CONTENT-UNSUPPORTED", detail="backend 7z ausente")
+                staged_files = []
+                entries = _external_archive_members(request.source_path, executable=executable)
+                for index, (member, _size) in enumerate(entries, start=1):
+                    if safepoint is not None:
+                        safepoint()
+                    data = _external_member_bytes(
+                        request.source_path, member, executable=executable
+                    )
+                    staged_files.append(fs.stage_bytes(operation_id, member, data))
+                    if progress is not None:
+                        progress(index, len(entries), member)
+            if fs.hash_file(request.source_path) != source_hash:
+                raise SteamZeroError("E-TX-STALE-PLAN", detail="archive mudou durante a extração")
+            copies: list[tuple[Path, Path]] = []
+            for staged in staged_files:
+                relative = staged.relative_to(staging_root)
+                copies.append((staged, inspection.destination / relative))
+            manifest = {
+                "schemaVersion": 1,
+                "ownership": "SteamZero-Archive-Managed: true",
+                "platformId": request.platform_id,
+                "systemId": request.system_id,
+                "title": request.title,
+                "sourceHash": source_hash,
+                "entries": [str(staged.relative_to(staging_root)) for staged in staged_files],
+            }
+            content = json.dumps(manifest, sort_keys=True, ensure_ascii=False).encode("utf-8")
+            managed = inspection.manifest_path.is_file()
+            plan = transaction.plan_copy_files(
+                copies,
+                root=request.library_root,
+                kind="archive.materialize.commit",
+                writes={inspection.manifest_path: content},
+                replace_existing=managed,
+                requirements_extra={
+                    "sourceHash": source_hash,
+                    "destination": str(inspection.destination),
+                },
+            )
+            if progress is not None:
+                progress(len(copies), len(copies), str(inspection.destination))
+            result = transaction.apply(plan.plan_id, plan.confirm_token)
+            return {
+                "status": "materialized",
+                "operationId": result.operation_id,
+                "destination": str(inspection.destination),
+                "entries": len(copies),
+            }
+        finally:
+            fs.remove_tree(staging_root)
 
 
 class MultiDiscMaterializer:
@@ -588,6 +889,9 @@ class MultiDiscMaterializer:
 
 
 __all__ = [
+    "ArchiveMaterializationInspection",
+    "ArchiveMaterializationRequest",
+    "ArchiveMaterializer",
     "MaterializationInspection",
     "MaterializationRequest",
     "MultiDiscMaterializer",

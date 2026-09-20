@@ -61,6 +61,8 @@ from steamzero.adapters.mods.ns_emu_mod_downloader import NsEmuModDownloaderSour
 from steamzero.adapters.mods.semd_source import SemdSource
 from steamzero.adapters.mods.state_store_mods import StateStoreModsAdapter
 from steamzero.adapters.multidisc_materializer import (
+    ArchiveMaterializationRequest,
+    ArchiveMaterializer,
     MaterializationRequest,
     MultiDiscMaterializer,
 )
@@ -2714,6 +2716,44 @@ class EmulationController:
                 "Divergências serão marcadas como suspect; nenhum conteúdo será "
                 "reparado, removido ou substituído."
             )
+        elif action == "archive.materialize":
+            platform_id = self._required_string(payload, "platformId")
+            system_id = self._required_string(payload, "systemId")
+            materialization_title = self._required_string(payload, "title")
+            library_root = Path(self._required_string(payload, "libraryRoot"))
+            source_path = Path(self._required_string(payload, "sourcePath"))
+            registered_roots = {Path(path).resolve(strict=False) for path in self.library_roots()}
+            if library_root.resolve(strict=False) not in registered_roots:
+                raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="raiz não registrada")
+            manifest = PlatformRegistry.bundled().get(platform_id)
+            request = ArchiveMaterializationRequest(
+                platform_id=platform_id,
+                system_id=system_id,
+                title=materialization_title,
+                source_path=source_path,
+                library_root=library_root,
+                manifest={"media": dict(manifest.media)},
+            )
+            inspection = ArchiveMaterializer().inspect(request)
+            if inspection.state != "needs-extraction":
+                raise SteamZeroError("E-CONTENT-INCOMPLETE", detail=inspection.reason)
+            plan = transaction.plan_write_files(
+                {},
+                root=paths.data_home(),
+                kind="emulation.archive.materialize",
+                requirements_extra={
+                    "materializationState": inspection.state,
+                    "destination": str(inspection.destination),
+                },
+            )
+            self._pending[plan.plan_id] = _PendingMutation(
+                "archive-materialize", request.to_mapping()
+            )
+            plan_extra["preview"] = (
+                "A operação validará o archive, extrairá em staging isolado, verificará "
+                "os membros e publicará a árvore derivada atomicamente. "
+                f"Destino gerenciado: {inspection.destination}"
+            )
         elif action == "multidisc.materialize":
             platform_id = self._required_string(payload, "platformId")
             system_id = self._required_string(payload, "systemId")
@@ -3664,6 +3704,17 @@ class EmulationController:
                 self._start_background_job(job.id)
                 response["jobId"] = job.id
                 response["job"] = self._job_view(self._jobs.get(job.id) or job)
+            elif pending.kind == "archive-materialize":
+                job = self._jobs.create(
+                    "archive.materialize",
+                    params=dict(pending.metadata),
+                    priority="background",
+                    created_by="ui",
+                    constraints={"forbiddenDuringGameplay": True},
+                )
+                self._start_background_job(job.id)
+                response["jobId"] = job.id
+                response["job"] = self._job_view(self._jobs.get(job.id) or job)
             elif pending.kind == "media-cache-open":
                 response.update(self._open_media_cache())
             elif pending.kind == "library-root-open":
@@ -3828,6 +3879,7 @@ class EmulationController:
             "extras.catalog.search",
             "mod.catalog.prepare",
             "multidisc.materialize",
+            "archive.materialize",
         }:
             self._start_background_job(replacement.id)
         else:
@@ -3856,6 +3908,7 @@ class EmulationController:
             runner.register("extras.catalog.search", self._extra_catalog_search_job_handler)
             runner.register("mod.catalog.prepare", self._mod_catalog_prepare_job_handler)
             runner.register("multidisc.materialize", self._multidisc_materialize_job_handler)
+            runner.register("archive.materialize", self._archive_materialize_job_handler)
             with self._background_lock:
                 self._background_runners[job_id] = runner
             try:
@@ -6811,7 +6864,64 @@ class EmulationController:
                 current_item=item,
             ),
         )
+        # A materialização muda o filesystem e, portanto, invalida a visão
+        # canônica. Sem esta segunda etapa o usuário recebia "concluído", mas
+        # o M3U recém-publicado só aparecia depois de uma varredura manual — e
+        # a próxima tentativa de lançamento continuava olhando o archive
+        # antigo. Reusar o scanner oficial mantém catálogo, readiness e launch
+        # na mesma fonte de verdade. Se a atualização falhar depois da
+        # publicação atômica, preservamos o sucesso físico e devolvemos um
+        # diagnóstico acionável em vez de esconder a divergência.
+        try:
+            refreshed = self._scan_library_now(ctx)
+        except (OSError, SteamZeroError, ValueError) as exc:
+            result["catalogRefresh"] = {
+                "status": "degraded",
+                "code": "E-CATALOG-REFRESH",
+                "reason": str(exc),
+            }
+        else:
+            result["catalogRefresh"] = {
+                "status": "scanned",
+                "games": refreshed.get("games", 0),
+                "filesFound": refreshed.get("filesFound", 0),
+                "errors": refreshed.get("errors", []),
+            }
         ctx.set_progress("done", current=1, total=1, unit="sets")
+        return result
+
+    def _archive_materialize_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
+        request = ArchiveMaterializationRequest.from_mapping(job.params)
+        ctx.set_progress("inspect", current=0, total=1, unit="archives")
+        result = ArchiveMaterializer().run(
+            request,
+            safepoint=ctx.safepoint,
+            progress=lambda current, total, item: ctx.set_progress(
+                "materialize",
+                current=current,
+                total=total,
+                unit="files",
+                current_item=item,
+            ),
+        )
+        # O materializador publicou uma árvore nova; a mesma regra do fluxo
+        # multidisco impede que o catálogo fique uma operação atrás.
+        try:
+            refreshed = self._scan_library_now(ctx)
+        except (OSError, SteamZeroError, ValueError) as exc:
+            result["catalogRefresh"] = {
+                "status": "degraded",
+                "code": "E-CATALOG-REFRESH",
+                "reason": str(exc),
+            }
+        else:
+            result["catalogRefresh"] = {
+                "status": "scanned",
+                "games": refreshed.get("games", 0),
+                "filesFound": refreshed.get("filesFound", 0),
+                "errors": refreshed.get("errors", []),
+            }
+        ctx.set_progress("done", current=1, total=1, unit="archives")
         return result
 
     def _bitrot_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:

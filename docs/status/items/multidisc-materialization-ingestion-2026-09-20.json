@@ -15,7 +15,7 @@
     "tests/unit/test_multidisc_materializer.py",
     "docs/09-operations/evidence/2026-09-20-multidisc-materialization-ingestion"
   ],
-  "scopeDigest": "c215ef28098c1190225a45accefbf59a948966e090275abecd1a74067e2a924b",
+  "scopeDigest": "49473fed80c27d44c0d29e1b5a8ffe0f89134a74f5a7b10b5d8a6712be8117c1",
   "dependsOn": [
     "SZ-MULTIDISC-DESCRIPTOR-RECONCILIATION",
     "SZ-LIBRARY-CANONICAL"
@@ -51,12 +51,18 @@
       "reference": "docs/09-operations/evidence/2026-09-20-multidisc-materialization-ingestion/README.md",
       "command": "Inspeção read-only do host, release ativa e limites físicos",
       "result": "partial"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_multidisc_materializer.py",
+      "command": "pytest focado de materialização multidisco, archives ZIP/RAR/7z, Zip Slip, ação archive.materialize e refresh do catálogo (10 passed); conjunto integrado de emulação (90 passed)",
+      "result": "passed"
     }
   ],
   "activeWorkstreams": [
     "WS-2026-09-MULTIDISC-MATERIALIZATION-INGESTION"
   ],
-  "nextAction": "Promover uma release governada e executar a prova física de materialização, lançamento M3U e retorno; manter X68000 em contrato pendente.",
+  "nextAction": "Promover uma release governada e executar a prova física de materialização, lançamento M3U e retorno; exercitar também archive.materialize para PS4/PS5; manter X68000 em contrato pendente.",
   "updatedAt": "2026-09-20",
-  "notes": "A playlist Amiga observada no host é preservada como evidência externa desta frente; não será sobrescrita nem usada para alegar gameplay da release ativa."
+  "notes": "A playlist Amiga observada no host é preservada como evidência externa desta frente; não será sobrescrita nem usada para alegar gameplay da release ativa. A integração atual expõe archives extract-only como archive-needs-extraction, oferece o job assíncrono archive.materialize com staging/rollback e faz refresh do catálogo após publicação atômica. A suíte integral da integração excedeu o timeout operacional de cinco minutos; os testes focados passaram."
 }

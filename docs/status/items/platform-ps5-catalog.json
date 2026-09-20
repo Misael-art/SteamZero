@@ -30,7 +30,7 @@
     "docs/09-operations/evidence/2026-09-20-ps5-dump-identity",
     "docs/09-operations/evidence/2026-09-20-ps5-sharpemu-physical"
   ],
-  "scopeDigest": "9fc6ba90935edf2ee8ac6743101e8875381605d1f1604c930c23b51cc46ca58e",
+  "scopeDigest": "46b08e1f093d5935fdb99a02174fc19cf20e619231cc294d888f92a084e550df",
   "dependsOn": [
     "SZ-AGG-PLATFORM-MANIFESTS",
     "SZ-COMPONENT-LIFECYCLE",
