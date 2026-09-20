@@ -98,3 +98,23 @@ def test_ps5_directory_inventory_exposes_only_eboot_as_game(tmp_path: Path) -> N
     assert rows[0].platform_id == "playstation-5"
     assert rows[0].game_count == 1
     assert [item.path.name for item in rows[0].selected_games] == ["eboot.bin"]
+
+
+def test_ps5_extract_only_archive_stays_visible_and_not_launchable(
+    tmp_path: Path,
+) -> None:
+    game = tmp_path / "roms" / "ps5"
+    game.mkdir(parents=True)
+    archive = game / "Dreaming Sarah.rar"
+    archive.write_bytes(b"RAR fixture; extraction is a separate operation")
+
+    rows = PlatformDirectoryInventory.from_registry(PlatformRegistry.bundled()).inventory(
+        tmp_path / "roms"
+    )
+
+    assert len(rows) == 1
+    assert rows[0].game_count == 1
+    assert rows[0].selected_games[0].path == archive
+    assert rows[0].selected_games[0].platform == "playstation-5"
+    assert rows[0].selected_games[0].format == "rar"
+    assert rows[0].selected_games[0].evidence == "archive-needs-extraction"

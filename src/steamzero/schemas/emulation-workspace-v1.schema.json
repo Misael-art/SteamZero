@@ -721,6 +721,16 @@
             "string",
             "null"
           ]
+        },
+        "action": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/action"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },

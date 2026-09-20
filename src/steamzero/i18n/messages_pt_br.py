@@ -16,6 +16,12 @@ MESSAGES: dict[str, str] = {
     "app.name": "SteamZero",
     "cli.confirm_required": "Esta ação altera o sistema. Reexecute com --confirm <token>.",
     # ================= CATÁLOGO DE ERROS (ERROR-CATALOG.md) =================
+    # ---- CATALOG — atualização da visão -----------------------------------
+    "error.E-CATALOG-REFRESH.title": "Catálogo desatualizado",
+    "error.E-CATALOG-REFRESH.what": "A operação terminou, mas a atualização da visão do catálogo falhou.",
+    "error.E-CATALOG-REFRESH.impact": "O conteúdo publicado pode não aparecer até uma nova varredura.",
+    "error.E-CATALOG-REFRESH.cause": "A leitura da biblioteca falhou depois da publicação do conteúdo.",
+    "error.E-CATALOG-REFRESH.action": "Abra a biblioteca e execute uma nova varredura.",
     # ---- TX — transações --------------------------------------------------
     "error.E-TX-CONFIRM-REQUIRED.title": "Confirmação necessária",
     "error.E-TX-CONFIRM-REQUIRED.what": "O plano exige um token de confirmação para ser aplicado.",

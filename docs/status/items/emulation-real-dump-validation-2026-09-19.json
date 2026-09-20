@@ -1,0 +1,250 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-EMULATION-REAL-DUMP-VALIDATION",
+  "title": "Validação sistema a sistema de dumps reais no host",
+  "domain": "emulation",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "hw",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "docs/09-operations/evidence/2026-09-19-real-dump-inventory"
+  ],
+  "scopeDigest": "d633427eab8ae6737e6cc0b6fb98e8919a22fec8bf08d037b29434f03551692b",
+  "dependsOn": [
+    "SZ-COMPONENT-LIFECYCLE",
+    "SZ-LIBRARY-CANONICAL",
+    "SZ-AURA-LAUNCHER"
+  ],
+  "knownGaps": [
+    "GAP-REAL-DUMP-VALIDATION-PHYSICAL",
+    "GAP-COMPONENT-AUTHORIZATION"
+  ],
+  "acceptanceCriteria": [
+    "O inventário associa diretórios não vazios a manifestos e formatos sem alterar ROMs.",
+    "Cada sistema é classificado por conteúdo observado, runtime e evidência disponível.",
+    "Archives e estruturas incompletas permanecem read-only e não são promovidos a gameplay.",
+    "Um sistema elegível é verificado pelo fluxo governado e a prova física só é registrada com PNG e logs reais.",
+    "A documentação separa software concluído, instalação, gameplay, retorno e bloqueios por subitem."
+  ],
+  "evidence": [
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/README.md",
+      "command": "library.scan na release ativa 2.0.0rc1-c3b14a040b7c: 1156 jogos, 15706 arquivos, 20 updates, 144 DLCs, 0 erros; archives não associados ficaram sem extração.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/03-gameplay-famicom.png",
+      "command": "emulation launch pela rota SteamZero para game-id 10388314f46fea7a3ab66e3d; RetroArch/Mesen abriu o dump .nes real.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/04-recovery-famicom.png",
+      "command": "listPeripherals, pause, resume e encerramento por Alt+F4; lifecycle terminou sem sessão ativa.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "src/steamzero/adapters/manifests/libretro-opera.adapter.json",
+      "command": "component status/verify --id libretro-opera; core 1.22.2 instalado e verified=true, mas BIOS panafz1.bin ausente.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/05-gameplay-mastersystem.png",
+      "command": "emulation launch pela rota SteamZero para game-id ae18c7e53583298461a0edea; RetroArch/Genesis Plus GX abriu o dump .sms real.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/06-recovery-mastersystem.png",
+      "command": "listPeripherals, pause, resume e encerramento por Alt+F4; lifecycle terminou sem sessão ativa.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/07-gameplay-dreamcast.png",
+      "command": "emulation launch de Ikaruga CHD no Flycast; boot real observado, mas a entrada não alcançou a janela para iniciar gameplay.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/10-recovery-dreamcast.png",
+      "command": "pause/resume aceitos, listPeripherals recusado de forma controlada e encerramento seguro; lifecycle vazio.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/11-gameplay-3ds.png",
+      "command": "emulation launch de Dragon Ball Z Extreme Butoden no Azahar; boot/tela do jogo observados, sem prova interativa.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/12-recovery-3ds.png",
+      "command": "pause/resume aceitos, listPeripherals recusado de forma controlada e SIGTERM somente ao grupo do PID; lifecycle vazio.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/13-gameplay-ps2.png",
+      "command": "emulation launch de Black no PCSX2 ativo; `--fullscreen` foi recusado pela versão instalada antes do spawn efetivo do jogo.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/14-recovery-ps2.png",
+      "command": "grupo PS2 identificado foi encerrado e o lifecycle terminou vazio; a fonte corrigida usa `-fullscreen`.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/15-gameplay-ps3.png",
+      "command": "emulation launch de Ratchet & Clank no RPCS3 ativo; o ISO abriu a tela de exigência de firmware do PS3 e não alcançou gameplay.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/16-recovery-ps3.png",
+      "command": "grupo RPCS3 encerrado por SIGTERM no PGID identificado; a consulta de lifecycle terminou sem sessão ativa.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/17-gameplay-gamecube.png",
+      "command": "emulation launch de Twilight Princess no Dolphin ativo; a tela real de saúde e segurança do GameCube foi renderizada.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/18-gameplay-gamecube.png",
+      "command": "a sequência de abertura do ISO foi renderizada no Dolphin; sem comprovação de entrada interativa, o item permanece installed-not-played.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/19-recovery-gamecube.png",
+      "command": "grupo Dolphin encerrado por SIGTERM no PGID do launch; a consulta de lifecycle terminou sem sessão ativa.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/20-gameplay-xbox.png",
+      "command": "emulation launch de Outrun 2006 no xemu ativo; o emulador abriu a tela controlada de configuração de máquina e não alcançou boot.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/21-recovery-xbox.png",
+      "command": "grupo xemu encerrado por SIGTERM no PGID do launch; a consulta de lifecycle terminou sem sessão ativa.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/22-gameplay-wii.png",
+      "command": "emulation launch do RVZ de Tatsunoko vs. Capcom no Dolphin; o aviso real de segurança do Wii Remote foi renderizado.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/23-gameplay-wii.png",
+      "command": "ao avançar o aviso, o título devolveu erro controlado de arranjo de controles; sem promoção a gameplay.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/24-recovery-wii.png",
+      "command": "grupo Dolphin encerrado por SIGTERM no PGID do launch; a consulta de lifecycle terminou sem sessão ativa.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/25-gameplay-wiiu.png",
+      "command": "emulation launch do WUA Nano Assault Neo no Cemu ativo; o título real foi renderizado.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/26-gameplay-wiiu.png",
+      "command": "a tela de seleção foi observada após avanço; sem comprovação de partida interativa, o item permanece installed-not-played.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/27-recovery-wiiu.png",
+      "command": "grupo Cemu encerrado por SIGTERM no PGID do launch; a consulta de lifecycle terminou sem sessão ativa.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/28-gameplay-switch.png",
+      "command": "emulation launch do NSP Nintendo World Championships no Eden primário; o título/menu real foi renderizado.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/30-recovery-switch.png",
+      "command": "controle respondeu recusa controlada e o grupo Eden foi encerrado por SIGTERM; lifecycle terminou sem sessão ativa.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/31-gameplay-snes.png",
+      "command": "emulation launch do ZIP Chrono Trigger no RetroArch/Snes9x; tela interna de jogo foi renderizada.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/32-recovery-snes.png",
+      "command": "contrato de controle devolveu recusa controlada e o grupo RetroArch foi encerrado por SIGTERM; lifecycle terminou sem sessão ativa.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/33-gameplay-gameboy.png",
+      "command": "emulation launch do GB Metroid II no RetroArch/mGBA; a tela real de título foi renderizada.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/35-recovery-gameboy.png",
+      "command": "controle devolveu recusa controlada e o grupo RetroArch foi encerrado por SIGTERM; lifecycle terminou sem sessão ativa.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/README.md",
+      "command": "scan canônico da release 2.0.0rc1-3acc2104dd5a confirmou x68000=14 e amiga=5; emulation launch do X68000 70ad5c99b995b71161460340 falhou antes do spawn com E-TX-STALE-PLAN porque o filtro de archives descartou o registro.",
+      "result": "partial"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/README.md",
+      "command": "Saturn foi confirmado com 18 CHDs e o manifesto 39-sega-saturn exige mednafen_saturn; component list da release ativa 2.0.0rc1-3acc2104dd5a não contém esse core, portanto não houve tentativa de instalação ou launch fora do fluxo governado.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/36-gameplay-gamegear.png",
+      "command": "emulation launch do ZIP Berlin no Kabe no RetroArch/Genesis Plus GX 1.22.2; a tela real do jogo foi renderizada, sem prova de avanço interativo.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/37-recovery-gamegear.png",
+      "command": "PGID 2161300 encerrado com SIGTERM e captura posterior; não restou processo gráfico do emulador em execução.",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Manter X68000/Amiga em SOFT-COORDINATION por filtro de archives compartilhado, manter Saturn em missing-runtime por core ausente, registrar PS4/PS5 sem extração e avançar para o próximo sistema com core instalado e formato diretamente suportado.",
+  "activeWorkstreams": [
+    "WS-2026-09-EMULATION-REAL-DUMP-VALIDATION"
+  ],
+  "updatedAt": "2026-09-20",
+  "notes": "Inventário, quatorze ciclos físicos e diagnósticos de archives/runtime concluídos. Famicom/NES, Master System e SNES têm gameplay real observado; Dreamcast, 3DS, PS3, GameCube, Wii U, Switch e Game Boy têm boot/renderização real sem gameplay interativo; Game Gear abriu tela real sem prova de avanço; Xbox parou na configuração de máquina do xemu e Wii parou em erro controlado de arranjo de controles. X68000=14 e Amiga=5 foram confirmados, mas o filtro de archives compartilhado impede launch antes do spawn; handoff SOFT-COORDINATION registrado. Saturn=18 foi confirmado, mas mednafen_saturn não está instalado na release ativa e permanece missing-runtime. PS4/PS5 têm apenas artefatos não lançáveis para os manifestos atuais e permanecem unsupported-content/needs-review sem extração. PS2 revelou o flag incompatível `--fullscreen` e o handoff de correção está separado por ownership ativo de arquivo compartilhado. Nenhuma ROM original foi movida, extraída, sobrescrita ou apagada; archives não associados permanecem em needs-review/unsupported-content."
+}

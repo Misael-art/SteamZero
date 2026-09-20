@@ -59,6 +59,71 @@ def _wait_job(controller: EmulationController, job_id: str):  # type: ignore[no-
     raise AssertionError(f"job {job_id} não chegou ao estado terminal")
 
 
+def test_ps3_firmware_download_is_planned_before_network(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+
+    plan = controller.plan_action({"actionId": "firmware.download"})
+
+    assert plan["kind"] == "emulation.firmware-download"
+    assert plan["requirements"]["platformId"] == "playstation-3"
+    assert plan["requirements"]["version"] == "4.93"
+    assert plan["requirements"]["sourcePolicy"] == "source-verified"
+    assert plan["requirements"]["requiresExplicitConfirmation"] is True
+    assert not (tmp_path / "data" / "firmware").exists()
+
+
+def test_ps3_firmware_download_requires_apply_and_publishes_verified_artifact(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    downloaded: list[str] = []
+    monkeypatch.setattr(emulation, "PS3_FIRMWARE_MIN_BYTES", 1)
+
+    def fake_download(self, url, destination, *, policy, headers):  # type: ignore[no-untyped-def]
+        downloaded.append(url)
+        destination.write_bytes(b"official-firmware-fixture")
+        return destination.stat().st_size
+
+    monkeypatch.setattr(emulation.HttpClient, "download", fake_download)
+    plan = controller.plan_action({"actionId": "firmware.download"})
+
+    assert downloaded == []
+    response = _apply(controller, plan)
+    job = _wait_job(controller, str(response["jobId"]))
+
+    assert job.state == "completed"
+    assert downloaded == [
+        "https://dbr01.ps3.update.playstation.net/update/ps3/image/br/2026_0318_a2b60b6ac1d2e49e230144345616927c/PS3UPDAT.PUP"
+    ]
+    installed = tmp_path / "data" / "steamzero" / "firmware" / "playstation-3" / "4.93"
+    assert (installed / "PS3UPDAT.PUP").read_bytes() == b"official-firmware-fixture"
+    metadata = (installed / "source-verification.json").read_text(encoding="utf-8")
+    assert '"integrityPolicy": "source-verified"' in metadata
+    assert '"state": "installed"' in metadata
+
+
+def test_ps3_firmware_download_rejects_truncated_payload_without_publish(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+
+    def fake_download(self, url, destination, *, policy, headers):  # type: ignore[no-untyped-def]
+        destination.write_bytes(b"truncated")
+        return destination.stat().st_size
+
+    monkeypatch.setattr(emulation.HttpClient, "download", fake_download)
+    response = _apply(controller, controller.plan_action({"actionId": "firmware.download"}))
+    job = _wait_job(controller, str(response["jobId"]))
+
+    assert job.state == "rolled-back"
+    assert job.error_code == "E-CONTENT-INCOMPLETE"
+    installed = tmp_path / "data" / "steamzero" / "firmware" / "playstation-3" / "4.93"
+    assert not installed.exists()
+    staging = tmp_path / "state" / "steamzero" / "staging"
+    if staging.exists():
+        assert not any(staging.rglob("PS3UPDAT.PUP"))
+
+
 def test_switch_emulators_publish_managed_ryubing_with_official_icon(
     monkeypatch, tmp_path: Path
 ) -> None:  # type: ignore[no-untyped-def]

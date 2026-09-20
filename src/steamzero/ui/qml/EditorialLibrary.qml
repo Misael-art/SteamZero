@@ -43,9 +43,17 @@ Item {
 
     signal launchSteamRequested(string gameId)
     signal openSteamConfigurationRequested(string gameId)
+    signal actionRequested(var action)
 
     function mediaRecipe(role) {
         return mediaRecipes && mediaRecipes[role] ? mediaRecipes[role] : ({})
+    }
+
+    function requirementAction(kind) {
+        if (!selectedSystem || !selectedSystem.requirements)
+            return null
+        var requirement = selectedSystem.requirements[kind]
+        return requirement && requirement.action ? requirement.action : null
     }
 
     function typeSize(role, compactFactor) {
@@ -808,6 +816,7 @@ Item {
                             ]
                             delegate: Rectangle {
                                 required property var modelData
+                                property var action: root.requirementAction(modelData.kind)
                                 color: root.surfaceColor
                                 radius: 12
                                 border.color: root.stateColor(root.requirementState(modelData.kind))
@@ -823,6 +832,13 @@ Item {
                                         wrapMode: Text.WordWrap
                                         maximumLineCount: 2
                                         Layout.fillWidth: true
+                                    }
+                                    EditorialButton {
+                                        visible: action !== null
+                                        enabled: action !== null && action.enabled !== false
+                                        text: action ? action.label : ""
+                                        Layout.fillWidth: true
+                                        onClicked: root.actionRequested(action)
                                     }
                                 }
                             }

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-PS3-OFFICIAL-FIRMWARE-DOWNLOAD",
+  "item": "SZ-PS3-OFFICIAL-FIRMWARE-DOWNLOAD",
+  "branch": "codex/ps3-assisted-firmware-download-2026-09-20",
+  "baseRef": "99c5385bd29306570df9b89d06d8313cfba60ded",
+  "owner": "codex-ps3-assisted-firmware-download",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/domain/ps3_firmware.py",
+    "tests/unit/test_ps3_firmware.py",
+    "docs/status/items/ps3-official-firmware-download.json",
+    "docs/status/workstreams/ps3-official-firmware-download-2026-09-20.json"
+  ],
+  "sharedPaths": [
+    "src/steamzero/adapters/emulation.py",
+    "src/steamzero/domain/platforms.py",
+    "src/steamzero/ui/qml/EditorialLibrary.qml",
+    "src/steamzero/ui/qml/Main.qml",
+    "tests/unit/test_emulation_controller.py",
+    "docs/status/COVERAGE.md",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Executar gates, publicar a branch e solicitar a instalação governada para validar o fluxo físico do firmware PS3 sem tocar no console.",
+  "updatedAt": "2026-09-20"
+}

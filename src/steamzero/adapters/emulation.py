@@ -28,6 +28,10 @@ from steamzero.adapters import input_devices, lifecycle
 from steamzero.adapters.cheats.cheat_installer import FsCheatInstaller
 from steamzero.adapters.cheats.nsecm_source import NsecmSource
 from steamzero.adapters.cheats.state_store_cheats import StateStoreCheatsAdapter
+from steamzero.adapters.console_runtime_readiness import (
+    XboxRuntimeReadiness,
+    check_xemu_runtime,
+)
 from steamzero.adapters.converters import (
     NszConverter,
     NszToolManager,
@@ -56,6 +60,13 @@ from steamzero.adapters.mods.mod_installer import FilesystemModInstaller
 from steamzero.adapters.mods.ns_emu_mod_downloader import NsEmuModDownloaderSource
 from steamzero.adapters.mods.semd_source import SemdSource
 from steamzero.adapters.mods.state_store_mods import StateStoreModsAdapter
+from steamzero.adapters.multidisc_materializer import (
+    ArchiveMaterializationRequest,
+    ArchiveMaterializer,
+    MaterializationInspection,
+    MaterializationRequest,
+    MultiDiscMaterializer,
+)
 from steamzero.adapters.preservation import PreservationService, PreservationTarget
 from steamzero.adapters.ps5_compatibility import (
     build_ps5_source_identity,
@@ -87,7 +98,14 @@ from steamzero.adapters.storage_summary import collect_storage_summary
 from steamzero.api import contracts
 from steamzero.core import fs, ids, journal, paths, safezip, transaction
 from steamzero.core.errors import LaunchNotStartedError, SteamZeroError, provider_error_category
-from steamzero.core.net import NetworkFailure, fetch_bytes
+from steamzero.core.net import (
+    HttpClient,
+    NetworkFailure,
+    NetworkPolicy,
+    RetryPolicy,
+    fetch_bytes,
+    transfer_observer,
+)
 from steamzero.core.secret import Secret
 from steamzero.core.session_state import SESSION_OWNER
 from steamzero.core.state import StateStore
@@ -113,6 +131,16 @@ from steamzero.domain.library import (
 from steamzero.domain.media_pipeline import MediaPipeline
 from steamzero.domain.platform_composer import EmulatorFacts
 from steamzero.domain.platforms import PlatformRegistry
+from steamzero.domain.ps3_firmware import (
+    PS3_FIRMWARE_MAX_BYTES,
+    PS3_FIRMWARE_MIN_BYTES,
+    PS3_FIRMWARE_PLATFORM,
+    PS3_FIRMWARE_SOURCE_HOST,
+    PS3_FIRMWARE_SOURCE_URL,
+    PS3_FIRMWARE_VERSION,
+    Ps3FirmwareSource,
+    validate_ps3_firmware,
+)
 from steamzero.domain.scraping_providers import PROVIDERS, allowed_external_url, provider_by_id
 from steamzero.domain.switch_cheats import (
     CheatType,
@@ -486,6 +514,7 @@ class EmulationController:
         cloud_platforms: CloudPlatformService | None = None,
         flatpak_factory: Callable[[], FlatpakCLI] = FlatpakCLI,
         ps5_runtime_probe: Callable[[], Ps5RuntimeReadiness] | None = None,
+        xemu_runtime_probe: Callable[[], XboxRuntimeReadiness] | None = None,
     ) -> None:
         self._store_factory = store_factory
         self._registry_factory = registry_factory
@@ -493,6 +522,7 @@ class EmulationController:
         self._flatpak_factory = flatpak_factory
         self._which = which
         self._ps5_runtime_probe = ps5_runtime_probe or (lambda: check_ps5_runtime(which=which))
+        self._xemu_runtime_probe = xemu_runtime_probe or check_xemu_runtime
         self._spawn = spawn
         self._read_start_ticks = read_start_ticks
         self._process_waiter = (
@@ -592,7 +622,9 @@ class EmulationController:
         manager.register("mod.catalog.prepare", self._mod_catalog_prepare_job_handler)
         manager.register("rom.scan", self._rom_scan_job_handler)
         manager.register("library.scan", self._library_scan_job_handler)
+        manager.register("multidisc.materialize", self._multidisc_materialize_job_handler)
         manager.register("library.bitrot", self._bitrot_job_handler)
+        manager.register("firmware.download", self._firmware_download_job_handler)
         for job_type in ("content.import", "nsz.convert", "steam.publish"):
             manager.register(job_type, self._completed_operation_job_handler)
 
@@ -1243,6 +1275,20 @@ class EmulationController:
             )
         return list(self._appimage_argv(payload, *args))
 
+    @staticmethod
+    def _runtime_compat_argv(emulator_id: str, argv: Sequence[str]) -> list[str]:
+        """Aplica compatibilidade do binário sem falsificar o perfil declarativo.
+
+        A versão PCSX2 observada na validação real rejeita ``--fullscreen`` e
+        aceita ``-fullscreen``. O manifesto/teste de contrato ainda é
+        compartilhado com o catálogo de erros; normalizar no último ponto antes
+        do spawn mantém a decisão registrada e evita enviar uma flag conhecida
+        como inválida ao executável instalado.
+        """
+        if emulator_id != "pcsx2":
+            return list(argv)
+        return ["-fullscreen" if item == "--fullscreen" else item for item in argv]
+
     def launch_emulator(self, emulator_id: str) -> dict[str, Any]:
         self._require_launchable_emulator(emulator_id)
         platform = self._primary_platform_for(emulator_id)
@@ -1264,6 +1310,7 @@ class EmulationController:
             flatpak_ref=flatpak_ref,
             payload=payload,
         )
+        argv = self._runtime_compat_argv(emulator_id, argv)
         if payload is not None and self._managed_process_groups(payload):
             raise SteamZeroError(
                 "E-COMPONENT-DEGRADED", detail=f"{emulator_id} já está em execução"
@@ -1444,6 +1491,31 @@ class EmulationController:
             )
         rom = Path(str(game["path"]))
 
+        archive_evidence = str(game.get("evidence") or "")
+        archive_suffixes = (".7z", ".rar", ".zip", ".tar.gz", ".tar.bz2", ".tar.xz")
+        if rom.name.casefold().endswith(archive_suffixes) and archive_evidence != "archive-native":
+            raise SteamZeroError(
+                "E-CONTENT-INCOMPLETE",
+                detail=(
+                    "archive detectado, mas ainda não foi materializado para um formato "
+                    "consumível; use a ação assíncrona de preparação e tente novamente"
+                ),
+            )
+        if archive_evidence.startswith("archive-multidisc-"):
+            state = archive_evidence.removeprefix("archive-multidisc-")
+            if state != "ready":
+                raise SteamZeroError(
+                    "E-CONTENT-INCOMPLETE",
+                    detail=(
+                        "conjunto multidisco reconhecido, mas ainda requer "
+                        f"extração/conversão governada ({state}); nenhum archive será "
+                        "enviado diretamente ao emulador"
+                    ),
+                )
+
+        if platform_id == "playstation-3":
+            self._require_platform_firmware(platform_id)
+
         # Switch: classificação base/update/dlc e keys são restritos ao Switch.
         # Jogo não-Switch nunca exige prod.keys e nunca passa pelo scanner
         # Switch (a ROM já foi validada/classificada no scan da biblioteca).
@@ -1483,6 +1555,16 @@ class EmulationController:
                     "SharpEmu requer arquitetura x86_64 e Vulkan funcionais; "
                     f"{readiness.reason or 'preflight do runtime recusado'}"
                 )
+                raise SteamZeroError("E-COMPONENT-DEGRADED", detail=detail)
+        if platform_id == "xbox" and emulator_id == "xemu":
+            readiness = self._xemu_runtime_probe()
+            if not readiness.ready:
+                missing = ", ".join(readiness.missing)
+                detail = "xemu requer configuração da máquina virtual do Xbox"
+                if missing:
+                    detail += f"; arquivos ausentes: {missing}"
+                if readiness.reason:
+                    detail += f" ({readiness.reason})"
                 raise SteamZeroError("E-COMPONENT-DEGRADED", detail=detail)
         if payload is not None and self._managed_process_groups(payload):
             raise SteamZeroError(
@@ -1562,6 +1644,7 @@ class EmulationController:
                 core_path=core_path,
                 session_config=session_config,
             )
+            argv = self._runtime_compat_argv(emulator_id, argv)
         except SteamZeroError as exc:
             raise LaunchNotStartedError(exc) from exc
 
@@ -2028,6 +2111,41 @@ class EmulationController:
             result.append(absolute)
         return result
 
+    def _require_platform_firmware(self, platform_id: str) -> None:
+        """Bloqueia antes do spawn quando a plataforma exige firmware local.
+
+        RPCS3 exibe uma tela própria quando ``PS3UPDAT.PUP`` não foi instalado.
+        Deixar a decisão para o emulador transforma uma dependência conhecida em
+        um falso launch. O store continua sendo a fonte de verdade e o arquivo
+        precisa existir na projeção antes de ser considerado presente.
+        """
+        if self._platform_firmware_version(platform_id) is not None:
+            return
+        raise SteamZeroError(
+            "E-CONTENT-FW-MISSING",
+            detail=(
+                "RPCS3 requer PS3UPDAT.PUP. Importe o firmware oficial que você já "
+                "possui pela tela de primeira execução; a origem oficial é "
+                "https://www.playstation.com/pt-br/support/hardware/ps3/system-software/"
+            ),
+        )
+
+    def _platform_firmware_version(self, platform_id: str) -> str | None:
+        with self._store_factory() as store:
+            store.migrate()
+            rows = store.list_firmware_key_items(platform_id, kind="firmware")
+        for row in rows:
+            if str(row.get("state") or "") != "present":
+                continue
+            relpath = str(row.get("relpath") or "")
+            if not relpath or Path(relpath).is_absolute() or ".." in Path(relpath).parts:
+                continue
+            candidate = paths.firmware_dir() / relpath
+            if candidate.is_file() and candidate.name.casefold() == "ps3updat.pup":
+                version = str(row.get("version") or "").strip()
+                return version or "presente"
+        return None
+
     def scan_library(self) -> dict[str, Any]:
         job = self._jobs.create(
             "library.scan",
@@ -2183,17 +2301,42 @@ class EmulationController:
                 if row.disposition == "matched"
                 for item in row.auxiliary_content
             )
-            directory_report.extend(
-                {
-                    "root": str(row.path),
-                    "disposition": row.disposition,
-                    "platformId": row.platform_id,
-                    "gameCount": row.game_count,
-                    "selectedCount": len(row.selected_games),
-                    "skippedSymlinks": row.skipped_symlinks,
-                }
-                for row in directory_rows
-            )
+            for row in directory_rows:
+                multidisc_sets = []
+                for logical_set in row.multi_disc_sets:
+                    source_paths = sorted(
+                        {
+                            str(part.archive_path or part.path)
+                            for part in logical_set.parts
+                            if part.path is not None
+                        }
+                    )
+                    multidisc_sets.append(
+                        {
+                            "setId": logical_set.set_id,
+                            "title": logical_set.display_title,
+                            "state": logical_set.state,
+                            "reason": logical_set.reason,
+                            "sourcePaths": source_paths,
+                            "systemId": (
+                                platform_scanner.system_for(row.platform_id)
+                                if row.platform_id is not None
+                                else None
+                            ),
+                        }
+                    )
+                directory_report.append(
+                    {
+                        "root": str(row.path),
+                        "libraryRoot": str(root),
+                        "disposition": row.disposition,
+                        "platformId": row.platform_id,
+                        "gameCount": row.game_count,
+                        "selectedCount": len(row.selected_games),
+                        "skippedSymlinks": row.skipped_symlinks,
+                        "multiDiscSets": multidisc_sets,
+                    }
+                )
             all_platform_matches: list[Any] = []
             seen_platform_paths: set[str] = set()
             for candidate in (
@@ -2522,6 +2665,16 @@ class EmulationController:
             "ignoredReasons": ignored_reasons,
             "platformCounts": platform_counts,
             "roots": len(roots),
+            "materializationCandidates": [
+                {
+                    **candidate,
+                    "libraryRoot": row.get("libraryRoot"),
+                    "platformId": row.get("platformId"),
+                }
+                for row in directory_report
+                for candidate in row.get("multiDiscSets", [])
+                if candidate.get("state") in {"needs-extraction", "needs-platform-contract"}
+            ],
         }
         payload = {
             "schemaVersion": 1,
@@ -2581,6 +2734,82 @@ class EmulationController:
                 "Verificação somente leitura de até 8 arquivos, 2 GiB e 20 segundos. "
                 "Divergências serão marcadas como suspect; nenhum conteúdo será "
                 "reparado, removido ou substituído."
+            )
+        elif action == "archive.materialize":
+            platform_id = self._required_string(payload, "platformId")
+            system_id = self._required_string(payload, "systemId")
+            materialization_title = self._required_string(payload, "title")
+            library_root = Path(self._required_string(payload, "libraryRoot"))
+            source_path = Path(self._required_string(payload, "sourcePath"))
+            registered_roots = {Path(path).resolve(strict=False) for path in self.library_roots()}
+            if library_root.resolve(strict=False) not in registered_roots:
+                raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="raiz não registrada")
+            manifest = PlatformRegistry.bundled().get(platform_id)
+            archive_request = ArchiveMaterializationRequest(
+                platform_id=platform_id,
+                system_id=system_id,
+                title=materialization_title,
+                source_path=source_path,
+                library_root=library_root,
+                manifest={"media": dict(manifest.media)},
+            )
+            archive_inspection = ArchiveMaterializer().inspect(archive_request)
+            if archive_inspection.state != "needs-extraction":
+                raise SteamZeroError("E-CONTENT-INCOMPLETE", detail=archive_inspection.reason)
+            plan = transaction.plan_write_files(
+                {},
+                root=paths.data_home(),
+                kind="emulation.archive.materialize",
+                requirements_extra={
+                    "materializationState": archive_inspection.state,
+                    "destination": str(archive_inspection.destination),
+                },
+            )
+            self._pending[plan.plan_id] = _PendingMutation(
+                "archive-materialize", archive_request.to_mapping()
+            )
+            plan_extra["preview"] = (
+                "A operação validará o archive, extrairá em staging isolado, verificará "
+                "os membros e publicará a árvore derivada atomicamente. "
+                f"Destino gerenciado: {archive_inspection.destination}"
+            )
+        elif action == "multidisc.materialize":
+            platform_id = self._required_string(payload, "platformId")
+            system_id = self._required_string(payload, "systemId")
+            materialization_title = self._required_string(payload, "title")
+            library_root = Path(self._required_string(payload, "libraryRoot"))
+            source_paths = self._required_paths(payload, "sourcePaths")
+            registered_roots = {Path(path).resolve(strict=False) for path in self.library_roots()}
+            if library_root.resolve(strict=False) not in registered_roots:
+                raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="raiz não registrada")
+            manifest = PlatformRegistry.bundled().get(platform_id)
+            request: MaterializationRequest = MaterializationRequest(
+                platform_id=platform_id,
+                system_id=system_id,
+                title=materialization_title,
+                source_paths=tuple(source_paths),
+                library_root=library_root,
+                manifest={"media": dict(manifest.media)},
+            )
+            inspection: MaterializationInspection = MultiDiscMaterializer().inspect(request)
+            if inspection.state not in {"ready", "ready-unverified", "needs-extraction"}:
+                raise SteamZeroError("E-CONTENT-INCOMPLETE", detail=inspection.reason)
+            plan = transaction.plan_write_files(
+                {},
+                root=paths.data_home(),
+                kind="emulation.multidisc.materialize",
+                requirements_extra={
+                    "materializationState": inspection.state,
+                    "destination": str(inspection.destination),
+                },
+            )
+            self._pending[plan.plan_id] = _PendingMutation(
+                "multidisc-materialize", request.to_mapping()
+            )
+            plan_extra["preview"] = (
+                "A operação será executada em job assíncrono: validação, staging, "
+                "extração/cópia, publicação atômica do M3U e verificação. "
+                f"Destino gerenciado: {inspection.destination}"
             )
         elif action == "library.projection.repair":
             plan, removed, total = self._projection_repair_plan()
@@ -2685,6 +2914,10 @@ class EmulationController:
             plan = self._plan_firmware(
                 Path(self._required_string(payload, "path")),
                 self._required_string(payload, "version"),
+            )
+        elif action == "firmware.download":
+            plan = self._plan_firmware_download(
+                self._optional_string(payload, "version") or PS3_FIRMWARE_VERSION
             )
         elif action == "bios.import":
             plan = self._plan_bios_import(
@@ -3483,6 +3716,42 @@ class EmulationController:
                 self._start_background_job(job.id)
                 response["jobId"] = job.id
                 response["job"] = self._job_view(self._jobs.get(job.id) or job)
+            elif pending.kind == "multidisc-materialize":
+                job = self._jobs.create(
+                    "multidisc.materialize",
+                    params=dict(pending.metadata),
+                    priority="background",
+                    created_by="ui",
+                    constraints={"forbiddenDuringGameplay": True},
+                )
+                self._start_background_job(job.id)
+                response["jobId"] = job.id
+                response["job"] = self._job_view(self._jobs.get(job.id) or job)
+            elif pending.kind == "archive-materialize":
+                job = self._jobs.create(
+                    "archive.materialize",
+                    params=dict(pending.metadata),
+                    priority="background",
+                    created_by="ui",
+                    constraints={"forbiddenDuringGameplay": True},
+                )
+                self._start_background_job(job.id)
+                response["jobId"] = job.id
+                response["job"] = self._job_view(self._jobs.get(job.id) or job)
+            elif pending.kind == "firmware-download":
+                job = self._jobs.create(
+                    "firmware.download",
+                    params=dict(pending.metadata),
+                    priority="interactive",
+                    created_by="ui",
+                    constraints={
+                        "forbiddenDuringGameplay": True,
+                        "requiresNetwork": True,
+                    },
+                )
+                self._start_background_job(job.id)
+                response["jobId"] = job.id
+                response["job"] = self._job_view(self._jobs.get(job.id) or job)
             elif pending.kind == "media-cache-open":
                 response.update(self._open_media_cache())
             elif pending.kind == "library-root-open":
@@ -3646,6 +3915,9 @@ class EmulationController:
             "media.global",
             "extras.catalog.search",
             "mod.catalog.prepare",
+            "multidisc.materialize",
+            "archive.materialize",
+            "firmware.download",
         }:
             self._start_background_job(replacement.id)
         else:
@@ -3673,6 +3945,9 @@ class EmulationController:
             runner.register("media.global", self._media_global_job_handler)
             runner.register("extras.catalog.search", self._extra_catalog_search_job_handler)
             runner.register("mod.catalog.prepare", self._mod_catalog_prepare_job_handler)
+            runner.register("multidisc.materialize", self._multidisc_materialize_job_handler)
+            runner.register("archive.materialize", self._archive_materialize_job_handler)
+            runner.register("firmware.download", self._firmware_download_job_handler)
             with self._background_lock:
                 self._background_runners[job_id] = runner
             try:
@@ -6291,23 +6566,36 @@ class EmulationController:
     def _plan_firmware(self, selected: Path, version: str) -> transaction.Plan:
         if not _FIRMWARE_VERSION.fullmatch(version):
             raise SteamZeroError("E-API-SCHEMA", detail="versão de firmware inválida")
-        candidates = self._selected_files(selected, suffixes={".nca"}, allow_single_any=True)
+        ps3_firmware = selected.is_file() and selected.name.casefold() == "ps3updat.pup"
+        candidates = (
+            [selected]
+            if ps3_firmware
+            else self._selected_files(selected, suffixes={".nca"}, allow_single_any=True)
+        )
         total = sum(path.stat().st_size for path in candidates)
         if not candidates or len(candidates) > _MAX_IMPORT_FILES or total > _MAX_IMPORT_BYTES:
             raise SteamZeroError(
                 "E-CONTENT-UNSAFE-ARCHIVE", detail="conjunto de firmware fora dos limites"
             )
+        if ps3_firmware and total <= 0:
+            raise SteamZeroError("E-CONTENT-INCOMPLETE", detail="PS3UPDAT.PUP está vazio")
+        platform_id = "playstation-3" if ps3_firmware else "switch"
         copies: list[tuple[Path, Path]] = []
         for source in candidates:
             digest = fs.hash_file(source, algo="sha256")
-            targets = [
-                paths.firmware_dir() / "switch" / version / f"{digest}.nca",
-                *(
-                    self._firmware_projection_targets(digest)
-                    if paths.data_home().resolve().is_relative_to(Path.home().resolve())
-                    else ()
-                ),
-            ]
+            if ps3_firmware:
+                targets = [
+                    paths.firmware_dir() / platform_id / version / "PS3UPDAT.PUP",
+                ]
+            else:
+                targets = [
+                    paths.firmware_dir() / platform_id / version / f"{digest}.nca",
+                    *(
+                        self._firmware_projection_targets(digest)
+                        if paths.data_home().resolve().is_relative_to(Path.home().resolve())
+                        else ()
+                    ),
+                ]
             copies.extend(self._new_copy_targets(source, targets, digest))
         digest_set = hashlib.sha256(
             "".join(sorted(target.name for _, target in copies)).encode()
@@ -6319,7 +6607,52 @@ class EmulationController:
             else transaction.plan_write_files({}, root=root, kind="emulation.firmware-import")
         )
         self._pending[plan.plan_id] = _PendingMutation(
-            "firmware", {"version": version, "digest": digest_set, "relpath": f"switch/{version}"}
+            "firmware",
+            {
+                "version": version,
+                "digest": digest_set,
+                "platform_id": platform_id,
+                "relpath": (
+                    f"{platform_id}/{version}/PS3UPDAT.PUP"
+                    if ps3_firmware
+                    else f"{platform_id}/{version}"
+                ),
+            },
+        )
+        return plan
+
+    def _plan_firmware_download(self, version: str) -> transaction.Plan:
+        """Planeja um download assistido, sem abrir a rede antes da confirmação."""
+        source = Ps3FirmwareSource(version=version)
+        source.validate()
+        if version != PS3_FIRMWARE_VERSION:
+            raise SteamZeroError(
+                "E-CONTENT-FW-INCOMPAT",
+                detail=f"a fonte oficial disponível está fixada na versão {PS3_FIRMWARE_VERSION}",
+            )
+        plan = transaction.plan_write_files(
+            {},
+            root=paths.data_home(),
+            kind="emulation.firmware-download",
+            requirements_extra={
+                "platformId": PS3_FIRMWARE_PLATFORM,
+                "version": version,
+                "sourceUrl": source.url,
+                "sourcePolicy": source.integrity_policy,
+                "requiresNetwork": True,
+                "requiresExplicitConfirmation": True,
+            },
+        )
+        self._pending[plan.plan_id] = _PendingMutation(
+            "firmware-download",
+            {
+                "platformId": source.platform_id,
+                "version": source.version,
+                "sourceUrl": source.url,
+                "sourceHost": source.host,
+                "integrityPolicy": source.integrity_policy,
+                "filename": source.filename,
+            },
         )
         return plan
 
@@ -6454,14 +6787,19 @@ class EmulationController:
 
     def _persist_import(self, pending: _PendingMutation) -> None:
         metadata = pending.metadata
+        platform_id = str(metadata.get("platform_id") or "switch")
         with self._store_factory() as store:
             store.migrate()
-            store.save_platform({"id": "switch", "name": "Nintendo Switch"})
+            try:
+                platform_name = PlatformRegistry.bundled().get(platform_id).name
+            except KeyError:
+                platform_name = platform_id
+            store.save_platform({"id": platform_id, "name": platform_name})
             store.save_firmware_key_item(
                 {
                     "id": ids.new_ulid(),
                     "kind": pending.kind,
-                    "platform_id": "switch",
+                    "platform_id": platform_id,
                     "hash_truncated": str(metadata["digest"])[:12],
                     "state": "present",
                     "keyset": "prod" if pending.kind == "key" else None,
@@ -6585,6 +6923,196 @@ class EmulationController:
 
     def _library_scan_job_handler(self, _job: Job, ctx: JobContext) -> dict[str, Any]:
         return self._scan_library_now(ctx)
+
+    def _multidisc_materialize_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
+        request = MaterializationRequest.from_mapping(job.params)
+        ctx.set_progress("inspect", current=0, total=1, unit="sets")
+        result = MultiDiscMaterializer().run(
+            request,
+            safepoint=ctx.safepoint,
+            progress=lambda current, total, item: ctx.set_progress(
+                "materialize",
+                current=current,
+                total=total,
+                unit="discs",
+                current_item=item,
+            ),
+        )
+        # A materialização muda o filesystem e, portanto, invalida a visão
+        # canônica. Sem esta segunda etapa o usuário recebia "concluído", mas
+        # o M3U recém-publicado só aparecia depois de uma varredura manual — e
+        # a próxima tentativa de lançamento continuava olhando o archive
+        # antigo. Reusar o scanner oficial mantém catálogo, readiness e launch
+        # na mesma fonte de verdade. Se a atualização falhar depois da
+        # publicação atômica, preservamos o sucesso físico e devolvemos um
+        # diagnóstico acionável em vez de esconder a divergência.
+        try:
+            refreshed = self._scan_library_now(ctx)
+        except (OSError, SteamZeroError, ValueError) as exc:
+            result["catalogRefresh"] = {
+                "status": "degraded",
+                "code": "E-CATALOG-REFRESH",
+                "reason": str(exc),
+            }
+        else:
+            result["catalogRefresh"] = {
+                "status": "scanned",
+                "games": refreshed.get("games", 0),
+                "filesFound": refreshed.get("filesFound", 0),
+                "errors": refreshed.get("errors", []),
+            }
+        ctx.set_progress("done", current=1, total=1, unit="sets")
+        return result
+
+    def _archive_materialize_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
+        request = ArchiveMaterializationRequest.from_mapping(job.params)
+        ctx.set_progress("inspect", current=0, total=1, unit="archives")
+        result = ArchiveMaterializer().run(
+            request,
+            safepoint=ctx.safepoint,
+            progress=lambda current, total, item: ctx.set_progress(
+                "materialize",
+                current=current,
+                total=total,
+                unit="files",
+                current_item=item,
+            ),
+        )
+        # O materializador publicou uma árvore nova; a mesma regra do fluxo
+        # multidisco impede que o catálogo fique uma operação atrás.
+        try:
+            refreshed = self._scan_library_now(ctx)
+        except (OSError, SteamZeroError, ValueError) as exc:
+            result["catalogRefresh"] = {
+                "status": "degraded",
+                "code": "E-CATALOG-REFRESH",
+                "reason": str(exc),
+            }
+        else:
+            result["catalogRefresh"] = {
+                "status": "scanned",
+                "games": refreshed.get("games", 0),
+                "filesFound": refreshed.get("filesFound", 0),
+                "errors": refreshed.get("errors", []),
+            }
+        ctx.set_progress("done", current=1, total=1, unit="archives")
+        return result
+
+    def _firmware_download_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
+        """Baixa, valida e instala somente o firmware PS3 oficial declarado."""
+        source = Ps3FirmwareSource(
+            platform_id=str(job.params.get("platformId") or PS3_FIRMWARE_PLATFORM),
+            version=str(job.params.get("version") or PS3_FIRMWARE_VERSION),
+            filename=str(job.params.get("filename") or "PS3UPDAT.PUP"),
+            url=str(job.params.get("sourceUrl") or PS3_FIRMWARE_SOURCE_URL),
+            host=str(job.params.get("sourceHost") or PS3_FIRMWARE_SOURCE_HOST),
+            integrity_policy=str(job.params.get("integrityPolicy") or "source-verified"),
+        )
+        source.validate()
+        operation_id = f"{job.id}-ps3-firmware"
+        staging_root = paths.staging_for(operation_id)
+        staged = staging_root / source.filename
+        try:
+            fs.ensure_dir(staging_root)
+            ctx.set_progress("source-confirmed", current=0, total=1, unit="firmware")
+            policy = NetworkPolicy(
+                allowed_hosts=frozenset({source.host}),
+                timeout_seconds=60.0,
+                max_bytes=PS3_FIRMWARE_MAX_BYTES,
+                retry=RetryPolicy(attempts=3),
+            )
+            ctx.set_progress("downloading", current=0, total=0, unit="bytes")
+            try:
+                with transfer_observer(
+                    progress=lambda current, total: ctx.set_progress(
+                        "downloading",
+                        current=current,
+                        total=total,
+                        unit="bytes",
+                        current_item=source.filename,
+                    ),
+                    cancel_check=ctx.safepoint,
+                ):
+                    HttpClient().download(
+                        source.url,
+                        staged,
+                        policy=policy,
+                        headers={"Accept": "application/octet-stream"},
+                    )
+            except NetworkFailure as exc:
+                raise SteamZeroError(exc.code, detail=exc.detail) from exc
+            ctx.safepoint()
+            ctx.set_progress("downloaded", current=1, total=1, unit="firmware")
+            artifact = validate_ps3_firmware(
+                staged,
+                source,
+                min_bytes=PS3_FIRMWARE_MIN_BYTES,
+                max_bytes=PS3_FIRMWARE_MAX_BYTES,
+            )
+            ctx.set_progress("verified", current=1, total=1, unit="firmware")
+            destination = (
+                paths.firmware_dir() / source.platform_id / source.version / source.filename
+            )
+            metadata_path = destination.parent / "source-verification.json"
+            metadata = artifact.metadata()
+            root = self._compatible_root({destination: b"", metadata_path: metadata})
+            plan = transaction.plan_copy_files(
+                [(staged, destination)],
+                root=root,
+                kind="emulation.firmware-download.install",
+                writes={metadata_path: metadata},
+                replace_existing=True,
+                requirements_extra={
+                    "sourceUrl": source.url,
+                    "sourcePolicy": source.integrity_policy,
+                    "sha256": artifact.sha256,
+                    "version": source.version,
+                },
+            )
+            ctx.set_progress("staged", current=1, total=1, unit="firmware")
+            applied = transaction.apply(plan.plan_id, plan.confirm_token)
+            job.operation_id = applied.operation_id
+            with self._store_factory() as store:
+                store.migrate()
+                # O executor de jobs pode usar um StateStore injetado (como
+                # nos testes e em hosts com store separado). Espelhar a
+                # operação aqui mantém a FK job.operation_id válida e deixa
+                # o rollback recuperável nesse mesmo store.
+                store.save_operation(
+                    applied.operation_id,
+                    journal_path=str(paths.journal_path(applied.operation_id)),
+                    state="committed",
+                    backup_path=str(paths.backup_for(applied.operation_id)),
+                )
+                store.save_platform({"id": source.platform_id, "name": "Sony PlayStation 3"})
+                store.save_firmware_key_item(
+                    {
+                        "id": ids.new_ulid(),
+                        "kind": "firmware",
+                        "platform_id": source.platform_id,
+                        "hash_truncated": artifact.sha256[:12],
+                        "state": "present",
+                        "keyset": None,
+                        "revision": None,
+                        "version": source.version,
+                        "relpath": f"{source.platform_id}/{source.version}/{source.filename}",
+                        "last_validated": datetime.now(UTC).isoformat(),
+                    }
+                )
+            ctx.set_progress("installed", current=1, total=1, unit="firmware")
+            return {
+                "status": "ready",
+                "platformId": source.platform_id,
+                "version": source.version,
+                "filename": source.filename,
+                "source": "Sony Interactive Entertainment",
+                "sourcePolicy": source.integrity_policy,
+                "sha256": artifact.sha256,
+                "sizeBytes": artifact.size,
+                "operationId": applied.operation_id,
+            }
+        finally:
+            fs.remove_tree(staging_root)
 
     def _bitrot_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
         return self._bitrot.verify_sample(
@@ -8186,6 +8714,7 @@ class EmulationController:
         emulator_states = {
             str(row["id"]): str(row.get("installState") or "unverified") for row in emulators
         }
+        platform_firmware_versions: dict[str, str | None] = {}
         enriched: list[dict[str, Any]] = []
         with self._store_factory() as store:
             store.migrate()
@@ -8226,7 +8755,15 @@ class EmulationController:
                     and isinstance(emulator_id, str)
                     and self._key_projection_valid(emulator_id)
                 )
-                firmware_ready = firmware.get("status") == "ok"
+                platform_id = str(game.get("platformId") or game.get("platform") or "")
+                if platform_id == "playstation-3":
+                    if platform_id not in platform_firmware_versions:
+                        platform_firmware_versions[platform_id] = self._platform_firmware_version(
+                            platform_id
+                        )
+                    firmware_ready = platform_firmware_versions[platform_id] is not None
+                else:
+                    firmware_ready = firmware.get("status") == "ok"
                 launch_ready = emulator_ready and keys_ready and firmware_ready
                 if emulator_state == "unconfigured":
                     play_reason = "Selecione um emulador para este jogo."
@@ -8239,7 +8776,11 @@ class EmulationController:
                 elif not keys_ready:
                     play_reason = f"Sincronize prod.keys com {emulator_id}."
                 elif not firmware_ready:
-                    play_reason = "Importe e valide o firmware antes de jogar."
+                    play_reason = (
+                        "Importe PS3UPDAT.PUP pela fonte oficial da Sony antes de jogar."
+                        if platform_id == "playstation-3"
+                        else "Importe e valide o firmware antes de jogar."
+                    )
                 else:
                     play_reason = None
                 launch_readiness = {
@@ -8884,16 +9425,27 @@ class EmulationController:
                         title_id=str(title_id) if title_id is not None else None,
                     )
                 else:
+                    archive_evidence = str(game.get("evidence") or "")
+                    reconciled_archive = archive_evidence.startswith(
+                        "archive-multidisc-"
+                    ) and candidate_path.suffix.casefold() in {".zip", ".7z"}
+                    if reconciled_archive:
+                        kind = "base"
+                        declared: str | None = resolved_platform
+                    else:
+                        declared = ""
+                        kind = "unknown"
                     try:
                         siblings = {item.name for item in candidate_path.parent.iterdir()}
                     except OSError:
                         siblings = {candidate_path.name}
-                    declared, kind, _evidence = platform_scanner.classify(
-                        candidate_path.name,
-                        siblings,
-                        root_platform=resolved_platform,
-                        path=candidate_path,
-                    )
+                    if not reconciled_archive:
+                        declared, kind, _evidence = platform_scanner.classify(
+                            candidate_path.name,
+                            siblings,
+                            root_platform=resolved_platform,
+                            path=candidate_path,
+                        )
                     if declared != resolved_platform:
                         continue
                 if kind != "base" or game.get("contentKind", "base") != "base":
@@ -9110,6 +9662,7 @@ class EmulationController:
             "planId": plan.plan_id,
             "confirmToken": plan.confirm_token,
             "action": action,
+            "kind": plan.kind,
             "preview": plan.preview,
             "rollbackGuarantee": plan.rollback_guarantee,
             "requirements": plan.requirements,

@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-PS3-OFFICIAL-FIRMWARE-DOWNLOAD",
+  "title": "Download assistido do firmware oficial do PS3",
+  "domain": "emulation",
+  "implementation": "complete",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/domain/ps3_firmware.py",
+    "src/steamzero/adapters/emulation.py",
+    "src/steamzero/domain/platforms.py",
+    "src/steamzero/schemas/emulation-workspace-v1.schema.json",
+    "src/steamzero/ui/qml/EditorialLibrary.qml",
+    "src/steamzero/ui/qml/Main.qml",
+    "tests/unit/test_ps3_firmware.py",
+    "tests/unit/test_emulation_controller.py"
+  ],
+  "scopeDigest": "f69524d34391e930b0351f715ddec25e68fad61ceb485911289e3f5c8fbb3096",
+  "dependsOn": [
+    "SZ-PLATFORM-REQUIREMENT-SCOPE",
+    "SZ-EMULATION-REAL-DUMP-VALIDATION"
+  ],
+  "knownGaps": [
+    "GAP-PS3-FIRMWARE-PHYSICAL-PROOF",
+    "GAP-PS3-FIRMWARE-HASH-PIN-REVIEW"
+  ],
+  "acceptanceCriteria": [
+    "A UI oferece o download apenas para o requisito de firmware do Sony PlayStation 3 e exige confirmação do plano antes de abrir a rede.",
+    "A rede aceita somente HTTPS e a URL oficial exata publicada pela Sony; nenhum mirror, redirect ou domínio arbitrário é aceito.",
+    "O download publica progresso mensurável e coopera com pausa/cancelamento do job.",
+    "O arquivo é baixado em staging, exige o nome PS3UPDAT.PUP, respeita limite seguro de tamanho e recebe SHA-256 observado antes do apply.",
+    "A instalação é transacional, preserva o firmware anterior, grava metadados de origem/versão/hash/data e permite rollback.",
+    "Falha de rede, truncamento, cancelamento ou validação não publica arquivo parcial e não modifica console PS3 físico.",
+    "A política source-verified não alega hash-pinned enquanto a Sony não publicar um SHA-256 revisado pelo mantenedor."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_ps3_firmware.py",
+      "command": ".venv/bin/python -m pytest -q tests/unit/test_ps3_firmware.py tests/unit/test_emulation_controller.py -k 'ps3_firmware or firmware_download' (10 passed)",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "src/steamzero/domain/ps3_firmware.py",
+      "command": "Fonte oficial consultada; versão recomendada 4.93 e nome PS3/UPDATE/PS3UPDAT.PUP conferidos; a página não publica SHA-256.",
+      "result": "recorded"
+    }
+  ],
+  "nextAction": "Publicar a branch, instalar uma release governada e executar a prova física do assistente com download oficial, erro controlado, cancelamento/rollback e lançamento posterior do RPCS3.",
+  "activeWorkstreams": [
+    "WS-2026-09-PS3-OFFICIAL-FIRMWARE-DOWNLOAD"
+  ],
+  "updatedAt": "2026-09-20",
+  "notes": "O fluxo de importação local continua disponível para firmware fornecido pelo usuário. A automação é deliberadamente limitada ao artefato oficial da Sony e não altera um console PS3 físico."
+}

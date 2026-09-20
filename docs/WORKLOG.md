@@ -11560,3 +11560,67 @@ O botão `Trocar disco` foi observado desabilitado para o título single-disc;
 isso confirma o fallback correto, mas não fecha a prova de troca em jogo
 multi-disc pelo Launcher instalado. Essa lacuna permanece aberta. O KDE não
 foi reiniciado, finalizado ou mutado.
+
+## 2026-09-20 — harmonização da validação de emuladores e archives
+
+Na branch `codex/emulation-system-integration-2026-09-20`, foram integrados os
+núcleos de preflight resiliente, materialização assíncrona e prontidão dos
+runtimes de alto nível. A varredura agora mantém ZIP/RAR/7z extract-only
+visíveis como `archive-needs-extraction`, em vez de descartá-los ou enviá-los
+brutos ao emulador.
+
+Foi adicionada a jornada genérica `archive.materialize`: inspeção segura com
+limites de entradas/tamanho e rejeição de traversal, symlink, hardlink e
+duplicatas; staging isolado; preservação da origem; publicação derivada com
+ownership `SteamZero-Archive-Managed: true`; e refresh do catálogo somente
+depois da publicação atômica. Destinos não gerenciados entram em conflito e
+não são sobrescritos. O fluxo multidisco existente também passou a retornar o
+resultado do refresh do catálogo, incluindo estado degradado acionável quando
+a revarredura falha.
+
+Provas desta integração: 90 testes focados passaram, incluindo materializador,
+controller, PS4/PS5, classificação de archives, readiness de consoles e
+regressões de biblioteca; Ruff check/format, independência, fronteiras,
+component-lock, matriz de capacidades e `STATUS-CHECK: OK` passaram. A suíte
+integral isolada foi tentada com timeout de cinco minutos e não concluiu,
+deixando o resultado como inconclusivo por ambiente/runner; nenhum teste foi
+removido ou enfraquecido. O mypy completo também ficou preso em I/O e foi
+encerrado sem alterar código.
+
+As capturas de validação de dumps reais foram incorporadas em
+`docs/09-operations/evidence/2026-09-19-real-dump-inventory/`; elas continuam
+classificadas por sistema e não são promovidas como prova nova desta release.
+Persistem pendentes a promoção governada, prova física do materializador/M3U,
+retorno pelo Launcher e os bloqueios externos de firmware, arquivos de máquina,
+runtime SharpEmu/Xenia, core Saturn e contrato PX68K. Nenhuma instalação,
+rollback, download proprietário, reboot ou mutação do KDE foi executada nesta
+integração.
+
+## 2026-09-20 — download assistido do firmware oficial PS3
+
+Na branch `codex/ps3-assisted-firmware-download-2026-09-20`, foi entregue o
+item `SZ-PS3-OFFICIAL-FIRMWARE-DOWNLOAD`. O requisito de firmware do Sony
+PlayStation 3 agora expõe uma ação de UI que gera um plano transacional e exige
+confirmação explícita antes de qualquer conexão de rede. O plano é limitado à
+URL HTTPS oficial exata da Sony para a versão 4.93 e continua separado da
+importação local de BIOS, keys, ROMs e dumps.
+
+O job `firmware.download` implementa os estados source-confirmed, downloading,
+downloaded, verified, staged e installed; reporta progresso por bytes; coopera
+com pausa/cancelamento; baixa para staging isolado; rejeita nome divergente,
+arquivo truncado, symlink e excesso de tamanho; calcula SHA-256 observado; e
+publica `PS3UPDAT.PUP` com `source-verification.json` por apply transacional.
+Firmware anterior é preservado pelo backup da transação e o `operation_id` é
+espelhado no store do executor para manter rollback e a FK do job válidos mesmo
+quando o store é injetado separadamente. A política permanece
+`source-verified`, pois a página oficial consultada não publica SHA-256; o
+hash observado é registrado sem ser apresentado como hash-pinned.
+
+Provas: 10 testes focados passaram, incluindo ausência de rede antes do apply,
+download controlado após confirmação, validação de origem/nome/hash, publicação
+do artefato e metadados, além da recusa de payload truncado sem publicação.
+Ruff check/format nos arquivos tocados passou. O
+`STATUS-CHECK` mantém apenas digests obsoletos pré-existentes de outros itens;
+o novo item está documentado e sem evidência ausente. Nenhuma instalação de
+release, download real, alteração de host, atualização de console PS3, reboot
+ou mutação do KDE foi executada.

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-EMULATION-RUNTIME-REMEDIATION",
+  "item": "SZ-EMULATION-RUNTIME-REMEDIATION",
+  "branch": "codex/emulation-system-validation-2026-09-19",
+  "baseRef": "HEAD",
+  "owner": "codex-emulation-system-validation",
+  "state": "active",
+  "exclusivePaths": [
+    "docs/status/items/emulation-runtime-remediation-2026-09-20.json",
+    "docs/status/workstreams/emulation-runtime-remediation-2026-09-20.json",
+    "docs/09-operations/evidence/2026-09-20-emulation-runtime-remediation",
+    "tests/unit/test_emulation_runtime_remediation.py"
+  ],
+  "sharedPaths": [
+    "src/steamzero/adapters/emulation.py",
+    "src/steamzero/platform_manifests/36-playstation-3.platform.json",
+    "docs/status/COVERAGE.md",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Entregar o patch de materialização assíncrona e aguardar release governada para repetir PCSX2, M3U, save/load e retorno físico.",
+  "updatedAt": "2026-09-20"
+}
