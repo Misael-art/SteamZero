@@ -277,11 +277,12 @@ def resolve_ps5_content_status(
             "contentAvailability": "missing",
             "contentReason": "Origem PS5 ausente; reanexe a pasta do dump.",
         }
-    if identity_verified and identity_diagnosis == "ps5-param-sfo":
+    if identity_verified and identity_diagnosis in {"ps5-param-sfo", "ps5-param-json"}:
+        metadata_format = identity_diagnosis.removeprefix("ps5-param-")
         return {
             "contentState": "complete",
             "contentAvailability": "available",
-            "contentReason": "Dump PS5 identificado por param.sfo.",
+            "contentReason": f"Dump PS5 identificado por param.{metadata_format}.",
         }
     diagnosis = identity_diagnosis or "ps5-identity-unverified"
     return {

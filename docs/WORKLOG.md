@@ -11399,3 +11399,22 @@ Na verificação física somente leitura foi encontrado o conjunto Amiga real
 host não possui o Kickstart legal `kick34005.A500`; a execução foi encerrada
 sem alterar ROMs, KDE ou a instalação. A prova física de eject/insert/retorno
 continua aberta como `GAP-AURA-DISC-SWAP-PHYSICAL`.
+
+## 2026-09-20 — identidade PS5 em dumps reais do operador
+
+O leitor de identidade SharpEmu passou a aceitar `sce_sys/param.json` como
+fallback controlado quando `param.sfo` não existe. A promoção continua exigindo
+`eboot.bin`, diretório `sce_sys` não-simbólico, JSON limitado e `titleId` textual
+válido; `param.sfo` permanece prioritário quando presente.
+
+Provas focadas: `23 passed` em `test_ps5_sfo.py` e
+`test_ps5_compatibility.py`. Os dumps reais PPSA02929 (RAR5, extraído apenas em
+temporário) e PPSA02801 (imagem exFAT montada com `guestmount --ro`) foram
+reconhecidos como `ps5-param-json`; nenhuma origem foi alterada. Ruff,
+formatação, mypy, independência, fronteiras, component-lock, matriz e
+`STATUS-CHECK` passaram.
+
+A suíte integral foi inconclusiva e interrompida após começar a acumular
+falhas ambientais quando `/run/user/1000` atingiu 100% de uso; o estado real
+antes/depois permaneceu idêntico. A prova de lançamento SharpEmu e a captura
+PNG seguem pendentes até publicar esta correção em uma release governada.

@@ -93,6 +93,12 @@ def test_content_status_distinguishes_missing_source_and_incomplete_dump(tmp_pat
     assert missing["contentState"] == "source-missing"
     assert missing["contentAvailability"] == "missing"
 
+    json_identity = resolve_ps5_content_status(
+        str(eboot), identity_verified=True, identity_diagnosis="ps5-param-json"
+    )
+    assert json_identity["contentState"] == "complete"
+    assert "param.json" in json_identity["contentReason"]
+
 
 def test_source_identity_uses_relative_path_and_entrypoint_hash_not_absolute_path(
     tmp_path,

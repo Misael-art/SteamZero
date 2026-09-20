@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from steamzero.adapters.discovery.ps5_sfo import parse_sfo, read_ps5_identity
+from steamzero.adapters.discovery.ps5_sfo import parse_param_json, parse_sfo, read_ps5_identity
 from steamzero.domain.game_identity import IdentityScheme
 
 
@@ -47,6 +47,17 @@ def test_parse_sfo_returns_ps5_title_id() -> None:
     assert parsed.title_id == "PPSA12345_00"
 
 
+def test_parse_param_json_returns_ps5_title_id() -> None:
+    parsed = parse_param_json(b'{"titleId":"PPSA02929","contentVersion":"01.000.000"}')
+    assert parsed is not None
+    assert parsed.title_id == "PPSA02929"
+
+
+def test_parse_param_json_rejects_missing_or_non_string_title_id() -> None:
+    assert parse_param_json(b'{"contentId":"UP0000-PPSA00000_00-DEMO"}') is None
+    assert parse_param_json(b'{"titleId":123}') is None
+
+
 def test_parse_sfo_rejects_overlapping_tables_and_invalid_lengths() -> None:
     overlapping = bytearray(_sfo({"TITLE_ID": "PPSA12345_00"}))
     struct.pack_into("<I", overlapping, 8, 20)
@@ -78,6 +89,23 @@ def test_read_ps5_identity_finds_sce_sys_without_following_symlink(tmp_path: Pat
     assert identity.scheme is IdentityScheme.PS5_TITLE_ID
     assert identity.value == "PPSA12345_00"
     assert diagnosis == "ps5-param-sfo"
+
+
+def test_read_ps5_identity_falls_back_to_param_json(tmp_path: Path) -> None:
+    dump = tmp_path / "Game"
+    (dump / "sce_sys").mkdir(parents=True)
+    (dump / "sce_sys" / "param.json").write_text(
+        '{"titleId":"PPSA02801","contentVersion":"01.000.003"}',
+        encoding="utf-8",
+    )
+    executable = dump / "eboot.bin"
+    executable.write_bytes(b"ELF")
+
+    identity, diagnosis = read_ps5_identity(executable)
+
+    assert identity is not None
+    assert identity.value == "PPSA02801"
+    assert diagnosis == "ps5-param-json"
 
 
 def test_read_ps5_identity_rejects_symlinked_param_sfo(tmp_path: Path) -> None:

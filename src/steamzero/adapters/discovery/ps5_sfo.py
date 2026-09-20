@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 import struct
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,6 +19,7 @@ _MAX_ENTRIES = 256
 _STRING_FORMAT = 0x0204
 _TARGET_KEYS = frozenset({"TITLE_ID", "TITLE"})
 _BOOT_ENTRY = "eboot.bin"
+_MAX_PARAM_JSON_BYTES = 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -78,6 +80,31 @@ def parse_sfo(data: bytes) -> Ps5Sfo | None:
     return Ps5Sfo(values.get("TITLE_ID"), values.get("TITLE"))
 
 
+def parse_param_json(data: bytes) -> Ps5Sfo | None:
+    """Lê o descritor JSON usado por dumps PS5 extraídos/convertidos.
+
+    O formato não substitui ``param.sfo`` quando este está presente; ele é
+    apenas o fallback declarativo observado nos dumps reais do host. O limite
+    de tamanho e a exigência de objeto/strings impedem que um arquivo
+    arbitrário seja promovido a identidade de jogo.
+    """
+    if len(data) > _MAX_PARAM_JSON_BYTES:
+        return None
+    try:
+        payload = json.loads(data.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    title_id = payload.get("titleId")
+    if not isinstance(title_id, str):
+        return None
+    title = payload.get("titleName")
+    if not isinstance(title, str):
+        title = None
+    return Ps5Sfo(title_id, title)
+
+
 def read_ps5_identity(executable: Path) -> tuple[GameIdentity | None, str]:
     """Busca ``sce_sys/param.sfo`` acima do executável sem seguir symlinks."""
     if executable.name.casefold() != _BOOT_ENTRY or executable.is_symlink():
@@ -87,24 +114,29 @@ def read_ps5_identity(executable: Path) -> tuple[GameIdentity | None, str]:
             return None, "ps5-dump-path-symlink"
         if executable.anchor and parent == Path(executable.anchor):
             break
-        metadata = parent / "sce_sys" / "param.sfo"
-        if metadata.parent.is_symlink():
+        metadata_dir = parent / "sce_sys"
+        if metadata_dir.is_symlink():
             return None, "ps5-param-sfo-path-symlink"
+        metadata = metadata_dir / "param.sfo"
+        metadata_kind = "sfo"
+        if not metadata.is_file() or metadata.is_symlink():
+            metadata = metadata_dir / "param.json"
+            metadata_kind = "json"
         if not metadata.is_file() or metadata.is_symlink():
             continue
         try:
             data = metadata.read_bytes()
         except OSError:
-            return None, "ps5-param-sfo-read-failed"
-        parsed = parse_sfo(data)
+            return None, f"ps5-param-{metadata_kind}-read-failed"
+        parsed = parse_sfo(data) if metadata_kind == "sfo" else parse_param_json(data)
         if parsed is None:
-            return None, "ps5-param-sfo-invalid"
+            return None, f"ps5-param-{metadata_kind}-invalid"
         if parsed.title_id is None:
             return None, "ps5-title-id-missing"
         normalized = parsed.title_id.strip().upper()
         try:
             return GameIdentity("playstation-5", IdentityScheme.PS5_TITLE_ID, normalized), (
-                "ps5-param-sfo"
+                f"ps5-param-{metadata_kind}"
             )
         except ValueError:
             return None, "ps5-title-id-invalid"
