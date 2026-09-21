@@ -12,13 +12,16 @@ import "../../src/steamzero/ui/qml"
     width: 1000
     height: 800
     property string lastActivated: ""
+    property string lastItemFocused: ""
+    property string lastItemActivated: ""
 
     SceneEsdeView {
         id: view
         anchors.fill: parent
         interactive: true
         runtimeModel: ({
-            "items": [{"id": "1", "name": "Metroid", "coverUrl": "", "genre": "Ação"}],
+            "items": [{"id": "1", "name": "Metroid", "coverUrl": "", "genre": "Ação"},
+                      {"id": "2", "name": "Zelda", "coverUrl": "", "genre": "Aventura"}],
             "selectedIndex": 0,
             "selected": {"id": "1", "name": "Metroid", "genre": "Ação", "rating": "4.5"},
             "system": {"id": "nes", "name": "Nintendo Entertainment System"},
@@ -26,6 +29,8 @@ import "../../src/steamzero/ui/qml"
             "actions": ["Selecionar", "Detalhes", "Jogar"]
         })
         onElementActivated: lastActivated = elementId
+        onItemFocused: lastItemFocused = itemId
+        onItemActivated: lastItemActivated = itemId
         viewData: ({
             "id": "system",
             "elements": [
@@ -142,6 +147,19 @@ import "../../src/steamzero/ui/qml"
             keyClick(Qt.Key_Up)
             keyClick(Qt.Key_Return)
             compare(lastActivated, "carrossel")
+            compare(lastItemActivated, "1")
+        }
+
+        function test_carousel_arrows_change_the_catalog_item_and_wrap() {
+            view.resetFocus()
+            keyClick(Qt.Key_Up)
+            compare(view.selectedItem.id, "1")
+            keyClick(Qt.Key_Right)
+            compare(view.selectedItem.id, "2")
+            compare(lastItemFocused, "2")
+            keyClick(Qt.Key_Right)
+            compare(view.selectedItem.id, "1")
+            compare(lastItemFocused, "1")
         }
     }
 }

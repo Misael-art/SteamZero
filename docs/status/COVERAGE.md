@@ -24,7 +24,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AURA-CONTRACTS | 38 | 3 | 3 | unit |  |
 | SZ-AURA-CURRENT-RELEASE-EVIDENCE | 17 | 4 | 4 | hw |  |
 | SZ-AURA-ESDE-ACTIVE-SURFACE | 8 | 3 | 3 | dev |  |
-| SZ-AURA-ESDE-RUNTIME-BRIDGE | 8 | 3 | 3 | unit |  |
+| SZ-AURA-ESDE-RUNTIME-BRIDGE | 8 | 4 | 4 | unit |  |
 | SZ-AURA-LAUNCHER | 267 | 58 | 41 | hw |  |
 | SZ-AURA-LAUNCHER-EXIT | 5 | 1 | 1 | dev |  |
 | SZ-AURA-METADATA | 23 | 10 | 10 | unit |  |

@@ -40,6 +40,12 @@ Item {
     property int currentFocusIndex: -1
     signal elementFocused(string elementId)
     signal elementActivated(string elementId)
+    // Eventos semânticos da biblioteca. A cena não decide o que "Jogar" faz;
+    // apenas informa ao shell qual registro sanitizado recebeu foco/ativação.
+    signal itemFocused(string itemId)
+    signal itemActivated(string itemId)
+
+    property int activeItemIndex: 0
 
     readonly property var focusableElements: {
         const out = []
@@ -79,10 +85,49 @@ Item {
     readonly property var dataDrivenKinds: ["carousel", "helpSystem", "rating", "badges",
         "systemStatus", "textList", "grid", "gameListInfo", "gameSelector"]
 
-    readonly property var selectedItem: runtimeModel && runtimeModel.selected
-        ? runtimeModel.selected : ({})
     readonly property var runtimeItems: runtimeModel && Array.isArray(runtimeModel.items)
         ? runtimeModel.items : []
+    readonly property var selectedItem: view.runtimeItems.length > 0
+        && view.activeItemIndex >= 0
+        && view.activeItemIndex < view.runtimeItems.length
+        ? view.runtimeItems[view.activeItemIndex]
+        : (runtimeModel && runtimeModel.selected ? runtimeModel.selected : ({}))
+
+    function syncRuntimeSelection() {
+        const raw = runtimeModel && runtimeModel.selectedIndex !== undefined
+            ? Number(runtimeModel.selectedIndex) : 0
+        const requested = raw === raw ? Math.floor(raw) : 0
+        if (view.runtimeItems.length === 0) {
+            view.activeItemIndex = 0
+            return
+        }
+        view.activeItemIndex = Math.max(0, Math.min(requested, view.runtimeItems.length - 1))
+    }
+
+    function focusedRuntimeKind() {
+        if (view.currentFocusIndex < 0 || view.currentFocusIndex >= view.focusableElements.length)
+            return ""
+        const element = view.focusableElements[view.currentFocusIndex]
+        return element && element.kind ? String(element.kind) : ""
+    }
+
+    function moveRuntimeItem(direction) {
+        if (view.runtimeItems.length < 2)
+            return false
+        if (direction !== "left" && direction !== "right")
+            return false
+        const delta = direction === "left" ? -1 : 1
+        let next = view.activeItemIndex + delta
+        if (next < 0)
+            next = view.runtimeItems.length - 1
+        if (next >= view.runtimeItems.length)
+            next = 0
+        view.activeItemIndex = next
+        const item = view.runtimeItems[next]
+        if (item && item.id !== undefined)
+            view.itemFocused(String(item.id))
+        return true
+    }
 
     function bindingValue(binding, item) {
         if (!binding) return ""
@@ -282,6 +327,13 @@ Item {
             view.resetFocus()
             return true
         }
+        // Um carrossel é um foco único com vários itens. Antes de procurar
+        // outro nó geométrico, as setas horizontais percorrem a biblioteca;
+        // sem isso a cena parecia navegável, mas o catálogo nunca mudava.
+        if (["carousel", "gameSelector", "grid", "textList"].indexOf(
+                view.focusedRuntimeKind()) !== -1
+                && view.moveRuntimeItem(direction))
+            return true
         const target = view.focusCandidate(direction)
         if (target < 0) return false
         view.currentFocusIndex = target
@@ -293,11 +345,18 @@ Item {
     function activateCurrentFocus() {
         if (!view.interactive || view.currentFocusIndex < 0) return false
         view.elementActivated(view.currentFocusId)
+        const item = view.selectedItem
+        if (item && item.id !== undefined)
+            view.itemActivated(String(item.id))
         return true
     }
 
     onInteractiveChanged: Qt.callLater(view.resetFocus)
-    Component.onCompleted: if (view.interactive) Qt.callLater(view.resetFocus)
+    onRuntimeModelChanged: Qt.callLater(view.syncRuntimeSelection)
+    Component.onCompleted: {
+        view.syncRuntimeSelection()
+        if (view.interactive) Qt.callLater(view.resetFocus)
+    }
 
     focus: view.interactive
     activeFocusOnTab: view.interactive
@@ -439,10 +498,10 @@ Item {
                                 radius: view.numberOr(lay, "imageCornerRadius", 0) * view.width
                                 color: view.highContrast ? "#000000" : "#14212e"
                                 border.color: view.esdeColor(app.textColor, "#3a4c5e")
-                                border.width: index === Number(view.runtimeModel.selectedIndex || 0) ? 2 : 1
-                                opacity: index === Number(view.runtimeModel.selectedIndex || 0)
+                                border.width: index === view.activeItemIndex ? 2 : 1
+                                opacity: index === view.activeItemIndex
                                     ? 1 : (view.reducedMotion ? 0.7 : 0.82)
-                                scale: index === Number(view.runtimeModel.selectedIndex || 0)
+                                scale: index === view.activeItemIndex
                                     ? (view.reducedMotion ? 1 : 1.04) : 1
                                 Image {
                                     anchors.fill: parent

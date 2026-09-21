@@ -36,6 +36,8 @@ Item {
     property string systemId: "snes"
     property bool reducedMotion: false
     property bool highContrast: false
+    signal gameFocused(string gameId)
+    signal gameActivated(string gameId)
 
     readonly property var views: rendered && rendered.scene ? rendered.scene.views : []
     readonly property var currentView: {
@@ -219,6 +221,8 @@ Item {
                 focusColor: preview.focusColor
                 reducedMotion: preview.reducedMotion
                 highContrast: preview.highContrast
+                onItemFocused: preview.gameFocused(itemId)
+                onItemActivated: preview.gameActivated(itemId)
                 Accessible.name: qsTr("Cena do tema, use as setas para navegar")
             }
 

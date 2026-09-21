@@ -24,6 +24,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Fechar gates e promover a release; a validação física da implementação continua pendente até instalação governada.",
-  "updatedAt": "2026-09-20"
+  "nextAction": "Fechar gates, promover a release e conectar os eventos gameFocused/gameActivated ao fluxo real do Launcher; vídeo, OSD, saves, multidisc e retorno de foco continuam exigindo prova física.",
+  "updatedAt": "2026-09-21"
 }

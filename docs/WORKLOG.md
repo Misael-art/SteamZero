@@ -11656,3 +11656,18 @@ branch antes de sua promoção. Doctor/state audit continuam limpos; OSD real,
 save-state, troca de disco e retorno de foco permanecem sem prova nova nesta
 branch. PS4 e PS5 estão instalados, mas o inventário atual não publica payload
 lançável para prova física.
+
+## 2026-09-21 — navegação semântica da cena ES-DE
+
+A cena ES-DE deixou de ser apenas uma composição visual: o foco em carousel,
+gameSelector, grid e textList agora percorre os itens reais do read model com
+setas horizontais, incluindo wrap determinístico. O item selecionado passa a
+ser usado pela composição de capa, fanart, vídeo e metadados; Enter emite
+`itemActivated` e propaga somente o `gameId` sanitizado para
+`ThemeScenePreview`/`ThemeSceneFullscreen`. O shell continua dono da decisão
+de abrir detalhes ou lançar o jogo, portanto o preview não dispara processos.
+
+A prova QML cobre foco, troca de item, wrap e ativação no renderer e no host do
+preview; 57 testes Python/QML passaram. A alteração não promove a release nem
+fecha a evidência física: esses eventos ainda precisam ser ligados ao fluxo
+real do Launcher após a promoção governada.
