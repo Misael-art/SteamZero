@@ -17,6 +17,14 @@ import "../../src/steamzero/ui/qml"
         id: view
         anchors.fill: parent
         interactive: true
+        runtimeModel: ({
+            "items": [{"id": "1", "name": "Metroid", "coverUrl": "", "genre": "Ação"}],
+            "selectedIndex": 0,
+            "selected": {"id": "1", "name": "Metroid", "genre": "Ação", "rating": "4.5"},
+            "system": {"id": "nes", "name": "Nintendo Entertainment System"},
+            "status": {"label": "Jogos inventariados"},
+            "actions": ["Selecionar", "Detalhes", "Jogar"]
+        })
         onElementActivated: lastActivated = elementId
         viewData: ({
             "id": "system",
@@ -60,12 +68,11 @@ import "../../src/steamzero/ui/qml"
             compare(reasons[0].reason, "sem geometria declarada")
         }
 
-        function test_a_kind_without_a_renderer_says_so_instead_of_vanishing() {
-            // `carousel` passou a desenhar; `badges` ainda não. O caso precisa
-            // continuar coberto, senão o caminho de degradação fica sem prova.
+        function test_compiled_visual_kinds_have_a_renderer() {
+            // Todos os tipos visuais compilados entram na superfície. `sound`
+            // permanece não visual e continua sendo tratado como diagnóstico.
             const badges = view.notDrawn.filter(function(e) { return e.id === "medalhas" })
-            compare(badges.length, 1)
-            verify(badges[0].reason.indexOf("tipo ainda nao desenhado") === 0)
+            compare(badges.length, 0)
         }
 
         function test_a_data_driven_kind_draws_its_structure() {
@@ -93,15 +100,18 @@ import "../../src/steamzero/ui/qml"
         }
 
         function test_text_and_binding_both_count_as_drawable() {
-            // 2 textos + o carrossel. `badges` e o oculto ficam de fora.
-            compare(view.drawnCount, 4)
+            // 2 textos + o carrossel + badges. O oculto e a arte sem geometria
+            // ficam de fora.
+            compare(view.drawnCount, 5)
         }
 
         function test_a_binding_shows_the_field_instead_of_inventing_a_title() {
-            // A superfície não tem dado de jogo. Escrever um título plausível
-            // faria a prévia mentir sobre o que o tema mostra.
+            // O campo agora vem do read model; sem ele a superfície usa o
+            // fallback legível, nunca um placeholder de implementação.
             const bound = view.notDrawn.filter(function(e) { return e.id === "vinculo" })
             compare(bound.length, 0)
+            compare(view.textFor({"binding": {"source": "metadata", "field": "name"}},
+                                 view.selectedItem, ""), "Metroid")
         }
 
         function test_esde_colour_is_reordered_for_qml() {

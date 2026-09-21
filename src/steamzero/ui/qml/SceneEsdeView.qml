@@ -25,6 +25,13 @@ Item {
     readonly property var elements: viewData && viewData.elements ? viewData.elements : []
     readonly property string viewId: viewData && viewData.id ? String(viewData.id) : ""
 
+    // Conteúdo publicado pelo dashboard. A cena continua sendo declarativa:
+    // este modelo só contém valores já projetados (jogos, mídia e ações), e
+    // nunca caminhos arbitrários para QML, scripts ou executáveis.
+    property var runtimeModel: ({})
+    property bool reducedMotion: false
+    property bool highContrast: false
+
     // A cena pode ser usada como uma superfície interativa sem ganhar regras
     // próprias de catálogo. O IR continua sendo a fonte da geometria; esta
     // camada só percorre os elementos que o IR marcou como dados de interação.
@@ -69,7 +76,55 @@ Item {
     // a lista de sistemas, o vídeo do jogo, os atalhos do controle. A superfície
     // desenha a estrutura e marca o conteúdo como vindo de dados, em vez de
     // inventar títulos e capas que o tema nunca prometeu.
-    readonly property var dataDrivenKinds: ["carousel", "helpSystem"]
+    readonly property var dataDrivenKinds: ["carousel", "helpSystem", "rating", "badges",
+        "systemStatus", "textList", "grid", "gameListInfo", "gameSelector"]
+
+    readonly property var selectedItem: runtimeModel && runtimeModel.selected
+        ? runtimeModel.selected : ({})
+    readonly property var runtimeItems: runtimeModel && Array.isArray(runtimeModel.items)
+        ? runtimeModel.items : []
+
+    function bindingValue(binding, item) {
+        if (!binding) return ""
+        const source = typeof binding === "string" ? "item" : String(binding.source || "item")
+        const field = typeof binding === "string" ? binding : String(binding.field || "")
+        const row = source === "system" ? (runtimeModel.system || ({}))
+            : source === "status" ? (runtimeModel.status || ({}))
+            : source === "actions" ? (runtimeModel.actions || ({}))
+            : item || view.selectedItem
+        if (!row || !field) return ""
+        const value = row[field]
+        return value === undefined || value === null ? "" : value
+    }
+
+    function valueFor(element, item) {
+        if (!element) return ""
+        return view.bindingValue(element.binding, item)
+    }
+
+    function textFor(element, item, fallback) {
+        if (!element) return fallback || ""
+        if (element.text) return String(element.text)
+        const value = view.valueFor(element, item)
+        return value === "" || value === undefined ? (fallback || "") : String(value)
+    }
+
+    function mediaFor(item, role) {
+        const row = item || view.selectedItem || ({})
+        const order = role === "video" ? ["videoUrl", "heroUrl", "fanartUrl", "coverUrl"]
+            : role === "background" ? ["heroUrl", "fanartUrl", "coverUrl", "bannerUrl"]
+            : ["coverUrl", "artworkUrl", "bannerUrl"]
+        for (let i = 0; i < order.length; ++i) {
+            if (row[order[i]]) return String(row[order[i]])
+        }
+        return ""
+    }
+
+    function sourceFor(element, item, role) {
+        if (element && element.source) return String(element.source)
+        const value = view.valueFor(element, item)
+        return value ? String(value) : view.mediaFor(item, role || "cover")
+    }
 
     function isDrawable(element) {
         if (!view.hasGeometry(element)) return false
@@ -81,9 +136,11 @@ Item {
         // view base empilhava um segundo helpsystem sobre o do tema, com outra
         // posição e outra cor — dois conjuntos de atalhos disputando o rodapé.
         if (element.layout && element.layout.scope === "menu") return false
-        if (element.kind === "image") return !!element.source
-        if (element.kind === "text") return !!(element.text || element.binding)
-        if (element.kind === "video") return !!element.source
+        if (element.kind === "image") return !!view.sourceFor(element, view.selectedItem, "cover")
+        if (element.kind === "text" || element.kind === "boundText")
+            return !!(element.text || element.binding || view.selectedItem)
+        if (element.kind === "video")
+            return !!(view.sourceFor(element, view.selectedItem, "video") || view.selectedItem)
         return view.dataDrivenKinds.indexOf(element.kind) !== -1
     }
 
@@ -109,7 +166,7 @@ Item {
                     ? "o tema declara invisivel"
                     : (e.layout && e.layout.scope === "menu")
                         ? "escopo 'menu': so aparece com menu aberto"
-                    : (["image", "text", "video"].indexOf(e.kind) === -1)
+                    : (["image", "text", "boundText", "video"].indexOf(e.kind) === -1)
                         ? "tipo ainda nao desenhado: " + e.kind
                         : "sem asset resolvido"
             out.push({"id": e.id, "kind": e.kind, "reason": reason})
@@ -302,35 +359,62 @@ Item {
                 if (!view.isDrawable(modelData))
                     return null
                 if (modelData.kind === "image") return imageComponent
-                if (modelData.kind === "text") return textComponent
+                if (modelData.kind === "text" || modelData.kind === "boundText") return textComponent
                 if (modelData.kind === "video") return videoComponent
                 if (modelData.kind === "carousel") return carouselComponent
+                if (modelData.kind === "rating") return ratingComponent
+                if (modelData.kind === "badges") return badgesComponent
+                if (modelData.kind === "systemStatus") return systemStatusComponent
+                if (modelData.kind === "textList") return textListComponent
+                if (modelData.kind === "grid") return gridComponent
+                if (modelData.kind === "gameListInfo") return gameListInfoComponent
+                if (modelData.kind === "gameSelector") return gameSelectorComponent
                 return helpComponent
             }
 
             Component {
                 id: imageComponent
-                Image {
-                    source: modelData.source
-                    // `tile` e o resto do IR pedem preenchimento distinto; sem
-                    // isto um fundo 1x1 esticaria em vez de repetir.
-                    fillMode: lay.tile === true ? Image.Tile : Image.PreserveAspectFit
-                    asynchronous: true
-                    cache: true
-                    smooth: true
+                Item {
+                    Image {
+                        id: artwork
+                        anchors.fill: parent
+                        source: view.sourceFor(modelData, view.selectedItem, "cover")
+                        // `tile` e o resto do IR pedem preenchimento distinto; sem
+                        // isto um fundo 1x1 esticaria em vez de repetir.
+                        fillMode: lay.tile === true ? Image.Tile : Image.PreserveAspectFit
+                        asynchronous: true
+                        cache: true
+                        smooth: true
+                        visible: source.toString().length > 0
+                    }
+                    Rectangle {
+                        anchors.fill: parent
+                        visible: !artwork.visible
+                        color: view.highContrast ? "#000000" : "#172532"
+                        border.color: view.highContrast ? "#ffffff" : view.esdeColor(app.textColor, "#5d7182")
+                        border.width: view.highContrast ? 2 : 1
+                        Text {
+                            anchors.centerIn: parent
+                            width: parent.width - 12
+                            text: qsTr("Arte indisponível")
+                            color: view.highContrast ? "#ffffff" : "#b8c7d2"
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
+                        }
+                    }
                 }
             }
 
 
-            // O carrossel é dirigido por dados: os itens são os sistemas ou os
-            // jogos, que esta superfície não tem. Desenhar a ESTRUTURA — moldura
-            // e os `maxItemCount` compartimentos no tamanho declarado — mostra o
-            // layout que o tema pediu sem inventar capas que ele nunca prometeu.
+            // O carrossel é dirigido pelo catálogo real. Quando ele está vazio,
+            // a mesma composição permanece legível com slots de fallback.
             Component {
                 id: carouselComponent
                 Item {
-                    readonly property int slots: Math.max(
+                    readonly property int declaredSlots: Math.max(
                         1, Math.min(12, Math.round(view.numberOr(lay, "maxItemCount", 3))))
+                    readonly property int slots: view.runtimeItems.length > 0
+                        ? Math.min(12, view.runtimeItems.length) : declaredSlots
                     readonly property real slotW: view.numberOr(lay, "itemWidth", 0.12) * view.width
                     readonly property real slotH: view.numberOr(lay, "itemHeight", 0.18)
                         * view.height
@@ -347,16 +431,37 @@ Item {
                         Repeater {
                             model: parent.parent.slots
                             delegate: Rectangle {
+                                required property int index
+                                readonly property var item: view.runtimeItems.length > index
+                                    ? view.runtimeItems[index] : ({})
                                 width: slotW
                                 height: slotH
                                 radius: view.numberOr(lay, "imageCornerRadius", 0) * view.width
-                                color: "#14212e"
+                                color: view.highContrast ? "#000000" : "#14212e"
                                 border.color: view.esdeColor(app.textColor, "#3a4c5e")
-                                border.width: 1
+                                border.width: index === Number(view.runtimeModel.selectedIndex || 0) ? 2 : 1
+                                opacity: index === Number(view.runtimeModel.selectedIndex || 0)
+                                    ? 1 : (view.reducedMotion ? 0.7 : 0.82)
+                                scale: index === Number(view.runtimeModel.selectedIndex || 0)
+                                    ? (view.reducedMotion ? 1 : 1.04) : 1
+                                Image {
+                                    anchors.fill: parent
+                                    anchors.margins: 2
+                                    source: view.mediaFor(item, "cover")
+                                    fillMode: Image.PreserveAspectFit
+                                    asynchronous: true
+                                    cache: true
+                                    visible: source.toString().length > 0
+                                }
                                 Text {
                                     anchors.centerIn: parent
-                                    text: "{item}"
+                                    width: parent.width - 10
+                                    text: item.name || item.title || qsTr("Sem capa")
+                                    visible: parent.children[0].visible === false
                                     color: view.esdeColor(app.textColor, "#9eabba")
+                                    horizontalAlignment: Text.AlignHCenter
+                                    elide: Text.ElideRight
+                                    wrapMode: Text.Wrap
                                     font.pixelSize: Math.max(
                                         10, view.numberOr(lay, "fontSize", 0.02) * view.height)
                                 }
@@ -376,6 +481,19 @@ Item {
                     id: videoHost
                     property var player: null
                     readonly property bool multimediaReady: player !== null && player.ready
+
+                    // Fanart/capa continuam visíveis quando QtMultimedia está
+                    // ausente ou o vídeo está corrompido. O quadro de erro fica
+                    // sobre a arte e explica o estado sem deixar tela preta.
+                    Image {
+                        anchors.fill: parent
+                        source: view.mediaFor(view.selectedItem, "background")
+                        fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
+                        cache: true
+                        visible: source.toString().length > 0 && !videoHost.multimediaReady
+                        opacity: 0.72
+                    }
 
                     Rectangle {
                         anchors.fill: parent
@@ -412,7 +530,7 @@ Item {
                             + ' fillMode: VideoOutput.PreserveAspectCrop } }'
                         try {
                             const item = Qt.createQmlObject(source, videoHost, "esdeVideo")
-                            item.clip = modelData.source
+                            item.clip = view.sourceFor(modelData, view.selectedItem, "video")
                             videoHost.player = item
                         } catch (error) {
                             // Sem QtMultimedia: o quadro degradado acima fica.
@@ -431,8 +549,11 @@ Item {
                 Row {
                     spacing: Math.max(6, view.numberOr(lay, "entrySpacing", 0.01) * view.width)
                     Repeater {
-                        model: 3
+                        model: view.runtimeModel && Array.isArray(view.runtimeModel.actions)
+                            && view.runtimeModel.actions.length > 0
+                            ? view.runtimeModel.actions : [qsTr("Selecionar"), qsTr("Detalhes"), qsTr("Jogar")]
                         delegate: Row {
+                            required property var modelData
                             spacing: Math.max(
                                 3, view.numberOr(lay, "iconTextSpacing", 0.004) * view.width)
                             Rectangle {
@@ -444,7 +565,7 @@ Item {
                             }
                             Text {
                                 id: helpText
-                                text: "{ação}"
+                                text: String(modelData)
                                 color: view.esdeColor(app.textColor, "#cccccc")
                                 font.pixelSize: Math.max(
                                     10, view.numberOr(lay, "fontSize", 0.03) * view.height
@@ -458,18 +579,148 @@ Item {
             Component {
                 id: textComponent
                 Text {
-                    // `binding` é dado de jogo, que esta superfície não tem: o
-                    // rótulo do vínculo é honesto sobre isso, e inventar um
-                    // título faria a prévia mentir sobre o que o tema mostra.
-                    text: modelData.text
-                        ? modelData.text
-                        : "{" + String(modelData.binding.field ? modelData.binding.field
-                                                              : modelData.binding) + "}"
-                    color: view.esdeColor(app.color, "#e8eef6")
+                    text: view.textFor(modelData, view.selectedItem,
+                                       modelData.binding ? qsTr("Sem dados") : "")
+                    color: view.highContrast ? "#ffffff" : view.esdeColor(app.color, "#e8eef6")
                     font.pixelSize: Math.max(10, view.numberOr(lay, "fontSize", 0.035)
                                                  * view.height)
                     elide: Text.ElideRight
                     verticalAlignment: Text.AlignVCenter
+                }
+            }
+
+            Component {
+                id: ratingComponent
+                Row {
+                    spacing: 3
+                    Text {
+                        text: "★"
+                        color: view.esdeColor(app.color, "#f4c542")
+                        font.pixelSize: Math.max(12, view.numberOr(lay, "fontSize", 0.03) * view.height)
+                    }
+                    Text {
+                        text: view.selectedItem.rating || view.selectedItem.score || qsTr("Sem avaliação")
+                        color: view.highContrast ? "#ffffff" : view.esdeColor(app.textColor, "#e8eef6")
+                        font.pixelSize: Math.max(10, view.numberOr(lay, "fontSize", 0.03) * view.height)
+                    }
+                }
+            }
+
+            Component {
+                id: badgesComponent
+                Row {
+                    spacing: 6
+                    Repeater {
+                        model: view.selectedItem.badges && view.selectedItem.badges.length
+                            ? view.selectedItem.badges : [qsTr("Sem selo")]
+                        delegate: Rectangle {
+                            required property var modelData
+                            implicitWidth: badgeText.implicitWidth + 14
+                            implicitHeight: badgeText.implicitHeight + 8
+                            color: view.highContrast ? "#000000" : view.esdeColor(app.color, "#304354")
+                            border.color: view.esdeColor(app.textColor, "#8aa1b4")
+                            border.width: 1
+                            radius: 4
+                            Text {
+                                id: badgeText
+                                anchors.centerIn: parent
+                                text: String(modelData)
+                                color: "#ffffff"
+                                font.pixelSize: Math.max(10, view.numberOr(lay, "fontSize", 0.02) * view.height)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Component {
+                id: systemStatusComponent
+                Text {
+                    text: view.runtimeModel.status && view.runtimeModel.status.label
+                        ? String(view.runtimeModel.status.label) : qsTr("Estado indisponível")
+                    color: view.highContrast ? "#ffffff" : view.esdeColor(app.textColor, "#e8eef6")
+                    font.pixelSize: Math.max(10, view.numberOr(lay, "fontSize", 0.025) * view.height)
+                    elide: Text.ElideRight
+                }
+            }
+
+            Component {
+                id: textListComponent
+                Column {
+                    spacing: 4
+                    Repeater {
+                        model: view.runtimeItems.length > 0 ? view.runtimeItems : [({})]
+                        delegate: Text {
+                            required property var modelData
+                            text: modelData.name || modelData.title || qsTr("Sem título")
+                            color: view.highContrast ? "#ffffff" : view.esdeColor(app.textColor, "#e8eef6")
+                            font.pixelSize: Math.max(10, view.numberOr(lay, "fontSize", 0.025) * view.height)
+                            elide: Text.ElideRight
+                        }
+                    }
+                }
+            }
+
+            Component {
+                id: gridComponent
+                Grid {
+                    columns: Math.max(1, Math.round(view.numberOr(lay, "columns", 4)))
+                    spacing: Math.max(4, view.numberOr(lay, "itemMarginX", 0.01) * view.width)
+                    Repeater {
+                        model: view.runtimeItems
+                        delegate: Rectangle {
+                            required property var modelData
+                            width: view.numberOr(lay, "itemWidth", 0.12) * view.width
+                            height: view.numberOr(lay, "itemHeight", 0.18) * view.height
+                            color: view.highContrast ? "#000000" : "#172532"
+                            border.color: view.esdeColor(app.textColor, "#5d7182")
+                            Image {
+                                anchors.fill: parent
+                                anchors.margins: 2
+                                source: view.mediaFor(modelData, "cover")
+                                fillMode: Image.PreserveAspectFit
+                                visible: source.toString().length > 0
+                            }
+                            Text {
+                                anchors.centerIn: parent
+                                text: modelData.name || modelData.title || qsTr("Sem capa")
+                                visible: parent.children[0].visible === false
+                                color: "#ffffff"
+                                width: parent.width - 8
+                                horizontalAlignment: Text.AlignHCenter
+                                elide: Text.ElideRight
+                            }
+                        }
+                    }
+                }
+            }
+
+            Component {
+                id: gameListInfoComponent
+                Column {
+                    spacing: 5
+                    Repeater {
+                        model: [view.selectedItem.name || view.selectedItem.title || qsTr("Jogo sem título"),
+                            view.selectedItem.genre || "", view.selectedItem.year || ""]
+                        delegate: Text {
+                            required property var modelData
+                            visible: String(modelData).length > 0
+                            text: String(modelData)
+                            color: view.highContrast ? "#ffffff" : view.esdeColor(app.textColor, "#e8eef6")
+                            font.pixelSize: Math.max(10, view.numberOr(lay, "fontSize", 0.025) * view.height)
+                            elide: Text.ElideRight
+                        }
+                    }
+                }
+            }
+
+            Component {
+                id: gameSelectorComponent
+                Text {
+                    text: view.selectedItem.name || view.selectedItem.title || qsTr("Selecione um jogo")
+                    color: view.highContrast ? "#ffffff" : view.esdeColor(app.textColor, "#e8eef6")
+                    font.pixelSize: Math.max(10, view.numberOr(lay, "fontSize", 0.03) * view.height)
+                    elide: Text.ElideRight
                 }
             }
         }

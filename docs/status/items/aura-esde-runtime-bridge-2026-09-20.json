@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AURA-ESDE-RUNTIME-BRIDGE",
+  "title": "Theme Engine — ponte catálogo/mídia real para cena ES-DE",
+  "domain": "ui",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/adapters/desktop_dashboard.py",
+    "src/steamzero/ui/qml/SceneEsdeView.qml",
+    "src/steamzero/ui/qml/ThemeScenePreview.qml",
+    "tests/integration/test_scene_esde_view.py",
+    "tests/qml/check_scene_esde_view.qml",
+    "tests/unit/test_desktop_dashboard.py",
+    "docs/09-operations/evidence/2026-09-21-aura-harmonization"
+  ],
+  "scopeDigest": "f149a295f95c68cafcd07b501930033a1720f611e4a11e377e0b926978f65107",
+  "dependsOn": [
+    "SZ-THEME-ENGINE",
+    "SZ-AURA-LAUNCHER"
+  ],
+  "knownGaps": [
+    "GAP-ESDE-ACTIVE-RELEASE-INSTALL",
+    "GAP-ESDE-REAL-VIDEO-DECODE",
+    "GAP-AURA-SESSION-PERIPHERALS-PHYSICAL",
+    "GAP-MULTIDISC-SAVE-OSD-PHYSICAL"
+  ],
+  "acceptanceCriteria": [
+    "A cena recebe o catálogo editorial sanitizado e não lê cache, filesystem ou rede em QML.",
+    "Carrossel, rating, badges, systemStatus, textList, grid, gameListInfo e gameSelector têm renderer ou fallback explícito.",
+    "Capa, fanart e vídeo degradam para arte alternativa ou mensagem legível sem tela preta.",
+    "highContrast e reducedMotion prevalecem sobre a composição visual.",
+    "A release instalada precisa ser promovida para provar o novo bridge, vídeo real, OSD, saves, multidisc e retorno de foco."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_scene_esde_view.py",
+      "command": "pytest tests/unit/test_desktop_dashboard.py tests/integration/test_scene_esde_view.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-21-aura-harmonization/01-installed-aura.png",
+      "command": "captura Wayland real da release 2.0.0rc1-1acac76ba7bc; baseline fullscreen AURA/Cinema",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-21-aura-harmonization/performance-installed-1acac76ba7bc.json",
+      "command": "launcher_perf_probe.py na release 2.0.0rc1-1acac76ba7bc; startup 1366 ms, p95 16.613 ms, VRAM 83664 KiB",
+      "result": "passed"
+    }
+  ],
+  "activeWorkstreams": [
+    "WS-2026-09-AURA-ESDE-RUNTIME-BRIDGE"
+  ],
+  "nextAction": "Executar os gates finais, promover uma release governada com o bridge, aplicar no host e repetir as provas físicas de mídia, vídeo, OSD, saves, multidisc e retorno ao foco.",
+  "updatedAt": "2026-09-20",
+  "notes": "A captura e a medição são baseline da release instalada; não certificam o código desta branch antes da promoção."
+}

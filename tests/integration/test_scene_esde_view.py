@@ -49,7 +49,7 @@ def test_the_renderer_never_reaches_outside_the_scene_it_was_given() -> None:
         assert forbidden not in source, f"o renderizador alcança {forbidden!r}"
     # Tema de terceiros não executa código: nada de Loader com `source` externo.
     assert "sourceComponent" in source, "o Loader precisa escolher componente local, não URL"
-    assert "source: modelData.source" in source, "a imagem deve vir do IR já resolvido"
+    assert "sourceFor(modelData" in source, "a imagem deve vir do IR ou do read model validado"
 
 
 def test_the_dynamic_video_binds_to_the_root_id_not_to_parent() -> None:
