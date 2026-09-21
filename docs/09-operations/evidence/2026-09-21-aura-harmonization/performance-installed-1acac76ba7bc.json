@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "launcher": "/opt/steamzero/releases/2.0.0rc1-1acac76ba7bc/venv/bin/steamzero-launcher",
+  "backend": "opengl",
+  "surface": "948x593",
+  "startupMs": 1366,
+  "frameTime": {
+    "frames": 375,
+    "avgFrameTimeMs": 16.001,
+    "p50Ms": 16.142,
+    "p95Ms": 16.613,
+    "maxMs": 19.121
+  },
+  "peakRssKb": 400476,
+  "peakVramKb": 83664,
+  "vramMeasured": true,
+  "vramMethod": "drm fdinfo do processo, agrupado por drm-client-id",
+  "note": "frameTime é do render loop FrameAnimation, não de frames apresentados pelo compositor.",
+  "validation": {
+    "valid": true,
+    "minimumFrameSamples": 120,
+    "meetsBudget": true,
+    "checks": {
+      "startup": {
+        "observedMs": 1366,
+        "budgetMs": 2000.0,
+        "passed": true
+      },
+      "frameTimeP95": {
+        "observedMs": 16.613,
+        "budgetMs": 16.7,
+        "passed": true
+      },
+      "vram": {
+        "observedKb": 83664,
+        "budgetKb": 524288,
+        "passed": true
+      }
+    }
+  }
+}

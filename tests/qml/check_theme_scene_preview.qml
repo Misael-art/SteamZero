@@ -13,6 +13,8 @@ Item {
     height: 700
 
     property var calls: []
+    property string lastGameFocused: ""
+    property string lastGameActivated: ""
 
     ThemeScenePreview {
         id: preview
@@ -29,6 +31,13 @@ Item {
                     "fontSize": ["medium"],
                     "variant": ["cover"]
                 },
+                "runtimeModel": {
+                    "items": [{"id": "1", "title": "Metroid"},
+                              {"id": "2", "title": "Zelda"}],
+                    "selectedIndex": 0,
+                    "selected": {"id": "1", "title": "Metroid"},
+                    "actions": ["Selecionar", "Detalhes", "Jogar"]
+                },
                 "scene": {"views": [
                     {"id": "gamelist", "elements": [
                         {"id": "a", "kind": "text", "name": "t",
@@ -40,6 +49,8 @@ Item {
                 ]}
             })
         }
+        onGameFocused: lastGameFocused = gameId
+        onGameActivated: lastGameActivated = gameId
     }
 
     TestCase {
@@ -84,12 +95,25 @@ Item {
         function test_the_scene_preview_exposes_focus_and_navigation() {
             const scene = findChild(preview, "sceneView")
             verify(scene !== null, "cena interativa não encontrada")
+            scene.resetFocus()
             tryCompare(scene, "currentFocusId", "a", 2000)
             verify(scene.moveFocus("down"))
             compare(scene.currentFocusId, "b")
             verify(scene.activateCurrentFocus())
             const hint = findChild(preview, "focusHint")
             verify(hint !== null && hint.visible, "a dica de foco não apareceu")
+        }
+
+        function test_runtime_catalog_navigation_reaches_the_preview_host() {
+            const scene = findChild(preview, "sceneView")
+            verify(scene !== null, "cena interativa não encontrada")
+            scene.resetFocus()
+            verify(scene.moveFocus("down"))
+            verify(scene.moveFocus("right"))
+            compare(scene.selectedItem.id, "2")
+            compare(lastGameFocused, "2")
+            verify(scene.activateCurrentFocus())
+            compare(lastGameActivated, "2")
         }
 
         function test_immersive_mode_chooses_real_layout_dimensions() {

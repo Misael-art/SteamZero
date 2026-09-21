@@ -26,6 +26,8 @@ Window {
     property color textColor: "#f2f6fb"
     property color mutedColor: "#9eabba"
     property color focusColor: "#13bdf2"
+    signal gameFocused(string gameId)
+    signal gameActivated(string gameId)
 
     signal dismissed()
 
@@ -63,6 +65,8 @@ Window {
         mutedColor: fullscreen.mutedColor
         focusColor: fullscreen.focusColor
         immersive: true
+        onGameFocused: fullscreen.gameFocused(gameId)
+        onGameActivated: fullscreen.gameActivated(gameId)
     }
 
     Rectangle {

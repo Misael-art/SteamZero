@@ -1459,3 +1459,40 @@ class TestTheCastOrchestratorExistsInProduction:
                 dashboard.cast_pair("qualquer")
         finally:
             dashboard.close_request_context()
+
+
+def test_theme_runtime_model_projects_catalog_media_and_redacts_launch_path() -> None:
+    dashboard = DesktopDashboard.__new__(DesktopDashboard)
+    dashboard._last_emulation = {
+        "editorialPlatforms": [
+            {
+                "id": "snes",
+                "name": "Super Nintendo",
+                "state": "ready",
+                "statusLabel": "Jogos inventariados",
+                "games": [
+                    {
+                        "id": "game-1",
+                        "name": "Super Metroid",
+                        "path": "/roms/secret.sfc",
+                        "coverUrl": "file:///art/cover.png",
+                        "heroUrl": "file:///art/fanart.png",
+                        "genre": "Ação",
+                        "year": 1994,
+                    }
+                ],
+            }
+        ]
+    }
+
+    model = dashboard._theme_runtime_model("snes")
+
+    assert model["selected"]["name"] == "Super Metroid"
+    assert model["selected"]["coverUrl"] == "file:///art/cover.png"
+    assert model["system"] == {
+        "id": "snes",
+        "name": "Super Nintendo",
+        "label": "Super Nintendo",
+    }
+    assert "path" not in model["selected"]
+    assert model["actions"] == ["Selecionar", "Detalhes", "Jogar"]

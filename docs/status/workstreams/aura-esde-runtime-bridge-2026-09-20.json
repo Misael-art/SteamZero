@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-AURA-ESDE-RUNTIME-BRIDGE",
+  "item": "SZ-AURA-ESDE-RUNTIME-BRIDGE",
+  "branch": "codex/aura-harmonization-clean-2026-09-21",
+  "baseRef": "1acac76ba7bc",
+  "owner": "codex-aura-harmonization",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/ui/qml/SceneEsdeView.qml",
+    "src/steamzero/ui/qml/ThemeScenePreview.qml",
+    "tests/integration/test_scene_esde_view.py",
+    "tests/qml/check_scene_esde_view.qml",
+    "tests/unit/test_desktop_dashboard.py",
+    "docs/09-operations/evidence/2026-09-21-aura-harmonization",
+    "docs/status/items/aura-esde-runtime-bridge-2026-09-20.json",
+    "docs/status/workstreams/aura-esde-runtime-bridge-2026-09-20.json"
+  ],
+  "sharedPaths": [
+    "src/steamzero/adapters/desktop_dashboard.py",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Fechar gates, promover a release e conectar os eventos gameFocused/gameActivated ao fluxo real do Launcher; vídeo, OSD, saves, multidisc e retorno de foco continuam exigindo prova física.",
+  "updatedAt": "2026-09-21"
+}

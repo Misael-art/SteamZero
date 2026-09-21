@@ -11624,3 +11624,50 @@ Ruff check/format nos arquivos tocados passou. O
 o novo item está documentado e sem evidência ausente. Nenhuma instalação de
 release, download real, alteração de host, atualização de console PS3, reboot
 ou mutação do KDE foi executada.
+
+## 2026-09-21 — ponte de catálogo/mídia para cena ES-DE e bateria de validação
+
+Na branch `codex/aura-harmonization-clean-2026-09-21`, criada limpa sobre
+`origin/main` em `1acac76ba7bc`, a árvore suja do worktree original foi
+preservada. A cena ES-DE passou a receber um read model sanitizado do snapshot
+editorial: jogos, sistema, estado, ações e mídia pública, sem caminho físico de
+lançamento, leitura de cache ou acesso de rede no QML. O renderer ganhou
+fallback explícito para capa, fanart e vídeo e cobertura visual para carousel,
+rating, badges, systemStatus, textList, grid, gameListInfo e gameSelector.
+`highContrast` e `reducedMotion` continuam prevalecendo.
+
+Provas focadas: 57 testes Python/QML passaram. Ruff check, formatação, mypy,
+independência, fronteiras e `STATUS-CHECK: OK` passaram. A suíte integral limpa
+foi executada isoladamente em `/home`, mas a primeira execução foi contaminada
+por consultas do operador ao CLI durante o runner (o guard detectou processos
+reais, como deveria); o teste de roteamento que apareceu como falha passou
+isoladamente. Uma nova execução sem consultas externas registrou uma falha
+precoce e ficou presa em `pytest` aguardando `futex` sem subprocesso filho; foi
+interrompida após mais de quinze minutos sem avanço. Portanto a suíte integral
+permanece inconclusiva, não verde, e nenhum teste foi removido ou enfraquecido.
+
+Na release instalada `2.0.0rc1-1acac76ba7bc`, sem reiniciar ou finalizar o KDE,
+foram obtidos baseline fullscreen e medição Wayland real:
+`01-installed-aura.png` mostra AURA/Cinema com foco central, capas reais e
+fallback legível; `performance-installed-1acac76ba7bc.json` registra startup
+1366 ms, 375 frames, p95 16,613 ms e 83.664 KiB de VRAM, dentro dos orçamentos.
+Essa captura é baseline da release instalada e não certifica o código desta
+branch antes de sua promoção. Doctor/state audit continuam limpos; OSD real,
+save-state, troca de disco e retorno de foco permanecem sem prova nova nesta
+branch. PS4 e PS5 estão instalados, mas o inventário atual não publica payload
+lançável para prova física.
+
+## 2026-09-21 — navegação semântica da cena ES-DE
+
+A cena ES-DE deixou de ser apenas uma composição visual: o foco em carousel,
+gameSelector, grid e textList agora percorre os itens reais do read model com
+setas horizontais, incluindo wrap determinístico. O item selecionado passa a
+ser usado pela composição de capa, fanart, vídeo e metadados; Enter emite
+`itemActivated` e propaga somente o `gameId` sanitizado para
+`ThemeScenePreview`/`ThemeSceneFullscreen`. O shell continua dono da decisão
+de abrir detalhes ou lançar o jogo, portanto o preview não dispara processos.
+
+A prova QML cobre foco, troca de item, wrap e ativação no renderer e no host do
+preview; 57 testes Python/QML passaram. A alteração não promove a release nem
+fecha a evidência física: esses eventos ainda precisam ser ligados ao fluxo
+real do Launcher após a promoção governada.

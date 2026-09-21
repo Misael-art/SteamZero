@@ -34,6 +34,10 @@ Item {
     property bool selectionDefaultsApplied: false
     property string viewId: "gamelist"
     property string systemId: "snes"
+    property bool reducedMotion: false
+    property bool highContrast: false
+    signal gameFocused(string gameId)
+    signal gameActivated(string gameId)
 
     readonly property var views: rendered && rendered.scene ? rendered.scene.views : []
     readonly property var currentView: {
@@ -43,6 +47,8 @@ Item {
         }
         return views.length ? views[0] : null
     }
+    readonly property var runtimeModel: rendered && rendered.runtimeModel
+        ? rendered.runtimeModel : ({})
 
     // Um seletor vazio parece controle quebrado. O rótulo diz qual dimensão é,
     // e a ausência de escolha ganha nome em vez de virar espaço em branco.
@@ -210,8 +216,13 @@ Item {
                 anchors.margins: 1
                 visible: preview.currentView !== null
                 viewData: preview.currentView ? preview.currentView : ({"id": "", "elements": []})
+                runtimeModel: preview.runtimeModel
                 interactive: true
                 focusColor: preview.focusColor
+                reducedMotion: preview.reducedMotion
+                highContrast: preview.highContrast
+                onItemFocused: preview.gameFocused(itemId)
+                onItemActivated: preview.gameActivated(itemId)
                 Accessible.name: qsTr("Cena do tema, use as setas para navegar")
             }
 

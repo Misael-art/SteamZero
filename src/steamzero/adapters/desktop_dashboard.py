@@ -1970,6 +1970,72 @@ class DesktopDashboard:
         live = theme_assets.live_digests(theme_assets.load_installed_manifests(paths.themes_dir()))
         return store.collect_garbage(live, dry_run=not apply)
 
+    def _theme_runtime_model(self, system_id: str | None) -> dict[str, Any]:
+        """Project the last canonical emulation snapshot for an ES-DE scene.
+
+        Theme QML must not read the library cache or infer paths.  The dashboard
+        already owns the sanitized editorial projection, so the scene receives a
+        small, stable read model with explicit media fallbacks.  If the snapshot
+        is unavailable the result is still valid and renders the empty state.
+        """
+        snapshot = self._last_emulation if isinstance(self._last_emulation, dict) else {}
+        platforms = snapshot.get("editorialPlatforms", [])
+        rows = platforms if isinstance(platforms, list) else []
+        requested = str(system_id or "")
+        platform = next(
+            (row for row in rows if isinstance(row, dict) and str(row.get("id")) == requested),
+            None,
+        )
+        if platform is None:
+            platform = next(
+                (row for row in rows if isinstance(row, dict) and row.get("games")),
+                None,
+            )
+        platform = platform if isinstance(platform, dict) else {}
+        raw_games = platform.get("games", [])
+        games: list[dict[str, Any]] = []
+        if isinstance(raw_games, list):
+            for raw in raw_games[:64]:
+                if not isinstance(raw, dict):
+                    continue
+                # Only public catalog/media fields cross into QML.  In
+                # particular, do not expose launch paths, fingerprints or
+                # compatibility internals to a third-party theme.
+                games.append(
+                    {
+                        "id": str(raw.get("id") or ""),
+                        "name": str(raw.get("name") or raw.get("title") or ""),
+                        "title": str(raw.get("title") or raw.get("name") or ""),
+                        "platformId": str(raw.get("platformId") or platform.get("id") or ""),
+                        "coverUrl": str(raw.get("coverUrl") or raw.get("artworkUrl") or ""),
+                        "heroUrl": str(raw.get("heroUrl") or raw.get("fanartUrl") or ""),
+                        "fanartUrl": str(raw.get("fanartUrl") or raw.get("heroUrl") or ""),
+                        "bannerUrl": str(
+                            raw.get("bannerUrl") or raw.get("fallbackArtworkUrl") or ""
+                        ),
+                        "screenshotUrl": str(raw.get("screenshotUrl") or ""),
+                        "genre": str(raw.get("genre") or ""),
+                        "year": str(raw.get("year") or raw.get("releaseYear") or ""),
+                        "rating": raw.get("rating") or raw.get("score") or "",
+                        "state": str(raw.get("state") or platform.get("state") or "unverified"),
+                    }
+                )
+        selected_index = 0
+        selected = games[selected_index] if games else {}
+        status_label = str(platform.get("statusLabel") or "Catálogo indisponível")
+        return {
+            "items": games,
+            "selectedIndex": selected_index,
+            "selected": selected,
+            "system": {
+                "id": str(platform.get("id") or requested),
+                "name": str(platform.get("name") or platform.get("shortName") or requested),
+                "label": str(platform.get("name") or platform.get("shortName") or requested),
+            },
+            "status": {"label": status_label, "state": str(platform.get("state") or "unknown")},
+            "actions": ["Selecionar", "Detalhes", "Jogar"],
+        }
+
     def theme_scene_render(
         self,
         theme_id: str,
@@ -1998,6 +2064,7 @@ class DesktopDashboard:
             ),
         )
         rendered["selections"] = theme_scene.available_selections_for(theme_id)
+        rendered["runtimeModel"] = self._theme_runtime_model(system_id)
         return rendered
 
     def theme_import_retrofe_inspect(self, source: str) -> dict[str, Any]:
