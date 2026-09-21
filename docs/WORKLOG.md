@@ -11671,3 +11671,26 @@ A prova QML cobre foco, troca de item, wrap e ativação no renderer e no host d
 preview; 57 testes Python/QML passaram. A alteração não promove a release nem
 fecha a evidência física: esses eventos ainda precisam ser ligados ao fluxo
 real do Launcher após a promoção governada.
+
+## 2026-09-21 — promoção governada e prova física da AURA harmonizada
+
+O PR #227 foi integrado ao `main` no commit
+`13c933c30ace5fcafa160f6514392885bfbe57c4`; o CI desse commit passou em Python
+3.11, 3.12 e 3.14, smoke de Arch/Manjaro/Ubuntu, wheel/supply-chain e gate QML.
+O bundle foi preparado pelo `release_host.py` com o run `35592220079`, wheel
+`5d98c0ccc70bf9f930324929570ab039609190806c7faa55d8a85b7463530849` e
+release `2.0.0rc1-13c933c30ace`.
+
+A primeira tentativa de verificação usou o `.venv` editable da árvore suja e
+expôs `LATEST=20`; esse falso negativo foi identificado antes da certificação.
+Com `PYTHONPATH` do worktree integrado, `LATEST=22` coincidiu com o host. A
+instalação governada convergiu daemon e serviço, passou a verificação idempotente,
+preservou schema 22, deixou zero operações pendentes e não reiniciou nem
+finalizou o KDE. A release anterior foi usada somente como rollback durante a
+correção do diagnóstico, e a release nova ficou ativa.
+
+A prova física capturou a central AURA instalada com catálogo real de 1.153
+títulos. A medição Wayland/OpenGL real registrou startup de 146 ms, 375 frames,
+p95 de 16,213 ms, pico RSS de 395.132 KiB e VRAM de 15.040 KiB, dentro dos
+orçamentos. OSD, save-state, troca de disco e consumo dos sinais pelo Launcher
+continuam explicitamente abertos.

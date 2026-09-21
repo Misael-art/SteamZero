@@ -8,7 +8,7 @@
   "integration": "feature-branch",
   "verification": "unit",
   "operation": "degraded",
-  "distribution": "not-packaged",
+  "distribution": "installed",
   "scopePaths": [
     "src/steamzero/adapters/desktop_dashboard.py",
     "src/steamzero/ui/qml/SceneEsdeView.qml",
@@ -18,13 +18,12 @@
     "tests/unit/test_desktop_dashboard.py",
     "docs/09-operations/evidence/2026-09-21-aura-harmonization"
   ],
-  "scopeDigest": "4f5bbf7bec201435327051869e9978a6109e724f659aeb9147b58b2fe393552a",
+  "scopeDigest": "3835dd495a82a7309b69126e91006d5ddb719bd9d1719ec5e62244804230b7d8",
   "dependsOn": [
     "SZ-THEME-ENGINE",
     "SZ-AURA-LAUNCHER"
   ],
   "knownGaps": [
-    "GAP-ESDE-ACTIVE-RELEASE-INSTALL",
     "GAP-ESDE-REAL-VIDEO-DECODE",
     "GAP-AURA-SESSION-PERIPHERALS-PHYSICAL",
     "GAP-MULTIDISC-SAVE-OSD-PHYSICAL"
@@ -61,12 +60,24 @@
       "reference": "docs/09-operations/evidence/2026-09-21-aura-harmonization/performance-installed-1acac76ba7bc.json",
       "command": "launcher_perf_probe.py na release 2.0.0rc1-1acac76ba7bc; startup 1366 ms, p95 16.613 ms, VRAM 83664 KiB",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-21-aura-harmonization/02-installed-aura-13c933c3.png",
+      "command": "spectacle -a -b -n na central AURA instalada em 2.0.0rc1-13c933c30ace; catálogo real com 1153 títulos e card de continuidade",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-21-aura-harmonization/03-performance-installed-13c933c3.json",
+      "command": "launcher_perf_probe.py em Wayland/OpenGL real na release 2.0.0rc1-13c933c30ace; startup 146 ms, 375 frames, p95 16.213 ms, VRAM 15040 KiB",
+      "result": "passed"
     }
   ],
   "activeWorkstreams": [
     "WS-2026-09-AURA-ESDE-RUNTIME-BRIDGE"
   ],
-  "nextAction": "Executar os gates finais, promover uma release governada com o bridge, aplicar no host e repetir as provas físicas de mídia, vídeo, OSD, saves, multidisc e retorno ao foco.",
+  "nextAction": "Ligar os sinais itemFocused/itemActivated ao consumidor real do Launcher e repetir as provas físicas de vídeo, OSD, saves, multidisc e retorno ao foco.",
   "updatedAt": "2026-09-21",
-  "notes": "A captura e a medição são baseline da release instalada; não certificam o código desta branch antes da promoção."
+  "notes": "A release 2.0.0rc1-13c933c30ace foi promovida pelo fluxo governado, com daemon convergente, schema 22, captura AURA e medição dentro do orçamento. A captura prova a superfície instalada e o bridge visual; não promove OSD, saves, troca de disco ou consumo de ativação pelo Launcher."
 }
