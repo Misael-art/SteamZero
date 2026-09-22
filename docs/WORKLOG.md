@@ -12202,3 +12202,36 @@ SteamZero. A bateria de biblioteca, launcher, rename, conversão, multidisc e
 title variants passou com 227 testes; fade-in, fade-out, gameplay interativo,
 retorno de foco e extração/renomeação em ROM real continuam sem prova física.
 Evidência: `docs/09-operations/evidence/2026-09-22-ux-deep-dive/README.md`.
+
+## 2026-09-22 — Complemento de mídia, first-run e Theme Studio
+
+Na release `2.0.0rc1-504d10b14485`, a autenticação real do host foi exercitada
+sem expor segredos: SteamGridDB autenticou e ScreenScraper devolveu rejeição de
+credencial, persistida como `rejected` em vez de ser mascarada como ausência ou
+quota. A busca individual de um jogo Switch retornou 19 candidatos; um
+candidato foi realmente baixado, validado, canonicalizado e otimizado. O lote
+`media.global.search-missing` devolveu `jobId` antes de terminar e concluiu 15
+jogos (9 processados, 6 pulados, zero falhas de aplicação), degradado apenas
+pelo ScreenScraper rejeitado em 9 jogos. O audit físico Switch encontrou 51
+masters, 112 derivados, zero órfãos e dimensões exatas para os 112 PNGs; ainda
+não existe score perceptual de melhor mídia, cobertura completa por kind ou
+publicação/rollback físico em Steam.
+
+O Theme Studio foi exercitado em XDG temporário: criar, editar metadados e
+token, gerar preview, salvar, exportar ZIP e cancelar passaram. A suíte
+editor/efeitos/asset recipes/catalog passou com 126 testes; o harness de scene
+preview expirou em 20s. O diagnóstico separa o que é autoria real (tokens,
+layout, preview, save/export) do que é somente inspector: EffectSpec, efeitos,
+timeline e custo são observáveis/resolvidos, mas não editáveis no painel e o
+profiler segue `measured=false`.
+
+Foi rechecado o first-run: DuckStation permanece sem settings.ini e abre wizard
+bloqueante; PCSX2 já tem `SetupWizardIncomplete=false`, mas BIOS em document
+portal e CHD falham no handoff Flatpak; Dolphin/Cemu têm diretórios de jogos
+vazios; melonDS não tem configuração detectável. O host mantém temas builtin e
+um AURA ES-DE Physical válido, mas quatro temas ES-DE de usuário são inválidos,
+SRM/ES-DE estão ausentes e nenhum pacote RetroFE está instalado para lançamento
+real. Nenhum emulador, Theme Studio ou job permaneceu aberto; um scan abandonado
+por probe interrompido foi cancelado explicitamente.
+
+Evidência: `docs/09-operations/evidence/2026-09-22-media-theme-first-run/README.md`.

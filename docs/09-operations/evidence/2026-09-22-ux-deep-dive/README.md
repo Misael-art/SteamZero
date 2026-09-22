@@ -295,3 +295,8 @@ O diagnóstico anterior deve ser corrigido nos seguintes pontos:
    Bezel e retorno por plataforma.
 7. Executar um dry-run de extração/normalização com cópia isolada e registrar
    preview, conflitos, rollback e novo scan.
+
+O complemento posterior de mídia, first-run e Theme Studio está em
+`../2026-09-22-media-theme-first-run/README.md`, incluindo autenticação real,
+busca individual, lote assíncrono, aplicação/otimização, auditoria de
+qualidade, matriz de configuração inicial e maturidade do editor/efeitos.
