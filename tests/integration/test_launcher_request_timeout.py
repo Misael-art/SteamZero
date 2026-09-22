@@ -30,6 +30,12 @@ def _runner() -> str | None:
 RUNNER = _runner()
 
 
+def _require_runner() -> str:
+    if RUNNER is None:
+        pytest.fail("QML-VISUAL-ENVIRONMENT-001: qmltestrunner do Qt6 não está disponível")
+    return RUNNER
+
+
 class _HoldingHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         self.server.received.set()  # type: ignore[attr-defined]
@@ -39,8 +45,9 @@ class _HoldingHandler(BaseHTTPRequestHandler):
         pass
 
 
-@pytest.mark.skipif(RUNNER is None, reason="qmltestrunner do Qt6 não está disponível")
+@pytest.mark.visual
 def test_qml_watchdog_times_out_when_loopback_peer_is_suspended() -> None:
+    runner = _require_runner()
     server = ThreadingHTTPServer(("127.0.0.1", 18169), _HoldingHandler)
     server.daemon_threads = True
     server.received = threading.Event()  # type: ignore[attr-defined]
@@ -50,7 +57,7 @@ def test_qml_watchdog_times_out_when_loopback_peer_is_suspended() -> None:
     try:
         environment = {**os.environ, "QT_QPA_PLATFORM": "offscreen"}
         completed = subprocess.run(
-            [str(RUNNER), "-input", str(HARNESS)],
+            [runner, "-input", str(HARNESS)],
             capture_output=True,
             text=True,
             timeout=20,

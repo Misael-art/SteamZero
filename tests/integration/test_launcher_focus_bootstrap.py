@@ -45,6 +45,12 @@ def _qt6_runner() -> str | None:
 RUNNER = _qt6_runner()
 
 
+def _require_runner() -> str:
+    if RUNNER is None:
+        pytest.fail("QML-VISUAL-ENVIRONMENT-001: qmltestrunner do Qt6 não está disponível")
+    return RUNNER
+
+
 def test_the_harness_never_hands_focus_to_a_control() -> None:
     """Guarda de código: roda mesmo sem `qmltestrunner`.
 
@@ -70,12 +76,13 @@ def test_the_harness_never_hands_focus_to_a_control() -> None:
     assert "keyClick(Qt.Key_Right)" in code, "o harness não envia tecla real"
 
 
-@pytest.mark.skipif(RUNNER is None, reason="qmltestrunner do Qt6 não está disponível")
+@pytest.mark.visual
 def test_the_first_key_after_opening_navigates_without_a_pointer() -> None:
+    runner = _require_runner()
     environment = dict(os.environ)
     environment["QT_QPA_PLATFORM"] = "offscreen"
     completed = subprocess.run(
-        [str(RUNNER), "-input", str(HARNESS)],
+        [runner, "-input", str(HARNESS)],
         capture_output=True,
         text=True,
         timeout=180,

@@ -12002,3 +12002,15 @@ passed** em **18m13s**, incluindo todos os cenários publicados.
 
 Os testes independentes de `qmltestrunner` do Launcher ainda são o próximo
 subitem de G13. Nenhum host foi alterado.
+
+## 2026-09-22 — G13: probes reais do Launcher sem skipif
+
+Os testes de gesto, bootstrap de foco, timeout de loopback e overlay de sessão
+do Launcher agora marcam somente o teste runtime como `visual` e falham com
+`QML-VISUAL-ENVIRONMENT-001` se o `qmltestrunner` não existir; as guardas
+estáticas continuam rodando fora do gate visual.
+
+O conjunto fechou com **6 passed**. A busca nos testes de integração não encontra
+mais `skipif` nos probes QML alvo; o único `pytest.skip` visual restante é
+o backend software incompatível com goldens RHI, reservado ao P0-08. Nenhum
+host foi alterado.
