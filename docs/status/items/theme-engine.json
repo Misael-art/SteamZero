@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "4fd997a15709a8ff40fc39ad4a52a1e432137ec419ce7446bb72691225c03f78",
+  "scopeDigest": "1deca9054c95286a5ea53e04a4d64252de83438bb862b03e0ec7f41a294e35d7",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -383,6 +383,12 @@
       "kind": "test",
       "reference": "tests/integration/test_retrofe_vertical_slice.py",
       "command": ".venv/bin/python -m pytest -q tests/unit/test_theme_migration_audit.py tests/integration/test_retrofe_vertical_slice.py (75 passed); tools/audit_theme_migration.py reports vs04_negative 73/73 migrated, media 1/1",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_default_theme.py",
+      "command": ".venv/bin/python -m pytest -q tests/unit/test_default_theme.py tests/unit/test_resolved_text_node.py tests/unit/test_scene_resolver.py tests/unit/test_shell_bridge.py tests/integration/test_qml_theme_shell.py (168 passed); scene default 26 text nodes at visualScale 1.5",
       "result": "passed"
     }
   ],

@@ -12090,3 +12090,11 @@ recusa de absoluto, esquema e travessia. O teste vertical resolve o asset até
 `QmlImageRenderModel`; a auditoria agora mede **13 atributos** na fatia (12 de
 texto + `image.src`), enquanto o corpus completo de 388 continua aberto.
 Nenhum host foi alterado.
+
+## 2026-09-22 — G15: escala do snapshot na cena default
+
+Os títulos do grid, cabeçalho e relógio da cena default agora declaram
+`fontScale: bind("accessibility.visualScale")`. Um teste resolve os **26
+text nodes** da cena em `1.5×` e verifica os três tamanhos escalados; a ponte
+shell→payload e o `Resolver` deixam de ser apenas metadados neste slice.
+Outras superfícies/contextos continuam abertas e nenhum host foi alterado.

@@ -149,6 +149,26 @@ class TestResolution:
         assert len(nodes) == 2 + METRICS.cell_count * 2
         assert all(node.visible for node in nodes)
 
+    def test_accessibility_scale_reaches_every_default_text_node(self) -> None:
+        resolver = Resolver(
+            ResolutionContext(
+                registries=default_registries(),
+                tokens=default_tokens(),
+                assets=COVER_ASSETS,
+                accessibility={"visualScale": 1.5},
+            )
+        )
+        fonts = FontProvider(packaged={"default": FONT_FAMILY})
+        box = LayoutBox(METRICS.canvas_width, METRICS.canvas_height)
+        text_nodes = [
+            build_text_node(element, resolver=resolver, box=box, fonts=fonts)
+            for _depth, element in walk_tree(build_default_scene())
+            if element.type == "text"
+        ]
+
+        assert len(text_nodes) == 2 + METRICS.cell_count
+        assert {node.font_size for node in text_nodes} == {24.0, 51.0, 27.0}
+
     def test_covers_resolve_to_package_assets(self) -> None:
         nodes = _resolve_scene(build_default_scene())
         covers = [node for node in nodes if hasattr(node, "source")]

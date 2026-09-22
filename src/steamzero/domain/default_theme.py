@@ -225,6 +225,7 @@ def build_cell_contracts(
             color=token("color.text.secondary"),
             font_family=FONT_FAMILY,
             font_size=18.0,
+            font_scale=bind("accessibility.visualScale"),
             font_weight=400,
         ),
         text_layout=TextLayoutSpec(
@@ -259,6 +260,7 @@ def build_default_scene(
             color=token("color.text.primary"),
             font_family=FONT_FAMILY,
             font_size=34.0,
+            font_scale=bind("accessibility.visualScale"),
             font_weight=700,
         ),
         text_layout=TextLayoutSpec(
@@ -281,6 +283,7 @@ def build_default_scene(
             color=token("color.text.secondary"),
             font_family=FONT_FAMILY,
             font_size=16.0,
+            font_scale=bind("accessibility.visualScale"),
             font_weight=400,
         ),
         text_layout=TextLayoutSpec(
