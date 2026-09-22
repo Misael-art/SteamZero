@@ -12326,3 +12326,18 @@ A auditoria completa read-only mediu 49,75 s no host na implementação final
 cobertura e cardinalidade, mas a duração ainda é uma lacuna de UX registrada
 como G55: o próximo passo é job de manutenção com progresso/cancelamento e
 eventual índice incremental, nunca uma amostragem silenciosa.
+
+## 2026-09-22 — Auditoria longa como tarefa governada
+
+`library.root.audit` ganhou um modo assíncrono usado pela interface: a leitura
+completa roda no job `library.audit`, publica progresso por diretório, honra
+cancelamento nos pontos seguros e entrega o `auditPreview` completo ao diálogo.
+O usuário pode então selecionar conteúdo relacionado e criar o plano de
+quarentena; a confirmação e o rollback continuam no núcleo transacional. O
+modo síncrono foi preservado para consumidores existentes e o contrato de
+ação passou a declarar `deferAudit`.
+
+Gates: 145 testes do controlador, 27 de contratos desktop, 72 de harness QML,
+48 do gate visual e Ruff/mypy sem erros. G55 foi reduzida: permanece apenas a
+otimização futura por índice incremental; não há amostragem nem perda de
+conteúdo.

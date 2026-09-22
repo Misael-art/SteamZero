@@ -15,7 +15,7 @@
     "tests/unit/test_multidisc_materializer.py",
     "docs/09-operations/evidence/2026-09-20-multidisc-materialization-ingestion"
   ],
-  "scopeDigest": "be2d342e77e23dd3fe4cc29eb198ff906ba80fef19ae2606ff05e9d981964677",
+  "scopeDigest": "e675c0ff256b642f08b112dc80c4fd9b6f444a08224986b1c44aa93c71be78af",
   "dependsOn": [
     "SZ-MULTIDISC-DESCRIPTOR-RECONCILIATION",
     "SZ-LIBRARY-CANONICAL"

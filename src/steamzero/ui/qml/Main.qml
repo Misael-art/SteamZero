@@ -311,6 +311,8 @@ ApplicationWindow {
     property bool taskLoading: false
     property string taskLoadError: ""
     property int taskRequestGeneration: 0
+    property string auditJobId: ""
+    property bool auditRunning: false
     readonly property var taskItems: liveTasks !== null ? liveTasks
         : emulationData && emulationData.jobs ? emulationData.jobs : []
     readonly property var uiContracts: desktopStatus.dashboard
@@ -579,6 +581,44 @@ ApplicationWindow {
             liveTasks = []
             taskLoadError = String(message || qsTr("Não foi possível carregar as tarefas"))
             taskLoading = false
+        })
+    }
+
+    function pollLibraryAudit() {
+        if (root.auditJobId === "")
+            return
+        requestAction("job.status", {"jobId": root.auditJobId}, function(response) {
+            const terminal = ["completed", "failed", "cancelled", "rolled-back",
+                "rollback-failed"].indexOf(String(response.rawState || "")) >= 0
+            if (!terminal)
+                return
+            const succeeded = String(response.rawState || "") === "completed"
+                && response.result && response.result.auditPreview
+            const jobId = root.auditJobId
+            root.auditJobId = ""
+            root.auditRunning = false
+            if (succeeded && root.emulationPlan) {
+                const next = Object.assign({}, root.emulationPlan, {
+                    "auditPending": false,
+                    "auditPreview": response.result.auditPreview
+                })
+                root.emulationPlan = next
+                root.notify(qsTr("Auditoria concluída; revise os itens antes de higienizar."), false)
+                return
+            }
+            if (root.emulationPlan)
+                root.emulationPlan = null
+            if (emulationDialog.visible)
+                emulationDialog.close()
+            root.notify(qsTr("A auditoria %1 não foi concluída; verifique Tarefas.").arg(jobId), true)
+        }, function(message) {
+            root.auditJobId = ""
+            root.auditRunning = false
+            if (root.emulationPlan)
+                root.emulationPlan = null
+            if (emulationDialog.visible)
+                emulationDialog.close()
+            root.notify(message, true)
         })
     }
 
@@ -1303,11 +1343,14 @@ ApplicationWindow {
                 "value": action.value === true,
                 "overwrite": action.overwrite === true,
                 "approvedPaths": action.approvedPaths || [],
+                "deferAudit": action.id.indexOf("library.root.audit:") === 0,
                 "steamUserId": action.steamUserId || "",
                 "mediaKinds": action.mediaKinds || []
             }
             requestAction("emulation.action.plan", payload, function(response) {
                 emulationPage.setActionMessage(action.id, "")
+                root.auditJobId = ""
+                root.auditRunning = false
                 emulationPlan = response.plan
                 emulationDialog.open()
             }, function(message) {
@@ -1540,6 +1583,8 @@ ApplicationWindow {
         onOpened: root.focusDialogContent(emulationDialog)
         onClosed: {
             auditSelections = []
+            root.auditJobId = ""
+            root.auditRunning = false
             // Sair por Escape deixava o plano pendurado como uma confirmacao
             // sem dono, pronta para ser reaproveitada pela proxima abertura.
             root.emulationPlan = null
@@ -1582,7 +1627,8 @@ ApplicationWindow {
                 return
             root.requestAction("emulation.action.plan", {
                 "actionId": root.emulationPlan.action,
-                "approvedPaths": auditSelections
+                "approvedPaths": auditSelections,
+                "deferAudit": false
             }, function(response) {
                 root.emulationPlan = response.plan
                 root.notify(qsTr("Quarentena preparada; revise os movimentos antes de aplicar."),
@@ -1631,6 +1677,23 @@ ApplicationWindow {
                         color: root.textColor
                         background: null
                         Accessible.name: qsTr("Prévia da operação de emulação")
+                    }
+                    Label {
+                        width: parent.width
+                        visible: root.auditRunning
+                        text: qsTr("Auditoria em andamento… acompanhe o progresso em Tarefas.")
+                        color: root.cyanColor
+                        wrapMode: Text.WordWrap
+                    }
+                    ProgressBar {
+                        visible: root.auditRunning
+                        width: parent.width
+                        from: 0
+                        to: 1
+                        value: root.taskProgress(root.taskItems.find(function(job) {
+                            return String(job.jobId || "") === root.auditJobId
+                        }) || ({"progress": null}))
+                        indeterminate: value === 0
                     }
                     Label {
                         width: parent.width
@@ -1689,9 +1752,10 @@ ApplicationWindow {
                         && String(root.emulationPlan.action).indexOf("emulator.") === 0
                         ? "emulator.apply" : "emulation.action.apply"
                     readonly property bool applying: root.actionIsPending(actionId, applyPayload)
-                    text: applying ? qsTr("Aplicando e verificando…")
+                    text: root.auditRunning ? qsTr("Auditando…")
+                        : applying ? qsTr("Aplicando e verificando…")
                         : qsTr("Aplicar com rollback")
-                    enabled: root.emulationPlan !== null && !applying
+                    enabled: root.emulationPlan !== null && !applying && !root.auditRunning
                     Layout.fillWidth: true
                     Layout.minimumHeight: 48
                     onClicked: {
@@ -1702,6 +1766,15 @@ ApplicationWindow {
                         const applyAction = emulatorLifecycle
                             ? "emulator.apply" : "emulation.action.apply"
                         root.requestAction(applyAction, applyPayload, function(response) {
+                            const isAudit = root.emulationPlan
+                                && String(root.emulationPlan.action).indexOf("library.root.audit:") === 0
+                            if (isAudit && response.jobId) {
+                                root.auditJobId = String(response.jobId)
+                                root.auditRunning = true
+                                root.refreshTasks()
+                                root.notify(qsTr("Auditoria iniciada; a central permanece disponível."), false)
+                                return
+                            }
                             emulationDialog.close()
                             root.emulationPlan = null
                             root.refreshStatus(qsTr("Operação aplicada e verificada"))
@@ -3153,6 +3226,14 @@ ApplicationWindow {
         repeat: true
         running: root.activeTaskCount() > 0
         onTriggered: root.refreshTasks()
+    }
+
+    Timer {
+        id: auditJobTimer
+        interval: 1000
+        repeat: true
+        running: root.auditJobId !== ""
+        onTriggered: root.pollLibraryAudit()
     }
 
     // Superficie do shell: um Item que pinta o PROPRIO fundo e contem todo

@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -59,7 +59,12 @@ class LibraryRootManager:
             item["ownerPath"] = owner_path.relative_to(root).as_posix()
         return item
 
-    def audit(self) -> dict[str, Any]:
+    def audit(
+        self,
+        *,
+        safepoint: Callable[[], None] | None = None,
+        progress: Callable[[int, int, str], None] | None = None,
+    ) -> dict[str, Any]:
         categories: dict[str, list[dict[str, Any]]] = {
             key: []
             for key in (
@@ -74,8 +79,15 @@ class LibraryRootManager:
             )
         }
         claimed: set[Path] = set()
-        rows = self._inventory.inventory(self.root, include_unclaimed=True)
+        rows = self._inventory.inventory(
+            self.root,
+            include_unclaimed=True,
+            safepoint=safepoint,
+            progress=progress,
+        )
         for row in rows:
+            if safepoint is not None:
+                safepoint()
             if row.disposition == "matched":
                 for game in row.selected_games:
                     claimed.add(game.path)

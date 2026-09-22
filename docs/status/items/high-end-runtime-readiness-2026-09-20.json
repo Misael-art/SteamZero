@@ -16,7 +16,7 @@
     "tests/unit/test_emulation_runtime_remediation.py",
     "docs/09-operations/evidence/2026-09-20-high-end-runtime-readiness"
   ],
-  "scopeDigest": "8414dcf74b26dbff7e0b106bce67d379379ec65d67ac0854a2535136d2cb553c",
+  "scopeDigest": "9515153cead0a98f2e87c0d586300062650aec1ad02273b3a389f65d8b50b5cf",
   "dependsOn": [
     "SZ-PLATFORM-PS4-CATALOG",
     "SZ-PLATFORM-PS5-CATALOG",

@@ -680,7 +680,14 @@ class PlatformDirectoryInventory:
         auxiliary = {m.id: str(m.media.get("auxiliaryContent") or "none") for m in manifests}
         return cls(PlatformRomScanner.from_manifests(manifest_dicts), aliases, auxiliary)
 
-    def inventory(self, root: Path, *, include_unclaimed: bool = False) -> list[PlatformDirectory]:
+    def inventory(
+        self,
+        root: Path,
+        *,
+        include_unclaimed: bool = False,
+        safepoint: Callable[[], None] | None = None,
+        progress: Callable[[int, int, str], None] | None = None,
+    ) -> list[PlatformDirectory]:
         """Lista filhas de ``root`` em ordem estável, sem seguir symlinks.
 
         ``selected_games`` carrega TODOS os jogos únicos do diretório: a fonte
@@ -693,12 +700,17 @@ class PlatformDirectoryInventory:
             return []
 
         results: list[PlatformDirectory] = []
-        for child in children:
+        total = len(children)
+        for index, child in enumerate(children, start=1):
+            if safepoint is not None:
+                safepoint()
+            if progress is not None:
+                progress(index, total, child.name)
             if child.is_symlink() or not child.is_dir():
                 continue
             if _is_non_game_directory(child.name):
                 unclaimed = (
-                    self._unclaimed_files(child)
+                    self._unclaimed_files(child, safepoint=safepoint)
                     if include_unclaimed
                     and child.name not in {".steamzero", ".steamzero-quarantine"}
                     else ()
@@ -709,13 +721,20 @@ class PlatformDirectoryInventory:
                 continue
             platform_id = self._aliases.get(_directory_key(child.name))
             if platform_id is None:
-                unclaimed = self._unclaimed_files(child) if include_unclaimed else ()
+                unclaimed = (
+                    self._unclaimed_files(child, safepoint=safepoint)
+                    if include_unclaimed
+                    else ()
+                )
                 results.append(
                     PlatformDirectory(child, "unmatched", None, 0, (), (), 0, (), (), unclaimed)
                 )
                 continue
             candidates, skipped, visited = self._inventory_tree(
-                child, platform_id, include_unclaimed=include_unclaimed
+                child,
+                platform_id,
+                include_unclaimed=include_unclaimed,
+                safepoint=safepoint,
             )
             multi_disc_sets = self._resolve_multidisc(candidates, platform_id)
             selected = tuple(self._unique_games(candidates, child, multi_disc_sets))
@@ -750,7 +769,12 @@ class PlatformDirectoryInventory:
         return results
 
     def _inventory_tree(
-        self, root: Path, platform_id: str, *, include_unclaimed: bool = False
+        self,
+        root: Path,
+        platform_id: str,
+        *,
+        include_unclaimed: bool = False,
+        safepoint: Callable[[], None] | None = None,
     ) -> tuple[list[RomCandidate], int, tuple[Path, ...]]:
         candidates: list[RomCandidate] = []
         skipped_symlinks = 0
@@ -767,6 +791,8 @@ class PlatformDirectoryInventory:
                     )
                 )
             for directory, child_dirs, files in os.walk(root, followlinks=False):
+                if safepoint is not None:
+                    safepoint()
                 current = Path(directory)
                 if include_unclaimed:
                     visited.add(current)
@@ -886,10 +912,17 @@ class PlatformDirectoryInventory:
         return any(part in {".steamzero", ".steamzero-quarantine"} for part in parts)
 
     @classmethod
-    def _unclaimed_files(cls, root: Path) -> tuple[Path, ...]:
+    def _unclaimed_files(
+        cls,
+        root: Path,
+        *,
+        safepoint: Callable[[], None] | None = None,
+    ) -> tuple[Path, ...]:
         files: list[Path] = []
         try:
             for directory, child_dirs, names in os.walk(root, followlinks=False):
+                if safepoint is not None:
+                    safepoint()
                 current = Path(directory)
                 child_dirs[:] = [
                     name

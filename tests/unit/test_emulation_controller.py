@@ -1899,6 +1899,45 @@ def test_library_root_audit_requires_explicit_selection_and_quarantine_rolls_bac
     assert not (quarantine / "manifest.json").exists()
 
 
+def test_library_root_audit_can_run_asynchronous_with_progress(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    root = tmp_path / "audit-async-roms"
+    root.mkdir()
+    (root / "readme.txt").write_bytes(b"async-audit")
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(root)}),
+    )
+    row = next(
+        item
+        for item in controller.snapshot({"context": {}})["platforms"][0]["areaData"]["media"][
+            "libraryRoots"
+        ]
+        if item["displayPath"] == str(root)
+    )
+    audit_action = next(
+        action for action in row["actions"] if action["label"] == "Auditar/higienizar"
+    )
+
+    plan = controller.plan_action({"actionId": audit_action["id"], "deferAudit": True})
+    assert plan["auditPending"] is True
+    assert "auditPreview" not in plan
+    applied = _apply(controller, plan)
+    job_id = str(applied["jobId"])
+    status = None
+    for _ in range(100):
+        status = controller.get_job_status(job_id)
+        if status is not None and status["rawState"] in {"completed", "failed", "cancelled"}:
+            break
+        time.sleep(0.02)
+
+    assert status is not None
+    assert status["rawState"] == "completed"
+    assert status["result"]["auditPreview"]["counts"]["unknown"] == 1
+
+
 def test_update_and_dlc_import_can_be_activated(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     controller = _controller(monkeypatch, tmp_path)
     title_id = "0100ABCDEF123456"

@@ -625,6 +625,7 @@ class EmulationController:
         manager.register("mod.catalog.prepare", self._mod_catalog_prepare_job_handler)
         manager.register("rom.scan", self._rom_scan_job_handler)
         manager.register("library.scan", self._library_scan_job_handler)
+        manager.register("library.audit", self._library_audit_job_handler)
         manager.register("multidisc.materialize", self._multidisc_materialize_job_handler)
         manager.register("vita.package", self._vita_package_job_handler)
         manager.register("library.bitrot", self._bitrot_job_handler)
@@ -2945,13 +2946,20 @@ class EmulationController:
             )
         elif action.startswith("library.root.audit:"):
             selected_root = self._root_from_action(action)
-            audit = LibraryRootManager(selected_root).audit()
             approved = payload.get("approvedPaths", [])
             if not isinstance(approved, list) or not all(
                 isinstance(value, str) for value in approved
             ):
                 raise SteamZeroError("E-API-SCHEMA", detail="approvedPaths deve ser uma lista")
+            defer_audit = payload.get("deferAudit", False)
+            if not isinstance(defer_audit, bool):
+                raise SteamZeroError("E-API-SCHEMA", detail="deferAudit deve ser booleano")
+            audit = None
+            if approved or not defer_audit:
+                audit = LibraryRootManager(selected_root).audit()
             if approved:
+                if audit is None:
+                    raise SteamZeroError("E-CONTENT-INCOMPLETE", detail="auditoria não disponível")
                 plan, quarantine_id = LibraryRootManager(selected_root).plan_quarantine(
                     audit, approved
                 )
@@ -2962,22 +2970,37 @@ class EmulationController:
                 plan_extra["quarantineId"] = quarantine_id
             else:
                 plan = transaction.plan_write_files(
-                    {}, root=paths.data_home(), kind="emulation.library-root-audit"
+                    {},
+                    root=paths.data_home(),
+                    kind="emulation.library-root-audit",
+                    requirements_extra={
+                        "root": str(selected_root),
+                        "execution": "asynchronous" if defer_audit else "synchronous",
+                    },
                 )
                 self._pending[plan.plan_id] = _PendingMutation(
-                    "library-root-audit", {"root": str(selected_root), "audit": audit}
+                    "library-root-audit",
+                    {"root": str(selected_root), "audit": audit, "deferAudit": defer_audit},
                 )
-            plan_extra["auditPreview"] = audit
-            counts = audit["counts"]
-            plan_extra["preview"] = (
-                "Auditoria somente leitura; nenhum arquivo será apagado.\n"
-                f"Base: {counts['base']} · updates: {counts['update']} · "
-                f"DLC: {counts['dlc']} · duplicados: {counts['duplicate']} · "
-                f"incompatíveis: {counts['incompatible']} · "
-                f"corrompidos: {counts['corrupted']} · desconhecidos: {counts['unknown']}.\n"
-                "Para higienizar, selecione explicitamente itens não jogáveis do preview; "
-                "eles serão movidos para quarentena com manifesto, hashes e rollback."
-            )
+            if audit is not None:
+                plan_extra["auditPreview"] = audit
+                counts = audit["counts"]
+                plan_extra["preview"] = (
+                    "Auditoria somente leitura; nenhum arquivo será apagado.\n"
+                    f"Base: {counts['base']} · updates: {counts['update']} · "
+                    f"DLC: {counts['dlc']} · duplicados: {counts['duplicate']} · "
+                    f"incompatíveis: {counts['incompatible']} · "
+                    f"corrompidos: {counts['corrupted']} · desconhecidos: {counts['unknown']}.\n"
+                    "Para higienizar, selecione explicitamente itens não jogáveis do preview; "
+                    "eles serão movidos para quarentena com manifesto, hashes e rollback."
+                )
+            else:
+                plan_extra["auditPending"] = True
+                plan_extra["preview"] = (
+                    "Auditoria somente leitura será executada em tarefa assíncrona, com "
+                    "progresso e cancelamento. Nenhum arquivo será apagado. Após a conclusão, "
+                    "o preview completo permitirá selecionar conteúdo não jogável."
+                )
         elif action.startswith("library.root.rename:"):
             selected_root = self._root_from_action(action)
             games, _unidentified = self._load_library_cache()
@@ -3858,7 +3881,19 @@ class EmulationController:
             elif pending.kind == "library-root-scan":
                 response.update(self._scan_library_now())
             elif pending.kind == "library-root-audit":
-                response["auditPreview"] = pending.metadata["audit"]
+                if pending.metadata.get("deferAudit") is True:
+                    job = self._jobs.create(
+                        "library.audit",
+                        params={"root": pending.metadata["root"]},
+                        priority="background",
+                        created_by="ui",
+                        constraints={"forbiddenDuringGameplay": True},
+                    )
+                    self._start_background_job(job.id)
+                    response["jobId"] = job.id
+                    response["job"] = self._job_view(self._jobs.get(job.id) or job)
+                else:
+                    response["auditPreview"] = pending.metadata["audit"]
             elif pending.kind == "library-root-quarantine":
                 response["quarantineId"] = pending.metadata["quarantineId"]
             elif pending.kind == "projection-repair":
@@ -4016,6 +4051,7 @@ class EmulationController:
             "mod.catalog.prepare",
             "multidisc.materialize",
             "archive.materialize",
+            "library.audit",
             "vita.package",
             "firmware.download",
         }:
@@ -4046,6 +4082,7 @@ class EmulationController:
             runner.register("extras.catalog.search", self._extra_catalog_search_job_handler)
             runner.register("mod.catalog.prepare", self._mod_catalog_prepare_job_handler)
             runner.register("multidisc.materialize", self._multidisc_materialize_job_handler)
+            runner.register("library.audit", self._library_audit_job_handler)
             runner.register("archive.materialize", self._archive_materialize_job_handler)
             runner.register("vita.package", self._vita_package_job_handler)
             runner.register("firmware.download", self._firmware_download_job_handler)
@@ -7024,6 +7061,22 @@ class EmulationController:
 
     def _library_scan_job_handler(self, _job: Job, ctx: JobContext) -> dict[str, Any]:
         return self._scan_library_now(ctx)
+
+    def _library_audit_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
+        root = Path(str(job.params["root"]))
+        ctx.set_progress("prepare", current=0, total=1, unit="directories")
+        audit = LibraryRootManager(root).audit(
+            safepoint=ctx.safepoint,
+            progress=lambda current, total, item: ctx.set_progress(
+                "audit",
+                current=current,
+                total=total,
+                unit="directories",
+                current_item=item,
+            ),
+        )
+        ctx.set_progress("done", current=1, total=1, unit="directories")
+        return {"status": "audited", "auditPreview": audit}
 
     def _multidisc_materialize_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
         request = MaterializationRequest.from_mapping(job.params)

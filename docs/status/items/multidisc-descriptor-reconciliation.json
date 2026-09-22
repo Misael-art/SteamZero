@@ -128,7 +128,7 @@
   "activeWorkstreams": [
     "WS-2026-09-MULTIDISC-DESCRIPTOR-RECONCILIATION"
   ],
-  "scopeDigest": "d6d26503089f45585f9e996063749f1d323a9d58082440bfde2b61a0564d193f",
+  "scopeDigest": "49295833fbf3ad6810452af6be131ec81855da7823db2bb53648220272e1ec1f",
   "nextAction": "Implementar o contrato de extração/conversão e comprovar PUAE/PX68K; só então executar plan/apply/verify transacional, promover a release e fazer a prova física com jogo multidisco legítimo.",
   "updatedAt": "2026-09-16",
   "notes": "A capacidade foi criada como requisito central. A camada ArchiveAwareMultiDiscResolver indexa ZIP com hashes de archive/membro, rejeita conteúdo inseguro e decompõe archives X68000 multi-jogo. A identidade do disco agora usa o hash do membro, duplicatas idênticas são canonizadas, variantes incompatíveis são conflito e Disk N↔Disk A/B é validado. X68000 declara agora DIM/XDF, aceitando extensões .dim/.xdf/.img sem perder a semântica lógica. Amiga usa extração gerenciada; X68000 permanece bloqueado por contrato PX68K M3U não comprovado. Nenhuma playlist, extração ou mídia do usuário foi alterada nesta etapa."
