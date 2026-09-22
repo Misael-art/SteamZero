@@ -12073,3 +12073,11 @@ O último tamanho fixo seguro encontrado fora dos ownerships ativos estava em
 O probe direcionado fechou com **1 passed**. `LauncherShell.qml`,
 `LauncherMain.qml`, `LauncherHome.qml` e `SceneEsdeView.qml` continuam
 reservados aos workstreams exclusivos. Nenhum host foi alterado.
+
+## 2026-09-22 — G15: snapshot de acessibilidade na ponte do shell
+
+`assemble_shell_payload` agora publica a cópia normalizada de `accessibility` e
+`accessibilityGeneration` do contexto do `Resolver`. O teste unitário verifica
+defaults, escala 1.5, alto contraste e marcador de geração do host. Isto fecha
+somente a borda shell→payload; a propagação para todos os contextos e a medição
+da recomputação da cena completa continuam abertas. Nenhum host foi alterado.

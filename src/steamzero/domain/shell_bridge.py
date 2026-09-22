@@ -32,6 +32,7 @@ from steamzero.domain.qml_render_model import (
     to_image_render_model,
     to_render_model,
 )
+from steamzero.domain.scene_accessibility import normalize_accessibility
 from steamzero.domain.scene_tree import walk_tree
 from steamzero.domain.text_node_builder import (
     FontProvider,
@@ -94,4 +95,9 @@ def assemble_shell_payload(
         nodes.append({"kind": element.type, **payload})
 
     nodes.append(focus_ring_payload(focused, metrics=metrics))
-    return {"nodes": nodes}
+    context = resolver.context
+    return {
+        "nodes": nodes,
+        "accessibility": normalize_accessibility(context.accessibility),
+        "accessibilityGeneration": context.generations.accessibility,
+    }

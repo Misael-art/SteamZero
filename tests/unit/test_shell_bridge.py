@@ -18,7 +18,7 @@ from steamzero.domain.default_theme import (
     default_tokens,
 )
 from steamzero.domain.scene_registry import default_registries
-from steamzero.domain.scene_resolver import ResolutionContext, Resolver
+from steamzero.domain.scene_resolver import Generations, ResolutionContext, Resolver
 from steamzero.domain.shell_bridge import assemble_shell_payload, focus_ring_payload
 from steamzero.domain.text_node_builder import FontProvider, LayoutBox
 
@@ -104,3 +104,30 @@ class TestAssembleShellPayload:
     def test_a_focused_cell_outside_the_grid_is_refused(self) -> None:
         with pytest.raises(ValueError):
             _payload(9)
+
+    def test_the_payload_publishes_normalized_accessibility_snapshot(self) -> None:
+        resolver = Resolver(
+            ResolutionContext(
+                registries=default_registries(),
+                tokens=default_tokens(),
+                assets=COVER_ASSETS,
+                theme_id="org.steamzero.default",
+                accessibility={"highContrast": True, "visualScale": 1.5},
+                generations=Generations(accessibility="host-17"),
+            )
+        )
+        payload = assemble_shell_payload(
+            build_default_scene(SMALL),
+            focused=0,
+            resolver=resolver,
+            fonts=FontProvider(packaged={"default": FONT_FAMILY}),
+            box=LayoutBox(SMALL.canvas_width, SMALL.canvas_height),
+            metrics=SMALL,
+        )
+
+        assert payload["accessibility"] == {
+            "highContrast": True,
+            "reducedMotion": False,
+            "visualScale": 1.5,
+        }
+        assert payload["accessibilityGeneration"] == "host-17"
