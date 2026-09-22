@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "1ff7131a8359528e6254ff072ad47770030a6566f184595c52e47a3734e90750",
+  "scopeDigest": "29e68c2a3b8603783dd45881f0c8f6b5d47f4ade6671986a8b5d9c3ef8d34d7c",
   "scopePaths": [
     "src/steamzero/adapters/cast_engine.py",
     "src/steamzero/adapters/cast_orchestrator.py",
@@ -35,6 +35,12 @@
       "kind": "test",
       "reference": "tests/integration/test_cast_engine_ipc.py",
       "command": "triade flaky x50 (test_start_session_already_running, test_pause_resume_with_pipeline, test_concurrent_start_sessions_single_session): for i in $(seq 1 50); do .venv/bin/python -m pytest tests/integration/test_cast_engine_ipc.py -k 'start_session_already_running or pause_resume_with_pipeline or concurrent_start_sessions' -q; done",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "src/steamzero/adapters/cast_engine.py",
+      "command": ".venv/bin/mypy (293 source files); .venv/bin/python -m pytest -q tests/unit/test_screencast_web.py tests/integration/test_cast_engine_ipc.py (118 passed); PyGObject absent or sem stubs agora é ignorado com diagnóstico compatível nos dois ambientes",
       "result": "passed"
     }
   ],

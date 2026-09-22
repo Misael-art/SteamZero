@@ -12122,3 +12122,11 @@ Textos produzidos por `TextSliceCompiler` agora declaram o mesmo binding
 troca o snapshot para 1.5× e comprova somente `text-1.fontScale` invalidado,
 com tamanho 48→72. A cobertura de todos os compiladores/superfícies continua
 aberta e nenhum host foi alterado.
+
+## 2026-09-22 — CI: mypy sem PyGObject
+
+O run `push` do canonical expôs oito erros de `import-not-found`/`import-untyped`
+nos imports opcionais de PyGObject do cast engine e do preflight web. Os quatro
+ignores foram normalizados para a forma compatível com ambos os ambientes; mypy
+passou em 293 módulos e a suíte cast passou com 118 testes. Nenhum host foi
+alterado.
