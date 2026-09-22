@@ -590,7 +590,18 @@ def test_install_calls_only_versioned_installer_for_privilege(
         "--source-commit",
         bundle.commit,
     )
-    runner = _Runner({privileged: (0, json.dumps({"ok": True}), "")})
+    preflight = (
+        "bigsudo",
+        "/usr/bin/python3",
+        str(release_host.ROOT / "tools" / "install_host.py"),
+        "--help",
+    )
+    runner = _Runner(
+        {
+            preflight: (0, "uso: install_host.py\n", ""),
+            privileged: (0, json.dumps({"ok": True}), ""),
+        }
+    )
 
     result = release_host.install(
         bundle,
@@ -600,9 +611,46 @@ def test_install_calls_only_versioned_installer_for_privilege(
         state_dir=tmp_path / "state",
     )
 
-    assert [call for call in runner.calls if "bigsudo" in call] == [privileged]
+    assert [call for call in runner.calls if "bigsudo" in call] == [preflight, privileged]
     assert runner.cwds[runner.calls.index(privileged)] == release_host.ROOT
     assert result["verification"]["host"]["release"] == bundle.release
+
+
+def test_install_stops_waiting_for_interactive_authorization_after_90_seconds(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root, _version, _commit = _bundle(tmp_path)
+    bundle = release_host.load_bundle(root)
+    monkeypatch.setattr(release_host, "_require_checkout", lambda _bundle, _runner: None)
+    monkeypatch.setattr(release_host, "_require_rollback", lambda _release: None)
+
+    calls: list[tuple[tuple[str, ...], int]] = []
+
+    def runner(argv: Sequence[str], _cwd: Path, timeout: int) -> subprocess.CompletedProcess[str]:
+        calls.append((tuple(argv), timeout))
+        raise subprocess.TimeoutExpired(argv, timeout)
+
+    with pytest.raises(release_host.AutomationError, match="90s"):
+        release_host.install(
+            bundle,
+            rollback_release="0.1.0a41-bbbbbbbbbbbb",
+            confirmation=f"INSTALAR-{bundle.release}",
+            runner=runner,
+            state_dir=tmp_path / "state",
+        )
+
+    assert calls == [
+        (
+            (
+                "bigsudo",
+                "/usr/bin/python3",
+                str(release_host.ROOT / "tools" / "install_host.py"),
+                "--help",
+            ),
+            release_host.AUTHORIZATION_TIMEOUT_SECONDS,
+        )
+    ]
 
 
 def test_rollback_calls_only_versioned_installer_for_privilege(
@@ -616,16 +664,24 @@ def test_rollback_calls_only_versioned_installer_for_privilege(
         "_post_activation",
         lambda _release, **_kwargs: {"host": {"release": _release}},
     )
+    rollback_command = (
+        "bigsudo",
+        "/usr/bin/python3",
+        str(release_host.ROOT / "tools" / "install_host.py"),
+        "rollback",
+        "--release",
+        release,
+    )
+    preflight = (
+        "bigsudo",
+        "/usr/bin/python3",
+        str(release_host.ROOT / "tools" / "install_host.py"),
+        "--help",
+    )
     runner = _Runner(
         {
-            (
-                "bigsudo",
-                "/usr/bin/python3",
-                str(release_host.ROOT / "tools" / "install_host.py"),
-                "rollback",
-                "--release",
-                release,
-            ): (0, json.dumps({"ok": True}), "")
+            preflight: (0, "uso: install_host.py\n", ""),
+            rollback_command: (0, json.dumps({"ok": True}), ""),
         }
     )
 
@@ -637,16 +693,7 @@ def test_rollback_calls_only_versioned_installer_for_privilege(
     )
 
     privileged = [call for call in runner.calls if "bigsudo" in call]
-    assert privileged == [
-        (
-            "bigsudo",
-            "/usr/bin/python3",
-            str(release_host.ROOT / "tools" / "install_host.py"),
-            "rollback",
-            "--release",
-            release,
-        )
-    ]
+    assert privileged == [preflight, rollback_command]
     assert result["verification"]["host"]["release"] == release
 
 
@@ -838,6 +885,13 @@ class _UpdateRunner:
     ) -> subprocess.CompletedProcess[str]:
         call = tuple(argv)
         self.calls.append(call)
+        if call[:4] == (
+            "bigsudo",
+            "/usr/bin/python3",
+            str(release_host.ROOT / "tools" / "install_host.py"),
+            "--help",
+        ):
+            return subprocess.CompletedProcess(call, 0, "uso: install_host.py\n", "")
         if call[:3] == (
             "bigsudo",
             "/usr/bin/python3",
@@ -1112,7 +1166,11 @@ def test_failure_before_activation_does_not_attempt_rollback(
             state_dir=tmp_path / "state",
         )
 
-    privileged_actions = [call[3] for call in runner.calls if call and call[0] == "bigsudo"]
+    privileged_actions = [
+        call[3]
+        for call in runner.calls
+        if call and call[0] == "bigsudo" and call[3] in {"install", "rollback"}
+    ]
     assert privileged_actions == ["install"]
     assert journal.phase == "failed-before-activation"
 
@@ -1149,7 +1207,11 @@ def test_install_failure_with_unreadable_current_rolls_back_defensively(
             state_dir=tmp_path / "state",
         )
 
-    privileged_actions = [call[3] for call in runner.calls if call and call[0] == "bigsudo"]
+    privileged_actions = [
+        call[3]
+        for call in runner.calls
+        if call and call[0] == "bigsudo" and call[3] in {"install", "rollback"}
+    ]
     assert privileged_actions == ["install", "rollback"]
 
 
@@ -1183,7 +1245,11 @@ def test_quarantine_write_failure_never_suppresses_verified_rollback(
         )
 
     assert runner.current == plan.rollback_release
-    privileged_actions = [call[3] for call in runner.calls if call and call[0] == "bigsudo"]
+    privileged_actions = [
+        call[3]
+        for call in runner.calls
+        if call and call[0] == "bigsudo" and call[3] in {"install", "rollback"}
+    ]
     assert privileged_actions == ["install", "rollback"]
 
 
@@ -1318,7 +1384,11 @@ def test_resume_after_rollback_verification_never_reactivates_failed_target(
             state_dir=tmp_path / "state",
         )
 
-    privileged_actions = [call[3] for call in runner.calls if call and call[0] == "bigsudo"]
+    privileged_actions = [
+        call[3]
+        for call in runner.calls
+        if call and call[0] == "bigsudo" and call[3] in {"install", "rollback"}
+    ]
     assert privileged_actions == ["rollback"]
     assert journal.phase == "failed-safe"
 
@@ -1578,8 +1648,8 @@ def test_second_convergence_must_be_converged_without_restart(
 def test_source_has_no_privileged_escape_hatch() -> None:
     source = (release_host.ROOT / "tools" / "release_host.py").read_text(encoding="utf-8")
 
-    assert source.count('"bigsudo"') == 2
-    assert source.count('"tools" / "install_host.py"') == 2
+    assert source.count('"bigsudo"') == 3
+    assert source.count('"tools" / "install_host.py"') == 3
     assert source.count('"tools/install_host.py"') == 0
     assert '"sudo"' not in source
 

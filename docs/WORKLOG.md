@@ -12387,3 +12387,34 @@ dependência de arquivo avulso no ambiente do CI.
 O recorte corrigido passou (`3 passed`), o `STATUS-CHECK` voltou a verde e o
 host continuou intacto: nenhum emulador, tema ou ROM foi alterado. O commit
 corretivo ainda precisa de novo CI verde antes da promoção governada.
+
+## 2026-09-22 — Bundle canônico pronto; elevação interativa pendente
+
+O PR #229 foi incorporado em `main` como `468c67f371b8980752c07e0b3a0eabb0a94db60d`.
+O `push` CI `35766898272` passou em todos os nove checks. O bundle
+`2.0.0rc1-468c67f371b8` foi preparado e verificado pelo fluxo governado, com
+wheel SHA-256 `1d3be9c64600b20c393e29e826474a44c35c17155895de4c3ed46ebef2d2757d`.
+
+O ciclo `nova → rollback 2.0.0rc1-504d10b14485 → nova` foi iniciado, mas a
+chamada exclusiva `bigsudo` ficou aguardando o `pkexec` gráfico/credencial por
+mais de 90 segundos. Foi interrompida antes de `install_host` concluir; nova
+inspeção confirmou que o host continua em
+`2.0.0rc1-504d10b14485`, sem processos de instalação pendentes. Classificação:
+`HARD-EXTERNAL-SUBITEM: credencial/elevação ausente`. O mesmo bundle permanece
+pronto para retomada após autorização interativa; não preparar outro artefato.
+
+## 2026-09-22 — Preflight governado de autorização
+
+O fluxo de `tools/release_host.py` foi corrigido para não confundir espera por
+credencial gráfica com instalação em andamento. Antes de cada `install` ou
+`rollback`, ele chama o mesmo `tools/install_host.py --help` via `bigsudo`, sem
+mutação e com limite de 90 segundos (`AUTHORIZATION_TIMEOUT_SECONDS`). Somente
+após o preflight passar a operação real usa seu timeout amplo. Foram adicionados
+testes de chamada, ordem e timeout; `tests/unit/test_release_host.py` passou
+com 70 testes, Ruff, mypy e `make boundaries` passaram. O host continua
+intencionalmente na release anterior porque esta correção ainda precisa de
+CI/promoção; a instalação física continua pendente da autorização interativa.
+O `make check` integral local foi iniciado, permaneceu ativo por cerca de 25
+minutos alternando os harnesses QML sem saída terminal e foi interrompido de
+forma controlada; portanto não é contado como verde local. Nenhum subprocesso
+QML ficou aberto após a interrupção.
