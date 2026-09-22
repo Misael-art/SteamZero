@@ -12372,3 +12372,18 @@ O CI também tornou explícita uma violação de fronteira no empacotador Vita:
 `Path.mkdir/unlink/replace` estava fora da porta `core.fs`. A publicação agora
 usa somente `fs.ensure_dir`, `fs.move_file_noreplace` e `fs.remove_file`;
 `make boundaries` passou com zero violações e os testes Vita passaram (`10`).
+
+## 2026-09-22 — Fechamento do gate CI e evidência portátil
+
+O run `35761451702` encontrou três falhas que não pertenciam à implementação
+Vita/gestão: duas fixtures de mídia declaravam PlayStation, mas mantinham um
+arquivo `.nsp`, fazendo o carregador seguro descartá-las antes da seleção do
+provider; a fixture agora usa `.chd` e declara explicitamente o suporte de
+plataforma. A terceira falha vinha de duas evidências de release apontando para
+um JSON absoluto do estado local do host; as referências passaram a apontar
+para o `RELEASE-LEDGER.md`, mantendo o detalhe histórico no comando sem criar
+dependência de arquivo avulso no ambiente do CI.
+
+O recorte corrigido passou (`3 passed`), o `STATUS-CHECK` voltou a verde e o
+host continuou intacto: nenhum emulador, tema ou ROM foi alterado. O commit
+corretivo ainda precisa de novo CI verde antes da promoção governada.
