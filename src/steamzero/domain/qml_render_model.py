@@ -298,6 +298,7 @@ class QmlTextRenderModel:
     y: float
     width: float | None
     height: float | None
+    z: int
     visible: bool
     opacity: float
     color: str
@@ -324,6 +325,7 @@ class QmlTextRenderModel:
             "text": self.text,
             "x": self.x,
             "y": self.y,
+            "z": self.z,
             "visible": self.visible,
             "opacity": self.opacity,
             "color": self.color,
@@ -666,6 +668,7 @@ def to_render_model(node: ResolvedTextNode) -> AdaptationResult[QmlTextRenderMod
         "text": text,
         "x": _number(node.geometry.x, field_name="x", diagnostics=diagnostics),
         "y": _number(node.geometry.y, field_name="y", diagnostics=diagnostics),
+        "z": node.z_index,
         "width": _dimension(node.geometry.width, field_name="width", diagnostics=diagnostics),
         "height": _dimension(node.geometry.height, field_name="height", diagnostics=diagnostics),
         "visible": bool(node.visible),

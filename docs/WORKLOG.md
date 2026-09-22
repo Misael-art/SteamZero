@@ -11903,3 +11903,15 @@ consumidores legados fechou com **444 passed**, e a matriz QML offscreen fechou
 com **48 passed**. A ponte que alimenta todos os contextos de resolução a
 partir do snapshot do shell e a adoção ampla pelas superfícies continuam
 abertas. Nenhum host foi alterado.
+
+## 2026-09-22 — `layer` RetroFE chega ao `zIndex` canônico
+
+A fatia declarativa de texto agora traduz `layer` para `ElementContract.zIndex`,
+preservando a profundidade no `ResolvedTextNode`, no modelo QML (`model.z`) e
+no `SceneText.qml`. Valores não inteiros recebem veredito `invalid`; a
+auditoria das fixtures passou de 11 para 12 atributos migrados, deixando apenas
+`src` sem tradutor nessa amostra.
+
+O caminho foi verificado com **187 testes direcionados** e a auditoria executável
+de migração (`65/65` e `72/73` propriedades migradas nas fixtures). Nenhum host
+foi alterado.

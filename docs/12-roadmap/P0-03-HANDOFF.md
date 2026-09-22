@@ -52,7 +52,7 @@ de projeto.
 
 A auditoria executável (`python tools/audit_theme_migration.py`) é o corpo do
 gate de escopo: relata por área quantas declarações reais têm tradutor e a
-lista nominal do que ficou para trás (hoje, nas fixtures, `layer` e `src`).
+lista nominal do que ficou para trás (hoje, nas fixtures, apenas `src`).
 
 ## PR 2 tema default — tema renderizável (2026-08-03)
 

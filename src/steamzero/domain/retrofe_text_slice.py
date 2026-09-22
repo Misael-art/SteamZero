@@ -241,6 +241,7 @@ class TextSliceCompiler:
                 detail="'type' só tem significado em reloadableText",
             )
 
+        z_index = layout.pop("__z_index", None)
         return ElementContract(
             id=f"{tag}-{index}",
             type="text",
@@ -249,6 +250,7 @@ class TextSliceCompiler:
             typography=TypographySpec(**typography) if typography else None,
             text_layout=TextLayoutSpec(**text_layout) if text_layout else None,
             layout=LayoutSpec(**layout),
+            z_index=z_index,
         )
 
     # ------------------------------------------------------------------
@@ -453,6 +455,38 @@ class TextSliceCompiler:
             return
         result.record(item, Verdict.EXACT, target=f"layout.{name}")
 
+    def _layer(
+        self,
+        item: SourceDeclaration,
+        _by_name: dict[str, SourceDeclaration],
+        _typography: dict[str, Any],
+        _text_layout: dict[str, Any],
+        layout: dict[str, Any],
+        result: SliceResult,
+    ) -> None:
+        """Converte a profundidade RetroFE para o ``zIndex`` canônico."""
+        raw = item.raw_value.strip()
+        try:
+            layer = int(raw)
+        except ValueError:
+            result.record(
+                item,
+                Verdict.INVALID,
+                target="zIndex",
+                detail=f"camada {item.raw_value!r} não é um inteiro",
+            )
+            return
+        if str(layer) != raw and raw not in {f"+{layer}", f"-{abs(layer)}"}:
+            result.record(
+                item,
+                Verdict.INVALID,
+                target="zIndex",
+                detail=f"camada {item.raw_value!r} não é um inteiro canônico",
+            )
+            return
+        layout["__z_index"] = layer
+        result.record(item, Verdict.EXACT, target="zIndex")
+
     #: Propriedades julgadas no corpo de `_element`, e não por atributo isolado:
     #: o conteúdo do texto depende do elemento inteiro.
     _DEFERRED = frozenset({"value", "type"})
@@ -470,4 +504,5 @@ TextSliceCompiler._HANDLERS = {
     "y": TextSliceCompiler._geometry,
     "width": TextSliceCompiler._geometry,
     "height": TextSliceCompiler._geometry,
+    "layer": TextSliceCompiler._layer,
 }

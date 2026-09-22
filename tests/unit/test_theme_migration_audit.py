@@ -45,6 +45,7 @@ class TestMigratedScope:
             "y",
             "width",
             "height",
+            "layer",
             "value",
             "type",
         ):
@@ -52,7 +53,7 @@ class TestMigratedScope:
 
     def test_untouched_corpus_names_are_not_migrated(self) -> None:
         migrated = slice_migrated_properties()
-        for name in ("layer", "src"):
+        for name in ("src",):
             assert name not in migrated, name
 
     def test_the_corpus_constant_is_the_gates_constant(self) -> None:
@@ -90,7 +91,7 @@ class TestCategoryTable:
 class TestFixtureAudit:
     @pytest.mark.parametrize(
         ("fixture", "declared", "not_migrated"),
-        [("vs04_positive", 65, ()), ("vs04_negative", 73, ("layer", "src"))],
+        [("vs04_positive", 65, ()), ("vs04_negative", 73, ("src",))],
     )
     def test_the_fixture_audit_is_consistent(
         self, fixture: str, declared: int, not_migrated: tuple[str, ...]
@@ -130,7 +131,7 @@ class TestFixtureAudit:
         assert payload["sourcePropertyCount"] == 65
         assert payload["corpusPropertyCount"] == 388
         assert payload["corpusGateOk"] is True
-        assert "layer" in audit_migration(_fixture("vs04_negative")).to_dict()["notMigrated"]
+        assert "src" in audit_migration(_fixture("vs04_negative")).to_dict()["notMigrated"]
 
     def test_the_audit_reports_declared_only(self) -> None:
         """Default, herdado e derivado não são declaração e não entram no relatório."""

@@ -16,7 +16,7 @@
     "tests/integration/test_retrofe_vertical_slice.py",
     "tests/unit/test_scene_retrofe.py"
   ],
-  "scopeDigest": "8bfa60cf89a4fce125e2d48391df3515d95eb6cc842754a3e976606fe08bd5ed",
+  "scopeDigest": "6ca656eeef85ab9ad54ac5ee86cc66ff4f95f5ebaa1cdd815a6bcb91f46f6311",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [

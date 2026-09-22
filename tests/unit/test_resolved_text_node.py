@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import ast
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -275,6 +276,10 @@ class TestDeterministicSerialization:
             id="a",
             resolution_diagnostics=({"code": "X-1", "message": "m", "property": "a.color"},),
         )
+        assert ResolvedTextNode.from_dict(node.to_dict()) == node
+
+    def test_z_index_survives_round_trip(self) -> None:
+        node = replace(_build(), z_index=3)
         assert ResolvedTextNode.from_dict(node.to_dict()) == node
 
     def test_nodes_compare_by_value(self) -> None:

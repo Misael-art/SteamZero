@@ -291,7 +291,7 @@ class TestNegativeFixtureDegradesWithoutCollapsing:
             ("-12", "fontSize", Verdict.INVALID),
             ("creditosDoJogador", "type", Verdict.UNSUPPORTED),
             ("hostSerial", "type", Verdict.IGNORED_BY_POLICY),
-            ("3", "layer", Verdict.UNSUPPORTED),
+            ("3", "layer", Verdict.EXACT),
             # O literal "nan" como TEXTO é válido. O mesmo texto como dimensão
             # não é — e a diferença precisa aparecer no veredito.
             ("nan", "value", Verdict.EXACT),
@@ -387,6 +387,12 @@ class TestPipelineReachesTheRenderer:
     ) -> None:
         _node, result = self._pipeline(_by_id(positive[1], "reloadableText-6"))
         assert result.require_model().text == "Chrono Trigger"
+
+    def test_retrofe_layer_reaches_qml_z(self, negative: tuple[Any, SliceResult]) -> None:
+        element = next(item for item in negative[1].elements if item.text_content == "camada")
+        node, result = self._pipeline(element)
+        assert node.z_index == 3
+        assert result.require_model().z == 3
 
     def test_a_translation_is_resolved_before_the_boundary(
         self, positive: tuple[Any, SliceResult]

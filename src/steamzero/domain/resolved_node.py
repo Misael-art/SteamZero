@@ -225,6 +225,7 @@ class ResolvedTextNode:
     id: str
     text: str = ""
     geometry: ResolvedGeometry = field(default_factory=ResolvedGeometry)
+    z_index: int = 0
     visible: bool = True
     opacity: float = 1.0
 
@@ -261,6 +262,7 @@ class ResolvedTextNode:
             "id": self.id,
             "text": self.text,
             "geometry": self.geometry.to_dict(),
+            "zIndex": self.z_index,
             "visible": self.visible,
             "opacity": self.opacity,
             "color": self.color,
@@ -301,6 +303,7 @@ class ResolvedTextNode:
                 width=geometry.get("width"),
                 height=geometry.get("height"),
             ),
+            z_index=int(payload.get("zIndex", 0)),
             visible=bool(payload.get("visible", True)),
             opacity=float(payload.get("opacity", 1.0)),
             color=str(payload.get("color", "#000000")),

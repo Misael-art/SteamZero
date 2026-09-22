@@ -346,6 +346,7 @@ def build_text_node(
         id=element.id,
         text=str(text) if text is not None else "",
         geometry=geometry,
+        z_index=element.z_index if isinstance(element.z_index, int) else 0,
         visible=bool(visible),
         opacity=float(opacity),
         color=str(color),
