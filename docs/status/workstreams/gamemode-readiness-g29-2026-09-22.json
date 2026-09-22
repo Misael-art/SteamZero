@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-GAMEMODE-READINESS-G29",
+  "item": "SZ-GAMEMODE-READINESS",
+  "branch": "codex/canonical-main-2026-09-21",
+  "baseRef": "f5a0a3d",
+  "owner": "codex-continuation",
+  "state": "active",
+  "exclusivePaths": [
+    "docs/09-operations/evidence/2026-09-22-gamemode-readonly"
+  ],
+  "sharedPaths": ["docs/WORKLOG.md"],
+  "nextAction": "Aguardar validação autorizada de daemon, autorização e efeitos em uma sessão real; manter o probe read-only e não aplicar o plano administrativo.",
+  "updatedAt": "2026-09-22"
+}

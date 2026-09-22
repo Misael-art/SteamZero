@@ -11757,3 +11757,15 @@ falhas consecutivas. A UI recebe `providerDetails`, portanto o caso não é
 convertido em quota ou sucesso vazio. O host também conserva um
 `media.global` stale, que pertence ao recovery G25. Não foram configuradas
 credenciais, repetidas buscas ou alterados arquivos do host.
+## 2026-09-22 — G29 reconciliado com a prontidão real do GameMode
+
+O probe de GameMode foi revalidado com **81 passed** e 45 testes não
+selecionados, sem alteração no state home real. O contrato separa binário,
+daemon, autorização, atividade e efeitos, e o plano administrativo permanece
+declarativo com `executesHostChanges=false`.
+
+No host, `gamemoderun` está presente, mas `gamemoded`, autorização e efeitos
+retornaram `unknown`; a sessão está idle. O resultado correto é
+`capabilityState=unknown`, não `ready` por presença do binário. Nenhum serviço,
+grupo, governor ou split-lock foi alterado. Resta validação externa autorizada
+em uma sessão real.
