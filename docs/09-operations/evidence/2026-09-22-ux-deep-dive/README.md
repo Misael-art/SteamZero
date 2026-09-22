@@ -19,18 +19,33 @@ O entry point instalado foi executado sem `--library`, como o usuário faria:
 /usr/local/bin/steamzero-launcher
 ```
 
-Resultado: o processo termina antes de criar a janela QML. A exceção publicada
-pelo pacote instalado é:
+Resultado histórico da release instalada: o processo termina antes de criar a
+janela QML. A exceção publicada pelo pacote instalado é:
 
 ```text
 ValueError: section itens excede 512
 ```
 
-O cache canônico atual contém 1.843 jogos; a seção de biblioteca excede o limite
-de `MAX_ITEMS_PER_SECTION = 512`. Portanto o catálogo real não chega à tela,
-e não há jornada possível, fade ou lançamento pelo Launcher completo. Esse
-limite precisa ser paginado, dividido por sistema/coleção ou substituído por um
-modelo de navegação que não transforme o acervo inteiro em uma única seção.
+O cache canônico daquela release continha 1.843 registros, mas esse número não
+era uma contagem válida de jogos. A auditoria read-only de
+`/home/misael/emulation/roms/psvita/` encontrou cinco ZIPs de jogos na raiz e
+uma instalação Vita3K descompactada; os 711 PNGs de manual/live area e os BINs
+internos estavam sendo promovidos pelo scanner porque `root-wins` aceitava
+qualquer extensão conhecida no registro, mesmo quando o manifesto Vita não a
+declarava. O resultado indevido foi Vita=684, com 659 PNGs e 20 BINs entre os
+falsos jogos.
+
+Correção local posterior: o scanner manifest-backed só deixa a raiz resolver
+extensões declaradas pela própria plataforma e reconhece o formato de diretório
+`vita3k-app` quando há `sce_sys/param.sfo` e `eboot.bin`. O mesmo diretório agora
+produz seis jogos selecionáveis — cinco ZIPs e a app `PCSF00516` —, 723 arquivos
+internos não-jogáveis rejeitados e 82 auxiliares de patch/DLC; os originais não
+foram alterados. A identidade e o título são lidos do SFO, não do nome do
+arquivo. A correção passou 133 testes focados, mas ainda não está na release
+instalada. Portanto o crash
+do Launcher permanece uma falha física histórica a recertificar, e não deve ser
+tratado como prova de que o Vita possui 684 jogos nem como justificativa para
+renomeação/extração automática.
 
 ## Launcher com acervo reduzido — jornada de entrada
 
@@ -224,32 +239,65 @@ quantidade grande de entradas para o catálogo sem identidade executável
 verificada. O fato de `pathExists=1843/1843` não significa que o emulador consiga
 ler o arquivo dentro do sandbox, como demonstrado pelo PCSX2.
 
-### Falha de nomes Vita
+### Falso diagnóstico de nomes Vita
 
-O cache possui 61 grupos de nomes exatamente duplicados, totalizando 611
-registros. A maior parte é PlayStation Vita: 13 arquivos do mesmo conjunto
-aparecem com nomes `001`, `002`, `003` até `044`, em vez do título do jogo.
+O cache da release instalada possui 61 grupos de nomes exatamente duplicados,
+totalizando 611 registros. A maior parte aparece como PlayStation Vita, com
+arquivos `001`, `002`, `003` até `044`, mas a inspeção do caminho físico mostrou
+que eles são PNGs de manual/live area dentro da instalação descompactada do
+Vita3K, não jogos Vita independentes.
 
-Diagnóstico: a identificação/nomeação de conteúdo Vita está usando o nome de
-entrada/parte do archive, não a identidade do jogo. Isso polui a Biblioteca,
-torna a busca ambígua, amplia artificialmente a seção do Launcher e contribui
-diretamente para o estouro do limite de itens.
+Diagnóstico corrigido: há dois problemas encadeados. Primeiro, o scanner
+promovia arquivos internos por aplicar `root-wins` a extensões não declaradas
+no manifesto. Só depois disso a camada de nomeação recebia `001.png` e os
+demais nomes de assets e os publicava como títulos. A correção deve começar no
+scanner; não se deve tentar “resolver” esses nomes por renomeação em massa.
+Após a correção, os arquivos internos ficam fora da lista de jogos e a
+duplicidade Vita precisa ser recontada numa nova varredura/release.
 
 ### Extração, normalização e renomeação
 
-- Nenhum archive real foi extraído, materializado ou convertido nesta rodada,
-  por segurança e porque a política atual bloqueia archives não classificados.
+- Nenhum archive real foi renomeado nesta rodada. Os cinco ZIPs têm os seguintes
+  nomes canônicos planejados a partir do SFO: `LittleBigPlanet PlayStation Vita
+  [PCSA00017].zip`, `ULTIMATE MARVEL VS. CAPCOM 3 [PCSE00004].zip`, `Dengeki
+  Bunko- Fighting Climax [PCSE00639].zip`, `THE KING OF FIGHTERS '97 GLOBAL
+  MATCH [PCSE01224].zip` e `Uncharted- Golden Abyss [PCSF00001].zip`.
+- A pasta `app/PCSF00516` é um jogo Vita3K válido. O empacotador derivado gera
+  um ZIP com o conteúdo na raiz (`sce_sys/`, `eboot.bin`, etc.) em
+  `.steamzero/derived/playstation-vita/`, sem alterar a origem; a aplicação
+  física desse pacote e o rename transacional ainda dependem da próxima release
+  governada.
 - Nenhuma ROM foi renomeada no host real.
 - As funções de biblioteca, organização, rename window, conversão NSZ,
   classificação, multidisc e variantes de título têm cobertura automatizada.
 - A bateria específica executada terminou com **227 testes aprovados em
   261,41 s**, sem alteração no snapshot persistente do host.
 
-Diagnóstico: o contrato transacional está coberto, mas o comportamento real de
-extração/renomeação ainda não foi certificado com arquivos do acervo do usuário.
+Diagnóstico: o contrato transacional está coberto, o scanner Vita e o plano de
+empacotamento foram exercitados com a estrutura real, mas o comportamento real
+de extração/renomeação ainda não foi certificado com mutação do acervo do usuário.
 É necessário um plano explícito com cópia/sandbox, dry-run, preview de nomes,
 conflito, rollback e validação do resultado no scanner antes de tocar os 970
 archives comprimidos.
+
+### Relação para Gestão de arquivos
+
+O inventário agora publica uma relação genérica de conteúdo, válida para todas
+as plataformas que declarem formatos nativos de diretório. Um jogo em pasta tem
+seus arquivos e subpastas como `directory-member`; updates/DLCs e itens não
+classificados permanecem como `auxiliary-content` da plataforma, sem virar
+jogos. A leitura real Vita produziu 713 membros relacionados à app
+`app/PCSF00516` e 119 itens auxiliares ainda sem proprietário inequívoco. O
+diretório `.steamzero/derived` é excluído do inventário do usuário para que
+artefatos gerados não sejam duplicados.
+
+Esse vínculo é a base da operação de gestão: selecionar jogo-base → incluir ou
+excluir conteúdo relacionado → mostrar preview → confirmar → verificar e
+permitir rollback. A rota governada `library.root.audit` consome esse modelo em
+qualquer plataforma, e `library.vita.package` aplica o mesmo ciclo para a app
+Vita3K: validação, plano, confirmação, job assíncrono e ZIP derivado atômico.
+A aplicação mutável de limpeza/rename/empacotamento no host real ainda não foi
+executada nesta release; não há exclusão ou renomeação silenciosa.
 
 ## Controle e limitação da observação
 

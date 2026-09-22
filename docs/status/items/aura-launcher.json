@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "1eb0596ebb2cffea1744d14e726555f996202e69e8e86ba26d880211cad281ee",
+  "scopeDigest": "8e9161b48a0866a80904e1920adb3990a26f07f5088ba794411a69b1eb01cdc9",
   "scopePaths": [
     "src/steamzero/cli/main.py",
     "src/steamzero/adapters/emulation.py",
@@ -428,9 +428,21 @@
       "reference": "docs/09-operations/evidence/2026-09-13-aura-details-installed/05-performance-navigation.json",
       "command": "Medição física do processo QML instalado durante 12,253 s e 23 navegações: RSS máximo 159.387.648 bytes e CPU 2,04% de um núcleo. Frame time/p95, startup e VRAM permanecem não medidos; a sonda theme_perf_probe.py mede SceneRepeater, não LauncherMain.",
       "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_launcher_navigation.py",
+      "command": "O limite artificial por seção foi removido; a suíte de navegação cobre seção grande sintética sem perda de itens. A contagem física Vita=684 foi invalidada: o scanner antigo promovia assets internos, não jogos.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-22-ux-deep-dive/README.md",
+      "command": "A falha de abertura na release instalada continua registrada como evidência histórica; após a correção do scanner, a fonte física Vita reduz de 684 registros para 5 jogos selecionáveis, mas a release corrigida ainda não foi instalada nem recertificada.",
+      "result": "partial"
     }
   ],
-  "nextAction": "P0-G48: corrigir o abort do catálogo real acima de 512 itens e a ativação sem efeito no fixture reduzido; repetir home→foco→launch→jogo→retorno na release 2.0.0rc1-504d10b14485. Fade-in/out, retorno de foco, OSD/saves/discos e desempenho permanecem gates separados; preservar KDE.",
+  "nextAction": "P0-G48: instalar uma release governada com o filtro Vita corrigido, confirmar que o catálogo válido não aborta e repetir no host a ativação do fixture, home→foco→launch→jogo→retorno e cleanup. Fade-in/out, retorno de foco, OSD/saves/discos e desempenho permanecem gates separados; preservar KDE.",
   "activeWorkstreams": [
     "WS-2026-08-AURA-LAUNCHER",
     "WS-2026-09-LAUNCHER-P0-LOOP"

@@ -1553,7 +1553,7 @@ ApplicationWindow {
                 return []
             const categories = root.emulationPlan.auditPreview.categories || {}
             const result = []
-            const selectable = ["duplicate", "incompatible", "corrupted", "unknown"]
+            const selectable = ["update", "dlc", "related", "duplicate", "incompatible", "corrupted", "unknown"]
             for (let categoryIndex = 0; categoryIndex < selectable.length; categoryIndex++) {
                 const category = selectable[categoryIndex]
                 const items = categories[category] || []

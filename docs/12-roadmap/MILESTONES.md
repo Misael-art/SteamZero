@@ -31,8 +31,8 @@ Complexidade em T-shirt (S/M/L/XL) — sem datas (dependem de Q6/Q10 e capacidad
 | M11 | parcial / degradado | ES-DE e SRM não estão instalados; RetroFE não tem pacote lançável no host (G54). |
 | M12-E | parcial / degradado | Tokens, receitas e cenas existem; a superfície ativa não prova todas as capacidades dinâmicas nem medição física de custo. |
 | M12-S | parcial / degradado | Theme Studio salva/exporta tokens e layout; `EffectSpec` ainda é somente observável e o preview tem timeout (G53). |
-| M12 | bloqueado pela jornada | O catálogo completo excede 512 itens, a ativação reduzida não produz launch e fade/retorno físico permanecem sem prova (G48). |
-| M13 | não promovível | Scan identifica o acervo, mas extração, renomeação, normalização, conversão e resolução de duplicidades ainda não foram aplicadas em ROM real (G51). |
+| M12 | bloqueado pela jornada | A release anterior aborta com um catálogo Vita supercontado (684 falsos assets); o scanner foi corrigido localmente para reconhecer os 5 ZIPs reais, mas release, ativação e fade/retorno físicos permanecem sem prova (G48). |
+| M13 | não promovível | Scan da release anterior mistura jogos e assets internos Vita; após a correção, extração, renomeação, normalização, conversão e resolução de duplicidades ainda não foram aplicadas em ROM real (G51). |
 | M14/M15 | não promover | A instalação governada existe, mas a certificação funcional exige fechar os gates acima e repetir a matriz física completa. |
 
 O progresso acima é um retrato de fechamento, não substitui os cinco eixos dos

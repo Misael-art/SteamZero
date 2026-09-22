@@ -12254,3 +12254,59 @@ Os itens `SZ-MEDIA-SCRAPING`, `SZ-MEDIA-AUDIT-PLATFORM-SCOPE`,
 `SZ-FRONTEND-RETROFE` e `SZ-EMULATION-REAL-DUMP-VALIDATION` foram atualizados
 com o estado real observado; `STATUS.md`, `ACTIVE-WORK.md` e `COVERAGE.md`
 foram regenerados. `project_status.py check` passou.
+
+## 2026-09-22 — Correção do diagnóstico Vita e do scanner de ROMs
+
+A cardinalidade Vita=684 foi contestada e reproduzida como erro do scanner.
+`/home/misael/emulation/roms/psvita/` possui cinco ZIPs de jogos na raiz e uma
+instalação Vita3K descompactada. A caminhada recursiva encontrou 810 arquivos:
+711 PNGs de manual/live area, BINs/módulos, metadados e 82 arquivos em
+`patch`/`addcont`. Como a classificação recebia `root_platform` e aplicava
+`root-wins` a qualquer extensão presente no registro global, 659 PNGs e 20 BINs
+foram publicados indevidamente como jogos; daí vieram os nomes `001`, `002`,
+`003` e o falso estouro de 512 itens do Launcher.
+
+Correção vertical em `domain/library.py`: o scanner construído pelos manifestos
+agora passa as extensões por plataforma e a raiz só resolve uma extensão que o
+manifesto declara. O mesmo scanner reconhece uma app Vita3K somente quando a
+pasta tem Title ID, `sce_sys/param.sfo` e `eboot.bin`. A leitura read-only do
+host resulta em 6 jogos selecionáveis — 5 ZIPs e `PCSF00516` —, 723 arquivos
+internos rejeitados e 82 auxiliares; nenhuma ROM foi modificada. A identidade e
+os nomes vêm do SFO. O empacotador derivado foi coberto por testes: produz ZIP
+com conteúdo na raiz, preserva a origem e grava em `.steamzero/derived` quando
+executado pela operação governada. Os testes focados passaram (133). A release
+instalada ainda é a anterior, então scan, catálogo, ativação, fade, retorno e a
+aplicação física de renome/empacotamento continuam pendentes de release
+governada.
+
+O inventário também passou a carregar `relatedContent` de forma genérica:
+membros de uma instalação em diretório ficam ligados ao jogo-base, enquanto
+updates/DLCs e desconhecidos ficam agrupados como conteúdo auxiliar da
+plataforma. Isso evita que a Gestão de arquivos perca assets ou os promova a
+jogos; `.steamzero/derived` é excluído para não duplicar artefatos gerados.
+Na leitura real Vita foram observados 713 membros internos da app e 119 itens
+auxiliares sem proprietário inequívoco. A auditoria/quarentena universal agora
+consome essa relação com preview, confirmação e rollback; a aplicação mutável
+no host permanece pendente da release governada.
+
+## 2026-09-22 — Automação governada de relação e empacotamento Vita
+
+O fluxo deixou de ser apenas uma API de domínio: `library.root.audit` agora
+aplica a mesma relação `relatedContent` e a mesma seleção de limpeza a qualquer
+plataforma, preservando jogos-base, vinculando membros de diretório e
+classificando update/DLC/órfão para preview, confirmação, verificação e
+rollback. A árvore `.steamzero/derived` permanece fora do catálogo e da
+limpeza de conteúdo do usuário.
+
+A ação `library.vita.package` foi integrada ao controlador como operação
+governada: valida raiz registrada, origem contida na raiz, SFO, Title ID,
+`sce_sys/param.sfo`, `eboot.bin` e symlinks; confirma o plano; executa job
+assíncrono; publica o ZIP com conteúdo na raiz, nome canônico com Title ID e
+proteção contra colisão; a origem não é movida, renomeada ou apagada. O teste
+de jornada plano → confirmação → job → ZIP passou.
+
+Gates desta complementação: 74 testes focados de Vita/gestão, 144 do
+controlador, 158 de plataforma/UI/runtime, Ruff e mypy sem erros. A leitura do
+host continua somente leitura: 5 ZIPs + 1 app Vita3K, 713 membros relacionados
+e 119 auxiliares; nenhuma release nova foi instalada e nenhuma mutação física
+foi declarada.

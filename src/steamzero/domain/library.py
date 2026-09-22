@@ -122,6 +122,28 @@ def _declares_format(
     return any(ext in exts for exts in formats.values())
 
 
+def _declares_extension(
+    platform_extensions: Mapping[str, Sequence[str]] | None,
+    platform_id: str,
+    ext: str,
+) -> bool:
+    """Return whether a matched platform declares the file extension."""
+    if platform_extensions is None:
+        # Direct callers of the pure classifier historically supplied only the
+        # global extension map. Keep that API meaningful; manifest-backed
+        # scanners always provide the per-platform declaration.
+        return True
+    declared = platform_extensions.get(platform_id, ())
+    if platform_id not in platform_extensions:
+        # ``root_platform`` may be a system alias (for example ``ps4``) while
+        # the manifest is keyed by its editorial platform id. Keep aliases
+        # compatible when the caller did not provide an explicit alias map;
+        # canonical manifest ids still receive the strict extension gate.
+        return True
+    normalized = ext.lstrip(".").casefold()
+    return normalized in {str(item).lstrip(".").casefold() for item in declared}
+
+
 def classify_rom(
     name: str,
     siblings: set[str],
@@ -130,6 +152,7 @@ def classify_rom(
     root_platform: str | None = None,
     header_platform: str | None = None,
     platform_formats: Mapping[str, Any] | None = None,
+    platform_extensions: Mapping[str, Sequence[str]] | None = None,
     container_policies: Mapping[str, str] | None = None,
 ) -> tuple[str | None, str, str]:
     ext = Path(name).suffix.lower()
@@ -176,6 +199,15 @@ def classify_rom(
             # precisa de trabalho do que precisa de declaração.
             return None, "unknown", "archive-needs-extraction"
         return None, "unknown", "archive-policy-undeclared"
+
+    if root_platform is not None and not _declares_extension(
+        platform_extensions, root_platform, ext
+    ):
+        # A matched platform directory supplies context, not a wildcard. The
+        # old root-wins rule promoted manual PNGs and internal BIN modules
+        # from an extracted Vita3K installation to games because those
+        # extensions existed somewhere else in the global registry.
+        return None, "unknown", "unsupported-root-extension"
 
     stem = Path(name).stem.lower()
     has_bin = any(
@@ -242,6 +274,21 @@ class RomCandidate:
 
 
 @dataclass(frozen=True)
+class RelatedContent:
+    """Arquivo/diretório pertencente a um jogo ou grupo de conteúdo.
+
+    Conteúdo relacionado nunca vira jogo por acidente. Ele permanece visível
+    para a Gestão de arquivos, que pode montar uma operação explícita de
+    limpeza/organização com preview, confirmação e rollback.
+    """
+
+    path: Path
+    relation: str  # directory-member | auxiliary-content
+    content_kind: str  # internal | update | dlc | unknown
+    owner_path: Path | None = None
+
+
+@dataclass(frozen=True)
 class AuxiliaryContent:
     """Update/DLC pronto para associação, seja qual for a plataforma.
 
@@ -276,16 +323,30 @@ class PlatformRomScanner:
         platform_formats: dict[str, dict[str, list[str]]] | None = None,
         container_policies: dict[str, str] | None = None,
         manifests: dict[str, dict[str, Any]] | None = None,
+        platform_extensions: dict[str, list[str]] | None = None,
+        directory_formats: dict[str, list[str]] | None = None,
     ) -> None:
         self._ext_map = ext_map
         self._platform_formats = platform_formats or {}
+        self._platform_extensions = platform_extensions
         self._container_policies = container_policies or {}
         self._manifests = manifests or {}
+        self._directory_formats = directory_formats or {}
 
     @classmethod
     def from_manifests(cls, manifests: list[dict[str, Any]]) -> PlatformRomScanner:
         formats_by_platform = {
             str(m["id"]): dict(m.get("media", {}).get("formats") or {}) for m in manifests
+        }
+        extensions_by_platform = {
+            str(m["id"]): [str(ext) for ext in m.get("media", {}).get("extensions", ())]
+            for m in manifests
+        }
+        directory_formats_by_platform = {
+            str(m["id"]): [
+                str(value) for value in (m.get("media", {}).get("directoryFormats") or [])
+            ]
+            for m in manifests
         }
         policies = {
             str(m["id"]): str((m.get("media", {}) or {}).get("containerPolicy") or "")
@@ -297,6 +358,8 @@ class PlatformRomScanner:
             formats_by_platform,
             policies,
             {str(manifest["id"]): manifest for manifest in manifests},
+            extensions_by_platform,
+            directory_formats_by_platform,
         )
 
     def container_policy_for(self, platform_id: str | None) -> str:
@@ -317,6 +380,11 @@ class PlatformRomScanner:
         if platform_id is None:
             return {}
         return self._manifests.get(platform_id, {})
+
+    def directory_formats_for(self, platform_id: str | None) -> tuple[str, ...]:
+        if platform_id is None:
+            return ()
+        return tuple(self._directory_formats.get(platform_id, ()))
 
     def system_for(self, platform_id: str) -> str:
         systems = self._manifests.get(platform_id, {}).get("systems")
@@ -373,6 +441,7 @@ class PlatformRomScanner:
             # formato declarado era código morto: todo .cue/.bin disputado caía
             # em `ambiguous-*` sem consultar quem declarava o formato.
             platform_formats=self._platform_formats,
+            platform_extensions=self._platform_extensions,
             container_policies=self._container_policies,
             header_platform=(
                 self._header_platform(path, root_platform=root_platform)
@@ -427,6 +496,8 @@ class PlatformRomScanner:
 _NON_GAME_DIRECTORY_NAMES = frozenset(
     {
         ".directory",
+        ".steamzero",
+        ".steamzero-quarantine",
         "_backup",
         "backup",
         "backups",
@@ -566,6 +637,7 @@ class PlatformDirectory:
     auxiliary_content: tuple[RomCandidate, ...]
     skipped_symlinks: int
     multi_disc_sets: tuple[MultiDiscResolution, ...] = ()
+    related_content: tuple[RelatedContent, ...] = ()
 
 
 class PlatformDirectoryInventory:
@@ -633,6 +705,7 @@ class PlatformDirectoryInventory:
             candidates, skipped = self._inventory_tree(child, platform_id)
             multi_disc_sets = self._resolve_multidisc(candidates, platform_id)
             selected = tuple(self._unique_games(candidates, child, multi_disc_sets))
+            related_content = self._related_content(child, candidates, selected, multi_disc_sets)
             results.append(
                 PlatformDirectory(
                     child,
@@ -645,6 +718,7 @@ class PlatformDirectoryInventory:
                     ),
                     skipped,
                     tuple(multi_disc_sets),
+                    related_content,
                 )
             )
         return results
@@ -653,6 +727,16 @@ class PlatformDirectoryInventory:
         candidates: list[RomCandidate] = []
         skipped_symlinks = 0
         try:
+            for game_directory in self._directory_game_candidates(root, platform_id):
+                candidates.append(
+                    RomCandidate(
+                        path=game_directory,
+                        format="vita3k-app",
+                        platform=platform_id,
+                        content_kind="base",
+                        evidence="directory-native",
+                    )
+                )
             for directory, child_dirs, files in os.walk(root, followlinks=False):
                 safe_dirs: list[str] = []
                 for child_dir in child_dirs:
@@ -742,6 +826,118 @@ class PlatformDirectoryInventory:
             # as demais sejam exibidas. O resultado parcial continua verdadeiro.
             pass
         return candidates, skipped_symlinks
+
+    @staticmethod
+    def _related_content(
+        root: Path,
+        candidates: Sequence[RomCandidate],
+        selected: Sequence[RomCandidate] = (),
+        multi_disc_sets: Sequence[MultiDiscResolution] = (),
+    ) -> tuple[RelatedContent, ...]:
+        """Relaciona membros de formatos de diretório e auxiliares da plataforma.
+
+        A regra é declarativa e independente de Vita: qualquer manifesto que
+        introduza um ``directoryFormat`` reconhecido ganha a mesma relação.
+        Conteúdo auxiliar sem proprietário inequívoco continua agrupado na
+        plataforma, sem ser falsamente anexado a outro jogo.
+        """
+        directory_owners = tuple(
+            candidate.path
+            for candidate in candidates
+            if candidate.content_kind == "base" and candidate.path.is_dir()
+        )
+        related: dict[Path, RelatedContent] = {}
+        selected_paths = {candidate.path for candidate in selected}
+        selected_by_key = {
+            PlatformDirectoryInventory._game_key(candidate, root, multi_disc_sets): candidate.path
+            for candidate in selected
+        }
+        for owner in directory_owners:
+            try:
+                members: list[Path] = []
+                for directory, child_dirs, files in os.walk(owner, followlinks=False):
+                    current = Path(directory)
+                    child_dirs[:] = [
+                        name for name in child_dirs if not (current / name).is_symlink()
+                    ]
+                    members.extend(current / name for name in (*child_dirs, *files))
+                members.sort(key=lambda item: item.as_posix().casefold())
+            except OSError:
+                members = []
+            for member in members:
+                if member.is_symlink() or not member.exists():
+                    continue
+                if member.is_file() or member.is_dir():
+                    related[member] = RelatedContent(
+                        path=member,
+                        relation="directory-member",
+                        content_kind="internal",
+                        owner_path=owner,
+                    )
+        for candidate in candidates:
+            if candidate.path in selected_paths:
+                continue
+            if any(
+                candidate.path == owner or owner in candidate.path.parents
+                for owner in directory_owners
+            ):
+                continue
+            if candidate.content_kind == "base":
+                owner_path = selected_by_key.get(
+                    PlatformDirectoryInventory._game_key(candidate, root, multi_disc_sets)
+                )
+                if owner_path is None:
+                    continue
+                related.setdefault(
+                    candidate.path,
+                    RelatedContent(
+                        path=candidate.path,
+                        relation="game-member",
+                        content_kind="internal",
+                        owner_path=owner_path,
+                    ),
+                )
+                continue
+            related.setdefault(
+                candidate.path,
+                RelatedContent(
+                    path=candidate.path,
+                    relation="auxiliary-content",
+                    content_kind=candidate.content_kind,
+                    owner_path=None,
+                ),
+            )
+        return tuple(sorted(related.values(), key=lambda item: item.path.as_posix().casefold()))
+
+    def _directory_game_candidates(self, root: Path, platform_id: str) -> tuple[Path, ...]:
+        """Recognize declared game directories without indexing their internals."""
+        if "vita3k-app" not in self._scanner.directory_formats_for(platform_id):
+            return ()
+        candidates: list[Path] = []
+
+        def add(candidate: Path) -> None:
+            if (
+                candidate.is_symlink()
+                or not candidate.is_dir()
+                or not re.fullmatch(r"[A-Z]{4}[0-9]{5}", candidate.name)
+                or not (candidate / "sce_sys" / "param.sfo").is_file()
+                or not (candidate / "eboot.bin").is_file()
+            ):
+                return
+            candidates.append(candidate)
+
+        add(root)
+        try:
+            app_roots = [root / "app"]
+            app_roots.extend(child / "app" for child in root.iterdir() if child.is_dir())
+            for app_root in app_roots:
+                if app_root.is_symlink() or not app_root.is_dir():
+                    continue
+                for child in sorted(app_root.iterdir(), key=lambda item: item.name.casefold()):
+                    add(child)
+        except OSError:
+            return tuple(candidates)
+        return tuple(dict.fromkeys(candidates))
 
     def _auxiliary_kind(self, platform_id: str, directory: str) -> str | None:
         policy = self._auxiliary.get(platform_id, "none")

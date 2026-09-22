@@ -14,8 +14,8 @@ relatórios de evidência de 2026-09-22 referenciados pelo item
 
 O diagnóstico consolidado reordena a execução por risco de jornada:
 
-1. **P0 — entrada e lançamento:** fechar G48 (Launcher acima de 512 itens e
-   ativação), G49 (first-run resiliente) e G50 (handoff Flatpak/portal do PCSX2).
+1. **P0 — entrada e lançamento:** fechar G48 (scanner/catálogo e ativação
+   física), G49 (first-run resiliente) e G50 (handoff Flatpak/portal do PCSX2).
 2. **P1 — conteúdo e autoria:** fechar G51 (extração/renomeação/normalização),
    G52 (provider e qualidade de mídia), G53 (autoria de efeitos e medição do
    Theme Studio) e G54 (fixtures/jornadas ES-DE e RetroFE).

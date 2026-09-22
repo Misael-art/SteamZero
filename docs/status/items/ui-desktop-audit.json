@@ -59,7 +59,7 @@
     "docs/09-operations/evidence/2026-09-06-ui-contrast-footer-physical",
     "docs/09-operations/evidence/2026-09-08-ux-audit"
   ],
-    "scopeDigest": "6162304a20e98378e117b02823bc9dc7c0985e024ab521c55b32cd41e3d564c3",
+    "scopeDigest": "45d2a27bda827e89c46d4171635de7cc1569198fb7be26e76ab4989991a398f3",
   "dependsOn": [],
   "knownGaps": [
     "GAP-UI-LIVE-LAUNCHER-ROUTING",

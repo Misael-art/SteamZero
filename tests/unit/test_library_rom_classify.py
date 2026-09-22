@@ -408,6 +408,52 @@ class TestPlatformRomScanner:
         assert by_name["readme.txt"].platform is None
         assert by_name["readme.txt"].evidence == "no-ext-match"
 
+    def test_root_platform_does_not_promote_another_manifest_extension(
+        self, tmp_path: Path
+    ) -> None:
+        """A platform directory must not turn internal assets into games."""
+        (tmp_path / "manual.png").write_bytes(b"png")
+        (tmp_path / "module.bin").write_bytes(b"bin")
+        scanner = PlatformRomScanner.from_manifests(
+            [
+                {
+                    "id": "playstation-vita",
+                    "media": {
+                        "extensions": ["zip", "vpk", "pkg", "vita"],
+                        "formats": {"vpk": ["vpk"], "pkg": ["pkg"], "vita": ["vita"]},
+                    },
+                },
+                {"id": "artwork", "media": {"extensions": ["png"]}},
+            ]
+        )
+
+        results = {
+            item.path.name: item
+            for item in scanner.inventory(tmp_path, root_platform="playstation-vita")
+        }
+
+        assert results["manual.png"].platform is None
+        assert results["manual.png"].evidence == "unsupported-root-extension"
+        assert results["module.bin"].platform is None
+        assert results["module.bin"].evidence == "unsupported-root-extension"
+
+    def test_vita_tree_counts_native_archives_not_extracted_assets(self, tmp_path: Path) -> None:
+        vita = tmp_path / "psvita"
+        vita.mkdir()
+        (vita / "PCSA00017.zip").write_bytes(b"archive")
+        nested = vita / "app" / "PCSF00516" / "sce_sys" / "manual"
+        nested.mkdir(parents=True)
+        (nested / "001.png").write_bytes(b"manual")
+        (vita / "app" / "PCSF00516" / "eboot.bin").write_bytes(b"module")
+
+        row = PlatformDirectoryInventory.from_registry(PlatformRegistry.bundled()).inventory(
+            tmp_path
+        )[0]
+
+        assert row.platform_id == "playstation-vita"
+        assert row.game_count == 1
+        assert [item.path.name for item in row.selected_games] == ["PCSA00017.zip"]
+
 
 class TestPlatformDirectoryInventory:
     def test_amiga_archives_are_indexed_as_one_pending_logical_set(self, tmp_path: Path) -> None:
@@ -468,6 +514,9 @@ class TestPlatformDirectoryInventory:
         assert len(row.multi_disc_sets) == 1
         assert row.multi_disc_sets[0].state == "ready"
         assert [part.number for part in row.multi_disc_sets[0].parts] == [1, 2]
+        related = {item.path.name: item for item in row.related_content}
+        assert related["Chrono Cross (Disc 1).bin"].relation == "game-member"
+        assert related["Chrono Cross (Disc 1).bin"].owner_path == row.selected_games[0].path
 
     def test_filename_marker_without_platform_contract_stays_visible_for_review(
         self, tmp_path: Path
@@ -526,6 +575,21 @@ class TestPlatformDirectoryInventory:
         assert all("not-a-game" not in item.path.name for item in rows["PSX"].selected_games)
         assert rows["bios"].disposition == "excluded"
         assert rows["mystery-console"].disposition == "unmatched"
+
+    def test_steamzero_derived_content_is_excluded_from_user_game_inventory(
+        self, tmp_path: Path
+    ) -> None:
+        (tmp_path / ".steamzero" / "derived" / "playstation-vita").mkdir(parents=True)
+        (tmp_path / ".steamzero" / "derived" / "playstation-vita" / "managed.zip").write_bytes(
+            b"derived"
+        )
+
+        rows = PlatformDirectoryInventory.from_registry(PlatformRegistry.bundled()).inventory(
+            tmp_path
+        )
+
+        assert rows[0].path.name == ".steamzero"
+        assert rows[0].disposition == "excluded"
 
     def test_maps_esde_names_of_already_supported_platforms(self, tmp_path: Path) -> None:
         """Nomes ES-DE da MESMA plataforma de um manifesto existente casam.
