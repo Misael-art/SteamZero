@@ -59,6 +59,12 @@ Item {
         visualScale: 1.5
     }
 
+    ThemeSceneFullscreen {
+        id: fullscreenScene
+        visible: false
+        visualScale: 1.5
+    }
+
     TestCase {
         name: "ResponsiveReusableComponents"
         when: true
@@ -83,6 +89,10 @@ Item {
 
         function test_feedback_notice_scales_impact() {
             compare(feedbackNotice.impactPixelSize, 18)
+        }
+
+        function test_theme_scene_fullscreen_scales_chrome() {
+            compare(fullscreenScene.chromeTitlePixelSize, 30)
         }
     }
 }

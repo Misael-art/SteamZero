@@ -26,6 +26,8 @@ Window {
     property color textColor: "#f2f6fb"
     property color mutedColor: "#9eabba"
     property color focusColor: "#13bdf2"
+    property real visualScale: 1.0
+    readonly property int chromeTitlePixelSize: chromeTitle.font.pixelSize
     signal gameFocused(string gameId)
     signal gameActivated(string gameId)
 
@@ -88,10 +90,11 @@ Window {
             spacing: 16
 
             Label {
+                id: chromeTitle
                 anchors.verticalCenter: parent.verticalCenter
                 text: qsTr("Cena · %1").arg(fullscreen.themeName || fullscreen.themeId)
                 color: fullscreen.textColor
-                font.pixelSize: 20
+                font.pixelSize: Math.round(20 * fullscreen.visualScale)
                 font.bold: true
                 elide: Text.ElideRight
                 width: Math.max(0, parent.width - exitButton.width - 48)

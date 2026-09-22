@@ -12056,3 +12056,11 @@ independência, locks, capability matrix e status também passaram. O teste
 `test_preflight_gi_missing` foi isolado para continuar negativo mesmo quando
 PyGObject está instalado no host; a suíte focada fechou com **247 passed**.
 Nenhum host foi alterado.
+
+## 2026-09-22 — G12: chrome do fullscreen ES-DE
+
+`ThemeCatalogPanel` agora entrega sua escala ao `ThemeSceneFullscreen`, que
+aplica o fator ao título do chrome sem atravessar o ownership ativo de
+`ThemeScenePreview`/`SceneEsdeView`. O harness responsivo passou a verificar
+essa rota em `1.5×`; o teste direcionado fechou com **8 passed** e a matriz QML
+completa com **49 passed**. Nenhum host foi alterado.

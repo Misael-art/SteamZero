@@ -675,5 +675,6 @@ Rectangle {
         textColor: panel.textColor
         mutedColor: panel.mutedColor
         focusColor: panel.cyanColor
+        visualScale: panel.visualScale
     }
 }

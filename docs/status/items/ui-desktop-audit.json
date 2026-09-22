@@ -59,7 +59,7 @@
     "docs/09-operations/evidence/2026-09-06-ui-contrast-footer-physical",
     "docs/09-operations/evidence/2026-09-08-ux-audit"
   ],
-  "scopeDigest": "1c01a1484816c132d71e1756c790a4c83b08fb973d66c73dfc5e0521a90ff724",
+  "scopeDigest": "7701601b77c2f0b787e37075e9077753cc78a8c9641a86d8722a3e766e39856c",
   "dependsOn": [],
   "knownGaps": [
     "GAP-UI-LIVE-LAUNCHER-ROUTING",
@@ -360,7 +360,7 @@
     {
       "kind": "test",
       "reference": "tests/qml/check_responsive_components.qml",
-      "command": "2026-09-22: qmltestrunner Qt 6.11.2 verificou SectionNavigator, SectionMenu, LoadingOverlay, EmptyState e FeedbackNotice em visualScale=1.5; 7 passed.",
+      "command": "2026-09-22: qmltestrunner Qt 6.11.2 verificou SectionNavigator, SectionMenu, LoadingOverlay, EmptyState, FeedbackNotice e o chrome de ThemeSceneFullscreen em visualScale=1.5; 8 passed.",
       "result": "passed"
     }
   ],
