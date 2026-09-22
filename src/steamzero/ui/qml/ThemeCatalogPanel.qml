@@ -36,6 +36,8 @@ Rectangle {
     property color greenColor: "#59d35d"
     property color amberColor: "#ff9f1a"
     property color redColor: "#ff6b73"
+    property real visualScale: 1.0
+    readonly property int titlePixelSize: catalogTitle.font.pixelSize
 
     property var requestAction: function(_id, _payload, _cb, _ecb) {}
 
@@ -238,9 +240,10 @@ Rectangle {
             spacing: 12
 
             Label {
+                id: catalogTitle
                 text: qsTr("Temas")
                 color: panel.textColor
-                font.pixelSize: panel.compactLayout ? 20 : 24
+                font.pixelSize: Math.round((panel.compactLayout ? 20 : 24) * panel.visualScale)
                 font.bold: true
                 Layout.fillWidth: true
                 Accessible.role: Accessible.Heading
@@ -251,7 +254,7 @@ Rectangle {
                     .arg(panel.humanBytes(panel.storeUsage.bytes))
                     .arg(panel.storeUsage.blobs || 0)
                 color: panel.mutedColor
-                font.pixelSize: 13
+                font.pixelSize: Math.round(13 * panel.visualScale)
             }
             DarkButton {
                 objectName: "refreshButton"
@@ -319,7 +322,7 @@ Rectangle {
                                 Label {
                                     text: panel.themeLabel(modelData)
                                     color: panel.textColor
-                                    font.pixelSize: 16
+                                    font.pixelSize: Math.round(16 * panel.visualScale)
                                     font.bold: true
                                     Layout.fillWidth: true
                                 }
@@ -340,7 +343,7 @@ Rectangle {
                                             ? qsTr("Instalado")
                                             : qsTr("Atualização disponível")
                                         color: "#05121b"
-                                        font.pixelSize: 11
+                                        font.pixelSize: Math.round(11 * panel.visualScale)
                                         font.bold: true
                                     }
                                 }
@@ -351,7 +354,7 @@ Rectangle {
                                     .arg(modelData.license || qsTr("não declarada"))
                                     .arg((modelData.credits || []).join(", "))
                                 color: panel.mutedColor
-                                font.pixelSize: 12
+                                font.pixelSize: Math.round(12 * panel.visualScale)
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
                             }
@@ -455,7 +458,7 @@ Rectangle {
                         Label {
                             text: qsTr("Espaço em disco")
                             color: panel.textColor
-                            font.pixelSize: 14
+                            font.pixelSize: Math.round(14 * panel.visualScale)
                             font.bold: true
                         }
                         Label {
@@ -464,7 +467,7 @@ Rectangle {
                             text: qsTr("Remover um tema preserva os arquivos, porque outro tema "
                                        + "pode usá-los. A recuperação é uma ação à parte.")
                             color: panel.mutedColor
-                            font.pixelSize: 12
+                            font.pixelSize: Math.round(12 * panel.visualScale)
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
                         }
@@ -477,7 +480,7 @@ Rectangle {
                                     .arg(panel.humanBytes(panel.gcPreview.reclaimedBytes))
                                 : ""
                             color: panel.amberColor
-                            font.pixelSize: 13
+                            font.pixelSize: Math.round(13 * panel.visualScale)
                             Layout.fillWidth: true
                         }
                         RowLayout {
@@ -524,7 +527,7 @@ Rectangle {
                         Label {
                             text: qsTr("Não disponíveis (%1)").arg(panel.excluded.length)
                             color: panel.textColor
-                            font.pixelSize: 14
+                            font.pixelSize: Math.round(14 * panel.visualScale)
                             font.bold: true
                         }
                         Repeater {
@@ -534,7 +537,7 @@ Rectangle {
                                 required property var modelData
                                 text: "· " + (modelData.repo || "") + " — " + (modelData.reason || "")
                                 color: panel.mutedColor
-                                font.pixelSize: 12
+                                font.pixelSize: Math.round(12 * panel.visualScale)
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
                             }

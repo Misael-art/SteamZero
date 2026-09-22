@@ -40,6 +40,7 @@ Item {
     ThemeCatalogPanel {
         id: panel
         anchors.fill: parent
+        visualScale: 1.5
         requestAction: function(actionId, payload, callback, errorCallback) {
             harness.calls.push({"id": actionId, "payload": payload})
             if (harness.failNextCall) {
@@ -109,6 +110,7 @@ Item {
             compare(panel.entries.length, 3)
             compare(panel.excluded.length, 1)
             compare(panel.storeUsage.blobs, 474)
+            compare(panel.titlePixelSize, 36)
         }
 
         function test_waits_for_the_bridge_contract_during_bootstrap() {

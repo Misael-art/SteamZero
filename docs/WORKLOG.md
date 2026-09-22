@@ -11939,3 +11939,11 @@ modo desktop.
 O subconjunto QML afetado fechou com **35 passed** e a matriz completa continua
 verde (**48 passed**). G12 permanece parcial enquanto Theme Studio, dialogs e
 outros componentes não adotarem o helper. Nenhum host foi alterado.
+
+## 2026-09-22 — Escala no catálogo do Theme Studio
+
+`ThemeCatalogPanel` passou a receber `visualScale` do `Main.qml`; seus tamanhos
+fixos agora são derivados do fator visual e o harness verifica o título em
+`1.5×`. O teste de gestos do catálogo fechou com **4 passed**. O editor de
+temas completo, dialogs e outros componentes ainda permanecem como próximos
+consumidores de G12. Nenhum host foi alterado.

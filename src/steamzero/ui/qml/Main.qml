@@ -6060,6 +6060,7 @@ ApplicationWindow {
                                             greenColor: root.greenColor
                                             amberColor: root.amberColor
                                             redColor: root.redColor
+                                            visualScale: root.visualScale
                                             compactLayout: root.compactLayout
                                             contractsReady: root.uiContracts
                                                 && root.uiContracts.byId
