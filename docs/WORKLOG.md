@@ -11784,3 +11784,17 @@ No host, `system resources --json` retornou `readOnly=true`,
 permissão/estado incompleto. O agregado não foi atribuído à UI e nenhuma
 mutação foi executada. A prova física completa permanece dependente de um
 runner/sessão com procfs observável e captura QML real.
+
+## 2026-09-22 — P0-03 e árvore de cena reconciliados
+
+A auditoria executável de tema confirmou as duas fixtures da fatia RetroFE:
+65/65 propriedades traduzidas na positiva e 71/73 na negativa, com `layer` e
+`src` explicitamente sem tradutor. A suíte de contratos, resolver, árvore,
+round-trip e fatia vertical fechou com **373 passed**. O corpus de 388 e o
+texto avançado continuam abertos.
+
+O roadmap tinha uma afirmação obsoleta de que `children` não existia. A
+serialização v2, os limites da árvore e o round-trip já estão implementados;
+corrigi a linha para `parcial`, preservando como pendentes wrapping, elide,
+rich text, auto-fit e a integração desses slices com a migração completa. Não
+houve alteração no host.
