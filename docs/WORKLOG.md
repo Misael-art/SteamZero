@@ -11713,3 +11713,18 @@ fronteiras, independência, component-lock, capability-matrix e
 do state home real permaneceu idêntica; nenhum artefato histórico do operador
 foi removido. O item é `SZ-TEST-STATE-ISOLATION`; a prova física/limpeza do
 host não faz parte deste fechamento.
+
+## 2026-09-21 — G25 reconciliado no software; recovery físico pendente
+
+O canonical já contém recovery de jobs e transações no bootstrap do daemon,
+auditoria de jobs stale e artefatos órfãos, além de cleanup plan-first com
+digest e quarentena recuperável. A regressão focada de jobs, doctor, service e
+CLI passou com **132 passed**, e a fotografia do state home real permaneceu
+idêntica antes e depois.
+
+No host, o socket e o serviço estão ativos, mas o doctor continua degraded por
+um job `media.global` em `running`, criado após o boot. A recuperação desse
+job exige um ciclo autorizado de restart/convergência do daemon; não foi
+executado restart, cleanup ou qualquer mutação no host. O item é
+`SZ-JOB-RECOVERY-DOCTOR`, com operação explicitamente `degraded` até a prova
+física.

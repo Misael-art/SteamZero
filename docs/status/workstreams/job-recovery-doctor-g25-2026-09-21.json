@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "item": "SZ-JOB-RECOVERY-DOCTOR",
+  "id": "WS-2026-09-JOB-RECOVERY-G25",
+  "branch": "codex/canonical-main-2026-09-21",
+  "baseRef": "27090f58",
+  "owner": "codex-continuation",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/jobs/models.py",
+    "src/steamzero/jobs/manager.py",
+    "src/steamzero/service/core.py",
+    "src/steamzero/domain/state_audit.py",
+    "src/steamzero/domain/state_cleanup.py",
+    "src/steamzero/diagnostics/doctor.py",
+    "tests/integration/test_jobs.py",
+    "tests/integration/test_cli.py",
+    "tests/unit/test_doctor.py",
+    "tests/unit/test_service_core.py"
+  ],
+  "sharedPaths": [
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Aguardar autorização explícita para o ciclo de restart/convergência no host; manter todo o software e os testes fechados sem executar cleanup destrutivo.",
+  "updatedAt": "2026-09-21"
+}
