@@ -13,6 +13,7 @@ Item {
     property var sources: []
     property bool highContrast: false
     property bool compact: false
+    property real visualScale: 1.0
     required property color surfaceColor
     required property color raisedColor
     required property color borderColor
@@ -45,7 +46,7 @@ Item {
             Label {
                 text: qsTr("Capturas")
                 color: root.textColor
-                font.pixelSize: 20
+                font.pixelSize: Math.round(20 * root.visualScale)
                 font.weight: Font.DemiBold
                 Layout.fillWidth: true
             }
@@ -53,7 +54,7 @@ Item {
                 visible: root.hasPublishedMedia
                 text: qsTr("%1 publicada(s)").arg(root.publishedSources.length)
                 color: root.mutedColor
-                font.pixelSize: 12
+                font.pixelSize: Math.round(12 * root.visualScale)
             }
         }
         ListView {

@@ -1919,6 +1919,7 @@ Item {
                 id: desktopModePanel
                 visible: page.workspaceIndex === 3
                 desktopStatus: page.desktopStatus
+                visualScale: page.visualScale
                 sessionManager: page.sessionManager
                 hostPreparation: page.gameplay && page.gameplay.hostPreparation
                     ? page.gameplay.hostPreparation

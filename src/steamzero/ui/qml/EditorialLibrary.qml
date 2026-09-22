@@ -36,6 +36,7 @@ Item {
     required property color redColor
     property bool reducedMotion: false
     property bool highContrast: false
+    property real visualScale: 1.0
     property int themeMinimumTarget: 48
     property real themeFocusedScale: 1.05
     property real themePeripheralOpacity: 0.58
@@ -63,7 +64,7 @@ Item {
             "controlHint": 14, "diagnostic": 14
         }
         const base = Number(typography && typography[role]) || fallback[role] || fallback.body
-        const scale = Number(typography && typography.scale) || 1
+        const scale = (Number(typography && typography.scale) || 1) * visualScale
         return Math.round(base * scale * (compactFactor === undefined ? 1 : compactFactor))
     }
 
@@ -883,6 +884,7 @@ Item {
                         sources: root.screenshotSources(root.selectedGame)
                         highContrast: root.highContrast
                         compact: root.compact
+                        visualScale: root.visualScale
                         surfaceColor: root.surfaceColor
                         raisedColor: root.raisedColor
                         borderColor: root.borderColor

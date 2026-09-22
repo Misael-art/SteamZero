@@ -6146,6 +6146,7 @@ ApplicationWindow {
                                 redColor: root.redColor
                                 reducedMotion: root.reducedMotion
                                 highContrast: root.highContrast
+                                visualScale: root.visualScale
                                 themeMinimumTarget: root._themeBridge.minimumTarget
                                 themeFocusedScale: root._themeBridge.focusedScale
                                 themePeripheralOpacity: root._themeBridge.peripheralOpacity

@@ -21,6 +21,7 @@ ColumnLayout {
     required property color greenColor
     required property color amberColor
     required property color redColor
+    property real visualScale: 1.0
 
     signal profilePlanRequested(string profile)
     signal profileApplyRequested(string planId, string confirmToken)
@@ -155,7 +156,7 @@ ColumnLayout {
                 Label {
                     text: panel.stateLabel()
                     color: panel.stateColor()
-                    font.pixelSize: 19
+                    font.pixelSize: Math.round(19 * panel.visualScale)
                     font.bold: true
                 }
                 Label {
@@ -215,7 +216,7 @@ ColumnLayout {
                 spacing: 10
                 RowLayout {
                     ToolButton { enabled: false; icon.name: "preferences-desktop"; icon.color: panel.cyanColor; background: Item {} }
-                    Label { text: qsTr("Experiência do Modo Desktop"); color: panel.textColor; font.pixelSize: 18; font.bold: true; Layout.fillWidth: true }
+                    Label { text: qsTr("Experiência do Modo Desktop"); color: panel.textColor; font.pixelSize: Math.round(18 * panel.visualScale); font.bold: true; Layout.fillWidth: true }
                     Label { text: qsTr("SteamZero"); color: panel.greenColor; font.bold: true }
                 }
                 Label {
@@ -283,7 +284,7 @@ ColumnLayout {
                 spacing: 10
                 RowLayout {
                     ToolButton { enabled: false; icon.name: "input-touchpad"; icon.color: panel.cyanColor; background: Item {} }
-                    Label { text: qsTr("Entrada, touch e teclado"); color: panel.textColor; font.pixelSize: 18; font.bold: true; Layout.fillWidth: true }
+                    Label { text: qsTr("Entrada, touch e teclado"); color: panel.textColor; font.pixelSize: Math.round(18 * panel.visualScale); font.bold: true; Layout.fillWidth: true }
                     Label {
                         text: panel.conflicts.length === 0 ? qsTr("Owner exclusivo") : qsTr("Bloqueado")
                         color: panel.conflicts.length === 0 ? panel.greenColor : panel.amberColor
@@ -399,7 +400,7 @@ ColumnLayout {
                     color: panel.mutedColor
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
-                    font.pixelSize: 12
+                    font.pixelSize: Math.round(12 * panel.visualScale)
                 }
                 RowLayout {
                     Layout.fillWidth: true
@@ -426,7 +427,7 @@ ColumnLayout {
                 spacing: 10
                 RowLayout {
                     ToolButton { enabled: false; icon.name: "video-display"; icon.color: panel.cyanColor; background: Item {} }
-                    Label { text: qsTr("Tela, dock e hotplug"); color: panel.textColor; font.pixelSize: 18; font.bold: true; Layout.fillWidth: true }
+                    Label { text: qsTr("Tela, dock e hotplug"); color: panel.textColor; font.pixelSize: Math.round(18 * panel.visualScale); font.bold: true; Layout.fillWidth: true }
                     Label { text: qsTr("KDE / KScreen"); color: panel.cyanColor; font.bold: true }
                 }
                 Repeater {
@@ -440,7 +441,7 @@ ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 0
                             Label { text: modelData.internal ? qsTr("Tela interna") : modelData.name; color: panel.textColor; font.bold: true }
-                            Label { text: "%1×%2 · %3 Hz".arg(modelData.width || "—").arg(modelData.height || "—").arg(modelData.refreshHz || "—"); color: panel.mutedColor; font.pixelSize: 11 }
+                            Label { text: "%1×%2 · %3 Hz".arg(modelData.width || "—").arg(modelData.height || "—").arg(modelData.refreshHz || "—"); color: panel.mutedColor; font.pixelSize: Math.round(11 * panel.visualScale) }
                         }
                         Label { text: qsTr("Escala %1").arg(modelData.scale || "—"); color: panel.cyanColor }
                     }
@@ -472,7 +473,7 @@ ColumnLayout {
                 spacing: 10
                 RowLayout {
                     ToolButton { enabled: false; icon.name: "system-switch-user"; icon.color: panel.cyanColor; background: Item {} }
-                    Label { text: qsTr("Sessão e resiliência"); color: panel.textColor; font.pixelSize: 18; font.bold: true; Layout.fillWidth: true }
+                    Label { text: qsTr("Sessão e resiliência"); color: panel.textColor; font.pixelSize: Math.round(18 * panel.visualScale); font.bold: true; Layout.fillWidth: true }
                     Label { text: "G-STATE"; color: panel.greenColor; font.bold: true }
                 }
                 RowLayout {
@@ -567,7 +568,7 @@ ColumnLayout {
         background: Rectangle { color: panel.raisedColor; radius: 10; border.color: panel.cyanColor }
         contentItem: ColumnLayout {
             spacing: 14
-            Label { text: panel.reviewedPlan ? qsTr("Perfil: %1").arg(panel.profileLabel(panel.reviewedPlan.target.id)) : ""; color: panel.textColor; font.pixelSize: 18; font.bold: true }
+            Label { text: panel.reviewedPlan ? qsTr("Perfil: %1").arg(panel.profileLabel(panel.reviewedPlan.target.id)) : ""; color: panel.textColor; font.pixelSize: Math.round(18 * panel.visualScale); font.bold: true }
             Label { text: qsTr("As mudanças usam snapshot, verificação e rollback G-STATE."); color: panel.greenColor; wrapMode: Text.WordWrap; Layout.fillWidth: true }
             TextArea {
                 text: panel.reviewedPlan ? panel.reviewedPlan.changes.join("\n") : ""

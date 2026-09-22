@@ -93,6 +93,10 @@ Main {
                   "visualScale deve chegar à superfície de emulação")
             check(window.steamGameplayControl.visualScale === 1.5,
                   "visualScale deve chegar à superfície Steam")
+            check(window.editorialLibraryControl.visualScale === 1.5,
+                  "visualScale deve chegar à biblioteca editorial")
+            check(window.steamGameplayControl.desktopModeControl.visualScale === 1.5,
+                  "visualScale deve chegar ao modo desktop")
             phase = 2
             return
         }

@@ -11927,3 +11927,15 @@ Os harnesses QML verificam escala `1.5×` nos cartões de credenciais, métricas
 controles; a matriz offscreen completa fechou com **48 passed**. A mitigação de
 G12 ainda é parcial: os demais componentes reutilizáveis e a medição da cena
 completa permanecem abertos. Nenhum host foi alterado.
+
+## 2026-09-22 — Escala nas superfícies editorial e desktop
+
+`EditorialLibrary` agora combina a escala tipográfica do tema com o
+`dashboard.accessibility.visualScale`, propagando-a para `ScreenshotRail`.
+`SteamDesktop` recebe a mesma escala através de `SteamGameplay`; o harness de
+alto contraste verifica que a preferência chega à biblioteca editorial e ao
+modo desktop.
+
+O subconjunto QML afetado fechou com **35 passed** e a matriz completa continua
+verde (**48 passed**). G12 permanece parcial enquanto Theme Studio, dialogs e
+outros componentes não adotarem o helper. Nenhum host foi alterado.
