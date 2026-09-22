@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from steamzero.adapters.discovery import vita_packaging
 from steamzero.adapters.discovery.vita_packaging import (
     canonical_vita_filename,
     package_vita_app,
@@ -60,6 +61,8 @@ def test_vita_app_is_packaged_at_archive_root_without_touching_source(tmp_path: 
     source = _app(tmp_path / "source")
     plan = plan_from_app(source, derived_root=tmp_path / "derived")
 
+    assert plan.estimated_output_bytes >= plan.source_bytes
+    assert plan.required_space_bytes > plan.estimated_output_bytes
     result = package_vita_app(plan)
 
     assert result["status"] == "materialized"
@@ -70,6 +73,22 @@ def test_vita_app_is_packaged_at_archive_root_without_touching_source(tmp_path: 
         assert "eboot.bin" in archive.namelist()
         assert "data/game.bin" in archive.namelist()
         assert not any(name.startswith("app/") for name in archive.namelist())
+
+
+def test_vita_package_checks_destination_space_before_writing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    source = _app(tmp_path / "source")
+    plan = plan_from_app(source, derived_root=tmp_path / "derived")
+    monkeypatch.setattr(
+        vita_packaging.fs, "free_space", lambda _path: plan.required_space_bytes - 1
+    )
+
+    with pytest.raises(SteamZeroError) as raised:
+        package_vita_app(plan)
+
+    assert raised.value.code == "E-STORAGE-SPACE"
+    assert not plan.destination.parent.exists()
 
 
 def test_vita_package_rejects_symlinked_content(tmp_path: Path) -> None:
@@ -103,6 +122,10 @@ def test_controller_exposes_governed_vita_package_job(
     )
     assert plan["kind"] == "emulation.vita.package"
     assert "sem renomear, mover ou apagar a origem" in plan["preview"]
+    assert plan["requirements"]["sourceBytes"] > 0
+    assert plan["requirements"]["estimatedOutputBytes"] >= plan["requirements"]["sourceBytes"]
+    assert plan["requirements"]["packageSpaceBytes"] > plan["requirements"]["estimatedOutputBytes"]
+    assert "bytes livres" in plan["preview"]
 
     applied = controller.apply_action(str(plan["planId"]), str(plan["confirmToken"]))
     job_id = str(applied["jobId"])

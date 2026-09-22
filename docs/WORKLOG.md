@@ -12418,3 +12418,43 @@ O `make check` integral local foi iniciado, permaneceu ativo por cerca de 25
 minutos alternando os harnesses QML sem saída terminal e foi interrompido de
 forma controlada; portanto não é contado como verde local. Nenhum subprocesso
 QML ficou aberto após a interrupção.
+
+## 2026-09-22 — Release governada, scan real e segunda falha de projeção Vita
+
+O host foi confirmado em `2.0.0rc1-caf9d922d15c`, commit
+`caf9d922d15c061ea6655e7100c27cf56f1e3459`, bundle preparada/verificada pelo
+fluxo `release_host.py` (push CI `35779058230`, wheel SHA-256
+`785f0bfa027fb0536703a9b0831994dc07f482b41187de83b4fcba775229181e`). O
+Doctor direto confirmou provenance e daemon convergentes, schema 22, integridade
+SQLite, zero operações pendentes, jobs stale ou artefatos órfãos. Estado geral
+degraded permanece explicado por input Deck indisponível como teclas e leitura
+de boot negada. O ciclo rollback→reativação não foi certificado: o ciclo
+anterior foi interrompido, a promoção terminou no filho `bigsudo` e a ledger da
+automação não registrou conclusão normal; a evidência é da release realmente
+ativa e saudável, não de um ciclo físico aprovado.
+
+Pelo controle da Central, o plano `library.vita.package` gerou o derivado
+LittleBigPlanet `[PCSF00516].zip`: 686 membros, 1.711.553.676 bytes, ZIP sem
+erro, `sce_sys/param.sfo` e `eboot.bin` presentes; origem intacta com 686
+arquivos. O destino é `.steamzero/derived`, deliberadamente fora do catálogo.
+O scan foi disparado uma vez; o cliente de 30 s expirou porque a rota pública é
+síncrona, mas o job `01M35EY56P56HS6KFZC66SZA3M` prosseguiu e completou em 45,8
+s sobre duas raízes: 1.163 jogos, 16.515 arquivos, 102 updates, 144 DLCs,
+1.343 incompatíveis, 13.763 ignorados e zero unidentified/erros. O falso
+Vita=684 desapareceu; cache gravou seis jogos Vita (5 ZIP + diretório app).
+
+O workspace público, porém, projetou somente cinco. Causa reproduzida: a
+validação do cache reclassifica registros como arquivos e rejeita
+`vita3k-app`, embora o inventário de diretórios tenha selecionado e o scan tenha
+gravado corretamente o jogo SFO/Title ID PCSF00516. Duas regressões foram
+adicionadas e o código local passou em 236 testes de controlador/classificação/
+catálogo/workspace; a correção de cache mais a estimativa/check de espaço do
+empacotador (o plano antes apresentava só a margem genérica de 8 MiB para um
+ZIP de 1,71 GB) ainda não estão instaladas. Próxima ação: gates integrais,
+commit/PR/CI, release governada e novo scan para confirmar seis jogos no
+workspace e espaço exigido no preview.
+
+Evidências detalhadas e IDs estão em
+`docs/09-operations/evidence/2026-09-22-ux-deep-dive/README.md` e
+`docs/09-operations/RELEASE-LEDGER.md`. Nenhuma origem foi renomeada ou
+apagada; a Central de jogos foi encerrada; nenhum emulador ou tema ficou aberto.

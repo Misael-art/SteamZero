@@ -3,15 +3,19 @@
   "kind": "workstream",
   "id": "WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT",
   "item": "SZ-LIBRARY-CANONICAL",
-  "branch": "codex/canonical-main-2026-09-21",
-  "baseRef": "08fc957d",
+  "branch": "codex/library-host-release-caf9d922-2026-09-22",
+  "baseRef": "caf9d922",
   "owner": "codex-continuation",
   "state": "active",
   "exclusivePaths": [
     "src/steamzero/domain/library_management.py",
+    "src/steamzero/adapters/emulation.py",
+    "src/steamzero/adapters/discovery/vita_packaging.py",
     "src/steamzero/ui/qml/Main.qml",
     "src/steamzero/adapters/desktop_contracts.py",
     "tests/unit/test_library_management.py",
+    "tests/unit/test_library_cache_directory_native.py",
+    "tests/unit/test_vita_packaging.py",
     "tests/integration/test_qml_harness_regressions.py",
     "tests/integration/test_qml_handheld_offscreen.py",
     "tests/integration/test_qml_visual_capture.py",
@@ -20,13 +24,11 @@
   ],
   "sharedPaths": [
     "src/steamzero/domain/library.py",
-    "src/steamzero/adapters/emulation.py",
-    "tests/unit/test_emulation_controller.py",
     "docs/STATUS.md",
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md",
     "docs/status/COVERAGE.md"
   ],
-  "nextAction": "Bundle 2.0.0rc1-468c67f371b8 preparada/verificada no run push 35766898272; o release_host agora faz preflight não mutante de autorização em 90s antes de install/rollback. Promover esta correção com CI verde e, após autorização interativa do pkexec (HARD-EXTERNAL-SUBITEM: credencial/elevação ausente), retomar o mesmo cycle governado; então executar scan Vita e certificar rename universal, empacotamento, audit→preview→quarantine→verify/rollback no host sem mover a origem.",
+  "nextAction": "Corrigir e testar G56: o scan da release ativa gravou seis Vita no cache, mas o workspace descartou a app directory-native PCSF00516. Corrigir/testar G57 com estimativa conservadora e preflight de espaço do ZIP, pois o plano anterior mostrava 8 MiB para saída real de 1,71 GB. Rodar gates, commit/PR/CI, preparar e instalar release governada; repetir o scan pela rota assíncrona de UI e confirmar seis jogos no workspace, 713 membros relacionados e preview de espaço correto; depois certificar gestão/audit/rename/quarentena/rollback universal sem tocar nas origens.",
   "updatedAt": "2026-09-22"
 }

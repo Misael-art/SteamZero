@@ -2841,6 +2841,9 @@ class EmulationController:
                     "destination": str(package_plan.destination),
                     "titleId": package_plan.title_id,
                     "files": package_plan.files,
+                    "sourceBytes": package_plan.source_bytes,
+                    "estimatedOutputBytes": package_plan.estimated_output_bytes,
+                    "packageSpaceBytes": package_plan.required_space_bytes,
                 },
             )
             self._pending[plan.plan_id] = _PendingMutation(
@@ -2853,7 +2856,9 @@ class EmulationController:
             plan_extra["preview"] = (
                 "A operação validará o SFO, o Title ID, os arquivos obrigatórios e os "
                 "symlinks; publicará o ZIP Vita3K em árvore derivada gerenciada, "
-                "sem renomear, mover ou apagar a origem. "
+                "sem renomear, mover ou apagar a origem. Estimativa conservadora: "
+                f"{package_plan.estimated_output_bytes:,} bytes; exige "
+                f"{package_plan.required_space_bytes:,} bytes livres antes de iniciar. "
                 f"Destino: {package_plan.destination}"
             )
         elif action == "multidisc.materialize":
@@ -7153,6 +7158,8 @@ class EmulationController:
         ctx.set_progress("inspect", current=0, total=1, unit="files")
         package_plan = plan_from_app(source_path, derived_root=derived_root)
         result = package_vita_app(package_plan)
+        result["sourceBytes"] = package_plan.source_bytes
+        result["estimatedOutputBytes"] = package_plan.estimated_output_bytes
         ctx.set_progress("done", current=1, total=1, unit="files")
         result["catalogRefresh"] = {
             "status": "unchanged",
@@ -9591,9 +9598,31 @@ class EmulationController:
                     reconciled_archive = archive_evidence.startswith(
                         "archive-multidisc-"
                     ) and candidate_path.suffix.casefold() in {".zip", ".7z"}
-                    if reconciled_archive:
+                    declared: str | None = resolved_platform
+                    directory_native = (
+                        fmt in platform_scanner.directory_formats_for(resolved_platform)
+                        and candidate_path.is_dir()
+                        and not candidate_path.is_symlink()
+                    )
+                    if directory_native:
+                        # Directory-native games (currently Vita3K apps) have
+                        # no extension for ``classify`` to claim. Re-reading
+                        # SFO keeps the persisted cache honest and ties the
+                        # directory name, platform and Title ID together.
+                        if fmt != "vita3k-app" or resolved_platform != "playstation-vita":
+                            continue
+                        try:
+                            candidate_path.resolve(strict=True).relative_to(
+                                candidate_root.resolve(strict=True)
+                            )
+                        except (OSError, ValueError):
+                            continue
+                        metadata = read_vita_metadata(candidate_path)
+                        if metadata.identity is None or metadata.identity.value != title_id:
+                            continue
+                        declared, kind = resolved_platform, "base"
+                    elif reconciled_archive:
                         kind = "base"
-                        declared: str | None = resolved_platform
                     else:
                         declared = ""
                         kind = "unknown"
@@ -9601,7 +9630,7 @@ class EmulationController:
                         siblings = {item.name for item in candidate_path.parent.iterdir()}
                     except OSError:
                         siblings = {candidate_path.name}
-                    if not reconciled_archive:
+                    if not reconciled_archive and not directory_native:
                         declared, kind, _evidence = platform_scanner.classify(
                             candidate_path.name,
                             siblings,
