@@ -24,8 +24,15 @@ import json
 import sys
 from pathlib import Path
 
-from steamzero.domain.retrofe_declarations import collect_declarations
-from steamzero.domain.theme_migration_audit import audit_migration
+# O repositório usa o layout src. O comando é documentado para execução
+# direta, portanto o próprio utilitário precisa bootstrapar o caminho sem
+# depender do ambiente do caller.
+_SOURCE_ROOT = Path(__file__).resolve().parents[1] / "src"
+if str(_SOURCE_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SOURCE_ROOT))
+
+from steamzero.domain.retrofe_declarations import collect_declarations  # noqa: E402
+from steamzero.domain.theme_migration_audit import audit_migration  # noqa: E402
 
 _DEFAULT_LAYOUTS = (
     Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "retrofe" / "vs04_positive.xml",

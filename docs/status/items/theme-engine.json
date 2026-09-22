@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "7c7a0d798cc9fdfe42c853581155c5b768f14e6574d7e63a854cb39a3d5b6023",
+  "scopeDigest": "2716f5fa0cf1491dfe0aeea5efd99a5841632c99813c10601ac4dd2857cfb757",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -78,6 +78,7 @@
     "tests/integration/test_retrofe_vertical_slice.py",
     "tests/qml/check_scene_text.qml",
     "tests/unit/test_theme_migration_audit.py",
+    "tools/audit_theme_migration.py",
     "docs/12-roadmap/P0-03-HANDOFF.md",
     "docs/12-roadmap/EXECUTION-TO-1.0.md",
     "src/steamzero/domain/scene_containers.py",

@@ -11968,3 +11968,15 @@ instancia o diálogo em `1.5×` e verifica o tamanho calculado.
 
 O teste direcionado fechou com **1 passed**; G12 continua parcial para dialogs
 e componentes ainda não cobertos. Nenhum host foi alterado.
+
+## 2026-09-22 — Auditoria P0-03 executável fora do ambiente preparado
+
+O comando documentado `python tools/audit_theme_migration.py` falhava quando
+executado diretamente porque o repositório usa layout `src`. O próprio tool
+agora inicializa esse caminho sem depender de `PYTHONPATH`; Ruff e formatação
+permanecem verdes.
+
+A auditoria direta reporta **65/65** na fixture positiva e **72/73** na negativa,
+com `src` explicitamente sem tradutor; o corpus de **388** continua
+honestamente não migrado. Os testes direcionados de auditoria e fatia RetroFE
+fecharam com **73 passed**. Nenhum host foi alterado.
