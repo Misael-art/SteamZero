@@ -7,6 +7,7 @@ FocusScope {
     id: root
     property bool active: false
     property bool reducedMotion: false
+    property real visualScale: 1.0
     property string title: qsTr("Preparando tudo para você")
     property string detail: qsTr("Aguarde enquanto o SteamZero verifica o estado com segurança.")
     property color surfaceColor: "#122131"
@@ -14,6 +15,8 @@ FocusScope {
     property color textColor: "#f2f6fb"
     property color mutedColor: "#9eabba"
     property color accentColor: "#13bdf2"
+    readonly property int titlePixelSize: loadingTitle.font.pixelSize
+    readonly property int detailPixelSize: progressDetail.font.pixelSize
 
     visible: opacity > 0
     opacity: active ? 1 : 0
@@ -71,9 +74,10 @@ FocusScope {
                 Accessible.name: qsTr("Operação em andamento")
             }
             Label {
+                id: loadingTitle
                 text: root.title
                 color: root.textColor
-                font.pixelSize: 21
+                font.pixelSize: Math.round(21 * root.visualScale)
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
@@ -87,9 +91,10 @@ FocusScope {
                 Layout.fillWidth: true
             }
             Label {
+                id: progressDetail
                 text: qsTr("O progresso é indeterminado; nenhuma porcentagem será estimada.")
                 color: root.mutedColor
-                font.pixelSize: 12
+                font.pixelSize: Math.round(12 * root.visualScale)
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true

@@ -13,6 +13,8 @@ Rectangle {
     property color successColor: "#59d35d"
     property color errorColor: "#ff6b73"
     property int minimumTarget: 48
+    property real visualScale: 1.0
+    readonly property int impactPixelSize: impactLabel.font.pixelSize
 
     readonly property string displayTitle: error
         ? qsTr("Não foi possível concluir") : qsTr("Ação concluída")
@@ -64,10 +66,11 @@ Rectangle {
                 Layout.fillWidth: true
             }
             Label {
+                id: impactLabel
                 visible: root.error
                 text: root.impactText
                 color: root.mutedColor
-                font.pixelSize: 12
+                font.pixelSize: Math.round(12 * root.visualScale)
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }

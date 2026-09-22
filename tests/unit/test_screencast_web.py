@@ -193,18 +193,17 @@ class TestWebReceiverProvider:
                 delattr(sw_mod, attr)
 
     def test_preflight_gi_missing(self, provider: WebReceiverProvider) -> None:
-        # Also remove from sys.modules for isolation against other test
-        # suites that may have injected gi into sys.modules.
-        saved = {k: sys.modules.pop(k, None) for k in ("gi", "gi.repository", "gi.repository.Gst")}
+        # Ocultar o módulo não basta quando PyGObject está instalado no host:
+        # um import subsequente o encontra no site-packages. Colocar o marcador
+        # ``None`` em sys.modules força o mesmo ImportError nos dois ambientes.
         for attr in ("gi", "Gst"):
             if hasattr(sw_mod, attr):
                 delattr(sw_mod, attr)
-        try:
+        with patch.dict(
+            sys.modules,
+            {"gi": None, "gi.repository": None, "gi.repository.Gst": None},
+        ):
             ok, msg = provider.preflight()
-        finally:
-            for k, v in saved.items():
-                if v is not None:
-                    sys.modules[k] = v
         assert ok is False
         assert msg == "gi-missing"
 

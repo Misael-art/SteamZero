@@ -180,10 +180,10 @@ class WebReceiverProvider(ScreenCastProviderPort):
 
     def preflight(self) -> tuple[bool, str]:
         try:
-            import gi  # type: ignore[import-not-found]
+            import gi  # type: ignore[import-untyped]
 
             gi.require_version("Gst", "1.0")
-            from gi.repository import Gst  # type: ignore[import-not-found]
+            from gi.repository import Gst  # type: ignore[import-untyped]
 
             Gst.init(None)
             for elem in (

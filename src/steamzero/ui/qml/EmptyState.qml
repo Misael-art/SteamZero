@@ -14,6 +14,8 @@ Item {
     property color mutedColor: "#9eabba"
     property color accentColor: "#13bdf2"
     property int minimumTarget: 48
+    property real visualScale: 1.0
+    readonly property int titlePixelSize: emptyTitle.font.pixelSize
     signal primaryTriggered()
     signal secondaryTriggered()
 
@@ -37,9 +39,10 @@ Item {
             Layout.alignment: Qt.AlignHCenter
         }
         Label {
+            id: emptyTitle
             text: root.title
             color: root.textColor
-            font.pixelSize: 20
+            font.pixelSize: Math.round(20 * root.visualScale)
             font.bold: true
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.WordWrap

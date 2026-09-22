@@ -13,6 +13,8 @@ Popup {
     property color textColor: "#f2f6fb"
     property color mutedColor: "#9eabba"
     property color accentColor: "#13bdf2"
+    property real visualScale: 1.0
+    readonly property int titlePixelSize: titleLabel.font.pixelSize
 
     signal sectionChosen(int index)
 
@@ -49,9 +51,10 @@ Popup {
         spacing: 8
 
         Label {
+            id: titleLabel
             text: qsTr("Ir para uma seção")
             color: root.textColor
-            font.pixelSize: 20
+            font.pixelSize: Math.round(20 * root.visualScale)
             font.bold: true
             Layout.fillWidth: true
         }

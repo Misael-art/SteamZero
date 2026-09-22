@@ -8,6 +8,7 @@ Item {
     property Flickable flickable: null
     property var sections: []
     property bool reducedMotion: false
+    property real visualScale: 1.0
     property color surfaceColor: "#122131"
     property color borderColor: "#2a3a49"
     property color textColor: "#f2f6fb"
@@ -15,6 +16,8 @@ Item {
     property color accentColor: "#13bdf2"
     property int activeIndex: 0
     property int minimumTarget: 48
+    readonly property int menuPixelSize: menuButton.font.pixelSize
+    readonly property int statusPixelSize: statusLabel.font.pixelSize
 
     signal menuRequested()
 
@@ -97,7 +100,7 @@ Item {
         ToolButton {
             id: menuButton
             text: "≡"
-            font.pixelSize: 20
+            font.pixelSize: Math.round(20 * root.visualScale)
             Layout.minimumWidth: root.minimumTarget
             Layout.minimumHeight: root.minimumTarget
             Accessible.name: qsTr("Abrir lista de seções")
@@ -123,7 +126,9 @@ Item {
                 required property int index
                 required property var modelData
                 text: "●"
-                font.pixelSize: root.activeIndex === index ? 16 : 11
+                font.pixelSize: Math.round(
+                    (root.activeIndex === index ? 16 : 11) * root.visualScale
+                )
                 palette.buttonText: root.activeIndex === index ? root.accentColor : root.mutedColor
                 Layout.minimumWidth: root.minimumTarget
                 Layout.minimumHeight: root.minimumTarget
@@ -145,10 +150,11 @@ Item {
             onClicked: root.nextSection()
         }
         Label {
+            id: statusLabel
             visible: menuButton.activeFocus || previousButton.activeFocus || nextButton.activeFocus
             text: root.sectionLabel(root.activeIndex)
             color: root.textColor
-            font.pixelSize: 11
+            font.pixelSize: Math.round(11 * root.visualScale)
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.WordWrap
             Layout.preferredWidth: 48

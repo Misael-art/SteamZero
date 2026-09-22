@@ -12035,3 +12035,24 @@ workstreams ativos exclusivos (`aura-launcher-exit` e
 `aura-esde-runtime-bridge`); o subitem foi classificado como
 **SOFT-COORDINATION**, sem alteração concorrente. As demais fatias seguras de
 G12 continuam avançando nesta branch. Nenhum host foi alterado.
+
+## 2026-09-22 — G12: escala nos componentes responsivos reutilizáveis
+
+`SectionNavigator`, `SectionMenu`, `LoadingOverlay`, `EmptyState` e
+`FeedbackNotice` agora expõem `visualScale` e aplicam o fator aos tamanhos de
+fonte que ainda eram literais. O novo harness `check_responsive_components.qml`
+exercita os cinco componentes em `1.5×` com `qmltestrunner` Qt 6.11.2 e fechou
+com **7 passed**. A superfície do Launcher e `SceneEsdeView` continuam sob
+ownership exclusivo; nenhum host foi alterado.
+
+## 2026-09-22 — Gate de tipagem e preflight independente do host
+
+O `mypy` do venv usa `system-site-packages`; os stubs NumPy 2.5 trazidos
+indiretamente pelo Pillow eram incompatíveis com o alvo Python 3.11 do projeto.
+A fronteira de terceiros foi declarada no `pyproject.toml`, a anotação genérica
+de enum foi tipada corretamente e os ignores de PyGObject foram atualizados
+para `import-untyped`. O gate passou em **293 módulos**; Ruff, boundaries,
+independência, locks, capability matrix e status também passaram. O teste
+`test_preflight_gi_missing` foi isolado para continuar negativo mesmo quando
+PyGObject está instalado no host; a suíte focada fechou com **247 passed**.
+Nenhum host foi alterado.

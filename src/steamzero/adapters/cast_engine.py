@@ -28,14 +28,14 @@ from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any, ClassVar
 
-import gi  # type: ignore[import-not-found]
+import gi  # type: ignore[import-untyped]
 
 gi.require_version("Gst", "1.0")
 gi.require_version("Gio", "2.0")
 gi.require_version("GLib", "2.0")
 gi.require_version("GstSdp", "1.0")
 gi.require_version("GstWebRTC", "1.0")
-from gi.repository import (  # type: ignore[import-not-found]  # noqa: E402
+from gi.repository import (  # type: ignore[import-untyped]  # noqa: E402
     Gio,
     GLib,
     Gst,

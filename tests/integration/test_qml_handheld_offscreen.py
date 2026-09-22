@@ -250,6 +250,7 @@ def _error_server() -> tuple[int, threading.Thread, HTTPServer]:
         # Identidade AURA no editor: preview no ThemeBridge, cancelar restaura.
         "check_theme_editor_aura.qml",
         "check_theme_editor_asset_recipes.qml",
+        "check_responsive_components.qml",
     ],
 )
 def test_qml_handheld_harness_offscreen(harness: str) -> None:

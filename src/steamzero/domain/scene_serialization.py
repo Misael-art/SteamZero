@@ -28,6 +28,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Mapping
+from enum import StrEnum
 from typing import Any
 
 from steamzero.domain.scene_contract import (
@@ -192,7 +193,7 @@ def _alignment(payload: Any) -> Any:
         ) from None
 
 
-def _text_enum(payload: Any, enum: type, label: str) -> Any:
+def _text_enum(payload: Any, enum: type[StrEnum], label: str) -> Any:
     if payload is None:
         return None
     try:

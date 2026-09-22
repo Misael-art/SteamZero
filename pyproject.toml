@@ -81,6 +81,18 @@ files = ["src/steamzero"]
 module = ["jsonschema.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# Pillow publica anotações que importam NumPy; o venv de desenvolvimento usa
+# system-site-packages, então os stubs do NumPy do host não fazem parte do
+# contrato tipado do SteamZero e podem exigir uma versão de Python diferente.
+module = ["numpy.*"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["PIL.*"]
+follow_imports = "skip"
+ignore_missing_imports = true
+
 # ---------------------------------------------------------------------------
 # pytest
 # ---------------------------------------------------------------------------
