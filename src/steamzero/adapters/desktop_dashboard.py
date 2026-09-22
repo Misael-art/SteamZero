@@ -27,6 +27,7 @@ from steamzero.adapters.component_jobs import ComponentJobService
 from steamzero.adapters.desktop_contracts import handheld_ui_contracts
 from steamzero.adapters.desktop_kde import (
     high_contrast_enabled,
+    host_text_scale,
     input_method_status,
     reduced_motion_enabled,
 )
@@ -70,6 +71,7 @@ DoctorRunner = Callable[[], tuple[dict[str, Any], list[dict[str, str]]]]
 EmulationBuilder = Callable[..., dict[str, Any]]
 ReducedMotionProbe = Callable[[], bool]
 HighContrastProbe = Callable[[], bool]
+VisualScaleProbe = Callable[[], float]
 _log = logging.getLogger(__name__)
 
 
@@ -450,6 +452,7 @@ class DesktopDashboard:
         spawn: Spawn = _spawn_detached,
         reduced_motion_probe: ReducedMotionProbe = reduced_motion_enabled,
         high_contrast_probe: HighContrastProbe = high_contrast_enabled,
+        visual_scale_probe: VisualScaleProbe = host_text_scale,
         diagnostics: DiagnosticsService | None = None,
         playtime: PlaytimeCatalog | None = None,
         collections: CollectionManager | None = None,
@@ -482,6 +485,7 @@ class DesktopDashboard:
         self._spawn = spawn
         self._reduced_motion_probe = reduced_motion_probe
         self._high_contrast_probe = high_contrast_probe
+        self._visual_scale_probe = visual_scale_probe
         self._operation_history = OperationHistory(
             store_factory,
             component_rollback=self._rollback_component_for_history,
@@ -710,6 +714,11 @@ class DesktopDashboard:
             high_contrast = False
 
         try:
+            visual_scale = max(1.0, min(float(self._visual_scale_probe()), 2.0))
+        except Exception:
+            visual_scale = 1.0
+
+        try:
             diagnostics = self._diagnostics.snapshot(doctor=doctor, desktop_status=desktop_status)
         except Exception as exc:
             diagnostics = {
@@ -807,6 +816,7 @@ class DesktopDashboard:
             "accessibility": {
                 "reducedMotion": reduced_motion,
                 "highContrast": high_contrast,
+                "visualScale": visual_scale,
             },
             "components": components,
             "steam": [*self._steam.rows(desktop_status), self._frontend_shortcut_row()],

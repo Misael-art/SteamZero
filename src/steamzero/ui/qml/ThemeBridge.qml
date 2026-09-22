@@ -26,6 +26,12 @@ QtObject {
     readonly property bool reducedMotion: resolved
         ? resolved.reducedMotion
         : _fallbackAccessibility && _fallbackAccessibility.reducedMotion === true
+    // Escala do host é uma preferência mínima: um tema pode ampliar a
+    // tipografia, mas nunca deve reduzir o tamanho pedido pelo Plasma.
+    readonly property real hostVisualScale: _fallbackAccessibility
+        && Number(_fallbackAccessibility.visualScale) > 0
+        ? Math.max(1.0, Math.min(Number(_fallbackAccessibility.visualScale), 2.0))
+        : 1.0
 
     // Pilhas já negociadas pelo domínio. Componentes QML apenas as aplicam;
     // não escolhem capability, tier nem fallback.
@@ -95,7 +101,8 @@ QtObject {
     readonly property string performanceTier: _getStr("performance", "defaultTier", "cinematic")
 
     // Tipografia
-    readonly property real typographyScale: _get("typography", "scale", 1.0)
+    readonly property real typographyScale: Math.max(
+        Number(_get("typography", "scale", 1.0)), hostVisualScale)
     readonly property var typographyRoles: ({
         "scale": typographyScale,
         "display": _get("typography", "display", 36),

@@ -11826,3 +11826,18 @@ A comparação também confirmou que o host ainda publica o caminho absoluto do
 state home na mensagem `state.layout`, enquanto o canonical `bf60ce1` já o
 remove dos textos dos checks. A diferença é de release instalada versus
 canonical, não de estado alterado pelo teste.
+
+## 2026-09-22 — Escala de acessibilidade do host propagada parcialmente
+
+O canonical passou a consultar `forceFontDPI` do Plasma somente por leitura,
+publicar `dashboard.accessibility.visualScale` e herdar a preferência no
+Launcher e nas superfícies editoriais pelo `ThemeBridge`. Valores ausentes ou
+inválidos degradam para 1.0; nenhum arquivo de configuração do host é escrito.
+O shell principal, Emulation e SteamGameplay ainda têm pixels fixos e continuam
+registrados como lacuna para uma refatoração de tipografia/layout com foco.
+
+Os testes direcionados fecharam com **155 passed** e o harness
+`check_high_contrast.qml` passou com a escala do host. A tentativa da bateria
+QML isolada mais ampla foi interrompida após ficar sem processos observáveis e
+sem resultado terminal; ela não foi promovida como evidência. O `STATUS-CHECK`
+permaneceu verde e nenhum host foi alterado.

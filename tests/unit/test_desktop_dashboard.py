@@ -397,6 +397,7 @@ def test_dashboard_snapshot_keeps_eol_component_honest(
         spawn=lambda _argv: None,
         reduced_motion_probe=lambda: True,
         high_contrast_probe=lambda: True,
+        visual_scale_probe=lambda: 1.5,
         registry_factory=_registry_with_eol_duckstation,
     )
 
@@ -409,7 +410,11 @@ def test_dashboard_snapshot_keeps_eol_component_honest(
     assert duckstation["state"] == "unsupported"
     assert duckstation["action"]["enabled"] is False
     assert snapshot["doctor"]["state"] == "healthy"
-    assert snapshot["accessibility"] == {"reducedMotion": True, "highContrast": True}
+    assert snapshot["accessibility"] == {
+        "reducedMotion": True,
+        "highContrast": True,
+        "visualScale": 1.5,
+    }
     assert snapshot["steamGameplay"]["readiness"]["percent"] == 100
     assert snapshot["playtime"]["schemaVersion"] == 1
     assert snapshot["playtime"]["games"] == []

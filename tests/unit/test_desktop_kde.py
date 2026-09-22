@@ -713,6 +713,40 @@ def test_high_contrast_is_false_for_ordinary_scheme_and_degrades_without_plasma(
     assert desktop_kde.high_contrast_enabled(runner=exploding, which=lambda _c: None) is False
 
 
+def test_host_text_scale_reads_force_font_dpi() -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        return CommandResult(0, "144\n", "")
+
+    assert desktop_kde.host_text_scale(
+        runner=runner, which=lambda command: f"/usr/bin/{command}"
+    ) == pytest.approx(1.5)
+    assert calls == [
+        (
+            "kreadconfig6",
+            "--file",
+            "kdeglobals",
+            "--group",
+            "General",
+            "--key",
+            "forceFontDPI",
+        )
+    ]
+
+
+@pytest.mark.parametrize("value", ["", "invalid", "0", "240"])
+def test_host_text_scale_degrades_or_caps_invalid_dpi(value: str) -> None:
+    def runner(_argv: Sequence[str], _timeout: float) -> CommandResult:
+        return CommandResult(0, value, "")
+
+    expected = 1.0 if value in {"", "invalid", "0"} else 2.0
+    assert desktop_kde.host_text_scale(
+        runner=runner, which=lambda command: f"/usr/bin/{command}"
+    ) == pytest.approx(expected)
+
+
 def test_high_contrast_ignores_separators_and_failed_read() -> None:
     """ "High-Contrast" e "high contrast" contam; returncode != 0 degrada para falso."""
 

@@ -361,12 +361,16 @@ def _host_accessibility() -> dict[str, Any]:
     Plasma. Em ambiente sem `kreadconfig6` (ex.: sessão sem Plasma) degrada
     para os padrões — nunca quebra o lançamento.
     """
-    from steamzero.adapters.desktop_kde import high_contrast_enabled, reduced_motion_enabled
+    from steamzero.adapters.desktop_kde import (
+        high_contrast_enabled,
+        host_text_scale,
+        reduced_motion_enabled,
+    )
 
     return {
         "highContrast": high_contrast_enabled(),
         "reducedMotion": reduced_motion_enabled(),
-        "visualScale": 1.0,
+        "visualScale": host_text_scale(),
     }
 
 

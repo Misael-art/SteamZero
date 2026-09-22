@@ -57,12 +57,15 @@ Main {
                   "accessibility vazio deve degradar para alto contraste desligado")
             check(window.reducedMotion === false,
                   "accessibility vazio deve degradar para reducedMotion desligado")
+            check(window._themeBridge.hostVisualScale === 1.0,
+                  "accessibility vazio deve degradar para escala 1.0")
             normalColors = snapshotColors()
             phase = 1
             return
         }
         if (phase === 1) {
-            window.desktopStatus = statusWith({"reducedMotion": false, "highContrast": true})
+            window.desktopStatus = statusWith({"reducedMotion": false, "highContrast": true,
+                                               "visualScale": 1.5})
             check(window.highContrast === true,
                   "highContrast=true do host deve ativar a preferência")
             const strong = snapshotColors()
@@ -78,6 +81,10 @@ Main {
                   "fundo em alto contraste deve ser preto puro")
             check(String(window.borderColor) === "#ffffff",
                   "borda em alto contraste deve ser branca")
+            check(window._themeBridge.hostVisualScale === 1.5,
+                  "visualScale do host deve chegar ao bridge de tema")
+            check(window._themeBridge.typographyRoles.scale === 1.5,
+                  "visualScale do host deve ampliar a tipografia editorial")
             phase = 2
             return
         }

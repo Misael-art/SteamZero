@@ -1611,6 +1611,38 @@ def high_contrast_enabled(*, runner: Runner = run_command, which: Which = shutil
     return "highcontrast" in result.stdout.strip().replace(" ", "").replace("-", "").lower()
 
 
+def host_text_scale(*, runner: Runner = run_command, which: Which = shutil.which) -> float:
+    """Lê ``forceFontDPI`` do Plasma sem alterar o host.
+
+    O Qt usa 96 DPI como referência. Valores ausentes, inválidos ou abaixo da
+    referência degradam para 1.0; o teto evita que uma preferência corrompida
+    torne a interface inutilizável antes de o layout responsivo poder reagir.
+    """
+    if which("kreadconfig6") is None:
+        return 1.0
+    result = runner(
+        (
+            "kreadconfig6",
+            "--file",
+            "kdeglobals",
+            "--group",
+            "General",
+            "--key",
+            "forceFontDPI",
+        ),
+        3.0,
+    )
+    if result.returncode != 0:
+        return 1.0
+    try:
+        dpi = float(result.stdout.strip())
+    except ValueError:
+        return 1.0
+    if dpi <= 0:
+        return 1.0
+    return max(1.0, min(dpi / 96.0, 2.0))
+
+
 def toggle_virtual_keyboard(
     language: str | None = None,
     *,

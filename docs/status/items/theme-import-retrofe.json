@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "ready",
   "distribution": "installed",
-  "scopeDigest": "706f9f9158f0342179698d0e2b0ff138c0b73ee3041a51b10a31fe52c58eb920",
+  "scopeDigest": "ad1160f73ce04670b3f8dac700c143893b1d8b44e8f8f5966b664b085929559b",
   "scopePaths": [
     "src/steamzero/adapters/desktop_contracts.py",
     "src/steamzero/adapters/desktop_dashboard.py",
