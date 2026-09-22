@@ -179,3 +179,20 @@ identidade com `attempts=0` e `restarted=false`. O doctor ficou `ok=true` e
 somente os warnings operacionais não bloqueantes de `deck.input.keys=false` e
 `bootDirect=unknown`. A evidência completa está em
 `/home/misael/.local/state/steamzero/release-automation/2.0.0rc1-504d10b14485.json`.
+
+## Release candidata — 2.0.0rc1-468c67f371b8
+
+| Release | Commit exato | SHA-256 do wheel | Estado |
+|---|---|---|---|
+| `2.0.0rc1-468c67f371b8` | `468c67f371b8980752c07e0b3a0eabb0a94db60d` | `1d3be9c64600b20c393e29e826474a44c35c17155895de4c3ed46ebef2d2757d` | **bundle preparada e verificada, não instalada** |
+
+Esta candidata contém a gestão universal de arquivos e a correção do scanner/
+relacionamento Vita: o PR #229 foi incorporado em `main`, o `push` CI
+`35766898272` terminou verde, e `release_host.py verify-bundle` confirmou
+manifesto, proveniência, checksums, wheelhouse e `source_ref=refs/heads/main`.
+O ciclo governado foi iniciado com rollback para
+`2.0.0rc1-504d10b14485`, mas ficou aguardando `pkexec`/credencial gráfica na
+elevação `bigsudo`; nenhum `install_host` concluiu, e o host permanece
+comprovadamente na release anterior. Classificação: **HARD-EXTERNAL-SUBITEM —
+credencial/elevação ausente**. Retomar pelo mesmo bundle após a autorização
+interativa, sem preparar ou reutilizar artefato diferente.

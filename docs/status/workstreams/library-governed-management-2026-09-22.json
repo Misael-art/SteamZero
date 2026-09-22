@@ -27,6 +27,6 @@
     "docs/WORKLOG.md",
     "docs/status/COVERAGE.md"
   ],
-  "nextAction": "Aguardar CI verde do PR #229; depois preparar uma release governada, executar scan Vita e certificar rename universal, empacotamento, audit→preview→quarantine→verify/rollback no host sem mover a origem.",
+  "nextAction": "Bundle 2.0.0rc1-468c67f371b8 preparada/verificada no run push 35766898272; retomar o mesmo cycle governado após autorização interativa do pkexec (HARD-EXTERNAL-SUBITEM: credencial/elevação ausente), então executar scan Vita e certificar rename universal, empacotamento, audit→preview→quarantine→verify/rollback no host sem mover a origem.",
   "updatedAt": "2026-09-22"
 }

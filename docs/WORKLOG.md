@@ -12387,3 +12387,18 @@ dependência de arquivo avulso no ambiente do CI.
 O recorte corrigido passou (`3 passed`), o `STATUS-CHECK` voltou a verde e o
 host continuou intacto: nenhum emulador, tema ou ROM foi alterado. O commit
 corretivo ainda precisa de novo CI verde antes da promoção governada.
+
+## 2026-09-22 — Bundle canônico pronto; elevação interativa pendente
+
+O PR #229 foi incorporado em `main` como `468c67f371b8980752c07e0b3a0eabb0a94db60d`.
+O `push` CI `35766898272` passou em todos os nove checks. O bundle
+`2.0.0rc1-468c67f371b8` foi preparado e verificado pelo fluxo governado, com
+wheel SHA-256 `1d3be9c64600b20c393e29e826474a44c35c17155895de4c3ed46ebef2d2757d`.
+
+O ciclo `nova → rollback 2.0.0rc1-504d10b14485 → nova` foi iniciado, mas a
+chamada exclusiva `bigsudo` ficou aguardando o `pkexec` gráfico/credencial por
+mais de 90 segundos. Foi interrompida antes de `install_host` concluir; nova
+inspeção confirmou que o host continua em
+`2.0.0rc1-504d10b14485`, sem processos de instalação pendentes. Classificação:
+`HARD-EXTERNAL-SUBITEM: credencial/elevação ausente`. O mesmo bundle permanece
+pronto para retomada após autorização interativa; não preparar outro artefato.
