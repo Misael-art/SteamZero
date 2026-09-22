@@ -41,7 +41,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AURA-VISUAL-RICH-SURFACE | 11 | 9 | 8 | hw |  |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
-| SZ-COMPONENT-LIFECYCLE | 23 | 14 | 12 | hw |  |
+| SZ-COMPONENT-LIFECYCLE | 24 | 16 | 14 | hw |  |
 | SZ-CONTROLS-INPUT-PROFILES | 16 | 8 | 4 | hw |  |
 | SZ-EMULATION-ENHANCEMENTS | 24 | 9 | 9 | unit |  |
 | SZ-EMULATION-HIGH-END-RUNTIME-READINESS | 5 | 4 | 2 | unit |  |

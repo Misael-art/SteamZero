@@ -11728,3 +11728,17 @@ job exige um ciclo autorizado de restart/convergência do daemon; não foi
 executado restart, cleanup ou qualquer mutação no host. O item é
 `SZ-JOB-RECOVERY-DOCTOR`, com operação explicitamente `degraded` até a prova
 física.
+
+## 2026-09-22 — G27 reconciliado com a matriz instalada
+
+O lifecycle de componentes foi revalidado no canonical com a suíte vertical de
+jobs, roteamento por origem, composição, workspace e lifecycle: **169 passed**.
+O runner isolado manteve o state home real idêntico antes e depois.
+
+A leitura somente leitura do host retornou 36 componentes: 33 `installed`, 2
+`missing` (`sunshine` e `vita3k`) e 1 `degraded` (`xenia-canary`), com causa
+explícita. As origens e executores concordam para Flatpak, AppImage, archive e
+native; não houve fallback silencioso. O item foi atualizado para software
+integrado e operação `degraded` enquanto a prova física de lançamento, sessão
+e retorno ao Launcher permanece dependente de autorização/interação do
+operador. Nenhum componente foi instalado, reparado ou removido.

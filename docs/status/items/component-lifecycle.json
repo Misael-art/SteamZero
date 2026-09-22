@@ -4,10 +4,10 @@
   "id": "SZ-COMPONENT-LIFECYCLE",
   "title": "Ciclo funcional assincrono de componentes",
   "domain": "platform",
-  "implementation": "partial",
-  "integration": "feature-branch",
+  "implementation": "complete",
+  "integration": "integrated",
   "verification": "hw",
-  "operation": "ready",
+  "operation": "degraded",
   "distribution": "installed",
   "scopePaths": [
     "src/steamzero/adapters/component_jobs.py",
@@ -21,9 +21,10 @@
     "docs/09-operations/evidence/2026-08-16-component-plan-terminalization",
     "docs/09-operations/evidence/2026-08-27-matriz-componentes-fisica",
     "docs/09-operations/evidence/2026-08-27-launch-gate-drift",
-    "docs/09-operations/evidence/2026-08-31-componentes-update-fisico"
+    "docs/09-operations/evidence/2026-08-31-componentes-update-fisico",
+    "docs/09-operations/evidence/2026-09-22-component-matrix-readonly"
   ],
-  "scopeDigest": "f28e3ea9e28df19b60910723804a310f5b8c368e6dbebee179ba53ce3722ee5a",
+  "scopeDigest": "b5b3e8f2b78c4a1661c880589fca4992b68ce933ddcedf836eae6058eb0e6b67",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -119,12 +120,24 @@
       "reference": "tests/integration/test_component_lifecycle.py",
       "command": "Renovacao 2026-09-10 (revisao pos-format): classe TestZipWrappedPayload e suíte de conformancia zip-aware reexecutadas: tests/integration/test_emulator_conformance.py (364 passed)",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_lifecycle_routing.py",
+      "command": "/tmp/steamzero-g27-test-20260922/bin/python tools/run_tests_isolated.py tests/unit/test_component_jobs.py tests/unit/test_lifecycle_routing.py tests/unit/test_platform_composer.py tests/unit/test_emulation_workspace.py tests/integration/test_component_lifecycle.py tests/integration/test_emulation_workspace_cli.py -q (169 passed; state home real unchanged)",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-22-component-matrix-readonly",
+      "command": "/usr/local/bin/steamzero component list --json (36 componentes: 33 installed, 2 missing — sunshine, vita3k — e 1 degraded — xenia-canary — com detail explicito; executor e sourceType concordam para Flatpak/AppImage/archive/native, sem fallback silencioso)",
+      "result": "passed"
     }
   ],
-  "nextAction": "Executor libretro e o update REAL do Flatpak provados no host: Dolphin atualizado para 377c3e63506e e RetroArch para 9c51e2bcb6f7 (outdated -> installed) na release 2.0.0rc1-5127fbc855d9; o pin do RetroArch estava purgado do Flathub (404) e foi repinado. Todos os componentes instalados: Azahar, PPSSPP e Xemu adicionados — matriz no host com 32 instalados, 0 outdated (Sunshine e tool de streaming sem capability install, por design nao instala como emulador). Progresso por bytes e cancelamento cooperativo implementados e testados (unit=bytes no transfer_observer + context.safepoint cancelando o download; flatpak reporta etapas por ser subprocess). Proximo: validacao fisica de lancamento de jogo real (jogar -> voltar) e acompanhamento de sessao, que exigem interacao humana.",
+  "nextAction": "HARD-EXTERNAL-SUBITEM: manter xenia-canary degradado com causa visivel e aguardar prova física autorizada de lançamento, acompanhamento de sessão e retorno ao Launcher; não instalar, reparar ou remover componentes neste ciclo.",
   "activeWorkstreams": [
     "WS-2026-08-COMPONENT-MATRIZ"
   ],
-  "updatedAt": "2026-09-10",
-  "notes": "Item recriado em 2026-08-24: a capacidade veio no porte de codex/physical-functional-closure (commits f6b6e93, 5241d0f, 2f6d7d3, 20bcddf, 17d80df, e57aadf, d538201, ddf2e6d), mas o item normativo se perdeu na integracao interrompida e os arquivos ficaram apenas sob os agregadores SZ-AGG-ADAPTERS e SZ-AGG-JOBS — ou seja, com custodia declarada e nenhuma capacidade provada. O eixo operacional e 'degraded' e nao 'ready' porque existe uma contradicao de contrato REPRODUZIDA na suite focada, registrada acima como evidencia 'failed'. Nenhuma alegacao de estado aqui foi promovida a partir do historico dos 65 commits: as duas evidencias foram re-executadas nesta arvore. 2026-08-24, item fechado em dev: o defeito tinha DUAS causas. (1) o teste ainda exigia envelope.delegated['flatpakPlanId'] em plan(), que e o contrato v2; no v3 delegated num envelope pendente significa tentativa interrompida esperando recovery. (2) causa de codigo, que corrigir so o teste teria escondido: o ramo flatpak de _apply_deferred nao passava operation_id=envelope.plan_id ao executor, enquanto o caminho v2 passa. A operacao nascia sob o id do plano delegado e a cadeia plano->job->operacao ficava orfa, porque o job adota como operationId o que o lifecycle devolve. Corrigido restaurando a paridade com o v2. 2026-09-15: componentes portáteis JIT agora saem do core por unidade transitória allowlisted; o core mantém MemoryDenyWriteExecute=true e o processo recebe apenas o ambiente gráfico necessário. AppImages com smoke por extração usam extract-and-run para não depender de FUSE nem abrir integração do AppImageLauncher."
+  "updatedAt": "2026-09-22",
+  "notes": "O lifecycle está integrado no canonical e no host ativo: a matriz read-only atual preserva a distinção por origem, mostra 33 componentes instalados, 2 ausentes e xenia-canary degradado com causa explícita. A suíte vertical de jobs, roteamento, composição, workspace e lifecycle passou com 169 testes, sem alterar o state home real. A prova física de lançamento/retorno e a eventual reparação de xenia continuam fora desta sessão; nenhuma mutação foi executada."
 }
