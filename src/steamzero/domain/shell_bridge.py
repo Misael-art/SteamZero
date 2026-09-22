@@ -20,6 +20,7 @@ o shell começa com a célula 0 (a mesma semântica de ``move_focus`` com
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from steamzero.domain.default_theme import (
@@ -72,6 +73,8 @@ def assemble_shell_payload(
     fonts: FontProvider,
     box: LayoutBox,
     metrics: DefaultGridMetrics | None = None,
+    accessibility: Mapping[str, Any] | None = None,
+    accessibility_generation: str | None = None,
 ) -> dict[str, Any]:
     """Resolve a cena do tema e acopia o anel de foco da célula indicada.
 
@@ -81,6 +84,8 @@ def assemble_shell_payload(
     formato que ``CaptureShellHarness.qml`` consome.
     """
     metrics = metrics or default_grid_metrics()
+    if accessibility is not None:
+        resolver.set_accessibility(accessibility, generation=accessibility_generation)
     nodes: list[dict[str, Any]] = []
     for depth, element in walk_tree(scene):
         del depth

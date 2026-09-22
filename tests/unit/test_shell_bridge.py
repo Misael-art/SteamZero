@@ -112,8 +112,7 @@ class TestAssembleShellPayload:
                 tokens=default_tokens(),
                 assets=COVER_ASSETS,
                 theme_id="org.steamzero.default",
-                accessibility={"highContrast": True, "visualScale": 1.5},
-                generations=Generations(accessibility="host-17"),
+                generations=Generations(accessibility="default"),
             )
         )
         payload = assemble_shell_payload(
@@ -123,6 +122,8 @@ class TestAssembleShellPayload:
             fonts=FontProvider(packaged={"default": FONT_FAMILY}),
             box=LayoutBox(SMALL.canvas_width, SMALL.canvas_height),
             metrics=SMALL,
+            accessibility={"highContrast": True, "visualScale": 1.5},
+            accessibility_generation="host-17",
         )
 
         assert payload["accessibility"] == {
@@ -131,3 +132,5 @@ class TestAssembleShellPayload:
             "visualScale": 1.5,
         }
         assert payload["accessibilityGeneration"] == "host-17"
+        header = next(node for node in payload["nodes"] if node.get("id") == "header-title")
+        assert header["fontPixelSize"] == 51.0

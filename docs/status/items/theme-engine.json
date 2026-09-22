@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "1deca9054c95286a5ea53e04a4d64252de83438bb862b03e0ec7f41a294e35d7",
+  "scopeDigest": "773d81ad30c48a2a2cd414004da1bc34829fd28abf17a9e71eb5ebb6d8b541e6",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -395,6 +395,12 @@
       "kind": "test",
       "reference": "tests/unit/test_default_theme.py",
       "command": ".venv/bin/python -m pytest -q tests/unit/test_default_theme.py tests/unit/test_shell_bridge.py tests/unit/test_scene_resolver.py (118 passed); visualScale 1.0→1.5 recomputes exactly 26 fontScale targets",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_shell_bridge.py",
+      "command": ".venv/bin/python -m pytest -q tests/unit/test_shell_bridge.py tests/integration/test_qml_theme_shell.py tests/unit/test_default_theme.py (42 passed); shell snapshot visualScale=1.5 reaches header fontPixelSize=51",
       "result": "passed"
     }
   ],

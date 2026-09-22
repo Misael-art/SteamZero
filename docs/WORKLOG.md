@@ -12106,3 +12106,11 @@ de `visualScale` de `1.0` para `1.5` e exige que somente os **26** alvos
 `.fontScale` sejam recomputados; imagens, geometria, cores e conteúdo ficam em
 cache. A medição fecha o slice de invalidação da cena default, não G15 inteiro.
 Nenhum host foi alterado.
+
+## 2026-09-22 — G15: entrada do snapshot no shell bridge
+
+`assemble_shell_payload` agora aceita `accessibility` e um marcador de geração,
+aplica o snapshot ao `Resolver` antes de compilar e devolve a forma normalizada.
+O teste atravessa essa entrada até o cabeçalho da cena: `visualScale=1.5`
+produz `fontPixelSize=51`. A cobertura de todos os compiladores/superfícies
+continua aberta e nenhum host foi alterado.
