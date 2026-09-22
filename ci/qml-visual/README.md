@@ -39,13 +39,13 @@ sem causa aparente.
 
 | componente | versão |
 |---|---|
-| Qt runtime | 6.11.1 |
-| qt6-declarative | 6.11.1-3 |
-| qt6-base | 6.11.1-1 |
-| qt6-svg | fixado pela imagem publicada |
-| fontconfig | 2:2.18.2-1 |
+| Qt runtime | 6.11.2 |
+| qt6-declarative | 6.11.2-1 |
+| qt6-base | 6.11.2-3 |
+| qt6-svg | 6.11.2-1 |
+| fontconfig | 2:2.18.3-2 |
 | freetype2 | 2.14.3-1 |
-| harfbuzz | 14.2.1-1 |
+| harfbuzz | 14.4.0-1 |
 | Python | 3.14.6-1 |
 
 A fonte **não** vem da imagem: vem de `tests/fixtures/fonts/`, e o harness isola
