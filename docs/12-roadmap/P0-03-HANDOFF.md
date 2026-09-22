@@ -170,10 +170,12 @@ Cada uma tem teste de regressão. Foram descobertas medindo, não supondo.
    corpus tem imagem, som, menu, timeline e eventos.
 2. **Árvore de cena.** Hoje a fatia é plana, e um teste reprova se alguém
    introduzir `children` sem projeto.
-3. **Rich text.** Wrapping, elide, limite de linhas e auto-fit agora atravessam
-   contrato → resolver → nó → adapter → `SceneText.qml`, com harness QML
-   offscreen. Rich text continua adiado até existir uma política explícita de
-   sanitização/allowlist para conteúdo de tema.
+3. **Rich text.** Wrapping, elide, limite de linhas, auto-fit e `StyledText`
+   seguro agora atravessam contrato → resolver → nó → adapter →
+   `SceneText.qml`, com harness QML offscreen. A política fechada preserva
+   somente `b/i/u/br` sem atributos, escapa texto literal e registra quando o
+   adapter precisa sanitizar um DTO desserializado. Continua pendente migrar o
+   corpus completo para declarar o formato onde necessário.
 4. **Acessibilidade** — ver G15: a geração existe, nenhum consumidor real.
 5. **Display além de largura/altura** — `safeArea`, `orientation`,
    `devicePixelRatio` e `aspectRatio` estão previstos e não implementados.

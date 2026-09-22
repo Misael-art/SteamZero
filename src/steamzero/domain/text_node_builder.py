@@ -33,6 +33,7 @@ from steamzero.domain.resolved_node import (
     ResolvedTextNode,
     TextAlignment,
     TextElideMode,
+    TextRenderFormat,
     TextSizeMode,
     TextVerticalAlignment,
     TextWrapMode,
@@ -43,9 +44,11 @@ from steamzero.domain.scene_contract import (
     DimensionValue,
     ElementContract,
     ElideMode,
+    TextFormat,
     WrapMode,
 )
 from steamzero.domain.scene_resolver import Resolver
+from steamzero.domain.scene_text_security import sanitize_styled_text
 from steamzero.domain.scene_typing import ValueType
 
 #: Alinhamento do contrato para o do nó. `JUSTIFY` sobrevive porque é decisão do
@@ -244,6 +247,11 @@ def build_text_node(
     text_layout = element.text_layout
 
     text = resolve(element.text_content, ValueType.STRING, "text", "")
+    text_format = TextRenderFormat.PLAIN
+    if text_layout is not None and text_layout.text_format is not None:
+        text_format = TextRenderFormat(TextFormat(text_layout.text_format))
+    if text_format is TextRenderFormat.STYLED:
+        text, _ = sanitize_styled_text(str(text) if text is not None else "")
     color = resolve(typography.color if typography else None, ValueType.COLOR, "color", "#000000")
     font_size = resolve(
         typography.font_size if typography else None, ValueType.NUMBER, "fontSize", 16.0
@@ -343,6 +351,7 @@ def build_text_node(
         elide=elide,
         size_mode=size_mode,
         minimum_font_size=minimum_font_size,
+        text_format=text_format,
         source_reference=element.source_reference,
         resolution_diagnostics=emitted,
     )

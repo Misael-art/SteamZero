@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "f01e36c1db77527e01bbeb2f32beac8bbdd49dea1a4658db7b346f0bdf34d288",
+  "scopeDigest": "30ad45778b35ceaf59f738cc65b188ecee14c59bec8859bcc43869150f7f67c1",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -25,6 +25,7 @@
     "src/steamzero/domain/resolved_node.py",
     "src/steamzero/domain/text_node_builder.py",
     "src/steamzero/domain/scene_serialization.py",
+    "src/steamzero/domain/scene_text_security.py",
     "src/steamzero/adapters/theme_catalog.py",
     "src/steamzero/schemas/asset-recipe-v1.schema.json",
     "src/steamzero/schemas/scene-layout-v1.schema.json",
@@ -48,6 +49,7 @@
     "tests/unit/test_theme_effects.py",
     "tests/unit/test_scene_contract.py",
     "tests/unit/test_resolved_text_node.py",
+    "tests/unit/test_scene_text_security.py",
     "tests/unit/test_qml_render_model.py",
     "tests/unit/test_scene_image_pipeline.py",
     "tests/unit/test_scene_layout.py",
@@ -311,6 +313,12 @@
       "kind": "test",
       "reference": "tests/unit/test_asset_recipes.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_effects.py tests/unit/test_scene_contract.py tests/unit/test_scene_image_pipeline.py tests/unit/test_asset_recipes.py tests/unit/test_themes.py tests/unit/test_theme_editor.py tests/unit/test_scene_layout.py tests/unit/test_scene_motion.py tests/unit/test_scene_surfaces.py tests/unit/test_scene_containers.py tests/unit/test_studio_graph.py tests/unit/test_dynamic_palette.py tests/unit/test_glass_panels.py -q (319 passed) — reverificacao apos endurecer validate_asset_source contra referencia externa e caminho absoluto (SZ-AURA-ASSET-SANITIZACAO)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_scene_text_security.py",
+      "command": "PYTHONPATH=src python3 -m pytest -q tests/unit/test_scene_text_security.py tests/unit/test_resolved_text_node.py tests/unit/test_qml_render_model.py tests/unit/test_scene_contract.py (199 passed); PYTHONPATH=src:/opt/steamzero/current/venv/lib/python3.14/site-packages python3 -m pytest -q tests/integration/test_scene_round_trip.py tests/integration/test_qml_handheld_offscreen.py::test_scene_text_renders_what_the_adapter_emits tests/integration/test_ui_action_inventory.py tests/integration/test_ui_dialog_coverage.py (142 passed)",
       "result": "passed"
     }
   ],

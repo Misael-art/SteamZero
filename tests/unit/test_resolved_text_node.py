@@ -28,6 +28,7 @@ from steamzero.domain.resolved_node import (
     ResolvedTextNode,
     TextAlignment,
     TextElideMode,
+    TextRenderFormat,
     TextSizeMode,
     TextVerticalAlignment,
     TextWrapMode,
@@ -38,6 +39,7 @@ from steamzero.domain.scene_contract import (
     ElementContract,
     ElideMode,
     LayoutSpec,
+    TextFormat,
     TextLayoutSpec,
     TypographySpec,
     WrapMode,
@@ -353,6 +355,19 @@ class TestDefaults:
         assert node.size_mode is TextSizeMode.FIT
         assert node.minimum_font_size == 18.0
         assert node.font_size == 40.0
+
+    def test_styled_text_is_sanitized_before_it_reaches_the_dto(self) -> None:
+        node = _build(
+            text_content='<b>Chrono</b><img src="/etc/passwd"> <a href="x">Trigger</a>',
+            text_layout=TextLayoutSpec(text_format=TextFormat.STYLED),
+        )
+        assert node.text_format is TextRenderFormat.STYLED
+        assert node.text == "<b>Chrono</b> Trigger"
+
+    def test_plain_text_does_not_interpret_markup(self) -> None:
+        node = _build(text_content="<b>literal</b>")
+        assert node.text_format is TextRenderFormat.PLAIN
+        assert node.text == "<b>literal</b>"
 
     def test_unavailable_font_reports_unavailable(self) -> None:
         assert FontAssetHandle(key="x").available is False

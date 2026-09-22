@@ -63,4 +63,6 @@ Text {
         ? Text[model.fontSizeMode] : Text.FixedSize
     minimumPixelSize: model.minimumPixelSize !== undefined
         ? model.minimumPixelSize : 0
+    textFormat: model.textFormat !== undefined
+        ? Text[model.textFormat] : Text.PlainText
 }

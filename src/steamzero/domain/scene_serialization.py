@@ -37,6 +37,7 @@ from steamzero.domain.scene_contract import (
     ElideMode,
     LayoutSpec,
     TextDirection,
+    TextFormat,
     TextLayoutSpec,
     TextTransform,
     TypographySpec,
@@ -226,6 +227,7 @@ _SNAKE = {
     "minimumFontSize": "minimum_font_size",
     "maximumFontSize": "maximum_font_size",
     "textTransform": "text_transform",
+    "textFormat": "text_format",
     "autoFit": "auto_fit",
 }
 
@@ -288,6 +290,7 @@ def element_from_dict(payload: Mapping[str, Any]) -> ElementContract:
             ("elide", ElideMode),
             ("textTransform", TextTransform),
             ("direction", TextDirection),
+            ("textFormat", TextFormat),
         ):
             if name in raw:
                 raw[name] = _text_enum(raw[name], enum, f"textLayout.{name}")

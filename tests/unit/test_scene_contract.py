@@ -38,6 +38,7 @@ from steamzero.domain.scene_contract import (
     GradientStop,
     GradientValue,
     LayoutSpec,
+    TextFormat,
     TextLayoutSpec,
     TransformSpec,
     TypographySpec,
@@ -49,6 +50,7 @@ from steamzero.domain.scene_registry import (
     UnknownPathPolicy,
     default_registries,
 )
+from steamzero.domain.scene_serialization import element_from_dict
 from steamzero.domain.scene_typing import SourceReference, ValueType
 
 
@@ -311,6 +313,15 @@ class TestElementContract:
     def test_source_reference_survives_serialization(self) -> None:
         """Sem origem, um veredito é inauditável."""
         assert self._element().to_dict()["sourceReference"]["line"] == 183
+
+    def test_styled_text_format_is_serialized_as_contract_value(self) -> None:
+        element = self._element()
+        element.text_layout = TextLayoutSpec(text_format=TextFormat.STYLED)
+        payload = element.to_dict()
+        assert payload["textLayout"]["textFormat"] == "styled"
+        parsed = element_from_dict(payload)
+        assert parsed.text_layout is not None
+        assert parsed.text_layout.text_format is TextFormat.STYLED
 
     def test_conditional_color_is_kept_structured(self) -> None:
         """O que boundText/boundImage impedia."""

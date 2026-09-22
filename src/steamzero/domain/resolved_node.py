@@ -79,6 +79,13 @@ class TextSizeMode(StrEnum):
     FIT = "fit"
 
 
+class TextRenderFormat(StrEnum):
+    """Formato que o backend de texto deve interpretar."""
+
+    PLAIN = "plain"
+    STYLED = "styled"
+
+
 class ImageFillMode(StrEnum):
     """Como a imagem ocupa a caixa. Nome canônico, converter no backend.
 
@@ -235,6 +242,7 @@ class ResolvedTextNode:
     elide: TextElideMode = TextElideMode.NONE
     size_mode: TextSizeMode = TextSizeMode.FIXED
     minimum_font_size: float = 0.0
+    text_format: TextRenderFormat = TextRenderFormat.PLAIN
 
     source_reference: SourceReference | None = None
     #: Diagnósticos já materializados como dados. Não há referência viva a
@@ -266,6 +274,7 @@ class ResolvedTextNode:
             "elide": self.elide.value,
             "sizeMode": self.size_mode.value,
             "minimumFontSize": self.minimum_font_size,
+            "textFormat": self.text_format.value,
         }
         if self.font_family is not None:
             payload["fontFamily"] = self.font_family
@@ -319,6 +328,7 @@ class ResolvedTextNode:
             elide=TextElideMode(payload.get("elide", "none")),
             size_mode=TextSizeMode(payload.get("sizeMode", "fixed")),
             minimum_font_size=float(payload.get("minimumFontSize", 0.0)),
+            text_format=TextRenderFormat(payload.get("textFormat", "plain")),
             source_reference=(
                 SourceReference(
                     file=str(reference["file"]),

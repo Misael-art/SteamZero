@@ -24,6 +24,7 @@ from steamzero.domain.qml_render_model import (
     DIAG_INVALID_HANDLE,
     DIAG_OUT_OF_RANGE,
     DIAG_PENDING_VALUE,
+    DIAG_TEXT_SANITIZED,
     DIAG_UNKNOWN_ENUM,
     AdaptationError,
     AdaptationResult,
@@ -43,6 +44,7 @@ from steamzero.domain.resolved_node import (
     ResolvedTextNode,
     TextAlignment,
     TextElideMode,
+    TextRenderFormat,
     TextSizeMode,
     TextVerticalAlignment,
     TextWrapMode,
@@ -181,6 +183,24 @@ class TestAdvancedTextMapping:
         assert model.maximum_line_count == 2
         assert model.font_size_mode == "Fit"
         assert model.minimum_pixel_size == 18.0
+
+    @pytest.mark.parametrize(
+        ("canonical", "expected"),
+        [(TextRenderFormat.PLAIN, "PlainText"), (TextRenderFormat.STYLED, "StyledText")],
+    )
+    def test_text_format_is_carried_to_qml(
+        self, canonical: TextRenderFormat, expected: str
+    ) -> None:
+        result = to_render_model(_node(text_format=canonical))
+        assert result.require_model().text_format == expected
+
+    def test_styled_text_is_revalidated_and_reported_when_deserialized_unsafely(self) -> None:
+        result = to_render_model(
+            _node(text_format=TextRenderFormat.STYLED, text="<b>ok</b><script>bad()</script>")
+        )
+        assert result.status is AdaptationStatus.DEGRADED
+        assert result.require_model().text == "<b>ok</b>bad()"
+        assert DIAG_TEXT_SANITIZED in _codes(result)
 
 
 class TestFontOriginIsCarriedThrough:
@@ -619,6 +639,7 @@ class TestComponentIsDeliberatelySimple:
             "elide",
             "fontSizeMode",
             "minimumPixelSize",
+            "textFormat",
             "id",
         }
     )

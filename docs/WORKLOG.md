@@ -11868,3 +11868,21 @@ corrigiu a compatibilidade de `SceneText.qml` com modelos legados sem os novos
 campos de texto avançado, eliminando diagnósticos `undefined`. Componentes
 reutilizáveis fora dessas três superfícies e a invalidação de cache `a11y` do
 `Resolver` continuam explicitamente abertos. Nenhum host foi alterado.
+
+## 2026-09-22 — StyledText seguro integrado à cena canônica
+
+O formato `textLayout.textFormat: styled` agora atravessa a serialização,
+builder, `ResolvedTextNode`, adapter e `SceneText.qml`. A fronteira usa uma
+allowlist fechada de `b`, `i`, `u` e `br`, todos sem atributos; tags,
+atributos, imagens, URLs, comentários e declarações fora do contrato são
+removidos, texto literal é escapado e markup desbalanceado é fechado
+deterministicamente. Plain text continua sem interpretação de markup. O adapter
+revalida DTOs vindos de disco e emite
+`QML-ADAPTER-TEXT-SANITIZED-010` como degradação quando precisa corrigir
+conteúdo.
+
+Os testes direcionados fecharam com **199 passed**, os gates focados de
+round-trip/UI com **142 passed**, e o teste QML de `SceneText` passou com
+`StyledText` e fallback `PlainText`. A declaração do formato ainda precisa
+ser aplicada ao corpus RetroFE conforme cada família for migrada. Nenhum host
+foi alterado.

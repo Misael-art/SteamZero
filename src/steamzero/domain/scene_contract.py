@@ -249,6 +249,11 @@ class TextDirection(StrEnum):
     RTL = "rtl"
 
 
+class TextFormat(StrEnum):
+    PLAIN = "plain"
+    STYLED = "styled"
+
+
 @dataclass
 class TypographySpec:
     """Família, estilo e aparência do texto.
@@ -315,6 +320,7 @@ class TextLayoutSpec:
     text_transform: TextTransform | None = None
     direction: TextDirection | None = None
     language: str | None = None
+    text_format: TextFormat | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return _compact(
@@ -331,6 +337,7 @@ class TextLayoutSpec:
                 "textTransform": _enum(self.text_transform),
                 "direction": _enum(self.direction),
                 "language": self.language,
+                "textFormat": _enum(self.text_format),
             }
         )
 

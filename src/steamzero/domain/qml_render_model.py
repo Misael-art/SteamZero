@@ -48,10 +48,12 @@ from steamzero.domain.resolved_node import (
     ResolvedTextNode,
     TextAlignment,
     TextElideMode,
+    TextRenderFormat,
     TextSizeMode,
     TextVerticalAlignment,
     TextWrapMode,
 )
+from steamzero.domain.scene_text_security import sanitize_styled_text
 from steamzero.domain.scene_typing import SourceReference
 from steamzero.domain.scene_value import is_pending_value
 
@@ -67,6 +69,7 @@ DIAG_FONT_FALLBACK = "QML-ADAPTER-FONT-FALLBACK-006"
 DIAG_APPROXIMATED = "QML-ADAPTER-APPROXIMATED-007"
 DIAG_PENDING_VALUE = "QML-ADAPTER-PENDING-VALUE-008"
 DIAG_INVALID_MEDIA = "QML-ADAPTER-INVALID-MEDIA-009"
+DIAG_TEXT_SANITIZED = "QML-ADAPTER-TEXT-SANITIZED-010"
 
 #: Nomes do QML para alinhamento horizontal. `justify` sobrevive porque o Qt o
 #: implementa; se um backend futuro não implementar, é ele que degrada — não o
@@ -100,6 +103,11 @@ _ELIDE_MODE = {
 _SIZE_MODE = {
     TextSizeMode.FIXED: "FixedSize",
     TextSizeMode.FIT: "Fit",
+}
+
+_TEXT_FORMAT = {
+    TextRenderFormat.PLAIN: "PlainText",
+    TextRenderFormat.STYLED: "StyledText",
 }
 
 #: `font.italic` é booleano no QML e não distingue itálico de oblíquo. A
@@ -304,6 +312,7 @@ class QmlTextRenderModel:
     elide_mode: str
     font_size_mode: str
     minimum_pixel_size: float
+    text_format: str
     #: Referência interna autorizada. Vazia quando o tema não declarou fonte —
     #: nunca quando declarou e a tradução falhou, porque aí não há modelo.
     font_source: str = ""
@@ -329,6 +338,7 @@ class QmlTextRenderModel:
             "elide": self.elide_mode,
             "fontSizeMode": self.font_size_mode,
             "minimumPixelSize": self.minimum_pixel_size,
+            "textFormat": self.text_format,
         }
         if self.width is not None:
             payload["width"] = self.width
@@ -638,9 +648,22 @@ def to_render_model(node: ResolvedTextNode) -> AdaptationResult[QmlTextRenderMod
 
     _reject_pending(node, diagnostics)
 
+    text = node.text
+    if node.text_format is TextRenderFormat.STYLED:
+        text, changed = sanitize_styled_text(node.text)
+        if changed:
+            diagnostics.degraded(
+                DIAG_TEXT_SANITIZED,
+                "marcações fora da allowlist StyledText foram removidas",
+                field_name="text",
+                kind=FallbackKind.APPROXIMATION,
+                original=node.text,
+                resolved=text,
+            )
+
     fields: dict[str, Any] = {
         "id": node.id,
-        "text": node.text,
+        "text": text,
         "x": _number(node.geometry.x, field_name="x", diagnostics=diagnostics),
         "y": _number(node.geometry.y, field_name="y", diagnostics=diagnostics),
         "width": _dimension(node.geometry.width, field_name="width", diagnostics=diagnostics),
@@ -685,6 +708,9 @@ def to_render_model(node: ResolvedTextNode) -> AdaptationResult[QmlTextRenderMod
         ),
         "minimum_pixel_size": _number(
             node.minimum_font_size, field_name="minimumPixelSize", diagnostics=diagnostics
+        ),
+        "text_format": _map_enum(
+            node.text_format, _TEXT_FORMAT, field_name="textFormat", diagnostics=diagnostics
         ),
         "font_source": _font_source(node.font_asset, diagnostics),
     }

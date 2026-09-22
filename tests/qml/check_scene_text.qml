@@ -33,7 +33,7 @@ Item {
     // Payloads exatamente como `to_dict()` os emite.
     readonly property var packagedModel: ({
         "id": "gameTitle",
-        "text": "Chrono Trigger",
+        "text": "Chrono <b>Trigger</b>",
         "x": 960.0,
         "y": 120.0,
         "width": 1536.0,
@@ -52,6 +52,7 @@ Item {
         "elide": "ElideRight",
         "fontSizeMode": "Fit",
         "minimumPixelSize": 18.0,
+        "textFormat": "StyledText",
         "fontSource": "asset://font/Gilroy"
     })
 
@@ -88,7 +89,7 @@ Item {
     }
 
     Component.onCompleted: {
-        check(packaged.text === "Chrono Trigger", "texto não chegou")
+        check(packaged.text === "Chrono <b>Trigger</b>", "texto não chegou")
         check(packaged.x === 960.0 && packaged.y === 120.0, "posição não aplicada")
         check(packaged.width === 1536.0, "largura explícita não aplicada: " + packaged.width)
         check(packaged.height === 64.0, "altura explícita não aplicada")
@@ -102,6 +103,7 @@ Item {
         check(packaged.elide === Text.ElideRight, "elide não resolveu")
         check(packaged.fontSizeMode === Text.Fit, "font fit não resolveu")
         check(packaged.minimumPixelSize === 18.0, "minimumPixelSize não aplicado")
+        check(packaged.textFormat === Text.StyledText, "StyledText não resolveu")
 
         // O ponto crítico: o nome vindo do adapter precisa resolver no enum do
         // Qt. Se `Text[nome]` devolvesse `undefined`, a atribuição falharia em
@@ -124,6 +126,7 @@ Item {
         check(implicitSized.wrapMode === Text.NoWrap, "NoWrap não resolveu")
         check(implicitSized.elide === Text.ElideNone, "ElideNone não resolveu")
         check(implicitSized.fontSizeMode === Text.FixedSize, "FixedSize não resolveu")
+        check(implicitSized.textFormat === Text.PlainText, "PlainText padrão não resolveu")
 
         // Dimensão implícita: sem `width` no payload, o Text se dimensiona pelo
         // conteúdo. Zero significaria elemento invisível — outra coisa.
