@@ -299,6 +299,54 @@ Vita3K: validação, plano, confirmação, job assíncrono e ZIP derivado atômi
 A aplicação mutável de limpeza/rename/empacotamento no host real ainda não foi
 executada nesta release; não há exclusão ou renomeação silenciosa.
 
+### Complemento no host após a release governada `caf9d922`
+
+O host agora aponta para `2.0.0rc1-caf9d922d15c` (commit exato
+`caf9d922d15c061ea6655e7100c27cf56f1e3459`). O bundle veio do push CI
+`35779058230`, foi preparado/verificado por `release_host.py` e o wheel tem
+SHA-256 `785f0bfa027fb0536703a9b0831994dc07f482b41187de83b4fcba775229181e`.
+O Doctor direto da release confirma proveniência, geração do daemon, schema 22,
+integridade SQLite, zero operações pendentes/jobs stale e zero staging,
+backups ou journals órfãos. Continua `degraded` apenas por `deck.input.keys=false`
+e `bootDirect=unknown` (permissão de leitura negada). O `inspect` oficial ainda
+avisa que o host não coincide com uma release tagueada, não que o commit ativo
+divirja do bundle; não se declarou ciclo de rollback/reativação certificado.
+
+O scan real da release terminou como job `01M35EY56P56HS6KFZC66SZA3M` em
+45,8 s sobre duas raízes: 1.163 jogos, 16.515 arquivos, 102 updates, 144 DLCs,
+1.343 archives incompatíveis, 13.763 arquivos ignorados e zero unidentified ou
+erros. O filtro manifest-backed removeu o falso Vita=684 da contagem global;
+Vita ficou com seis registros canônicos no cache. A chamada HTTP de scan é
+síncrona: o cliente de observação com timeout de 30 s expirou, mas o job
+continuou e terminou; não repetimos a chamada.
+
+Foi reproduzido um segundo defeito na projeção: o workspace publicado mostra
+cinco jogos Vita, apesar de o cache validado conter seis. O sexto é a pasta
+`app/PCSF00516`, `format=vita3k-app`, identidade SFO verificada. A validação de
+cache reclassificava diretórios sem extensão como arquivos e descartava o jogo.
+Correção e regressões estão em branch própria, ainda não instalada; a contagem
+visível de seis jogos continua pendente até promoção e novo scan.
+
+O plano governado `library.vita.package` foi aplicado pela ponte local da
+Central: job `01M35EW0R3FFP6EMNRW17H9RYE` concluiu com 686 arquivos, título
+`LittleBigPlanet PlayStation Vita Marvel Super Hero Edition`, Title ID
+`PCSF00516`, ZIP íntegro (686 membros, `testzip=None`, SFO e `eboot.bin`
+presentes) em
+`/home/misael/emulation/roms/.steamzero/derived/playstation-vita/LittleBigPlanet PlayStation Vita Marvel Super Hero Edition [PCSF00516].zip`.
+O artefato mede 1.711.553.676 bytes; a pasta de origem continua presente com
+686 arquivos regulares. O job informa corretamente que `.steamzero/derived`
+não integra o catálogo e que a projeção permaneceu inalterada. Isso não prova
+lançamento do ZIP nem a associação do derivado à limpeza visual. Foi encontrada
+uma falha adicional de planejamento de espaço: o plano reportava apenas a
+margem transacional genérica de 8 MiB. A correção local acrescenta estimativa
+conservadora e checagem de espaço antes de escrever; ainda depende de CI e nova
+release.
+
+O inventário completo das 198 pastas de plataforma levou cerca de 36 s; a rota
+de scan real levou 45,8 s. A Central foi fechada após o teste; nenhum emulador,
+tema ou outro frontend foi deixado aberto. Nenhum ZIP original foi renomeado ou
+apagado.
+
 ## Controle e limitação da observação
 
 O host é Wayland. A janela SteamZero foi executada por XWayland, mas a injeção

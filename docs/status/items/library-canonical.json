@@ -17,6 +17,7 @@
     "docs/09-operations/evidence/2026-08-28-transport-compression",
     "src/steamzero/domain/library.py",
     "src/steamzero/domain/library_management.py",
+    "src/steamzero/adapters/discovery/vita_packaging.py",
     "src/steamzero/domain/switch_library.py",
     "src/steamzero/domain/switch_roots.py",
     "tests/integration/test_library.py",
@@ -31,12 +32,14 @@
     "tests/unit/test_emulation_workspace.py",
     "tests/unit/test_workspace_composition.py",
     "tests/unit/test_library_management.py",
+    "tests/unit/test_library_cache_directory_native.py",
+    "tests/unit/test_vita_packaging.py",
     "tests/unit/test_emulation_controller.py",
     "tests/integration/test_qml_harness_regressions.py",
     "tests/integration/test_qml_handheld_offscreen.py",
     "tests/integration/test_qml_visual_capture.py"
   ],
-  "scopeDigest": "fe4a7666a90201ff1fd604aef21605223695e915016320bf798ced620e6cb10c",
+  "scopeDigest": "a614bb88910e0f8718b919c688f11eb3222be7ed0eaed28e81eac734eaf50d4f",
   "dependsOn": [],
   "activeWorkstreams": [
     "WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT"
@@ -44,6 +47,8 @@
   "knownGaps": [
     "GAP-LIBRARY-PHYSICAL-CATALOG-COVERAGE",
     "GAP-G51",
+    "GAP-G56",
+    "GAP-G57",
     "GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
   ],
   "acceptanceCriteria": [
@@ -147,10 +152,36 @@
       "reference": "docs/09-operations/RELEASE-LEDGER.md",
       "command": "PR #229 incorporado em main; push CI 35766898272 verde; bundle 2.0.0rc1-468c67f371b8 verificada por release_host.py; cycle iniciou, mas pkexec aguardou credencial gráfica e foi interrompido sem install_host concluído; inspect confirmou host ainda em 2.0.0rc1-504d10b14485",
       "result": "partial"
+    },
+    {
+      "kind": "release",
+      "reference": "docs/09-operations/RELEASE-LEDGER.md",
+      "command": "Release ativa 2.0.0rc1-caf9d922d15c, commit caf9d922d15c061ea6655e7100c27cf56f1e3459; push CI 35779058230 verde; bundle verify-bundle verde; provenance/daemon/schema 22/DB íntegros, sem pendências ou órfãos; ciclo completo rollback→reativação não certificado porque chamador foi interrompido e filho bigsudo concluiu após o cancelamento",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-22-ux-deep-dive/README.md",
+      "command": "Scan real em 2 raízes: job 01M35EY56P56HS6KFZC66SZA3M completou em 45,8s após cliente HTTP de 30s expirar; 1.163 jogos/16.515 arquivos/102 updates/144 DLCs/1.343 incompatíveis/13.763 ignorados, 0 unidentified/erros. Cache tem 6 Vita, mas workspace publica 5 porque descarta directory-native vita3k-app. library.vita.package confirmou ZIP 686 membros/1.711.553.676 bytes, íntegro e origem intacta; derived não entra no catálogo",
+      "result": "partial"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_library_cache_directory_native.py",
+      "command": "Projeção do cache conserva directory-native Vita3K apenas com caminho sob a raiz e Title ID SFO coincidente; testes focados incluídos na suíte isolada (241 testes combinados passaram; Ruff check/format verdes). Ainda requer CI e instalação",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_vita_packaging.py",
+      "command": "Plano de empacotamento Vita estima tamanho conservador do ZIP, publica espaço requerido e recusa falta de espaço antes de criar saída; suíte isolada combinada (241 testes passou), Ruff check/format verdes. Ainda requer CI e instalação",
+      "result": "passed"
     }
   ],
-  "nextAction": "P1-LIBRARY: bundle 2.0.0rc1-468c67f371b8 preparada/verificada e CI push 35766898272 verde; release_host recebeu preflight não mutante de autorização limitado a 90s antes de install/rollback. Promover a correção com CI verde e, após autorização interativa do pkexec (HARD-EXTERNAL-SUBITEM: credencial/elevação ausente), retomar o mesmo cycle governado; reexecutar o scan e reconciliar a contagem (Vita=6 jogos selecionáveis, 713 membros relacionados e auxiliares fora do catálogo); certificar no host o fluxo universal relatedContent de library.root.audit plan→preview→apply→verify/rollback para renomeação, empacotamento e limpeza, preservando originais. Para apps Vita3K, exercitar também library.vita.package.",
-  "activeWorkstreams": [],
+  "nextAction": "P1-LIBRARY/G56-G57: o scan da release ativa gravou 6 Vita, mas o workspace descartou PCSF00516; corrigir a validação de cache para directory-native e demonstrar no workspace seis jogos. Corrigir também a estimativa e a checagem do espaço do empacotador. Rodar gates integrais, commit/PR/CI e release governada; repetir scan pelo caminho assíncrono da UI, confirmar progressão sem timeout, catálogo 6/6 e preview com espaço requerido. Depois certificar relatedContent/audit/rename/quarentena/rollback universal no host sem apagar ou renomear as ROMs originais.",
+  "activeWorkstreams": [
+    "WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT"
+  ],
   "updatedAt": "2026-09-22",
   "notes": "Item criado em 2026-08-24 com o defeito ja reproduzido e corrigido. A varredura decidia PELA RAIZ INTEIRA: bastava um base do Switch para o inventario de plataformas nunca rodar, e todos os demais diretorios ficavam invisiveis para a fonte canonica. Era assim que um jogo aparecia em Switch e nao aparecia na Biblioteca. O acervo real do operador tem 198 diretorios de plataforma sob UMA raiz, e so um deles e Switch — conferido por leitura do disco em 2026-08-24. Corrigido rodando as duas varreduras e deduplicando por caminho reivindicado, e fazendo a entrada canonica declarar a propria plataforma. NAO esta provado ainda: cobertura dos 198 diretorios reais, unificacao das superficies e qualquer prova contra o host. A varredura por diretorio ainda usa amostragem (max_games_per_platform) no caminho de fallback, que nao serve a uma biblioteca completa. Medicao do acervo real em 2026-08-24 (somente leitura): 375 jogos concentrados em 11 dos 198 diretorios; 138 diretorios sem manifesto de plataforma; 61 symlinks corretamente pulados. Cobrir 198 diretorios nao significa 198 bibliotecas — significa varrer os 198 sem perder nenhum dos 375 jogos. Segundo defeito encontrado e corrigido em 2026-08-24: numa raiz SEM Switch, a contabilidade do que nenhum scanner reivindicou nao rodava, e a varredura devolvia 'scanned, 0 jogos, 0 erros' com arquivos dentro — o conteudo sumia sem diagnostico, contra o AGENTS.md secao 8. A contagem passou a rodar para toda raiz e o resultado publica incompatible, ignored e roots, dando denominador ao usuario. Terceiro defeito encontrado e corrigido em 2026-08-30: a coleta de conteudo auxiliar (update/DLC) rodava SOMENTE dentro do ramo de fallback do scan, que so e alcancado quando o scanner plano nao encontra nenhum base. Como o scanner plano acha o base no nivel de cima mas nao desce em subdiretorio, toda plataforma que declara auxiliaryContent e guarda o base junto da raiz reportava updateCount 0 e dlcCount 0: nintendo-3ds, playstation-portable, xbox-360, playstation-3 e wii-u. Apenas o Switch escapava, por ter passe proprio — a mesma assimetria de plataforma unica com modelo de dominio que este item existe para desfazer. Junto, o laco de associacao mantinha os dois produtores numa lista list[Any] com getattr em dois campos e o terceiro acesso (item.version) desprotegido, um AttributeError latente para a primeira plataforma nao-Switch com update; o tipo AuxiliaryContent unificou a forma e devolveu o laco ao mypy. Reproducao provada vermelha antes da correcao. NAO provado no host: a release instalada 2.0.0rc1-a897f8ffcfed e anterior a esta correcao. P0 de perda de plataforma: a varredura grava `platform`, o lancamento lia `platformId` e caia num default \"switch\". Nenhuma das 231 entradas do acervo real declarava plataforma para quem lanca, entao todo jogo era tratado como Switch — o emulador correto era recusado e um emulador de Switch era aceito para ROM de outra plataforma. Corrigido normalizando a chave na fronteira do cache e removendo o palpite. As fixtures escreviam `platformId`, chave que a varredura nunca produz, e por isso a suite concordava consigo mesma. Digest renovado pela correcao dos defaults de plataforma na busca de midia (2026-09-01); nenhum estagio deste item foi promovido. Suporte a container nativo entregue em 2026-09-01: `.zip`/`.7z` saiam do catalogo por uma lista fixa em classify_rom, que vencia a declaracao dos manifestos — 45 dos 63 declaram `zip` nas extensions e 22 declaram `containerPolicy: native`, um contrato que existia no schema e que nenhum codigo Python lia. Medido no acervo real: dos 1061 arquivos comprimidos, 939 passam a ser jogos base; os 122 restantes tem motivo explicito (archive-platform-unknown 62, archive-needs-extraction 19, archive-policy-undeclared 13, e o restante fora de diretorio reconhecido). `extract` NAO esta implementado: fica fora do catalogo, agora dizendo por que. Corrigido junto: detect_format era chamado sem o mapa declarado no inventario de diretorios, e por isso 216 dos 231 jogos do acervo entravam com format 'unknown'. Corrigido junto: PlatformRomScanner.classify nunca repassava platform_formats, deixando a desambiguacao por formato declarado como codigo morto. Em 2026-09-02, `catalog_summary` publicava `filesFound: 231, ignored: 0, incompatible: 0` para o cache real do host, enquanto o `rootStats` do mesmo arquivo registrava 6724 ignorados e 1061 incompatíveis. Corrigido: os baldes vêm do `rootStats` quando falta `scanSummary`, e `filesFound` não é reconstruído somando baldes (a soma dá 8381 para 8016 arquivos + 202 symlinks; 163 a mais, exatamente updates+DLCs contados pelas duas varreduras). Varredura executada no host em 2026-09-02 (autorizada): 231 -> 1119 jogos em 17 plataformas. A reconciliacao nao fechava: 8016 arquivos no disco, 7635 contabilizados. Causa: `auxiliary_content` guarda tudo que nao e base, incluindo `content_kind unknown`, e reivindicar o desconhecido o tirava dos ignorados sem soma-lo em lugar nenhum — 381 arquivos sumiam calados. Corrigido: so update/dlc sao reivindicados (e agora contados); o nao classificado cai em ignored com motivo. A soma passa a fechar 8016 = 8016. systemId (2026-09-02): o manifesto agrupa por runtime compartilhado (nintendo-handheld cobre gb/gbc/gba), e isso vazava para a tela — 296 jogos num balde so. O disco do operador ja separa gb, gbc, gba, nes, famicom, snes, sfc. `system_for_path` le essa organizacao: diretorio mais especifico vence, e sem casamento fica NULO (adivinhar por extensao erraria — 43 das 213 extensoes pertencem a mais de uma plataforma). Os 101 nomes de sistema declarados sao unicos entre plataformas, e ha gate provando isso, porque e essa unicidade que torna o diretorio evidencia confiavel. `platformId` continua resolvendo emulador e launch; `systemId` entra AO LADO, so para agrupar e apresentar. Medido: 1005 dos 1119 jogos resolvem sistema (170 gbc, 147 nes, 111 famicom, 77 gb/genesis, 49 gba/psx...)."
 }

@@ -205,3 +205,27 @@ do diálogo agora termina a tentativa de forma explícita, sem manter `pkexec`
 pendurado por 30 minutos. Esta melhoria está testada localmente, mas ainda não
 foi promovida ao host nem substitui a autorização interativa necessária para a
 prova física da candidata.
+
+## Release ativa — 2.0.0rc1-caf9d922d15c
+
+| Release | Commit exato | SHA-256 do wheel | Evidência |
+|---|---|---|---|
+| `2.0.0rc1-caf9d922d15c` | `caf9d922d15c061ea6655e7100c27cf56f1e3459` | `785f0bfa027fb0536703a9b0831994dc07f482b41187de83b4fcba775229181e` | Ativa em 2026-09-22; push CI `35779058230` verde; bundle `release_host.py verify-bundle` verde |
+
+A leitura independente de `/opt/steamzero/current` e o Doctor do binário ativo
+confirmam esta release, provenance `2.0.0rc1-caf9d922d15c`, daemon convergente,
+schema 22, banco íntegro e zero operações pendentes, jobs stale, staging,
+backups ou journals órfãos. Doctor segue `degraded` por `deck.input.keys=false`
+e `bootDirect=unknown` (permissão de leitura negada), sem blockers. `inspect`
+retorna mismatch de tag porque a candidata não foi publicada como tag; isso não
+contradiz o sourceCommit ativo.
+
+Não classificar o rollback→reativação como ciclo certificado: o chamador do
+primeiro `cycle` foi interrompido enquanto `bigsudo install` estava em curso;
+um filho privilegiado sobreviveu, concluiu a instalação/ativação e o chamador
+do retry expirou no preflight de 90 s. A release ativa foi depois conferida
+diretamente e pelo Doctor, mas o ledger automático não recebeu conclusão normal
+do ciclo. Como não há incompatibilidade e a release está saudável, nenhum
+rollback emergencial foi iniciado. Evidência operacional e scan no relatório
+`docs/09-operations/evidence/2026-09-22-ux-deep-dive/README.md`; ainda falta
+fechar a idempotência do fluxo com um ciclo governado concluído.
