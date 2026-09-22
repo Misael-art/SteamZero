@@ -8,7 +8,7 @@
   "integration": "integrated",
   "verification": "hw",
   "operation": "degraded",
-  "distribution": "not-packaged",
+  "distribution": "installed",
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun",
     "docs/09-operations/evidence/2026-09-22-ux-deep-dive",
@@ -39,7 +39,7 @@
     "tests/integration/test_qml_handheld_offscreen.py",
     "tests/integration/test_qml_visual_capture.py"
   ],
-  "scopeDigest": "a614bb88910e0f8718b919c688f11eb3222be7ed0eaed28e81eac734eaf50d4f",
+  "scopeDigest": "7c70a2e77f6d376a38c9795b27a6d33db489bb5d7c62a667916c4c5ec5fedc75",
   "dependsOn": [],
   "activeWorkstreams": [
     "WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT"
@@ -49,6 +49,8 @@
     "GAP-G51",
     "GAP-G56",
     "GAP-G57",
+    "GAP-G58",
+    "GAP-G59",
     "GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
   ],
   "acceptanceCriteria": [
@@ -176,9 +178,21 @@
       "reference": "tests/unit/test_vita_packaging.py",
       "command": "Plano de empacotamento Vita estima tamanho conservador do ZIP, publica espaço requerido e recusa falta de espaço antes de criar saída; suíte isolada combinada (241 testes passou), Ruff check/format verdes. Ainda requer CI e instalação",
       "result": "passed"
+    },
+    {
+      "kind": "release",
+      "reference": "docs/09-operations/RELEASE-LEDGER.md",
+      "command": "PR #231 merged; CI main 35791778246 verde; release_host prepare/verify e ciclo governado install→rollback→reativação passaram na release 2.0.0rc1-621a3389db32 (wheel 0e3c9abd3e2a4d2584ea6650b0104ac7a1ae63e75c9f7a12f5e19966da04bebb). Daemon confirma SHA exato, ciclo idempotente, DB/schema íntegros, sem pendências/órfãos; Doctor degraded por proveniência ainda sem tag, input Deck sem tecla e boot sem permissão.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-22-ux-deep-dive/README.md",
+      "command": "Após release, workspace host truthState=ready e Vita=6 (cinco ZIP + directory-native PCSF00516 com SFO); root scan atualizou lastScan 22:52:02Z (1162 bases, 102 updates, 144 DLC, 368 incompatíveis, 7284 ignorados, 202 erros). library.root.scan é síncrona: cliente HTTP de 60s expirou, ação concluiu e bridge gerou BrokenPipe. Preview físico library.vita.package: 686 files, sourceBytes=1712471393, estimatedOutputBytes=1713173857, packageSpaceBytes=1721562465; sem criar preview output. G58 derivados ainda fora da gestão; G59 scan sync aberto.",
+      "result": "partial"
     }
   ],
-  "nextAction": "P1-LIBRARY/G56-G57: o scan da release ativa gravou 6 Vita, mas o workspace descartou PCSF00516; corrigir a validação de cache para directory-native e demonstrar no workspace seis jogos. Corrigir também a estimativa e a checagem do espaço do empacotador. Rodar gates integrais, commit/PR/CI e release governada; repetir scan pelo caminho assíncrono da UI, confirmar progressão sem timeout, catálogo 6/6 e preview com espaço requerido. Depois certificar relatedContent/audit/rename/quarentena/rollback universal no host sem apagar ou renomear as ROMs originais.",
+  "nextAction": "P1-LIBRARY/G58: tornar derivados gerenciados visíveis e relacionados ao proprietário na Gestão de arquivos, por mecanismo genérico para todas as plataformas e com preview/consentimento/quarentena/rollback, preservando originais. G59: mover library.root.scan para job assíncrono com progresso/cancelamento sem reduzir cobertura. G57: testar recusa de espaço insuficiente no host. Em paralelo, certificar relatedContent/audit/rename/quarentena/rollback universal em amostras seguras de todas as plataformas; runtime Vita3K continua ausente e não está validado para lançamento.",
   "activeWorkstreams": [
     "WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT"
   ],
