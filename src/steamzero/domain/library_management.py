@@ -5,6 +5,8 @@
 from __future__ import annotations
 
 import json
+import re
+import unicodedata
 from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -19,6 +21,13 @@ from steamzero.domain.switch_roots import root_id, sanitize_display_path, valida
 _QUARANTINABLE_CATEGORIES = frozenset(
     {"update", "dlc", "related", "duplicate", "incompatible", "corrupted", "unknown"}
 )
+_FILENAME_FORBIDDEN = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+
+
+def _canonical_game_stem(value: str) -> str:
+    normalized = unicodedata.normalize("NFC", " ".join(value.split()))
+    normalized = _FILENAME_FORBIDDEN.sub("-", normalized).rstrip(" .")
+    return normalized or "Game"
 
 
 class LibraryRootManager:
@@ -146,6 +155,79 @@ class LibraryRootManager:
             "relationshipPolicy": "manifest-directory-and-auxiliary-v1",
             "errors": [],
         }
+
+    def plan_rename(self, games: Sequence[Mapping[str, Any]]) -> transaction.Plan:
+        """Plane nomes canônicos para qualquer plataforma, sem tocar diretórios.
+
+        Diretórios de jogo (como uma app Vita3K) permanecem intocados: eles
+        precisam da operação explícita de empacotamento. Arquivos-base recebem
+        o título já resolvido pelo scan, preservam a extensão suportada e, na
+        Vita, mantêm o Title ID no nome para que a identidade técnica não se
+        perca. Colisões nunca sobrescrevem: recebem sufixo determinístico.
+        """
+        entries: list[tuple[Path, str, str | None, str | None]] = []
+        seen: set[Path] = set()
+        for game in games:
+            content_kind = str(game.get("contentKind") or game.get("content_kind") or "base")
+            if content_kind != "base":
+                continue
+            raw_path = game.get("path")
+            title = game.get("name") or game.get("canonicalName")
+            if not isinstance(raw_path, str) or not isinstance(title, str) or not title.strip():
+                continue
+            lexical = Path(raw_path)
+            if lexical.is_symlink():
+                raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="origem de rename é symlink")
+            source = fs.resolve_within(self.root, lexical)
+            if source in seen:
+                raise SteamZeroError("E-TX-STALE-PLAN", detail=f"origem duplicada: {source}")
+            if not source.exists():
+                raise SteamZeroError("E-TX-STALE-PLAN", detail=f"origem ausente: {source}")
+            if source.is_dir():
+                continue
+            if not source.is_file():
+                raise SteamZeroError("E-TX-STALE-PLAN", detail=f"origem inválida: {source}")
+            try:
+                relative = source.relative_to(self.root)
+            except ValueError as exc:
+                raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="origem fora da raiz") from exc
+            if any(part in {".steamzero", ".steamzero-quarantine"} for part in relative.parts):
+                continue
+            seen.add(source)
+            platform = str(game.get("platform") or game.get("platformId") or "")
+            raw_title_id = game.get("titleId")
+            entries.append(
+                (
+                    source,
+                    title,
+                    platform,
+                    str(raw_title_id) if isinstance(raw_title_id, str) else None,
+                )
+            )
+
+        used_by_parent: dict[Path, set[str]] = {}
+        for source, _title, _platform, _title_id in entries:
+            used_by_parent.setdefault(source.parent, set()).add(source.name.casefold())
+        moves: dict[Path, Path] = {}
+        for source, title, entry_platform, vita_title_id in sorted(
+            entries, key=lambda item: str(item[0])
+        ):
+            used = used_by_parent[source.parent]
+            used.discard(source.name.casefold())
+            stem = _canonical_game_stem(title)
+            if entry_platform == "playstation-vita" and vita_title_id:
+                stem = f"{stem} [{vita_title_id.strip().upper()}]"
+            extension = source.suffix
+            candidate = f"{stem}{extension}"
+            suffix_index = 2
+            while candidate.casefold() in used:
+                candidate = f"{stem} ({suffix_index}){extension}"
+                suffix_index += 1
+            target = fs.resolve_within(self.root, source.parent / candidate)
+            if target != source:
+                moves[source] = target
+            used.add(candidate.casefold())
+        return transaction.plan_move_files(moves, root=self.root, kind="library.rename")
 
     def plan_quarantine(
         self, audit: Mapping[str, Any], approved_paths: Sequence[str]

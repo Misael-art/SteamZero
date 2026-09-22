@@ -12354,3 +12354,21 @@ concluído e certificação física ainda pendente.
 Gates locais: três testes focados de auditoria, `STATUS-CHECK: OK`, Ruff,
 formatação, mypy e diff check sem erros. O CI anterior encontrou e foi corrigido
 um desvio de formatação; o novo workflow foi disparado para o commit corrigido.
+
+## 2026-09-22 — Rename canônico universal
+
+Foi encontrado um recorte ainda específico de Switch: `library.root.rename`
+delegava a `SwitchRootManager`, então os arquivos Vita e de outras plataformas
+não entravam no tratamento de nomes. A rota agora usa o `LibraryRootManager`
+universal, preserva a extensão, deriva o nome do scan, mantém o Title ID Vita,
+resolve colisões com sufixo determinístico e não tenta renomear diretórios
+Vita3K — esses passam pela operação explícita `library.vita.package`.
+
+Prova: plano transacional de rename universal e colisão (`7 passed` no recorte
+de gestão/controlador), origem preservada, `STATUS-CHECK: OK`, Ruff e mypy
+verdes. Nenhuma ROM real foi renomeada nesta sessão.
+
+O CI também tornou explícita uma violação de fronteira no empacotador Vita:
+`Path.mkdir/unlink/replace` estava fora da porta `core.fs`. A publicação agora
+usa somente `fs.ensure_dir`, `fs.move_file_noreplace` e `fs.remove_file`;
+`make boundaries` passou com zero violações e os testes Vita passaram (`10`).

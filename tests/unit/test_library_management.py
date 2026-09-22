@@ -68,3 +68,58 @@ def test_audit_keeps_unmatched_files_visible_but_excludes_managed_trees(
 
     assert "mystery-platform/review-me.bin" in unknown
     assert ".steamzero/derived/generated.zip" not in unknown
+
+
+def test_plan_rename_is_universal_and_keeps_vita_identity_in_the_filename(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "roms"
+    source = root / "psvita" / "PCSE00004.zip"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"vita")
+
+    plan = LibraryRootManager(root).plan_rename(
+        [
+            {
+                "path": str(source),
+                "name": "ULTIMATE MARVEL VS. CAPCOM 3",
+                "platform": "playstation-vita",
+                "titleId": "PCSE00004",
+                "contentKind": "base",
+            }
+        ]
+    )
+
+    assert plan.kind == "library.rename"
+    assert len(plan.actions) == 1
+    assert plan.actions[0].target.endswith("ULTIMATE MARVEL VS. CAPCOM 3 [PCSE00004].zip")
+    assert source.is_file()
+
+
+def test_plan_rename_resolves_collisions_without_overwrite_or_directory_touch(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "roms"
+    first = root / "nes" / "a.nes"
+    second = root / "nes" / "b.nes"
+    directory_game = root / "psvita" / "PCSF00516"
+    first.parent.mkdir(parents=True)
+    directory_game.mkdir(parents=True)
+    first.write_bytes(b"one")
+    second.write_bytes(b"two")
+
+    plan = LibraryRootManager(root).plan_rename(
+        [
+            {"path": str(first), "name": "Same Title", "platform": "nes"},
+            {"path": str(second), "name": "Same Title", "platform": "nes"},
+            {
+                "path": str(directory_game),
+                "name": "Directory Game",
+                "platform": "playstation-vita",
+            },
+        ]
+    )
+
+    targets = {Path(action.target).name for action in plan.actions}
+    assert targets == {"Same Title.nes", "Same Title (2).nes"}
+    assert directory_game.is_dir()

@@ -13,7 +13,7 @@
     "src/steamzero/adapters/emulation.py",
     "tests/integration/test_emulation_platform_scope.py"
   ],
-  "scopeDigest": "27bf8e3a25da3c0f5d4ddcf8cf7ccf55ef289f3f34ff046d061b0b98583ea614",
+  "scopeDigest": "ea89c2065bf07ccf0c59dd5e5a102514371f165e5632d4460256357c25884147",
   "dependsOn": [
     "SZ-LIBRARY-CANONICAL"
   ],

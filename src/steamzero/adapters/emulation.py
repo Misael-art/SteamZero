@@ -155,12 +155,7 @@ from steamzero.domain.switch_content import SwitchContentManager
 from steamzero.domain.switch_library import SwitchLibraryScanner
 from steamzero.domain.switch_media import GameMediaManager, GameMediaState, custom_media_kind
 from steamzero.domain.switch_mods import InstalledMod, ModType, SwitchModManager
-from steamzero.domain.switch_roots import (
-    SwitchRootManager,
-    root_id,
-    sanitize_display_path,
-    validate_rom_root,
-)
+from steamzero.domain.switch_roots import root_id, sanitize_display_path, validate_rom_root
 from steamzero.domain.switch_runtime import resolve_switch_runtime_profile
 from steamzero.jobs.manager import JobContext, JobManager
 from steamzero.jobs.models import Job
@@ -3010,7 +3005,7 @@ class EmulationController:
                 if isinstance(game.get("path"), str)
                 and Path(str(game["path"])).is_relative_to(selected_root)
             ]
-            plan = SwitchRootManager(selected_root).plan_rename(games_in_root)
+            plan = LibraryRootManager(selected_root).plan_rename(games_in_root)
         elif action.startswith("library.root.remove:"):
             selected_root = self._root_from_action(action, require_accessible=False)
             plan = self._plan_root_remove(selected_root)

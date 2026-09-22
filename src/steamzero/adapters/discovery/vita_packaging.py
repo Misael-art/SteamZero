@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from steamzero.adapters.discovery.vita_sfo import read_vita_metadata
+from steamzero.core import fs
 from steamzero.core.errors import SteamZeroError
 
 _TITLE_ID_RE = re.compile(r"^[A-Z]{4}[0-9]{5}$")
@@ -82,7 +83,7 @@ def package_vita_app(plan: VitaPackagePlan) -> dict[str, object]:
     normalized_id, files = _validate_app(plan.source_app, plan.title_id)
     if normalized_id != plan.title_id or len(files) != plan.files:
         raise SteamZeroError("E-TX-STALE-PLAN", detail="app Vita3K mudou desde o plano")
-    plan.destination.parent.mkdir(parents=True, exist_ok=True)
+    fs.ensure_dir(plan.destination.parent)
     fd, temporary_name = tempfile.mkstemp(
         prefix=f".{plan.destination.name}.", suffix=".tmp", dir=plan.destination.parent
     )
@@ -92,9 +93,9 @@ def package_vita_app(plan: VitaPackagePlan) -> dict[str, object]:
         with zipfile.ZipFile(temporary, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             for path in files:
                 archive.write(path, path.relative_to(plan.source_app).as_posix())
-        temporary.replace(plan.destination)
+        fs.move_file_noreplace(temporary, plan.destination)
     finally:
-        temporary.unlink(missing_ok=True)
+        fs.remove_file(temporary)
     with zipfile.ZipFile(plan.destination) as archive:
         names = set(archive.namelist())
         if "sce_sys/param.sfo" not in names or "eboot.bin" not in names:
