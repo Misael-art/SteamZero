@@ -101,12 +101,19 @@ def _controller(
     )
 
 
-def _plant_library(controller: EmulationController, tmp_path: Path, count: int) -> None:
+def _plant_library(
+    controller: EmulationController,
+    tmp_path: Path,
+    count: int,
+    *,
+    platform: str = "switch",
+) -> None:
     cache = controller._library_cache_path  # type: ignore[attr-defined]
     cache.parent.mkdir(parents=True, exist_ok=True)
     games = []
     for index in range(count):
-        rom = tmp_path / f"Game{index}.nsp"
+        suffix = ".chd" if platform == "playstation" else ".nsp"
+        rom = tmp_path / f"Game{index}{suffix}"
         rom.write_bytes(b"A" * 2048)
         games.append(
             {
@@ -122,7 +129,7 @@ def _plant_library(controller: EmulationController, tmp_path: Path, count: int) 
                 # mas ele passou a ser escopado por plataforma e um jogo sem
                 # plataforma deixa de pertencer a qualquer aba. Fixture que
                 # escreve menos que a produção esconde o comportamento real.
-                "platform": "switch",
+                "platform": platform,
             }
         )
     cache.write_text(
@@ -176,13 +183,17 @@ def test_global_media_search_uses_the_inventory_platform(tmp_path: Path) -> None
     identities: list[GameIdentity] = []
     controller = _controller(
         tmp_path,
-        [FakeProvider("screenscraper", {"boxart"}, calls, identities=identities)],
+        [
+            FakeProvider(
+                "screenscraper",
+                {"boxart"},
+                calls,
+                identities=identities,
+                platforms=frozenset({"playstation"}),
+            )
+        ],
     )
-    _plant_library(controller, tmp_path, 1)
-    cache = controller._library_cache_path  # type: ignore[attr-defined]
-    payload = json.loads(cache.read_text(encoding="utf-8"))
-    payload["games"][0]["platform"] = "playstation"
-    cache.write_text(json.dumps(payload), encoding="utf-8")
+    _plant_library(controller, tmp_path, 1, platform="playstation")
 
     _run_global(controller)
 
@@ -199,11 +210,7 @@ def test_global_media_search_prefers_provider_declaring_inventory_platform(
         "playstation", {"boxart"}, calls, platforms=frozenset({"playstation"})
     )
     controller = _controller(tmp_path, [switch, playstation])
-    _plant_library(controller, tmp_path, 1)
-    cache = controller._library_cache_path  # type: ignore[attr-defined]
-    payload = json.loads(cache.read_text(encoding="utf-8"))
-    payload["games"][0]["platform"] = "playstation"
-    cache.write_text(json.dumps(payload), encoding="utf-8")
+    _plant_library(controller, tmp_path, 1, platform="playstation")
 
     _run_global(controller)
 

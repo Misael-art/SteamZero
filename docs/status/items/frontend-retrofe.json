@@ -7,7 +7,7 @@
   "implementation": "complete",
   "integration": "integrated",
   "verification": "dev",
-  "operation": "ready",
+  "operation": "degraded",
   "distribution": "not-packaged",
   "scopePaths": [
     "src/steamzero/domain/retrofe_declarations.py",
@@ -19,7 +19,7 @@
   ],
   "scopeDigest": "fe26399e82c3a0c185a177aa17b739457c5cc0f4147a8cc26650b034edafa5f3",
   "dependsOn": [],
-  "knownGaps": [],
+  "knownGaps": ["GAP-G54"],
   "acceptanceCriteria": [
     "O slice RetroFE e exercitado na integracao sem runtime externo.",
     "Declaracoes e texto possuem comportamento deterministico coberto por testes."
@@ -44,8 +44,8 @@
       "result": "recorded"
     }
   ],
-  "nextAction": "Publicar contratos de UI para o RetroFE antes de falar em jornada: hoje nao existe rota nenhuma em desktop_contracts.py. Depois, importacao, aplicacao e lancamento pelas superficies corretas, sem confundir com ES-DE nem com RetroArch.",
+  "nextAction": "Publicar os contratos de UI RetroFE e preparar um pacote/fixture real licenciado; depois provar importação, aplicação, ativação, lançamento e rollback. O host atual não contém pacote RetroFE lançável, portanto o slice declarativo não é jornada certificada.",
   "activeWorkstreams": [],
   "updatedAt": "2026-09-22",
-  "notes": "O slice esta integrado no repositorio. A propriedade RetroFE layer agora atravessa declaracoes -> ElementContract.zIndex -> ResolvedTextNode -> QmlTextRenderModel.z, com veredito invalid para valores nao inteiros e round-trip coberto. A camada de frontend M11 permanece em branch separada; a ligacao entre adapters e superficies ainda nao foi feita."
+  "notes": "O slice declarativo está integrado no repositório: layer atravessa declarations → ElementContract.zIndex → ResolvedTextNode → QmlTextRenderModel.z, com round-trip e invalidação cobertos. O host não tem pacote RetroFE disponível para lançamento e a camada de frontend M11 ainda não está ligada às superfícies; manter operação degraded até existir fixture instalada e jornada real."
 }

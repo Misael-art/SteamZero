@@ -511,6 +511,7 @@ def handheld_ui_contracts() -> dict[str, Any]:
                     "value": {"type": "boolean"},
                     "overwrite": {"type": "boolean"},
                     "approvedPaths": {"type": "array", "items": {"type": "string"}},
+                    "deferAudit": {"type": "boolean"},
                     "steamUserId": {"type": "string"},
                     "mediaKinds": {"type": "array", "items": {"type": "string"}},
                     "mediaKind": {"type": "string"},

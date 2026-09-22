@@ -37,12 +37,13 @@
     "tests/qml/check_theme_scene_preview.qml",
     "tests/unit/test_theme_scene.py"
   ],
-  "scopeDigest": "537365ea2b947d46e80ff3a7d6221c39a5191773e50bfae3ad9a048f753f2f2e",
+  "scopeDigest": "ee4a9433e7bd3bbf78152cf181c0ba64f1a8350f1387a6cee5e3741be92e66f5",
   "dependsOn": [
     "SZ-THEME-IMPORT-ESDE-LAYOUT"
   ],
   "knownGaps": [
     "GAP-THEME-ESDE-SCENE-NOT-RENDERED",
+    "GAP-G54",
     "GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
   ],
   "acceptanceCriteria": [
@@ -127,7 +128,7 @@
       "result": "partial"
     }
   ],
-  "nextAction": "Otimizar o frame time p95 de 18.254 ms e decidir a promoção da cena ES-DE à aparência central; fullscreen interativo já foi entregue fisicamente.",
+  "nextAction": "Provar a cena com ES-DE instalado e tema compilado na release atual; distinguir renderização de fixture/fullscreen de ativação do tema externo. Só depois otimizar o p95 de 18.254 ms e decidir promoção à aparência central.",
   "activeWorkstreams": [
     "WS-2026-09-CENA-ESDE"
   ],

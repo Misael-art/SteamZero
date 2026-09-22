@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT",
+  "item": "SZ-LIBRARY-CANONICAL",
+  "branch": "codex/canonical-main-2026-09-21",
+  "baseRef": "08fc957d",
+  "owner": "codex-continuation",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/domain/library_management.py",
+    "src/steamzero/ui/qml/Main.qml",
+    "src/steamzero/adapters/desktop_contracts.py",
+    "tests/unit/test_library_management.py",
+    "tests/integration/test_qml_harness_regressions.py",
+    "tests/integration/test_qml_handheld_offscreen.py",
+    "tests/integration/test_qml_visual_capture.py",
+    "docs/status/items/library-canonical.json",
+    "docs/status/workstreams/library-governed-management-2026-09-22.json"
+  ],
+  "sharedPaths": [
+    "src/steamzero/domain/library.py",
+    "src/steamzero/adapters/emulation.py",
+    "tests/unit/test_emulation_controller.py",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md",
+    "docs/status/COVERAGE.md"
+  ],
+  "nextAction": "Aguardar CI verde do PR #229; depois preparar uma release governada, executar scan Vita e certificar rename universal, empacotamento, audit→preview→quarantine→verify/rollback no host sem mover a origem.",
+  "updatedAt": "2026-09-22"
+}

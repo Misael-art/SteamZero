@@ -133,6 +133,9 @@
         "vita"
       ]
     },
+    "directoryFormats": [
+      "vita3k-app"
+    ],
     "containerPolicy": "native",
     "auxiliaryContent": "both",
     "auxiliaryBinding": "filename"

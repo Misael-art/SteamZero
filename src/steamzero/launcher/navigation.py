@@ -27,9 +27,12 @@ DIAG_SECTIONS_TRUNCATED = "LAUNCHER-FOCUS-TRUNCATED-001"
 # plataforma — um acervo com 13 sistemas derrubava o Launcher antes da home.
 # Dimensionar abaixo do próprio domínio transforma uma salvaguarda em defeito,
 # então o teto acompanha os manifests empacotados com folga para as seções de
-# coleção, que entram na mesma home.
+# coleção, que entram na mesma home. Itens não têm um teto independente: a
+# biblioteca canônica pode concentrar centenas de jogos numa plataforma, e o
+# mapa de foco é finito porque a entrada do usuário também é finita. Um
+# segundo limite arbitrário só trocaria um crash por perda silenciosa ou
+# impediria o catálogo de chegar à tela.
 MAX_SECTIONS = 128
-MAX_ITEMS_PER_SECTION = 512
 
 # Nó sintético do topo. A primeira linha precisa de um destino para cima, senão
 # o usuário que sobe uma vez perde a referência de que há barra de navegação.
@@ -53,8 +56,6 @@ class HomeSection:
         _identifier(self.id, name="section")
         if not self.title:
             raise ValueError("section title vazio")
-        if len(self.items) > MAX_ITEMS_PER_SECTION:
-            raise ValueError(f"section itens excede {MAX_ITEMS_PER_SECTION}")
         for item in self.items:
             _identifier(item, name="item")
 

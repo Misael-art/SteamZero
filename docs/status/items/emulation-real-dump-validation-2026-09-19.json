@@ -15,7 +15,7 @@
     "docs/09-operations/evidence/2026-09-22-ux-deep-dive",
     "docs/09-operations/evidence/2026-09-22-media-theme-first-run"
   ],
-  "scopeDigest": "a4e8c7a8954aeac3cf35d9e3cccae615a76cbaa1358b2c99ca65d87770145096",
+  "scopeDigest": "0df898e80cfe34ce4523d62060d2ce4d0e9144ddaee15bb69cdc28bd16f25bcf",
   "dependsOn": [
     "SZ-COMPONENT-LIFECYCLE",
     "SZ-LIBRARY-CANONICAL",
@@ -23,7 +23,14 @@
   ],
   "knownGaps": [
     "GAP-REAL-DUMP-VALIDATION-PHYSICAL",
-    "GAP-COMPONENT-AUTHORIZATION"
+    "GAP-COMPONENT-AUTHORIZATION",
+    "GAP-G48",
+    "GAP-G49",
+    "GAP-G50",
+    "GAP-G51",
+    "GAP-G52",
+    "GAP-G53",
+    "GAP-G54"
   ],
   "acceptanceCriteria": [
     "O inventário associa diretórios não vazios a manifestos e formatos sem alterar ROMs.",
@@ -264,7 +271,7 @@
     {
       "kind": "hardware",
       "reference": "docs/09-operations/evidence/2026-09-22-ux-deep-dive/README.md",
-      "command": "Jornada UX ampliada na release instalada: Launcher com cache completo aborta no limite de 512 itens; fixture reduzido abre mas não ativa por Return/Enter/clique; DuckStation bloqueia no Setup Wizard; Dolphin exibe Health and Safety; PCSX2 abre standalone, mas o handoff governado falha no sandbox Flatpak; 55 capturas live e 227 testes de biblioteca/launcher/rename/conversão/multidisc/title variants.",
+      "command": "Jornada UX ampliada na release instalada: Launcher com cache completo abortou no limite de 512 itens e fixture reduzido não ativou por Return/Enter/clique; auditoria posterior provou que Vita=684 era supercontagem de assets internos e a correção do scanner passou focada, mas ainda não foi instalada/certificada fisicamente. DuckStation bloqueia no Setup Wizard; Dolphin exibe Health and Safety; PCSX2 abre standalone, mas o handoff governado falha no sandbox Flatpak; 55 capturas live e 227 testes de biblioteca/launcher/rename/conversão/multidisc/title variants.",
       "result": "partial"
     },
     {
@@ -286,10 +293,10 @@
       "result": "partial"
     }
   ],
-  "nextAction": "Corrigir primeiro o limite/ativação real do Launcher e a resiliência de first-run DuckStation/melonDS/Dolphin/Cemu/SharpEmu; em seguida corrigir handoff Flatpak/portal do PCSX2, recuperar ScreenScraper e identificar o provider chamado Steam Deck API, medir qualidade de mídia por kind, exercitar download/publicação/rollback completos, tornar efeitos editáveis no Theme Studio, instalar fixtures reais ES-DE/RetroFE e retomar fade-in/fade-out, gameplay interativo e multi-disc.",
+  "nextAction": "ORDEM DE ROADMAP: G48 teve o scanner corrigido no software (Vita real=5 jogos selecionáveis, assets internos fora do catálogo) e aguarda release/recertificação física do Launcher; em seguida fechar first-run resiliente (G49) e handoff PCSX2/portal (G50); P1 = tratamento físico de ROMs/nomes (G51), provider e qualidade de mídia (G52), autoria de efeitos/performance no Theme Studio (G53) e fixtures/jornadas ES-DE/RetroFE (G54); só depois retomar fade-in/fade-out, gameplay interativo, retorno de foco e multi-disc como gates de certificação.",
   "activeWorkstreams": [
     "WS-2026-09-EMULATION-REAL-DUMP-VALIDATION"
   ],
   "updatedAt": "2026-09-22",
-  "notes": "Inventário, ciclos físicos, jornada UX, mídia e diagnósticos de archives/runtime concluídos. Famicom/NES, Master System e SNES têm gameplay real observado; Dreamcast, 3DS, PS3, GameCube, Wii U, Switch e Game Boy têm boot/renderização real sem gameplay interativo; Game Gear abriu tela real sem prova de avanço. A jornada UX aprofundada encontrou o Launcher inviável com o acervo completo por limite de 512 itens, ativação sem efeito no fixture reduzido, first-run do DuckStation/Dolphin, handoff Flatpak do PCSX2 sem acesso ao CHD e 611 registros duplicados de nome, sobretudo Vita. O adendo de mídia comprovou login SteamGridDB, rejeição ScreenScraper, busca individual, aplicação/otimização de um candidato e lote assíncrono degradado; a qualidade física foi conferida por dimensões e integridade, mas não há score perceptual nem cobertura completa de kinds/publicação. O Theme Studio salva/exporta e resolve efeitos, porém ainda não edita EffectSpec nem mede custo físico; scene preview expirou no harness. X68000=14 e Amiga=5 foram confirmados, mas o filtro de archives compartilhado impede launch antes do spawn; Saturn=18 foi confirmado, mas mednafen_saturn não está instalado. PS4/PS5 permanecem sem prova de gameplay. Nenhuma ROM original foi movida, extraída, sobrescrita ou apagada; archives não associados permanecem em needs-review/unsupported-content."
+  "notes": "Inventário, ciclos físicos, jornada UX, mídia e diagnósticos de archives/runtime concluídos. Famicom/NES, Master System e SNES têm gameplay real observado; Dreamcast, 3DS, PS3, GameCube, Wii U, Switch e Game Boy têm boot/renderização real sem gameplay interativo; Game Gear abriu tela real sem prova de avanço. A jornada UX aprofundada encontrou o Launcher inviável na release antiga por um cache Vita supercontado: 684 registros incluíam PNGs/BINs internos, além da ativação sem efeito no fixture reduzido. A correção do scanner manifest-backed passou 101 testes focados e a fonte Vita read-only agora seleciona 5 ZIPs; release, scan físico e jornada ainda estão pendentes. First-run do DuckStation/Dolphin, handoff Flatpak do PCSX2 sem acesso ao CHD e o restante dos bloqueios permanecem. O adendo de mídia comprovou login SteamGridDB, rejeição ScreenScraper, busca individual, aplicação/otimização de um candidato e lote assíncrono degradado; a qualidade física foi conferida por dimensões e integridade, mas não há score perceptual nem cobertura completa de kinds/publicação. O Theme Studio salva/exporta e resolve efeitos, porém ainda não edita EffectSpec nem mede custo físico; scene preview expirou no harness. X68000=14 e Amiga=5 foram confirmados, mas o filtro de archives compartilhado impede launch antes do spawn; Saturn=18 foi confirmado, mas mednafen_saturn não está instalado. PS4/PS5 permanecem sem prova de gameplay. Nenhuma ROM original foi movida, extraída, sobrescrita ou apagada; archives não associados permanecem em needs-review/unsupported-content."
 }

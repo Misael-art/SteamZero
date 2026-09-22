@@ -82,11 +82,13 @@ def test_sections_without_items_do_not_produce_unreachable_focus() -> None:
             assert target is None or target in focus.nodes, node.id
 
 
-def test_recipe_refuses_unsafe_shapes() -> None:
+def test_recipe_refuses_unsafe_identifiers_and_accepts_large_sections() -> None:
     with pytest.raises(ValueError, match="id"):
         HomeSection(id="Coleções!", title="x", items=("a",))
-    with pytest.raises(ValueError, match="itens"):
-        HomeSection(id="library", title="x", items=tuple(str(i) for i in range(600)))
+    # O tamanho da seção pertence ao acervo do usuário. O limite antigo de 512
+    # não pode transformar uma biblioteca válida em erro de inicialização.
+    section = HomeSection(id="library", title="x", items=tuple(str(i) for i in range(600)))
+    assert len(section.items) == 600
 
 
 def test_every_node_can_reach_the_initial_focus() -> None:
@@ -296,3 +298,15 @@ class TestTheCatalogSizeCannotCloseTheHome:
         )
         focus = resolve_home_focus(sections)
         assert "3" in focus.diagnostics[0].reason
+
+    def test_a_large_platform_section_stays_navigable(self) -> None:
+        """Uma seção grande não pode impedir a home de abrir."""
+        items = tuple(f"game-{index}" for index in range(600))
+        focus = resolve_home_focus(
+            (HomeSection(id="large-platform", title="Large platform", items=items),)
+        )
+
+        assert len(focus.nodes) == 601  # header + 600 cards; no synthetic empty node
+        assert focus.initial == "large-platform:game-0"
+        assert focus.nodes["large-platform:game-599"].left == "large-platform:game-598"
+        assert focus.nodes["large-platform:game-599"].right == "large-platform:game-0"

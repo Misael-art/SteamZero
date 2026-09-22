@@ -4,24 +4,25 @@
   "id": "SZ-MEDIA-AUDIT-PLATFORM-SCOPE",
   "title": "Auditoria do pipeline de mídia por plataforma",
   "domain": "media",
-  "implementation": "planned",
-  "integration": "feature-branch",
-  "verification": "unit",
+  "implementation": "complete",
+  "integration": "integrated",
+  "verification": "hw",
   "operation": "degraded",
-  "distribution": "not-packaged",
+  "distribution": "installed",
   "scopePaths": [
     "src/steamzero/domain/media_pipeline.py",
     "src/steamzero/domain/switch_media.py",
     "src/steamzero/adapters/emulation.py",
     "tests/integration/test_media_audit_platform_scope.py"
   ],
-  "scopeDigest": "2b690f2ea2cd306d545ccbcdf6e73df4c4aaff1e46fc007d470e6100e7bbf7c8",
+  "scopeDigest": "ffb61096a8b9ebdc9041adcb6c5cd550881e820932ba6282e90e091773b82ea8",
   "dependsOn": [
     "SZ-MEDIA-PIPELINE-PLATFORM-SCOPE"
   ],
   "knownGaps": [
     "GAP-MEDIA-UI-PIPELINE-CLARITY",
-    "GAP-EMULATION-PHYSICAL-LAUNCH"
+    "GAP-EMULATION-PHYSICAL-LAUNCH",
+    "GAP-G52"
   ],
   "acceptanceCriteria": [
     "media.audit com platform_id audita somente os masters, otimizações, links e registros da plataforma solicitada.",
@@ -47,10 +48,16 @@
       "reference": "tests",
       "command": "TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests -q; runner permaneceu sem saída em 17% e foi interrompido; nenhum processo ou socket residual",
       "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-22-media-theme-first-run/README.md",
+      "command": "media.audit switch na release instalada: 51 masters, 112 derivados, 56 registros, zero órfãos; 112 PNGs conferidos em 600x900/920x430 sem divergência dimensional.",
+      "result": "partial"
     }
   ],
-  "nextAction": "Integrar o resultado na superfície visual e validar na release instalada.",
+  "nextAction": "Completar o contrato de qualidade: score perceptual e política de melhor candidato por kind, auditoria de hero/logo/icon/screenshot/manual/video e prova física de publicação/rollback Steam; só então promover a auditoria de integridade a qualidade garantida.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-02",
-  "notes": "A auditoria acionada dentro de uma plataforma precisa preservar o mesmo isolamento já aplicado às métricas e aos jobs de mídia."
+  "updatedAt": "2026-09-22",
+  "notes": "A auditoria por plataforma está integrada e foi executada na release instalada em Switch. Ela prova integridade, dimensões, ausência de órfãos e consistência do registry; não prova que a melhor mídia foi escolhida, nem cobre todos os kinds ou publicação/rollback. Operação permanece degraded até esse contrato de qualidade ser medido."
 }

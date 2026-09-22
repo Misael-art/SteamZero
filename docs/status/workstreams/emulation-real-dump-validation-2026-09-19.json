@@ -21,6 +21,6 @@
     "src/steamzero/domain/library.py",
     "src/steamzero/adapters/discovery/format_parsers.py"
   ],
-  "nextAction": "X68000=14 e Amiga=5 confirmados; launch de archive reproduz E-TX-STALE-PLAN antes do spawn. Manter handoff SOFT-COORDINATION no emulation.py compartilhado, manter Saturn em missing-runtime por mednafen_saturn ausente, registrar PS4/PS5 sem extração e avançar para o próximo sistema com core instalado e formato diretamente suportado.",
-  "updatedAt": "2026-09-20"
+  "nextAction": "Executar a ordem P0/P1 do item SZ-EMULATION-REAL-DUMP-VALIDATION: Launcher > first-run > PCSX2 portal; depois ROM lifecycle, mídia, Theme Studio e fixtures ES-DE/RetroFE. X68000/Amiga/Saturn/PS4/PS5 continuam condicionados pelos blockers já registrados.",
+  "updatedAt": "2026-09-22"
 }

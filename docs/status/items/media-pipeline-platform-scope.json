@@ -14,14 +14,15 @@
     "tests/integration/test_media_pipeline_platform_scope.py",
     "docs/09-operations/evidence/2026-09-22-media-pipeline-readonly"
   ],
-  "scopeDigest": "a7bbedb8ed144ef3c0acc358ae02eab2a96984531b9e0d374412b12c2114b46f",
+  "scopeDigest": "138eb23b49578f45e213aaa2cd413ee5f9aef8d85c966c92a5acb3af48db18a1",
   "dependsOn": [
     "SZ-EMULATION-PLATFORM-SCOPE",
     "SZ-MEDIA-PROVIDER-PLATFORM-FILTER"
   ],
   "knownGaps": [
     "GAP-MEDIA-UI-PIPELINE-CLARITY",
-    "GAP-EMULATION-PHYSICAL-LAUNCH"
+    "GAP-EMULATION-PHYSICAL-LAUNCH",
+    "GAP-G52"
   ],
   "acceptanceCriteria": [
     "A estatística de cache do pipeline conta somente mídia associada aos jogos do contexto atual.",
@@ -65,10 +66,16 @@
       "reference": "docs/09-operations/evidence/2026-09-22-media-pipeline-readonly",
       "command": "/usr/local/bin/steamzero emulation workspace --json (Switch: 15 jogos, 1497 candidatos, 3168306 bytes, screenscraper inactive/auth com 184 falhas)",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-22-media-theme-first-run/README.md",
+      "command": "media.global.search-missing real: job assíncrono devolveu jobId imediatamente e terminou degraded com 15 jogos, 9 processados, 6 pulados, zero falhas de aplicação e rejeição ScreenScraper explícita em 9 jogos.",
+      "result": "partial"
     }
   ],
-  "nextAction": "HARD-EXTERNAL-SUBITEM: preservar o diagnóstico, aguardar o operador configurar ssid/sspassword pessoais e executar uma busca autorizada; recuperar o media.global stale pelo ciclo G25 antes de repetir a operação. Não iniciar job remoto nesta sessão.",
+  "nextAction": "HARD-EXTERNAL-SUBITEM: preservar o diagnóstico e aguardar credencial ScreenScraper autorizada; recuperar qualquer job global stale pelo ciclo G25 antes de repetir. Depois medir qualidade por kind e publicar a cadeia de rollback. Não converter o lote degraded em cobertura garantida.",
   "activeWorkstreams": [],
   "updatedAt": "2026-09-22",
-  "notes": "O escopo por plataforma, denominador, fases, quota e health persistido estão integrados no canonical e presentes na release ativa. O read model e a UI expõem providerDetails sem converter credencial recusada em quota ou sucesso vazio. A operação permanece degraded por credencial pessoal ausente e por um job media.global stale; nenhuma tentativa remota ou mutação do host foi executada."
+  "notes": "O escopo por plataforma, denominador, fases, health persistida e providerDetails está integrado e presente na release ativa. A operação real comprovou busca individual e lote assíncrono com ScreenScraper rejeitado e SteamGridDB funcional, sem perder a causa no read model. Permanece degraded por credencial externa, falta de score perceptual/cobertura completa de kinds/publicação/rollback e qualquer job stale que precise de recovery antes de nova tentativa."
 }

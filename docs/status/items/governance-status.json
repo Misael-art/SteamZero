@@ -33,7 +33,7 @@
     "pyproject.toml",
     "docs/09-operations/HANDOFF-2026-08-27.md"
   ],
-    "scopeDigest": "c7fe4f2319fac1b97acafff31a61e8881eb6b7d6d8ef5f16a16298befb3a0387",
+  "scopeDigest": "13c738ed3892f2c365c954b8f2680b21b2ba6cd8355b622f376a7f97decc1d06",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -93,7 +93,7 @@
     },
     {
       "kind": "release",
-      "reference": "/home/misael/.local/state/steamzero/release-automation/2.0.0rc1-504d10b14485.json",
+      "reference": "docs/09-operations/RELEASE-LEDGER.md",
       "command": "2026-09-22: release governada 2.0.0rc1-504d10b14485 instalada do commit 504d10b144851b70eab99d1fad7110ae34e88f84; CI run 35712683583 verde; wheel SHA256 d55ea7a2ae97accc2aaf8a98abbbcf67468f648ae486dd9712054489d3fe2476; rollback 2.0.0rc1-13c933c30ace; primeira convergencia attempts=1/restarted=true e segunda idempotente attempts=0/restarted=false, daemon confirmou a identidade exata; doctor ok=true degraded, sem blockers, pending, stale ou orphan",
       "result": "passed"
     }

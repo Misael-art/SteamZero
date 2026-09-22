@@ -23,6 +23,6 @@
     "docs/status",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Subgap fechado; capturar o canvas editável no host e manter a prova física separada.",
-  "updatedAt": "2026-09-07"
+  "nextAction": "Canvas/token/layout/save/export foram exercitados em XDG isolado, mas EffectSpec continua somente observável e o scene preview expira no harness. Implementar autoria transacional de efeitos e manter a prova física separada.",
+  "updatedAt": "2026-09-22"
 }

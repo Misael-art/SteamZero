@@ -22,3 +22,20 @@ Complexidade em T-shirt (S/M/L/XL) — sem datas (dependem de Q6/Q10 e capacidad
 | M13 | Adoção EmuDeck/RetroDECK em máquina real de teste | 5 | L | relatório de import sem perda (hashes) |
 | M14 | Flatpak + canais + update/rollback da plataforma | 6 | L | RT-14 verde; downgrade demonstrado |
 | M15 | Release 1.0 stable com SBOM/assinaturas + docs de usuário | 6 | M | checklist §17 completo com hardware (Q6) |
+
+## Estado real dos marcos após a auditoria do host — 2026-09-22
+
+| Marco | Estado real | Bloqueio que governa a próxima ação |
+|---|---|---|
+| M10 | parcial / instalado | Componentes e rotas foram exercitados, mas first-run e handoff PCSX2 ainda impedem lançamento confiável (G49/G50). |
+| M11 | parcial / degradado | ES-DE e SRM não estão instalados; RetroFE não tem pacote lançável no host (G54). |
+| M12-E | parcial / degradado | Tokens, receitas e cenas existem; a superfície ativa não prova todas as capacidades dinâmicas nem medição física de custo. |
+| M12-S | parcial / degradado | Theme Studio salva/exporta tokens e layout; `EffectSpec` ainda é somente observável e o preview tem timeout (G53). |
+| M12 | bloqueado pela jornada | A release anterior aborta com um catálogo Vita supercontado (684 falsos assets); o scanner foi corrigido localmente para reconhecer os 5 ZIPs reais, mas release, ativação e fade/retorno físicos permanecem sem prova (G48). |
+| M13 | não promovível | Scan da release anterior mistura jogos e assets internos Vita; após a correção, extração, renomeação, normalização, conversão e resolução de duplicidades ainda não foram aplicadas em ROM real (G51). |
+| M14/M15 | não promover | A instalação governada existe, mas a certificação funcional exige fechar os gates acima e repetir a matriz física completa. |
+
+O progresso acima é um retrato de fechamento, não substitui os cinco eixos dos
+itens de status. Os relatórios detalhados permanecem apenas como evidência
+operacional; novas decisões devem atualizar o item canônico e o workstream
+correspondente.

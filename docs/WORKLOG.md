@@ -12235,3 +12235,155 @@ real. Nenhum emulador, Theme Studio ou job permaneceu aberto; um scan abandonado
 por probe interrompido foi cancelado explicitamente.
 
 Evidência: `docs/09-operations/evidence/2026-09-22-media-theme-first-run/README.md`.
+
+## 2026-09-22 — Reconciliação canônica do diagnóstico e do roadmap
+
+Os três diagnósticos físicos de 2026-09-22 foram mantidos como evidência e
+referenciados pelos itens canônicos, sem criar um novo relatório. O ledger
+`docs/KNOWN-GAPS.md` recebeu G48–G54 para as lacunas que não tinham identidade
+única: Launcher acima de 512 itens/ativação, first-run, handoff Flatpak do
+PCSX2, ciclo físico de ROMs e nomes, provider/qualidade de mídia, autoria de
+efeitos do Theme Studio e fixtures/jornadas ES-DE/RetroFE.
+
+`docs/12-roadmap/IMPLEMENTATION-ROADMAP.md` e `MILESTONES.md` agora refletem a
+ordem operacional: P0 = Launcher → first-run → PCSX2; P1 = ROMs → mídia →
+Theme Studio → ES-DE/RetroFE; a certificação de fade, retorno de foco,
+gameplay interativo, multi-disc, PS4/PS5 e desempenho fica depois desses gates.
+Os itens `SZ-MEDIA-SCRAPING`, `SZ-MEDIA-AUDIT-PLATFORM-SCOPE`,
+`SZ-THEME-STUDIO`, `SZ-LIBRARY-CANONICAL`, `SZ-FRONTEND-ESDE`,
+`SZ-FRONTEND-RETROFE` e `SZ-EMULATION-REAL-DUMP-VALIDATION` foram atualizados
+com o estado real observado; `STATUS.md`, `ACTIVE-WORK.md` e `COVERAGE.md`
+foram regenerados. `project_status.py check` passou.
+
+## 2026-09-22 — Correção do diagnóstico Vita e do scanner de ROMs
+
+A cardinalidade Vita=684 foi contestada e reproduzida como erro do scanner.
+`/home/misael/emulation/roms/psvita/` possui cinco ZIPs de jogos na raiz e uma
+instalação Vita3K descompactada. A caminhada recursiva encontrou 810 arquivos:
+711 PNGs de manual/live area, BINs/módulos, metadados e 82 arquivos em
+`patch`/`addcont`. Como a classificação recebia `root_platform` e aplicava
+`root-wins` a qualquer extensão presente no registro global, 659 PNGs e 20 BINs
+foram publicados indevidamente como jogos; daí vieram os nomes `001`, `002`,
+`003` e o falso estouro de 512 itens do Launcher.
+
+Correção vertical em `domain/library.py`: o scanner construído pelos manifestos
+agora passa as extensões por plataforma e a raiz só resolve uma extensão que o
+manifesto declara. O mesmo scanner reconhece uma app Vita3K somente quando a
+pasta tem Title ID, `sce_sys/param.sfo` e `eboot.bin`. A leitura read-only do
+host resulta em 6 jogos selecionáveis — 5 ZIPs e `PCSF00516` —, 723 arquivos
+internos rejeitados e 82 auxiliares; nenhuma ROM foi modificada. A identidade e
+os nomes vêm do SFO. O empacotador derivado foi coberto por testes: produz ZIP
+com conteúdo na raiz, preserva a origem e grava em `.steamzero/derived` quando
+executado pela operação governada. Os testes focados passaram (133). A release
+instalada ainda é a anterior, então scan, catálogo, ativação, fade, retorno e a
+aplicação física de renome/empacotamento continuam pendentes de release
+governada.
+
+O inventário também passou a carregar `relatedContent` de forma genérica:
+membros de uma instalação em diretório ficam ligados ao jogo-base, enquanto
+updates/DLCs e desconhecidos ficam agrupados como conteúdo auxiliar da
+plataforma. Isso evita que a Gestão de arquivos perca assets ou os promova a
+jogos; `.steamzero/derived` é excluído para não duplicar artefatos gerados.
+Na leitura real Vita foram observados 713 membros internos da app e 119 itens
+auxiliares sem proprietário inequívoco. A auditoria/quarentena universal agora
+consome essa relação com preview, confirmação e rollback; a aplicação mutável
+no host permanece pendente da release governada.
+
+## 2026-09-22 — Automação governada de relação e empacotamento Vita
+
+O fluxo deixou de ser apenas uma API de domínio: `library.root.audit` agora
+aplica a mesma relação `relatedContent` e a mesma seleção de limpeza a qualquer
+plataforma, preservando jogos-base, vinculando membros de diretório e
+classificando update/DLC/órfão para preview, confirmação, verificação e
+rollback. A árvore `.steamzero/derived` permanece fora do catálogo e da
+limpeza de conteúdo do usuário.
+
+A ação `library.vita.package` foi integrada ao controlador como operação
+governada: valida raiz registrada, origem contida na raiz, SFO, Title ID,
+`sce_sys/param.sfo`, `eboot.bin` e symlinks; confirma o plano; executa job
+assíncrono; publica o ZIP com conteúdo na raiz, nome canônico com Title ID e
+proteção contra colisão; a origem não é movida, renomeada ou apagada. O teste
+de jornada plano → confirmação → job → ZIP passou.
+
+Gates desta complementação: 74 testes focados de Vita/gestão, 144 do
+controlador, 158 de plataforma/UI/runtime, Ruff e mypy sem erros. A leitura do
+host continua somente leitura: 5 ZIPs + 1 app Vita3K, 713 membros relacionados
+e 119 auxiliares; nenhuma release nova foi instalada e nenhuma mutação física
+foi declarada.
+
+## 2026-09-22 — Auditoria universal sem segunda caminhada
+
+A gestão de arquivos deixou de caminhar a raiz inteira uma segunda vez para
+descobrir órfãos. O inventário declarativo agora pode carregar, sob demanda,
+arquivos visitados não reivindicados e a relação de membros; a gestão usa esse
+resultado, mantendo o scanner normal do catálogo sem essa sobrecarga. A
+comparação no acervo real produziu exatamente o mesmo conjunto de 6.479
+caminhos desconhecidos do algoritmo anterior, além de 1.327 bases, 83 updates
+e 1.167 relacionados.
+
+A auditoria completa read-only mediu 49,75 s no host na implementação final
+(contra cerca de 66 s antes da otimização). A correção preserva
+cobertura e cardinalidade, mas a duração ainda é uma lacuna de UX registrada
+como G55: o próximo passo é job de manutenção com progresso/cancelamento e
+eventual índice incremental, nunca uma amostragem silenciosa.
+
+## 2026-09-22 — Auditoria longa como tarefa governada
+
+`library.root.audit` ganhou um modo assíncrono usado pela interface: a leitura
+completa roda no job `library.audit`, publica progresso por diretório, honra
+cancelamento nos pontos seguros e entrega o `auditPreview` completo ao diálogo.
+O usuário pode então selecionar conteúdo relacionado e criar o plano de
+quarentena; a confirmação e o rollback continuam no núcleo transacional. O
+modo síncrono foi preservado para consumidores existentes e o contrato de
+ação passou a declarar `deferAudit`.
+
+Gates: 145 testes do controlador, 27 de contratos desktop, 72 de harness QML,
+48 do gate visual e Ruff/mypy sem erros. G55 foi reduzida: permanece apenas a
+otimização futura por índice incremental; não há amostragem nem perda de
+conteúdo.
+
+## 2026-09-22 — Cancelamento e custódia do workstream
+
+Foi acrescentada uma regressão de cancelamento cooperativo: uma auditoria
+`library.audit` em execução recebe o cancelamento, termina como `cancelled` e
+não produz preview parcial nem mutação nas ROMs. O catálogo de status passou a
+manter o workstream ativo `WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT`, com PR #229,
+escopo exclusivo, próxima ação e a distinção explícita entre software
+concluído e certificação física ainda pendente.
+
+Gates locais: três testes focados de auditoria, `STATUS-CHECK: OK`, Ruff,
+formatação, mypy e diff check sem erros. O CI anterior encontrou e foi corrigido
+um desvio de formatação; o novo workflow foi disparado para o commit corrigido.
+
+## 2026-09-22 — Rename canônico universal
+
+Foi encontrado um recorte ainda específico de Switch: `library.root.rename`
+delegava a `SwitchRootManager`, então os arquivos Vita e de outras plataformas
+não entravam no tratamento de nomes. A rota agora usa o `LibraryRootManager`
+universal, preserva a extensão, deriva o nome do scan, mantém o Title ID Vita,
+resolve colisões com sufixo determinístico e não tenta renomear diretórios
+Vita3K — esses passam pela operação explícita `library.vita.package`.
+
+Prova: plano transacional de rename universal e colisão (`7 passed` no recorte
+de gestão/controlador), origem preservada, `STATUS-CHECK: OK`, Ruff e mypy
+verdes. Nenhuma ROM real foi renomeada nesta sessão.
+
+O CI também tornou explícita uma violação de fronteira no empacotador Vita:
+`Path.mkdir/unlink/replace` estava fora da porta `core.fs`. A publicação agora
+usa somente `fs.ensure_dir`, `fs.move_file_noreplace` e `fs.remove_file`;
+`make boundaries` passou com zero violações e os testes Vita passaram (`10`).
+
+## 2026-09-22 — Fechamento do gate CI e evidência portátil
+
+O run `35761451702` encontrou três falhas que não pertenciam à implementação
+Vita/gestão: duas fixtures de mídia declaravam PlayStation, mas mantinham um
+arquivo `.nsp`, fazendo o carregador seguro descartá-las antes da seleção do
+provider; a fixture agora usa `.chd` e declara explicitamente o suporte de
+plataforma. A terceira falha vinha de duas evidências de release apontando para
+um JSON absoluto do estado local do host; as referências passaram a apontar
+para o `RELEASE-LEDGER.md`, mantendo o detalhe histórico no comando sem criar
+dependência de arquivo avulso no ambiente do CI.
+
+O recorte corrigido passou (`3 passed`), o `STATUS-CHECK` voltou a verde e o
+host continuou intacto: nenhum emulador, tema ou ROM foi alterado. O commit
+corretivo ainda precisa de novo CI verde antes da promoção governada.

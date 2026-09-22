@@ -40,6 +40,8 @@ from steamzero.adapters.converters import (
     nsz_tool_manifest,
 )
 from steamzero.adapters.discovery.format_parsers import read_game_identity
+from steamzero.adapters.discovery.vita_packaging import package_vita_app, plan_from_app
+from steamzero.adapters.discovery.vita_sfo import read_vita_metadata
 from steamzero.adapters.engine import AdapterEngine, HttpsArtifactPort, PreparedComponent
 from steamzero.adapters.enhancements.installer import (
     EnhancementDefinition,
@@ -128,6 +130,7 @@ from steamzero.domain.library import (
     PlatformRomScanner,
     system_for_path,
 )
+from steamzero.domain.library_management import LibraryRootManager
 from steamzero.domain.media_pipeline import MediaPipeline
 from steamzero.domain.platform_composer import EmulatorFacts
 from steamzero.domain.platforms import PlatformRegistry
@@ -152,12 +155,7 @@ from steamzero.domain.switch_content import SwitchContentManager
 from steamzero.domain.switch_library import SwitchLibraryScanner
 from steamzero.domain.switch_media import GameMediaManager, GameMediaState, custom_media_kind
 from steamzero.domain.switch_mods import InstalledMod, ModType, SwitchModManager
-from steamzero.domain.switch_roots import (
-    SwitchRootManager,
-    root_id,
-    sanitize_display_path,
-    validate_rom_root,
-)
+from steamzero.domain.switch_roots import root_id, sanitize_display_path, validate_rom_root
 from steamzero.domain.switch_runtime import resolve_switch_runtime_profile
 from steamzero.jobs.manager import JobContext, JobManager
 from steamzero.jobs.models import Job
@@ -622,7 +620,9 @@ class EmulationController:
         manager.register("mod.catalog.prepare", self._mod_catalog_prepare_job_handler)
         manager.register("rom.scan", self._rom_scan_job_handler)
         manager.register("library.scan", self._library_scan_job_handler)
+        manager.register("library.audit", self._library_audit_job_handler)
         manager.register("multidisc.materialize", self._multidisc_materialize_job_handler)
+        manager.register("vita.package", self._vita_package_job_handler)
         manager.register("library.bitrot", self._bitrot_job_handler)
         manager.register("firmware.download", self._firmware_download_job_handler)
         for job_type in ("content.import", "nsz.convert", "steam.publish"):
@@ -2334,6 +2334,16 @@ class EmulationController:
                         "gameCount": row.game_count,
                         "selectedCount": len(row.selected_games),
                         "skippedSymlinks": row.skipped_symlinks,
+                        "relatedContentCount": len(row.related_content),
+                        "relatedContent": [
+                            {
+                                "path": str(item.path),
+                                "relation": item.relation,
+                                "contentKind": item.content_kind,
+                                "ownerPath": str(item.owner_path) if item.owner_path else None,
+                            }
+                            for item in row.related_content
+                        ],
                         "multiDiscSets": multidisc_sets,
                     }
                 )
@@ -2368,7 +2378,14 @@ class EmulationController:
                 fingerprint = hashlib.sha256(
                     f"{pm.path}\0{stat.st_size}\0{stat.st_mtime_ns}".encode()
                 ).hexdigest()
-                game_identity, identity_diag = read_game_identity(pm.path, platform=pm.platform)
+                vita_metadata = (
+                    read_vita_metadata(pm.path) if pm.platform == "playstation-vita" else None
+                )
+                game_identity, identity_diag = (
+                    (vita_metadata.identity, vita_metadata.diagnosis)
+                    if vita_metadata is not None
+                    else read_game_identity(pm.path, platform=pm.platform)
+                )
                 ps5_source_identity: dict[str, Any] = {}
                 if pm.platform == "playstation-5":
                     try:
@@ -2393,7 +2410,11 @@ class EmulationController:
                         game_identity.scheme.value if game_identity is not None else None
                     ),
                     "identityDiagnosis": identity_diag,
-                    "name": pm.path.stem,
+                    "name": (
+                        vita_metadata.title
+                        if vita_metadata and vita_metadata.title
+                        else pm.path.stem
+                    ),
                     "state": "ready" if game_identity is not None else "unverified",
                     "statusLabel": (
                         f"{pm.format.upper()} · Platform: {pm.platform}"
@@ -2444,6 +2465,16 @@ class EmulationController:
                     "gameCount": row.game_count,
                     "selectedCount": len(row.selected_games),
                     "skippedSymlinks": row.skipped_symlinks,
+                    "relatedContentCount": len(row.related_content),
+                    "relatedContent": [
+                        {
+                            "path": str(item.path),
+                            "relation": item.relation,
+                            "contentKind": item.content_kind,
+                            "ownerPath": str(item.owner_path) if item.owner_path else None,
+                        }
+                        for item in row.related_content
+                    ],
                 }
                 for row in directory_rows
             )
@@ -2773,6 +2804,58 @@ class EmulationController:
                 "os membros e publicará a árvore derivada atomicamente. "
                 f"Destino gerenciado: {archive_inspection.destination}"
             )
+        elif action == "library.vita.package":
+            library_root = Path(self._required_string(payload, "libraryRoot"))
+            source_path = Path(self._required_string(payload, "sourcePath"))
+            registered_roots = {Path(path).resolve(strict=False) for path in self.library_roots()}
+            resolved_root = library_root.resolve(strict=False)
+            if resolved_root not in registered_roots:
+                raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="raiz não registrada")
+            resolved_source = source_path.resolve(strict=False)
+            try:
+                resolved_source.relative_to(resolved_root)
+            except ValueError as exc:
+                raise SteamZeroError(
+                    "E-CONTENT-UNSAFE-PATH", detail="app Vita3K fora da raiz registrada"
+                ) from exc
+            derived_value = self._optional_string(payload, "derivedRoot")
+            derived_root = (
+                Path(derived_value)
+                if derived_value is not None
+                else library_root / ".steamzero" / "derived" / "playstation-vita"
+            )
+            resolved_derived = derived_root.resolve(strict=False)
+            try:
+                resolved_derived.relative_to(resolved_root)
+            except ValueError as exc:
+                raise SteamZeroError(
+                    "E-CONTENT-UNSAFE-PATH", detail="destino Vita fora da raiz registrada"
+                ) from exc
+            package_plan = plan_from_app(resolved_source, derived_root=resolved_derived)
+            plan = transaction.plan_write_files(
+                {},
+                root=paths.data_home(),
+                kind="emulation.vita.package",
+                requirements_extra={
+                    "sourcePath": str(package_plan.source_app),
+                    "destination": str(package_plan.destination),
+                    "titleId": package_plan.title_id,
+                    "files": package_plan.files,
+                },
+            )
+            self._pending[plan.plan_id] = _PendingMutation(
+                "vita-package",
+                {
+                    "sourcePath": str(package_plan.source_app),
+                    "derivedRoot": str(resolved_derived),
+                },
+            )
+            plan_extra["preview"] = (
+                "A operação validará o SFO, o Title ID, os arquivos obrigatórios e os "
+                "symlinks; publicará o ZIP Vita3K em árvore derivada gerenciada, "
+                "sem renomear, mover ou apagar a origem. "
+                f"Destino: {package_plan.destination}"
+            )
         elif action == "multidisc.materialize":
             platform_id = self._required_string(payload, "platformId")
             system_id = self._required_string(payload, "systemId")
@@ -2858,14 +2941,21 @@ class EmulationController:
             )
         elif action.startswith("library.root.audit:"):
             selected_root = self._root_from_action(action)
-            audit = SwitchRootManager(selected_root).audit()
             approved = payload.get("approvedPaths", [])
             if not isinstance(approved, list) or not all(
                 isinstance(value, str) for value in approved
             ):
                 raise SteamZeroError("E-API-SCHEMA", detail="approvedPaths deve ser uma lista")
+            defer_audit = payload.get("deferAudit", False)
+            if not isinstance(defer_audit, bool):
+                raise SteamZeroError("E-API-SCHEMA", detail="deferAudit deve ser booleano")
+            audit = None
+            if approved or not defer_audit:
+                audit = LibraryRootManager(selected_root).audit()
             if approved:
-                plan, quarantine_id = SwitchRootManager(selected_root).plan_quarantine(
+                if audit is None:
+                    raise SteamZeroError("E-CONTENT-INCOMPLETE", detail="auditoria não disponível")
+                plan, quarantine_id = LibraryRootManager(selected_root).plan_quarantine(
                     audit, approved
                 )
                 self._pending[plan.plan_id] = _PendingMutation(
@@ -2875,22 +2965,37 @@ class EmulationController:
                 plan_extra["quarantineId"] = quarantine_id
             else:
                 plan = transaction.plan_write_files(
-                    {}, root=paths.data_home(), kind="emulation.library-root-audit"
+                    {},
+                    root=paths.data_home(),
+                    kind="emulation.library-root-audit",
+                    requirements_extra={
+                        "root": str(selected_root),
+                        "execution": "asynchronous" if defer_audit else "synchronous",
+                    },
                 )
                 self._pending[plan.plan_id] = _PendingMutation(
-                    "library-root-audit", {"root": str(selected_root), "audit": audit}
+                    "library-root-audit",
+                    {"root": str(selected_root), "audit": audit, "deferAudit": defer_audit},
                 )
-            plan_extra["auditPreview"] = audit
-            counts = audit["counts"]
-            plan_extra["preview"] = (
-                "Auditoria somente leitura; nenhum arquivo será apagado.\n"
-                f"Base: {counts['base']} · updates: {counts['update']} · "
-                f"DLC: {counts['dlc']} · duplicados: {counts['duplicate']} · "
-                f"incompatíveis: {counts['incompatible']} · "
-                f"corrompidos: {counts['corrupted']} · desconhecidos: {counts['unknown']}.\n"
-                "Para higienizar, selecione explicitamente itens não jogáveis do preview; "
-                "eles serão movidos para quarentena com manifesto, hashes e rollback."
-            )
+            if audit is not None:
+                plan_extra["auditPreview"] = audit
+                counts = audit["counts"]
+                plan_extra["preview"] = (
+                    "Auditoria somente leitura; nenhum arquivo será apagado.\n"
+                    f"Base: {counts['base']} · updates: {counts['update']} · "
+                    f"DLC: {counts['dlc']} · duplicados: {counts['duplicate']} · "
+                    f"incompatíveis: {counts['incompatible']} · "
+                    f"corrompidos: {counts['corrupted']} · desconhecidos: {counts['unknown']}.\n"
+                    "Para higienizar, selecione explicitamente itens não jogáveis do preview; "
+                    "eles serão movidos para quarentena com manifesto, hashes e rollback."
+                )
+            else:
+                plan_extra["auditPending"] = True
+                plan_extra["preview"] = (
+                    "Auditoria somente leitura será executada em tarefa assíncrona, com "
+                    "progresso e cancelamento. Nenhum arquivo será apagado. Após a conclusão, "
+                    "o preview completo permitirá selecionar conteúdo não jogável."
+                )
         elif action.startswith("library.root.rename:"):
             selected_root = self._root_from_action(action)
             games, _unidentified = self._load_library_cache()
@@ -2900,7 +3005,7 @@ class EmulationController:
                 if isinstance(game.get("path"), str)
                 and Path(str(game["path"])).is_relative_to(selected_root)
             ]
-            plan = SwitchRootManager(selected_root).plan_rename(games_in_root)
+            plan = LibraryRootManager(selected_root).plan_rename(games_in_root)
         elif action.startswith("library.root.remove:"):
             selected_root = self._root_from_action(action, require_accessible=False)
             plan = self._plan_root_remove(selected_root)
@@ -3611,6 +3716,7 @@ class EmulationController:
                 "media.audit",
                 "switch-library.rename",
                 "switch-library.quarantine",
+                "library.quarantine",
             }
             or plan.kind.startswith("media.")
         ):
@@ -3738,6 +3844,17 @@ class EmulationController:
                 self._start_background_job(job.id)
                 response["jobId"] = job.id
                 response["job"] = self._job_view(self._jobs.get(job.id) or job)
+            elif pending.kind == "vita-package":
+                job = self._jobs.create(
+                    "vita.package",
+                    params=dict(pending.metadata),
+                    priority="background",
+                    created_by="ui",
+                    constraints={"forbiddenDuringGameplay": True},
+                )
+                self._start_background_job(job.id)
+                response["jobId"] = job.id
+                response["job"] = self._job_view(self._jobs.get(job.id) or job)
             elif pending.kind == "firmware-download":
                 job = self._jobs.create(
                     "firmware.download",
@@ -3759,7 +3876,19 @@ class EmulationController:
             elif pending.kind == "library-root-scan":
                 response.update(self._scan_library_now())
             elif pending.kind == "library-root-audit":
-                response["auditPreview"] = pending.metadata["audit"]
+                if pending.metadata.get("deferAudit") is True:
+                    job = self._jobs.create(
+                        "library.audit",
+                        params={"root": pending.metadata["root"]},
+                        priority="background",
+                        created_by="ui",
+                        constraints={"forbiddenDuringGameplay": True},
+                    )
+                    self._start_background_job(job.id)
+                    response["jobId"] = job.id
+                    response["job"] = self._job_view(self._jobs.get(job.id) or job)
+                else:
+                    response["auditPreview"] = pending.metadata["audit"]
             elif pending.kind == "library-root-quarantine":
                 response["quarantineId"] = pending.metadata["quarantineId"]
             elif pending.kind == "projection-repair":
@@ -3917,6 +4046,8 @@ class EmulationController:
             "mod.catalog.prepare",
             "multidisc.materialize",
             "archive.materialize",
+            "library.audit",
+            "vita.package",
             "firmware.download",
         }:
             self._start_background_job(replacement.id)
@@ -3946,7 +4077,9 @@ class EmulationController:
             runner.register("extras.catalog.search", self._extra_catalog_search_job_handler)
             runner.register("mod.catalog.prepare", self._mod_catalog_prepare_job_handler)
             runner.register("multidisc.materialize", self._multidisc_materialize_job_handler)
+            runner.register("library.audit", self._library_audit_job_handler)
             runner.register("archive.materialize", self._archive_materialize_job_handler)
+            runner.register("vita.package", self._vita_package_job_handler)
             runner.register("firmware.download", self._firmware_download_job_handler)
             with self._background_lock:
                 self._background_runners[job_id] = runner
@@ -4309,7 +4442,7 @@ class EmulationController:
             kind.startswith("emulation.game-delete:")
             or kind.startswith("input-profile.")
             or kind in {"steam.shortcuts.sync", "steam.cloud-shortcuts.sync"}
-            or kind in {"switch-library.rename", "switch-library.quarantine"}
+            or kind in {"switch-library.rename", "switch-library.quarantine", "library.quarantine"}
             or kind in {"emulation.bios-link", "emulation.library-projection-repair"}
         )
         if not allowed:
@@ -6924,6 +7057,22 @@ class EmulationController:
     def _library_scan_job_handler(self, _job: Job, ctx: JobContext) -> dict[str, Any]:
         return self._scan_library_now(ctx)
 
+    def _library_audit_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
+        root = Path(str(job.params["root"]))
+        ctx.set_progress("prepare", current=0, total=1, unit="directories")
+        audit = LibraryRootManager(root).audit(
+            safepoint=ctx.safepoint,
+            progress=lambda current, total, item: ctx.set_progress(
+                "audit",
+                current=current,
+                total=total,
+                unit="directories",
+                current_item=item,
+            ),
+        )
+        ctx.set_progress("done", current=1, total=1, unit="directories")
+        return {"status": "audited", "auditPreview": audit}
+
     def _multidisc_materialize_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
         request = MaterializationRequest.from_mapping(job.params)
         ctx.set_progress("inspect", current=0, total=1, unit="sets")
@@ -6996,6 +7145,19 @@ class EmulationController:
                 "errors": refreshed.get("errors", []),
             }
         ctx.set_progress("done", current=1, total=1, unit="archives")
+        return result
+
+    def _vita_package_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
+        source_path = Path(str(job.params["sourcePath"]))
+        derived_root = Path(str(job.params["derivedRoot"]))
+        ctx.set_progress("inspect", current=0, total=1, unit="files")
+        package_plan = plan_from_app(source_path, derived_root=derived_root)
+        result = package_vita_app(package_plan)
+        ctx.set_progress("done", current=1, total=1, unit="files")
+        result["catalogRefresh"] = {
+            "status": "unchanged",
+            "reason": "a árvore .steamzero/derived é excluída do catálogo canônico",
+        }
         return result
 
     def _firmware_download_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:

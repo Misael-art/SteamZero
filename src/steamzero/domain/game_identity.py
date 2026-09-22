@@ -28,6 +28,7 @@ class IdentityScheme(Enum):
     WII_GAME_ID = "wii-game-id"
     PS3_TITLE_ID = "ps3-title-id"
     PS5_TITLE_ID = "ps5-title-id"
+    VITA_TITLE_ID = "vita-title-id"
     WIIU_PRODUCT_ID = "wiiu-product-id"
     PS2_ELF_CRC32 = "ps2-elf-crc32"
     UNKNOWN = "unknown"
@@ -50,6 +51,7 @@ _SCHEME_PATTERNS: dict[IdentityScheme, re.Pattern[str]] = {
     IdentityScheme.WII_GAME_ID: re.compile(r"^[A-Za-z0-9]{4}[A-Za-z0-9]{2}$"),
     IdentityScheme.PS3_TITLE_ID: re.compile(r"^[A-Za-z0-9]{4,9}$"),
     IdentityScheme.PS5_TITLE_ID: re.compile(r"^PPS[A-Z][0-9A-Z]{5,12}(?:_[0-9A-Z]{2})?$"),
+    IdentityScheme.VITA_TITLE_ID: re.compile(r"^[A-Z]{4}[0-9]{5}$"),
     IdentityScheme.WIIU_PRODUCT_ID: re.compile(r"^[A-Za-z0-9]{4,9}$"),
     IdentityScheme.PS2_ELF_CRC32: re.compile(r"^[0-9A-Fa-f]{8}$"),
     IdentityScheme.UNKNOWN: re.compile(r"^.*$", re.DOTALL),
@@ -66,6 +68,7 @@ _SCHEME_PLATFORMS: dict[IdentityScheme, frozenset[str]] = {
     IdentityScheme.WII_GAME_ID: frozenset({"nintendo-console"}),
     IdentityScheme.PS3_TITLE_ID: frozenset({"playstation-3"}),
     IdentityScheme.PS5_TITLE_ID: frozenset({"playstation-5"}),
+    IdentityScheme.VITA_TITLE_ID: frozenset({"playstation-vita"}),
     IdentityScheme.WIIU_PRODUCT_ID: frozenset({"wii-u"}),
     IdentityScheme.PS2_ELF_CRC32: frozenset({"playstation-2"}),
     IdentityScheme.UNKNOWN: frozenset(),
@@ -250,3 +253,11 @@ def identity_from_ps2_elf_crc32(crc: int) -> GameIdentity:
     if not validate_identity_value(IdentityScheme.PS2_ELF_CRC32, value):
         raise ValueError(f"CRC32 ELF inválido: {value!r}")
     return GameIdentity("playstation-2", IdentityScheme.PS2_ELF_CRC32, value)
+
+
+def identity_from_vita_title_id(title_id: str) -> GameIdentity | None:
+    """Identidade Vita pelo ``TITLE_ID`` do ``sce_sys/param.sfo``."""
+    candidate = title_id.strip().upper()
+    if not validate_identity_value(IdentityScheme.VITA_TITLE_ID, candidate):
+        return None
+    return GameIdentity("playstation-vita", IdentityScheme.VITA_TITLE_ID, candidate)
