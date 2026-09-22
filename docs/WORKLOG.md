@@ -12098,3 +12098,11 @@ Os títulos do grid, cabeçalho e relógio da cena default agora declaram
 text nodes** da cena em `1.5×` e verifica os três tamanhos escalados; a ponte
 shell→payload e o `Resolver` deixam de ser apenas metadados neste slice.
 Outras superfícies/contextos continuam abertas e nenhum host foi alterado.
+
+## 2026-09-22 — G15: recomputação seletiva da cena default
+
+O teste da cena default agora reutiliza um único `Resolver`, troca o snapshot
+de `visualScale` de `1.0` para `1.5` e exige que somente os **26** alvos
+`.fontScale` sejam recomputados; imagens, geometria, cores e conteúdo ficam em
+cache. A medição fecha o slice de invalidação da cena default, não G15 inteiro.
+Nenhum host foi alterado.

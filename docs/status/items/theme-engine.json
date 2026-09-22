@@ -390,6 +390,12 @@
       "reference": "tests/unit/test_default_theme.py",
       "command": ".venv/bin/python -m pytest -q tests/unit/test_default_theme.py tests/unit/test_resolved_text_node.py tests/unit/test_scene_resolver.py tests/unit/test_shell_bridge.py tests/integration/test_qml_theme_shell.py (168 passed); scene default 26 text nodes at visualScale 1.5",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_default_theme.py",
+      "command": ".venv/bin/python -m pytest -q tests/unit/test_default_theme.py tests/unit/test_shell_bridge.py tests/unit/test_scene_resolver.py (118 passed); visualScale 1.0→1.5 recomputes exactly 26 fontScale targets",
+      "result": "passed"
     }
   ],
   "nextAction": "Repetir medição física e fechar bridge→catálogo→render na release 2.0.0rc1-435f9108eeb7; investigar o staging órfão sem instalar durante a auditoria.",

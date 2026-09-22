@@ -61,9 +61,9 @@ def _resolver(read_model: dict[str, Any] | None = None) -> Resolver:
     )
 
 
-def _resolve_scene(root: Any) -> list[Any]:
+def _resolve_scene(root: Any, *, resolver: Resolver | None = None) -> list[Any]:
     """Resolve a cena inteira com UM resolver e UMA caixa de referência."""
-    resolver = _resolver()
+    resolver = resolver or _resolver()
     fonts = FontProvider(packaged={"default": FONT_FAMILY})
     box = LayoutBox(METRICS.canvas_width, METRICS.canvas_height)
     nodes: list[Any] = []
@@ -168,6 +168,22 @@ class TestResolution:
 
         assert len(text_nodes) == 2 + METRICS.cell_count
         assert {node.font_size for node in text_nodes} == {24.0, 51.0, 27.0}
+
+    def test_accessibility_change_recomputes_only_default_scene_font_scales(self) -> None:
+        resolver = _resolver()
+        root = build_default_scene()
+        _resolve_scene(root, resolver=resolver)
+        misses_before = resolver.stats.misses
+
+        affected = resolver.set_accessibility({"visualScale": 1.5}, generation="host-visual-1.5")
+        assert affected == {
+            f"{element.id}.fontScale"
+            for _depth, element in walk_tree(root)
+            if element.type == "text"
+        }
+
+        _resolve_scene(root, resolver=resolver)
+        assert resolver.stats.misses - misses_before == len(affected)
 
     def test_covers_resolve_to_package_assets(self) -> None:
         nodes = _resolve_scene(build_default_scene())
