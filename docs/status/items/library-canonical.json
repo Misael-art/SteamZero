@@ -36,7 +36,7 @@
     "tests/integration/test_qml_handheld_offscreen.py",
     "tests/integration/test_qml_visual_capture.py"
   ],
-  "scopeDigest": "06256237355ada950e497e0b9d6440746a1a5179de683e10137bceb441d8a42c",
+  "scopeDigest": "1f162b7daa38cafb0719f2128d7a61dcf956f21683c3186a9772b52f6fc7feb4",
   "dependsOn": [],
   "activeWorkstreams": [
     "WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT"
@@ -139,7 +139,7 @@
     {
       "kind": "test",
       "reference": "tests/unit/test_emulation_controller.py",
-      "command": "145 testes do controlador; 27 contratos desktop; 72 testes de harness QML; 48 testes visuais; Ruff e mypy sem erros",
+      "command": "146 testes do controlador; 27 contratos desktop; 72 testes de harness QML; 48 testes visuais; Ruff e mypy sem erros",
       "result": "passed"
     }
   ],

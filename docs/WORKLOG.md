@@ -12341,3 +12341,16 @@ Gates: 145 testes do controlador, 27 de contratos desktop, 72 de harness QML,
 48 do gate visual e Ruff/mypy sem erros. G55 foi reduzida: permanece apenas a
 otimização futura por índice incremental; não há amostragem nem perda de
 conteúdo.
+
+## 2026-09-22 — Cancelamento e custódia do workstream
+
+Foi acrescentada uma regressão de cancelamento cooperativo: uma auditoria
+`library.audit` em execução recebe o cancelamento, termina como `cancelled` e
+não produz preview parcial nem mutação nas ROMs. O catálogo de status passou a
+manter o workstream ativo `WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT`, com PR #229,
+escopo exclusivo, próxima ação e a distinção explícita entre software
+concluído e certificação física ainda pendente.
+
+Gates locais: três testes focados de auditoria, `STATUS-CHECK: OK`, Ruff,
+formatação, mypy e diff check sem erros. O CI anterior encontrou e foi corrigido
+um desvio de formatação; o novo workflow foi disparado para o commit corrigido.
