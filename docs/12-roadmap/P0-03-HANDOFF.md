@@ -168,15 +168,18 @@ Cada uma tem teste de regressão. Foram descobertas medindo, não supondo.
 
 1. **Migração das 388 propriedades** do corpus RetroFE. A fatia cobre texto; o
    corpus tem imagem, som, menu, timeline e eventos.
-2. **Árvore de cena.** Hoje a fatia é plana, e um teste reprova se alguém
-   introduzir `children` sem projeto.
+2. **Árvore de cena.** `children`, limites de profundidade/tamanho, ids únicos
+   e round-trip v2 já estão implementados; a migração dos elementos compostos
+   do corpus ainda não foi concluída.
 3. **Rich text.** Wrapping, elide, limite de linhas, auto-fit e `StyledText`
    seguro agora atravessam contrato → resolver → nó → adapter →
    `SceneText.qml`, com harness QML offscreen. A política fechada preserva
    somente `b/i/u/br` sem atributos, escapa texto literal e registra quando o
    adapter precisa sanitizar um DTO desserializado. Continua pendente migrar o
    corpus completo para declarar o formato onde necessário.
-4. **Acessibilidade** — ver G15: a geração existe, nenhum consumidor real.
+4. **Acessibilidade** — ver G15: bindings declarativos de acessibilidade e
+   `TypographySpec.fontScale` já atravessam Resolver → nó; falta a ponte do
+   snapshot do shell para todos os contextos e o uso amplo pelas superfícies.
 5. **Display além de largura/altura** — `safeArea`, `orientation`,
    `devicePixelRatio` e `aspectRatio` estão previstos e não implementados.
 

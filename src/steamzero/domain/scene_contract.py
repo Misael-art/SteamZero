@@ -269,6 +269,7 @@ class TypographySpec:
     fallback_by_script: dict[str, str] = field(default_factory=dict)
 
     font_size: Any = None
+    font_scale: Any = None
     font_weight: Any = None
     font_style: Any = None
     font_stretch: Any = None
@@ -290,6 +291,7 @@ class TypographySpec:
                 "fontFallback": list(self.font_fallback) or None,
                 "fallbackByScript": self.fallback_by_script or None,
                 "fontSize": self.font_size,
+                "fontScale": self.font_scale,
                 "fontWeight": self.font_weight,
                 "fontStyle": self.font_style,
                 "fontStretch": self.font_stretch,
@@ -655,6 +657,7 @@ CONTRACT_PROPERTY_TYPES: dict[str, ValueType] = {
     "fontFamily": ValueType.STRING,
     "fontAsset": ValueType.FONT,
     "fontSize": ValueType.NUMBER,
+    "fontScale": ValueType.NUMBER,
     "fontWeight": ValueType.NUMBER,
     "fontStyle": ValueType.STRING,
     "fontStretch": ValueType.STRING,

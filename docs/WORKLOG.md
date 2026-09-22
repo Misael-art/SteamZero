@@ -11886,3 +11886,20 @@ round-trip/UI com **142 passed**, e o teste QML de `SceneText` passou com
 `StyledText` e fallback `PlainText`. A declaração do formato ainda precisa
 ser aplicada ao corpus RetroFE conforme cada família for migrada. Nenhum host
 foi alterado.
+
+## 2026-09-22 — Consumidor declarativo da geração de acessibilidade
+
+O Resolver deixou de carregar uma geração `a11y` sem consumidor. O contrato
+agora publica os bindings fechados `accessibility.highContrast`,
+`accessibility.reducedMotion` e `accessibility.visualScale`, com defaults,
+validação de tipos e atualização read-only por `set_accessibility()`. A nova
+propriedade `TypographySpec.fontScale` resolve a escala antes de produzir o
+`ResolvedTextNode`, sem colocar lógica de acessibilidade no QML.
+
+O grafo registra dependências `a11y:<campo>`; mudar somente alto contraste
+invalida o alvo que o consome e preserva o cache de um alvo de token. Os testes
+direcionados fecharam com **208 passed**; a integração de resolver/cena e
+consumidores legados fechou com **444 passed**, e a matriz QML offscreen fechou
+com **48 passed**. A ponte que alimenta todos os contextos de resolução a
+partir do snapshot do shell e a adoção ampla pelas superfícies continuam
+abertas. Nenhum host foi alterado.

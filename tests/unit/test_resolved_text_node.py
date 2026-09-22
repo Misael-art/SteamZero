@@ -356,6 +356,24 @@ class TestDefaults:
         assert node.minimum_font_size == 18.0
         assert node.font_size == 40.0
 
+    def test_accessibility_font_scale_is_resolved_before_rendering(self) -> None:
+        resolver = _resolver()
+        assert resolver.set_accessibility({"visualScale": 1.5}) == frozenset()
+        node = build_text_node(
+            _element(
+                typography=TypographySpec(
+                    font_family="Gilroy",
+                    font_size=20,
+                    font_scale=value.bind("accessibility.visualScale"),
+                )
+            ),
+            resolver=resolver,
+            box=LayoutBox(1920, 1080),
+            fonts=FontProvider({"Gilroy": "Gilroy"}),
+        )
+        assert node.font_size == 30.0
+        assert node.resolution_diagnostics == ()
+
     def test_styled_text_is_sanitized_before_it_reaches_the_dto(self) -> None:
         node = _build(
             text_content='<b>Chrono</b><img src="/etc/passwd"> <a href="x">Trigger</a>',

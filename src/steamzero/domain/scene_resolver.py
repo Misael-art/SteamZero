@@ -30,6 +30,11 @@ from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import Any
 
+from steamzero.domain.scene_accessibility import (
+    ACCESSIBILITY_FIELDS,
+    DEFAULT_ACCESSIBILITY,
+    normalize_accessibility,
+)
 from steamzero.domain.scene_contract import DimensionUnit, DimensionValue
 from steamzero.domain.scene_display import DISPLAY_FIELDS, DisplaySpec
 from steamzero.domain.scene_registry import Registries, ResolutionPhase
@@ -265,6 +270,7 @@ class ResolutionContext:
     generations: Generations = field(default_factory=Generations)
     theme_id: str | None = None
     display: DisplaySpec = field(default_factory=DisplaySpec)
+    accessibility: Mapping[str, Any] = field(default_factory=lambda: dict(DEFAULT_ACCESSIBILITY))
 
 
 @dataclass(frozen=True)
@@ -495,6 +501,7 @@ class Resolver:
 
     def __init__(self, context: ResolutionContext) -> None:
         self._context = context
+        self._context.accessibility = normalize_accessibility(context.accessibility)
         self._cache: dict[tuple[Any, ...], Resolved] = {}
         #: Impressão de geração de cada entrada. Guardada ao lado, e não na
         #: chave, porque a chave precisa ser encontrável ANTES de sabermos quais
@@ -756,6 +763,42 @@ class Resolver:
             self._batched |= affected
         return frozenset(affected)
 
+    def set_accessibility(
+        self,
+        values: Mapping[str, Any] | None,
+        *,
+        generation: str | None = None,
+    ) -> frozenset[str]:
+        """Atualiza acessibilidade e invalida somente consumidores a11y.
+
+        O host pode publicar um marcador de geração próprio; quando não há um,
+        a forma normalizada dos três campos produz um marcador determinístico.
+        Valores iguais não invalidam nada, mesmo se o host trocar apenas seu
+        marcador externo.
+        """
+        self._assert_owner_thread()
+        normalized = normalize_accessibility(values)
+        current = self._context.accessibility
+        changed = frozenset(
+            field for field in ACCESSIBILITY_FIELDS if current.get(field) != normalized.get(field)
+        )
+        if not changed:
+            return frozenset()
+
+        marker = generation or repr(tuple(sorted(normalized.items())))
+        affected: set[str] = set()
+        for accessibility_field in changed:
+            affected |= self.graph.dependents_of(f"a11y:{accessibility_field}")
+
+        self._context.accessibility = normalized
+        self._context.generations = replace(self._context.generations, accessibility=marker)
+        affected_frozen = frozenset(affected)
+        if affected_frozen and not self._batch_depth:
+            self._drop(affected_frozen)
+        elif affected_frozen:
+            self._batched |= affected_frozen
+        return affected_frozen
+
     def resolve_dimension(
         self,
         dimension: Any,
@@ -946,6 +989,10 @@ class Resolver:
             return self._resolve_display(
                 value, path, expected, dependencies, trail, reference, target
             )
+        if path.startswith("accessibility."):
+            return self._resolve_accessibility(
+                value, path, expected, dependencies, trail, reference, target
+            )
 
         dependencies.add(f"bind:{path}")
         if path in self._context.read_model:
@@ -1006,6 +1053,53 @@ class Resolver:
             )
         dependencies.add(f"display:{field}")
         return getter(self._context.display), False, ResolutionPhase.RUNTIME
+
+    def _resolve_accessibility(
+        self,
+        value: dict[str, Any],
+        path: str,
+        expected: ValueType,
+        dependencies: set[str],
+        trail: tuple[str, ...],
+        reference: SourceReference | None,
+        target: str,
+    ) -> tuple[Any, bool, ResolutionPhase]:
+        """Bindings accessibility.*: host preference with group invalidation."""
+        field = path.removeprefix("accessibility.")
+        declared_type = ACCESSIBILITY_FIELDS.get(field)
+        if declared_type is None:
+            return self._fallback_or_fail(
+                value,
+                expected,
+                dependencies,
+                trail,
+                reference,
+                target,
+                DIAG_UNKNOWN_BINDING,
+                f"campo de acessibilidade desconhecido: {field}",
+            )
+        if expected is not declared_type:
+            raise ResolutionError(
+                DIAG_TYPE,
+                f"accessibility.{field} produz {declared_type.value}, "
+                f"mas {expected.value} era esperado",
+                reference=reference,
+            )
+        dependencies.add(f"a11y:{field}")
+        if field in self._context.accessibility:
+            resolved = self._context.accessibility[field]
+            self._check(resolved, expected, reference)
+            return resolved, False, ResolutionPhase.RUNTIME
+        return self._fallback_or_fail(
+            value,
+            expected,
+            dependencies,
+            trail,
+            reference,
+            target,
+            DIAG_UNKNOWN_BINDING,
+            f"campo de acessibilidade indisponível: {field}",
+        )
 
     def _resolve_asset(
         self,

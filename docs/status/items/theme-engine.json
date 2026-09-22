@@ -9,12 +9,15 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "30ad45778b35ceaf59f738cc65b188ecee14c59bec8859bcc43869150f7f67c1",
+  "scopeDigest": "41558d017b067c85b1dd2dc22b96f6ff434ef5fce5707c92614b8a373e231f54",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
     "src/steamzero/domain/themes.py",
     "src/steamzero/domain/scene_contract.py",
+    "src/steamzero/domain/scene_accessibility.py",
+    "src/steamzero/domain/scene_registry.py",
+    "src/steamzero/domain/scene_resolver.py",
     "src/steamzero/domain/scene_display.py",
     "src/steamzero/domain/scene_layout.py",
     "src/steamzero/domain/scene_motion.py",
@@ -48,6 +51,7 @@
     "tests/unit/test_asset_recipes.py",
     "tests/unit/test_theme_effects.py",
     "tests/unit/test_scene_contract.py",
+    "tests/unit/test_scene_resolver.py",
     "tests/unit/test_resolved_text_node.py",
     "tests/unit/test_scene_text_security.py",
     "tests/unit/test_qml_render_model.py",
@@ -67,6 +71,7 @@
     "tests/qml/golden/asset-recipes",
     "tests/integration/test_qml_asset_recipes.py",
     "tests/integration/test_scene_round_trip.py",
+    "tests/integration/test_resolver_lifecycle.py",
     "tests/integration/test_qml_scene_harness.py",
     "tests/qml/check_scene_text.qml",
     "docs/12-roadmap/P0-03-HANDOFF.md",
@@ -319,6 +324,24 @@
       "kind": "test",
       "reference": "tests/unit/test_scene_text_security.py",
       "command": "PYTHONPATH=src python3 -m pytest -q tests/unit/test_scene_text_security.py tests/unit/test_resolved_text_node.py tests/unit/test_qml_render_model.py tests/unit/test_scene_contract.py (199 passed); PYTHONPATH=src:/opt/steamzero/current/venv/lib/python3.14/site-packages python3 -m pytest -q tests/integration/test_scene_round_trip.py tests/integration/test_qml_handheld_offscreen.py::test_scene_text_renders_what_the_adapter_emits tests/integration/test_ui_action_inventory.py tests/integration/test_ui_dialog_coverage.py (142 passed)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_scene_resolver.py",
+      "command": "PYTHONPATH=src python3 -m pytest -q tests/unit/test_scene_resolver.py tests/unit/test_scene_typing.py tests/integration/test_resolver_lifecycle.py tests/integration/test_scene_round_trip.py tests/unit/test_default_theme.py tests/unit/test_qml_render_model.py tests/unit/test_scene_text_security.py (444 passed)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_qml_handheld_offscreen.py",
+      "command": "PYTHONPATH=src python3 -m pytest -q tests/integration/test_qml_handheld_offscreen.py (48 passed)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_scene_contract.py",
+      "command": "PYTHONPATH=src python3 -m pytest -q tests/unit/test_scene_resolver.py tests/unit/test_scene_contract.py tests/unit/test_resolved_text_node.py (208 passed)",
       "result": "passed"
     }
   ],

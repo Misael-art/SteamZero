@@ -110,6 +110,22 @@ class TestResolutionOfEachOrigin:
         candidate = value.when(value.has_capability("video.hdr"), 1.0, 0.5)
         assert resolver.resolve(candidate, ValueType.NUMBER, target="a").value == 1.0
 
+    def test_accessibility_binding_reads_the_host_contract(self) -> None:
+        resolver = Resolver(
+            _context(
+                accessibility={
+                    "highContrast": True,
+                    "reducedMotion": True,
+                    "visualScale": 1.5,
+                }
+            )
+        )
+        result = resolver.resolve(
+            value.bind("accessibility.visualScale"), ValueType.NUMBER, target="title.fontScale"
+        )
+        assert result.value == 1.5
+        assert result.dependencies == frozenset({"a11y:visualScale"})
+
 
 class TestDependencyInvalidation:
     """Mudança localizada não pode recompilar a cena inteira."""
@@ -151,6 +167,31 @@ class TestDependencyInvalidation:
     def test_graph_reports_dependencies_of_a_target(self) -> None:
         resolver = self._prepared()
         assert "token:color.accent" in resolver.graph.dependencies_of("badge.color")
+
+    def test_accessibility_update_invalidates_only_a11y_consumers(self) -> None:
+        context = _context()
+        resolver = Resolver(context)
+        a11y_value = value.bind("accessibility.highContrast")
+        token_value = value.token("color.accent")
+        resolver.resolve(a11y_value, ValueType.BOOLEAN, target="title.highContrast")
+        resolver.resolve(token_value, ValueType.COLOR, target="badge.color")
+        assert resolver.set_accessibility({"highContrast": True}, generation="host-2") == {
+            "title.highContrast"
+        }
+        resolver.resolve(a11y_value, ValueType.BOOLEAN, target="title.highContrast")
+        resolver.resolve(token_value, ValueType.COLOR, target="badge.color")
+        assert resolver.stats.misses == 3
+        assert resolver.stats.hits == 1
+
+    def test_same_accessibility_values_do_not_invalidate(self) -> None:
+        resolver = Resolver(_context())
+        expression = value.bind("accessibility.visualScale")
+        resolver.resolve(expression, ValueType.NUMBER, target="title.fontScale")
+        assert (
+            resolver.set_accessibility({"visualScale": 1.0}, generation="new-marker") == frozenset()
+        )
+        resolver.resolve(expression, ValueType.NUMBER, target="title.fontScale")
+        assert resolver.stats.hits == 1
 
 
 class TestCacheKeyFollowsTheDependencies:

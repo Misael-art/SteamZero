@@ -323,6 +323,16 @@ class TestElementContract:
         assert parsed.text_layout is not None
         assert parsed.text_layout.text_format is TextFormat.STYLED
 
+    def test_font_scale_round_trips_as_typography_value(self) -> None:
+        element = self._element()
+        assert element.typography is not None
+        element.typography.font_scale = 1.5
+        payload = element.to_dict()
+        assert payload["typography"]["fontScale"] == 1.5
+        parsed = element_from_dict(payload)
+        assert parsed.typography is not None
+        assert parsed.typography.font_scale == 1.5
+
     def test_conditional_color_is_kept_structured(self) -> None:
         """O que boundText/boundImage impedia."""
         color = self._element().to_dict()["typography"]["color"]

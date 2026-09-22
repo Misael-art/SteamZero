@@ -100,6 +100,14 @@ def _non_negative_number(value: Any, *, default: float = 0.0) -> float:
     return float(value)
 
 
+def _positive_number(value: Any, *, default: float = 1.0) -> float:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return default
+    if not math.isfinite(float(value)) or value <= 0:
+        return default
+    return float(value)
+
+
 #: Peso numérico de volta para o nome canônico. Temas declaram 400, 700; o nó
 #: guarda o nome, que não depende da convenção de nenhum backend.
 _WEIGHT_BY_NUMBER = {
@@ -256,6 +264,10 @@ def build_text_node(
     font_size = resolve(
         typography.font_size if typography else None, ValueType.NUMBER, "fontSize", 16.0
     )
+    font_scale = _positive_number(
+        resolve(typography.font_scale if typography else None, ValueType.NUMBER, "fontScale", 1.0)
+    )
+    font_size = float(font_size) * font_scale
     family = resolve(
         typography.font_family if typography else None, ValueType.STRING, "fontFamily", None
     )

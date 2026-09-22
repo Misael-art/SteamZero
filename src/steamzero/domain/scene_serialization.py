@@ -217,6 +217,7 @@ _SNAKE = {
     "fontAsset": "font_asset",
     "fontFallback": "font_fallback",
     "fontSize": "font_size",
+    "fontScale": "font_scale",
     "fontWeight": "font_weight",
     "fontStyle": "font_style",
     "lineHeight": "line_height",
