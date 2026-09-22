@@ -24,7 +24,11 @@ from typing import Any
 
 import pytest
 
-from steamzero.domain.qml_render_model import AdaptationStatus, to_render_model
+from steamzero.domain.qml_render_model import (
+    AdaptationStatus,
+    to_image_render_model,
+    to_render_model,
+)
 from steamzero.domain.resolved_node import FontOrigin
 from steamzero.domain.retrofe_declarations import (
     OriginKind,
@@ -37,7 +41,12 @@ from steamzero.domain.scene_registry import default_registries
 from steamzero.domain.scene_resolver import ResolutionContext, Resolver
 from steamzero.domain.scene_typing import SourceReference
 from steamzero.domain.scene_value import Verdict
-from steamzero.domain.text_node_builder import FontProvider, LayoutBox, build_text_node
+from steamzero.domain.text_node_builder import (
+    FontProvider,
+    LayoutBox,
+    build_image_node,
+    build_text_node,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -348,6 +357,16 @@ class TestNegativeFixtureDegradesWithoutCollapsing:
         element = next(item for item in negative[1].elements if item.text_content == "cor inválida")
         assert element.typography is None or element.typography.color is None
 
+    def test_an_image_path_cannot_escape_the_theme_package(self) -> None:
+        declarations = collect_declarations(
+            '<image src="../outside.png"/>', file="retrofe/unsafe.xml"
+        )
+        result = TextSliceCompiler().compile(declarations)
+        item = declarations.declarations[0]
+        assert result.verdicts[item.declaration_id] is Verdict.INVALID
+        image = result.elements[0]
+        assert image.image_content is None
+
 
 class TestPipelineReachesTheRenderer:
     """Da declaração até o modelo que o QML consome, passando pela serialização."""
@@ -374,6 +393,20 @@ class TestPipelineReachesTheRenderer:
         assert result.status is AdaptationStatus.SUCCESS
         assert result.require_model().color == "#f2f6fb"
         assert node.color == "#f2f6fb"
+
+    def test_a_retrofe_image_source_reaches_the_qml_image_model(
+        self, negative: tuple[Any, SliceResult]
+    ) -> None:
+        element = next(item for item in negative[1].elements if item.type == "image")
+        resolver = Resolver(
+            ResolutionContext(
+                registries=default_registries(),
+                assets=frozenset({"assets/logo.png"}),
+            )
+        )
+        node = build_image_node(element, resolver=resolver, box=LayoutBox(*CANVAS))
+        model = to_image_render_model(node).require_model()
+        assert model.source == "assets/logo.png"
 
     def test_a_token_colour_is_resolved_before_the_boundary(
         self, positive: tuple[Any, SliceResult]
@@ -561,8 +594,11 @@ class TestScopeLimitsAreHonest:
             "a fatia é estreita de propósito; o corpus de 388 é do P0-03"
         )
 
-    def test_only_text_elements_are_compiled(self, negative: tuple[Any, SliceResult]) -> None:
+    def test_text_and_static_image_elements_are_compiled(
+        self, negative: tuple[Any, SliceResult]
+    ) -> None:
         declarations, result = negative
         image = next(item for item in declarations.declarations if item.raw_value == "logo.png")
-        assert result.verdicts[image.declaration_id] is Verdict.UNSUPPORTED
-        assert all(element.type == "text" for element in result.elements)
+        assert result.verdicts[image.declaration_id] is Verdict.EXACT
+        assert any(element.type == "image" for element in result.elements)
+        assert all(element.type in {"text", "image"} for element in result.elements)

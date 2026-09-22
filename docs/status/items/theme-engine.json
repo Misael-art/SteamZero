@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "bb3f6289d610edc0a95ce0eab06a975d9948940d849d54da20a1c354352ab261",
+  "scopeDigest": "4fd997a15709a8ff40fc39ad4a52a1e432137ec419ce7446bb72691225c03f78",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -377,6 +377,12 @@
       "kind": "test",
       "reference": "tests/integration/test_retrofe_vertical_slice.py",
       "command": ".venv/bin/python -m pytest -q tests/unit/test_scene_resolver.py tests/unit/test_scene_contract.py tests/unit/test_resolved_text_node.py tests/unit/test_qml_render_model.py tests/unit/test_theme_migration_audit.py tests/integration/test_scene_round_trip.py tests/integration/test_resolver_lifecycle.py tests/integration/test_retrofe_vertical_slice.py (561 passed); tests/integration/test_qml_handheld_offscreen.py (48 passed)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_retrofe_vertical_slice.py",
+      "command": ".venv/bin/python -m pytest -q tests/unit/test_theme_migration_audit.py tests/integration/test_retrofe_vertical_slice.py (75 passed); tools/audit_theme_migration.py reports vs04_negative 73/73 migrated, media 1/1",
       "result": "passed"
     }
   ],

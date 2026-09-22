@@ -1,4 +1,4 @@
-# P0-03 — Handoff da fatia vertical de texto
+# P0-03 — Handoff da fatia vertical de texto e imagem estática
 
 **Estado:** fatia vertical fechada de ponta a ponta. **P0-03 NÃO está completo** —
 faltam a migração das 388 propriedades do corpus RetroFE e as etapas seguintes.
@@ -52,7 +52,9 @@ de projeto.
 
 A auditoria executável (`python tools/audit_theme_migration.py`) é o corpo do
 gate de escopo: relata por área quantas declarações reais têm tradutor e a
-lista nominal do que ficou para trás (hoje, nas fixtures, apenas `src`).
+lista nominal do que ficou para trás. A fatia cobre 13 atributos nas fixtures:
+12 de texto e `image.src`, que atravessa o mesmo contrato de asset do pipeline
+canônico de imagens.
 
 ## PR 2 tema default — tema renderizável (2026-08-03)
 
@@ -166,8 +168,8 @@ Cada uma tem teste de regressão. Foram descobertas medindo, não supondo.
 
 ## O que falta para fechar o P0-03
 
-1. **Migração das 388 propriedades** do corpus RetroFE. A fatia cobre texto; o
-   corpus tem imagem, som, menu, timeline e eventos.
+1. **Migração das 388 propriedades** do corpus RetroFE. A fatia cobre texto e
+   `image.src`; o corpus tem ainda imagem dinâmica, som, menu, timeline e eventos.
 2. **Árvore de cena.** `children`, limites de profundidade/tamanho, ids únicos
    e round-trip v2 já estão implementados; a migração dos elementos compostos
    do corpus ainda não foi concluída.

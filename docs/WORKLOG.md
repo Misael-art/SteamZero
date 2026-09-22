@@ -12081,3 +12081,12 @@ reservados aos workstreams exclusivos. Nenhum host foi alterado.
 defaults, escala 1.5, alto contraste e marcador de geração do host. Isto fecha
 somente a borda shell→payload; a propagação para todos os contextos e a medição
 da recomputação da cena completa continuam abertas. Nenhum host foi alterado.
+
+## 2026-09-22 — P0-03: imagem estática RetroFE até o modelo QML
+
+`image.src` deixou de ser o único atributo sem tradutor nas fixtures do P0-03:
+o caminho relativo é validado e publicado como `asset("assets/...")`, com
+recusa de absoluto, esquema e travessia. O teste vertical resolve o asset até
+`QmlImageRenderModel`; a auditoria agora mede **13 atributos** na fatia (12 de
+texto + `image.src`), enquanto o corpus completo de 388 continua aberto.
+Nenhum host foi alterado.

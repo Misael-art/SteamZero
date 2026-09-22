@@ -27,6 +27,7 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass, field
+from pathlib import PurePosixPath
 from typing import Any, ClassVar
 
 from steamzero.domain import scene_value as value
@@ -45,7 +46,7 @@ from steamzero.domain.scene_contract import (
     TypographySpec,
 )
 from steamzero.domain.scene_registry import forbidden_namespace
-from steamzero.domain.scene_value import TranslationLog, Verdict
+from steamzero.domain.scene_value import TranslationLog, Verdict, asset
 
 #: Cor do RetroFE: seis dígitos hexadecimais, sem `#`. Oito com alfa aparece em
 #: temas mais novos.
@@ -161,7 +162,7 @@ def _dimension(raw: str) -> DimensionValue:
 
 
 class TextSliceCompiler:
-    """Traduz declarações de texto do RetroFE para o contrato canônico."""
+    """Traduz declarações de texto e imagem estática para o contrato canônico."""
 
     def __init__(
         self,
@@ -198,7 +199,7 @@ class TextSliceCompiler:
         reference = group[0].source_reference
         by_name = {item.property_name: item for item in group}
 
-        if tag not in {"text", "reloadableText"}:
+        if tag not in {"text", "reloadableText", "image"}:
             # Fora da fatia. Continua recebendo veredito: um elemento ignorado
             # sem julgamento sumiria do relatório junto com tudo que declarou.
             for item in group:
@@ -242,6 +243,16 @@ class TextSliceCompiler:
             )
 
         z_index = layout.pop("__z_index", None)
+        image_content = layout.pop("__image_content", None)
+        if tag == "image":
+            return ElementContract(
+                id=f"{tag}-{index}",
+                type="image",
+                source_reference=reference,
+                image_content=image_content,
+                layout=LayoutSpec(**layout),
+                z_index=z_index,
+            )
         return ElementContract(
             id=f"{tag}-{index}",
             type="text",
@@ -487,6 +498,51 @@ class TextSliceCompiler:
         layout["__z_index"] = layer
         result.record(item, Verdict.EXACT, target="zIndex")
 
+    def _source(
+        self,
+        item: SourceDeclaration,
+        _by_name: dict[str, SourceDeclaration],
+        _typography: dict[str, Any],
+        _text_layout: dict[str, Any],
+        layout: dict[str, Any],
+        result: SliceResult,
+    ) -> None:
+        """Converte ``image src`` em asset relativo ao pacote do tema."""
+        if item.element != "image":
+            result.record(
+                item,
+                Verdict.UNSUPPORTED,
+                target="image_content",
+                detail="src só tem tradução no elemento image",
+            )
+            return
+        raw = item.raw_value.strip()
+        if not raw or raw.startswith(("/", "~")) or "://" in raw:
+            result.record(
+                item,
+                Verdict.INVALID,
+                target="image_content",
+                detail=f"asset RetroFE {item.raw_value!r} não é relativo ao tema",
+            )
+            return
+        relative = PurePosixPath(raw)
+        if any(part in {"", ".", ".."} for part in relative.parts):
+            result.record(
+                item,
+                Verdict.INVALID,
+                target="image_content",
+                detail=f"asset RetroFE {item.raw_value!r} contém travessia",
+            )
+            return
+        logical_path = raw if raw.startswith("assets/") else f"assets/{raw}"
+        try:
+            image = asset(logical_path)
+        except ValueError as exc:
+            result.record(item, Verdict.INVALID, target="image_content", detail=str(exc))
+            return
+        layout["__image_content"] = image
+        result.record(item, Verdict.EXACT, target="image_content")
+
     #: Propriedades julgadas no corpo de `_element`, e não por atributo isolado:
     #: o conteúdo do texto depende do elemento inteiro.
     _DEFERRED = frozenset({"value", "type"})
@@ -505,4 +561,5 @@ TextSliceCompiler._HANDLERS = {
     "width": TextSliceCompiler._geometry,
     "height": TextSliceCompiler._geometry,
     "layer": TextSliceCompiler._layer,
+    "src": TextSliceCompiler._source,
 }

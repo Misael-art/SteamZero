@@ -51,10 +51,9 @@ class TestMigratedScope:
         ):
             assert name in migrated, name
 
-    def test_untouched_corpus_names_are_not_migrated(self) -> None:
+    def test_static_image_source_is_migrated(self) -> None:
         migrated = slice_migrated_properties()
-        for name in ("src",):
-            assert name not in migrated, name
+        assert "src" in migrated
 
     def test_the_corpus_constant_is_the_gates_constant(self) -> None:
         assert CORPUS_PROPERTY_COUNT == 388
@@ -91,7 +90,7 @@ class TestCategoryTable:
 class TestFixtureAudit:
     @pytest.mark.parametrize(
         ("fixture", "declared", "not_migrated"),
-        [("vs04_positive", 65, ()), ("vs04_negative", 73, ("src",))],
+        [("vs04_positive", 65, ()), ("vs04_negative", 73, ())],
     )
     def test_the_fixture_audit_is_consistent(
         self, fixture: str, declared: int, not_migrated: tuple[str, ...]
@@ -113,12 +112,12 @@ class TestFixtureAudit:
             assert migrated == audit.migrated
 
     def test_fidelity_is_per_area_not_aggregated(self) -> None:
-        """Fidelidade agregada esconderia que a área de mídia está em zero."""
+        """Fidelidade agregada esconderia uma área de mídia parcialmente migrada."""
         audit = audit_migration(_fixture("vs04_negative"))
         media = next(f for f in audit.by_category if f.category is Category.MEDIA)
         assert media.declared >= 1
-        assert media.migrated == 0
-        assert media.fidelity == 0.0
+        assert media.migrated == media.declared
+        assert media.fidelity == 1.0
 
     def test_the_audit_is_deterministic(self) -> None:
         first = audit_migration(_fixture("vs04_positive"))
@@ -131,7 +130,7 @@ class TestFixtureAudit:
         assert payload["sourcePropertyCount"] == 65
         assert payload["corpusPropertyCount"] == 388
         assert payload["corpusGateOk"] is True
-        assert "src" in audit_migration(_fixture("vs04_negative")).to_dict()["notMigrated"]
+        assert audit_migration(_fixture("vs04_negative")).to_dict()["notMigrated"] == []
 
     def test_the_audit_reports_declared_only(self) -> None:
         """Default, herdado e derivado não são declaração e não entram no relatório."""
