@@ -163,3 +163,19 @@ Duas lacunas registradas nesta preparação, ambas P1 e nenhuma resolvida aqui:
 **G44** (credencial em coleção efêmera do chaveiro some e o produto reporta
 "não configurado") e **G45** (instalação de emulador nunca vista concluir;
 RetroArch falha por commit pinado indisponível).
+
+## Release instalada — 2.0.0rc1-504d10b14485
+
+| Release | Commit exato | SHA-256 do wheel | Estado |
+|---|---|---|---|
+| `2.0.0rc1-504d10b14485` | `504d10b144851b70eab99d1fad7110ae34e88f84` | `d55ea7a2ae97accc2aaf8a98abbbcf67468f648ae486dd9712054489d3fe2476` | **instalada no host em 2026-09-22**; CI run `35712683583` verde; bundle preparada/verificada e source tree limpo |
+
+A instalação governada usou o bundle `/tmp/steamzero-release-504d10b1` e o
+token de confirmação `INSTALAR-2.0.0rc1-504d10b14485`. O rollback imediato é
+`2.0.0rc1-13c933c30ace`. A primeira convergência confirmou o daemon exato com
+`attempts=1` e `restarted=true`; a repetição idempotente confirmou a mesma
+identidade com `attempts=0` e `restarted=false`. O doctor ficou `ok=true` e
+`degraded`, sem blockers, operações pendentes, jobs stale ou órfãos; permanecem
+somente os warnings operacionais não bloqueantes de `deck.input.keys=false` e
+`bootDirect=unknown`. A evidência completa está em
+`/home/misael/.local/state/steamzero/release-automation/2.0.0rc1-504d10b14485.json`.

@@ -12139,3 +12139,24 @@ com `qt6-svg 6.11.2-1`, lock/hash atualizado e digest fixado; `EditorialLibrary`
 passou a usar `StackLayout` para que carrossel, grade e lista compartilhem uma
 única geometria ativa. Os harnesses exatos na imagem publicada passaram para
 3/3 nos cenários G36 (normal, 37 sistemas e escala 2). O host não foi alterado.
+
+## 2026-09-22 — Release governada instalada e verificada no host
+
+Bundle preparada e verificada para o commit canônico
+`504d10b144851b70eab99d1fad7110ae34e88f84`, com CI run `35712683583` verde.
+A release `2.0.0rc1-504d10b14485` foi instalada pelo fluxo governado, com
+rollback `2.0.0rc1-13c933c30ace`; wheel SHA-256
+`d55ea7a2ae97accc2aaf8a98abbbcf67468f648ae486dd9712054489d3fe2476`,
+requirements SHA-256
+`33c7f0695912072782a82da262ecbe7a54f161b9d047774c8776f1cb9ab251da0` e
+installer SHA-256
+`bac9f32d13c6b9b8ea6abab7b4f88747ca0cdc36fef5166783357e45d13affcf`.
+A primeira convergência confirmou o daemon com `attempts=1` e `restarted=true`;
+a segunda foi idempotente, com `attempts=0` e `restarted=false`, mantendo a
+mesma identidade da release e do commit. A verificação independente confirmou
+host/package/daemon no commit exato, `sourceTreeState: clean`, hashes iguais
+entre `src/` e `/opt/steamzero/current` para os módulos comparados, e doctor
+`ok=true`, `degraded`, sem blockers, pending, stale ou orphan. Permanecem
+somente os warnings não bloqueantes `deck.input.keys=false` e
+`bootDirect=unknown`. Evidência completa:
+`/home/misael/.local/state/steamzero/release-automation/2.0.0rc1-504d10b14485.json`.

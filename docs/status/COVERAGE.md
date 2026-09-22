@@ -62,7 +62,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-FRONTEND-SRM | 3 | 1 | 1 | unit |  |
 | SZ-FRONTEND-STEAM-SHORTCUTS | 2 | 1 | 1 | unit |  |
 | SZ-GAMEMODE-READINESS | 9 | 2 | 1 | hw |  |
-| SZ-GOVERNANCE-STATUS | 22 | 8 | 7 | dev |  |
+| SZ-GOVERNANCE-STATUS | 22 | 9 | 8 | dev |  |
 | SZ-HOST-UPDATE-TRANSACTIONAL | 18 | 12 | 9 | hw |  |
 | SZ-JOB-RECOVERY-DOCTOR | 10 | 3 | 1 | dev |  |
 | SZ-LIBRARY-CANONICAL | 89 | 10 | 7 | dev |  |
@@ -87,7 +87,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-SHARPEMU-COMPONENT-SMOKE-CONTRACT | 3 | 1 | 1 | unit |  |
 | SZ-SYSTEM-DIAGNOSTICS-GUIDANCE | 5 | 5 | 3 | dev |  |
 | SZ-TEST-STATE-ISOLATION | 4 | 4 | 4 | dev |  |
-| SZ-THEME-ENGINE | 125 | 48 | 44 | hw |  |
+| SZ-THEME-ENGINE | 125 | 49 | 45 | hw |  |
 | SZ-THEME-ESDE-SCENE-RENDER | 26 | 11 | 8 | hw |  |
 | SZ-THEME-IMPORT-ESDE-LAYOUT | 32 | 10 | 10 | hw |  |
 | SZ-THEME-IMPORT-RETROFE | 10 | 10 | 9 | hw |  |

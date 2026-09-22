@@ -5,10 +5,10 @@
   "title": "Estado verificavel e coordenacao de trabalho",
   "domain": "governance",
   "implementation": "complete",
-  "integration": "feature-branch",
+  "integration": "integrated",
   "verification": "dev",
-  "operation": "ready",
-  "distribution": "not-packaged",
+  "operation": "degraded",
+  "distribution": "installed",
   "scopePaths": [
     ".github/workflows/ci.yml",
     "AGENTS.md",
@@ -33,7 +33,7 @@
     "pyproject.toml",
     "docs/09-operations/HANDOFF-2026-08-27.md"
   ],
-    "scopeDigest": "50698cf6385f4e6869383af9fd91732db30b3ca4c4454c39abd71096d549fc3d",
+    "scopeDigest": "c7fe4f2319fac1b97acafff31a61e8881eb6b7d6d8ef5f16a16298befb3a0387",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -90,9 +90,15 @@
       "reference": "tests/unit/test_project_status.py",
       "command": "Renovacao 2026-09-10 (WS-2026-09-PS4-SHADPS4): CAPABILITY-MATRIX.md regravado com o shadps4 (denominador 16->17 com teste); test_project_status reexecutado apos render",
       "result": "passed"
+    },
+    {
+      "kind": "release",
+      "reference": "/home/misael/.local/state/steamzero/release-automation/2.0.0rc1-504d10b14485.json",
+      "command": "2026-09-22: release governada 2.0.0rc1-504d10b14485 instalada do commit 504d10b144851b70eab99d1fad7110ae34e88f84; CI run 35712683583 verde; wheel SHA256 d55ea7a2ae97accc2aaf8a98abbbcf67468f648ae486dd9712054489d3fe2476; rollback 2.0.0rc1-13c933c30ace; primeira convergencia attempts=1/restarted=true e segunda idempotente attempts=0/restarted=false, daemon confirmou a identidade exata; doctor ok=true degraded, sem blockers, pending, stale ou orphan",
+      "result": "passed"
     }
   ],
-  "nextAction": "Manter status-check e WORKLOG append-only verdes apos harmonizacao a45.",
+  "nextAction": "Manter status-check e WORKLOG append-only verdes; repetir apenas as provas fisicas restantes com a release 2.0.0rc1-504d10b14485 instalada.",
   "activeWorkstreams": [
     "WS-2026-08-HARMONIZE-A45"
   ],
