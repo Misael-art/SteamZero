@@ -52,3 +52,19 @@ def test_audit_relates_directory_members_and_quarantines_only_selected_files(
     plan, quarantine_id = LibraryRootManager(root).plan_quarantine(audit, [member["relativePath"]])
     assert plan.kind == "library.quarantine"
     assert quarantine_id
+
+
+def test_audit_keeps_unmatched_files_visible_but_excludes_managed_trees(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "roms"
+    (root / "mystery-platform").mkdir(parents=True)
+    (root / "mystery-platform" / "review-me.bin").write_bytes(b"review")
+    (root / ".steamzero" / "derived").mkdir(parents=True)
+    (root / ".steamzero" / "derived" / "generated.zip").write_bytes(b"managed")
+
+    audit = LibraryRootManager(root).audit()
+    unknown = {item["relativePath"] for item in audit["categories"]["unknown"]}
+
+    assert "mystery-platform/review-me.bin" in unknown
+    assert ".steamzero/derived/generated.zip" not in unknown

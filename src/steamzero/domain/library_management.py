@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import json
-import os
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -75,49 +74,56 @@ class LibraryRootManager:
             )
         }
         claimed: set[Path] = set()
-        rows = self._inventory.inventory(self.root)
+        rows = self._inventory.inventory(self.root, include_unclaimed=True)
         for row in rows:
-            if row.disposition != "matched":
-                continue
-            for game in row.selected_games:
-                claimed.add(game.path)
-                categories["base"].append(
-                    self._item(game.path, self.root, category="base", relation="game-base")
-                )
-            for related in row.related_content:
-                if not related.path.is_file() or related.path.is_symlink():
-                    continue
-                claimed.add(related.path)
-                category = (
-                    related.content_kind if related.content_kind in {"update", "dlc"} else "related"
-                )
-                categories[category].append(
-                    self._item(
-                        related.path,
-                        self.root,
-                        category=category,
-                        relation=related.relation,
-                        owner_path=related.owner_path,
+            if row.disposition == "matched":
+                for game in row.selected_games:
+                    claimed.add(game.path)
+                    categories["base"].append(
+                        self._item(game.path, self.root, category="base", relation="game-base")
                     )
-                )
-
-        # Arquivos na raiz ou em diretórios ainda sem manifesto não somem:
-        # continuam selecionáveis para revisão humana, nunca como jogo.
-        for directory, child_dirs, files in os.walk(self.root, followlinks=False):
-            current = Path(directory)
-            child_dirs[:] = [
-                name
-                for name in child_dirs
-                if name not in {".steamzero", ".steamzero-quarantine"}
-                and not (current / name).is_symlink()
-            ]
-            for filename in sorted(files, key=str.casefold):
-                path = current / filename
-                if path.is_symlink() or path in claimed:
+                for related in row.related_content:
+                    if not related.path.is_file() or related.path.is_symlink():
+                        continue
+                    claimed.add(related.path)
+                    category = (
+                        related.content_kind
+                        if related.content_kind in {"update", "dlc"}
+                        else "related"
+                    )
+                    categories[category].append(
+                        self._item(
+                            related.path,
+                            self.root,
+                            category=category,
+                            relation=related.relation,
+                            owner_path=related.owner_path,
+                        )
+                    )
+            for path in row.unclaimed_content:
+                if path in claimed or path.is_symlink():
                     continue
+                claimed.add(path)
                 categories["unknown"].append(
                     self._item(path, self.root, category="unknown", relation="unclaimed")
                 )
+
+        # Arquivos diretamente na raiz não pertencem a uma pasta de plataforma,
+        # mas continuam selecionáveis para revisão humana.
+        try:
+            root_files = sorted(
+                (path for path in self.root.iterdir() if path.is_file() and not path.is_symlink()),
+                key=lambda item: item.name.casefold(),
+            )
+        except OSError:
+            root_files = []
+        for path in root_files:
+            if path in claimed:
+                continue
+            claimed.add(path)
+            categories["unknown"].append(
+                self._item(path, self.root, category="unknown", relation="unclaimed")
+            )
         return {
             "schemaVersion": 2,
             "rootId": root_id(self.root),

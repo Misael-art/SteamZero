@@ -12310,3 +12310,19 @@ controlador, 158 de plataforma/UI/runtime, Ruff e mypy sem erros. A leitura do
 host continua somente leitura: 5 ZIPs + 1 app Vita3K, 713 membros relacionados
 e 119 auxiliares; nenhuma release nova foi instalada e nenhuma mutação física
 foi declarada.
+
+## 2026-09-22 — Auditoria universal sem segunda caminhada
+
+A gestão de arquivos deixou de caminhar a raiz inteira uma segunda vez para
+descobrir órfãos. O inventário declarativo agora pode carregar, sob demanda,
+arquivos visitados não reivindicados e a relação de membros; a gestão usa esse
+resultado, mantendo o scanner normal do catálogo sem essa sobrecarga. A
+comparação no acervo real produziu exatamente o mesmo conjunto de 6.479
+caminhos desconhecidos do algoritmo anterior, além de 1.327 bases, 83 updates
+e 1.167 relacionados.
+
+A auditoria completa read-only mediu 49,75 s no host na implementação final
+(contra cerca de 66 s antes da otimização). A correção preserva
+cobertura e cardinalidade, mas a duração ainda é uma lacuna de UX registrada
+como G55: o próximo passo é job de manutenção com progresso/cancelamento e
+eventual índice incremental, nunca uma amostragem silenciosa.

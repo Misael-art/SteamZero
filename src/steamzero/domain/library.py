@@ -638,6 +638,7 @@ class PlatformDirectory:
     skipped_symlinks: int
     multi_disc_sets: tuple[MultiDiscResolution, ...] = ()
     related_content: tuple[RelatedContent, ...] = ()
+    unclaimed_content: tuple[Path, ...] = ()
 
 
 class PlatformDirectoryInventory:
@@ -679,7 +680,7 @@ class PlatformDirectoryInventory:
         auxiliary = {m.id: str(m.media.get("auxiliaryContent") or "none") for m in manifests}
         return cls(PlatformRomScanner.from_manifests(manifest_dicts), aliases, auxiliary)
 
-    def inventory(self, root: Path) -> list[PlatformDirectory]:
+    def inventory(self, root: Path, *, include_unclaimed: bool = False) -> list[PlatformDirectory]:
         """Lista filhas de ``root`` em ordem estável, sem seguir symlinks.
 
         ``selected_games`` carrega TODOS os jogos únicos do diretório: a fonte
@@ -696,16 +697,40 @@ class PlatformDirectoryInventory:
             if child.is_symlink() or not child.is_dir():
                 continue
             if _is_non_game_directory(child.name):
-                results.append(PlatformDirectory(child, "excluded", None, 0, (), (), 0))
+                unclaimed = (
+                    self._unclaimed_files(child)
+                    if include_unclaimed
+                    and child.name not in {".steamzero", ".steamzero-quarantine"}
+                    else ()
+                )
+                results.append(
+                    PlatformDirectory(child, "excluded", None, 0, (), (), 0, (), (), unclaimed)
+                )
                 continue
             platform_id = self._aliases.get(_directory_key(child.name))
             if platform_id is None:
-                results.append(PlatformDirectory(child, "unmatched", None, 0, (), (), 0))
+                unclaimed = self._unclaimed_files(child) if include_unclaimed else ()
+                results.append(
+                    PlatformDirectory(child, "unmatched", None, 0, (), (), 0, (), (), unclaimed)
+                )
                 continue
-            candidates, skipped = self._inventory_tree(child, platform_id)
+            candidates, skipped, visited = self._inventory_tree(
+                child, platform_id, include_unclaimed=include_unclaimed
+            )
             multi_disc_sets = self._resolve_multidisc(candidates, platform_id)
             selected = tuple(self._unique_games(candidates, child, multi_disc_sets))
-            related_content = self._related_content(child, candidates, selected, multi_disc_sets)
+            related_content = self._related_content(
+                child, candidates, selected, multi_disc_sets, visited=visited
+            )
+            claimed = {candidate.path for candidate in selected}
+            claimed.update(item.path for item in related_content)
+            unclaimed = tuple(
+                path
+                for path in visited
+                if path.is_file()
+                and path not in claimed
+                and not self._managed_path(path, child)
+            )
             results.append(
                 PlatformDirectory(
                     child,
@@ -719,13 +744,17 @@ class PlatformDirectoryInventory:
                     skipped,
                     tuple(multi_disc_sets),
                     related_content,
+                    unclaimed,
                 )
             )
         return results
 
-    def _inventory_tree(self, root: Path, platform_id: str) -> tuple[list[RomCandidate], int]:
+    def _inventory_tree(
+        self, root: Path, platform_id: str, *, include_unclaimed: bool = False
+    ) -> tuple[list[RomCandidate], int, tuple[Path, ...]]:
         candidates: list[RomCandidate] = []
         skipped_symlinks = 0
+        visited: set[Path] = set()
         try:
             for game_directory in self._directory_game_candidates(root, platform_id):
                 candidates.append(
@@ -738,16 +767,35 @@ class PlatformDirectoryInventory:
                     )
                 )
             for directory, child_dirs, files in os.walk(root, followlinks=False):
+                current = Path(directory)
+                if include_unclaimed:
+                    visited.add(current)
+                    for filename in files:
+                        path = current / filename
+                        if not path.is_symlink():
+                            visited.add(path)
                 safe_dirs: list[str] = []
                 for child_dir in child_dirs:
                     candidate = Path(directory) / child_dir
                     if candidate.is_symlink():
                         skipped_symlinks += 1
-                    elif self._auxiliary_kind(
+                    elif (include_unclaimed and child_dir not in {
+                        ".steamzero",
+                        ".steamzero-quarantine",
+                    }) or self._auxiliary_kind(
                         platform_id, child_dir
                     ) is not None or not _is_non_game_directory(child_dir):
                         safe_dirs.append(child_dir)
+                        if include_unclaimed:
+                            visited.add(candidate)
                 child_dirs[:] = safe_dirs
+                blocked = include_unclaimed and any(
+                    _is_non_game_directory(part)
+                    and self._auxiliary_kind(platform_id, part) is None
+                    for part in current.relative_to(root).parts
+                )
+                if blocked:
+                    continue
                 siblings = set(files)
                 for filename in sorted(files, key=str.casefold):
                     path = Path(directory) / filename
@@ -825,7 +873,38 @@ class PlatformDirectoryInventory:
             # Inventário é diagnóstico: uma pasta sem permissão não impede que
             # as demais sejam exibidas. O resultado parcial continua verdadeiro.
             pass
-        return candidates, skipped_symlinks
+        return candidates, skipped_symlinks, tuple(
+            sorted(visited, key=lambda item: item.as_posix().casefold())
+        )
+
+    @staticmethod
+    def _managed_path(path: Path, root: Path) -> bool:
+        try:
+            parts = path.relative_to(root).parts
+        except ValueError:
+            parts = path.parts
+        return any(part in {".steamzero", ".steamzero-quarantine"} for part in parts)
+
+    @classmethod
+    def _unclaimed_files(cls, root: Path) -> tuple[Path, ...]:
+        files: list[Path] = []
+        try:
+            for directory, child_dirs, names in os.walk(root, followlinks=False):
+                current = Path(directory)
+                child_dirs[:] = [
+                    name
+                    for name in child_dirs
+                    if name not in {".steamzero", ".steamzero-quarantine"}
+                    and not (current / name).is_symlink()
+                ]
+                files.extend(
+                    current / name
+                    for name in names
+                    if not (current / name).is_symlink()
+                )
+        except OSError:
+            pass
+        return tuple(sorted(files, key=lambda item: item.as_posix().casefold()))
 
     @staticmethod
     def _related_content(
@@ -833,6 +912,8 @@ class PlatformDirectoryInventory:
         candidates: Sequence[RomCandidate],
         selected: Sequence[RomCandidate] = (),
         multi_disc_sets: Sequence[MultiDiscResolution] = (),
+        *,
+        visited: Sequence[Path] = (),
     ) -> tuple[RelatedContent, ...]:
         """Relaciona membros de formatos de diretório e auxiliares da plataforma.
 
@@ -852,20 +933,14 @@ class PlatformDirectoryInventory:
             PlatformDirectoryInventory._game_key(candidate, root, multi_disc_sets): candidate.path
             for candidate in selected
         }
-        for owner in directory_owners:
-            try:
-                members: list[Path] = []
-                for directory, child_dirs, files in os.walk(owner, followlinks=False):
-                    current = Path(directory)
-                    child_dirs[:] = [
-                        name for name in child_dirs if not (current / name).is_symlink()
-                    ]
-                    members.extend(current / name for name in (*child_dirs, *files))
-                members.sort(key=lambda item: item.as_posix().casefold())
-            except OSError:
-                members = []
-            for member in members:
-                if member.is_symlink() or not member.exists():
+        if visited:
+            owners = set(directory_owners)
+            for member in visited:
+                owner = next(
+                    (ancestor for ancestor in member.parents if ancestor in owners),
+                    None,
+                )
+                if owner is None or member.is_symlink() or not member.exists():
                     continue
                 if member.is_file() or member.is_dir():
                     related[member] = RelatedContent(
@@ -874,6 +949,29 @@ class PlatformDirectoryInventory:
                         content_kind="internal",
                         owner_path=owner,
                     )
+        else:
+            for owner in directory_owners:
+                try:
+                    members: list[Path] = []
+                    for directory, child_dirs, files in os.walk(owner, followlinks=False):
+                        current = Path(directory)
+                        child_dirs[:] = [
+                            name for name in child_dirs if not (current / name).is_symlink()
+                        ]
+                        members.extend(current / name for name in (*child_dirs, *files))
+                    members.sort(key=lambda item: item.as_posix().casefold())
+                except OSError:
+                    members = []
+                for member in members:
+                    if member.is_symlink() or not member.exists():
+                        continue
+                    if member.is_file() or member.is_dir():
+                        related[member] = RelatedContent(
+                            path=member,
+                            relation="directory-member",
+                            content_kind="internal",
+                            owner_path=owner,
+                        )
         for candidate in candidates:
             if candidate.path in selected_paths:
                 continue
