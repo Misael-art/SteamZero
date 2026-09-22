@@ -12025,3 +12025,13 @@ Studio fornecem a escala do painel.
 O harness direcionado fechou com **4 passed**, incluindo a asserção do badge em
 `1.5×`. A matriz QML completa será registrada após o gate de fechamento.
 Nenhum host foi alterado.
+
+## 2026-09-22 — G12: ownership explícito nas superfícies restantes
+
+A auditoria de fontes fixas confirmou que `LauncherShell.qml`,
+`LauncherMain.qml`, `LauncherHome.qml` e `SceneEsdeView.qml` ainda
+precisam consumir a escala em toda a superfície. Esses caminhos pertencem a
+workstreams ativos exclusivos (`aura-launcher-exit` e
+`aura-esde-runtime-bridge`); o subitem foi classificado como
+**SOFT-COORDINATION**, sem alteração concorrente. As demais fatias seguras de
+G12 continuam avançando nesta branch. Nenhum host foi alterado.
