@@ -33,11 +33,9 @@
     "pyproject.toml",
     "docs/09-operations/HANDOFF-2026-08-27.md"
   ],
-  "scopeDigest": "5aa355996eee3c8f052b778ef3e9e0824de0e841baf7307ab901187fafda3bc6",
+    "scopeDigest": "50698cf6385f4e6869383af9fd91732db30b3ca4c4454c39abd71096d549fc3d",
   "dependsOn": [],
-  "knownGaps": [
-    "DEBT-CI-VISUAL-IMAGE-SEM-SVG"
-  ],
+  "knownGaps": [],
   "acceptanceCriteria": [
     "Cada capacidade possui cinco eixos de estado independentes.",
     "Mudanca sem item responsavel reprova no gate local.",
@@ -66,8 +64,8 @@
     {
       "kind": "diagnostic",
       "reference": ".github/workflows/ci.yml",
-      "command": "gate visual do run 32238398314: 231 passaram e 4 falharam com 'QML Image: Error decoding' — a imagem canonica traz qt6-declarative e qt6-base, mas nao o plugin de imagem SVG. Os quatro harnesses que carregam asset .svg passaram a pular com razao explicita, detectada executando uma sonda no runtime.",
-      "result": "partial"
+      "command": "imagem canônica do gate visual reconstruída no workflow 35709228093 com qt6-svg 6.11.2-1, lock atualizado e digest fixado em .github/workflows/ci.yml; no run 35709541686 a sonda SVG e os quatro harnesses SVG passaram, restando G36 como falha de geometria corrigida em seguida.",
+      "result": "passed"
     },
     {
       "kind": "diagnostic",

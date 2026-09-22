@@ -12130,3 +12130,12 @@ nos imports opcionais de PyGObject do cast engine e do preflight web. Os quatro
 ignores foram normalizados para a forma compatível com ambos os ambientes; mypy
 passou em 293 módulos e a suíte cast passou com 118 testes. Nenhum host foi
 alterado.
+
+## 2026-09-22 — Gate visual canônico: SVG e G36
+
+O gate visual expôs duas lacunas reais: a imagem fixada não trazia `qt6-svg`, e
+Qt 6.11 mantinha espaço de views editoriais inativas. A imagem foi reconstruída
+com `qt6-svg 6.11.2-1`, lock/hash atualizado e digest fixado; `EditorialLibrary`
+passou a usar `StackLayout` para que carrossel, grade e lista compartilhem uma
+única geometria ativa. Os harnesses exatos na imagem publicada passaram para
+3/3 nos cenários G36 (normal, 37 sistemas e escala 2). O host não foi alterado.

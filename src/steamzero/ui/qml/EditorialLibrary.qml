@@ -1120,7 +1120,18 @@ Item {
                             }
                         }
                     }
-                    ListView {
+                    StackLayout {
+                        id: libraryViews
+                        currentIndex: root.libraryView === "carousel" ? 0
+                            : root.libraryView === "grid" ? 1 : 2
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: root.visibleGames.length === 0 ? 0
+                            : root.libraryView === "carousel" ? root.coverHeight()
+                            : (root.compact ? 330 : 430)
+                        Layout.minimumHeight: 0
+                        Layout.maximumHeight: Layout.preferredHeight
+
+                        ListView {
                         id: carousel
                         visible: root.visibleGames.length > 0 && root.libraryView === "carousel"
                         // Qt 6.11 can retain an inactive view's implicit height
@@ -1250,7 +1261,7 @@ Item {
                             }
                         }
                     }
-                    GridView {
+                        GridView {
                         id: gameGrid
                         visible: root.visibleGames.length > 0 && root.libraryView === "grid"
                         height: visible ? (root.compact ? 330 : 430) : 0
@@ -1343,7 +1354,7 @@ Item {
                             }
                         }
                     }
-                    ListView {
+                        ListView {
                         id: gameList
                         visible: root.visibleGames.length > 0 && root.libraryView === "list"
                         height: visible ? (root.compact ? 330 : 430) : 0
@@ -1406,6 +1417,7 @@ Item {
                                     ? root.cyanColor : root.borderColor
                                 border.width: parent.activeFocus || index === root.selectedIndex ? 3 : 1
                             }
+                        }
                         }
                     }
                     RowLayout {

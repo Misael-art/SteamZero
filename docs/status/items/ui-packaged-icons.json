@@ -41,7 +41,7 @@
     {
       "kind": "diagnostic",
       "reference": "src/steamzero/ui/assets/ATTRIBUTION.md",
-      "command": "27 icones oficiais: 11 emuladores standalone (a5245cdb), 3 servicos de cloud (26701bfa) e 13 plataformas de console (abf0b4cd). SVG onde existe vetor; PNG com lado minimo de 241px. Fonte e licenca de cada um no ATTRIBUTION.md.",
+      "command": "27 icones oficiais: 11 emuladores standalone (a5245cdb), 3 servicos de cloud (26701bfa) e 13 plataformas de console (abf0b4cd). SVG onde existe vetor; PNG com lado minimo de 241px. Fonte e licenca de cada um no ATTRIBUTION.md. O gate visual canônico agora inclui qt6-svg.",
       "result": "passed"
     },
     {
@@ -57,7 +57,7 @@
       "result": "partial"
     }
   ],
-  "nextAction": "Capturar evidencia visual dos icones no Launcher instalado. Depende de instalacao autorizada e do plugin SVG do Qt, ausente neste runtime — o harness check_packaged_assets.qml fica skip sem ele. Sem essa captura, a troca esta provada como empacotamento, nao como aparencia na tela.",
+      "nextAction": "Capturar evidencia visual dos icones no Launcher instalado. Sem essa captura, a troca esta provada como empacotamento e gate visual, nao como aparencia na tela instalada.",
   "notes": "Item aberto pela frente de integracao para dar dono de status a uma capacidade que nao tinha nenhum: nenhum item declarava src/steamzero/ui/assets nem PackagedAssets.qml, que so eram cobertos de forma transitiva pelo diretorio src/steamzero/ui de SZ-UI-DESKTOP-AUDIT. O teste guarda a sincronia das tres listas, que e o defeito provavel aqui: trocar o arquivo e esquecer o hash ou a atribuicao. O que este item NAO prova e o que o usuario ve — nenhuma captura do Launcher com os icones novos existe, e por isso a verificacao para em 'unit'.",
   "updatedAt": "2026-09-04",
   "activeWorkstreams": []
