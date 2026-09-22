@@ -49,7 +49,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-EMULATION-M10 | 6 | 3 | 2 | vm |  |
 | SZ-EMULATION-PLATFORM-CONTEXT | 3 | 4 | 2 | unit |  |
 | SZ-EMULATION-PLATFORM-SCOPE | 2 | 5 | 4 | unit |  |
-| SZ-EMULATION-REAL-DUMP-VALIDATION | 37 | 38 | 18 | hw |  |
+| SZ-EMULATION-REAL-DUMP-VALIDATION | 106 | 39 | 18 | hw |  |
 | SZ-EMULATION-RUNTIME-REMEDIATION | 3 | 5 | 4 | unit |  |
 | SZ-EMULATION-STORAGE-MANAGEMENT | 2 | 3 | 2 | unit |  |
 | SZ-EMULATION-STORAGE-PLATFORM-SCOPE | 5 | 3 | 2 | unit |  |

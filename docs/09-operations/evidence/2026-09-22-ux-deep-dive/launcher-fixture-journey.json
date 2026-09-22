@@ -1,0 +1,22 @@
+{
+  "games": [
+    {
+      "id": "b7976c70ca9159a893da2e95",
+      "name": "46 Okunen Monogatari - Harukanaru Eden e (Japan) (Translated En)",
+      "platform": "snes",
+      "contentKind": "base"
+    },
+    {
+      "id": "724d8cf31854ce06e1d1b746",
+      "name": "Alundra (USA) (Translated PtBr)",
+      "platform": "playstation",
+      "contentKind": "base"
+    },
+    {
+      "id": "7e55ff7c9e416c915fe24acf",
+      "name": "Black (USA) (Translated PtBr)",
+      "platform": "playstation-2",
+      "contentKind": "base"
+    }
+  ]
+}

@@ -12183,3 +12183,22 @@ Vita/Xbox 360 e input do Deck permanecem bloqueios; health só verificou 1 de
 1.146 itens; cena ES-DE/preview não foi promovida por falha silenciosa do
 `qmltestrunner` host. Evidência detalhada em
 `docs/09-operations/evidence/2026-09-22-full-host-validation/README.md`.
+
+## 2026-09-22 — Adendo de jornada UX e diagnóstico físico aprofundado
+
+A segunda rodada foi orientada à experiência real: o `steamzero-launcher` com o
+cache completo abortou antes da janela por `ValueError: section itens excede
+512`; com três jogos reais, a janela abriu, mas Return, Enter, Space e clique no
+cartão não produziram navegação ou launch. O DuckStation abriu o Setup Wizard
+com etapas de idioma, BIOS, diretórios, controles, gráficos e interface; o
+Dolphin exibiu a tela Health and Safety; o PCSX2 standalone abriu sua biblioteca,
+mas o handoff governado de `Black` falhou no sandbox Flatpak com `Requested
+filename ... does not exist`, embora o CHD exista no host. O scan/cache foi
+recontado: 1.827 de 1.843 itens `unverified`, 970 `compressed-format`, 818
+`no-reader`, 61 grupos de nomes duplicados e 611 registros afetados, sobretudo
+Vita nomeado como `001`/`002`/`003`. A auditoria live gerou 55 capturas; o
+classificador de warnings marcou 40 mensagens Breeze/KDE como se fossem do
+SteamZero. A bateria de biblioteca, launcher, rename, conversão, multidisc e
+title variants passou com 227 testes; fade-in, fade-out, gameplay interativo,
+retorno de foco e extração/renomeação em ROM real continuam sem prova física.
+Evidência: `docs/09-operations/evidence/2026-09-22-ux-deep-dive/README.md`.

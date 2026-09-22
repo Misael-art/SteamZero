@@ -11,9 +11,10 @@
   "distribution": "installed",
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-19-real-dump-inventory",
-    "docs/09-operations/evidence/2026-09-22-full-host-validation"
+    "docs/09-operations/evidence/2026-09-22-full-host-validation",
+    "docs/09-operations/evidence/2026-09-22-ux-deep-dive"
   ],
-  "scopeDigest": "047e34ee89caab8f584fdfdbd9ed483f760328da1988f76b27f0a28f6c4fd3df",
+  "scopeDigest": "0f64716a9ee61c6c418fa45ca3cd0c50c0071924176f906519a120cd76ac5b54",
   "dependsOn": [
     "SZ-COMPONENT-LIFECYCLE",
     "SZ-LIBRARY-CANONICAL",
@@ -258,12 +259,18 @@
       "reference": "docs/09-operations/evidence/2026-09-22-full-host-validation/README.md",
       "command": "Theme AURA aplicado e revertido pelo fluxo governado; tema ativo restaurado; SRM/ES-DE ausentes no host; quatro temas de usuário ES-DE inválidos; cena ES-DE/previsão não promovidas a prova física por harness qmltestrunner sem relatório.",
       "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-22-ux-deep-dive/README.md",
+      "command": "Jornada UX ampliada na release instalada: Launcher com cache completo aborta no limite de 512 itens; fixture reduzido abre mas não ativa por Return/Enter/clique; DuckStation bloqueia no Setup Wizard; Dolphin exibe Health and Safety; PCSX2 abre standalone, mas o handoff governado falha no sandbox Flatpak; 55 capturas live e 227 testes de biblioteca/launcher/rename/conversão/multidisc/title variants.",
+      "result": "partial"
     }
   ],
-  "nextAction": "Corrigir o ownership do watcher/socket da rota CLI; depois repetir gameplay interativo, controle físico e troca multi-disc com conteúdo legítimo; manter firmware/BIOS, ES-DE/RetroFE, cores ausentes, archives e input do Deck como lacunas externas ou operacionais.",
+  "nextAction": "Corrigir primeiro o limite de volume e a ativação real do Launcher; depois tratar first-run/wizard, handoff Flatpak do PCSX2, nomes Vita, ownership watcher/socket, gameplay interativo, controle físico, fade-in/fade-out e troca multi-disc com conteúdo legítimo; manter firmware/BIOS, ES-DE/RetroFE, cores ausentes, archives e input do Deck como lacunas externas ou operacionais.",
   "activeWorkstreams": [
     "WS-2026-09-EMULATION-REAL-DUMP-VALIDATION"
   ],
   "updatedAt": "2026-09-22",
-  "notes": "Inventário, quatorze ciclos físicos e diagnósticos de archives/runtime concluídos. Famicom/NES, Master System e SNES têm gameplay real observado; Dreamcast, 3DS, PS3, GameCube, Wii U, Switch e Game Boy têm boot/renderização real sem gameplay interativo; Game Gear abriu tela real sem prova de avanço; Xbox parou na configuração de máquina do xemu e Wii parou em erro controlado de arranjo de controles. X68000=14 e Amiga=5 foram confirmados, mas o filtro de archives compartilhado impede launch antes do spawn; handoff SOFT-COORDINATION registrado. Saturn=18 foi confirmado, mas mednafen_saturn não está instalado na release ativa e permanece missing-runtime. PS4/PS5 têm apenas artefatos não lançáveis para os manifestos atuais e permanecem unsupported-content/needs-review sem extração. PS2 revelou o flag incompatível `--fullscreen` e o handoff de correção está separado por ownership ativo de arquivo compartilhado. Nenhuma ROM original foi movida, extraída, sobrescrita ou apagada; archives não associados permanecem em needs-review/unsupported-content."
+  "notes": "Inventário, ciclos físicos, jornada UX e diagnósticos de archives/runtime concluídos. Famicom/NES, Master System e SNES têm gameplay real observado; Dreamcast, 3DS, PS3, GameCube, Wii U, Switch e Game Boy têm boot/renderização real sem gameplay interativo; Game Gear abriu tela real sem prova de avanço. A jornada UX aprofundada encontrou o Launcher inviável com o acervo completo por limite de 512 itens, ativação sem efeito no fixture reduzido, first-run do DuckStation/Dolphin, handoff Flatpak do PCSX2 sem acesso ao CHD e 611 registros duplicados de nome, sobretudo Vita. X68000=14 e Amiga=5 foram confirmados, mas o filtro de archives compartilhado impede launch antes do spawn; Saturn=18 foi confirmado, mas mednafen_saturn não está instalado. PS4/PS5 permanecem sem prova de gameplay. Nenhuma ROM original foi movida, extraída, sobrescrita ou apagada; archives não associados permanecem em needs-review/unsupported-content."
 }

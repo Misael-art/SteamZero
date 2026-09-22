@@ -1,5 +1,8 @@
 # Auditoria física completa do host — 2026-09-22
 
+> Complemento orientado à jornada UX, first-run, fade, interface live e
+> tratamento real de nomes/ROMs: [adendo de diagnóstico de 2026-09-22](../2026-09-22-ux-deep-dive/README.md).
+
 ## Escopo e identidade
 
 - Release instalada: `2.0.0rc1-504d10b14485`
