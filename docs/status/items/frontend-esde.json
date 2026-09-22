@@ -7,7 +7,7 @@
   "implementation": "complete",
   "integration": "integrated",
   "verification": "unit",
-  "operation": "ready",
+  "operation": "degraded",
   "distribution": "not-packaged",
   "scopeDigest": "94675b3977c6fe95831777c2cba8300185ef1bf71e32d3ec0646c6632b37faba",
   "scopePaths": [
@@ -15,7 +15,7 @@
     "tests/unit/test_theme_import_esde.py"
   ],
   "dependsOn": [],
-  "knownGaps": [],
+  "knownGaps": ["GAP-G54"],
   "acceptanceCriteria": [
     "Importador converte o contrato de tema ES-DE sem depender do runtime externo.",
     "Casos invalidos e valores ausentes possuem teste unitario.",
@@ -53,8 +53,8 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Exercitar a jornada contra uma instalacao real do ES-DE no host: a tela existe e o contrato e percorrido, mas selecao, preview e apply so foram provados offscreen e sem bridge. Falta tambem o rollback da importacao, que hoje depende do que o apply devolve.",
+  "nextAction": "Preparar instalação/fixture ES-DE governada e provar inspect→apply→activate→launch→rollback no host; hoje ES-DE e SRM estão ausentes, quatro temas importados são inválidos por falta de compatibility e as provas existentes são de contrato/offscreen.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-08-24",
-  "notes": "O suporte e de importacao de tema; nao certifica toda a experiencia ES-DE no host. O importador existe no dominio (theme_import_esde.py: resolve_assets, unsupported_slots) e nao tem caminho de interface. Registrado como G42. 2026-08-24: jornada implementada. O botao vive na tela SYSTEM (nao em temas), abre um modal com campo source, Examinar (inspect), lista de esquemas, nome e Importar (apply). O apply so habilita com esquema escolhido E nome preenchido; fechar por Escape, Cancelar ou botao B limpa os esquemas, entao cancelar nao deixa estado pendurado. Erro do inspect ou do apply aparece no proprio modal em vez de sumir."
+  "updatedAt": "2026-09-22",
+  "notes": "O suporte de importação está implementado no domínio e a jornada de inspect/apply existe no shell, mas a certificação operacional externa não existe no host atual: ES-DE e SRM não estão instalados. A auditoria real encontrou quatro temas de usuário inválidos por ausência de compatibility no schema SteamZero. A ausência deve continuar visível; não promover importação de contrato/offscreen a tema ativo ou lançamento real."
 }

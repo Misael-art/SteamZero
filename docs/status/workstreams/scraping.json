@@ -13,6 +13,6 @@
     "tests/unit/scraping"
   ],
   "sharedPaths": ["tests/fixtures/scraping", "docs/WORKLOG.md"],
-  "nextAction": "Integrado na main via codex/integrate-aura-cast-scraping; validacao real de providers em ambiente controlado segue pendente de operador.",
-  "updatedAt": "2026-08-11"
+  "nextAction": "Validação real parcial registrada em 2026-09-22: SteamGridDB autenticou; ScreenScraper foi rejeitado e o lote terminou degraded. Identificar o provider Steam Deck API, repetir com credencial autorizada e medir qualidade/publicação/rollback.",
+  "updatedAt": "2026-09-22"
 }

@@ -65,12 +65,12 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-GOVERNANCE-STATUS | 22 | 9 | 8 | dev |  |
 | SZ-HOST-UPDATE-TRANSACTIONAL | 18 | 12 | 9 | hw |  |
 | SZ-JOB-RECOVERY-DOCTOR | 10 | 3 | 1 | dev |  |
-| SZ-LIBRARY-CANONICAL | 89 | 10 | 7 | dev |  |
+| SZ-LIBRARY-CANONICAL | 158 | 11 | 7 | hw |  |
 | SZ-LIBRARY-CONVERSION-CONTRACT | 4 | 2 | 2 | unit |  |
-| SZ-MEDIA-AUDIT-PLATFORM-SCOPE | 4 | 3 | 2 | unit |  |
-| SZ-MEDIA-PIPELINE-PLATFORM-SCOPE | 3 | 6 | 5 | hw |  |
+| SZ-MEDIA-AUDIT-PLATFORM-SCOPE | 4 | 4 | 2 | hw |  |
+| SZ-MEDIA-PIPELINE-PLATFORM-SCOPE | 3 | 7 | 5 | hw |  |
 | SZ-MEDIA-PROVIDER-PLATFORM-FILTER | 10 | 2 | 2 | unit |  |
-| SZ-MEDIA-SCRAPING | 29 | 7 | 7 | unit |  |
+| SZ-MEDIA-SCRAPING | 30 | 8 | 7 | hw |  |
 | SZ-MULTIDISC-DESCRIPTOR-RECONCILIATION | 15 | 13 | 13 | dev |  |
 | SZ-MULTIDISC-MATERIALIZATION-INGESTION | 4 | 4 | 3 | unit |  |
 | SZ-MULTIDISC-SESSION-DISC-IDENTITY | 9 | 3 | 3 | hw |  |
@@ -92,7 +92,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-THEME-IMPORT-ESDE-LAYOUT | 32 | 10 | 10 | hw |  |
 | SZ-THEME-IMPORT-RETROFE | 10 | 10 | 9 | hw |  |
 | SZ-THEME-IMPORT-SURFACE | 4 | 8 | 7 | unit |  |
-| SZ-THEME-STUDIO | 87 | 18 | 15 | hw |  |
+| SZ-THEME-STUDIO | 88 | 19 | 15 | hw |  |
 | SZ-UI-DESKTOP-AUDIT | 407 | 46 | 31 | dev |  |
 | SZ-UI-PACKAGED-ICONS | 57 | 4 | 2 | unit |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |

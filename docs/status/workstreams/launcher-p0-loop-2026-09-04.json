@@ -14,6 +14,6 @@
   "sharedPaths": [
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Frente mergeada no main; branch e ancestral de main.",
-  "updatedAt": "2026-09-14"
+  "nextAction": "Correções históricas estão mergeadas, mas o gate físico atual reabriu G48: catálogo completo aborta no limite de 512 e o fixture reduzido não ativa por input. Reproduzir e fechar a jornada na release 2.0.0rc1-504d10b14485 antes de promover o Launcher.",
+  "updatedAt": "2026-09-22"
 }

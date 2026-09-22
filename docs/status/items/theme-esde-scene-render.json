@@ -43,6 +43,7 @@
   ],
   "knownGaps": [
     "GAP-THEME-ESDE-SCENE-NOT-RENDERED",
+    "GAP-G54",
     "GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
   ],
   "acceptanceCriteria": [
@@ -127,7 +128,7 @@
       "result": "partial"
     }
   ],
-  "nextAction": "Otimizar o frame time p95 de 18.254 ms e decidir a promoção da cena ES-DE à aparência central; fullscreen interativo já foi entregue fisicamente.",
+  "nextAction": "Provar a cena com ES-DE instalado e tema compilado na release atual; distinguir renderização de fixture/fullscreen de ativação do tema externo. Só depois otimizar o p95 de 18.254 ms e decidir promoção à aparência central.",
   "activeWorkstreams": [
     "WS-2026-09-CENA-ESDE"
   ],

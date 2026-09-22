@@ -17,6 +17,6 @@
     "docs/status/items/media-scraping.json",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Integrado em commit funcional 0ce9009; aguardar merge/empacotamento e repetir a migração somente quando o registry puder provar a plataforma do master órfão.",
-  "updatedAt": "2026-08-29"
+  "nextAction": "Escopo, lote assíncrono e auditoria por plataforma já estão na release instalada. Próximo gate: credencial ScreenScraper autorizada, recovery de jobs stale, qualidade por kind e publicação/rollback; não declarar integridade dimensional como qualidade garantida.",
+  "updatedAt": "2026-09-22"
 }

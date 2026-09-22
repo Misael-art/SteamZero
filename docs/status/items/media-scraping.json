@@ -6,13 +6,14 @@
   "domain": "media",
   "implementation": "complete",
   "integration": "integrated",
-  "verification": "unit",
+  "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "03f03df0c9b596a76d285b5ce3dfba81d3bae54ec94479a19c4a724afea49aac",
+  "scopeDigest": "8e2656a297ebee7f7227624eea44cbb667e1ad9932f32a139a466bb2c763ea14",
   "scopePaths": [
     "src/steamzero/adapters/scraping",
     "docs/09-operations/evidence/2026-08-29-media-pipeline-installed",
+    "docs/09-operations/evidence/2026-09-22-media-theme-first-run",
     "src/steamzero/domain/media_pipeline.py",
     "src/steamzero/domain/media_registry.py",
     "src/steamzero/domain/scraping_providers.py",
@@ -24,6 +25,7 @@
   "dependsOn": [],
   "knownGaps": [
     "GAP-G44",
+    "GAP-G52",
     "LEDGER-A12",
     "LEDGER-A7"
   ],
@@ -75,10 +77,16 @@
       "reference": "tests/unit/scraping/test_screenscraper.py",
       "command": "Renovacao 2026-09-10 (WS-2026-09-PS4-SHADPS4): _PLATFORMS_WITHOUT_SYSTEMEID ganhou playstation-4; test_screenscraper reexecutado",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-22-media-theme-first-run/README.md",
+      "command": "Host real na release 2.0.0rc1-504d10b14485: SteamGridDB autenticou; ScreenScraper foi persistido como rejected/E-SCRAPE-CREDENTIAL-REJECTED; busca Switch retornou 19 candidatos, um foi aplicado/canonicalizado/otimizado e o lote assíncrono concluiu 15 jogos (9 processados, 6 pulados, 0 falhas de aplicação).",
+      "result": "partial"
     }
   ],
-  "nextAction": "ARTWORK PERMANECE ABERTO: após o operador configurar ssid/sspassword pessoais na central instalada, reexecutar a busca no acervo real e registrar contagens antes/depois por plataforma. Não tratar artwork legado media/switch como master nem aguardar quota.",
+  "nextAction": "P1-MEDIA-QUALITY: identificar o provider referido como Steam Deck API; após credencial ScreenScraper autorizada, repetir individual e lote registrando login, candidatos, download, seleção, otimização, qualidade por kind, publicação Steam e rollback. Não tratar o lote degradado como sucesso nem artwork legado como master.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-08-29",
-  "notes": "Endurecimento integrado (commit 30d1247, origem 5adb3db): transporte, cache e classificacao de falhas dos adapters; credenciais nunca persistem no cache; circuito de quota e fallback testados; 144 testes unitarios passed. Qualidade e licenciamento da midia externa ainda exigem validacao operacional. Distribuicao 'installed': o codigo deste item esta na release 0.1.0a44-07802589e985, instalada no host em 2026-08-11 (RELEASE-LEDGER, ancestralidade do commit 07802589e985 conferida). NAO e 'certified': a certificacao fisica segue adiada e a tag v0.1.0a44 nao foi publicada — tag e a afirmacao de que os gates fisicos passaram. A convergencia do daemon ainda depende de acao do operador (steamzero-host converge). Verificado contra a API real em 2026-08-12 com credenciais do operador: a resolucao de id no SteamGridDB usava /games/autocomplete?term=, que responde HTTP 405 — o endpoint nao existe na v2. Corrigido para /search/autocomplete/{termo}; busca real devolve 149 candidatos para Breath of the Wild e 85 para Sonic. ScreenScraper segue quebrado por outra causa: jeuInfos.php responde HTTP 400 'Champ systemeid obligatoire si aucun CRC' porque o cliente nao mapeia platform_slug para systemeid nem envia hash — ver G40. G44 parcialmente fechada em 2026-08-12: notConfigured, stored e vaultVolatile agora sao distinguiveis por marcador persistente sem segredo. 2026-08-24: vaultVolatile corrigido na UI. O dominio ja distinguia 'o cofre perdeu o valor' de 'campo em branco' desde a queixa do operador em 2026-08-12, mas stateLabel() do CredentialProviderCard nao tinha a entrada e caia no fallback, mostrando 'Nao configurado' — ou seja, mandava reconfigurar o que a pessoa ja tinha configurado. O dominio acertava e a UI jogava fora no ultimo passo. Cor passou a amber: e atencao, nao erro. 2026-08-24: as DUAS metades da G40 estao fechadas em teste. A tabela systemeid ja existia (_PLATFORM_MAP) e o KNOWN-GAPS.md estava desatualizado; a classificacao do 403 foi corrigida agora. A chave da mensagem no payload nao esta documentada, entao a classificacao varre o TEXTO devolvido em vez de adivinhar o campo, e so reclassifica com evidencia positiva de credencial — sem marcador, o comportamento anterior permanece. 2026-08-29: a release 2.0.0rc1-a897f8ffcfed foi instalada e convergiu; a busca real não comprovou quota: o transporte eliminava o corpo do HTTP 403 e mascarava credencial recusada. O cofre atual tem credenciais de aplicação, mas não ssid/sspassword pessoais; a correção classifica esse caso sem persistir corpo, URL ou segredo."
+  "updatedAt": "2026-09-22",
+  "notes": "Contratos de providers, cache, credenciais sanitizadas e classificação de falhas continuam integrados e cobertos pela suíte scraping. A verificação de host agora é hw: SteamGridDB está funcional; ScreenScraper foi exercitado contra a API real e rejeitado por credencial, sem ser mascarado como quota ou ausência. A busca individual e o lote assíncrono provaram descoberta, seleção, download, canonicalização e otimização de um candidato, mas não garantem qualidade perceptual, cobertura de todos os kinds, publicação Steam ou rollback. O nome Steam Deck API não aparece como provider identificável no inventário atual e precisa ser reconciliado antes de promover a capacidade. G44 permanece parcial por causa do cofre do host."
 }

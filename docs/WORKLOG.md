@@ -12235,3 +12235,22 @@ real. Nenhum emulador, Theme Studio ou job permaneceu aberto; um scan abandonado
 por probe interrompido foi cancelado explicitamente.
 
 Evidência: `docs/09-operations/evidence/2026-09-22-media-theme-first-run/README.md`.
+
+## 2026-09-22 — Reconciliação canônica do diagnóstico e do roadmap
+
+Os três diagnósticos físicos de 2026-09-22 foram mantidos como evidência e
+referenciados pelos itens canônicos, sem criar um novo relatório. O ledger
+`docs/KNOWN-GAPS.md` recebeu G48–G54 para as lacunas que não tinham identidade
+única: Launcher acima de 512 itens/ativação, first-run, handoff Flatpak do
+PCSX2, ciclo físico de ROMs e nomes, provider/qualidade de mídia, autoria de
+efeitos do Theme Studio e fixtures/jornadas ES-DE/RetroFE.
+
+`docs/12-roadmap/IMPLEMENTATION-ROADMAP.md` e `MILESTONES.md` agora refletem a
+ordem operacional: P0 = Launcher → first-run → PCSX2; P1 = ROMs → mídia →
+Theme Studio → ES-DE/RetroFE; a certificação de fade, retorno de foco,
+gameplay interativo, multi-disc, PS4/PS5 e desempenho fica depois desses gates.
+Os itens `SZ-MEDIA-SCRAPING`, `SZ-MEDIA-AUDIT-PLATFORM-SCOPE`,
+`SZ-THEME-STUDIO`, `SZ-LIBRARY-CANONICAL`, `SZ-FRONTEND-ESDE`,
+`SZ-FRONTEND-RETROFE` e `SZ-EMULATION-REAL-DUMP-VALIDATION` foram atualizados
+com o estado real observado; `STATUS.md`, `ACTIVE-WORK.md` e `COVERAGE.md`
+foram regenerados. `project_status.py check` passou.

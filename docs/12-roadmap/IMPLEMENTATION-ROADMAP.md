@@ -2,6 +2,32 @@
 
 Pré-condição de TODAS as fases ≥1: aprovação formal (`APPROVED_TO_IMPLEMENT`) + Q2 (licença) decidida.
 
+## Baseline operacional reconciliado — 2026-09-22
+
+A release governada `2.0.0rc1-504d10b14485` está instalada e convergida no host.
+Ela já prova a central, o scan real, o inventário dos 33 componentes, rotas de
+lançamento, pausa/retomada, save/load state, bezel RetroArch, jobs de mídia e
+parte da jornada visual. Isso não fecha a release funcional: a fonte autoritativa
+continua sendo `docs/status/items/*.json`, e os detalhes físicos ficam nos três
+relatórios de evidência de 2026-09-22 referenciados pelo item
+`SZ-EMULATION-REAL-DUMP-VALIDATION`.
+
+O diagnóstico consolidado reordena a execução por risco de jornada:
+
+1. **P0 — entrada e lançamento:** fechar G48 (Launcher acima de 512 itens e
+   ativação), G49 (first-run resiliente) e G50 (handoff Flatpak/portal do PCSX2).
+2. **P1 — conteúdo e autoria:** fechar G51 (extração/renomeação/normalização),
+   G52 (provider e qualidade de mídia), G53 (autoria de efeitos e medição do
+   Theme Studio) e G54 (fixtures/jornadas ES-DE e RetroFE).
+3. **Certificação — experiência completa:** somente depois medir fade-in,
+   fade-out, retorno de foco, gameplay interativo por plataforma, multi-disc,
+   PS4/PS5 e desempenho na release instalada.
+
+Nenhum item acima deve ser promovido por teste offscreen, inspector, fixture
+reduzido ou simples existência de processo. Cada fechamento exige estado real,
+causa de degradação visível, limpeza dos processos e evidência vinculada ao
+item de status.
+
 ## Fase 0 — Fundação documental ✅ (esta entrega)
 
 Inventário, matriz de capacidades, licenças, PRD, arquitetura, threat model, UX, contratos de API, schemas, plano de testes, roadmap, riscos. Nenhum código de produção.

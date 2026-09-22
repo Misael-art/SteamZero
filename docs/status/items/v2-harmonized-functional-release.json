@@ -40,10 +40,10 @@
       "result": "recorded"
     }
   ],
-  "nextAction": "O contrato do plano Flatpak v3 já foi integrado (SZ-COMPONENT-LIFECYCLE provou install/verify/rollback/recovery do executor, inclusive com o core libretro e o smoke flatpak-info do melonDS no host). Restam para esta frente: a biblioteca canonica consumida pelos demais superficies, a prova de artwork da midia no acervo real, a matriz fisica dos 33 componentes, a jornada ES-DE/RetroFE, o fechamento dos 7 controles de UI e o updater com a prova de quarentena — cada um no seu item, antes da release 2.0.0.",
+  "nextAction": "Não promover esta frente por agregação histórica. Usar a ordem vigente: G48 Launcher real, G49 first-run, G50 PCSX2 portal; depois G51 ROM lifecycle, G52 mídia, G53 Theme Studio e G54 ES-DE/RetroFE. A matriz de fade, gameplay, retorno de foco, multi-disc, PS4/PS5 e desempenho só fecha após esses gates.",
   "activeWorkstreams": [
     "WS-2026-08-V2-HARMONIZED"
   ],
   "updatedAt": "2026-08-24",
-  "notes": "Item criado em 2026-08-24. Ele nao existia e por isso o status-check reprovava com 'WS-2026-08-V2-HARMONIZED: item inexistente'. A verificacao e deliberadamente 'none' e a operacao 'unknown': esta frente ainda nao provou nada por si — o que ja esta provado pertence aos itens dependentes, e promover este item a partir deles seria exatamente a promocao por historico que o AGENTS.md proibe. Base: origin/main c2a1ff1abc98fbffd04175c81010009872476893; branch 65 commits a frente, zero atras; sem branch remota nem PR no momento da criacao. Proibido mesclar as PRs 78, 79, 80, 81, 82 e 92; heads vetados 2235ce9 (PR 79) e 66d7ac1 (PR 80) devem permanecer nao-ancestrais."
+  "notes": "Frente guarda-chuva deliberadamente permanece verification=none e operation=unknown: o produto não é promovido somando evidências de itens filhos. A release governada 2.0.0rc1-504d10b14485 e os três diagnósticos de 2026-09-22 tornam o baseline observável, mas a frente só poderá ser promovida depois que os gates G48–G54 e a certificação física de jornada forem fechados individualmente."
 }

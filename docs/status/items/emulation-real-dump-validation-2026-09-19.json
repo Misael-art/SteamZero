@@ -23,7 +23,14 @@
   ],
   "knownGaps": [
     "GAP-REAL-DUMP-VALIDATION-PHYSICAL",
-    "GAP-COMPONENT-AUTHORIZATION"
+    "GAP-COMPONENT-AUTHORIZATION",
+    "GAP-G48",
+    "GAP-G49",
+    "GAP-G50",
+    "GAP-G51",
+    "GAP-G52",
+    "GAP-G53",
+    "GAP-G54"
   ],
   "acceptanceCriteria": [
     "O inventário associa diretórios não vazios a manifestos e formatos sem alterar ROMs.",
@@ -286,7 +293,7 @@
       "result": "partial"
     }
   ],
-  "nextAction": "Corrigir primeiro o limite/ativação real do Launcher e a resiliência de first-run DuckStation/melonDS/Dolphin/Cemu/SharpEmu; em seguida corrigir handoff Flatpak/portal do PCSX2, recuperar ScreenScraper e identificar o provider chamado Steam Deck API, medir qualidade de mídia por kind, exercitar download/publicação/rollback completos, tornar efeitos editáveis no Theme Studio, instalar fixtures reais ES-DE/RetroFE e retomar fade-in/fade-out, gameplay interativo e multi-disc.",
+  "nextAction": "ORDEM DE ROADMAP: P0 fechar Launcher real (G48), first-run resiliente (G49) e handoff PCSX2/portal (G50); P1 fechar tratamento físico de ROMs/nomes (G51), reconciliar provider e qualidade de mídia (G52), autoria de efeitos/performance no Theme Studio (G53) e fixtures/jornadas ES-DE/RetroFE (G54); só depois retomar fade-in/fade-out, gameplay interativo, retorno de foco e multi-disc como gates de certificação.",
   "activeWorkstreams": [
     "WS-2026-09-EMULATION-REAL-DUMP-VALIDATION"
   ],
