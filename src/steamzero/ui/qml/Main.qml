@@ -74,6 +74,16 @@ ApplicationWindow {
     readonly property bool reducedMotion: _themeBridge.reducedMotion
     readonly property int motionDuration: _themeBridge.motionDuration
     readonly property bool highContrast: _themeBridge.highContrast
+    readonly property real visualScale: _themeBridge.hostVisualScale
+
+    // Todos os tamanhos de texto desta superfície passam por este ponto. A
+    // escala vem do host por leitura; valores ausentes/invalidos já chegam
+    // normalizados pelo ThemeBridge e nunca podem encolher a fonte abaixo de
+    // um pixel.
+    function scaledTextSize(value) {
+        return Math.max(1, Math.round(Number(value) * visualScale))
+    }
+
     readonly property int bottomSafeInset: compactLayout ? 60 : 24
     readonly property bool ultrawideLayout: width >= 2200
     readonly property int responsiveGutter: compactLayout ? 12 : 28
@@ -1834,7 +1844,7 @@ ApplicationWindow {
             Label {
                 text: qsTr("Instalação no usuário, sem sudo, usando somente o release oficial pinado.")
                 color: root.textColor
-                font.pixelSize: 17
+                font.pixelSize: root.scaledTextSize(17)
                 font.bold: true
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
@@ -1869,7 +1879,7 @@ ApplicationWindow {
                     : ""
                 color: root.mutedColor
                 font.family: "monospace"
-                font.pixelSize: 11
+                font.pixelSize: root.scaledTextSize(11)
                 wrapMode: Text.WrapAnywhere
                 Layout.fillWidth: true
             }
@@ -1976,7 +1986,7 @@ ApplicationWindow {
             Label {
                 text: qsTr("Configure as chaves de API dos provedores de scraping para buscar capas e mídia automaticamente.")
                 color: root.textColor
-                font.pixelSize: 13
+                font.pixelSize: root.scaledTextSize(13)
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
@@ -2053,13 +2063,13 @@ ApplicationWindow {
                 text: qsTr("Opcional — Steam Web API")
                 color: root.textColor
                 font.bold: true
-                font.pixelSize: 13
+                font.pixelSize: root.scaledTextSize(13)
                 Layout.fillWidth: true
             }
             Label {
                 text: qsTr("Não é necessária para atalhos nem para artes locais da Steam.")
                 color: root.mutedColor
-                font.pixelSize: 11
+                font.pixelSize: root.scaledTextSize(11)
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
@@ -2116,7 +2126,7 @@ ApplicationWindow {
             Label {
                 text: qsTr("Detectamos uma tentativa incompleta de alteração de perfil. Restaure o último estado seguro antes de continuar.")
                 color: root.textColor
-                font.pixelSize: 18
+                font.pixelSize: root.scaledTextSize(18)
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
@@ -2259,7 +2269,7 @@ ApplicationWindow {
             Label {
                 text: parent.shown.title || qsTr("Operação")
                 color: root.textColor
-                font.pixelSize: 20
+                font.pixelSize: root.scaledTextSize(20)
                 font.bold: true
                 Layout.fillWidth: true
             }
@@ -2343,7 +2353,7 @@ ApplicationWindow {
                 Label {
                     text: qsTr("Nova tag")
                     color: root.textColor
-                    font.pixelSize: 19
+                    font.pixelSize: root.scaledTextSize(19)
                     font.bold: true
                 }
                 TextField {
@@ -2381,7 +2391,7 @@ ApplicationWindow {
                 Label {
                     text: qsTr("Nova coleção inteligente")
                     color: root.textColor
-                    font.pixelSize: 19
+                    font.pixelSize: root.scaledTextSize(19)
                     font.bold: true
                 }
                 TextField {
@@ -2460,7 +2470,7 @@ ApplicationWindow {
             Label {
                 text: root.collectionPlan ? root.collectionPlan.summary : ""
                 color: root.textColor
-                font.pixelSize: 19
+                font.pixelSize: root.scaledTextSize(19)
                 font.bold: true
                 Layout.fillWidth: true
             }
@@ -2727,7 +2737,7 @@ ApplicationWindow {
             Label {
                 text: qsTr("Informe o código exibido no receptor:")
                 color: root.textColor
-                font.pixelSize: 16
+                font.pixelSize: root.scaledTextSize(16)
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
@@ -2821,11 +2831,11 @@ ApplicationWindow {
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 0
-                    Label { text: "STEAMZERO"; color: root.textColor; font.bold: true; font.pixelSize: 17 }
+                    Label { text: "STEAMZERO"; color: root.textColor; font.bold: true; font.pixelSize: root.scaledTextSize(17) }
                     Label {
                         text: qsTr("%1 · %2").arg(root.sectionLabel(root.sectionIndex)).arg(root.deviceSummary())
                         color: root.mutedColor
-                        font.pixelSize: 11
+                        font.pixelSize: root.scaledTextSize(11)
                         elide: Text.ElideRight
                         Layout.fillWidth: true
                     }
@@ -2881,7 +2891,7 @@ ApplicationWindow {
                 color: root.mutedColor
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
-                font.pixelSize: 11
+                font.pixelSize: root.scaledTextSize(11)
             }
         }
     }
@@ -2925,13 +2935,13 @@ ApplicationWindow {
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 0
-                    Label { text: qsTr("Central de tarefas"); color: root.textColor; font.pixelSize: 19; font.bold: true }
+                    Label { text: qsTr("Central de tarefas"); color: root.textColor; font.pixelSize: root.scaledTextSize(19); font.bold: true }
                     Label {
                         text: root.activeTaskCount() > 0
                             ? qsTr("%1 ativa(s)").arg(root.activeTaskCount())
                             : qsTr("Nenhuma operação ativa")
                         color: root.activeTaskCount() > 0 ? root.cyanColor : root.mutedColor
-                        font.pixelSize: 11
+                        font.pixelSize: root.scaledTextSize(11)
                     }
                 }
                 Button {
@@ -3199,14 +3209,14 @@ ApplicationWindow {
                                 Label {
                                     text: "STEAMZERO"
                                     color: root.textColor
-                                    font.pixelSize: root.width < 980 ? 16 : 19
+                                    font.pixelSize: root.scaledTextSize(root.width < 980 ? 16 : 19)
                                     font.bold: true
                                 }
                                 Label {
                                     visible: root.width >= 980
                                     text: qsTr("Central de jogos")
                                     color: root.mutedColor
-                                    font.pixelSize: 13
+                                    font.pixelSize: root.scaledTextSize(13)
                                 }
                             }
                         }
@@ -3270,7 +3280,7 @@ ApplicationWindow {
                                         Label {
                                             text: modelData.label
                                             color: root.sectionIndex === index ? root.cyanColor : root.textColor
-                                            font.pixelSize: 15
+                                            font.pixelSize: root.scaledTextSize(15)
                                             Layout.fillWidth: true
                                             elide: Text.ElideRight
                                         }
@@ -3278,7 +3288,7 @@ ApplicationWindow {
                                             visible: index === 2 && root.sectionIndex === 2
                                             text: qsTr("Gameplay")
                                             color: root.cyanColor
-                                            font.pixelSize: 12
+                                            font.pixelSize: root.scaledTextSize(12)
                                         }
                                     }
                                 }
@@ -3321,7 +3331,7 @@ ApplicationWindow {
                                     visible: !root.compactLayout
                                     spacing: 1
                                     Label { text: attentionButton.text; color: root.amberColor; font.bold: true }
-                                    Label { text: qsTr("Requer sua atenção"); color: root.mutedColor; font.pixelSize: 12 }
+                                    Label { text: qsTr("Requer sua atenção"); color: root.mutedColor; font.pixelSize: root.scaledTextSize(12) }
                                 }
                             }
                         }
@@ -3332,7 +3342,7 @@ ApplicationWindow {
                             visible: !root.compactLayout
                             text: qsTr("AÇÕES DO SISTEMA")
                             color: root.mutedColor
-                            font.pixelSize: 11
+                            font.pixelSize: root.scaledTextSize(11)
                             font.capitalization: Font.AllUppercase
                         }
                         DarkButton {
@@ -3411,7 +3421,7 @@ ApplicationWindow {
                                 text: root.desktopStatus.independentRuntime
                                     ? qsTr("Runtime autônomo") : qsTr("Verificação necessária")
                                 color: root.desktopStatus.independentRuntime ? root.greenColor : root.amberColor
-                                font.pixelSize: 11
+                                font.pixelSize: root.scaledTextSize(11)
                                 Layout.fillWidth: true
                             }
                             BusyIndicator { running: root.pendingRequests > 0; implicitWidth: 22; implicitHeight: 22 }
@@ -3464,7 +3474,7 @@ ApplicationWindow {
                                     Label {
                                         text: root.sectionLabel(root.sectionIndex)
                                         color: root.textColor
-                                        font.pixelSize: 17
+                                        font.pixelSize: root.scaledTextSize(17)
                                         font.bold: true
                                         elide: Text.ElideRight
                                         Layout.fillWidth: true
@@ -3476,7 +3486,7 @@ ApplicationWindow {
                                             : root.sectionIndex === 2 ? qsTr("%1 · %2").arg(root.steamArea).arg(root.deviceSummary())
                                             : root.deviceSummary()
                                         color: root.mutedColor
-                                        font.pixelSize: 11
+                                        font.pixelSize: root.scaledTextSize(11)
                                         elide: Text.ElideRight
                                         Layout.fillWidth: true
                                         Accessible.name: qsTr("Contexto: %1").arg(text)
@@ -3553,7 +3563,7 @@ ApplicationWindow {
                                                         ? qsTr("Nenhum perfil foi aplicado")
                                                         : qsTr("Observação do Desktop degradada")
                                             color: root._contrastTextColor("#24180b")
-                                            font.pixelSize: root.compactLayout ? 14 : 17
+                                            font.pixelSize: root.scaledTextSize(root.compactLayout ? 14 : 17)
                                             font.bold: true
                                         }
                                         Label {
@@ -3561,7 +3571,7 @@ ApplicationWindow {
                                             text: root.hasConflicts ? "E-DESKTOP-OWNER-CONFLICT"
                                                 : root.truthStateLabel(root.desktopStatus.truthState).toUpperCase()
                                             color: root._contrastTextColor("#24180b")
-                                            font.pixelSize: 11
+                                            font.pixelSize: root.scaledTextSize(11)
                                         }
                                     }
                                     Label {
@@ -3571,7 +3581,7 @@ ApplicationWindow {
                                                 ? root.desktopStatus.statusReasons[0]
                                                 : qsTr("Revise o perfil desejado, aplicado e observado.")
                                         color: root._contrastTextColor("#24180b")
-                                        font.pixelSize: root.compactLayout ? 11 : 13
+                                        font.pixelSize: root.scaledTextSize(root.compactLayout ? 11 : 13)
                                         elide: Text.ElideRight
                                         maximumLineCount: 1
                                     }
@@ -3645,7 +3655,7 @@ ApplicationWindow {
                                 Label {
                                     text: qsTr("Central desconectada — alterações locais não serão sincronizadas")
                                     color: "#f2f6fb"
-                                    font.pixelSize: 12
+                                    font.pixelSize: root.scaledTextSize(12)
                                     Layout.fillWidth: true
                                     elide: Text.ElideRight
                                 }
@@ -3749,7 +3759,7 @@ ApplicationWindow {
                                         visible: false
                                         text: qsTr("Visão geral")
                                         color: root.textColor
-                                        font.pixelSize: root.compactLayout ? 24 : 30
+                                        font.pixelSize: root.scaledTextSize(root.compactLayout ? 24 : 30)
                                         font.bold: true
                                         Layout.topMargin: root.compactLayout ? 12 : 24
                                         Layout.leftMargin: root.responsiveGutter
@@ -3758,7 +3768,7 @@ ApplicationWindow {
                                         visible: false
                                         text: root.deviceSummary()
                                         color: root.mutedColor
-                                        font.pixelSize: 15
+                                        font.pixelSize: root.scaledTextSize(15)
                                         Layout.leftMargin: root.responsiveGutter
                                     }
                                     Rectangle {
@@ -3779,7 +3789,7 @@ ApplicationWindow {
                                                 Label {
                                                     text: root.needsAttention ? qsTr("Ação necessária") : qsTr("Sistema pronto")
                                                     color: root.needsAttention ? root.amberColor : root.greenColor
-                                                    font.pixelSize: root.compactLayout ? 18 : 22
+                                                    font.pixelSize: root.scaledTextSize(root.compactLayout ? 18 : 22)
                                                     font.bold: true
                                                 }
                                                 Label {
@@ -3814,7 +3824,7 @@ ApplicationWindow {
                                         Label {
                                             text: qsTr("Continuar jogando")
                                             color: root.textColor
-                                            font.pixelSize: 20
+                                            font.pixelSize: root.scaledTextSize(20)
                                             font.bold: true
                                             Layout.fillWidth: true
                                         }
@@ -3885,14 +3895,14 @@ ApplicationWindow {
                                                             .arg(root.continueStateLabel(modelData.continueState))
                                                         color: modelData.continueState === "interrupted"
                                                             ? root.amberColor : root.mutedColor
-                                                        font.pixelSize: 13
+                                                        font.pixelSize: root.scaledTextSize(13)
                                                         elide: Text.ElideRight
                                                         Layout.fillWidth: true
                                                     }
                                                 }
                                                 ToolButton {
                                                     text: modelData.favorite === true ? "★" : "☆"
-                                                    font.pixelSize: 24
+                                                    font.pixelSize: root.scaledTextSize(24)
                                                     Layout.minimumWidth: 48
                                                     Layout.minimumHeight: 48
                                                     Accessible.name: modelData.favorite === true
@@ -3917,7 +3927,7 @@ ApplicationWindow {
                                         Label {
                                             text: qsTr("Coleções")
                                             color: root.textColor
-                                            font.pixelSize: 20
+                                            font.pixelSize: root.scaledTextSize(20)
                                             font.bold: true
                                             Layout.fillWidth: true
                                         }
@@ -3979,7 +3989,7 @@ ApplicationWindow {
                                                 Label {
                                                     text: qsTr("Saúde da coleção")
                                                     color: root.textColor
-                                                    font.pixelSize: 20
+                                                    font.pixelSize: root.scaledTextSize(20)
                                                     font.bold: true
                                                 }
                                                 Label {
@@ -4020,7 +4030,7 @@ ApplicationWindow {
                                         visible: false
                                         text: qsTr("Áreas principais")
                                         color: root.textColor
-                                        font.pixelSize: 20
+                                        font.pixelSize: root.scaledTextSize(20)
                                         font.bold: true
                                         Layout.leftMargin: root.responsiveGutter
                                     }
@@ -4045,7 +4055,7 @@ ApplicationWindow {
                                                 ColumnLayout {
                                                     Layout.fillWidth: true
                                                     Label { text: modelData.title; color: root.textColor; font.bold: true }
-                                                    Label { text: modelData.detail; color: root.mutedColor; font.pixelSize: 13 }
+                                                    Label { text: modelData.detail; color: root.mutedColor; font.pixelSize: root.scaledTextSize(13) }
                                                 }
                                                 ToolButton { enabled: false; icon.name: "go-next"; icon.color: root.mutedColor; background: Item {} }
                                             }
@@ -4061,6 +4071,7 @@ ApplicationWindow {
                                     id: emulationPage
                                     emulation: root.emulationData
                                     reducedMotion: root.reducedMotion
+                                    visualScale: root.visualScale
                                     backgroundColor: root.backgroundColor
                                     sidebarColor: root.sidebarColor
                                     surfaceColor: root.surfaceColor
@@ -4106,8 +4117,8 @@ ApplicationWindow {
                                             ColumnLayout {
                                                 Layout.fillWidth: true
                                                 spacing: 2
-                                                Label { text: qsTr("Gerenciar emuladores"); color: root.textColor; font.pixelSize: 30; font.bold: true }
-                                                Label { text: qsTr("Instale, atualize e restaure configurações com segurança."); color: root.mutedColor; font.pixelSize: 15 }
+                                                Label { text: qsTr("Gerenciar emuladores"); color: root.textColor; font.pixelSize: root.scaledTextSize(30); font.bold: true }
+                                                Label { text: qsTr("Instale, atualize e restaure configurações com segurança."); color: root.mutedColor; font.pixelSize: root.scaledTextSize(15) }
                                             }
                                             Button {
                                                 visible: Boolean(root.desktopStatus.recoveryRequired)
@@ -4118,7 +4129,7 @@ ApplicationWindow {
                                                 onClicked: recoveryDialog.open()
                                             }
                                         }
-                                        Label { text: root.deviceSummary(); color: root.mutedColor; font.pixelSize: 12 }
+                                        Label { text: root.deviceSummary(); color: root.mutedColor; font.pixelSize: root.scaledTextSize(12) }
                                         RowLayout {
                                             spacing: 0
                                             DarkButton {
@@ -4177,9 +4188,9 @@ ApplicationWindow {
                                         Layout.leftMargin: 28
                                         Layout.rightMargin: 20
                                         Layout.preferredHeight: 34
-                                        Label { text: qsTr("EMULADOR"); color: root.mutedColor; font.pixelSize: 11; Layout.fillWidth: true }
-                                        Label { visible: root.width >= 1100; text: qsTr("ESTADO"); color: root.mutedColor; font.pixelSize: 11; Layout.preferredWidth: 180 }
-                                        Label { text: qsTr("AÇÃO"); color: root.mutedColor; font.pixelSize: 11; Layout.preferredWidth: 132 }
+                                        Label { text: qsTr("EMULADOR"); color: root.mutedColor; font.pixelSize: root.scaledTextSize(11); Layout.fillWidth: true }
+                                        Label { visible: root.width >= 1100; text: qsTr("ESTADO"); color: root.mutedColor; font.pixelSize: root.scaledTextSize(11); Layout.preferredWidth: 180 }
+                                        Label { text: qsTr("AÇÃO"); color: root.mutedColor; font.pixelSize: root.scaledTextSize(11); Layout.preferredWidth: 132 }
                                     }
                                     ListView {
                                         id: emulatorList
@@ -4240,8 +4251,8 @@ ApplicationWindow {
                                                 ColumnLayout {
                                                     Layout.fillWidth: true
                                                     spacing: 3
-                                                    Label { text: modelData.name; color: root.textColor; font.pixelSize: 17; font.bold: true }
-                                                    Label { text: modelData.description; color: root.mutedColor; font.pixelSize: 12 }
+                                                    Label { text: modelData.name; color: root.textColor; font.pixelSize: root.scaledTextSize(17); font.bold: true }
+                                                    Label { text: modelData.description; color: root.mutedColor; font.pixelSize: root.scaledTextSize(12) }
                                                     RowLayout {
                                                         Repeater {
                                                             model: modelData.systems || []
@@ -4249,7 +4260,7 @@ ApplicationWindow {
                                                                 required property string modelData
                                                                 text: modelData
                                                                 color: root.mutedColor
-                                                                font.pixelSize: 11
+                                                                font.pixelSize: root.scaledTextSize(11)
                                                                 leftPadding: 6
                                                                 rightPadding: 6
                                                                 background: Rectangle { color: root.surfaceColor; radius: 4; border.color: root.borderColor }
@@ -4263,8 +4274,8 @@ ApplicationWindow {
                                                     ToolButton { enabled: false; icon.name: root.stateIcon(modelData.state); icon.color: root.stateColor(modelData.state); background: Item {} }
                                                     ColumnLayout {
                                                         spacing: 0
-                                                        Label { text: modelData.statusLabel; color: root.stateColor(modelData.state); font.pixelSize: 13 }
-                                                        Label { text: modelData.versionLabel || "—"; color: root.mutedColor; font.pixelSize: 11 }
+                                                        Label { text: modelData.statusLabel; color: root.stateColor(modelData.state); font.pixelSize: root.scaledTextSize(13) }
+                                                        Label { text: modelData.versionLabel || "—"; color: root.mutedColor; font.pixelSize: root.scaledTextSize(11) }
                                                     }
                                                 }
                                                 DarkButton {
@@ -4304,14 +4315,14 @@ ApplicationWindow {
                                         Label {
                                             text: root.selectedEmulator ? root.selectedEmulator.name : qsTr("Emulador")
                                             color: root.textColor
-                                            font.pixelSize: 20
+                                            font.pixelSize: root.scaledTextSize(20)
                                             font.bold: true
                                             Layout.fillWidth: true
                                         }
                                         Label {
                                             text: root.selectedEmulator ? root.selectedEmulator.statusLabel : ""
                                             color: root.selectedEmulator ? root.stateColor(root.selectedEmulator.state) : root.mutedColor
-                                            font.pixelSize: 14
+                                            font.pixelSize: root.scaledTextSize(14)
                                         }
                                         Rectangle { color: root.borderColor; Layout.fillWidth: true; Layout.preferredHeight: 1 }
                                         Label { text: qsTr("Sobre"); color: root.textColor; font.bold: true }
@@ -4358,6 +4369,7 @@ ApplicationWindow {
                                     gameplay: root.steamGameplayData
                                     desktopStatus: root.desktopStatus
                                     reducedMotion: root.reducedMotion
+                                    visualScale: root.visualScale
                                     initialArea: root.steamArea
                                     backgroundColor: root.backgroundColor
                                     surfaceColor: root.surfaceColor
@@ -4534,9 +4546,9 @@ ApplicationWindow {
                                         Layout.fillWidth: true
                                         Layout.margins: 28
                                         spacing: 8
-                                        Label { text: qsTr("Steam e integração"); color: root.textColor; font.pixelSize: 30; font.bold: true }
-                                        Label { text: qsTr("Gerencie cliente, biblioteca, Steam Input e teclado em um só lugar."); color: root.mutedColor; font.pixelSize: 15 }
-                                        Label { text: root.deviceSummary(); color: root.mutedColor; font.pixelSize: 12 }
+                                        Label { text: qsTr("Steam e integração"); color: root.textColor; font.pixelSize: root.scaledTextSize(30); font.bold: true }
+                                        Label { text: qsTr("Gerencie cliente, biblioteca, Steam Input e teclado em um só lugar."); color: root.mutedColor; font.pixelSize: root.scaledTextSize(15) }
+                                        Label { text: root.deviceSummary(); color: root.mutedColor; font.pixelSize: root.scaledTextSize(12) }
                                         RowLayout {
                                             spacing: 0
                                             DarkButton {
@@ -4648,9 +4660,9 @@ ApplicationWindow {
                                                 ColumnLayout {
                                                     Layout.fillWidth: true
                                                     spacing: 3
-                                                    Label { text: modelData.name; color: root.textColor; font.pixelSize: 17; font.bold: true }
-                                                    Label { text: modelData.description; color: root.mutedColor; font.pixelSize: 12 }
-                                                    Label { text: modelData.versionLabel || ""; color: root.mutedColor; font.pixelSize: 11 }
+                                                    Label { text: modelData.name; color: root.textColor; font.pixelSize: root.scaledTextSize(17); font.bold: true }
+                                                    Label { text: modelData.description; color: root.mutedColor; font.pixelSize: root.scaledTextSize(12) }
+                                                    Label { text: modelData.versionLabel || ""; color: root.mutedColor; font.pixelSize: root.scaledTextSize(11) }
                                                 }
                                                 RowLayout {
                                                     visible: root.width >= 1100
@@ -4694,7 +4706,7 @@ ApplicationWindow {
                                         Label {
                                             text: root.selectedSteam ? root.selectedSteam.name : "Steam"
                                             color: root.textColor
-                                            font.pixelSize: 20
+                                            font.pixelSize: root.scaledTextSize(20)
                                             font.bold: true
                                             Layout.fillWidth: true
                                         }
@@ -4750,7 +4762,7 @@ ApplicationWindow {
                                     Label {
                                         text: qsTr("Perfis do Desktop")
                                         color: root.textColor
-                                        font.pixelSize: 30
+                                        font.pixelSize: root.scaledTextSize(30)
                                         font.bold: true
                                         Layout.topMargin: 28
                                         Layout.leftMargin: 28
@@ -4816,7 +4828,7 @@ ApplicationWindow {
                                                                 ? root._contrastTextColor(root.cyanDarkColor)
                                                                 : root.textColor
                                                             font.bold: true
-                                                            font.pixelSize: 17
+                                                            font.pixelSize: root.scaledTextSize(17)
                                                             Layout.fillWidth: true
                                                         }
                                                         Label {
@@ -4836,7 +4848,7 @@ ApplicationWindow {
                                                             color: root.selectedProfile === modelData.id
                                                                 ? root._contrastTextColor(root.cyanDarkColor)
                                                                 : root.cyanColor
-                                                            font.pixelSize: 11
+                                                            font.pixelSize: root.scaledTextSize(11)
                                                         }
                                                     }
                                                     Label {
@@ -4846,7 +4858,7 @@ ApplicationWindow {
                                                             : root.mutedColor
                                                         wrapMode: Text.WordWrap
                                                         Layout.fillWidth: true
-                                                        font.pixelSize: 12
+                                                        font.pixelSize: root.scaledTextSize(12)
                                                     }
                                                     Label {
                                                         text: {
@@ -4874,7 +4886,7 @@ ApplicationWindow {
                                                         color: root.selectedProfile === modelData.id
                                                             ? root._contrastTextColor(root.cyanDarkColor)
                                                             : root.amberColor
-                                                        font.pixelSize: 11
+                                                        font.pixelSize: root.scaledTextSize(11)
                                                     }
                                                 }
                                             }
@@ -4892,7 +4904,7 @@ ApplicationWindow {
                                             anchors.fill: parent
                                             anchors.margins: 20
                                             spacing: 12
-                                            Label { text: qsTr("Revisar e aplicar"); color: root.textColor; font.pixelSize: 18; font.bold: true }
+                                            Label { text: qsTr("Revisar e aplicar"); color: root.textColor; font.pixelSize: root.scaledTextSize(18); font.bold: true }
                                             SteamComboBox {
                                                 id: profilePicker
                                                 Layout.fillWidth: true
@@ -4936,7 +4948,7 @@ ApplicationWindow {
                                             anchors.fill: parent
                                             anchors.margins: 20
                                             spacing: 10
-                                            Label { text: qsTr("Plano revisado"); color: root.textColor; font.pixelSize: 18; font.bold: true }
+                                            Label { text: qsTr("Plano revisado"); color: root.textColor; font.pixelSize: root.scaledTextSize(18); font.bold: true }
                                             Label {
                                                 text: root.currentPlan ? root.currentPlan.changes.join("\n") : ""
                                                 color: root.mutedColor
@@ -4985,7 +4997,7 @@ ApplicationWindow {
                                 ColumnLayout {
                                     width: parent.width
                                     spacing: 16
-                                    Label { text: qsTr("Estado da sincronização"); color: root.textColor; font.pixelSize: 30; font.bold: true; Layout.topMargin: 28; Layout.leftMargin: 28 }
+                                    Label { text: qsTr("Estado da sincronização"); color: root.textColor; font.pixelSize: root.scaledTextSize(30); font.bold: true; Layout.topMargin: 28; Layout.leftMargin: 28 }
                                     Rectangle {
                                         visible: !root.syncProviderPresent
                                         color: root.surfaceColor
@@ -5003,7 +5015,7 @@ ApplicationWindow {
                                                 text: qsTr("Sincronização de saves ainda não configurada")
                                                 color: root.textColor
                                                 font.bold: true
-                                                font.pixelSize: 18
+                                                font.pixelSize: root.scaledTextSize(18)
                                             }
                                             Label {
                                                 text: qsTr("Nenhum CloudPort autenticado foi publicado na bridge. A fila é somente leitura e não há retry, cancelamento ou resolução de conflito nesta versão.")
@@ -5195,7 +5207,7 @@ ApplicationWindow {
                                     Label {
                                         text: qsTr("Compartilhamento de tela")
                                         color: root.textColor
-                                        font.pixelSize: 30
+                                        font.pixelSize: root.scaledTextSize(30)
                                         font.bold: true
                                         Layout.topMargin: 28
                                         Layout.leftMargin: 28
@@ -5219,7 +5231,7 @@ ApplicationWindow {
                                                 color: root.castData.state === "available"
                                                     ? root.greenColor : root.amberColor
                                                 font.bold: true
-                                                font.pixelSize: 16
+                                                font.pixelSize: root.scaledTextSize(16)
                                             }
                                             Label {
                                                 text: root.castData.detail
@@ -5234,7 +5246,7 @@ ApplicationWindow {
                                         text: qsTr("Ações")
                                         color: root.textColor
                                         font.bold: true
-                                        font.pixelSize: 18
+                                        font.pixelSize: root.scaledTextSize(18)
                                         Layout.leftMargin: 28
                                         Layout.topMargin: 4
                                     }
@@ -5253,7 +5265,7 @@ ApplicationWindow {
                                                 ? qsTr("Transmitindo") : qsTr("Pronto para transmitir")
                                             color: root.textColor
                                             anchors.centerIn: parent
-                                            font.pixelSize: 14
+                                            font.pixelSize: root.scaledTextSize(14)
                                         }
                                     }
                                     Pane {
@@ -5281,7 +5293,7 @@ ApplicationWindow {
                                                         color: root.textColor
                                                         anchors.verticalCenter: parent.verticalCenter
                                                         x: 12
-                                                        font.pixelSize: 14
+                                                        font.pixelSize: root.scaledTextSize(14)
                                                     }
                                                     MouseArea {
                                                         anchors.fill: parent
@@ -5421,7 +5433,7 @@ ApplicationWindow {
                                 ColumnLayout {
                                     width: parent.width
                                     spacing: 16
-                                    Label { text: qsTr("Sistema e recuperação"); color: root.textColor; font.pixelSize: 30; font.bold: true; Layout.topMargin: 28; Layout.leftMargin: 28 }
+                                    Label { text: qsTr("Sistema e recuperação"); color: root.textColor; font.pixelSize: root.scaledTextSize(30); font.bold: true; Layout.topMargin: 28; Layout.leftMargin: 28 }
                                     Label { text: root.deviceSummary(); color: root.mutedColor; Layout.leftMargin: 28 }
                                     Rectangle {
                                         visible: root.hasConflicts
@@ -5437,8 +5449,8 @@ ApplicationWindow {
                                             anchors.margins: 18
                                             ColumnLayout {
                                                 Layout.fillWidth: true
-                                                Label { text: qsTr("Conflito de controle do sistema"); color: root._contrastTextColor("#24180b"); font.pixelSize: 18; font.bold: true }
-                                                Label { text: "E-DESKTOP-OWNER-CONFLICT"; color: root.mutedColor; font.pixelSize: 12 }
+                                                Label { text: qsTr("Conflito de controle do sistema"); color: root._contrastTextColor("#24180b"); font.pixelSize: root.scaledTextSize(18); font.bold: true }
+                                                Label { text: "E-DESKTOP-OWNER-CONFLICT"; color: root.mutedColor; font.pixelSize: root.scaledTextSize(12) }
                                             }
                                             Button { text: qsTr("Resolver conflito"); Layout.minimumHeight: 48; Accessible.name: text; onClicked: root.beginConflictResolution() }
                                         }
@@ -5446,7 +5458,7 @@ ApplicationWindow {
                                     Label {
                                         text: qsTr("Diagnóstico")
                                         color: root.textColor
-                                        font.pixelSize: 20
+                                        font.pixelSize: root.scaledTextSize(20)
                                         font.bold: true
                                         Layout.leftMargin: 28
                                         Layout.topMargin: 4
@@ -5546,7 +5558,7 @@ ApplicationWindow {
                                     Label {
                                         text: qsTr("Componentes de gameplay")
                                         color: root.textColor
-                                        font.pixelSize: 20
+                                        font.pixelSize: root.scaledTextSize(20)
                                         font.bold: true
                                         Layout.leftMargin: 28
                                         Layout.topMargin: 8
@@ -5583,7 +5595,7 @@ ApplicationWindow {
                                                     Label {
                                                         text: "LSFG-VK"
                                                         color: root.textColor
-                                                        font.pixelSize: 18
+                                                        font.pixelSize: root.scaledTextSize(18)
                                                         font.bold: true
                                                     }
                                                     Label {
@@ -5605,7 +5617,7 @@ ApplicationWindow {
                                                         : qsTr("Requer Lossless Scaling instalado pela Steam")
                                                     color: root.lsfgSystemData.losslessScalingInstalled
                                                         ? root.greenColor : root.amberColor
-                                                    font.pixelSize: 11
+                                                    font.pixelSize: root.scaledTextSize(11)
                                                 }
                                             }
                                             Button {
@@ -5656,7 +5668,7 @@ ApplicationWindow {
                                             }
                                         }
                                     }
-                                    Label { text: qsTr("Consumo de memória"); color: root.textColor; font.pixelSize: 20; font.bold: true; Layout.leftMargin: 28; Layout.topMargin: 8 }
+                                    Label { text: qsTr("Consumo de memória"); color: root.textColor; font.pixelSize: root.scaledTextSize(20); font.bold: true; Layout.leftMargin: 28; Layout.topMargin: 8 }
                                     Rectangle {
                                         visible: root.resourcesData && !root.resourcesData.complete
                                         color: "#24180b"
@@ -5709,13 +5721,13 @@ ApplicationWindow {
                                                                 ? qsTr("nenhum processo")
                                                                 : qsTr("%1 processo(s)").arg(modelData.processCount)
                                                             color: root.mutedColor
-                                                            font.pixelSize: 12
+                                                            font.pixelSize: root.scaledTextSize(12)
                                                         }
                                                     }
                                                     Label {
                                                         text: root.resourceClassDetail(modelData)
                                                         color: root.mutedColor
-                                                        font.pixelSize: 12
+                                                        font.pixelSize: root.scaledTextSize(12)
                                                         wrapMode: Text.WordWrap
                                                         Layout.fillWidth: true
                                                     }
@@ -5723,7 +5735,7 @@ ApplicationWindow {
                                                 Label {
                                                     text: root.formatBytes(modelData.pssBytes)
                                                     color: modelData.pssBytes > 0 ? root.textColor : root.mutedColor
-                                                    font.pixelSize: 16
+                                                    font.pixelSize: root.scaledTextSize(16)
                                                     font.bold: modelData.pssBytes > 0
                                                 }
                                             }
@@ -5754,14 +5766,14 @@ ApplicationWindow {
                                                         root.resourcesData
                                                             ? Number(root.resourcesData.totals.attributed.processCount) : 0)
                                                     color: root.mutedColor
-                                                    font.pixelSize: 12
+                                                    font.pixelSize: root.scaledTextSize(12)
                                                 }
                                             }
                                             Label {
                                                 text: root.formatBytes(root.resourcesData
                                                     ? root.resourcesData.totals.attributed.pssBytes : 0)
                                                 color: root.textColor
-                                                font.pixelSize: 16
+                                                font.pixelSize: root.scaledTextSize(16)
                                                 font.bold: true
                                             }
                                         }
@@ -5791,14 +5803,14 @@ ApplicationWindow {
                                                         root.resourcesData
                                                             ? Number(root.resourcesData.totals.unattributable.processCount) : 0)
                                                     color: root.mutedColor
-                                                    font.pixelSize: 12
+                                                    font.pixelSize: root.scaledTextSize(12)
                                                 }
                                             }
                                             Label {
                                                 text: root.formatBytes(root.resourcesData
                                                     ? root.resourcesData.totals.unattributable.pssBytes : 0)
                                                 color: root.textColor
-                                                font.pixelSize: 16
+                                                font.pixelSize: root.scaledTextSize(16)
                                                 font.bold: true
                                             }
                                         }
@@ -5808,7 +5820,7 @@ ApplicationWindow {
                                         visible: false
                                         text: qsTr("Diagnóstico")
                                         color: root.textColor
-                                        font.pixelSize: 20
+                                        font.pixelSize: root.scaledTextSize(20)
                                         font.bold: true
                                         Layout.leftMargin: 28
                                     }
@@ -5835,7 +5847,7 @@ ApplicationWindow {
                                                 ColumnLayout {
                                                     Layout.fillWidth: true
                                                     Label { text: modelData.name; color: root.textColor; font.bold: true }
-                                                    Label { text: modelData.message; color: root.mutedColor; font.pixelSize: 12; elide: Text.ElideMiddle; Layout.fillWidth: true }
+                                                    Label { text: modelData.message; color: root.mutedColor; font.pixelSize: root.scaledTextSize(12); elide: Text.ElideMiddle; Layout.fillWidth: true }
                                                 }
                                             }
                                         }
@@ -5843,7 +5855,7 @@ ApplicationWindow {
                                     Label {
                                         text: qsTr("Operações recentes")
                                         color: root.textColor
-                                        font.pixelSize: 20
+                                        font.pixelSize: root.scaledTextSize(20)
                                         font.bold: true
                                         Layout.leftMargin: 28
                                     }

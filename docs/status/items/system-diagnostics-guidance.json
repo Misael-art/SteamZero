@@ -16,7 +16,7 @@
     "tests/qml/check_main_handheld_sections.qml",
     "docs/09-operations/evidence/2026-09-22-system-diagnostics-guidance/README.md"
   ],
-  "scopeDigest": "f7dde900a152c2a329b431190ec0840221e9e25037696f8df455d0507c7dc76c",
+  "scopeDigest": "aa839a28b19f65793cfe8b0a60b414ab1abbdd42f606b8e5804f4154820b104a",
   "dependsOn": [],
   "knownGaps": ["GAP-EMULATION-PHYSICAL-LAUNCH"],
   "acceptanceCriteria": [

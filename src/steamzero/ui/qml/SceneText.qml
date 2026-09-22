@@ -55,9 +55,12 @@ Text {
 
     horizontalAlignment: Text[model.horizontalAlignment]
     verticalAlignment: Text[model.verticalAlignment]
-    wrapMode: Text[model.wrapMode]
-    maximumLineCount: model.maximumLineCount
-    elide: Text[model.elide]
-    fontSizeMode: Text[model.fontSizeMode]
-    minimumPixelSize: model.minimumPixelSize
+    wrapMode: model.wrapMode !== undefined ? Text[model.wrapMode] : Text.NoWrap
+    maximumLineCount: model.maximumLineCount !== undefined
+        ? model.maximumLineCount : 2147483647
+    elide: model.elide !== undefined ? Text[model.elide] : Text.ElideNone
+    fontSizeMode: model.fontSizeMode !== undefined
+        ? Text[model.fontSizeMode] : Text.FixedSize
+    minimumPixelSize: model.minimumPixelSize !== undefined
+        ? model.minimumPixelSize : 0
 }

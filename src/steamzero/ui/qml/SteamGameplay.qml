@@ -110,6 +110,7 @@ Item {
     property string mediaPackagePath: ""
     property string mediaLastOperationId: ""
     property bool reducedMotion: false
+    property real visualScale: 1.0
     property Item dialogInvoker: null
     readonly property bool compactLayout: width <= 1296 || height <= 720
     readonly property bool ultrawideLayout: width >= 1900
@@ -117,6 +118,10 @@ Item {
     readonly property int minimumTouchTarget: 48
     readonly property int bottomSafeInset: minimumTouchTarget + responsiveGutter
     readonly property int motionDuration: reducedMotion ? 0 : 180
+
+    function scaledTextSize(value) {
+        return Math.max(1, Math.round(Number(value) * visualScale))
+    }
     readonly property int contentMaxWidth: ultrawideLayout ? 1400 : 1800
     readonly property bool showSupplementaryPanels: !compactLayout && width >= 1240
     property alias reviewApplyControl: reviewApplyButton
@@ -413,7 +418,7 @@ Item {
                     : qsTr("O SteamZero salvará esta política para o lançamento gerenciado.")
                 color: page.reviewedPlan && page.reviewedPlan.blockers.length > 0
                     ? page.amberColor : page.textColor
-                font.pixelSize: 18
+                font.pixelSize: page.scaledTextSize(18)
                 font.bold: true
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
@@ -443,7 +448,7 @@ Item {
             Label {
                 text: page.reviewedPlan ? qsTr("Rollback: %1").arg(page.reviewedPlan.rollbackGuarantee) : ""
                 color: page.mutedColor
-                font.pixelSize: 12
+                font.pixelSize: page.scaledTextSize(12)
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
@@ -538,7 +543,7 @@ Item {
                         text: modelData.owner
                         color: modelData.owner === "Sistema"
                             ? page.amberColor : page.cyanColor
-                        font.pixelSize: 11
+                        font.pixelSize: page.scaledTextSize(11)
                     }
                 }
             }
@@ -578,7 +583,7 @@ Item {
             Label {
                 text: page.gamemodeGuidance ? page.gamemodeGuidance.statusLabel : ""
                 color: page.amberColor
-                font.pixelSize: 17
+                font.pixelSize: page.scaledTextSize(17)
                 font.bold: true
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
@@ -599,7 +604,7 @@ Item {
                 visible: Boolean(page.gamemodeGuidance && page.gamemodeGuidance.requiresOperator)
                 text: qsTr("Este ajuste exige ação do operador; o SteamZero não o aplica.")
                 color: page.amberColor
-                font.pixelSize: 12
+                font.pixelSize: page.scaledTextSize(12)
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
@@ -692,7 +697,7 @@ Item {
                     ? qsTr("%1 serão liberados de caches regeneráveis.").arg(page.formatBytes(page.maintenancePlan.totalBytes))
                     : ""
                 color: page.textColor
-                font.pixelSize: 18
+                font.pixelSize: page.scaledTextSize(18)
                 font.bold: true
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
@@ -758,7 +763,7 @@ Item {
                     ? qsTr("Itens: %1 · variantes substituídas: %2").arg(page.mediaPlan.assets.join(", ")).arg(page.mediaPlan.replacedVariants)
                     : ""
                 color: page.textColor
-                font.pixelSize: 17
+                font.pixelSize: page.scaledTextSize(17)
                 font.bold: true
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
@@ -823,7 +828,7 @@ Item {
                         text: page.workspaceIndex === 3
                             ? qsTr("Experiência no Modo Desktop") : qsTr("Prontidão do jogo")
                         color: page.textColor
-                        font.pixelSize: page.compactLayout ? 23 : 28
+                        font.pixelSize: page.scaledTextSize(page.compactLayout ? 23 : 28)
                         font.bold: true
                     }
                     Label {
@@ -835,7 +840,7 @@ Item {
                             return "%1  •  %2  •  %3".arg(context.device || "Linux").arg(battery).arg(context.mode || qsTr("Modo Desktop"))
                         }
                         color: page.mutedColor
-                        font.pixelSize: 13
+                        font.pixelSize: page.scaledTextSize(13)
                     }
                 }
                 Label { visible: page.workspaceIndex !== 3; text: qsTr("Jogo"); color: page.mutedColor }
@@ -869,7 +874,7 @@ Item {
                         Label {
                             text: page.selectedGame.name
                             color: page.textColor
-                            font.pixelSize: 15
+                            font.pixelSize: page.scaledTextSize(15)
                             font.bold: true
                             elide: Text.ElideRight
                             Layout.fillWidth: true
@@ -1021,7 +1026,7 @@ Item {
                         visible: Boolean(page.launcher.launchOption)
                         text: qsTr("Use esta linha nas opções de inicialização do jogo; o perfil só vira observado durante a execução real.")
                         color: page.mutedColor
-                        font.pixelSize: 11
+                        font.pixelSize: page.scaledTextSize(11)
                         wrapMode: Text.WordWrap
                         Layout.fillWidth: true
                     }
@@ -1083,7 +1088,7 @@ Item {
                             text: page.gameplay && page.gameplay.readiness
                                 ? page.gameplay.readiness.percent + "%" : "—"
                             color: page.contrastTextColor("#0c2a21")
-                        font.pixelSize: page.compactLayout ? 21 : 25
+                        font.pixelSize: page.scaledTextSize(page.compactLayout ? 21 : 25)
                         font.bold: true
                     }
                     ColumnLayout {
@@ -1093,7 +1098,7 @@ Item {
                             text: page.gameplay && page.gameplay.readiness
                                 ? page.gameplay.readiness.title : qsTr("Verificando ambiente")
                             color: page.contrastTextColor("#0c2a21")
-                            font.pixelSize: page.compactLayout ? 15 : 18
+                            font.pixelSize: page.scaledTextSize(page.compactLayout ? 15 : 18)
                             font.bold: true
                         }
                         Label {
@@ -1147,7 +1152,7 @@ Item {
                             anchors.fill: parent
                             anchors.margins: 12
                             spacing: 0
-                            Label { text: qsTr("Ambiente"); color: page.textColor; font.pixelSize: 17; font.bold: true; Layout.bottomMargin: 8 }
+                            Label { text: qsTr("Ambiente"); color: page.textColor; font.pixelSize: page.scaledTextSize(17); font.bold: true; Layout.bottomMargin: 8 }
                             Repeater {
                                 model: page.environment
                                 delegate: Item {
@@ -1174,7 +1179,7 @@ Item {
                                             Label {
                                                 text: "%1 — %2".arg(modelData.name).arg(modelData.statusLabel)
                                                 color: modelData.state === "ready" ? page.greenColor : page.amberColor
-                                                font.pixelSize: 13
+                                                font.pixelSize: page.scaledTextSize(13)
                                                 font.bold: true
                                                 wrapMode: Text.WordWrap
                                                 Layout.fillWidth: true
@@ -1183,7 +1188,7 @@ Item {
                                             Label {
                                                 text: modelData.detail
                                                 color: page.mutedColor
-                                                font.pixelSize: 10
+                                                font.pixelSize: page.scaledTextSize(10)
                                                 wrapMode: Text.WordWrap
                                                 Layout.fillWidth: true
                                             }
@@ -1191,7 +1196,7 @@ Item {
                                         ToolButton {
                                             visible: modelData.id === "gamemode" && modelData.state !== "ready"
                                             text: qsTr("Ver instruções")
-                                            font.pixelSize: 10
+                                            font.pixelSize: page.scaledTextSize(10)
                                             // 32px nao alcanca o polegar no Deck;
                                             // o minimo do produto e 48.
                                             Layout.preferredHeight: page.minimumTouchTarget
@@ -1205,7 +1210,7 @@ Item {
                                         Label {
                                             text: modelData.owner
                                             color: modelData.owner === "Sistema" ? page.amberColor : page.cyanColor
-                                            font.pixelSize: 10
+                                            font.pixelSize: page.scaledTextSize(10)
                                         }
                                     }
                                 }
@@ -1235,7 +1240,7 @@ Item {
                             Label { text: qsTr("GPU"); color: page.mutedColor; Layout.fillWidth: true; Label { anchors.right: parent.right; text: page.hardware.gpuMax ? "%1–%2 MHz".arg(page.hardware.gpuMin).arg(page.hardware.gpuMax) : qsTr("não observado"); color: page.textColor } }
                             Label { text: qsTr("Tela"); color: page.mutedColor; Layout.fillWidth: true; Label { anchors.right: parent.right; text: page.hardware.refreshHz ? page.hardware.refreshHz + " Hz" : "—"; color: page.textColor } }
                             Label { text: qsTr("Memória disponível"); color: page.mutedColor; Layout.fillWidth: true; Label { anchors.right: parent.right; text: page.hardware.memoryGb ? page.hardware.memoryGb + " GB" : "—"; color: page.textColor } }
-                            Label { text: page.hardware.withinSafeLimits ? qsTr("Dentro dos limites seguros") : qsTr("Limites não confirmados"); color: page.hardware.withinSafeLimits ? page.greenColor : page.amberColor; font.pixelSize: 11 }
+                            Label { text: page.hardware.withinSafeLimits ? qsTr("Dentro dos limites seguros") : qsTr("Limites não confirmados"); color: page.hardware.withinSafeLimits ? page.greenColor : page.amberColor; font.pixelSize: page.scaledTextSize(11) }
                         }
                     }
                 }
@@ -1252,7 +1257,7 @@ Item {
                         anchors.fill: parent
                         anchors.margins: page.compactLayout ? 10 : 14
                         spacing: page.compactLayout ? 5 : 7
-                        Label { text: qsTr("Ajustes essenciais"); color: page.textColor; font.pixelSize: 17; font.bold: true }
+                        Label { text: qsTr("Ajustes essenciais"); color: page.textColor; font.pixelSize: page.scaledTextSize(17); font.bold: true }
                         RowLayout {
                             Layout.fillWidth: true
                             Label { text: qsTr("Perfil de desempenho"); color: page.mutedColor; Layout.preferredWidth: 112; wrapMode: Text.WordWrap }
@@ -1343,7 +1348,7 @@ Item {
                             Layout.fillWidth: true
                             Label { text: qsTr("Gamescope"); color: page.textColor; Layout.preferredWidth: 112; font.bold: true }
                             Label { text: qsTr("Composição e limite de quadros"); color: page.mutedColor; Layout.fillWidth: true }
-                            Label { text: "SteamZero"; color: page.cyanColor; font.pixelSize: 10 }
+                            Label { text: "SteamZero"; color: page.cyanColor; font.pixelSize: page.scaledTextSize(10) }
                             Switch {
                                 checked: page.gamescopeEnabled
                                 enabled: page.environmentById("gamescope").state === "ready"
@@ -1362,7 +1367,7 @@ Item {
                             Layout.fillWidth: true
                             Label { text: qsTr("Feral GameMode"); color: page.textColor; Layout.preferredWidth: 112; font.bold: true }
                             Label { text: qsTr("Prioridade de CPU e processos"); color: page.mutedColor; Layout.fillWidth: true }
-                            Label { text: "Steam"; color: page.cyanColor; font.pixelSize: 10 }
+                            Label { text: "Steam"; color: page.cyanColor; font.pixelSize: page.scaledTextSize(10) }
                             Switch {
                                 checked: page.gameModeEnabled
                                 enabled: page.environmentById("gamemode").state === "ready"
@@ -1449,7 +1454,7 @@ Item {
                                     ? page.vkBasalt.presets[page.vkBasaltIndex].costLabel : ""
                                 color: page.vkBasaltIndex === 0
                                     ? page.greenColor : page.amberColor
-                                font.pixelSize: 11
+                                font.pixelSize: page.scaledTextSize(11)
                                 wrapMode: Text.WordWrap
                                 Layout.preferredWidth: 120
                             }
@@ -1499,7 +1504,7 @@ Item {
                                     ? qsTr("Pronto") : qsTr("Abrir Sistema")
                                 color: page.environmentById("lsfg").state === "ready"
                                     ? page.greenColor : page.amberColor
-                                font.pixelSize: 11
+                                font.pixelSize: page.scaledTextSize(11)
                                 font.bold: true
                             }
                         }
@@ -1524,7 +1529,7 @@ Item {
                         Label {
                             text: qsTr("Ajustes avançados de LSFG ainda não disponíveis.")
                             color: page.mutedColor
-                            font.pixelSize: 11
+                            font.pixelSize: page.scaledTextSize(11)
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
                         }
@@ -1543,7 +1548,7 @@ Item {
                         anchors.fill: parent
                         anchors.margins: 16
                         spacing: 10
-                        Label { text: qsTr("Impacto esperado"); color: page.textColor; font.pixelSize: 17; font.bold: true }
+                        Label { text: qsTr("Impacto esperado"); color: page.textColor; font.pixelSize: page.scaledTextSize(17); font.bold: true }
                         Repeater {
                             model: [
                                 {"label": qsTr("Bateria"), "value": page.estimatedBattery(), "icon": "battery-080"},
@@ -1559,8 +1564,8 @@ Item {
                                 ColumnLayout {
                                     Layout.fillWidth: true
                                     spacing: 1
-                                    Label { text: modelData.label; color: page.mutedColor; font.pixelSize: 12 }
-                                    Label { text: modelData.value; color: page.greenColor; font.pixelSize: 18; font.bold: true; elide: Text.ElideRight; Layout.fillWidth: true }
+                                    Label { text: modelData.label; color: page.mutedColor; font.pixelSize: page.scaledTextSize(12) }
+                                    Label { text: modelData.value; color: page.greenColor; font.pixelSize: page.scaledTextSize(18); font.bold: true; elide: Text.ElideRight; Layout.fillWidth: true }
                                 }
                             }
                         }
@@ -1574,11 +1579,11 @@ Item {
                             Layout.fillWidth: true
                         }
                         Label { text: qsTr("SteamZero"); color: page.greenColor; font.bold: true }
-                        Label { text: qsTr("Perfis e orquestração"); color: page.mutedColor; font.pixelSize: 11 }
+                        Label { text: qsTr("Perfis e orquestração"); color: page.mutedColor; font.pixelSize: page.scaledTextSize(11) }
                         Label { text: qsTr("Steam"); color: page.cyanColor; font.bold: true }
-                        Label { text: qsTr("Contexto de jogo e runtime"); color: page.mutedColor; font.pixelSize: 11 }
+                        Label { text: qsTr("Contexto de jogo e runtime"); color: page.mutedColor; font.pixelSize: page.scaledTextSize(11) }
                         Label { text: qsTr("Sistema"); color: page.amberColor; font.bold: true }
-                        Label { text: qsTr("Drivers e componentes do host"); color: page.mutedColor; font.pixelSize: 11; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                        Label { text: qsTr("Drivers e componentes do host"); color: page.mutedColor; font.pixelSize: page.scaledTextSize(11); wrapMode: Text.WordWrap; Layout.fillWidth: true }
                     }
                 }
             }
@@ -1611,7 +1616,7 @@ Item {
                         Label {
                             text: qsTr("Controles por jogo")
                             color: page.textColor
-                            font.pixelSize: 18
+                            font.pixelSize: page.scaledTextSize(18)
                             font.bold: true
                         }
                         Label {
@@ -1625,7 +1630,7 @@ Item {
                                 ? qsTr("Steam Input disponível") : qsTr("Steam indisponível")
                             color: page.environmentById("steam").state === "ready"
                                 ? page.greenColor : page.amberColor
-                            font.pixelSize: 11
+                            font.pixelSize: page.scaledTextSize(11)
                             font.bold: true
                         }
                     }
@@ -1661,7 +1666,7 @@ Item {
                         Label {
                             text: qsTr("A escolha entra no mesmo plano revisável do perfil de gameplay.")
                             color: page.cyanColor
-                            font.pixelSize: 11
+                            font.pixelSize: page.scaledTextSize(11)
                         }
                     }
                     Button {
@@ -1694,7 +1699,7 @@ Item {
                     ToolButton { enabled: false; icon.name: "system-switch-user"; icon.color: page.greenColor; background: Item {} }
                     ColumnLayout {
                         Layout.fillWidth: true
-                        Label { text: qsTr("SteamZero Game Mode"); color: page.textColor; font.pixelSize: 17; font.bold: true }
+                        Label { text: qsTr("SteamZero Game Mode"); color: page.textColor; font.pixelSize: page.scaledTextSize(17); font.bold: true }
                         Label {
                             text: page.sessionManager.state === "ready"
                                 ? qsTr("Sessão independente pronta no SDDM, com fallback automático para o Desktop.")
@@ -1746,13 +1751,13 @@ Item {
                             ToolButton { enabled: false; icon.name: "edit-clear-all"; icon.color: page.cyanColor; background: Item {} }
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                Label { text: qsTr("Limpeza e manutenção"); color: page.textColor; font.pixelSize: 19; font.bold: true }
+                                Label { text: qsTr("Limpeza e manutenção"); color: page.textColor; font.pixelSize: page.scaledTextSize(19); font.bold: true }
                                 Label { text: qsTr("Somente caches regeneráveis do jogo selecionado"); color: page.mutedColor }
                             }
                             Label {
                                 text: page.formatBytes(page.maintenance.totalBytes)
                                 color: page.maintenance.totalBytes > 0 ? page.cyanColor : page.greenColor
-                                font.pixelSize: 20
+                                font.pixelSize: page.scaledTextSize(20)
                                 font.bold: true
                             }
                         }
@@ -1833,7 +1838,7 @@ Item {
                             ToolButton { enabled: false; icon.name: "image-x-generic"; icon.color: page.cyanColor; background: Item {} }
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                Label { text: qsTr("Pacote de mídia"); color: page.textColor; font.pixelSize: 19; font.bold: true }
+                                Label { text: qsTr("Pacote de mídia"); color: page.textColor; font.pixelSize: page.scaledTextSize(19); font.bold: true }
                                 Label { text: qsTr("Grade, retrato, hero e logo locais"); color: page.mutedColor }
                             }
                             Label { text: "G-FULL"; color: page.greenColor; font.bold: true }
@@ -1997,7 +2002,7 @@ Item {
                 contentItem: Label {
                     text: parent.text
                     color: parent.enabled ? "white" : page.mutedColor
-                    font.pixelSize: 16
+                    font.pixelSize: page.scaledTextSize(16)
                     font.bold: true
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter

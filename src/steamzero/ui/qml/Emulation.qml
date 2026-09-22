@@ -27,6 +27,7 @@ Item {
     signal systemRequested()
 
     property bool globalManagementActive: true
+    property real visualScale: 1.0
     property int platformIndex: 0
     property int scopeIndex: 0
     property int areaIndex: 0
@@ -54,6 +55,10 @@ Item {
     readonly property int minimumTouchTarget: 48
     readonly property int bottomSafeInset: minimumTouchTarget + responsiveGutter
     readonly property int motionDuration: reducedMotion ? 0 : 180
+
+    function scaledTextSize(value) {
+        return Math.max(1, Math.round(Number(value) * visualScale))
+    }
     readonly property int contentMaxWidth: ultrawideLayout ? 1400 : 1800
     readonly property bool showAreaSidebar: !globalManagementActive && !isGameLibrary() && !compactLayout
     readonly property bool showContextPanel: isGameLibrary()
@@ -1520,21 +1525,21 @@ Item {
                     Label {
                         text: qsTr("Emulação")
                         color: page.mutedColor
-                        font.pixelSize: page.compactLayout ? 10 : 12
+                        font.pixelSize: page.scaledTextSize(page.compactLayout ? 10 : 12)
                         font.bold: true
                         font.letterSpacing: 1.2
                     }
                     Label {
                         text: page.headerContext.name || qsTr("Plataforma")
                         color: page.textColor
-                        font.pixelSize: page.compactLayout ? 23 : 29
+                        font.pixelSize: page.scaledTextSize(page.compactLayout ? 23 : 29)
                         font.bold: true
                     }
                     Label {
                         visible: !page.compactLayout
                         text: qsTr("Uma central para preparar, jogar e preservar sua biblioteca com segurança.")
                         color: page.mutedColor
-                        font.pixelSize: 14
+                        font.pixelSize: page.scaledTextSize(14)
                         wrapMode: Text.WordWrap
                         Layout.fillWidth: true
                     }
@@ -1545,7 +1550,7 @@ Item {
                             : page.emulation && page.emulation.contextLabel
                             ? page.emulation.contextLabel : qsTr("Dados locais • sem downloads automáticos de conteúdo")
                         color: page.mutedColor
-                        font.pixelSize: 11
+                        font.pixelSize: page.scaledTextSize(11)
                     }
                 }
 
@@ -1554,7 +1559,7 @@ Item {
                     Label {
                         text: qsTr("Plataforma")
                         color: page.mutedColor
-                        font.pixelSize: 11
+                        font.pixelSize: page.scaledTextSize(11)
                     }
                     SteamComboBox {
                         id: platformPicker
@@ -1606,14 +1611,14 @@ Item {
                                 ? page.globalManagement.technicalPlatformCount : page.readinessPercent() + "%"
                             color: page.globalManagementActive ? page.cyanColor
                                 : page.readinessPercent() >= 80 ? page.greenColor : page.amberColor
-                            font.pixelSize: page.compactLayout ? 20 : 24
+                            font.pixelSize: page.scaledTextSize(page.compactLayout ? 20 : 24)
                             font.bold: true
                         }
                         Label {
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: page.globalManagementActive ? qsTr("técnicas") : qsTr("prontidão")
                             color: page.mutedColor
-                            font.pixelSize: 11
+                            font.pixelSize: page.scaledTextSize(11)
                         }
                     }
                 }
@@ -1778,7 +1783,7 @@ Item {
                     Label {
                         text: qsTr("ÁREAS")
                         color: page.mutedColor
-                        font.pixelSize: 10
+                        font.pixelSize: page.scaledTextSize(10)
                         font.bold: true
                         font.letterSpacing: 1.0
                         Layout.leftMargin: 8
@@ -1862,7 +1867,7 @@ Item {
                         Label {
                             text: qsTr("Gestão de emulação")
                             color: page.textColor
-                            font.pixelSize: page.compactLayout ? 22 : 28
+                            font.pixelSize: page.scaledTextSize(page.compactLayout ? 22 : 28)
                             font.bold: true
                         }
                         Label {
@@ -1878,7 +1883,7 @@ Item {
                             text: page.globalManagement.editorialSource
                                 ? page.globalManagement.editorialSource.detail : ""
                             color: page.mutedColor
-                            font.pixelSize: 11
+                            font.pixelSize: page.scaledTextSize(11)
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
                         }
@@ -1913,14 +1918,14 @@ Item {
                                     : qsTr("Instalar e reparar emuladores")
                                 color: page.textColor
                                 font.bold: true
-                                font.pixelSize: 16
+                                font.pixelSize: page.scaledTextSize(16)
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
                             }
                             Label {
                                 text: qsTr("Mostrando emuladores das plataformas ativas. Use Instalar ou Reparar para abrir o plano seguro.")
                                 color: page.mutedColor
-                                font.pixelSize: 11
+                                font.pixelSize: page.scaledTextSize(11)
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
                             }
@@ -1941,7 +1946,7 @@ Item {
                                         Label {
                                             text: modelData.statusLabel
                                             color: page.stateColor(modelData.state)
-                                            font.pixelSize: 11
+                                            font.pixelSize: page.scaledTextSize(11)
                                         }
                                     }
                                     RowLayout {
@@ -1951,7 +1956,7 @@ Item {
                                             text: modelData.action && modelData.action.reason
                                                 ? modelData.action.reason : ""
                                             color: page.mutedColor
-                                            font.pixelSize: 11
+                                            font.pixelSize: page.scaledTextSize(11)
                                             wrapMode: Text.WordWrap
                                             Layout.fillWidth: true
                                         }
@@ -2011,7 +2016,7 @@ Item {
                                             text: modelData.name
                                             color: page.textColor
                                             font.bold: true
-                                            font.pixelSize: 16
+                                            font.pixelSize: page.scaledTextSize(16)
                                             elide: Text.ElideRight
                                             Layout.fillWidth: true
                                         }
@@ -2024,12 +2029,12 @@ Item {
                                     Label {
                                         text: qsTr("%1 • %2 jogo(s) reais").arg(modelData.identity).arg(modelData.gameCount)
                                         color: page.mutedColor
-                                        font.pixelSize: 11
+                                        font.pixelSize: page.scaledTextSize(11)
                                     }
                                     Label {
                                         text: qsTr("Runtime: %1").arg(page.formatPlatformRuntime(modelData.runtime))
                                         color: page.textColor
-                                        font.pixelSize: 12
+                                        font.pixelSize: page.scaledTextSize(12)
                                         wrapMode: Text.WordWrap
                                         Layout.fillWidth: true
                                     }
@@ -2038,7 +2043,7 @@ Item {
                                             ? qsTr("Core: %1").arg(modelData.coreRequired.join(", "))
                                             : qsTr("Core: não requerido")
                                         color: page.mutedColor
-                                        font.pixelSize: 11
+                                        font.pixelSize: page.scaledTextSize(11)
                                         wrapMode: Text.WordWrap
                                         Layout.fillWidth: true
                                     }
@@ -2048,7 +2053,7 @@ Item {
                                             .arg(modelData.firmwareStatus.status || qsTr("não aplicável"))
                                             .arg(modelData.biosStatus ? modelData.biosStatus.status : qsTr("não requerida"))
                                         color: page.mutedColor
-                                        font.pixelSize: 11
+                                        font.pixelSize: page.scaledTextSize(11)
                                         wrapMode: Text.WordWrap
                                         Layout.fillWidth: true
                                     }
@@ -2056,7 +2061,7 @@ Item {
                                         visible: !!modelData.blocker
                                         text: qsTr("Bloqueador: %1").arg(modelData.blocker || "")
                                         color: page.amberColor
-                                        font.pixelSize: 11
+                                        font.pixelSize: page.scaledTextSize(11)
                                         wrapMode: Text.WordWrap
                                         Layout.fillWidth: true
                                     }
@@ -2140,7 +2145,7 @@ Item {
                                         required property var modelData
                                         text: modelData.path || modelData.label || qsTr("Diretório sem caminho publicado")
                                         color: page.mutedColor
-                                        font.pixelSize: 11
+                                        font.pixelSize: page.scaledTextSize(11)
                                         wrapMode: Text.WrapAnywhere
                                         Layout.fillWidth: true
                                     }
@@ -2170,7 +2175,7 @@ Item {
                                         required property var modelData
                                         Layout.fillWidth: true
                                         Label { text: modelData.name || modelData.id; color: page.textColor; Layout.fillWidth: true }
-                                        Label { text: modelData.healthStatus || modelData.credentialState || qsTr("desconhecido"); color: page.mutedColor; font.pixelSize: 11 }
+                                        Label { text: modelData.healthStatus || modelData.credentialState || qsTr("desconhecido"); color: page.mutedColor; font.pixelSize: page.scaledTextSize(11) }
                                     }
                                 }
                                 Label {
@@ -2232,7 +2237,7 @@ Item {
                                 text: page.primaryAction().reason || page.areaDescription(page.selectedArea.id)
                                 color: page.primaryAction().enabled === false
                                     ? page.mutedColor : page.cyanColor
-                                font.pixelSize: 11
+                                font.pixelSize: page.scaledTextSize(11)
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
                             }
@@ -2275,7 +2280,7 @@ Item {
                                 Label {
                                     text: qsTr("Biblioteca por jogo")
                                     color: page.textColor
-                                    font.pixelSize: 24
+                                    font.pixelSize: page.scaledTextSize(24)
                                     font.bold: true
                                 }
                                 Label {
@@ -2283,7 +2288,7 @@ Item {
                                         .arg(page.filteredGameRows.length).arg(page.games.length)
                                         .arg(page.coverCount())
                                     color: page.mutedColor
-                                    font.pixelSize: 12
+                                    font.pixelSize: page.scaledTextSize(12)
                                 }
                             }
                             TextField {
@@ -2356,7 +2361,7 @@ Item {
                             Label {
                                 text: qsTr("Biblioteca por jogo")
                                 color: page.textColor
-                                font.pixelSize: 21
+                                font.pixelSize: page.scaledTextSize(21)
                                 font.bold: true
                                 Layout.fillWidth: true
                             }
@@ -2365,7 +2370,7 @@ Item {
                                     .arg(page.filteredGameRows.length).arg(page.games.length)
                                     .arg(page.coverCount())
                                 color: page.mutedColor
-                                font.pixelSize: 12
+                                font.pixelSize: page.scaledTextSize(12)
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
                             }
@@ -2474,7 +2479,7 @@ Item {
                             Label {
                                 text: qsTr("Metadados ausentes ficam marcados para nova varredura")
                                 color: page.mutedColor
-                                font.pixelSize: 11
+                                font.pixelSize: page.scaledTextSize(11)
                             }
                         }
 
@@ -2532,11 +2537,11 @@ Item {
                                 anchors.leftMargin: 10
                                 anchors.rightMargin: 10
                                 spacing: 10
-                                Label { text: qsTr("CAPA"); color: page.mutedColor; font.pixelSize: 10; font.bold: true; Layout.preferredWidth: 86 }
-                                Label { text: qsTr("JOGO • COMPATIBILIDADE • COMPLEMENTOS"); color: page.mutedColor; font.pixelSize: 10; font.bold: true; Layout.fillWidth: true }
-                                Label { visible: contentScroll.width >= 760; text: qsTr("REQUISITOS"); color: page.mutedColor; font.pixelSize: 10; font.bold: true; horizontalAlignment: Text.AlignLeft; Layout.preferredWidth: 118 }
-                                Label { visible: contentScroll.width >= 760; text: qsTr("EMULADOR"); color: page.mutedColor; font.pixelSize: 10; font.bold: true; Layout.preferredWidth: 126 }
-                                Label { text: qsTr("AÇÃO"); color: page.mutedColor; font.pixelSize: 10; font.bold: true; Layout.preferredWidth: 112 }
+                                Label { text: qsTr("CAPA"); color: page.mutedColor; font.pixelSize: page.scaledTextSize(10); font.bold: true; Layout.preferredWidth: 86 }
+                                Label { text: qsTr("JOGO • COMPATIBILIDADE • COMPLEMENTOS"); color: page.mutedColor; font.pixelSize: page.scaledTextSize(10); font.bold: true; Layout.fillWidth: true }
+                                Label { visible: contentScroll.width >= 760; text: qsTr("REQUISITOS"); color: page.mutedColor; font.pixelSize: page.scaledTextSize(10); font.bold: true; horizontalAlignment: Text.AlignLeft; Layout.preferredWidth: 118 }
+                                Label { visible: contentScroll.width >= 760; text: qsTr("EMULADOR"); color: page.mutedColor; font.pixelSize: page.scaledTextSize(10); font.bold: true; Layout.preferredWidth: 126 }
+                                Label { text: qsTr("AÇÃO"); color: page.mutedColor; font.pixelSize: page.scaledTextSize(10); font.bold: true; Layout.preferredWidth: 112 }
                             }
                         }
 
@@ -2645,7 +2650,7 @@ Item {
                                                 text: compactGameCard.modelData.name
                                                     || qsTr("Jogo sem nome")
                                                 color: page.textColor
-                                                font.pixelSize: 16
+                                                font.pixelSize: page.scaledTextSize(16)
                                                 font.bold: true
                                                 elide: Text.ElideRight
                                                 Layout.fillWidth: true
@@ -2657,7 +2662,7 @@ Item {
                                                 color: compactGameCard.modelData.identityVerified
                                                     === false
                                                     ? page.amberColor : page.mutedColor
-                                                font.pixelSize: 11
+                                                font.pixelSize: page.scaledTextSize(11)
                                             elide: Text.ElideRight
                                             Layout.fillWidth: true
                                             }
@@ -2665,7 +2670,7 @@ Item {
                                                 visible: page.contentDetail(compactGameCard.modelData) !== ""
                                                 text: page.contentDetail(compactGameCard.modelData)
                                                 color: page.amberColor
-                                                font.pixelSize: 10
+                                                font.pixelSize: page.scaledTextSize(10)
                                                 wrapMode: Text.WordWrap
                                                 Layout.fillWidth: true
                                             }
@@ -2673,7 +2678,7 @@ Item {
                                                 visible: page.sourceDetail(compactGameCard.modelData) !== ""
                                                 text: page.sourceDetail(compactGameCard.modelData)
                                                 color: page.mutedColor
-                                                font.pixelSize: 10
+                                                font.pixelSize: page.scaledTextSize(10)
                                                 elide: Text.ElideMiddle
                                                 Layout.fillWidth: true
                                             }
@@ -2684,7 +2689,7 @@ Item {
                                                     page.formatBytes(
                                                         compactGameCard.modelData.size))
                                                 color: page.mutedColor
-                                                font.pixelSize: 11
+                                                font.pixelSize: page.scaledTextSize(11)
                                                 elide: Text.ElideRight
                                                 Layout.fillWidth: true
                                             }
@@ -2699,7 +2704,7 @@ Item {
                                         Label {
                                             text: qsTr("Emulador")
                                             color: page.mutedColor
-                                            font.pixelSize: 11
+                                            font.pixelSize: page.scaledTextSize(11)
                                         }
                                         Label {
                                             id: compactGameEmulator
@@ -2716,7 +2721,7 @@ Item {
                                         Label {
                                             text: qsTr("Requisitos")
                                             color: page.mutedColor
-                                            font.pixelSize: 11
+                                            font.pixelSize: page.scaledTextSize(11)
                                         }
                                         Label {
                                             text: compactGameCard.modelData.requiresFirmware
@@ -2729,7 +2734,7 @@ Item {
                                             color: compactGameCard.modelData.requiresFirmware
                                                 && compactGameCard.modelData.requiresFirmware.required
                                                 ? page.textColor : page.amberColor
-                                            font.pixelSize: 11
+                                            font.pixelSize: page.scaledTextSize(11)
                                             elide: Text.ElideRight
                                             Layout.fillWidth: true
                                         }
@@ -2850,7 +2855,7 @@ Item {
                                             bottomPadding: 2
                                             text: String(gameRow.modelData.format || "—").toUpperCase()
                                             color: page.textColor
-                                            font.pixelSize: 9
+                                            font.pixelSize: page.scaledTextSize(9)
                                             font.bold: true
                                             background: Rectangle { color: "#aa071019"; radius: 3 }
                                         }
@@ -2863,7 +2868,7 @@ Item {
                                         Label {
                                             text: gameRow.modelData.name || qsTr("Jogo sem nome")
                                             color: page.textColor
-                                            font.pixelSize: 15
+                                            font.pixelSize: page.scaledTextSize(15)
                                             font.bold: true
                                             elide: Text.ElideRight
                                             Layout.fillWidth: true
@@ -2875,7 +2880,7 @@ Item {
                                                     ? qsTr(" • versão %1").arg(gameRow.modelData.version) : "")
                                             color: gameRow.modelData.identityVerified === false
                                                 ? page.amberColor : page.mutedColor
-                                            font.pixelSize: 11
+                                            font.pixelSize: page.scaledTextSize(11)
                                             elide: Text.ElideRight
                                             Layout.fillWidth: true
                                         }
@@ -2883,7 +2888,7 @@ Item {
                                             visible: page.contentDetail(gameRow.modelData) !== ""
                                             text: page.contentDetail(gameRow.modelData)
                                             color: page.amberColor
-                                            font.pixelSize: 10
+                                            font.pixelSize: page.scaledTextSize(10)
                                             wrapMode: Text.WordWrap
                                             Layout.fillWidth: true
                                         }
@@ -2891,7 +2896,7 @@ Item {
                                             visible: page.sourceDetail(gameRow.modelData) !== ""
                                             text: page.sourceDetail(gameRow.modelData)
                                             color: page.mutedColor
-                                            font.pixelSize: 10
+                                            font.pixelSize: page.scaledTextSize(10)
                                             elide: Text.ElideMiddle
                                             Layout.fillWidth: true
                                         }
@@ -2914,7 +2919,7 @@ Item {
                                                         anchors.centerIn: parent
                                                         text: "● " + modelData.name
                                                         color: page.compatibilityColor(parent.compatibility)
-                                                        font.pixelSize: 9
+                                                        font.pixelSize: page.scaledTextSize(9)
                                                         font.bold: true
                                                     }
                                                     ToolTip.visible: compatibilityHover.hovered
@@ -2943,7 +2948,7 @@ Item {
                                                         anchors.centerIn: parent
                                                         spacing: 4
                                                         ModernIcon { width: 13; height: 13; iconName: modelData.icon; iconColor: page.mutedColor }
-                                                        Label { text: modelData.label; color: page.mutedColor; font.pixelSize: 9 }
+                                                        Label { text: modelData.label; color: page.mutedColor; font.pixelSize: page.scaledTextSize(9) }
                                                     }
                                                 }
                                             }
@@ -2974,7 +2979,7 @@ Item {
                                         Layout.preferredWidth: 118
                                         spacing: 4
                                         Label { text: page.formatBytes(gameRow.modelData.size); color: page.textColor; font.bold: true }
-                                        Label { text: String(gameRow.modelData.format || "—").toUpperCase(); color: page.mutedColor; font.pixelSize: 11 }
+                                        Label { text: String(gameRow.modelData.format || "—").toUpperCase(); color: page.mutedColor; font.pixelSize: page.scaledTextSize(11) }
                                         Label {
                                             text: gameRow.modelData.requiresFirmware
                                                 && gameRow.modelData.requiresFirmware.required
@@ -2983,13 +2988,13 @@ Item {
                                             color: gameRow.modelData.requiresFirmware
                                                 && gameRow.modelData.requiresFirmware.required
                                                 ? page.mutedColor : page.amberColor
-                                            font.pixelSize: 10
+                                            font.pixelSize: page.scaledTextSize(10)
                                         }
                                         Label {
                                             text: gameRow.modelData.region || qsTr("Região em análise")
                                             color: gameRow.modelData.region
                                                 ? page.mutedColor : page.amberColor
-                                            font.pixelSize: 10
+                                            font.pixelSize: page.scaledTextSize(10)
                                         }
                                     }
 
@@ -3084,7 +3089,7 @@ Item {
                             Label {
                                 text: page.areaTitle(page.selectedArea.id)
                                 color: page.textColor
-                                font.pixelSize: page.compactLayout ? 21 : 24
+                                font.pixelSize: page.scaledTextSize(page.compactLayout ? 21 : 24)
                                 font.bold: true
                                 Layout.fillWidth: true
                             }
@@ -3143,7 +3148,7 @@ Item {
                         Label {
                             text: page.areaDescription(page.selectedArea.id)
                             color: page.mutedColor
-                            font.pixelSize: 13
+                            font.pixelSize: page.scaledTextSize(13)
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
                         }
@@ -3172,7 +3177,7 @@ Item {
                                         ? qsTr("Perfil Dock") : qsTr("Perfil Portátil")
                                     color: page.textColor
                                     font.bold: true
-                                    font.pixelSize: 16
+                                    font.pixelSize: page.scaledTextSize(16)
                                     Layout.fillWidth: true
                                 }
                                 Label {
@@ -3260,7 +3265,7 @@ Item {
                                     color: page.readinessPercent() >= 80
                                         ? page.greenColor : page.amberColor
                                     font.bold: true
-                                    font.pixelSize: 14
+                                    font.pixelSize: page.scaledTextSize(14)
                                 }
                                 Label {
                                     text: page.readiness.detail || ""
@@ -3334,7 +3339,7 @@ Item {
                                                 text: modelData.title
                                                 color: page.textColor
                                                 font.bold: true
-                                                font.pixelSize: 15
+                                                font.pixelSize: page.scaledTextSize(15)
                                                 elide: Text.ElideRight
                                                 Layout.fillWidth: true
                                             }
@@ -3342,20 +3347,20 @@ Item {
                                                 text: modelData.status || modelData.statusLabel
                                                     || qsTr("Estado desconhecido")
                                                 color: page.stateColor(modelData.state)
-                                                font.pixelSize: 12
+                                                font.pixelSize: page.scaledTextSize(12)
                                             }
                                         }
                                         Label {
                                             text: page.cardMetric(modelData)
                                             color: page.textColor
-                                            font.pixelSize: 18
+                                            font.pixelSize: page.scaledTextSize(18)
                                             font.bold: true
                                         }
                                     }
                                     Label {
                                         text: modelData.detail || ""
                                         color: page.mutedColor
-                                        font.pixelSize: 12
+                                        font.pixelSize: page.scaledTextSize(12)
                                         wrapMode: Text.WordWrap
                                         maximumLineCount: page.isGlobalOverview() ? 2 : 4
                                         elide: Text.ElideRight
@@ -3406,7 +3411,7 @@ Item {
                                                         ? qsTr("PRONTO") : qsTr("PLANEJADO")
                                                     color: modelData.readiness === "ready"
                                                         ? page.greenColor : page.amberColor
-                                                    font.pixelSize: 10
+                                                    font.pixelSize: page.scaledTextSize(10)
                                                     font.bold: true
                                                 }
                                             }
@@ -3416,7 +3421,7 @@ Item {
                                         visible: page.cardActionMessage(modelData).length > 0
                                         text: page.cardActionMessage(modelData)
                                         color: page.redColor
-                                        font.pixelSize: 11
+                                        font.pixelSize: page.scaledTextSize(11)
                                         wrapMode: Text.WordWrap
                                         Accessible.name: text
                                         Layout.fillWidth: true
@@ -3465,7 +3470,7 @@ Item {
                         Label {
                             text: qsTr("Emuladores desta plataforma")
                             color: page.textColor
-                            font.pixelSize: 18
+                            font.pixelSize: page.scaledTextSize(18)
                             font.bold: true
                         }
 
@@ -3567,14 +3572,14 @@ Item {
                                                     text: qsTr("PADRÃO")
                                                     color: page.cyanColor
                                                     font.bold: true
-                                                    font.pixelSize: 11
+                                                    font.pixelSize: page.scaledTextSize(11)
                                                 }
                                                 Label {
                                                     visible: emulatorRow.modelData.running === true
                                                     text: qsTr("EM EXECUÇÃO")
                                                     color: page.greenColor
                                                     font.bold: true
-                                                    font.pixelSize: 11
+                                                    font.pixelSize: page.scaledTextSize(11)
                                                 }
                                                 Item { Layout.fillWidth: true }
                                             }
@@ -3583,7 +3588,7 @@ Item {
                                                     || emulatorRow.modelData.description
                                                     || qsTr("Capacidades ainda não publicadas")
                                                 color: page.mutedColor
-                                                font.pixelSize: 12
+                                                font.pixelSize: page.scaledTextSize(12)
                                                 elide: Text.ElideRight
                                                 Layout.fillWidth: true
                                             }
@@ -3716,14 +3721,14 @@ Item {
                     Label {
                         text: qsTr("Contexto atual")
                         color: page.mutedColor
-                        font.pixelSize: 11
+                        font.pixelSize: page.scaledTextSize(11)
                         font.bold: true
                         font.letterSpacing: 1
                     }
                     Label {
                         text: page.contextTitle()
                         color: page.textColor
-                        font.pixelSize: 20
+                        font.pixelSize: page.scaledTextSize(20)
                         font.bold: true
                         wrapMode: Text.WordWrap
                         Layout.fillWidth: true
@@ -3786,7 +3791,7 @@ Item {
                     Label {
                         text: qsTr("Nenhum arquivo será alterado sem plano e confirmação explícita.")
                         color: page.mutedColor
-                        font.pixelSize: 11
+                        font.pixelSize: page.scaledTextSize(11)
                         wrapMode: Text.WordWrap
                         Layout.fillWidth: true
                     }
@@ -3797,7 +3802,7 @@ Item {
                         visible: !page.primaryAction().enabled
                         text: page.primaryAction().reason || ""
                         color: page.amberColor
-                        font.pixelSize: 11
+                        font.pixelSize: page.scaledTextSize(11)
                         wrapMode: Text.WordWrap
                         Layout.fillWidth: true
                     }
@@ -3851,14 +3856,14 @@ Item {
                                 Label {
                                     text: qsTr("AJUSTES DO JOGO")
                                     color: page.mutedColor
-                                    font.pixelSize: 10
+                                    font.pixelSize: page.scaledTextSize(10)
                                     font.bold: true
                                     font.letterSpacing: 1
                                 }
                                 Label {
                                     text: page.selectedGame.name
                                     color: page.textColor
-                                    font.pixelSize: 18
+                                    font.pixelSize: page.scaledTextSize(18)
                                     font.bold: true
                                     wrapMode: Text.WordWrap
                                     maximumLineCount: 3
@@ -3881,7 +3886,7 @@ Item {
                             text: qsTr("Title ID: %1").arg(
                                 page.selectedGame.titleId || qsTr("não identificado"))
                             color: page.mutedColor
-                            font.pixelSize: 11
+                            font.pixelSize: page.scaledTextSize(11)
                             Layout.fillWidth: true
                             elide: Text.ElideRight
                         }
@@ -3921,7 +3926,7 @@ Item {
                             Label {
                                 text: qsTr("Esta escolha controla o Play direto e o atalho publicado na Steam.")
                                 color: page.mutedColor
-                                font.pixelSize: 10
+                                font.pixelSize: page.scaledTextSize(10)
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
                             }
@@ -4145,7 +4150,7 @@ Item {
                                             return qsTr("Padrão")
                                         }
                                         color: page.mutedColor
-                                        font.pixelSize: 10
+                                        font.pixelSize: page.scaledTextSize(10)
                                         font.bold: true
                                         font.letterSpacing: 1
                                     }
@@ -4205,7 +4210,7 @@ Item {
                                                     return kind.charAt(0).toUpperCase()
                                                 }
                                                 color: page.mutedColor
-                                                font.pixelSize: 8
+                                                font.pixelSize: page.scaledTextSize(8)
                                                 font.bold: true
                                                 visible: !(modelData.url && modelData.url.length > 0)
                                             }
@@ -4315,7 +4320,7 @@ Item {
                                                 }
                                             ).join(", "))
                                         color: page.amberColor
-                                        font.pixelSize: 10
+                                        font.pixelSize: page.scaledTextSize(10)
                                         Layout.fillWidth: true
                                         wrapMode: Text.Wrap
                                     }
@@ -4499,7 +4504,7 @@ Item {
                                         Label {
                                             text: parent.parent.parent.expanded ? "▲" : "▼"
                                             color: page.mutedColor
-                                            font.pixelSize: 12
+                                            font.pixelSize: page.scaledTextSize(12)
                                         }
                                     }
                                     MouseArea {
@@ -4542,7 +4547,7 @@ Item {
                                     Label {
                                         text: qsTr("Ao buscar mídia com sucesso, publica automaticamente o artwork na Steam.")
                                         color: page.mutedColor
-                                        font.pixelSize: 10
+                                        font.pixelSize: page.scaledTextSize(10)
                                         wrapMode: Text.WordWrap
                                         Layout.fillWidth: true
                                     }
@@ -4567,7 +4572,7 @@ Item {
                                     Label {
                                         text: qsTr("Usa o ícone extraído do arquivo NCA da ROM como fallback quando não há mídia externa.")
                                         color: page.mutedColor
-                                        font.pixelSize: 10
+                                        font.pixelSize: page.scaledTextSize(10)
                                         wrapMode: Text.WordWrap
                                         Layout.fillWidth: true
                                     }
@@ -4578,7 +4583,7 @@ Item {
                         Label {
                             text: qsTr("Ações mutáveis continuam sujeitas a preview, confirmação e rollback.")
                             color: page.mutedColor
-                            font.pixelSize: 10
+                            font.pixelSize: page.scaledTextSize(10)
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
                         }

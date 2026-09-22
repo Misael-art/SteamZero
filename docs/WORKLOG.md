@@ -11854,3 +11854,17 @@ haver sanitização/allowlist segura para conteúdo de tema.
 Os testes unitários direcionados passaram com **316 passed**, a matriz QML de
 texto/tema com **81 passed** e o harness `check_scene_text.qml` saiu com rc=0.
 Também corrigi a desserialização dos enums de `textLayout`, sem alterar o host.
+
+## 2026-09-22 — Escala do host aplicada ao shell principal
+
+O `visualScale` publicado pelo probe KDE agora chega ao `Main.qml` por um
+helper central e é propagado às superfícies `Emulation.qml` e
+`SteamGameplay.qml`. Os 210 usos de `font.pixelSize` dessas três superfícies
+passam pelo helper, com arredondamento e limite mínimo; a atualização e a
+remoção da preferência são verificadas pelo harness de alto contraste.
+
+A matriz QML completa fechou com **48 passed**. O primeiro passe encontrou e
+corrigiu a compatibilidade de `SceneText.qml` com modelos legados sem os novos
+campos de texto avançado, eliminando diagnósticos `undefined`. Componentes
+reutilizáveis fora dessas três superfícies e a invalidação de cache `a11y` do
+`Resolver` continuam explicitamente abertos. Nenhum host foi alterado.

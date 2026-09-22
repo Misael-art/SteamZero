@@ -85,6 +85,14 @@ Main {
                   "visualScale do host deve chegar ao bridge de tema")
             check(window._themeBridge.typographyRoles.scale === 1.5,
                   "visualScale do host deve ampliar a tipografia editorial")
+            check(window.visualScale === 1.5,
+                  "visualScale do host deve chegar ao shell principal")
+            check(window.scaledTextSize(16) === 24,
+                  "shell principal deve escalar tamanhos fixos de texto")
+            check(window.emulationControl.visualScale === 1.5,
+                  "visualScale deve chegar à superfície de emulação")
+            check(window.steamGameplayControl.visualScale === 1.5,
+                  "visualScale deve chegar à superfície Steam")
             phase = 2
             return
         }
@@ -98,6 +106,12 @@ Main {
                   "fundo deve voltar ao tema padrão")
             check(back.text === normalColors.text,
                   "texto deve voltar ao tema padrão")
+            check(window.visualScale === 1.0
+                  && window.emulationControl.visualScale === 1.0
+                  && window.steamGameplayControl.visualScale === 1.0,
+                  "remover a preferência do host deve invalidar as três superfícies")
+            check(window.scaledTextSize(16) === 16,
+                  "escala removida deve restaurar o tamanho base do shell")
             phase = 3
             return
         }
