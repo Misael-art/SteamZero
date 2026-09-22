@@ -1899,9 +1899,7 @@ def test_library_root_audit_requires_explicit_selection_and_quarantine_rolls_bac
     assert not (quarantine / "manifest.json").exists()
 
 
-def test_library_root_audit_can_run_asynchronous_with_progress(
-    monkeypatch, tmp_path: Path
-) -> None:  # type: ignore[no-untyped-def]
+def test_library_root_audit_can_run_asynchronous_with_progress(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     controller = _controller(monkeypatch, tmp_path)
     root = tmp_path / "audit-async-roms"
     root.mkdir()

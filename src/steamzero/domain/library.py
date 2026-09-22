@@ -722,9 +722,7 @@ class PlatformDirectoryInventory:
             platform_id = self._aliases.get(_directory_key(child.name))
             if platform_id is None:
                 unclaimed = (
-                    self._unclaimed_files(child, safepoint=safepoint)
-                    if include_unclaimed
-                    else ()
+                    self._unclaimed_files(child, safepoint=safepoint) if include_unclaimed else ()
                 )
                 results.append(
                     PlatformDirectory(child, "unmatched", None, 0, (), (), 0, (), (), unclaimed)
@@ -746,9 +744,7 @@ class PlatformDirectoryInventory:
             unclaimed = tuple(
                 path
                 for path in visited
-                if path.is_file()
-                and path not in claimed
-                and not self._managed_path(path, child)
+                if path.is_file() and path not in claimed and not self._managed_path(path, child)
             )
             results.append(
                 PlatformDirectory(
@@ -805,19 +801,24 @@ class PlatformDirectoryInventory:
                     candidate = Path(directory) / child_dir
                     if candidate.is_symlink():
                         skipped_symlinks += 1
-                    elif (include_unclaimed and child_dir not in {
-                        ".steamzero",
-                        ".steamzero-quarantine",
-                    }) or self._auxiliary_kind(
-                        platform_id, child_dir
-                    ) is not None or not _is_non_game_directory(child_dir):
+                    elif (
+                        (
+                            include_unclaimed
+                            and child_dir
+                            not in {
+                                ".steamzero",
+                                ".steamzero-quarantine",
+                            }
+                        )
+                        or self._auxiliary_kind(platform_id, child_dir) is not None
+                        or not _is_non_game_directory(child_dir)
+                    ):
                         safe_dirs.append(child_dir)
                         if include_unclaimed:
                             visited.add(candidate)
                 child_dirs[:] = safe_dirs
                 blocked = include_unclaimed and any(
-                    _is_non_game_directory(part)
-                    and self._auxiliary_kind(platform_id, part) is None
+                    _is_non_game_directory(part) and self._auxiliary_kind(platform_id, part) is None
                     for part in current.relative_to(root).parts
                 )
                 if blocked:
@@ -899,8 +900,10 @@ class PlatformDirectoryInventory:
             # Inventário é diagnóstico: uma pasta sem permissão não impede que
             # as demais sejam exibidas. O resultado parcial continua verdadeiro.
             pass
-        return candidates, skipped_symlinks, tuple(
-            sorted(visited, key=lambda item: item.as_posix().casefold())
+        return (
+            candidates,
+            skipped_symlinks,
+            tuple(sorted(visited, key=lambda item: item.as_posix().casefold())),
         )
 
     @staticmethod
@@ -930,11 +933,7 @@ class PlatformDirectoryInventory:
                     if name not in {".steamzero", ".steamzero-quarantine"}
                     and not (current / name).is_symlink()
                 ]
-                files.extend(
-                    current / name
-                    for name in names
-                    if not (current / name).is_symlink()
-                )
+                files.extend(current / name for name in names if not (current / name).is_symlink())
         except OSError:
             pass
         return tuple(sorted(files, key=lambda item: item.as_posix().casefold()))
