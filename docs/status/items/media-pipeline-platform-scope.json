@@ -4,16 +4,17 @@
   "id": "SZ-MEDIA-PIPELINE-PLATFORM-SCOPE",
   "title": "Estatísticas do pipeline de mídia por plataforma",
   "domain": "media",
-  "implementation": "partial",
-  "integration": "feature-branch",
-  "verification": "unit",
+  "implementation": "complete",
+  "integration": "integrated",
+  "verification": "hw",
   "operation": "degraded",
-  "distribution": "not-packaged",
+  "distribution": "installed",
   "scopePaths": [
     "src/steamzero/adapters/emulation.py",
-    "tests/integration/test_media_pipeline_platform_scope.py"
+    "tests/integration/test_media_pipeline_platform_scope.py",
+    "docs/09-operations/evidence/2026-09-22-media-pipeline-readonly"
   ],
-  "scopeDigest": "7a5599f5255fd5de97b63e13a7a05aca1f105255bf8d73de89236088bfb90ed3",
+  "scopeDigest": "a7bbedb8ed144ef3c0acc358ae02eab2a96984531b9e0d374412b12c2114b46f",
   "dependsOn": [
     "SZ-EMULATION-PLATFORM-SCOPE",
     "SZ-MEDIA-PROVIDER-PLATFORM-FILTER"
@@ -46,10 +47,28 @@
       "reference": "tests",
       "command": "TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests -q; runner permaneceu sem saída em 17% e foi interrompido; nenhum processo ou socket residual",
       "result": "partial"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_provider_health.py",
+      "command": "/tmp/steamzero-g28-test-20260922/bin/python tools/run_tests_isolated.py tests/unit/test_provider_health.py tests/unit/scraping tests/unit/test_core_net.py tests/unit/test_media_multiprovider.py tests/unit/test_media_global_scope.py tests/unit/test_platform_media_declaration.py tests/integration/test_media_pipeline_platform_scope.py tests/integration/test_media_audit_platform_scope.py tests/integration/test_media.py tests/integration/test_steam_media.py -q (223 passed; state home real unchanged)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_emulation_controller.py",
+      "command": "/tmp/steamzero-g28-test-20260922/bin/python tools/run_tests_isolated.py tests/unit/test_emulation_controller.py -q -k 'media_pipeline or provider' (3 passed, 141 deselected; state home real unchanged)",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-22-media-pipeline-readonly",
+      "command": "/usr/local/bin/steamzero emulation workspace --json (Switch: 15 jogos, 1497 candidatos, 3168306 bytes, screenscraper inactive/auth com 184 falhas)",
+      "result": "passed"
     }
   ],
-  "nextAction": "Integrar escopo, denominador, fases e quota na superfície visual e validar na release 2.0.0rc1-085169f47186; a auditoria confirmou que a UI ainda não explica o pipeline.",
+  "nextAction": "HARD-EXTERNAL-SUBITEM: preservar o diagnóstico, aguardar o operador configurar ssid/sspassword pessoais e executar uma busca autorizada; recuperar o media.global stale pelo ciclo G25 antes de repetir a operação. Não iniciar job remoto nesta sessão.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-05",
-  "notes": "A lista de jogos já é filtrada por plataforma, mas a métrica cacheBytes ainda varria media_dir inteiro. Esta frente torna a estatística coerente com o catálogo contextual."
+  "updatedAt": "2026-09-22",
+  "notes": "O escopo por plataforma, denominador, fases, quota e health persistido estão integrados no canonical e presentes na release ativa. O read model e a UI expõem providerDetails sem converter credencial recusada em quota ou sucesso vazio. A operação permanece degraded por credencial pessoal ausente e por um job media.global stale; nenhuma tentativa remota ou mutação do host foi executada."
 }

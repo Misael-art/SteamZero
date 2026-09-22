@@ -67,7 +67,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-LIBRARY-CANONICAL | 89 | 10 | 7 | dev |  |
 | SZ-LIBRARY-CONVERSION-CONTRACT | 4 | 2 | 2 | unit |  |
 | SZ-MEDIA-AUDIT-PLATFORM-SCOPE | 4 | 3 | 2 | unit |  |
-| SZ-MEDIA-PIPELINE-PLATFORM-SCOPE | 2 | 3 | 2 | unit |  |
+| SZ-MEDIA-PIPELINE-PLATFORM-SCOPE | 3 | 6 | 5 | hw |  |
 | SZ-MEDIA-PROVIDER-PLATFORM-FILTER | 10 | 2 | 2 | unit |  |
 | SZ-MEDIA-SCRAPING | 29 | 7 | 7 | unit |  |
 | SZ-MULTIDISC-DESCRIPTOR-RECONCILIATION | 15 | 13 | 13 | dev |  |

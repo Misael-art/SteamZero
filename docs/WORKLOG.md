@@ -11742,3 +11742,18 @@ native; não houve fallback silencioso. O item foi atualizado para software
 integrado e operação `degraded` enquanto a prova física de lançamento, sessão
 e retorno ao Launcher permanece dependente de autorização/interação do
 operador. Nenhum componente foi instalado, reparado ou removido.
+
+## 2026-09-22 — G28 reconciliado com o health de mídia instalado
+
+O pipeline de mídia foi revalidado com **223 passed** nos testes de provider,
+scraping, rede, escopo por plataforma, auditoria e mídia, mais **3 passed** nos
+testes selecionados do controller/read model. O state home real permaneceu
+idêntico antes e depois.
+
+Na release ativa, o workspace Switch publica 15 jogos, 1.497 candidatos,
+3.168.306 bytes de cache e os detalhes persistidos do ScreenScraper:
+`E-SCRAPE-CREDENTIAL-REJECTED`, categoria `auth`, estado `inactive`, 184
+falhas consecutivas. A UI recebe `providerDetails`, portanto o caso não é
+convertido em quota ou sucesso vazio. O host também conserva um
+`media.global` stale, que pertence ao recovery G25. Não foram configuradas
+credenciais, repetidas buscas ou alterados arquivos do host.
