@@ -43,10 +43,16 @@
       "reference": "docs/09-operations/HOST-INSTALL.md",
       "command": "/usr/local/bin/steamzero doctor --json; systemctl --user is-active steamzero-core.service",
       "result": "partial"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-22-system-diagnostics-guidance/README.md",
+      "command": "/usr/local/bin/steamzero doctor --json (release ativa 2.0.0rc1-13c933c30ace)",
+      "result": "partial"
     }
   ],
-  "nextAction": "HARD-EXTERNAL-SUBITEM: com autorização explícita, reiniciar/convergir o daemon pelo fluxo governado e confirmar staleJobs=0; sem isso preservar o estado e não executar cleanup no host.",
+  "nextAction": "HARD-EXTERNAL-SUBITEM: rechecagem read-only observou staleJobs=0, mas nenhum ciclo governado de recovery/convergência é atribuível a esta sessão; preservar degraded e não executar restart ou cleanup no host.",
   "activeWorkstreams": ["WS-2026-09-JOB-RECOVERY-G25"],
   "updatedAt": "2026-09-21",
-  "notes": "O software de G25 está integrado e verificado em ambiente isolado. O host ativo possui um job media.global em running criado após o boot, portanto doctor permanece degraded; a recuperação física exige uma mutação governada do daemon e não foi simulada nem executada. Nenhum staging, backup ou journal histórico foi removido."
+  "notes": "O software de G25 está integrado e verificado em ambiente isolado. A rechecagem somente leitura de 2026-09-22 observou staleJobs=0, pendingOperations=0 e nenhum órfão; como nenhum restart/convergência governado foi executado ou atribuído a esta sessão, a operação não é promovida e o host permanece fora da prova física completa. Nenhum arquivo ou serviço do host foi alterado."
 }

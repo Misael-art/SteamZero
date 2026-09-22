@@ -16,7 +16,7 @@
     "tests/qml/check_main_handheld_sections.qml",
     "docs/09-operations/evidence/2026-09-22-system-diagnostics-guidance/README.md"
   ],
-  "scopeDigest": "e97d20e686712114d6964fe189c8d5d829b2445c131dbe8742b0150a2c7ab63f",
+  "scopeDigest": "f7dde900a152c2a329b431190ec0840221e9e25037696f8df455d0507c7dc76c",
   "dependsOn": [],
   "knownGaps": ["GAP-EMULATION-PHYSICAL-LAUNCH"],
   "acceptanceCriteria": [
@@ -49,6 +49,12 @@
       "reference": "docs/09-operations/evidence/2026-09-22-system-diagnostics-guidance/README.md",
       "command": "python3 -m pytest tests/unit/test_doctor.py tests/integration/test_diagnostics.py tests/integration/test_ui_dialog_coverage.py tests/integration/test_ui_action_inventory.py tests/integration/test_desktop_ui_bridge.py tests/unit/test_desktop_dashboard.py -q; QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_main_handheld_sections.qml",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-22-system-diagnostics-guidance/README.md",
+      "command": "/usr/local/bin/steamzero doctor --json; readlink -f /opt/steamzero/current",
+      "result": "partial"
     }
   ],
   "nextAction": "HARD-EXTERNAL-SUBITEM: repetir a jornada na release instalada com um estado de atenção e confirmar foco/ação pelo operador; não executar recovery no host sem autorização.",

@@ -11813,3 +11813,16 @@ Os testes focados fecharam com **22 passed**, a matriz UI/bridge/dashboard com
 `SZ-SYSTEM-DIAGNOSTICS-GUIDANCE` fica completo em software, enquanto a prova
 na release instalada e a interação física permanecem externas. Nenhum arquivo
 ou serviço do host foi alterado.
+
+## 2026-09-22 — Rechecagem do host após o fechamento do Doctor
+
+A release ativa continua `2.0.0rc1-13c933c30ace`. A leitura somente leitura do
+Doctor observou `staleJobs=0`, `pendingOperations=0` e zero staging, backup ou
+journal órfão; permanecem `deckInputKeys=false` e `bootDirect=unknown`. Não
+houve restart, cleanup, exportação ou instalação nesta sessão, então G25 não é
+promovido por inferência: a prova de ciclo governado continua externa.
+
+A comparação também confirmou que o host ainda publica o caminho absoluto do
+state home na mensagem `state.layout`, enquanto o canonical `bf60ce1` já o
+remove dos textos dos checks. A diferença é de release instalada versus
+canonical, não de estado alterado pelo teste.

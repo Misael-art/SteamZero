@@ -64,7 +64,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-GAMEMODE-READINESS | 9 | 2 | 1 | hw |  |
 | SZ-GOVERNANCE-STATUS | 22 | 8 | 6 | dev |  |
 | SZ-HOST-UPDATE-TRANSACTIONAL | 18 | 12 | 9 | hw |  |
-| SZ-JOB-RECOVERY-DOCTOR | 10 | 2 | 1 | dev |  |
+| SZ-JOB-RECOVERY-DOCTOR | 10 | 3 | 1 | dev |  |
 | SZ-LIBRARY-CANONICAL | 89 | 10 | 7 | dev |  |
 | SZ-LIBRARY-CONVERSION-CONTRACT | 4 | 2 | 2 | unit |  |
 | SZ-MEDIA-AUDIT-PLATFORM-SCOPE | 4 | 3 | 2 | unit |  |
@@ -85,7 +85,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-RESOURCE-QML-PROBE | 7 | 2 | 1 | dev |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
 | SZ-SHARPEMU-COMPONENT-SMOKE-CONTRACT | 3 | 1 | 1 | unit |  |
-| SZ-SYSTEM-DIAGNOSTICS-GUIDANCE | 5 | 4 | 3 | dev |  |
+| SZ-SYSTEM-DIAGNOSTICS-GUIDANCE | 5 | 5 | 3 | dev |  |
 | SZ-TEST-STATE-ISOLATION | 4 | 4 | 4 | dev |  |
 | SZ-THEME-ENGINE | 78 | 37 | 34 | hw |  |
 | SZ-THEME-ESDE-SCENE-RENDER | 26 | 11 | 8 | hw |  |

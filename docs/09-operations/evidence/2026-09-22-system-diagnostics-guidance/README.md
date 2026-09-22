@@ -19,6 +19,19 @@ repetido no texto que a UI publica.
 - `QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_main_handheld_sections.qml`: **passed**
 - `git diff --check`: **passed**
 
+## Comparação com a release instalada
+
+Em rechecagem somente leitura, `/opt/steamzero/current` continuou apontando
+para `2.0.0rc1-13c933c30ace`. O host publicou `staleJobs=0`,
+`pendingOperations=0`, zero staging/backup/journal órfão, `deckInputKeys=false`
+e `bootDirect=unknown`. A mensagem instalada de `state.layout` ainda contém o
+caminho absoluto do state home; isso é esperado da release anterior e contrasta
+com o canonical deste fechamento, que mantém o caminho somente no payload
+técnico e o remove das mensagens dos checks.
+
+Nenhum restart, cleanup, exportação ou instalação foi executado para produzir
+essa fotografia.
+
 ## Limite
 
 Nenhuma ação de recovery, exportação ou alteração no host foi executada. A
