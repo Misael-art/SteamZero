@@ -22,8 +22,10 @@ ROOT = Path(__file__).resolve().parents[2]
 #:
 #: Um `skip` aqui produz suíte verde num host onde NADA visual foi verificado —
 #: e foi exatamente assim que a regressão de ícones da a37 atravessou os gates.
-#: Os harnesses acima ainda usam `skipif`; o VS-03 converte todos.
+#: O marcador `visual` roteia este módulo ao gate canônico, que reprova sem
+#: runtime em vez de transformar a ausência em verde.
 DIAG_VISUAL_ENVIRONMENT = "QML-VISUAL-ENVIRONMENT-001"
+pytestmark = pytest.mark.visual
 
 
 def _qml_environment() -> dict[str, str]:
@@ -40,11 +42,19 @@ def _qml_environment() -> dict[str, str]:
     return env
 
 
+@pytest.fixture(autouse=True)
+def _require_qml_runtime() -> None:
+    """Ambiente sem QML reprova o gate visual com diagnóstico explícito."""
+    if QML is None:
+        pytest.fail(
+            f"{DIAG_VISUAL_ENVIRONMENT}: qml6/qml ausente; o harness visual não pode ser verificado"
+        )
+
+
 # Harnesses que carregam um asset SVG do pacote. A imagem canônica do gate
 # visual traz qt6-declarative e qt6-base, mas NÃO o plugin de imagem SVG: os
 # quatro falham com "QML Image: Error decoding" enquanto os outros 21 passam.
-# Pular com a razão explícita é melhor que removê-los do gate — o dia em que a
-# imagem ganhar o plugin, eles voltam sozinhos.
+# A ausência do plugin é defeito do ambiente do gate, não motivo para verde.
 _SVG_HARNESSES = frozenset(
     {
         "check_asset_recipe_preview.qml",
@@ -199,7 +209,6 @@ def _error_server() -> tuple[int, threading.Thread, HTTPServer]:
 # "qml6 indisponível", então estes harnesses nunca rodaram no CI. A imagem
 # canônica do gate visual traz o Qt fixado por digest.
 @pytest.mark.visual
-@pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
 @pytest.mark.parametrize(
     "harness",
     [
@@ -245,7 +254,10 @@ def _error_server() -> tuple[int, threading.Thread, HTTPServer]:
 )
 def test_qml_handheld_harness_offscreen(harness: str) -> None:
     if harness in _SVG_HARNESSES and not _qml_decodes_svg():
-        pytest.skip("runtime sem plugin de imagem SVG; o harness carrega asset .svg")
+        pytest.fail(
+            f"{DIAG_VISUAL_ENVIRONMENT}: runtime sem plugin de imagem SVG; "
+            f"{harness} carrega asset .svg"
+        )
     completed = subprocess.run(
         [str(QML), f"tests/qml/{harness}"],
         cwd=ROOT,
@@ -258,7 +270,6 @@ def test_qml_handheld_harness_offscreen(harness: str) -> None:
     _assert_qml_clean(completed, harness)
 
 
-@pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
 def test_darkbutton_stays_readable_on_the_light_theme(tmp_path: Path) -> None:
     """P0-1/P0-2 da auditoria: DarkButton legível no tema claro.
 
@@ -283,7 +294,6 @@ def test_darkbutton_stays_readable_on_the_light_theme(tmp_path: Path) -> None:
     )
 
 
-@pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
 def test_media_effect_layer_refuses_a_surface_without_a_decode_ceiling() -> None:
     """Uma superfície que esquece o teto de decode não carrega.
 
@@ -324,7 +334,6 @@ def test_media_effect_layer_refuses_a_surface_without_a_decode_ceiling() -> None
     )
 
 
-@pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
 def test_media_effect_layer_composes_with_the_advanced_renderer() -> None:
     """O caminho de produção compõe: Qt >= 6.5 publica a capacidade e o launcher a passa.
 
@@ -336,13 +345,11 @@ def test_media_effect_layer_composes_with_the_advanced_renderer() -> None:
     _run_qml("check_media_effect_layer.qml", "--steamzero-qtquick-effects")
 
 
-@pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
 def test_editorial_library_renders_at_logical_scale_200() -> None:
     """A composição editorial continua utilizável em 4K físico a 200% lógico."""
     _run_qml("check_editorial_library.qml", scale_factor=2)
 
 
-@pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
 @pytest.mark.parametrize(
     ("arguments", "label"),
     [
@@ -367,7 +374,6 @@ def test_editorial_system_cards_keep_the_minimum_geometry(
     _run_qml("check_editorial_library.qml", *arguments)
 
 
-@pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
 @pytest.mark.parametrize("stage", ("systems", "system", "library", "dossier", "launch"))
 def test_editorial_capture_requested_stage_is_independent(tmp_path: Path, stage: str) -> None:
     """Cada etapa editorial captura o frame pedido sem depender do timer da jornada."""
@@ -380,7 +386,6 @@ def test_editorial_capture_requested_stage_is_independent(tmp_path: Path, stage:
     assert output.is_file() and output.stat().st_size > 0
 
 
-@pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
 def test_qml_emulation_error_card_via_transactional_failure(
     _error_server: tuple[int, threading.Thread, HTTPServer],
 ) -> None:

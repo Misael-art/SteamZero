@@ -11980,3 +11980,14 @@ A auditoria direta reporta **65/65** na fixture positiva e **72/73** na negativa
 com `src` explicitamente sem tradutor; o corpus de **388** continua
 honestamente não migrado. Os testes direcionados de auditoria e fatia RetroFE
 fecharam com **73 passed**. Nenhum host foi alterado.
+
+## 2026-09-22 — G13: harness handheld sem verde falso
+
+O módulo `test_qml_handheld_offscreen.py` deixou de usar `skipif` para os
+harnesses visuais legados. O runtime ausente agora reprova com
+`QML-VISUAL-ENVIRONMENT-001`, e a ausência do decoder SVG também reprova em
+vez de esconder os quatro cenários dependentes de asset.
+
+A suíte do módulo fechou com **48 passed** no host atual; probes adjacentes de
+`qmltestrunner` e inventário de UI ainda permanecem como próximo trabalho de
+G13. Nenhum host foi alterado.
