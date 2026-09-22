@@ -65,7 +65,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-GOVERNANCE-STATUS | 22 | 9 | 8 | dev |  |
 | SZ-HOST-UPDATE-TRANSACTIONAL | 18 | 12 | 9 | hw |  |
 | SZ-JOB-RECOVERY-DOCTOR | 10 | 3 | 1 | dev |  |
-| SZ-LIBRARY-CANONICAL | 169 | 19 | 11 | hw |  |
+| SZ-LIBRARY-CANONICAL | 169 | 21 | 12 | hw |  |
 | SZ-LIBRARY-CONVERSION-CONTRACT | 4 | 2 | 2 | unit |  |
 | SZ-MEDIA-AUDIT-PLATFORM-SCOPE | 4 | 4 | 2 | hw |  |
 | SZ-MEDIA-PIPELINE-PLATFORM-SCOPE | 3 | 7 | 5 | hw |  |
@@ -80,7 +80,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-PLATFORM-PS4-PHYSICAL-INSTALL | 8 | 3 | 2 | dev |  |
 | SZ-PLATFORM-PS5-CATALOG | 21 | 19 | 15 | unit |  |
 | SZ-PLATFORM-REQUIREMENT-SCOPE | 7 | 3 | 2 | unit |  |
-| SZ-PLATFORM-VITA-CATALOG | 5 | 7 | 5 | unit |  |
+| SZ-PLATFORM-VITA-CATALOG | 5 | 8 | 5 | hw |  |
 | SZ-PS3-OFFICIAL-FIRMWARE-DOWNLOAD | 8 | 2 | 1 | unit |  |
 | SZ-RESOURCE-QML-PROBE | 7 | 2 | 1 | dev |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |

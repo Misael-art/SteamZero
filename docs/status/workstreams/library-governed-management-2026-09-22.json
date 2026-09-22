@@ -4,7 +4,7 @@
   "id": "WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT",
   "item": "SZ-LIBRARY-CANONICAL",
   "branch": "codex/library-host-release-caf9d922-2026-09-22",
-  "baseRef": "caf9d922",
+  "baseRef": "621a3389db32",
   "owner": "codex-continuation",
   "state": "active",
   "exclusivePaths": [
@@ -29,6 +29,6 @@
     "docs/WORKLOG.md",
     "docs/status/COVERAGE.md"
   ],
-  "nextAction": "Corrigir e testar G56: o scan da release ativa gravou seis Vita no cache, mas o workspace descartou a app directory-native PCSF00516. Corrigir/testar G57 com estimativa conservadora e preflight de espaço do ZIP, pois o plano anterior mostrava 8 MiB para saída real de 1,71 GB. Rodar gates, commit/PR/CI, preparar e instalar release governada; repetir o scan pela rota assíncrona de UI e confirmar seis jogos no workspace, 713 membros relacionados e preview de espaço correto; depois certificar gestão/audit/rename/quarentena/rollback universal sem tocar nas origens.",
+  "nextAction": "G56 fechada no host (workspace Vita 6/6) e G57 implementada com preview de espaço comprovado na release governada; testar no host a recusa real por espaço insuficiente. Próximo P1 G58: relacionar derivados gerenciados aos jogos-base na Gestão de arquivos para todas as plataformas, com consentimento/quarentena/rollback e preservação das origens. G59: tornar scan um job assíncrono com progresso/cancelamento. Continuar certificação real de audit/rename/quarentena/rollback universal em cópias seguras; não declarar Vita3K launch sem runtime/adapter.",
   "updatedAt": "2026-09-22"
 }

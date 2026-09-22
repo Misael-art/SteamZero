@@ -5,10 +5,10 @@
   "title": "Catálogo de plataforma PlayStation Vita",
   "domain": "platform",
   "implementation": "partial",
-  "integration": "feature-branch",
-  "verification": "unit",
-  "operation": "unknown",
-  "distribution": "not-packaged",
+  "integration": "integrated",
+  "verification": "hw",
+  "operation": "degraded",
+  "distribution": "installed",
   "scopePaths": [
     "src/steamzero/platform_manifests/47-playstation-vita.platform.json",
     "src/steamzero/adapters/scraping/screenscraper.py",
@@ -73,9 +73,15 @@
       "reference": "docs/09-operations/evidence/2026-09-22-ux-deep-dive/README.md",
       "command": "Release ativa caf9d922 scan real: 6 Vita gravados no cache e zero assets internos como jogos; app PCSF00516 directory-native com identidade SFO válida e 713 membros relacionados. Workspace ainda publica apenas 5 porque o validador do cache rejeita vita3k-app; fix de cache em branch no item SZ-LIBRARY-CANONICAL. Vita3K runtime continua ausente do host.",
       "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-22-ux-deep-dive/README.md",
+      "command": "Release 2.0.0rc1-621a3389db32 no host: workspace ready e seis Vita publicados (5 ZIP + 1 app directory-native PCSF00516, SFO Title ID). G56 fechada para catálogo/projeção; Vita3K runtime ausente, lançamento não validado. Gestão de derivados ocultos continua aberta em G58.",
+      "result": "partial"
     }
   ],
-  "nextAction": "Após a release que corrige G56, confirmar seis jogos Vita visíveis no workspace/Launcher e relatedContent navegável; validar launch apenas quando o adapter/runtime Vita3K estiver instalado. O ZIP canônico [PCSF00516].zip já foi produzido de forma governada e verificado, sem tocar a origem; falta decidir/implementar como derivados ocultos entram na gestão/limpeza, completar rename/quarentena universal e depois validar adapter/store de requisitos.",
+  "nextAction": "G56 está fechada: seis Vita visíveis no workspace real. Não declarar lançamento suportado enquanto Vita3K runtime/adapter não estiver instalado e testado. Implementar G58 para derivados em gestão universal e validar relatedContent/quarentena sem tocar originais; depois validar adapter/store de requisitos.",
   "activeWorkstreams": [],
   "updatedAt": "2026-09-22",
   "notes": "Este recorte torna a plataforma observável e catalogável. Não equivale a suporte de execução: ainda falta adapter, store de firmware e validação física. Completada em 2026-09-02: a plataforma estava catalogada sem emulador (`emulators: []`) e com a arte do PSP, violando dois contratos — a Vita apareceria na UI sem poder lancar nada e com o logo errado, pior que a lacuna que substituiu. Agora declara `vita3k` como primary, com AppImage x86_64 fixado pelo SHA-256 publicado na API do GitHub (verificado: o upstream NAO publica no Flathub). Arte propria em `assets/playstation-vita.svg`, no mesmo estilo autoral dos outros 26 (nenhum asset do projeto e logo oficial: marca registrada nao e redistribuivel sob GPL). Perfil de controle `vita-handheld` proprio, com analogico direito — reusar o do PSP declararia controle que o aparelho nao tem. Lockfile de componente e matriz de capacidades regravados; denominadores 15->16 ativos e 47->46 bloqueadas. NAO instalado no host. 2026-09-03: scopeDigest renovado por documento GERADO (CAPABILITY-MATRIX.md) apos a rota theme.scene.render entrar no contrato, em WS-2026-09-CENA-ESDE. Regerado pela ferramenta, nao editado a mao."

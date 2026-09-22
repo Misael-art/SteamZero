@@ -396,3 +396,45 @@ O complemento posterior de mídia, first-run e Theme Studio está em
 `../2026-09-22-media-theme-first-run/README.md`, incluindo autenticação real,
 busca individual, lote assíncrono, aplicação/otimização, auditoria de
 qualidade, matriz de configuração inicial e maturidade do editor/efeitos.
+
+## Complemento pós-release governada 2.0.0rc1-621a3389db32
+
+PR #231 (`621a3389db32ee4796313ace4cd9665014bb52cc`) foi incorporada após os
+10 checks verdes; o CI do commit exato de `main` também passou (run
+`35791778246`). `release_host.py prepare` e `verify-bundle` passaram para o
+wheel SHA-256 `0e3c9abd3e2a4d2584ea6650b0104ac7a1ae63e75c9f7a12f5e19966da04bebb`.
+O ciclo governado install → rollback → reativação terminou normalmente com
+`machineCycle=passed`; o ledger completo fica em
+`~/.local/state/steamzero/release-automation/2.0.0rc1-621a3389db32.json`.
+Release ativa/daemon confirmados no SHA mesclado, schema 22, serviço/socket
+ativos, DB íntegro e sem pendências ou órfãos. Doctor `degraded` e
+`release_host inspect` não aprovam promoção/tag: ainda há warning de
+proveniência não reconhecida como tagueada, entrada do Deck não chega como
+teclas e boot direto é `unknown` por falta de permissão de leitura.
+
+Correção G56 confirmada no host: `steamzero --json emulation workspace` retorna
+`truthState=ready` e seis jogos Vita (cinco ZIPs e a app directory-native
+`PCSF00516`, `format=vita3k-app`, Title ID do SFO). Isto valida a leitura do
+catálogo, não o lançamento: o runtime Vita3K ainda não está instalado.
+
+A ação de varredura da raiz registrada completou às `2026-09-22T22:52:02Z` e
+atualizou o cache. Contagens daquela raiz: 1.162 bases, 102 updates, 144 DLCs,
+368 arquivos incompatíveis, 7.284 ignorados e 202 erros. A chamada de controle
+é síncrona, não uma tarefa observável: o cliente HTTP expirou após 60 s, o
+scan completou mesmo assim e a ponte gerou `BrokenPipeError` ao escrever a
+resposta tardia. Não houve repetição do scan; G59 registra tornar este fluxo
+assíncrono com progresso/cancelamento sem perder cobertura.
+
+G57 foi validada no preview físico: o destino canônico já ocupado foi recusado
+sem alteração; um `derivedRoot` de preview isolado mostrou 686 arquivos,
+fonte de 1.712.471.393 bytes, saída estimada de 1.713.173.857 bytes e espaço
+requerido de 1.721.562.465 bytes. Nenhum ZIP foi criado no destino de preview.
+O artefato produzido anteriormente e a árvore original continuam presentes.
+Permanece G58: `.steamzero/derived` fica invisível à gestão e sem relação com
+seu jogo-base. `relatedContent` e a auditoria/quarentena são genéricos para
+todas as plataformas, mas a descoberta/associação dos derivados gerenciados
+ainda precisa entrar no mesmo contrato universal de preview, confirmação,
+quarentena e rollback. Não apagar automaticamente nem tocar os originais.
+
+Central fechada ao final; nenhum processo de emulador ou tema ficou aberto.
+Nenhuma ROM original foi renomeada, apagada ou movida nesta validação.

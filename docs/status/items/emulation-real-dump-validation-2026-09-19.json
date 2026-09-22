@@ -15,7 +15,7 @@
     "docs/09-operations/evidence/2026-09-22-ux-deep-dive",
     "docs/09-operations/evidence/2026-09-22-media-theme-first-run"
   ],
-  "scopeDigest": "c6042c9faa373a9b3257cef1c6c6991e5d3825d95f954c5eaf535a72f8cc9705",
+  "scopeDigest": "aef1206f9e2ef34013768caf71bf211fe528d8830de7da77beaf1e5a9fe0fdaa",
   "dependsOn": [
     "SZ-COMPONENT-LIFECYCLE",
     "SZ-LIBRARY-CANONICAL",

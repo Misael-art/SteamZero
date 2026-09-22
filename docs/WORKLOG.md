@@ -12458,3 +12458,35 @@ Evidências detalhadas e IDs estão em
 `docs/09-operations/evidence/2026-09-22-ux-deep-dive/README.md` e
 `docs/09-operations/RELEASE-LEDGER.md`. Nenhuma origem foi renomeada ou
 apagada; a Central de jogos foi encerrada; nenhum emulador ou tema ficou aberto.
+
+## 2026-09-22 — Release governada, projeção Vita e gestão universal
+
+PR #231 foi incorporada em `main` (`621a3389db32ee4796313ace4cd9665014bb52cc`),
+após todos os checks da PR e o CI do `main` (run `35791778246`) passarem. Bundle
+`2.0.0rc1-621a3389db32` preparado e verificado, wheel SHA-256
+`0e3c9abd3e2a4d2584ea6650b0104ac7a1ae63e75c9f7a12f5e19966da04bebb`. O ciclo
+governado install → rollback para `2.0.0rc1-caf9d922d15c` → reativação terminou
+`machineCycle=passed`, com daemon confirmando o SHA e segunda convergência
+idempotente. Doctor continua `degraded` por proveniência runtime ainda não
+reconhecida como tagueada, botão do Deck sem tecla e boot direto sem permissão;
+nenhuma promoção/tag foi declarada.
+
+No host, a projeção passou a publicar seis Vita em `truthState=ready`: cinco
+ZIPs e a app Vita3K `PCSF00516` validada pelo SFO. Scan da raiz terminou em
+`22:52:02Z`: 1.162 bases, 102 updates, 144 DLCs, 368 incompatíveis, 7.284
+ignorados e 202 erros. A rota de scan ainda é síncrona: cliente expirou em 60 s,
+mas a varredura atualizou `lastScan` e a bridge obteve BrokenPipe ao responder.
+Registrado como G59, sem repetir requisição cegamente.
+
+O preview do empacotador instalado publicou os valores conservadores para 686
+arquivos: fonte 1.712.471.393 B, saída estimada 1.713.173.857 B, espaço
+requerido 1.721.562.465 B; preview isolado não criou arquivo. Destino padrão já
+existia e foi recusado sem alteração. G56 foi fechada; G57 permanece apenas
+para teste host da recusa por falta de espaço. G58 registra a lacuna real:
+artefatos em `.steamzero/derived` não estão ligados ao proprietário na Gestão
+de arquivos. O modelo `relatedContent` e auditoria/quarentena são universais,
+mas a associação de derivados também precisa ser genérica para todas as
+plataformas, com preview/consentimento/quarentena/rollback, sem apagar originais.
+
+Central fechada; nenhum emulador, tema ou frontend ficou aberto. Nenhuma ROM
+original foi renomeada, movida ou apagada.

@@ -229,3 +229,38 @@ do ciclo. Como não há incompatibilidade e a release está saudável, nenhum
 rollback emergencial foi iniciado. Evidência operacional e scan no relatório
 `docs/09-operations/evidence/2026-09-22-ux-deep-dive/README.md`; ainda falta
 fechar a idempotência do fluxo com um ciclo governado concluído.
+
+## Release ativa — 2.0.0rc1-621a3389db32
+
+| Release | Commit exato | SHA-256 do wheel | CI / ciclo |
+|---|---|---|---|
+| `2.0.0rc1-621a3389db32` | `621a3389db32ee4796313ace4cd9665014bb52cc` | `0e3c9abd3e2a4d2584ea6650b0104ac7a1ae63e75c9f7a12f5e19966da04bebb` | PR #231 incorporada; CI do `main` `35791778246` verde; ciclo governado `machineCycle=passed` |
+
+Bundle preparado/verificado em `/tmp/steamzero-release-621a3389`; o ledger
+operacional é
+`/home/misael/.local/state/steamzero/release-automation/2.0.0rc1-621a3389db32.json`.
+O ciclo instalou, reverteu para `2.0.0rc1-caf9d922d15c` e reativou esta release;
+convergência final confirmou o daemon no commit exato e a repetição idempotente
+fez zero reinicializações. Serviço/socket ativos, schema 22, DB íntegro, zero
+operações pendentes e zero jobs/staging/backups/journals órfãos. Doctor segue
+`degraded`: proveniência runtime ainda não reconhecida como release tagueada,
+`deck.input.keys=false` e boot direto `unknown` por permissão negada. `inspect`
+mantém o mismatch esperado com a última tag (`v2.0.0rc1`); não publicar/taguear
+esta candidata sem a certificação própria.
+
+No workspace real, `truthState=ready` e PlayStation Vita agora publica seis
+jogos: cinco ZIPs e o diretório nativo `PCSF00516`, Title ID lido do SFO.
+`library.root.scan` atualizou a raiz registrada em `2026-09-22T22:52:02Z`;
+contagens da raiz: 1.162 bases, 102 updates, 144 DLCs, 368 incompatíveis,
+7.284 ignorados e 202 erros. A rota é síncrona: o cliente expirou após 60 s,
+mas a operação terminou e atualizou `lastScan`; a resposta tardia gerou
+`BrokenPipeError`. Sem repetir às cegas; G59 registra a conversão em job
+assíncrono como lacuna de UX.
+
+Preview do empacotador instalado: destino padrão recusado por já existir, sem
+alteração; com destino isolado apenas para preview: 686 arquivos,
+`sourceBytes=1.712.471.393`, estimativa `1.713.173.857` bytes e requisito
+`1.721.562.465` bytes livres. O caminho de preview não foi criado. O ZIP
+governado anteriormente produzido e a origem de 686 arquivos foram preservados.
+O artefato oculto em `.steamzero/derived` não está ligado à limpeza visual;
+G58 mantém essa oportunidade aberta universalmente.
