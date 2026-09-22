@@ -196,3 +196,12 @@ elevação `bigsudo`; nenhum `install_host` concluiu, e o host permanece
 comprovadamente na release anterior. Classificação: **HARD-EXTERNAL-SUBITEM —
 credencial/elevação ausente**. Retomar pelo mesmo bundle após a autorização
 interativa, sem preparar ou reutilizar artefato diferente.
+
+Após a tentativa física, o orquestrador foi endurecido: `install` e `rollback`
+fazem primeiro um preflight não mutante pelo mesmo
+`tools/install_host.py --help` sob `bigsudo`, limitado a 90 segundos. A
+mutação longa só começa depois da autorização ser obtida; timeout ou ausência
+do diálogo agora termina a tentativa de forma explícita, sem manter `pkexec`
+pendurado por 30 minutos. Esta melhoria está testada localmente, mas ainda não
+foi promovida ao host nem substitui a autorização interativa necessária para a
+prova física da candidata.

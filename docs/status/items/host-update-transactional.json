@@ -26,7 +26,7 @@
     "tools/release_host.py",
     "docs/09-operations/evidence/2026-08-26-host-update-preflight"
   ],
-  "scopeDigest": "601fd2f333040ef9896f99bf023df35b2f378c09b729bd9e461e682ceb4579e7",
+  "scopeDigest": "f09aaa28fa4ca55b735fa06df370b2cf1bb9ea5d7df7e29fbc6842d696850126",
   "dependsOn": [],
   "knownGaps": [
     "GAP-HOST-UPDATE-VM-CYCLE"

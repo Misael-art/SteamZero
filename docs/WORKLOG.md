@@ -12402,3 +12402,19 @@ inspeção confirmou que o host continua em
 `2.0.0rc1-504d10b14485`, sem processos de instalação pendentes. Classificação:
 `HARD-EXTERNAL-SUBITEM: credencial/elevação ausente`. O mesmo bundle permanece
 pronto para retomada após autorização interativa; não preparar outro artefato.
+
+## 2026-09-22 — Preflight governado de autorização
+
+O fluxo de `tools/release_host.py` foi corrigido para não confundir espera por
+credencial gráfica com instalação em andamento. Antes de cada `install` ou
+`rollback`, ele chama o mesmo `tools/install_host.py --help` via `bigsudo`, sem
+mutação e com limite de 90 segundos (`AUTHORIZATION_TIMEOUT_SECONDS`). Somente
+após o preflight passar a operação real usa seu timeout amplo. Foram adicionados
+testes de chamada, ordem e timeout; `tests/unit/test_release_host.py` passou
+com 70 testes, Ruff, mypy e `make boundaries` passaram. O host continua
+intencionalmente na release anterior porque esta correção ainda precisa de
+CI/promoção; a instalação física continua pendente da autorização interativa.
+O `make check` integral local foi iniciado, permaneceu ativo por cerca de 25
+minutos alternando os harnesses QML sem saída terminal e foi interrompido de
+forma controlada; portanto não é contado como verde local. Nenhum subprocesso
+QML ficou aberto após a interrupção.

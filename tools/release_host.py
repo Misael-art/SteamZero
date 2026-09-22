@@ -49,6 +49,7 @@ HOST_MANAGER = Path("/usr/local/sbin/steamzero-host")
 DEFAULT_REPOSITORY = "Misael-art/SteamZero"
 DEFAULT_UPDATE_REF = "origin/main"
 MIN_CACHE_FREE_BYTES = 2 * 1024 * 1024 * 1024
+AUTHORIZATION_TIMEOUT_SECONDS = 90
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 RELEASE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]*-[0-9a-f]{12}$")
 TAG_RE = re.compile(r"^v[A-Za-z0-9][A-Za-z0-9._+-]*$")
@@ -1466,6 +1467,31 @@ def _activation_smokes(
     }
 
 
+def _authorization_preflight(*, runner: CommandRunner) -> None:
+    """Confirma a elevação interativa antes de iniciar uma mutação longa.
+
+    ``pkexec`` pode permanecer aguardando o agente gráfico por tempo
+    indeterminado. O preflight chama o mesmo instalador versionado, em modo
+    ``--help`` e portanto sem mutação, com o limite operacional de 90 s. Só
+    depois de a autorização ser obtida a operação real recebe seu timeout
+    amplo. Assim uma sessão sem confirmação não fica presa por 30 minutos nem
+    parece uma instalação em andamento.
+    """
+    _run(
+        [
+            "bigsudo",
+            "/usr/bin/python3",
+            str(ROOT / "tools" / "install_host.py"),
+            "--help",
+        ],
+        timeout=AUTHORIZATION_TIMEOUT_SECONDS,
+        runner=runner,
+        purpose=(
+            f"autorização interativa ausente ou não concluída em {AUTHORIZATION_TIMEOUT_SECONDS}s"
+        ),
+    )
+
+
 def _post_activation(
     release: str,
     *,
@@ -1486,6 +1512,7 @@ def _post_activation(
 
 
 def _install_only(bundle: Bundle, *, runner: CommandRunner) -> dict[str, object]:
+    _authorization_preflight(runner=runner)
     activated = _run(
         [
             "bigsudo",
@@ -1516,6 +1543,7 @@ def _install_only(bundle: Bundle, *, runner: CommandRunner) -> dict[str, object]
 
 
 def _rollback_only(release: str, *, runner: CommandRunner) -> dict[str, object]:
+    _authorization_preflight(runner=runner)
     activated = _run(
         [
             "bigsudo",
