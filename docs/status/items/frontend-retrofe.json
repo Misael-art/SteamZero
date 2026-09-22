@@ -14,9 +14,10 @@
     "src/steamzero/domain/retrofe_text_slice.py",
     "src/steamzero/domain/scene_retrofe.py",
     "tests/integration/test_retrofe_vertical_slice.py",
-    "tests/unit/test_scene_retrofe.py"
+    "tests/unit/test_scene_retrofe.py",
+    "tests/unit/test_theme_migration_audit.py"
   ],
-  "scopeDigest": "6ca656eeef85ab9ad54ac5ee86cc66ff4f95f5ebaa1cdd815a6bcb91f46f6311",
+  "scopeDigest": "73ae2066ed99186b106702f7e1d8b75c5df9c31c001d6f1ffe8eca5e6ab658f4",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -31,6 +32,12 @@
       "result": "passed"
     },
     {
+      "kind": "test",
+      "reference": "tests/integration/test_retrofe_vertical_slice.py",
+      "command": ".venv/bin/python -m pytest -q tests/unit/test_resolved_text_node.py tests/unit/test_qml_render_model.py tests/unit/test_theme_migration_audit.py tests/integration/test_retrofe_vertical_slice.py (187 passed); tools/audit_theme_migration.py (65/65 and 72/73 migrated in fixtures)",
+      "result": "passed"
+    },
+    {
       "kind": "diagnostic",
       "reference": "src/steamzero/adapters/desktop_contracts.py",
       "command": "levantamento de 2026-08-24: ZERO rotas de RetroFE em desktop_contracts.py. Nao e jornada de UI incompleta — e jornada sem tela. O codigo vive em domain/retrofe_declarations.py e domain/retrofe_text_slice.py e e alcancavel por CLI.",
@@ -39,6 +46,6 @@
   ],
   "nextAction": "Publicar contratos de UI para o RetroFE antes de falar em jornada: hoje nao existe rota nenhuma em desktop_contracts.py. Depois, importacao, aplicacao e lancamento pelas superficies corretas, sem confundir com ES-DE nem com RetroArch.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-08-24",
-  "notes": "O slice esta integrado no repositorio; a camada de frontend M11 permanece em branch separada. Os adapters M11 que este item precisa consumir existem e tem itens proprios desde a harmonizacao a45; a ligacao entre eles ainda nao foi feita."
+  "updatedAt": "2026-09-22",
+  "notes": "O slice esta integrado no repositorio. A propriedade RetroFE layer agora atravessa declaracoes -> ElementContract.zIndex -> ResolvedTextNode -> QmlTextRenderModel.z, com veredito invalid para valores nao inteiros e round-trip coberto. A camada de frontend M11 permanece em branch separada; a ligacao entre adapters e superficies ainda nao foi feita."
 }

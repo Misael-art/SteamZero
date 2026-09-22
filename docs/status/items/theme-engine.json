@@ -347,6 +347,12 @@
       "reference": "tests/unit/test_scene_contract.py",
       "command": "PYTHONPATH=src python3 -m pytest -q tests/unit/test_scene_resolver.py tests/unit/test_scene_contract.py tests/unit/test_resolved_text_node.py (208 passed)",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_retrofe_vertical_slice.py",
+      "command": ".venv/bin/python -m pytest -q tests/unit/test_scene_resolver.py tests/unit/test_scene_contract.py tests/unit/test_resolved_text_node.py tests/unit/test_qml_render_model.py tests/unit/test_theme_migration_audit.py tests/integration/test_scene_round_trip.py tests/integration/test_resolver_lifecycle.py tests/integration/test_retrofe_vertical_slice.py (561 passed); tests/integration/test_qml_handheld_offscreen.py (48 passed)",
+      "result": "passed"
     }
   ],
   "nextAction": "Repetir medição física e fechar bridge→catálogo→render na release 2.0.0rc1-435f9108eeb7; investigar o staging órfão sem instalar durante a auditoria.",

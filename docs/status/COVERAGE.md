@@ -58,7 +58,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-FRONTEND-ESDE-SYSTEMS | 3 | 1 | 1 | unit |  |
 | SZ-FRONTEND-LAUNCHBOX | 1 | 0 | 0 | none | sem evidencia registrada |
 | SZ-FRONTEND-M11-SURFACE | 5 | 2 | 2 | unit |  |
-| SZ-FRONTEND-RETROFE | 5 | 2 | 1 | dev |  |
+| SZ-FRONTEND-RETROFE | 6 | 3 | 2 | dev |  |
 | SZ-FRONTEND-SRM | 3 | 1 | 1 | unit |  |
 | SZ-FRONTEND-STEAM-SHORTCUTS | 2 | 1 | 1 | unit |  |
 | SZ-GAMEMODE-READINESS | 9 | 2 | 1 | hw |  |
@@ -87,7 +87,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-SHARPEMU-COMPONENT-SMOKE-CONTRACT | 3 | 1 | 1 | unit |  |
 | SZ-SYSTEM-DIAGNOSTICS-GUIDANCE | 5 | 5 | 3 | dev |  |
 | SZ-TEST-STATE-ISOLATION | 4 | 4 | 4 | dev |  |
-| SZ-THEME-ENGINE | 100 | 41 | 38 | hw |  |
+| SZ-THEME-ENGINE | 100 | 42 | 39 | hw |  |
 | SZ-THEME-ESDE-SCENE-RENDER | 26 | 11 | 8 | hw |  |
 | SZ-THEME-IMPORT-ESDE-LAYOUT | 32 | 10 | 10 | hw |  |
 | SZ-THEME-IMPORT-RETROFE | 10 | 10 | 9 | hw |  |
