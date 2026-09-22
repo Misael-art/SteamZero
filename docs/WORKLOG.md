@@ -12160,3 +12160,26 @@ entre `src/` e `/opt/steamzero/current` para os módulos comparados, e doctor
 somente os warnings não bloqueantes `deck.input.keys=false` e
 `bootDirect=unknown`. Evidência completa:
 `/home/misael/.local/state/steamzero/release-automation/2.0.0rc1-504d10b14485.json`.
+
+## 2026-09-22 — Auditoria física completa do host após a release governada
+
+Na release `2.0.0rc1-504d10b14485` foram exercitados o scan real, todos os 33
+componentes instalados, 25 rotas de launch com conteúdo catalogado, cleanup por
+PID/PGID, pausa/retomada, save/load state, projeção de bezel e diagnóstico de
+multi-disc. O scan concluiu com 1.843 jogos, 16.513 arquivos, 0 não
+identificados e 0 erros; 1.342 archives incompatíveis e 13.082 formatos não
+suportados permaneceram fora do launch. A sessão RetroArch real aceitou
+`pause`, `resume`, `saveState(slot=31)`, `loadState` e `listPeripherals` com
+`aura-default`; não havia `.m3u` nem registros multi-disc físicos. As suites
+focadas de sessão/ROM/tema passaram com **291 testes**, e a matriz adicional de
+emuladores/plataformas/importadores passou com **654 testes e 44 skips
+declarados**. AURA foi aplicada e revertida no host por operação governada.
+
+Lacunas físicas registradas: ownership do watcher/socket na rota CLI deixa o
+socket de controle vazio após o retorno do comando; ES-DE, SRM e RetroFE não
+estão instalados; quatro temas ES-DE de usuário são inválidos; firmware PS3,
+arquivos de máquina xemu, BIOS/core Saturn/Neo Geo CD, archives Amiga/X68000,
+Vita/Xbox 360 e input do Deck permanecem bloqueios; health só verificou 1 de
+1.146 itens; cena ES-DE/preview não foi promovida por falha silenciosa do
+`qmltestrunner` host. Evidência detalhada em
+`docs/09-operations/evidence/2026-09-22-full-host-validation/README.md`.

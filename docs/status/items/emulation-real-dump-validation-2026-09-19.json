@@ -5,14 +5,15 @@
   "title": "Validação sistema a sistema de dumps reais no host",
   "domain": "emulation",
   "implementation": "partial",
-  "integration": "feature-branch",
+  "integration": "integrated",
   "verification": "hw",
-  "operation": "unknown",
-  "distribution": "not-packaged",
+  "operation": "degraded",
+  "distribution": "installed",
   "scopePaths": [
-    "docs/09-operations/evidence/2026-09-19-real-dump-inventory"
+    "docs/09-operations/evidence/2026-09-19-real-dump-inventory",
+    "docs/09-operations/evidence/2026-09-22-full-host-validation"
   ],
-  "scopeDigest": "d633427eab8ae6737e6cc0b6fb98e8919a22fec8bf08d037b29434f03551692b",
+  "scopeDigest": "047e34ee89caab8f584fdfdbd9ed483f760328da1988f76b27f0a28f6c4fd3df",
   "dependsOn": [
     "SZ-COMPONENT-LIFECYCLE",
     "SZ-LIBRARY-CANONICAL",
@@ -239,12 +240,30 @@
       "reference": "docs/09-operations/evidence/2026-09-19-real-dump-inventory/37-recovery-gamegear.png",
       "command": "PGID 2161300 encerrado com SIGTERM e captura posterior; não restou processo gráfico do emulador em execução.",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-22-full-host-validation/README.md",
+      "command": "Release 2.0.0rc1-504d10b14485: scan real 1843 jogos/16513 arquivos/0 erros; 33 componentes instalados e verificados; 25 rotas de launch físico exercitadas com PID/PGID e cleanup; bloqueios de BIOS, firmware, core, archive e plataforma planejada registrados sem alterar ROMs.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-22-full-host-validation/README.md",
+      "command": "Sessão RetroArch real: listPeripherals confirmou bezel AURA; pause/resume, saveState slot 31, listSaveStates e loadState foram aceitos; listDiscs recusou corretamente jogo single-disc; rota CLI deixou socket vazio após perder o controlador e permanece lacuna de lifecycle.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-22-full-host-validation/README.md",
+      "command": "Theme AURA aplicado e revertido pelo fluxo governado; tema ativo restaurado; SRM/ES-DE ausentes no host; quatro temas de usuário ES-DE inválidos; cena ES-DE/previsão não promovidas a prova física por harness qmltestrunner sem relatório.",
+      "result": "partial"
     }
   ],
-  "nextAction": "Manter X68000/Amiga em SOFT-COORDINATION por filtro de archives compartilhado, manter Saturn em missing-runtime por core ausente, registrar PS4/PS5 sem extração e avançar para o próximo sistema com core instalado e formato diretamente suportado.",
+  "nextAction": "Corrigir o ownership do watcher/socket da rota CLI; depois repetir gameplay interativo, controle físico e troca multi-disc com conteúdo legítimo; manter firmware/BIOS, ES-DE/RetroFE, cores ausentes, archives e input do Deck como lacunas externas ou operacionais.",
   "activeWorkstreams": [
     "WS-2026-09-EMULATION-REAL-DUMP-VALIDATION"
   ],
-  "updatedAt": "2026-09-20",
+  "updatedAt": "2026-09-22",
   "notes": "Inventário, quatorze ciclos físicos e diagnósticos de archives/runtime concluídos. Famicom/NES, Master System e SNES têm gameplay real observado; Dreamcast, 3DS, PS3, GameCube, Wii U, Switch e Game Boy têm boot/renderização real sem gameplay interativo; Game Gear abriu tela real sem prova de avanço; Xbox parou na configuração de máquina do xemu e Wii parou em erro controlado de arranjo de controles. X68000=14 e Amiga=5 foram confirmados, mas o filtro de archives compartilhado impede launch antes do spawn; handoff SOFT-COORDINATION registrado. Saturn=18 foi confirmado, mas mednafen_saturn não está instalado na release ativa e permanece missing-runtime. PS4/PS5 têm apenas artefatos não lançáveis para os manifestos atuais e permanecem unsupported-content/needs-review sem extração. PS2 revelou o flag incompatível `--fullscreen` e o handoff de correção está separado por ownership ativo de arquivo compartilhado. Nenhuma ROM original foi movida, extraída, sobrescrita ou apagada; archives não associados permanecem em needs-review/unsupported-content."
 }
