@@ -83,6 +83,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
 | SZ-SHARPEMU-COMPONENT-SMOKE-CONTRACT | 3 | 1 | 1 | unit |  |
 | SZ-SYSTEM-DIAGNOSTICS-GUIDANCE | 2 | 3 | 2 | unit |  |
+| SZ-TEST-STATE-ISOLATION | 4 | 4 | 4 | dev |  |
 | SZ-THEME-ENGINE | 78 | 37 | 34 | hw |  |
 | SZ-THEME-ESDE-SCENE-RENDER | 26 | 11 | 8 | hw |  |
 | SZ-THEME-IMPORT-ESDE-LAYOUT | 32 | 10 | 10 | hw |  |

@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-TEST-STATE-ISOLATION",
+  "title": "Isolamento de estado e diretório temporário da suíte",
+  "domain": "governance",
+  "implementation": "complete",
+  "integration": "integrated",
+  "verification": "dev",
+  "operation": "ready",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "tools/run_tests_isolated.py",
+    "tests/conftest.py",
+    "tests/unit/test_test_state_isolation.py",
+    "tests/unit/test_service_core.py"
+  ],
+  "scopeDigest": "97b5657e9ab000718e53415e5e7dd0d01d7e1a45f12cc7f0c81cd1923bf43338",
+  "dependsOn": [],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "O runner define HOME e os cinco diretórios XDG antes da coleta do pytest.",
+    "A fotografia do state home real reprova mutações atribuíveis à suíte e preserva donos externos anteriores.",
+    "A raiz temporária prefere um pai curto para que sockets AF_UNIX não falhem por caminho profundo.",
+    "A suíte canônica executa sem criar, remover ou alterar entradas no state home real."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_test_state_isolation.py",
+      "command": "python3 tools/run_tests_isolated.py tests/unit/test_test_state_isolation.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/failure_injection",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/failure_injection tests/golden tests/security -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_host_installer.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_host_installer.py tests/integration/test_release_convergence.py tests/integration/test_core_service.py -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Manter o runner canônico em todos os entrypoints e não limpar o state home histórico sem autorização do operador.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-09-21",
+  "notes": "GAP-G26 fechado no software: além do isolamento HOME/XDG antes da coleta, a raiz temporária agora evita TMPDIR profundo da sessão Codex, que excedia o limite AF_UNIX em testes de serviço. O state home real observado durante os gates permaneceu byte-a-byte e mtime-a-mtime idêntico; os artefatos históricos do operador não foram removidos."
+}

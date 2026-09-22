@@ -135,6 +135,13 @@ def test_isolated_environment_overrides_all_vars(tmp_path: Path) -> None:
     assert all((root / directory).is_dir() for directory in _XDG_LAYOUT.values())
 
 
+def test_short_temp_parent_avoids_deep_desktop_tmpdir(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(run_tests_isolated.tempfile, "gettempdir", lambda: "/deep/session/tmp")
+    assert run_tests_isolated._short_temp_parent() == str(Path(os.sep) / "tmp")
+
+
 def test_snapshot_detects_create_change_and_remove(tmp_path: Path) -> None:
     root = tmp_path / "state" / "steamzero"
     root.mkdir(parents=True)

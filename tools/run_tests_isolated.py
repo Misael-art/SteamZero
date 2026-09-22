@@ -45,6 +45,31 @@ _PROC_ROOT = Path("/proc")
 _WRITER_POLL_SECONDS = 2.0
 
 
+def _short_temp_parent() -> str | None:
+    """Escolhe um pai curto e gravável para a raiz temporária da suíte.
+
+    O limite de caminho de ``AF_UNIX`` é pequeno (108 bytes no Linux). A
+    sessão do Codex pode definir ``TMPDIR`` para um caminho profundo; deixar o
+    ``TemporaryDirectory`` herdá-lo faz testes de socket falharem antes de
+    exercitar o código. Preferimos os diretórios temporários convencionais e
+    usamos ``None`` somente quando nenhum deles está disponível.
+    """
+    filesystem_root = Path(os.sep)
+    candidates = (
+        filesystem_root / "tmp",
+        filesystem_root / "var" / "tmp",
+        Path(tempfile.gettempdir()),
+    )
+    writable = {
+        candidate.resolve()
+        for candidate in candidates
+        if candidate.is_dir() and os.access(candidate, os.W_OK)
+    }
+    if not writable:
+        return None
+    return str(min(writable, key=lambda path: len(os.fsencode(path))))
+
+
 @dataclass(frozen=True)
 class StateEntry:
     """Metadados suficientes para detectar mutação sem ler conteúdo privado."""
@@ -459,7 +484,11 @@ def run_pytest(args: Sequence[str], *, environ: Mapping[str, str] | None = None)
     pytest_returncode = 0
     attributed_to_suite = False
     window_start = _boottime_now()
-    with tempfile.TemporaryDirectory(prefix="steamzero-tests-") as temporary:
+    temporary_parent = _short_temp_parent()
+    temporary_kwargs: dict[str, str] = {"prefix": "steamzero-tests-"}
+    if temporary_parent is not None:
+        temporary_kwargs["dir"] = temporary_parent
+    with tempfile.TemporaryDirectory(**temporary_kwargs) as temporary:
         isolated_root = Path(temporary)
         child_env = isolated_environment(isolated_root, original_env)
         with _WriterWatcher(real_state_home, window_start_boottime=window_start) as watcher:

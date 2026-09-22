@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "item": "SZ-TEST-STATE-ISOLATION",
+  "id": "WS-2026-09-TEST-STATE-ISOLATION",
+  "branch": "codex/canonical-main-2026-09-21",
+  "baseRef": "1658c17752864499fbb786fe6635813b7d3ab526",
+  "owner": "codex-continuation",
+  "state": "closed",
+  "exclusivePaths": [
+    "tools/run_tests_isolated.py",
+    "tests/unit/test_test_state_isolation.py"
+  ],
+  "sharedPaths": [
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Fechado: runner, fixture e regressão de TMPDIR profundo integrados e verificados; não executar limpeza do state home histórico.",
+  "updatedAt": "2026-09-21"
+}

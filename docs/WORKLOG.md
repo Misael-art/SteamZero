@@ -11694,3 +11694,22 @@ títulos. A medição Wayland/OpenGL real registrou startup de 146 ms, 375 frame
 p95 de 16,213 ms, pico RSS de 395.132 KiB e VRAM de 15.040 KiB, dentro dos
 orçamentos. OSD, save-state, troca de disco e consumo dos sinais pelo Launcher
 continuam explicitamente abertos.
+
+## 2026-09-21 — fechamento do isolamento da suíte e correção de TMPDIR profundo
+
+O diagnóstico do host e do canonical revelou uma falha local no próprio gate de
+isolamento: a raiz temporária de `tools/run_tests_isolated.py` herdava o
+`TMPDIR` profundo da sessão Codex. O state home estava corretamente isolado,
+mas um teste de socket falhava antes de exercitar o daemon com `AF_UNIX path too
+long`. A correção escolhe `/tmp` ou `/var/tmp` gravável, pelo caminho mais
+curto, preservando o fallback para o diretório temporário do ambiente.
+
+A regressão nova cobre essa seleção e o teste de socket que falhava passou sem
+forçar `TMPDIR`. Fechamento verificado: `tests/unit` com **4283 passed, 2
+skipped**, `failure_injection + golden + security` com **145 passed**, e os
+testes focados de host/release/service com **103 passed**. Ruff, format, mypy,
+fronteiras, independência, component-lock, capability-matrix e
+`STATUS-CHECK` ficaram verdes. Em todas as execuções do runner, a fotografia
+do state home real permaneceu idêntica; nenhum artefato histórico do operador
+foi removido. O item é `SZ-TEST-STATE-ISOLATION`; a prova física/limpeza do
+host não faz parte deste fechamento.
