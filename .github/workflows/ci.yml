@@ -262,7 +262,7 @@ jobs:
     container:
       # Digest, nunca tag. Tag é mutável, e a autoridade do gate é o digest.
       # Publicado por `.github/workflows/qml-visual-image.yml`.
-      image: ghcr.io/misael-art/steamzero-qml-visual@sha256:8e87d2c009e3b640844faabbc027263898f588f0c4478c0e0dc871d55e1ee5ac
+      image: ghcr.io/misael-art/steamzero-qml-visual@sha256:8b832ec124ae72aa59a4de3b5c00ccf3f03b41a7e688f45c10daf767290041cd
     steps:
       - name: Checkout limpo
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
