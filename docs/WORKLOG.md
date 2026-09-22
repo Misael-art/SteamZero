@@ -12014,3 +12014,14 @@ O conjunto fechou com **6 passed**. A busca nos testes de integração não enco
 mais `skipif` nos probes QML alvo; o único `pytest.skip` visual restante é
 o backend software incompatível com goldens RHI, reservado ao P0-08. Nenhum
 host foi alterado.
+
+## 2026-09-22 — Escala no repetidor declarativo de cena
+
+`SceneRepeater` agora propaga `visualScale` ao loader de texto, imagem e
+badge; `SceneText` aplica o fator ao tamanho materializado e `SceneBadge`
+deixa de manter rótulos fixos em 12 px. Os previews do editor e do Theme
+Studio fornecem a escala do painel.
+
+O harness direcionado fechou com **4 passed**, incluindo a asserção do badge em
+`1.5×`. A matriz QML completa será registrada após o gate de fechamento.
+Nenhum host foi alterado.

@@ -23,6 +23,7 @@ import QtQuick
 
 Image {
     id: sceneImage
+    property real visualScale: 1.0
 
     // O modelo vem pronto do adapter. Nenhum campo é interpretado.
     required property var model

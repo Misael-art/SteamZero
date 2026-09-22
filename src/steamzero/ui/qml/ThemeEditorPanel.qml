@@ -1973,6 +1973,7 @@ Rectangle {
                             anchors.margins: 12
                             anchors.topMargin: 32
                             layout: panel.sceneLayoutPreview
+                            visualScale: panel.visualScale
                         }
                     }
 

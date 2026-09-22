@@ -14,6 +14,8 @@ import QtQuick
 
 Rectangle {
     id: sceneBadge
+    property real visualScale: 1.0
+    readonly property int labelPixelSize: label.font.pixelSize
 
     // O modelo vem pronto do adapter. Nenhum campo é interpretado.
     required property var model
@@ -44,7 +46,7 @@ Rectangle {
             visible: text.length > 0
             text: model.glyphChar
             color: model.foreground
-            font.pixelSize: 12
+            font.pixelSize: Math.round(12 * sceneBadge.visualScale)
         }
 
         Text {
@@ -53,7 +55,7 @@ Rectangle {
             visible: text.length > 0
             text: model.text
             color: model.foreground
-            font.pixelSize: 12
+            font.pixelSize: Math.round(12 * sceneBadge.visualScale)
         }
     }
 }

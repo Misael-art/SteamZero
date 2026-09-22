@@ -89,6 +89,7 @@ Item {
 
     SceneRepeater {
         id: badges
+        visualScale: 1.5
         layout: ({
             "id": "previewBadges",
             "kind": "list",
@@ -228,6 +229,8 @@ Item {
                 harness.check(badge.color.toString().toLowerCase().indexOf("0e7490") !== -1,
                               "cor da variante precisa vir materializada")
                 harness.check(badge.visible === true, "badge com texto precisa aparecer")
+                harness.check(badge.labelPixelSize === 18,
+                              "badge deve respeitar a escala visual")
                 const glyphNode = badge.children[0].children[0]
                 harness.check(glyphNode.objectName === "badgeGlyph" && glyphNode.text === "\u2193",
                               "glifo semântico não pode ser escolhido no QML")

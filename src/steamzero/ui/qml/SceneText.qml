@@ -19,6 +19,7 @@ import QtQuick
 
 Text {
     id: sceneText
+    property real visualScale: 1.0
 
     // O modelo vem pronto do adapter. Nenhum campo é interpretado.
     required property var model
@@ -49,7 +50,7 @@ Text {
     color: model.color
 
     font.family: model.fontFamily
-    font.pixelSize: model.fontPixelSize
+    font.pixelSize: Math.round(Number(model.fontPixelSize) * sceneText.visualScale)
     font.weight: model.fontWeight
     font.italic: model.fontItalic
 

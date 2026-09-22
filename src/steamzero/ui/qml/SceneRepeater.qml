@@ -10,6 +10,7 @@ Item {
     id: sceneRepeater
 
     required property var layout
+    property real visualScale: 1.0
     readonly property var entries: layout && layout.entries ? layout.entries : []
     readonly property int entryCount: entries.length
     // A maioria dos itens não tem destaque. Manter um Rectangle invisível para
@@ -86,7 +87,10 @@ Item {
                 const source = sceneRepeater.sourceFor(modelData.kind)
                 // `SceneText`/`SceneImage` exigem `model` na construção. Atribuir
                 // em onLoaded é tarde demais e o Qt recusa o componente.
-                setSource(source, {"model": modelData})
+                setSource(source, {
+                    "model": modelData,
+                    "visualScale": sceneRepeater.visualScale
+                })
             }
 
             onModelDataChanged: loadEntry()

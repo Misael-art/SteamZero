@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "7ffd54503292c92abfb174df05dae6161bc35fc9944fc71abe919eb02267669b",
+  "scopeDigest": "5caa9f43e0cb8dfabc9c14bbfdff0ef4d594f385856ef66c62069c610e921271",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -45,6 +45,8 @@
     "src/steamzero/ui/qml/ReflectionLayer.qml",
     "src/steamzero/ui/qml/AssetRecipePreview.qml",
     "src/steamzero/ui/qml/SceneRepeater.qml",
+    "src/steamzero/ui/qml/SceneImage.qml",
+    "src/steamzero/ui/qml/SceneBadge.qml",
     "src/steamzero/ui/qml/SceneText.qml",
     "src/steamzero/ui/qml/SceneMotionPreview.qml",
     "src/steamzero/ui/qml/SceneSurfacePreview.qml",

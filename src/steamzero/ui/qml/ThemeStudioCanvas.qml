@@ -145,6 +145,7 @@ Item {
                 anchors.margins: 12
                 visible: studio.canDrawScene
                 layout: studio.selectedScene
+                visualScale: studio.visualScale
             }
 
             // Nem todo nó é desenhável: binding, motion e efeito não têm cena

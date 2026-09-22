@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "f5e7d763474cbea19f1c7090e007b5c96eafb22a5ae1cb22db51004b670c0dac",
+  "scopeDigest": "9e297d9285bd3495280a9d01279f276673c62bf71005387921ddcd4245645f93",
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun",
     "docs/09-operations/evidence/2026-09-07-theme-studio-contrast",
