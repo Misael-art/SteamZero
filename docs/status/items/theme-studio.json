@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "c9d2989fe16b7d15b9f977d6fa4f03390316712513cd6392aa136af54ab05540",
+  "scopeDigest": "f5e7d763474cbea19f1c7090e007b5c96eafb22a5ae1cb22db51004b670c0dac",
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun",
     "docs/09-operations/evidence/2026-09-07-theme-studio-contrast",
@@ -19,6 +19,7 @@
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
     "src/steamzero/ui/qml/ThemeStudioCanvas.qml",
     "src/steamzero/ui/qml/SceneSurfacePreview.qml",
+    "src/steamzero/ui/qml/ColorPickerDialog.qml",
     "tests/qml/check_theme_editor_aura.qml",
     "tests/qml/check_theme_studio_canvas.qml",
     "tests/unit/test_theme_editor.py",

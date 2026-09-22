@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "7cde4716fdccac427472b983c4eaa7ba82c499757afcef30518c9ed5c9ccffbf",
+  "scopeDigest": "7c7a0d798cc9fdfe42c853581155c5b768f14e6574d7e63a854cb39a3d5b6023",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -96,6 +96,7 @@
     "src/steamzero/ui/qml/ThemeCatalogPanel.qml",
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
     "src/steamzero/ui/qml/ThemeStudioCanvas.qml",
+    "src/steamzero/ui/qml/ColorPickerDialog.qml",
     "tests/unit/test_scene_containers.py",
     "tests/qml/check_scene_containers.qml",
     "tests/qml/check_controls_profile_card.qml",

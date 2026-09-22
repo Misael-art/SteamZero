@@ -15,7 +15,7 @@
     "tests/unit/test_theme_import_esde.py",
     "tests/qml/check_theme_editor_import.qml"
   ],
-  "scopeDigest": "d63ed23b24985d0b324b66c23d04cd754ddc227c0c1a0a14db2fc627aec71646",
+  "scopeDigest": "3b50bf2cf0fe8fe06ac8fce36b08d9489d88c93eaba59f27b55256f7dbf9f790",
   "dependsOn": [
     "SZ-THEME-STUDIO"
   ],

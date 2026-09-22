@@ -15,6 +15,8 @@ QQC.Dialog {
     property color mutedColor: "#9eabba"
     property color cyanColor: "#13bdf2"
     property color cyanDarkColor: "#0a5f85"
+    property real visualScale: 1.0
+    readonly property int hexLabelPixelSize: hexLabel.font.pixelSize
 
     property var presets: [
         "#071019", "#0d1924", "#122131", "#2a3a49",
@@ -66,9 +68,10 @@ QQC.Dialog {
                 Layout.fillWidth: true
                 spacing: 4
                 QQC.Label {
+                    id: hexLabel
                     text: qsTr("Hexadecimal")
                     color: dialog.mutedColor
-                    font.pixelSize: 12
+                    font.pixelSize: Math.round(12 * dialog.visualScale)
                 }
                 QQC.TextField {
                     id: hexField
@@ -95,7 +98,7 @@ QQC.Dialog {
         QQC.Label {
             text: qsTr("Predefinidas")
             color: dialog.mutedColor
-            font.pixelSize: 12
+            font.pixelSize: Math.round(12 * dialog.visualScale)
         }
 
         Flow {

@@ -2647,7 +2647,8 @@ Rectangle {
                                 textColor: panel.textColor,
                                 mutedColor: panel.mutedColor,
                                 cyanColor: panel.cyanColor,
-                                cyanDarkColor: panel.cyanDarkColor
+                                cyanDarkColor: panel.cyanDarkColor,
+                                visualScale: panel.visualScale
                             })
                             d.colorPicked.connect(function(color) {
                                 var vals = {}

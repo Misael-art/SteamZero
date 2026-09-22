@@ -11959,3 +11959,12 @@ editor em `1.5×`.
 O harness específico passou com **1 passed**, a matriz QML combinada com o
 catálogo fechou em **52 passed**, e Ruff/formatação permaneceram verdes. G12
 continua parcial para dialogs e componentes restantes. Nenhum host foi alterado.
+
+## 2026-09-22 — Escala no diálogo de cor do Theme Studio
+
+`ColorPickerDialog`, criado dinamicamente pelo editor de temas, passou a
+receber `visualScale` e aplicar o fator nos rótulos de cor. O harness AURA
+instancia o diálogo em `1.5×` e verifica o tamanho calculado.
+
+O teste direcionado fechou com **1 passed**; G12 continua parcial para dialogs
+e componentes ainda não cobertos. Nenhum host foi alterado.

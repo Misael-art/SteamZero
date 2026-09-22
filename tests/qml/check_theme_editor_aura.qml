@@ -186,6 +186,12 @@ Window {
         onApplied: harness.appliedSignals += 1
     }
 
+    ColorPickerDialog {
+        id: colorPicker
+        visible: false
+        visualScale: 1.5
+    }
+
     function check(condition, message) {
         checks += 1
         if (condition)
@@ -205,6 +211,8 @@ Window {
         if (phase === 0) {
             check(editor.editorSessionId === "", "sem sessão o editor mostra a lista")
             check(editor.titlePixelSize === 36, "título do editor respeita a escala visual")
+            check(colorPicker.hexLabelPixelSize === 18,
+                  "color picker respeita a escala visual")
             check(editor.editorThemeList.length === 3, "lista deve carregar do catálogo")
             check(editor.editorThemeList[1].name === "AURA",
                   "catálogo deve publicar a identidade AURA")
