@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "52a809a067dd478e05be8a0aa910fee6ac90218f866bd5821a2087f245fc6c59",
+  "scopeDigest": "7cde4716fdccac427472b983c4eaa7ba82c499757afcef30518c9ed5c9ccffbf",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -94,6 +94,8 @@
     "src/steamzero/ui/qml/EditorialLibrary.qml",
     "src/steamzero/ui/qml/ScreenshotRail.qml",
     "src/steamzero/ui/qml/ThemeCatalogPanel.qml",
+    "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+    "src/steamzero/ui/qml/ThemeStudioCanvas.qml",
     "tests/unit/test_scene_containers.py",
     "tests/qml/check_scene_containers.qml",
     "tests/qml/check_controls_profile_card.qml",
@@ -101,6 +103,7 @@
     "tests/qml/check_operational_metric_card.qml",
     "tests/qml/check_theme_catalog_panel.qml",
     "tests/integration/test_theme_catalog_panel_gestures.py",
+    "tests/qml/check_theme_editor_aura.qml",
     "docs/09-operations/evidence/2026-08-19-theme-engine-a47",
     "tools/theme_perf_probe.py",
     "tests/unit/test_theme_perf_probe.py"

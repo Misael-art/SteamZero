@@ -87,12 +87,12 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-SHARPEMU-COMPONENT-SMOKE-CONTRACT | 3 | 1 | 1 | unit |  |
 | SZ-SYSTEM-DIAGNOSTICS-GUIDANCE | 5 | 5 | 3 | dev |  |
 | SZ-TEST-STATE-ISOLATION | 4 | 4 | 4 | dev |  |
-| SZ-THEME-ENGINE | 116 | 42 | 39 | hw |  |
+| SZ-THEME-ENGINE | 119 | 42 | 39 | hw |  |
 | SZ-THEME-ESDE-SCENE-RENDER | 26 | 11 | 8 | hw |  |
 | SZ-THEME-IMPORT-ESDE-LAYOUT | 32 | 10 | 10 | hw |  |
 | SZ-THEME-IMPORT-RETROFE | 10 | 10 | 9 | hw |  |
 | SZ-THEME-IMPORT-SURFACE | 4 | 8 | 7 | unit |  |
-| SZ-THEME-STUDIO | 85 | 18 | 15 | hw |  |
+| SZ-THEME-STUDIO | 86 | 18 | 15 | hw |  |
 | SZ-UI-DESKTOP-AUDIT | 406 | 45 | 30 | dev |  |
 | SZ-UI-PACKAGED-ICONS | 57 | 4 | 2 | unit |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |

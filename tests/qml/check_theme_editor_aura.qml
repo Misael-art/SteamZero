@@ -182,6 +182,7 @@ Window {
         request: harness.request
         requestAction: harness.requestAction
         activeThemeId: "org.steamzero.default"
+        visualScale: 1.5
         onApplied: harness.appliedSignals += 1
     }
 
@@ -203,6 +204,7 @@ Window {
     function runPhase() {
         if (phase === 0) {
             check(editor.editorSessionId === "", "sem sessão o editor mostra a lista")
+            check(editor.titlePixelSize === 36, "título do editor respeita a escala visual")
             check(editor.editorThemeList.length === 3, "lista deve carregar do catálogo")
             check(editor.editorThemeList[1].name === "AURA",
                   "catálogo deve publicar a identidade AURA")

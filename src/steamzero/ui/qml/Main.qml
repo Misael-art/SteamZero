@@ -6095,6 +6095,7 @@ ApplicationWindow {
                                     greenColor: root.greenColor
                                     amberColor: root.amberColor
                                     redColor: root.redColor
+                                    visualScale: root.visualScale
                                     compactLayout: root.compactLayout
                                     requestAction: root.requestAction
                                     request: root.request

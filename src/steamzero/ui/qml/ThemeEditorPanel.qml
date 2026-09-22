@@ -18,6 +18,8 @@ Rectangle {
     property color greenColor: "#59d35d"
     property color amberColor: "#ff9f1a"
     property color redColor: "#ff6b73"
+    property real visualScale: 1.0
+    readonly property int titlePixelSize: editorTitle.font.pixelSize
 
     property var requestAction: function(_ida, _payload, _cb, _ecb) {}
     property var request: function(_method, _path, _payload, _cb, _ecb) {}
@@ -510,9 +512,10 @@ Rectangle {
         Item { Layout.minimumHeight: 16 }
 
         Label {
+            id: editorTitle
             text: qsTr("Editor de Temas")
             color: panel.textColor
-            font.pixelSize: 24
+            font.pixelSize: Math.round(24 * panel.visualScale)
             font.weight: Font.Bold
             Layout.leftMargin: 20
             Layout.rightMargin: 20
@@ -532,7 +535,7 @@ Rectangle {
                 ? qsTr("Tema ativo: %1").arg(panel.activeThemeName)
                 : qsTr("Tema ativo: indisponível no catálogo")
             color: panel.activeThemeName !== "" ? panel.cyanColor : panel.amberColor
-            font.pixelSize: 14
+            font.pixelSize: Math.round(14 * panel.visualScale)
             font.weight: Font.Medium
             Layout.leftMargin: 20
             Layout.rightMargin: 20
@@ -545,7 +548,7 @@ Rectangle {
         Label {
             text: qsTr("Crie ou edite temas visuais do SteamZero")
             color: panel.mutedColor
-            font.pixelSize: 14
+            font.pixelSize: Math.round(14 * panel.visualScale)
             Layout.leftMargin: 20
             Layout.rightMargin: 20
             Layout.fillWidth: true
@@ -611,7 +614,7 @@ Rectangle {
             Label {
                 text: qsTr("ES-DE → tema editável, sem aplicar automaticamente")
                 color: panel.mutedColor
-                font.pixelSize: 12
+                font.pixelSize: Math.round(12 * panel.visualScale)
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
@@ -649,7 +652,7 @@ Rectangle {
             Label {
                 text: qsTr("RetroFE → cena IR, créditos e assets verificados antes de publicar")
                 color: panel.mutedColor
-                font.pixelSize: 12
+                font.pixelSize: Math.round(12 * panel.visualScale)
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
@@ -687,7 +690,7 @@ Rectangle {
             Label {
                 text: qsTr("Pacote SteamZero → validação antes de instalar")
                 color: panel.mutedColor
-                font.pixelSize: 12
+                font.pixelSize: Math.round(12 * panel.visualScale)
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
@@ -698,7 +701,7 @@ Rectangle {
         Label {
             text: qsTr("Temas instalados")
             color: panel.textColor
-            font.pixelSize: 16
+            font.pixelSize: Math.round(16 * panel.visualScale)
             font.weight: Font.Medium
             Layout.leftMargin: 20
             Layout.rightMargin: 20
@@ -762,7 +765,7 @@ Rectangle {
                                 Label {
                                     text: panel.themeLabel(modelData)
                                     color: panel.textColor
-                                    font.pixelSize: 15
+                                    font.pixelSize: Math.round(15 * panel.visualScale)
                                     font.weight: Font.Medium
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
@@ -771,7 +774,7 @@ Rectangle {
                                     text: (modelData.author ? modelData.author + " · " : "")
                                         + qsTr("v%1").arg(modelData.version || "0")
                                     color: panel.mutedColor
-                                    font.pixelSize: 12
+                                    font.pixelSize: Math.round(12 * panel.visualScale)
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                 }
@@ -779,7 +782,7 @@ Rectangle {
                                     text: modelData.origin === "builtin"
                                         ? qsTr("Tema nativo") : qsTr("Tema do usuário")
                                     color: panel.cyanColor
-                                    font.pixelSize: 11
+                                    font.pixelSize: Math.round(11 * panel.visualScale)
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                 }
@@ -796,7 +799,7 @@ Rectangle {
                                     visible: themeCard.isActive
                                     text: qsTr("Já está em uso")
                                     color: panel.greenColor
-                                    font.pixelSize: 12
+                                    font.pixelSize: Math.round(12 * panel.visualScale)
                                     font.weight: Font.Medium
                                     padding: 6
                                     background: Rectangle {
@@ -825,7 +828,7 @@ Rectangle {
                                         color: parent.hovered ? "#071019" : panel.cyanColor
                                         horizontalAlignment: Text.AlignHCenter
                                         verticalAlignment: Text.AlignVCenter
-                                        font.pixelSize: 13
+                                        font.pixelSize: Math.round(13 * panel.visualScale)
                                         font.weight: Font.Medium
                                     }
                                 }
@@ -858,7 +861,7 @@ Rectangle {
                                         color: panel.cyanColor
                                         horizontalAlignment: Text.AlignHCenter
                                         verticalAlignment: Text.AlignVCenter
-                                        font.pixelSize: 12
+                                        font.pixelSize: Math.round(12 * panel.visualScale)
                                         elide: Text.ElideRight
                                     }
                                 }
@@ -881,7 +884,7 @@ Rectangle {
                                         color: panel.textColor
                                         horizontalAlignment: Text.AlignHCenter
                                         verticalAlignment: Text.AlignVCenter
-                                        font.pixelSize: 12
+                                        font.pixelSize: Math.round(12 * panel.visualScale)
                                         elide: Text.ElideRight
                                     }
                                 }
@@ -995,7 +998,7 @@ Rectangle {
                                     : qsTr("paleta convertível")
                                 color: modelData && modelData.isMonochrome
                                     ? panel.amberColor : panel.mutedColor
-                                font.pixelSize: 11
+                                font.pixelSize: Math.round(11 * panel.visualScale)
                                 Layout.fillWidth: true
                                 elide: Text.ElideRight
                             }
@@ -1149,7 +1152,7 @@ Rectangle {
                                         .arg(modelData.report.degraded)
                                     : qsTr("relatório indisponível")
                                 color: panel.mutedColor
-                                font.pixelSize: 11
+                                font.pixelSize: Math.round(11 * panel.visualScale)
                                 Layout.fillWidth: true
                                 elide: Text.ElideRight
                             }
@@ -1438,7 +1441,7 @@ Rectangle {
                     Label {
                         text: panel.editorManifest.name || qsTr("Sem nome")
                         color: panel.textColor
-                        font.pixelSize: 16
+                        font.pixelSize: Math.round(16 * panel.visualScale)
                         font.weight: Font.Medium
                         elide: Text.ElideRight
                         Layout.fillWidth: true
@@ -1446,7 +1449,7 @@ Rectangle {
                     Label {
                         text: panel.editorManifest.id || ""
                         color: panel.mutedColor
-                        font.pixelSize: 11
+                        font.pixelSize: Math.round(11 * panel.visualScale)
                         elide: Text.ElideRight
                         Layout.fillWidth: true
                     }
@@ -1456,7 +1459,7 @@ Rectangle {
                     visible: panel.editorReadOnly
                     text: qsTr("Apenas leitura")
                     color: panel.amberColor
-                    font.pixelSize: 12
+                    font.pixelSize: Math.round(12 * panel.visualScale)
                     font.weight: Font.Medium
                     padding: 6
                     background: Rectangle {
@@ -1470,7 +1473,7 @@ Rectangle {
                     visible: panel.editorDirty
                     text: qsTr("Não salvo")
                     color: panel.amberColor
-                    font.pixelSize: 11
+                    font.pixelSize: Math.round(11 * panel.visualScale)
                     font.italic: true
                 }
 
@@ -1569,7 +1572,7 @@ Rectangle {
                     Label {
                         text: qsTr("Metadados do tema")
                         color: panel.textColor
-                        font.pixelSize: 16
+                        font.pixelSize: Math.round(16 * panel.visualScale)
                         font.weight: Font.Medium
                         Layout.leftMargin: 12
                         Layout.rightMargin: 12
@@ -1579,7 +1582,7 @@ Rectangle {
                     Label {
                         text: qsTr("Nome, autoria e licença são preservados no pacote exportado.")
                         color: panel.mutedColor
-                        font.pixelSize: 11
+                        font.pixelSize: Math.round(11 * panel.visualScale)
                         wrapMode: Text.WordWrap
                         Layout.leftMargin: 12
                         Layout.rightMargin: 12
@@ -1603,7 +1606,7 @@ Rectangle {
                                     return qsTr("Descrição")
                                 }
                                 color: panel.mutedColor
-                                font.pixelSize: 11
+                                font.pixelSize: Math.round(11 * panel.visualScale)
                             }
 
                             TextField {
@@ -1746,7 +1749,7 @@ Rectangle {
                     Label {
                         text: qsTr("Preview ao vivo")
                         color: panel._previewBridge.textMuted
-                        font.pixelSize: 12
+                        font.pixelSize: Math.round(12 * panel.visualScale)
                     }
 
                     Rectangle {
@@ -1765,14 +1768,14 @@ Rectangle {
                             Label {
                                 text: qsTr("Aparência do tema")
                                 color: panel._previewBridge.text
-                                font.pixelSize: 18
+                                font.pixelSize: Math.round(18 * panel.visualScale)
                                 font.weight: Font.Bold
                             }
 
                             Label {
                                 text: qsTr("Esta é uma amostra de como o tema ficará na interface.")
                                 color: panel._previewBridge.textMuted
-                                font.pixelSize: 13
+                                font.pixelSize: Math.round(13 * panel.visualScale)
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
                             }
@@ -1788,7 +1791,7 @@ Rectangle {
                                         anchors.centerIn: parent
                                         text: qsTr("Botão")
                                         color: "#071019"
-                                        font.pixelSize: 13
+                                        font.pixelSize: Math.round(13 * panel.visualScale)
                                         font.weight: Font.Medium
                                     }
                                 }
@@ -1801,7 +1804,7 @@ Rectangle {
                                         anchors.centerIn: parent
                                         text: qsTr("Sucesso")
                                         color: "#071019"
-                                        font.pixelSize: 13
+                                        font.pixelSize: Math.round(13 * panel.visualScale)
                                     }
                                 }
                                 Rectangle {
@@ -1813,7 +1816,7 @@ Rectangle {
                                         anchors.centerIn: parent
                                         text: qsTr("Aviso")
                                         color: "#071019"
-                                        font.pixelSize: 13
+                                        font.pixelSize: Math.round(13 * panel.visualScale)
                                     }
                                 }
                                 Rectangle {
@@ -1825,7 +1828,7 @@ Rectangle {
                                         anchors.centerIn: parent
                                         text: qsTr("Erro")
                                         color: "#071019"
-                                        font.pixelSize: 13
+                                        font.pixelSize: Math.round(13 * panel.visualScale)
                                     }
                                 }
                             }
@@ -1850,14 +1853,14 @@ Rectangle {
                                     Label {
                                         text: qsTr("Superfície elevada com borda")
                                         color: panel._previewBridge.text
-                                        font.pixelSize: 12
+                                        font.pixelSize: Math.round(12 * panel.visualScale)
                                         Layout.fillWidth: true
                                         elide: Text.ElideRight
                                     }
                                     Label {
                                         text: qsTr("muted")
                                         color: panel._previewBridge.textMuted
-                                        font.pixelSize: 11
+                                        font.pixelSize: Math.round(11 * panel.visualScale)
                                     }
                                 }
                             }
@@ -1876,7 +1879,7 @@ Rectangle {
                             anchors.margins: 10
                             text: panel.editorDiagnosticCode
                             color: "#1a1a1a"
-                            font.pixelSize: 12
+                            font.pixelSize: Math.round(12 * panel.visualScale)
                             elide: Text.ElideRight
                         }
                     }
@@ -1900,7 +1903,7 @@ Rectangle {
                                 Label {
                                     text: qsTr("Asset único · receita em runtime")
                                     color: panel._previewBridge.text
-                                    font.pixelSize: 14
+                                    font.pixelSize: Math.round(14 * panel.visualScale)
                                     font.weight: Font.Medium
                                     Layout.fillWidth: true
                                 }
@@ -1936,7 +1939,7 @@ Rectangle {
                                     : qsTr("Fonte decodificada uma vez · cache por hash e tier")
                                 color: assetRecipePreview.fallbackActive
                                     ? panel.amberColor : panel._previewBridge.textMuted
-                                font.pixelSize: 11
+                                font.pixelSize: Math.round(11 * panel.visualScale)
                                 Layout.alignment: Qt.AlignHCenter
                             }
                         }
@@ -1957,7 +1960,7 @@ Rectangle {
                             anchors.margins: 12
                             text: qsTr("Grid responsivo · bindings materializados")
                             color: panel._previewBridge.textMuted
-                            font.pixelSize: 11
+                            font.pixelSize: Math.round(11 * panel.visualScale)
                         }
 
                         SceneRepeater {
@@ -1988,7 +1991,7 @@ Rectangle {
                             anchors.margins: 12
                             text: qsTr("Paleta extraída · vidro com fallback")
                             color: panel._previewBridge.textMuted
-                            font.pixelSize: 11
+                            font.pixelSize: Math.round(11 * panel.visualScale)
                         }
 
                         Row {
@@ -2042,7 +2045,7 @@ Rectangle {
                             anchors.margins: 12
                             text: qsTr("Estados nativos · timeline materializada")
                             color: panel._previewBridge.textMuted
-                            font.pixelSize: 11
+                            font.pixelSize: Math.round(11 * panel.visualScale)
                         }
 
                         SceneMotionPreview {
@@ -2086,7 +2089,7 @@ Rectangle {
                             anchors.margins: 12
                             text: qsTr("Saves e OSD por contrato")
                             color: panel._previewBridge.textMuted
-                            font.pixelSize: 11
+                            font.pixelSize: Math.round(11 * panel.visualScale)
                         }
 
                         SceneSurfacePreview {
@@ -2099,6 +2102,7 @@ Rectangle {
                             anchors.margins: 12
                             anchors.topMargin: 32
                             surfaces: panel.sceneSurfacePreview
+                            visualScale: panel.visualScale
                         }
                     }
 
@@ -2117,7 +2121,7 @@ Rectangle {
                             anchors.margins: 12
                             text: qsTr("Theme Studio · árvore e inspector")
                             color: panel._previewBridge.textMuted
-                            font.pixelSize: 11
+                            font.pixelSize: Math.round(11 * panel.visualScale)
                         }
 
                         ThemeStudioCanvas {
@@ -2130,6 +2134,7 @@ Rectangle {
                             anchors.margins: 12
                             anchors.topMargin: 32
                             graph: panel.studioGraph
+                            visualScale: panel.visualScale
                             readOnly: panel.editorReadOnly
                             onLayoutEditRequested: function(layoutId, field, value) {
                                 panel.editorDirty = true
@@ -2171,7 +2176,7 @@ Rectangle {
                             Label {
                                 text: qsTr("Tokens ativos")
                                 color: panel._previewBridge.textMuted
-                                font.pixelSize: 11
+                                font.pixelSize: Math.round(11 * panel.visualScale)
                             }
                             Label {
                                 text: {
@@ -2185,7 +2190,7 @@ Rectangle {
                                     return parts.length ? parts.join(" · ") : qsTr("Padrão")
                                 }
                                 color: panel._previewBridge.text
-                                font.pixelSize: 13
+                                font.pixelSize: Math.round(13 * panel.visualScale)
                             }
                         }
                     }
@@ -2342,7 +2347,7 @@ Rectangle {
                 text: qsTr("Rollback: %1").arg(
                     panel.applyPlan ? (panel.applyPlan.rollbackGuarantee || "") : "")
                 color: panel.mutedColor
-                font.pixelSize: 12
+                font.pixelSize: Math.round(12 * panel.visualScale)
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
@@ -2425,7 +2430,7 @@ Rectangle {
             Label {
                 text: qsTr("Nome do novo tema")
                 color: panel.mutedColor
-                font.pixelSize: 12
+                font.pixelSize: Math.round(12 * panel.visualScale)
             }
             TextField {
                 id: createNameField
@@ -2541,19 +2546,19 @@ Rectangle {
                 Label {
                     text: catSection.title
                     color: catSection.textColor
-                    font.pixelSize: 14
+                    font.pixelSize: Math.round(14 * panel.visualScale)
                     font.weight: Font.Medium
                     Layout.fillWidth: true
                 }
                 Label {
                     text: "%1 tokens".arg(catSection.tokenCount)
                     color: catSection.mutedColor
-                    font.pixelSize: 11
+                    font.pixelSize: Math.round(11 * panel.visualScale)
                 }
                 Label {
                     text: catSection._expanded ? "▾" : "▸"
                     color: catSection.mutedColor
-                    font.pixelSize: 14
+                    font.pixelSize: Math.round(14 * panel.visualScale)
                 }
             }
 
@@ -2625,7 +2630,7 @@ Rectangle {
                             return label.charAt(0).toUpperCase() + label.slice(1)
                         }
                         color: catSection.textColor
-                        font.pixelSize: 9
+                        font.pixelSize: Math.round(9 * panel.visualScale)
                         elide: Text.ElideRight
                         width: parent.width - 10
                     }
@@ -2675,7 +2680,7 @@ Rectangle {
                         return label.charAt(0).toUpperCase() + label.slice(1)
                     }
                     color: catSection.textColor
-                    font.pixelSize: 12
+                    font.pixelSize: Math.round(12 * panel.visualScale)
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                 }
@@ -2710,7 +2715,7 @@ Rectangle {
                 Label {
                     text: "px"
                     color: catSection.mutedColor
-                    font.pixelSize: 11
+                    font.pixelSize: Math.round(11 * panel.visualScale)
                 }
             }
         }
@@ -2734,7 +2739,7 @@ Rectangle {
                         return label.charAt(0).toUpperCase() + label.slice(1)
                     }
                     color: catSection.textColor
-                    font.pixelSize: 12
+                    font.pixelSize: Math.round(12 * panel.visualScale)
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                 }
@@ -2786,7 +2791,7 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             text: "%"
             color: catSection.mutedColor
-            font.pixelSize: 11
+            font.pixelSize: Math.round(11 * panel.visualScale)
         }
     }
 
@@ -2846,7 +2851,7 @@ Rectangle {
                         return label.charAt(0).toUpperCase() + label.slice(1)
                     }
                     color: catSection.textColor
-                    font.pixelSize: 12
+                    font.pixelSize: Math.round(12 * panel.visualScale)
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                 }
@@ -2881,7 +2886,7 @@ Rectangle {
                 Label {
                     text: modelData.indexOf("Duration") >= 0 || modelData.indexOf("duration") >= 0 ? "ms" : ""
                     color: catSection.mutedColor
-                    font.pixelSize: 11
+                    font.pixelSize: Math.round(11 * panel.visualScale)
                 }
             }
         }

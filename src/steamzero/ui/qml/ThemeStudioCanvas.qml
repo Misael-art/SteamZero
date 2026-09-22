@@ -12,6 +12,7 @@ Item {
 
     required property var graph
     property bool readOnly: true
+    property real visualScale: 1.0
     // O canvas é escuro, mas árvore e inspector vivem na superfície do painel.
     // A paleta do inspector vem do tema para continuar legível em superfícies
     // claras e escuras, sem alterar o contraste deliberado da cena preview.
@@ -154,7 +155,7 @@ Item {
                 visible: !studio.canDrawScene
                 color: "#e8ecf7"
                 text: studio.selectedLabel
-                font.pixelSize: 16
+                font.pixelSize: Math.round(16 * studio.visualScale)
             }
             Text {
                 objectName: "studioCanvasNotice"
@@ -163,7 +164,7 @@ Item {
                 anchors.topMargin: 10
                 visible: !studio.canDrawScene && studio.selectedKind !== ""
                 color: "#5f6b85"
-                font.pixelSize: 10
+                font.pixelSize: Math.round(10 * studio.visualScale)
                 text: studio.selectedKind === "layout"
                     ? "cena indisponível para este layout"
                     : "nó sem cena própria: " + studio.selectedKind
@@ -189,7 +190,7 @@ Item {
                         Text {
                             anchors.centerIn: parent
                             color: "#e8ecf7"
-                            font.pixelSize: 10
+                            font.pixelSize: Math.round(10 * studio.visualScale)
                             text: String(modelData.properties.state)
                         }
                     }
@@ -206,7 +207,7 @@ Item {
             Text {
                 text: studio.selectedKind
                 color: studio.inspectorMutedColor
-                font.pixelSize: 11
+                font.pixelSize: Math.round(11 * studio.visualScale)
             }
             // Onde o nó está na cena. Sem isto, dois irmãos de mesmo rótulo
             // ficam indistinguíveis depois de selecionados.
@@ -216,7 +217,7 @@ Item {
                 wrapMode: Text.Wrap
                 text: studio.selectedPath
                 color: studio.inspectorMutedColor
-                font.pixelSize: 10
+                font.pixelSize: Math.round(10 * studio.visualScale)
             }
             Column {
                 objectName: "studioLayoutEditor"
@@ -226,7 +227,7 @@ Item {
                 Text {
                     text: qsTr("Edição declarativa")
                     color: studio.inspectorMutedColor
-                    font.pixelSize: 11
+                    font.pixelSize: Math.round(11 * studio.visualScale)
                 }
                 SpinBox {
                     objectName: "studioLayoutColumns"
@@ -281,7 +282,7 @@ Item {
                     width: inspector.width
                     wrapMode: Text.Wrap
                     color: studio.inspectorTextColor
-                    font.pixelSize: 12
+                    font.pixelSize: Math.round(12 * studio.visualScale)
                     text: modelData + ": " + studio.selectedNode.properties[modelData]
                 }
             }
@@ -294,7 +295,7 @@ Item {
                     width: inspector.width
                     wrapMode: Text.Wrap
                     color: studio.inspectorWarningColor
-                    font.pixelSize: 12
+                    font.pixelSize: Math.round(12 * studio.visualScale)
                     text: modelData.code + ": " + modelData.reason
                 }
             }
@@ -305,24 +306,24 @@ Item {
                 spacing: 2
                 Text {
                     color: studio.inspectorMutedColor
-                    font.pixelSize: 11
+                    font.pixelSize: Math.round(11 * studio.visualScale)
                     text: qsTr("Profiler declarado")
                 }
                 Text {
                     color: studio.inspectorTextColor
-                    font.pixelSize: 12
+                    font.pixelSize: Math.round(12 * studio.visualScale)
                     text: qsTr("custo %1").arg(studio.declaredCost)
                 }
                 Text {
                     color: studio.withinBudget
                         ? studio.inspectorSuccessColor : studio.inspectorWarningColor
-                    font.pixelSize: 12
+                    font.pixelSize: Math.round(12 * studio.visualScale)
                     text: studio.withinBudget ? qsTr("dentro do orçamento") : qsTr("orçamento excedido")
                 }
                 Text {
                     visible: !studio.budgetMeasured
                     color: studio.inspectorMutedColor
-                    font.pixelSize: 11
+                    font.pixelSize: Math.round(11 * studio.visualScale)
                     text: qsTr("sem medição física")
                 }
             }

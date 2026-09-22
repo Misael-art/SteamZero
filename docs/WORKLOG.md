@@ -11947,3 +11947,15 @@ fixos agora são derivados do fator visual e o harness verifica o título em
 `1.5×`. O teste de gestos do catálogo fechou com **4 passed**. O editor de
 temas completo, dialogs e outros componentes ainda permanecem como próximos
 consumidores de G12. Nenhum host foi alterado.
+
+## 2026-09-22 — Escala no editor e previews do Theme Studio
+
+`ThemeEditorPanel` agora recebe `visualScale` do `Main.qml` e aplica o fator a
+seus tamanhos fixos. A mesma propriedade percorre `ThemeStudioCanvas` e
+`SceneSurfacePreview`, evitando que a árvore/inspector e os slots de preview
+fiquem menores que o restante do editor. O harness AURA verifica o título do
+editor em `1.5×`.
+
+O harness específico passou com **1 passed**, a matriz QML combinada com o
+catálogo fechou em **52 passed**, e Ruff/formatação permaneceram verdes. G12
+continua parcial para dialogs e componentes restantes. Nenhum host foi alterado.

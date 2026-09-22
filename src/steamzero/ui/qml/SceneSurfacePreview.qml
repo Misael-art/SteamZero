@@ -9,6 +9,7 @@ Item {
     id: surfacePreview
 
     required property var surfaces
+    property real visualScale: 1.0
 
     readonly property var gallery: surfaces && surfaces.slots && surfaces.slots.saveStates
         ? surfaces.slots.saveStates : ({"entries": []})
@@ -60,7 +61,7 @@ Item {
                     anchors.leftMargin: 6
                     text: modelData.title
                     color: "#f2f6fb"
-                    font.pixelSize: 11
+                    font.pixelSize: Math.round(11 * surfacePreview.visualScale)
                 }
             }
         }
@@ -99,7 +100,7 @@ Item {
             visible: surfacePreview.loadingIsProgress && text.length > 0
             text: surfacePreview.loadingLabel
             color: "#f2f6fb"
-            font.pixelSize: 11
+            font.pixelSize: Math.round(11 * surfacePreview.visualScale)
         }
 
         Row {
@@ -109,14 +110,14 @@ Item {
                 visible: text.length > 0
                 text: surfacePreview.clockLabel
                 color: "#f2f6fb"
-                font.pixelSize: 11
+                font.pixelSize: Math.round(11 * surfacePreview.visualScale)
             }
             Text {
                 id: statsText
                 visible: text.length > 0
                 text: surfacePreview.statsLabel
                 color: "#94a3b8"
-                font.pixelSize: 11
+                font.pixelSize: Math.round(11 * surfacePreview.visualScale)
             }
         }
     }
