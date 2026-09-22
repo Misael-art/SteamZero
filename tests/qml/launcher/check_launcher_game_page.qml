@@ -51,6 +51,7 @@ Item {
     LauncherGamePage {
         id: blocked
         visible: false
+        accessibility: ({"highContrast": false, "visualScale": 1.5, "reducedMotion": false})
         model: ({
             "gameId": "tunic", "title": "Tunic", "platform": "Steam",
             "lastPlayed": null, "initialFocus": "action:favorite",
@@ -83,6 +84,8 @@ Item {
             // Jogo bloqueado: botão visível, motivo publicado, foco fora dele.
             harness.check(blocked.actionCount === 2,
                           "ação desabilitada não pode sumir da página")
+            harness.check(blocked.actionReasonPixelSize === 17,
+                          "motivo da ação precisa respeitar visualScale")
             harness.check(blocked.screenshots.length === 0
                           && blocked.requirements.length === 0
                           && blocked.controls.length === 0,

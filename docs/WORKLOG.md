@@ -12064,3 +12064,12 @@ aplica o fator ao título do chrome sem atravessar o ownership ativo de
 `ThemeScenePreview`/`SceneEsdeView`. O harness responsivo passou a verificar
 essa rota em `1.5×`; o teste direcionado fechou com **8 passed** e a matriz QML
 completa com **49 passed**. Nenhum host foi alterado.
+
+## 2026-09-22 — G12: motivo de ação na página de jogo
+
+O último tamanho fixo seguro encontrado fora dos ownerships ativos estava em
+`LauncherGamePage.qml`: o motivo de uma ação desabilitada agora usa
+`visualScale`, e o harness real do Launcher verifica o motivo em `1.5×`.
+O probe direcionado fechou com **1 passed**. `LauncherShell.qml`,
+`LauncherMain.qml`, `LauncherHome.qml` e `SceneEsdeView.qml` continuam
+reservados aos workstreams exclusivos. Nenhum host foi alterado.

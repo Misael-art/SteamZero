@@ -23,6 +23,7 @@ FocusScope {
     // Preferências de acessibilidade herdadas do host (highContrast etc.).
     property var accessibility: ({"highContrast": false, "visualScale": 1.0, "reducedMotion": false})
     readonly property real textScale: Math.max(1, Number(accessibility.visualScale || 1))
+    readonly property int actionReasonPixelSize: actionReason.font.pixelSize
     readonly property string description: model && model.description
         ? String(model.description) : qsTr("Descrição ainda não disponível para este jogo.")
     readonly property var screenshots: {
@@ -423,12 +424,13 @@ FocusScope {
         }
 
         Text {
+            id: actionReason
             objectName: "gameActionReason"
             visible: text !== ""
             width: parent.width
             wrapMode: Text.Wrap
             color: page._hc("#ff8a90", "#ff8e94")
-            font.pixelSize: 11
+            font.pixelSize: 11 * page.textScale
             text: {
                 for (let i = 0; i < page.actions.length; ++i)
                     if (!page.actions[i].enabled && page.actions[i].reason)
