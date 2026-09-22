@@ -2010,6 +2010,7 @@ ApplicationWindow {
                     greenColor: root.greenColor
                     amberColor: root.amberColor
                     redColor: root.redColor
+                    visualScale: root.visualScale
                     onSaveRequested: function(providerId, credentials) {
                         root.requestAction("credential.save", {
                             "provider": providerId,
@@ -2090,6 +2091,7 @@ ApplicationWindow {
                     greenColor: root.greenColor
                     amberColor: root.amberColor
                     redColor: root.redColor
+                    visualScale: root.visualScale
                     onKeyboardRequested: function(fieldId) {
                         root.openKeyboard()
                     }
@@ -3672,6 +3674,7 @@ ApplicationWindow {
                                 ErrorCard {
                                     Layout.fillWidth: true
                                     errorObject: modelData
+                                    visualScale: root.visualScale
                                     onDismiss: root.dismissError(errorObject ? errorObject.code : "")
                                     onShowDiagnostics: root.beginDiagnosticsExport("support")
                                     Component.onCompleted: resolve(modelData)
@@ -5072,6 +5075,7 @@ ApplicationWindow {
                                                 greenColor: root.greenColor
                                                 amberColor: root.amberColor
                                                 redColor: root.redColor
+                                                visualScale: root.visualScale
                                                 Layout.fillWidth: true
                                             }
                                         }

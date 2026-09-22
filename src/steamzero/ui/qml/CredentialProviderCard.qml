@@ -16,6 +16,8 @@ Rectangle {
     property color greenColor: "#4ade80"
     property color amberColor: "#fbbf24"
     property color redColor: "#fb7185"
+    property real visualScale: 1.0
+    readonly property int titlePixelSize: providerTitle.font.pixelSize
     property bool busy: false
     property string credentialState: ""
     property string message: ""
@@ -200,17 +202,18 @@ Rectangle {
         spacing: 8
 
         Label {
+            id: providerTitle
             text: root.provider ? root.provider.name : ""
             color: root.textColor
             font.bold: true
-            font.pixelSize: 14
+            font.pixelSize: Math.round(14 * root.visualScale)
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
         Label {
             text: root.stateLabel()
             color: root.stateColor()
-            font.pixelSize: 12
+            font.pixelSize: Math.round(12 * root.visualScale)
             font.bold: true
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
@@ -218,7 +221,7 @@ Rectangle {
         Label {
             text: root.provider ? root.provider.description : ""
             color: root.mutedColor
-            font.pixelSize: 11
+            font.pixelSize: Math.round(11 * root.visualScale)
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
@@ -226,7 +229,7 @@ Rectangle {
             visible: Boolean(root.provider && root.provider.unavailableReason)
             text: visible ? root.provider.unavailableReason : ""
             color: root.amberColor
-            font.pixelSize: 11
+            font.pixelSize: Math.round(11 * root.visualScale)
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
@@ -253,7 +256,7 @@ Rectangle {
                 Label {
                     text: fieldLabel + (fieldRequired ? qsTr(" *") : qsTr(" (opcional)"))
                     color: root.textColor
-                    font.pixelSize: 11
+                    font.pixelSize: Math.round(11 * root.visualScale)
                     Layout.fillWidth: true
                 }
                 TextField {
@@ -298,7 +301,7 @@ Rectangle {
                     visible: fieldHelp.length > 0
                     text: fieldHelp
                     color: root.mutedColor
-                    font.pixelSize: 10
+                    font.pixelSize: Math.round(10 * root.visualScale)
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
                 }
@@ -420,7 +423,7 @@ Rectangle {
             visible: root.message.length > 0
             text: root.message
             color: root.messageIsError ? root.redColor : root.cyanColor
-            font.pixelSize: 11
+            font.pixelSize: Math.round(11 * root.visualScale)
             wrapMode: Text.WordWrap
             Accessible.name: text
             Layout.fillWidth: true

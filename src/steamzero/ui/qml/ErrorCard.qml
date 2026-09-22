@@ -19,6 +19,7 @@ Rectangle {
     property string manualActionLabel: ""
     property string probableCauseLabel: ""
     property string operationIdLabel: ""
+    property real visualScale: 1.0
 
     signal dismiss()
     signal showDiagnostics()
@@ -98,7 +99,7 @@ Rectangle {
                     Label {
                         text: titleLabel
                         color: areaColor
-                        font.pixelSize: 15
+                        font.pixelSize: Math.round(15 * card.visualScale)
                         font.bold: true
                         Layout.fillWidth: true
                         elide: Text.ElideRight
@@ -106,7 +107,7 @@ Rectangle {
                     Label {
                         text: codeLabel
                         color: areaColor
-                        font.pixelSize: 10
+                        font.pixelSize: Math.round(10 * card.visualScale)
                         opacity: 0.7
                     }
                 }
@@ -114,7 +115,7 @@ Rectangle {
                     visible: whatLabel.length > 0
                     text: whatLabel
                     color: "#f2f6fb"
-                    font.pixelSize: 12
+                    font.pixelSize: Math.round(12 * card.visualScale)
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
                 }
@@ -122,7 +123,7 @@ Rectangle {
                     visible: impactLabel.length > 0
                     text: qsTr("Impacto: ") + impactLabel
                     color: "#d5b47d"
-                    font.pixelSize: 11
+                    font.pixelSize: Math.round(11 * card.visualScale)
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
                 }
@@ -133,7 +134,7 @@ Rectangle {
             visible: autoActionLabel.length > 0
             text: qsTr("Ação automática: ") + autoActionLabel
             color: "#59d35d"
-            font.pixelSize: 11
+            font.pixelSize: Math.round(11 * card.visualScale)
             font.italic: true
             Layout.fillWidth: true
             Layout.leftMargin: 36
@@ -143,7 +144,7 @@ Rectangle {
             visible: manualActionLabel.length > 0
             text: qsTr("Orientação: ") + manualActionLabel
             color: "#f2f6fb"
-            font.pixelSize: 11
+            font.pixelSize: Math.round(11 * card.visualScale)
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
             Layout.leftMargin: 36
@@ -206,7 +207,7 @@ Rectangle {
                 visible: probableCauseLabel.length > 0
                 text: qsTr("Causa provável: ") + probableCauseLabel
                 color: "#9eabba"
-                font.pixelSize: 11
+                font.pixelSize: Math.round(11 * card.visualScale)
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
@@ -214,7 +215,7 @@ Rectangle {
                 visible: operationIdLabel.length > 0
                 text: qsTr("ID da operação: ") + operationIdLabel
                 color: "#71808d"
-                font.pixelSize: 10
+                font.pixelSize: Math.round(10 * card.visualScale)
                 Layout.fillWidth: true
             }
         }

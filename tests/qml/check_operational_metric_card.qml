@@ -34,6 +34,7 @@ Window {
         greenColor: "#167a45"
         amberColor: "#9a5a00"
         redColor: "#ae2634"
+        visualScale: 1.5
     }
 
     Timer {
@@ -43,6 +44,8 @@ Window {
             check(card.implicitHeight >= 96, "cartão operacional deve reservar leitura e toque")
             check(card.stateLabel() === "Conflito preservado",
                   "estado de conflito deve preservar a causa para a pessoa usuária")
+            check(card.valuePixelSize === 42,
+                  "escala visual deve chegar ao valor grande do cartão operacional")
             card.state = "done"
             check(card.stateLabel() === "Sem pendências",
                   "estado concluído deve usar texto factual")

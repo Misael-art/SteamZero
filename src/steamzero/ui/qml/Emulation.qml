@@ -3985,6 +3985,7 @@ Item {
                                 && page.selectedGame.controlsProfile !== null
                             Layout.fillWidth: true
                             profile: page.selectedGame.controlsProfile || null
+                            visualScale: page.visualScale
                             onApplyAutoconfigRequested: function (action) {
                                 if (action)
                                     page.actionRequested(action)

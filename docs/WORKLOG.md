@@ -11915,3 +11915,15 @@ auditoria das fixtures passou de 11 para 12 atributos migrados, deixando apenas
 O caminho foi verificado com **187 testes direcionados** e a auditoria executável
 de migração (`65/65` e `72/73` propriedades migradas nas fixtures). Nenhum host
 foi alterado.
+
+## 2026-09-22 — Escala de acessibilidade nos cartões reutilizáveis
+
+O `visualScale` do shell agora é propagado para `CredentialProviderCard`,
+`ErrorCard`, `OperationalMetricCard` e `ControlsProfileCard`. Cada tamanho de
+fonte fixo desses quatro cartões passa pelo fator visual, mantendo `1.0` como
+default compatível; Main e Emulation fornecem o valor do host aos componentes.
+
+Os harnesses QML verificam escala `1.5×` nos cartões de credenciais, métricas e
+controles; a matriz offscreen completa fechou com **48 passed**. A mitigação de
+G12 ainda é parcial: os demais componentes reutilizáveis e a medição da cena
+completa permanecem abertos. Nenhum host foi alterado.

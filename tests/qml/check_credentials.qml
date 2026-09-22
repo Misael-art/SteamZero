@@ -50,6 +50,7 @@ Window {
     CredentialProviderCard {
         id: remoteCard
         width: 460
+        visualScale: 1.5
         provider: ({
             "id": "steamgriddb",
             "name": "SteamGridDB",
@@ -142,6 +143,8 @@ Window {
         running: true
         repeat: false
         onTriggered: {
+            check(remoteCard.titlePixelSize === 21,
+                  "escala visual deve chegar ao título do cartão de credenciais")
             check(screenCard.fieldRepeaterControl.count === 4,
                   "ScreenScraper deve renderizar quatro campos isolados")
             check(!screenCard.saveControl.enabled,

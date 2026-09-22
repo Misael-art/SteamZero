@@ -24,6 +24,8 @@ Item {
     required property color greenColor
     required property color amberColor
     required property color redColor
+    property real visualScale: 1.0
+    readonly property int valuePixelSize: valueLabel.font.pixelSize
 
     implicitHeight: 104
     Accessible.name: detail === "" ? title + ": " + value : title + ": " + value + ". " + detail
@@ -87,15 +89,16 @@ Item {
                 Label {
                     text: root.stateLabel()
                     color: root.stateColor()
-                    font.pixelSize: 12
+                    font.pixelSize: Math.round(12 * root.visualScale)
                     elide: Text.ElideRight
                     Layout.fillWidth: true
                 }
             }
             Label {
+                id: valueLabel
                 text: root.value
                 color: root.textColor
-                font.pixelSize: 28
+                font.pixelSize: Math.round(28 * root.visualScale)
                 font.weight: Font.DemiBold
                 horizontalAlignment: Text.AlignRight
             }

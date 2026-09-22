@@ -75,6 +75,7 @@ Window {
         greenColor: "#167a45"
         amberColor: "#9a5a00"
         redColor: "#ae2634"
+        visualScale: 1.5
     }
 
     Timer {
@@ -91,6 +92,8 @@ Window {
                   "verde exige prova de aplicação, não apenas resolução")
             check(card.resolvedBindings.length === 2,
                   "os mapeamentos que serão aplicados precisam ser desenhados")
+            check(card.titlePixelSize === 24,
+                  "escala visual deve chegar ao título do perfil de controle")
             check(String(card.honestMessage()).indexOf("ainda não foi gravado") >= 0,
                   "a mensagem precisa dizer por que o perfil ainda não vale")
             // Rota de produção: sem o botão, o perfil resolvido nunca chega ao

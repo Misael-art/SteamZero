@@ -24,7 +24,7 @@
     "src/steamzero/autoconfig/udev/steam-deck.cfg",
     "docs/adr/0027-autoconfig-base-do-steam-deck.md"
   ],
-  "scopeDigest": "f668293053e7a822c133d856b2696b61b9f4c8ad194df1958da4fde10b0abe2f",
+    "scopeDigest": "f090cfc2218a4d9ba69e59fd8014ba6bfdadf1699b1a634242046d76c8ba2243",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [

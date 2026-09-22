@@ -35,6 +35,8 @@ Item {
     required property color greenColor
     required property color amberColor
     required property color redColor
+    property real visualScale: 1.0
+    readonly property int titlePixelSize: controlsTitle.font.pixelSize
 
     readonly property var autoconfig: profile && profile.autoconfig ? profile.autoconfig : null
     readonly property var applyAction: profile && profile.applyAutoconfigAction
@@ -116,10 +118,11 @@ Item {
                 spacing: 8
 
                 Text {
+                    id: controlsTitle
                     objectName: "controlsProfileTitle"
                     text: qsTr("Perfil de controle")
                     color: root.textColor
-                    font.pixelSize: 16
+                    font.pixelSize: Math.round(16 * root.visualScale)
                     font.bold: true
                 }
 
@@ -143,7 +146,7 @@ Item {
                             ? String(root.autoconfig.statusLabel || "")
                             : (root.profile ? String(root.profile.statusLabel || "") : "")
                         color: root.accentColor()
-                        font.pixelSize: 12
+                        font.pixelSize: Math.round(12 * root.visualScale)
                     }
                 }
             }
@@ -158,7 +161,7 @@ Item {
                         .arg(String(root.active.orientation || ""))
                     : qsTr("Nenhum perfil ativo")
                 color: root.textColor
-                font.pixelSize: 13
+                font.pixelSize: Math.round(13 * root.visualScale)
                 wrapMode: Text.WordWrap
             }
 
@@ -170,7 +173,7 @@ Item {
                     ? qsTr("Controle reconhecido: %1").arg(String(root.autoconfig.device.name || ""))
                     : qsTr("Nenhum controle reconhecido")
                 color: root.mutedColor
-                font.pixelSize: 12
+                font.pixelSize: Math.round(12 * root.visualScale)
                 wrapMode: Text.WordWrap
             }
 
@@ -179,7 +182,7 @@ Item {
                 Layout.fillWidth: true
                 text: root.honestMessage()
                 color: root.mutedColor
-                font.pixelSize: 12
+                font.pixelSize: Math.round(12 * root.visualScale)
                 wrapMode: Text.WordWrap
             }
 
@@ -205,7 +208,7 @@ Item {
                     ? qsTr("Mapeamentos valendo (%1)").arg(root.resolvedBindings.length)
                     : qsTr("Mapeamentos que serão aplicados (%1)").arg(root.resolvedBindings.length)
                 color: root.textColor
-                font.pixelSize: 13
+                font.pixelSize: Math.round(13 * root.visualScale)
                 font.bold: true
             }
 
@@ -222,7 +225,7 @@ Item {
                         .arg(String(modelData.key || ""))
                         .arg(String(modelData.value || ""))
                     color: root.mutedColor
-                    font.pixelSize: 11
+                    font.pixelSize: Math.round(11 * root.visualScale)
                     wrapMode: Text.WordWrap
                 }
             }
@@ -232,7 +235,7 @@ Item {
                 visible: root.unresolvedBindings.length > 0
                 text: qsTr("Sem índice físico, não vão valer (%1)").arg(root.unresolvedBindings.length)
                 color: root.amberColor
-                font.pixelSize: 13
+                font.pixelSize: Math.round(13 * root.visualScale)
                 font.bold: true
             }
 
@@ -248,7 +251,7 @@ Item {
                         .arg(String(modelData.action || ""))
                         .arg(String(modelData.reasonLabel || ""))
                     color: root.mutedColor
-                    font.pixelSize: 11
+                    font.pixelSize: Math.round(11 * root.visualScale)
                     wrapMode: Text.WordWrap
                 }
             }
@@ -258,7 +261,7 @@ Item {
                 visible: root.withoutEquivalent.length > 0
                 text: qsTr("Sem equivalente no RetroPad (%1)").arg(root.withoutEquivalent.length)
                 color: root.amberColor
-                font.pixelSize: 13
+                font.pixelSize: Math.round(13 * root.visualScale)
                 font.bold: true
             }
 
@@ -270,7 +273,7 @@ Item {
                     Layout.fillWidth: true
                     text: String(modelData)
                     color: root.mutedColor
-                    font.pixelSize: 11
+                    font.pixelSize: Math.round(11 * root.visualScale)
                     wrapMode: Text.WordWrap
                 }
             }
@@ -281,7 +284,7 @@ Item {
                 visible: root.autoconfig !== null && String(root.autoconfig.detail || "") !== ""
                 text: root.autoconfig ? String(root.autoconfig.detail || "") : ""
                 color: root.redColor
-                font.pixelSize: 11
+                font.pixelSize: Math.round(11 * root.visualScale)
                 wrapMode: Text.WordWrap
             }
         }
