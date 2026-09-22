@@ -11841,3 +11841,16 @@ Os testes direcionados fecharam com **155 passed** e o harness
 QML isolada mais ampla foi interrompida após ficar sem processos observáveis e
 sem resultado terminal; ela não foi promovida como evidência. O `STATUS-CHECK`
 permaneceu verde e nenhum host foi alterado.
+
+## 2026-09-22 — Texto avançado integrado à fatia canônica
+
+Wrapping por palavra/caractere, elide, limite de linhas e auto-fit agora são
+valores finais do `ResolvedTextNode`, mapeados por tabelas fechadas para o
+`QmlTextRenderModel` e atribuídos pelo `SceneText.qml`. `minimumFontSize` e
+`maximumFontSize` também atravessam o round-trip; o último limita o tamanho
+máximo efetivo da fonte. Rich text ficou explicitamente fora desta fatia até
+haver sanitização/allowlist segura para conteúdo de tema.
+
+Os testes unitários direcionados passaram com **316 passed**, a matriz QML de
+texto/tema com **81 passed** e o harness `check_scene_text.qml` saiu com rc=0.
+Também corrigi a desserialização dos enums de `textLayout`, sem alterar o host.

@@ -47,6 +47,11 @@ Item {
         "fontItalic": false,
         "horizontalAlignment": "AlignHCenter",
         "verticalAlignment": "AlignVCenter",
+        "wrapMode": "WordWrap",
+        "maximumLineCount": 2,
+        "elide": "ElideRight",
+        "fontSizeMode": "Fit",
+        "minimumPixelSize": 18.0,
         "fontSource": "asset://font/Gilroy"
     })
 
@@ -64,7 +69,12 @@ Item {
         "fontWeight": 400,
         "fontItalic": true,
         "horizontalAlignment": "AlignRight",
-        "verticalAlignment": "AlignBottom"
+        "verticalAlignment": "AlignBottom",
+        "wrapMode": "NoWrap",
+        "maximumLineCount": 2147483647,
+        "elide": "ElideNone",
+        "fontSizeMode": "FixedSize",
+        "minimumPixelSize": 0.0
     })
 
     SceneText {
@@ -87,6 +97,11 @@ Item {
         check(packaged.font.pixelSize === 48.0, "tamanho de fonte não aplicado")
         check(packaged.font.weight === 600, "peso não aplicado: " + packaged.font.weight)
         check(packaged.font.italic === false, "itálico não deveria estar ligado")
+        check(packaged.wrapMode === Text.WordWrap, "word wrap não resolveu")
+        check(packaged.maximumLineCount === 2, "limite de linhas não aplicado")
+        check(packaged.elide === Text.ElideRight, "elide não resolveu")
+        check(packaged.fontSizeMode === Text.Fit, "font fit não resolveu")
+        check(packaged.minimumPixelSize === 18.0, "minimumPixelSize não aplicado")
 
         // O ponto crítico: o nome vindo do adapter precisa resolver no enum do
         // Qt. Se `Text[nome]` devolvesse `undefined`, a atribuição falharia em
@@ -106,6 +121,9 @@ Item {
               "AlignBottom não resolveu")
         check(implicitSized.font.italic === true, "itálico não aplicado")
         check(implicitSized.opacity === 0.5, "opacidade fracionária não aplicada")
+        check(implicitSized.wrapMode === Text.NoWrap, "NoWrap não resolveu")
+        check(implicitSized.elide === Text.ElideNone, "ElideNone não resolveu")
+        check(implicitSized.fontSizeMode === Text.FixedSize, "FixedSize não resolveu")
 
         // Dimensão implícita: sem `width` no payload, o Text se dimensiona pelo
         // conteúdo. Zero significaria elemento invisível — outra coisa.

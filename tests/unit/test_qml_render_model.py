@@ -42,7 +42,10 @@ from steamzero.domain.resolved_node import (
     ResolvedGeometry,
     ResolvedTextNode,
     TextAlignment,
+    TextElideMode,
+    TextSizeMode,
     TextVerticalAlignment,
+    TextWrapMode,
 )
 from steamzero.domain.scene_typing import SourceReference
 
@@ -141,6 +144,43 @@ class TestFontMapping:
         assert result.status is AdaptationStatus.DEGRADED
         assert result.require_model().font_italic is True
         assert DIAG_APPROXIMATED in _codes(result)
+
+
+class TestAdvancedTextMapping:
+    @pytest.mark.parametrize(
+        ("canonical", "expected"),
+        [
+            (TextWrapMode.NONE, "NoWrap"),
+            (TextWrapMode.WORD, "WordWrap"),
+            (TextWrapMode.CHARACTER, "WrapAnywhere"),
+        ],
+    )
+    def test_wrap(self, canonical: TextWrapMode, expected: str) -> None:
+        assert to_render_model(_node(wrap=canonical)).require_model().wrap_mode == expected
+
+    @pytest.mark.parametrize(
+        ("canonical", "expected"),
+        [
+            (TextElideMode.NONE, "ElideNone"),
+            (TextElideMode.START, "ElideLeft"),
+            (TextElideMode.MIDDLE, "ElideMiddle"),
+            (TextElideMode.END, "ElideRight"),
+        ],
+    )
+    def test_elide(self, canonical: TextElideMode, expected: str) -> None:
+        assert to_render_model(_node(elide=canonical)).require_model().elide_mode == expected
+
+    def test_line_limit_and_fit_are_carried_to_qml(self) -> None:
+        model = to_render_model(
+            _node(
+                max_lines=2,
+                size_mode=TextSizeMode.FIT,
+                minimum_font_size=18.0,
+            )
+        ).require_model()
+        assert model.maximum_line_count == 2
+        assert model.font_size_mode == "Fit"
+        assert model.minimum_pixel_size == 18.0
 
 
 class TestFontOriginIsCarriedThrough:
@@ -574,6 +614,11 @@ class TestComponentIsDeliberatelySimple:
             "font.italic",
             "horizontalAlignment",
             "verticalAlignment",
+            "wrapMode",
+            "maximumLineCount",
+            "elide",
+            "fontSizeMode",
+            "minimumPixelSize",
             "id",
         }
     )

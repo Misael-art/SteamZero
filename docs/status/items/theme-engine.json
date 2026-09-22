@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "d2cd6f104eb20ad65fc5c595eddfcda1483557c68df79451a2e7b7590973c253",
+  "scopeDigest": "215bd3af717e00d2baeb988210429f967386d971b4b8d1fd5efd9e4be4ebaaaa",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -22,6 +22,9 @@
     "src/steamzero/domain/dynamic_palette.py",
     "src/steamzero/domain/glass_panels.py",
     "src/steamzero/domain/qml_render_model.py",
+    "src/steamzero/domain/resolved_node.py",
+    "src/steamzero/domain/text_node_builder.py",
+    "src/steamzero/domain/scene_serialization.py",
     "src/steamzero/adapters/theme_catalog.py",
     "src/steamzero/schemas/asset-recipe-v1.schema.json",
     "src/steamzero/schemas/scene-layout-v1.schema.json",
@@ -36,6 +39,7 @@
     "src/steamzero/ui/qml/ReflectionLayer.qml",
     "src/steamzero/ui/qml/AssetRecipePreview.qml",
     "src/steamzero/ui/qml/SceneRepeater.qml",
+    "src/steamzero/ui/qml/SceneText.qml",
     "src/steamzero/ui/qml/SceneMotionPreview.qml",
     "src/steamzero/ui/qml/SceneSurfacePreview.qml",
     "src/steamzero/ui/qml/GlassPanel.qml",
@@ -43,6 +47,8 @@
     "tests/unit/test_asset_recipes.py",
     "tests/unit/test_theme_effects.py",
     "tests/unit/test_scene_contract.py",
+    "tests/unit/test_resolved_text_node.py",
+    "tests/unit/test_qml_render_model.py",
     "tests/unit/test_scene_image_pipeline.py",
     "tests/unit/test_scene_layout.py",
     "tests/unit/test_scene_motion.py",
@@ -58,6 +64,11 @@
     "tests/qml/check_glass_panel.qml",
     "tests/qml/golden/asset-recipes",
     "tests/integration/test_qml_asset_recipes.py",
+    "tests/integration/test_scene_round_trip.py",
+    "tests/integration/test_qml_scene_harness.py",
+    "tests/qml/check_scene_text.qml",
+    "docs/12-roadmap/P0-03-HANDOFF.md",
+    "docs/12-roadmap/EXECUTION-TO-1.0.md",
     "src/steamzero/domain/scene_containers.py",
     "src/steamzero/schemas/scene-containers-v1.schema.json",
     "src/steamzero/ui/qml/SceneContainerPreview.qml",
@@ -304,9 +315,7 @@
     }
   ],
   "nextAction": "Repetir medição física e fechar bridge→catálogo→render na release 2.0.0rc1-435f9108eeb7; investigar o staging órfão sem instalar durante a auditoria.",
-  "activeWorkstreams": [
-    "WS-2026-08-THEME-ASSET-RECIPES"
-  ],
-  "updatedAt": "2026-09-09",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-09-22",
   "notes": "Estado permanece parcial, com tres capacidades agora provadas fisicamente na release instalada. GAP-THEME-ASSET-INVERT-HUE e GAP-THEME-FALLBACK-SIGNAL fechados: invert e hue rotate sao aplicados pelo node builtin AssetColorTransform, com variantes pixel-distintas e alpha preservado. DEBT-HOST-INSTALL-DAEMON-RESTART FECHADO: a release 0.1.0a46-862fe3aa6837 convergiu sozinha (restarted=true) na primeira instalacao em que ativacao e convergencia rodaram ambas com o codigo corrigido. O defeito levou tres diagnosticos: nao era falta de restart nem o smoke em si, e sim _verify_release rodando 'doctor --json' com check=True, enquanto o doctor real sai com EXIT_FAILURE em status=failed; os testes escondiam isso porque o fake saia com codigo 0. GAP-THEME-PERF-BUDGET-UNMEASURED fechado. Eu havia afirmado que VRAM nao era mensuravel; isso valia para uma API portatil e por processo, mas nao para este host: o amdgpu expoe drm-memory-vram no fdinfo do processo. A sonda passou a medir, agrupando por drm-client-id porque o driver repete o mesmo cliente em varios fds. Na release instalada: p95 13,882 ms, startup 147 ms, 46,6 MB de VRAM — dentro dos tres limites. O criterio foi reescrito para excluir FPS apresentado, que exige instrumentacao do compositor inexistente na plataforma; o ritmo do render loop nao serve de substituto. Reconciliacao 2026-08-24: o porte v2 alterou MediaEffectLayer.qml e ReflectionLayer.qml (degradacao segura de efeitos no Qt 6.4) e tests/unit/test_theme_effects.py dentro deste escopo. As provas automatizadas foram re-executadas e estao verdes, mas as medicoes de desempenho no host (p95, startup, RSS, VRAM) sao ANTERIORES a essa mudanca de QML e precisam ser refeitas na proxima release instalada antes de sustentar o eixo hw.LOD de capas: MediaEffectLayer passou a aceitar um teto de decode declarado (CoverLod) e a decodificar fora da thread de render. A textura intermediaria e a mascara gradiente agora acompanham o renderer avancado em vez de custar por capa sem consumidor; sem esse gate a mascara ainda ficava visivel sobre a midia quando QtQuick.Effects estava ausente. Nao ha medicao de FPS ou memoria neste ciclo: o ganho declarado e a remocao de trabalho sem consumidor, nao um numero de desempenho. O teto de decode passou a ser required no MediaEffectLayer: um padrao permitiria que uma superficie nova voltasse ao decode integral em silencio. Medido que o teto so reduz (arte 320x180 com teto 4096 mantem implicitWidth 320), entao exigi-lo nao infla capas pequenas em tela grande."
 }

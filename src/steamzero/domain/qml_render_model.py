@@ -47,7 +47,10 @@ from steamzero.domain.resolved_node import (
     ResolvedImageNode,
     ResolvedTextNode,
     TextAlignment,
+    TextElideMode,
+    TextSizeMode,
     TextVerticalAlignment,
+    TextWrapMode,
 )
 from steamzero.domain.scene_typing import SourceReference
 from steamzero.domain.scene_value import is_pending_value
@@ -79,6 +82,24 @@ _V_ALIGN = {
     TextVerticalAlignment.TOP: "AlignTop",
     TextVerticalAlignment.MIDDLE: "AlignVCenter",
     TextVerticalAlignment.BOTTOM: "AlignBottom",
+}
+
+_WRAP_MODE = {
+    TextWrapMode.NONE: "NoWrap",
+    TextWrapMode.WORD: "WordWrap",
+    TextWrapMode.CHARACTER: "WrapAnywhere",
+}
+
+_ELIDE_MODE = {
+    TextElideMode.NONE: "ElideNone",
+    TextElideMode.START: "ElideLeft",
+    TextElideMode.MIDDLE: "ElideMiddle",
+    TextElideMode.END: "ElideRight",
+}
+
+_SIZE_MODE = {
+    TextSizeMode.FIXED: "FixedSize",
+    TextSizeMode.FIT: "Fit",
 }
 
 #: `font.italic` é booleano no QML e não distingue itálico de oblíquo. A
@@ -278,6 +299,11 @@ class QmlTextRenderModel:
     font_italic: bool
     horizontal_alignment: str
     vertical_alignment: str
+    wrap_mode: str
+    maximum_line_count: int
+    elide_mode: str
+    font_size_mode: str
+    minimum_pixel_size: float
     #: Referência interna autorizada. Vazia quando o tema não declarou fonte —
     #: nunca quando declarou e a tradução falhou, porque aí não há modelo.
     font_source: str = ""
@@ -298,6 +324,11 @@ class QmlTextRenderModel:
             "fontItalic": self.font_italic,
             "horizontalAlignment": self.horizontal_alignment,
             "verticalAlignment": self.vertical_alignment,
+            "wrapMode": self.wrap_mode,
+            "maximumLineCount": self.maximum_line_count,
+            "elide": self.elide_mode,
+            "fontSizeMode": self.font_size_mode,
+            "minimumPixelSize": self.minimum_pixel_size,
         }
         if self.width is not None:
             payload["width"] = self.width
@@ -641,6 +672,19 @@ def to_render_model(node: ResolvedTextNode) -> AdaptationResult[QmlTextRenderMod
             _V_ALIGN,
             field_name="verticalAlignment",
             diagnostics=diagnostics,
+        ),
+        "wrap_mode": _map_enum(
+            node.wrap, _WRAP_MODE, field_name="wrapMode", diagnostics=diagnostics
+        ),
+        "maximum_line_count": node.max_lines,
+        "elide_mode": _map_enum(
+            node.elide, _ELIDE_MODE, field_name="elide", diagnostics=diagnostics
+        ),
+        "font_size_mode": _map_enum(
+            node.size_mode, _SIZE_MODE, field_name="fontSizeMode", diagnostics=diagnostics
+        ),
+        "minimum_pixel_size": _number(
+            node.minimum_font_size, field_name="minimumPixelSize", diagnostics=diagnostics
         ),
         "font_source": _font_source(node.font_asset, diagnostics),
     }

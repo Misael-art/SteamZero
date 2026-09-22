@@ -27,15 +27,20 @@ from steamzero.domain.resolved_node import (
     ResolvedGeometry,
     ResolvedTextNode,
     TextAlignment,
+    TextElideMode,
+    TextSizeMode,
     TextVerticalAlignment,
+    TextWrapMode,
 )
 from steamzero.domain.scene_contract import (
     Alignment,
     DimensionValue,
     ElementContract,
+    ElideMode,
     LayoutSpec,
     TextLayoutSpec,
     TypographySpec,
+    WrapMode,
 )
 from steamzero.domain.scene_registry import default_registries
 from steamzero.domain.scene_resolver import ResolutionContext, Resolver
@@ -330,6 +335,24 @@ class TestDefaults:
 
     def test_geometry_defaults_to_origin(self) -> None:
         assert ResolvedGeometry().to_dict() == {"x": 0.0, "y": 0.0}
+
+    def test_advanced_text_layout_is_resolved(self) -> None:
+        node = _build(
+            text_layout=TextLayoutSpec(
+                wrap=WrapMode.WORD,
+                max_lines=2,
+                elide=ElideMode.END,
+                auto_fit=True,
+                minimum_font_size=18,
+                maximum_font_size=40,
+            )
+        )
+        assert node.wrap is TextWrapMode.WORD
+        assert node.max_lines == 2
+        assert node.elide is TextElideMode.END
+        assert node.size_mode is TextSizeMode.FIT
+        assert node.minimum_font_size == 18.0
+        assert node.font_size == 40.0
 
     def test_unavailable_font_reports_unavailable(self) -> None:
         assert FontAssetHandle(key="x").available is False

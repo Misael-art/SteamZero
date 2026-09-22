@@ -55,4 +55,9 @@ Text {
 
     horizontalAlignment: Text[model.horizontalAlignment]
     verticalAlignment: Text[model.verticalAlignment]
+    wrapMode: Text[model.wrapMode]
+    maximumLineCount: model.maximumLineCount
+    elide: Text[model.elide]
+    fontSizeMode: Text[model.fontSizeMode]
+    minimumPixelSize: model.minimumPixelSize
 }

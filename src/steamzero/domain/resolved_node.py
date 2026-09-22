@@ -55,6 +55,30 @@ class TextVerticalAlignment(StrEnum):
     BOTTOM = "bottom"
 
 
+class TextWrapMode(StrEnum):
+    """Quebras de linha canônicas, sem enum do backend no DTO."""
+
+    NONE = "none"
+    WORD = "word"
+    CHARACTER = "character"
+
+
+class TextElideMode(StrEnum):
+    """Como texto que excede a caixa é encurtado."""
+
+    NONE = "none"
+    START = "start"
+    MIDDLE = "middle"
+    END = "end"
+
+
+class TextSizeMode(StrEnum):
+    """Estratégia canônica de dimensionamento da fonte."""
+
+    FIXED = "fixed"
+    FIT = "fit"
+
+
 class ImageFillMode(StrEnum):
     """Como a imagem ocupa a caixa. Nome canônico, converter no backend.
 
@@ -206,6 +230,11 @@ class ResolvedTextNode:
 
     horizontal_alignment: TextAlignment = TextAlignment.START
     vertical_alignment: TextVerticalAlignment = TextVerticalAlignment.TOP
+    wrap: TextWrapMode = TextWrapMode.NONE
+    max_lines: int = 2_147_483_647
+    elide: TextElideMode = TextElideMode.NONE
+    size_mode: TextSizeMode = TextSizeMode.FIXED
+    minimum_font_size: float = 0.0
 
     source_reference: SourceReference | None = None
     #: Diagnósticos já materializados como dados. Não há referência viva a
@@ -232,6 +261,11 @@ class ResolvedTextNode:
             "fontStyle": self.font_style.value,
             "horizontalAlignment": self.horizontal_alignment.value,
             "verticalAlignment": self.vertical_alignment.value,
+            "wrap": self.wrap.value,
+            "maxLines": self.max_lines,
+            "elide": self.elide.value,
+            "sizeMode": self.size_mode.value,
+            "minimumFontSize": self.minimum_font_size,
         }
         if self.font_family is not None:
             payload["fontFamily"] = self.font_family
@@ -280,6 +314,11 @@ class ResolvedTextNode:
             font_style=FontStyle(payload.get("fontStyle", "normal")),
             horizontal_alignment=TextAlignment(payload.get("horizontalAlignment", "start")),
             vertical_alignment=TextVerticalAlignment(payload.get("verticalAlignment", "top")),
+            wrap=TextWrapMode(payload.get("wrap", "none")),
+            max_lines=int(payload.get("maxLines", 2_147_483_647)),
+            elide=TextElideMode(payload.get("elide", "none")),
+            size_mode=TextSizeMode(payload.get("sizeMode", "fixed")),
+            minimum_font_size=float(payload.get("minimumFontSize", 0.0)),
             source_reference=(
                 SourceReference(
                     file=str(reference["file"]),

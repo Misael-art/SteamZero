@@ -34,9 +34,13 @@ from steamzero.domain.scene_contract import (
     Alignment,
     DimensionValue,
     ElementContract,
+    ElideMode,
     LayoutSpec,
+    TextDirection,
     TextLayoutSpec,
+    TextTransform,
     TypographySpec,
+    WrapMode,
 )
 from steamzero.domain.scene_tree import validate_tree
 from steamzero.domain.scene_typing import SourceReference
@@ -187,6 +191,18 @@ def _alignment(payload: Any) -> Any:
         ) from None
 
 
+def _text_enum(payload: Any, enum: type, label: str) -> Any:
+    if payload is None:
+        return None
+    try:
+        return enum(payload)
+    except ValueError:
+        raise SerializationError(
+            f"{label} fora do contrato: {payload!r}; "
+            f"conhecidos: {[member.value for member in enum]}"
+        ) from None
+
+
 _LAYOUT_DIMENSIONS = ("x", "y", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight")
 
 _SNAKE = {
@@ -207,6 +223,8 @@ _SNAKE = {
     "strokeColor": "stroke_color",
     "strokeWidth": "stroke_width",
     "maxLines": "max_lines",
+    "minimumFontSize": "minimum_font_size",
+    "maximumFontSize": "maximum_font_size",
     "textTransform": "text_transform",
     "autoFit": "auto_fit",
 }
@@ -265,6 +283,14 @@ def element_from_dict(payload: Mapping[str, Any]) -> ElementContract:
         for name in ("horizontalAlignment", "verticalAlignment"):
             if name in raw:
                 raw[name] = _alignment(raw[name])
+        for name, enum in (
+            ("wrap", WrapMode),
+            ("elide", ElideMode),
+            ("textTransform", TextTransform),
+            ("direction", TextDirection),
+        ):
+            if name in raw:
+                raw[name] = _text_enum(raw[name], enum, f"textLayout.{name}")
         text_layout = TextLayoutSpec(
             **_spec_kwargs(raw, frozenset(TextLayoutSpec.__dataclass_fields__))
         )

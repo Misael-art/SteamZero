@@ -17,6 +17,7 @@ conhecimento o obrigaria a reimplementar layout.
 from __future__ import annotations
 
 import hashlib
+import math
 import re
 from dataclasses import dataclass
 from typing import Any
@@ -31,13 +32,18 @@ from steamzero.domain.resolved_node import (
     ResolvedImageNode,
     ResolvedTextNode,
     TextAlignment,
+    TextElideMode,
+    TextSizeMode,
     TextVerticalAlignment,
+    TextWrapMode,
 )
 from steamzero.domain.scene_contract import (
     Alignment,
     DimensionUnit,
     DimensionValue,
     ElementContract,
+    ElideMode,
+    WrapMode,
 )
 from steamzero.domain.scene_resolver import Resolver
 from steamzero.domain.scene_typing import ValueType
@@ -57,6 +63,39 @@ _VERTICAL = {
     Alignment.END: TextVerticalAlignment.BOTTOM,
     Alignment.JUSTIFY: TextVerticalAlignment.TOP,
 }
+
+_WRAP = {
+    WrapMode.NONE: TextWrapMode.NONE,
+    WrapMode.WORD: TextWrapMode.WORD,
+    WrapMode.CHARACTER: TextWrapMode.CHARACTER,
+}
+
+_ELIDE = {
+    ElideMode.NONE: TextElideMode.NONE,
+    ElideMode.START: TextElideMode.START,
+    ElideMode.MIDDLE: TextElideMode.MIDDLE,
+    ElideMode.END: TextElideMode.END,
+}
+
+_UNLIMITED_LINES = 2_147_483_647
+
+
+def _positive_line_count(value: Any) -> int:
+    """Converte ``maxLines`` em um inteiro aceito pelo Text do Qt."""
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return _UNLIMITED_LINES
+    if not math.isfinite(float(value)) or value < 1:
+        return _UNLIMITED_LINES
+    return min(_UNLIMITED_LINES, int(value))
+
+
+def _non_negative_number(value: Any, *, default: float = 0.0) -> float:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return default
+    if not math.isfinite(float(value)) or value < 0:
+        return default
+    return float(value)
+
 
 #: Peso numérico de volta para o nome canônico. Temas declaram 400, 700; o nó
 #: guarda o nome, que não depende da convenção de nenhum backend.
@@ -245,11 +284,34 @@ def build_text_node(
 
     horizontal = TextAlignment.START
     vertical = TextVerticalAlignment.TOP
+    wrap = TextWrapMode.NONE
+    max_lines = _UNLIMITED_LINES
+    elide = TextElideMode.NONE
+    size_mode = TextSizeMode.FIXED
+    minimum_font_size = 0.0
     if text_layout is not None:
         if text_layout.horizontal_alignment is not None:
             horizontal = _HORIZONTAL[text_layout.horizontal_alignment]
         if text_layout.vertical_alignment is not None:
             vertical = _VERTICAL[text_layout.vertical_alignment]
+        if text_layout.wrap is not None:
+            wrap = _WRAP[WrapMode(text_layout.wrap)]
+        if text_layout.elide is not None:
+            elide = _ELIDE[ElideMode(text_layout.elide)]
+        max_lines = _positive_line_count(
+            resolve(text_layout.max_lines, ValueType.NUMBER, "maxLines", _UNLIMITED_LINES)
+        )
+        auto_fit = resolve(text_layout.auto_fit, ValueType.BOOLEAN, "autoFit", False)
+        size_mode = TextSizeMode.FIT if bool(auto_fit) else TextSizeMode.FIXED
+        minimum_font_size = _non_negative_number(
+            resolve(text_layout.minimum_font_size, ValueType.NUMBER, "minimumFontSize", 0.0)
+        )
+        maximum_font_size = _non_negative_number(
+            resolve(text_layout.maximum_font_size, ValueType.NUMBER, "maximumFontSize", 0.0)
+        )
+        if maximum_font_size > 0.0:
+            font_size = min(float(font_size), maximum_font_size)
+            minimum_font_size = min(minimum_font_size, float(font_size))
 
     style = FontStyle.NORMAL
     if typography is not None and isinstance(typography.font_style, str):
@@ -276,6 +338,11 @@ def build_text_node(
         font_style=style,
         horizontal_alignment=horizontal,
         vertical_alignment=vertical,
+        wrap=wrap,
+        max_lines=max_lines,
+        elide=elide,
+        size_mode=size_mode,
+        minimum_font_size=minimum_font_size,
         source_reference=element.source_reference,
         resolution_diagnostics=emitted,
     )
