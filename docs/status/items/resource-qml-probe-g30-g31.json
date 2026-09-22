@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-RESOURCE-QML-PROBE",
+  "title": "Atribuição de recursos e probe QML confiável",
+  "domain": "ui",
+  "implementation": "complete",
+  "integration": "integrated",
+  "verification": "dev",
+  "operation": "degraded",
+  "distribution": "installed",
+  "scopePaths": [
+    "src/steamzero/adapters/resource_probe.py",
+    "src/steamzero/domain/resources.py",
+    "tools/qml_capture_runner.py",
+    "tests/unit/test_resource_probe.py",
+    "tests/unit/test_qml_runtime_probe.py",
+    "tests/unit/test_launcher_perf_probe.py",
+    "docs/09-operations/evidence/2026-09-22-resource-qml-readonly"
+  ],
+  "scopeDigest": "2f1a967ccb001eb4e954843b369fdf30377b707a000a74032c36b5a68e018dfd",
+  "dependsOn": ["SZ-TEST-STATE-ISOLATION"],
+  "knownGaps": ["GAP-G30", "GAP-G31"],
+  "acceptanceCriteria": [
+    "PSS, RSS, swap e lifecycle são atribuídos por classe sem ler cmdline ou persistir identidade privada.",
+    "Filhos de emulador e jobs de mídia possuem classes separadas; PID reutilizado e procfs incompleto degradam com motivo explícito.",
+    "O probe QML exige runtime compatível, processo concluído com return code zero e ausência de stderr crítico.",
+    "Timeout, sinal, exit não-zero, coredump novo ou PNG residual nunca são promovidos a renderização válida.",
+    "A observação é read-only e não transforma processos não atribuíveis em consumo da UI."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_resource_probe.py",
+      "command": "PYTHONPATH=src:tools:/opt/steamzero/current/venv/lib/python3.14/site-packages python3 tools/run_tests_isolated.py tests/unit/test_resource_probe.py tests/unit/test_qml_runtime_probe.py tests/unit/test_launcher_perf_probe.py -q -k 'resource or qml or perf' (49 passed; state home real unchanged)",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-22-resource-qml-readonly",
+      "command": "/usr/local/bin/steamzero system resources --json",
+      "result": "partial"
+    }
+  ],
+  "nextAction": "HARD-EXTERNAL-SUBITEM: repetir a medição em runner/sessão com permissão procfs suficiente e capturar probe QML real com return code zero; não atribuir o agregado atual nem executar mutações administrativas.",
+  "activeWorkstreams": ["WS-2026-09-RESOURCE-QML-G30-G31"],
+  "updatedAt": "2026-09-22",
+  "notes": "O software está integrado e instalado. Os testes fecham as guardas de privacidade, atribuição e retorno Qt; a medição física atual é parcial por procfs/permissão e não sustenta um baseline completo. Nenhum processo foi iniciado ou alterado pelo item."
+}

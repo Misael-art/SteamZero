@@ -11769,3 +11769,18 @@ retornaram `unknown`; a sessão está idle. O resultado correto é
 `capabilityState=unknown`, não `ready` por presença do binário. Nenhum serviço,
 grupo, governor ou split-lock foi alterado. Resta validação externa autorizada
 em uma sessão real.
+
+## 2026-09-22 — G30/G31 reconciliados com observação degradada
+
+Os probes de recursos, runtime QML e performance passaram com **49 passed** e
+mantiveram o state home real idêntico. A atribuição usa PSS/lifecycle por
+classe, não lê cmdline e conserva filhos de emulador, jobs e desconhecidos em
+categorias distintas; o probe QML recusa sinais, exits não-zero, timeout e
+stderr crítico antes de considerar uma captura válida.
+
+No host, `system resources --json` retornou `readOnly=true`,
+`complete=false`, `reason=proc-incomplete`: o daemon foi observado com
+55.499.776 bytes de PSS, enquanto 415 processos ficaram não atribuíveis por
+permissão/estado incompleto. O agregado não foi atribuído à UI e nenhuma
+mutação foi executada. A prova física completa permanece dependente de um
+runner/sessão com procfs observável e captura QML real.
