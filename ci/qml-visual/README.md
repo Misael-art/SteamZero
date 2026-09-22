@@ -42,6 +42,7 @@ sem causa aparente.
 | Qt runtime | 6.11.1 |
 | qt6-declarative | 6.11.1-3 |
 | qt6-base | 6.11.1-1 |
+| qt6-svg | fixado pela imagem publicada |
 | fontconfig | 2:2.18.2-1 |
 | freetype2 | 2.14.3-1 |
 | harfbuzz | 14.2.1-1 |
@@ -50,6 +51,10 @@ sem causa aparente.
 A fonte **não** vem da imagem: vem de `tests/fixtures/fonts/`, e o harness isola
 o fontconfig nela. A imagem não precisa ter fonte nenhuma instalada — e não tem,
 o que é melhor: não há o que sombrear a empacotada.
+
+O plugin `qt6-svg` faz parte da imagem porque os harnesses verificam SVGs
+empacotados como entrada visual real; ausência dele é divergência de ambiente e
+deve reprovar a construção da imagem, não virar um teste pulado.
 
 ## Publicar uma versão nova
 

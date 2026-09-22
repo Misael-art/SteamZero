@@ -1123,6 +1123,10 @@ Item {
                     ListView {
                         id: carousel
                         visible: root.visibleGames.length > 0 && root.libraryView === "carousel"
+                        // Qt 6.11 can retain an inactive view's implicit height
+                        // during a ColumnLayout polish. Keep the contract
+                        // explicit so grid/list never inherit carousel space.
+                        height: visible ? root.coverHeight() : 0
                         clip: true
                         Layout.fillWidth: true
                         Layout.fillHeight: false
@@ -1249,6 +1253,7 @@ Item {
                     GridView {
                         id: gameGrid
                         visible: root.visibleGames.length > 0 && root.libraryView === "grid"
+                        height: visible ? (root.compact ? 330 : 430) : 0
                         clip: true
                         Layout.fillWidth: true
                         Layout.preferredHeight: root.libraryView === "grid"
@@ -1341,6 +1346,7 @@ Item {
                     ListView {
                         id: gameList
                         visible: root.visibleGames.length > 0 && root.libraryView === "list"
+                        height: visible ? (root.compact ? 330 : 430) : 0
                         clip: true
                         Layout.fillWidth: true
                         Layout.preferredHeight: root.libraryView === "list"

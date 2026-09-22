@@ -52,9 +52,8 @@ def _require_qml_runtime() -> None:
 
 
 # Harnesses que carregam um asset SVG do pacote. A imagem canônica do gate
-# visual traz qt6-declarative e qt6-base, mas NÃO o plugin de imagem SVG: os
-# quatro falham com "QML Image: Error decoding" enquanto os outros 21 passam.
-# A ausência do plugin é defeito do ambiente do gate, não motivo para verde.
+# declara qt6-svg; a sonda continua sendo uma defesa contra uma imagem publicada
+# sem o plugin que o contrato visual exige.
 _SVG_HARNESSES = frozenset(
     {
         "check_asset_recipe_preview.qml",

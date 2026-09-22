@@ -31,6 +31,7 @@ FROM manjarolinux/base@sha256:bbf1f1d746f28e138eea610e140d2f28cbb5b7c5da2fbff034
 RUN pacman -Syu --noconfirm --needed \
         qt6-declarative \
         qt6-base \
+        qt6-svg \
         fontconfig \
         freetype2 \
         harfbuzz \
@@ -63,7 +64,7 @@ ENV QT_QPA_PLATFORM=offscreen \
 RUN mkdir -p /opt/steamzero-visual \
     && { \
         echo "qml=$(qml6 --version 2>&1)"; \
-        pacman -Q qt6-declarative qt6-base fontconfig freetype2 harfbuzz python; \
+        pacman -Q qt6-declarative qt6-base qt6-svg fontconfig freetype2 harfbuzz python; \
         echo "qmlPath=$(readlink -f "$(command -v qml6)")"; \
         echo "qmlSha256=$(sha256sum "$(readlink -f "$(command -v qml6)")" | cut -d' ' -f1)"; \
        } > /opt/steamzero-visual/environment.txt \
