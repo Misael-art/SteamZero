@@ -421,6 +421,24 @@ class TestPipelineReachesTheRenderer:
         _node, result = self._pipeline(_by_id(positive[1], "reloadableText-6"))
         assert result.require_model().text == "Chrono Trigger"
 
+    def test_retrofe_text_consumes_accessibility_scale_and_invalidates_selectively(
+        self, positive: tuple[Any, SliceResult]
+    ) -> None:
+        element = _by_id(positive[1], "text-1")
+        assert element.typography is not None
+        assert element.typography.font_scale == {"bind": "accessibility.visualScale"}
+
+        resolver = _resolver()
+        fonts = FontProvider({name: name for name in PACKAGED_FONTS})
+        first = build_text_node(element, resolver=resolver, box=LayoutBox(*CANVAS), fonts=fonts)
+        assert first.font_size == 48.0
+
+        affected = resolver.set_accessibility({"visualScale": 1.5}, generation="host-17")
+        assert affected == {"text-1.fontScale"}
+
+        second = build_text_node(element, resolver=resolver, box=LayoutBox(*CANVAS), fonts=fonts)
+        assert second.font_size == 72.0
+
     def test_retrofe_layer_reaches_qml_z(self, negative: tuple[Any, SliceResult]) -> None:
         element = next(item for item in negative[1].elements if item.text_content == "camada")
         node, result = self._pipeline(element)

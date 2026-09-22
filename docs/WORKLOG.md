@@ -12114,3 +12114,11 @@ aplica o snapshot ao `Resolver` antes de compilar e devolve a forma normalizada.
 O teste atravessa essa entrada até o cabeçalho da cena: `visualScale=1.5`
 produz `fontPixelSize=51`. A cobertura de todos os compiladores/superfícies
 continua aberta e nenhum host foi alterado.
+
+## 2026-09-22 — G15: escala no emissor RetroFE vertical
+
+Textos produzidos por `TextSliceCompiler` agora declaram o mesmo binding
+`accessibility.visualScale` da cena default. O teste resolve `text-1` em 1.0×,
+troca o snapshot para 1.5× e comprova somente `text-1.fontScale` invalidado,
+com tamanho 48→72. A cobertura de todos os compiladores/superfícies continua
+aberta e nenhum host foi alterado.

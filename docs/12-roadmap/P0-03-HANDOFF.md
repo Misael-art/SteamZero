@@ -180,8 +180,9 @@ Cada uma tem teste de regressão. Foram descobertas medindo, não supondo.
    adapter precisa sanitizar um DTO desserializado. Continua pendente migrar o
    corpus completo para declarar o formato onde necessário.
 4. **Acessibilidade** — ver G15: bindings declarativos de acessibilidade e
-   `TypographySpec.fontScale` já atravessam Resolver → nó; falta a ponte do
-   snapshot do shell para todos os contextos e o uso amplo pelas superfícies.
+   `TypographySpec.fontScale` já atravessam Resolver → nó na cena default e
+   nos textos da fatia RetroFE; falta a ponte do snapshot do shell para todos
+   os contextos e o uso amplo pelas superfícies.
 5. **Display além de largura/altura** — `safeArea`, `orientation`,
    `devicePixelRatio` e `aspectRatio` estão previstos e não implementados.
 

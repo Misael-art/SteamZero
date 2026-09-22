@@ -322,6 +322,7 @@ def element_from_dict(payload: Mapping[str, Any]) -> ElementContract:
         clip=payload.get("clip"),
         overflow=payload.get("overflow"),
         text_content=payload.get("textContent"),
+        image_content=payload.get("imageContent"),
         layout=layout,
         typography=typography,
         text_layout=text_layout,

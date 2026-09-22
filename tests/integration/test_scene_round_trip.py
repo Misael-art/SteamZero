@@ -689,9 +689,13 @@ class TestCorruptionIsRefused:
 
 
 class TestScopeLimitsStayGreen:
-    def test_only_text_elements_are_compiled(self, corpus: tuple[str, Any, SliceResult]) -> None:
+    def test_the_slice_compiles_text_and_static_images(
+        self, corpus: tuple[str, Any, SliceResult]
+    ) -> None:
         _name, _declarations, result = corpus
-        assert all(element.type == "text" for element in result.elements)
+        assert all(element.type in {"text", "image"} for element in result.elements)
+        if _name == "vs04_negative":
+            assert any(element.type == "image" for element in result.elements)
 
     def test_the_full_corpus_is_not_migrated(self, corpus: tuple[str, Any, SliceResult]) -> None:
         _name, declarations, _result = corpus

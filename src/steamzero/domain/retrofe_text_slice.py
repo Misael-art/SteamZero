@@ -242,6 +242,13 @@ class TextSliceCompiler:
                 detail="'type' só tem significado em reloadableText",
             )
 
+        # Todo texto importado participa do mesmo contrato de acessibilidade do
+        # tema nativo. O binding é derivado, portanto não entra na contagem de
+        # propriedades RetroFE: ele garante que a escala do host alcance também
+        # o emissor declarativo da fatia, sem copiar um valor físico para o IR.
+        if tag in {"text", "reloadableText"}:
+            typography.setdefault("font_scale", value.bind("accessibility.visualScale"))
+
         z_index = layout.pop("__z_index", None)
         image_content = layout.pop("__image_content", None)
         if tag == "image":
