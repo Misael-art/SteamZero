@@ -54,7 +54,32 @@ Main {
                 }],
                 "dependency": "Fixture local; nenhuma mutação disponível."
             },
-            "doctor": {"checks": []},
+            "doctor": {
+                "state": "attention",
+                "checks": [{
+                    "name": "jobs.stale",
+                    "status": "warn",
+                    "message": "1 job(s) em estado running",
+                    "what": "Operações interrompidas",
+                    "impact": "A tarefa não deve ser repetida às cegas.",
+                    "manualAction": "Abra Tarefas e confira o detalhe.",
+                    "action": {
+                        "kind": "navigate",
+                        "target": "system.operations",
+                        "label": "Abrir tarefas",
+                        "enabled": true,
+                        "requiresConfirmation": false
+                    }
+                }, {
+                    "name": "boot.direct",
+                    "status": "warn",
+                    "message": "unknown: permissão insuficiente",
+                    "what": "A cadeia de boot direto",
+                    "impact": "O modo de jogo pode não estar disponível.",
+                    "manualAction": "Valide com o operador; esta tela somente observa.",
+                    "action": null
+                }]
+            },
             "diagnostics": {"operations": {"items": [{
                 "operationId": "01J0000000000000000000000A",
                 "operation": "emulator.config",
@@ -251,6 +276,14 @@ Main {
         }
         if (phase === 7) {
             checkScrollWidth(window.systemScrollControl, "Sistema")
+            check(window.doctorChecksControl.count === 2,
+                  "Sistema deve publicar todos os checks do Doctor")
+            check(window.doctorChecksControl.itemAt(0).doctorActionControl.visible,
+                  "check com ação segura deve oferecer a rota publicada")
+            check(window.doctorChecksControl.itemAt(0).doctorActionControl.height >= 48,
+                  "ação do Doctor deve manter alvo mínimo de 48×48")
+            check(!window.doctorChecksControl.itemAt(1).doctorActionControl.visible,
+                  "check somente operacional não pode inventar ação automática")
             window.operationRollbackPlan = {
                 "planId": "01J0000000000000000000000B",
                 "confirmToken": "fixture-confirm-token",

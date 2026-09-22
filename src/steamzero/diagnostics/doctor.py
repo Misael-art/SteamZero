@@ -279,7 +279,17 @@ def run_doctor() -> tuple[dict[str, Any], list[dict[str, Any]]]:
 
     corefs.ensure_state_layout()
     layout_ok = all(f().is_dir() for f in paths.STATE_SUBDIRS)
-    checks.append(_check("state.layout", "pass" if layout_ok else "fail", str(paths.state_home())))
+    # O caminho absoluto pertence ao payload técnico local, não ao texto de um
+    # check que a UI pode publicar em uma tela ou exportar para suporte. Evita
+    # vazar o nome do usuário/host sem perder a distinção entre presente e
+    # ausente.
+    checks.append(
+        _check(
+            "state.layout",
+            "pass" if layout_ok else "fail",
+            "pastas de estado presentes" if layout_ok else "pastas de estado ausentes",
+        )
+    )
 
     stale_count = 0
     orphan_staging = 0

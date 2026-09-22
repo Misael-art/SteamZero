@@ -121,6 +121,7 @@ ApplicationWindow {
     property alias syncScrollControl: syncScroll
     property alias castScrollControl: castScroll
     property alias systemScrollControl: systemScroll
+    property alias doctorChecksControl: doctorChecksRepeater
     property alias syncProviderControl: providerStatusCard
     property alias syncUpdateControl: syncUpdateButton
     property alias profilePickerControl: profilePicker
@@ -924,6 +925,21 @@ ApplicationWindow {
     function beginDiagnosticsExport(kind) {
         diagnosticsKind = kind
         diagnosticsExportDialog.open()
+    }
+
+    function openDoctorAction(check) {
+        const action = check && check.action ? check.action : null
+        if (!action || action.enabled !== true)
+            return
+        if (action.target === "system.operations") {
+            taskDrawer.open()
+            return
+        }
+        if (action.target === "system.diagnostics.export") {
+            beginDiagnosticsExport("state")
+            return
+        }
+        notify(qsTr("Esta orientação não possui uma rota segura publicada."), true)
     }
 
     function refreshStatus(message) {
@@ -5436,10 +5452,13 @@ ApplicationWindow {
                                         Layout.topMargin: 4
                                     }
                                     Repeater {
+                                        id: doctorChecksRepeater
                                         model: root.desktopStatus.dashboard && root.desktopStatus.dashboard.doctor
                                             ? root.desktopStatus.dashboard.doctor.checks || [] : []
                                         delegate: Rectangle {
+                                            id: doctorCheckCard
                                             required property var modelData
+                                            property alias doctorActionControl: doctorActionButton
                                             color: root.surfaceColor
                                             radius: 7
                                             border.color: modelData.status === "fail" || modelData.status === "failed"
@@ -5449,23 +5468,67 @@ ApplicationWindow {
                                             Layout.fillWidth: true
                                             Layout.leftMargin: 28
                                             Layout.rightMargin: 28
-                                            Layout.minimumHeight: 56
-                                            RowLayout {
+                                            implicitHeight: doctorCheckContent.implicitHeight + 24
+                                            ColumnLayout {
+                                                id: doctorCheckContent
                                                 anchors.fill: parent
                                                 anchors.margins: 12
-                                                Label {
-                                                    text: modelData.name || modelData.id || qsTr("check")
-                                                    color: root.textColor
-                                                    font.bold: true
+                                                spacing: 6
+                                                RowLayout {
                                                     Layout.fillWidth: true
-                                                    elide: Text.ElideRight
+                                                    Label {
+                                                        text: modelData.name || modelData.id || qsTr("check")
+                                                        color: root.textColor
+                                                        font.bold: true
+                                                        Layout.fillWidth: true
+                                                        elide: Text.ElideRight
+                                                    }
+                                                    Label {
+                                                        text: modelData.status || qsTr("—")
+                                                        color: modelData.status === "pass" || modelData.status === "ok"
+                                                            ? root.greenColor
+                                                            : modelData.status === "fail" || modelData.status === "failed"
+                                                                ? root.redColor : root.amberColor
+                                                    }
                                                 }
                                                 Label {
-                                                    text: modelData.status || qsTr("—")
-                                                    color: modelData.status === "pass" || modelData.status === "ok"
-                                                        ? root.greenColor
-                                                        : modelData.status === "fail" || modelData.status === "failed"
-                                                            ? root.redColor : root.amberColor
+                                                    text: modelData.message || ""
+                                                    color: root.mutedColor
+                                                    wrapMode: Text.WordWrap
+                                                    Layout.fillWidth: true
+                                                }
+                                                Label {
+                                                    visible: Boolean(modelData.what)
+                                                    text: qsTr("Observado: %1").arg(modelData.what || "")
+                                                    color: root.textColor
+                                                    wrapMode: Text.WordWrap
+                                                    Layout.fillWidth: true
+                                                }
+                                                Label {
+                                                    visible: Boolean(modelData.impact)
+                                                    text: qsTr("Impacto: %1").arg(modelData.impact || "")
+                                                    color: root.mutedColor
+                                                    wrapMode: Text.WordWrap
+                                                    Layout.fillWidth: true
+                                                }
+                                                Label {
+                                                    visible: Boolean(modelData.manualAction)
+                                                    text: qsTr("Orientação: %1").arg(modelData.manualAction || "")
+                                                    color: root.mutedColor
+                                                    wrapMode: Text.WordWrap
+                                                    Layout.fillWidth: true
+                                                }
+                                                Button {
+                                                    id: doctorActionButton
+                                                    visible: Boolean(modelData.action && modelData.action.label)
+                                                    text: modelData.action && modelData.action.label
+                                                        ? modelData.action.label : ""
+                                                    enabled: visible && modelData.action.enabled === true
+                                                    Layout.minimumHeight: 48
+                                                    Accessible.name: text
+                                                    Accessible.description: modelData.action && modelData.action.requiresConfirmation
+                                                        ? qsTr("A próxima etapa exigirá confirmação") : ""
+                                                    onClicked: root.openDoctorAction(modelData)
                                                 }
                                             }
                                         }

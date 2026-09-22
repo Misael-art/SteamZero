@@ -21,7 +21,7 @@
     "tests/unit/test_doctor.py",
     "tests/unit/test_service_core.py"
   ],
-  "scopeDigest": "b3d51e8c2167c9f00711c894e17687f96b3d32cbfeda13395a7fa68ebfddab16",
+  "scopeDigest": "28ba753652d3ed9c4a3dd6f6d40ba40e8444c02017a953c68d2c4ad8c73061d5",
   "dependsOn": ["SZ-TEST-STATE-ISOLATION"],
   "knownGaps": [],
   "acceptanceCriteria": [

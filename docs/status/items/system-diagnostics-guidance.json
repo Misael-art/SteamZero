@@ -4,21 +4,21 @@
   "id": "SZ-SYSTEM-DIAGNOSTICS-GUIDANCE",
   "title": "Diagnóstico do sistema orientado à recuperação",
   "domain": "ui",
-  "implementation": "partial",
-  "integration": "feature-branch",
-  "verification": "unit",
+  "implementation": "complete",
+  "integration": "integrated",
+  "verification": "dev",
   "operation": "degraded",
   "distribution": "not-packaged",
   "scopePaths": [
     "src/steamzero/diagnostics/doctor.py",
-    "tests/unit/test_doctor.py"
+    "tests/unit/test_doctor.py",
+    "src/steamzero/ui/qml/Main.qml",
+    "tests/qml/check_main_handheld_sections.qml",
+    "docs/09-operations/evidence/2026-09-22-system-diagnostics-guidance/README.md"
   ],
-  "scopeDigest": "11dc547c634ea4497396f60aae9a51f56b31fa657a6233ef04356572cdcd4dba",
+  "scopeDigest": "e97d20e686712114d6964fe189c8d5d829b2445c131dbe8742b0150a2c7ab63f",
   "dependsOn": [],
-  "knownGaps": [
-    "GAP-SYSTEM-DIAGNOSTICS-QML-RECOVERY",
-    "GAP-EMULATION-PHYSICAL-LAUNCH"
-  ],
+  "knownGaps": ["GAP-EMULATION-PHYSICAL-LAUNCH"],
   "acceptanceCriteria": [
     "Cada check do Doctor publica estado, causa, impacto e orientação sem expor segredos ou caminhos pessoais.",
     "Alertas com ação segura publicam ação allowlisted, alvo, rótulo e se a ação está habilitada.",
@@ -43,10 +43,16 @@
       "reference": "tests",
       "command": "rtk env TMPDIR=/tmp .venv/bin/python tools/run_tests_isolated.py tests -q; chegou a 17%, sem saída por 30s, interrompido; sem processos residuais",
       "result": "partial"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-22-system-diagnostics-guidance/README.md",
+      "command": "python3 -m pytest tests/unit/test_doctor.py tests/integration/test_diagnostics.py tests/integration/test_ui_dialog_coverage.py tests/integration/test_ui_action_inventory.py tests/integration/test_desktop_ui_bridge.py tests/unit/test_desktop_dashboard.py -q; QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_main_handheld_sections.qml",
+      "result": "passed"
     }
   ],
-  "nextAction": "Integrar guidance à hierarquia visual da tela Sistema e validar foco, ação e recuperação na release 2.0.0rc1-085169f47186; a auditoria confirmou causa na CLI, mas recuperação QML ausente.",
+  "nextAction": "HARD-EXTERNAL-SUBITEM: repetir a jornada na release instalada com um estado de atenção e confirmar foco/ação pelo operador; não executar recovery no host sem autorização.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-05",
-  "notes": "A tela Sistema atualmente lista checks técnicos em sequência, mas jobs.stale e artefatos órfãos não diziam o impacto nem ofereciam caminho seguro. O Doctor agora publica guidance estruturado compatível com name/status/message, aponta somente navegação read-only existente e deixa boot/ações sem rota como orientação explícita ao operador. A hierarquia visual, foco, progresso e execução das ações continuam fora do escopo por pertencerem à integração QML posterior."
+  "updatedAt": "2026-09-22",
+  "notes": "O Doctor publica guidance estruturado sem caminhos pessoais nos checks, e a tela Sistema renderiza observado, impacto, orientação e ações allowlisted. Ações de tarefas e exportação apenas abrem rotas já publicadas; nenhum recovery é executado automaticamente. A prova física na release instalada continua externa."
 }

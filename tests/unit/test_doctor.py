@@ -31,6 +31,15 @@ def test_doctor_runs_and_returns_data_and_checks(
     assert any(c["name"] == "state.db.integrity" for c in checks)
 
 
+def test_doctor_check_messages_do_not_expose_state_home(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "private-state"))
+    _data, checks = run_doctor()
+    rendered = " ".join(str(value) for check in checks for value in check.values())
+    assert str(tmp_path) not in rendered
+
+
 def test_doctor_handles_state_store_failure(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -11798,3 +11798,18 @@ serialização v2, os limites da árvore e o round-trip já estão implementados
 corrigi a linha para `parcial`, preservando como pendentes wrapping, elide,
 rich text, auto-fit e a integração desses slices com a migração completa. Não
 houve alteração no host.
+
+## 2026-09-22 — Guidance do Doctor integrada à tela Sistema
+
+O Doctor já publicava causa, impacto, orientação e ações allowlisted, mas a
+tela Sistema renderizava somente nome e status. A integração agora mostra a
+orientação completa e oferece apenas as rotas publicadas: abrir tarefas ou
+abrir a exportação de diagnóstico, sem executar recovery automático. O check
+`state.layout` também deixou de expor o caminho absoluto do state home em sua
+mensagem; o payload técnico local preserva o dado necessário para diagnóstico.
+
+Os testes focados fecharam com **22 passed**, a matriz UI/bridge/dashboard com
+**97 passed** e o harness handheld QML passou. O item
+`SZ-SYSTEM-DIAGNOSTICS-GUIDANCE` fica completo em software, enquanto a prova
+na release instalada e a interação física permanecem externas. Nenhum arquivo
+ou serviço do host foi alterado.
