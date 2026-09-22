@@ -31,7 +31,14 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 QML = shutil.which("qml6") or shutil.which("qml")
 
-pytestmark = pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
+pytestmark = pytest.mark.visual
+
+
+@pytest.fixture(autouse=True)
+def _require_qml_runtime() -> None:
+    if QML is None:
+        pytest.fail("QML-VISUAL-ENVIRONMENT-001: qml6/qml ausente; sonda de diálogos não executada")
+
 
 #: Diálogos que carregam um plano. Fechar sem aplicar precisa deixar o estado
 #: limpo — um plano remanescente é uma confirmação pendente sem dono.

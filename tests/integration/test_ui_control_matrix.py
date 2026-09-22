@@ -21,10 +21,14 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import ui_control_inventory as matrix  # noqa: E402
 
-pytestmark = pytest.mark.skipif(
-    shutil.which("qml6") is None and shutil.which("qml") is None,
-    reason="qml6 não está instalado neste host",
-)
+QML = shutil.which("qml6") or shutil.which("qml")
+pytestmark = pytest.mark.visual
+
+
+@pytest.fixture(autouse=True)
+def _require_qml_runtime() -> None:
+    if QML is None:
+        pytest.fail("QML-VISUAL-ENVIRONMENT-001: qml6/qml ausente; matriz não executada")
 
 
 @pytest.fixture(scope="module")

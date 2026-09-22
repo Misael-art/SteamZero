@@ -11991,3 +11991,14 @@ vez de esconder os quatro cenários dependentes de asset.
 A suíte do módulo fechou com **48 passed** no host atual; probes adjacentes de
 `qmltestrunner` e inventário de UI ainda permanecem como próximo trabalho de
 G13. Nenhum host foi alterado.
+
+## 2026-09-22 — G13: jornadas e inventários UI sem skipif
+
+Os probes `test_ui_dialog_journeys.py`, `test_ui_action_inventory.py`,
+`test_ui_control_identity.py` e `test_ui_control_matrix.py` agora são
+marcados como `visual` e falham com `QML-VISUAL-ENVIRONMENT-001` quando
+não há runtime QML. A matriz completa dos quatro módulos fechou com **48
+passed** em **18m13s**, incluindo todos os cenários publicados.
+
+Os testes independentes de `qmltestrunner` do Launcher ainda são o próximo
+subitem de G13. Nenhum host foi alterado.
