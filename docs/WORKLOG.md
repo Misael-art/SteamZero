@@ -12444,3 +12444,28 @@ Não houve publicação, preparação de release nem alteração do host nesta e
 A integração permanece parcial até CI e verificação integral concluírem; falta
 validar comportamento físico do fluxo na release governada em todas as
 plataformas aplicáveis.
+
+## 2026-09-22 — Matriz QML acelerada sem reduzir cobertura
+
+A matriz viva serial demorava 585,82 s para percorrer 15 cenários, 339
+controles e 12 superfícies. `tools/ui_control_inventory.py` agora executa até
+quatro processos QML independentes e recolhe resultados na ordem original; a
+fusão de identidades/vereditos e os critérios da matriz permanecem intactos.
+Também passou a reprovar explicitamente retorno não zero mesmo quando há linhas
+parciais de controles, e mantém timeout como erro.
+
+Baseline e validação paralela tiveram os mesmos 15 cenários, 339 controles, 12
+superfícies, contagens `handled-locally=268`, `blocked-explained=15`,
+`decorative=31`, `not-probed=7`, `routed=18`, e zero falhas. A execução paralela
+direta levou 152,57 s (3,84× mais rápida); `tests/integration/test_ui_control_matrix.py`
+passou 21 testes em 160,25 s. Os três testes unitários de concorrência/retorno/
+timeout passaram. State home e processos QML foram conferidos sem alteração ou
+órfãos. Ruff, formatação (665 arquivos), mypy (297 módulos), fronteiras e
+independência passaram.
+
+A suíte integral terminou com 6.291 passed, 47 skipped e uma falha em
+`tests/unit/test_project_status.py::test_committed_catalog_and_generated_views_are_consistent`:
+24 `scopeDigest` do catálogo seguem obsoletos. A mudança da UI torna explícito
+que `SZ-UI-DESKTOP-AUDIT` também está entre eles; nenhum digest alheio foi
+recalculado sem revalidar o escopo completo. `STATUS-CHECK` continua vermelho;
+esta frente de harness foi fechada em software, não promovida nem instalada.
