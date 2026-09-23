@@ -57,8 +57,9 @@ def test_vita_filename_keeps_title_id_and_normalizes_unsafe_chars() -> None:
 
 
 def test_vita_app_is_packaged_at_archive_root_without_touching_source(tmp_path: Path) -> None:
-    source = _app(tmp_path / "source")
-    plan = plan_from_app(source, derived_root=tmp_path / "derived")
+    root = tmp_path / "roms"
+    source = _app(root / "LittleBigPlanet")
+    plan = plan_from_app(source, derived_root=root / ".steamzero" / "derived")
 
     result = package_vita_app(plan)
 
@@ -68,8 +69,11 @@ def test_vita_app_is_packaged_at_archive_root_without_touching_source(tmp_path: 
     with zipfile.ZipFile(plan.destination) as archive:
         assert "sce_sys/param.sfo" in archive.namelist()
         assert "eboot.bin" in archive.namelist()
-        assert "data/game.bin" in archive.namelist()
-        assert not any(name.startswith("app/") for name in archive.namelist())
+    assert "data/game.bin" in archive.namelist()
+    assert not any(name.startswith("app/") for name in archive.namelist())
+    provenance = plan.destination.with_name(plan.destination.name + ".steamzero-derived.json")
+    assert provenance.is_file()
+    assert '"ownerPaths":["LittleBigPlanet/PCSF00516"]' in provenance.read_text(encoding="utf-8")
 
 
 def test_vita_package_rejects_symlinked_content(tmp_path: Path) -> None:
@@ -79,7 +83,10 @@ def test_vita_package_rejects_symlinked_content(tmp_path: Path) -> None:
     (source / "data" / "outside.bin").symlink_to(outside)
 
     try:
-        plan_from_app(source, derived_root=tmp_path / "derived")
+        plan_from_app(
+            source,
+            derived_root=tmp_path / ".steamzero" / "derived",
+        )
     except SteamZeroError as exc:
         assert exc.code == "E-CONTENT-UNSAFE-PATH"
     else:

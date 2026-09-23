@@ -1598,7 +1598,7 @@ ApplicationWindow {
                 return []
             const categories = root.emulationPlan.auditPreview.categories || {}
             const result = []
-            const selectable = ["update", "dlc", "related", "duplicate", "incompatible", "corrupted", "unknown"]
+            const selectable = ["update", "dlc", "related", "derived", "duplicate", "incompatible", "corrupted", "unknown"]
             for (let categoryIndex = 0; categoryIndex < selectable.length; categoryIndex++) {
                 const category = selectable[categoryIndex]
                 const items = categories[category] || []
@@ -1606,7 +1606,13 @@ ApplicationWindow {
                     result.push({
                         "relativePath": items[itemIndex].relativePath,
                         "category": category,
-                        "sizeBytes": items[itemIndex].sizeBytes || 0
+                        "sizeBytes": items[itemIndex].sizeBytes || 0,
+                        "relation": items[itemIndex].relation || "",
+                        "ownerDescription": (items[itemIndex].ownerPaths || [])
+                            .concat(items[itemIndex].ownerPath
+                                && !(items[itemIndex].ownerPaths || []).includes(items[itemIndex].ownerPath)
+                                ? [items[itemIndex].ownerPath] : [])
+                            .join(", ")
                     })
                 }
             }
@@ -1698,7 +1704,7 @@ ApplicationWindow {
                     Label {
                         width: parent.width
                         visible: emulationDialog.auditItems().length > 0
-                        text: qsTr("Selecione apenas itens não jogáveis para mover à quarentena. Jogos base, updates e DLCs nunca são oferecidos aqui.")
+                        text: qsTr("Selecione somente itens não-base após revisar seus vínculos. Derivados mostram a ROM de origem; os arquivos de pastas selecionadas vão juntos para quarentena reversível. Pastas vazias podem permanecer.")
                         color: root.amberColor
                         wrapMode: Text.WordWrap
                     }
@@ -1708,9 +1714,13 @@ ApplicationWindow {
                             required property var modelData
                             width: parent.width
                             implicitHeight: Math.max(48, contentItem.implicitHeight + 12)
-                            text: qsTr("%1 · %2 · %3 bytes")
+                            text: qsTr("%1 · %2%3 · %4 bytes")
                                 .arg(modelData.category)
                                 .arg(modelData.relativePath)
+                                .arg(modelData.ownerDescription.length > 0
+                                    ? qsTr(" · relacionado a %1").arg(modelData.ownerDescription)
+                                    : modelData.relation.length > 0
+                                        ? qsTr(" · %1").arg(modelData.relation) : "")
                                 .arg(modelData.sizeBytes)
                             onToggled: emulationDialog.setAuditSelected(
                                 modelData.relativePath, checked)

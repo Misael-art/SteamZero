@@ -36,11 +36,9 @@
     "tests/integration/test_qml_handheld_offscreen.py",
     "tests/integration/test_qml_visual_capture.py"
   ],
-  "scopeDigest": "fe4a7666a90201ff1fd604aef21605223695e915016320bf798ced620e6cb10c",
+  "scopeDigest": "fdd348460efb2319eb7f8400761ec1d9d1708f94a3bf295a07ae7161bac937b2",
   "dependsOn": [],
-  "activeWorkstreams": [
-    "WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT"
-  ],
+  "activeWorkstreams": [],
   "knownGaps": [
     "GAP-LIBRARY-PHYSICAL-CATALOG-COVERAGE",
     "GAP-G51",

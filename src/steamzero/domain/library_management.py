@@ -15,11 +15,21 @@ from typing import Any
 from steamzero.core import fs, ids, transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.domain.library import PlatformDirectoryInventory
+from steamzero.domain.library_derived import DERIVED_MANIFEST, read_derived_manifest
 from steamzero.domain.platforms import PlatformRegistry
 from steamzero.domain.switch_roots import root_id, sanitize_display_path, validate_rom_root
 
 _QUARANTINABLE_CATEGORIES = frozenset(
-    {"update", "dlc", "related", "duplicate", "incompatible", "corrupted", "unknown"}
+    {
+        "update",
+        "dlc",
+        "related",
+        "derived",
+        "duplicate",
+        "incompatible",
+        "corrupted",
+        "unknown",
+    }
 )
 _FILENAME_FORBIDDEN = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 
@@ -50,10 +60,18 @@ class LibraryRootManager:
         category: str,
         relation: str | None = None,
         owner_path: Path | None = None,
+        owner_paths: Sequence[Path] = (),
     ) -> dict[str, Any]:
         relative = path.relative_to(root)
         try:
-            size = path.stat().st_size
+            if path.is_dir():
+                size = sum(
+                    child.stat().st_size
+                    for child in path.rglob("*")
+                    if child.is_file() and not child.is_symlink()
+                )
+            else:
+                size = path.stat().st_size
         except OSError:
             size = 0
         item: dict[str, Any] = {
@@ -66,7 +84,18 @@ class LibraryRootManager:
             item["relation"] = relation
         if owner_path is not None:
             item["ownerPath"] = owner_path.relative_to(root).as_posix()
+        if owner_paths:
+            item["ownerPaths"] = [owner.relative_to(root).as_posix() for owner in owner_paths]
         return item
+
+    @staticmethod
+    def _has_symlink_component(root: Path, relative: Path) -> bool:
+        current = root
+        for part in relative.parts:
+            current = current / part
+            if current.is_symlink():
+                return True
+        return False
 
     def audit(
         self,
@@ -84,6 +113,7 @@ class LibraryRootManager:
                 "incompatible",
                 "corrupted",
                 "related",
+                "derived",
                 "unknown",
             )
         }
@@ -104,7 +134,12 @@ class LibraryRootManager:
                         self._item(game.path, self.root, category="base", relation="game-base")
                     )
                 for related in row.related_content:
-                    if not related.path.is_file() or related.path.is_symlink():
+                    if not related.path.exists() or related.path.is_symlink():
+                        continue
+                    if related.path.is_dir() and not any(
+                        child.is_file() and not child.is_symlink()
+                        for child in related.path.rglob("*")
+                    ):
                         continue
                     claimed.add(related.path)
                     category = (
@@ -145,6 +180,7 @@ class LibraryRootManager:
             categories["unknown"].append(
                 self._item(path, self.root, category="unknown", relation="unclaimed")
             )
+        self._append_derived(categories, claimed)
         return {
             "schemaVersion": 2,
             "rootId": root_id(self.root),
@@ -152,9 +188,94 @@ class LibraryRootManager:
             "auditedAt": datetime.now(UTC).isoformat(),
             "categories": categories,
             "counts": {key: len(value) for key, value in categories.items()},
-            "relationshipPolicy": "manifest-directory-and-auxiliary-v1",
+            "relationshipPolicy": "manifest-directory-auxiliary-derived-v2",
             "errors": [],
         }
+
+    def _append_derived(
+        self, categories: dict[str, list[dict[str, Any]]], claimed: set[Path]
+    ) -> None:
+        """Expose only provenance-backed SteamZero outputs as related cleanup sets."""
+        derived_root = self.root / ".steamzero" / "derived"
+        if derived_root.is_symlink() or not derived_root.is_dir():
+            return
+        try:
+            manifests = sorted(
+                (
+                    path
+                    for path in derived_root.rglob("*")
+                    if path.is_file()
+                    and not path.is_symlink()
+                    and (
+                        path.name == DERIVED_MANIFEST
+                        or path.name.endswith(".steamzero-derived.json")
+                    )
+                ),
+                key=lambda item: item.as_posix().casefold(),
+            )
+        except OSError:
+            return
+        for manifest_path in manifests:
+            if manifest_path.is_symlink():
+                continue
+            metadata = read_derived_manifest(manifest_path, self.root)
+            if metadata is None:
+                continue
+            artifact = metadata["artifactPath"]
+            if artifact in claimed or artifact.is_symlink():
+                continue
+            owner_paths = metadata["ownerPaths"]
+            relative_manifest = manifest_path.relative_to(self.root).as_posix()
+            item = self._item(
+                artifact,
+                self.root,
+                category="derived",
+                relation="generated-from",
+                owner_path=owner_paths[0] if len(owner_paths) == 1 else None,
+                owner_paths=owner_paths,
+            )
+            item["operation"] = metadata["operation"]
+            item["platformId"] = metadata["platformId"]
+            item["managementPaths"] = [
+                artifact.relative_to(self.root).as_posix(),
+                relative_manifest,
+            ]
+            categories["derived"].append(item)
+            claimed.add(artifact)
+            claimed.add(manifest_path)
+
+        # Artefatos históricos sem sidecar continuam visíveis para limpeza, mas
+        # nunca recebem um vínculo de origem inferido pelo nome da pasta.
+        try:
+            platform_entries = sorted(derived_root.iterdir(), key=lambda item: item.name.casefold())
+        except OSError:
+            return
+        for platform_entry in platform_entries:
+            if platform_entry.is_symlink():
+                continue
+            try:
+                candidates = (
+                    sorted(platform_entry.iterdir(), key=lambda item: item.name.casefold())
+                    if platform_entry.is_dir()
+                    else [platform_entry]
+                )
+            except OSError:
+                continue
+            for artifact in candidates:
+                if artifact.is_symlink() or artifact in claimed:
+                    continue
+                relative = artifact.relative_to(self.root).as_posix()
+                item = self._item(
+                    artifact,
+                    self.root,
+                    category="derived",
+                    relation="generated-unlinked",
+                )
+                item["operation"] = "unverified-legacy"
+                item["platformId"] = platform_entry.name
+                item["managementPaths"] = [relative]
+                categories["derived"].append(item)
+                claimed.add(artifact)
 
     def plan_rename(self, games: Sequence[Mapping[str, Any]]) -> transaction.Plan:
         """Plane nomes canônicos para qualquer plataforma, sem tocar diretórios.
@@ -256,22 +377,54 @@ class LibraryRootManager:
                 raise SteamZeroError(
                     "E-CONTENT-UNSAFE-PATH", detail=f"arquivo não aprovado pelo preview: {key}"
                 )
-            source = fs.resolve_within(self.root, self.root / relative)
-            if source.is_symlink() or not source.is_file():
-                raise SteamZeroError("E-TX-STALE-PLAN", detail=f"arquivo mudou: {key}")
-            digest = fs.hash_file(source, algo="sha256")
-            moves[source] = quarantine / relative
-            entries.append(
-                {
-                    "relativePath": key,
-                    "quarantinePath": relative.as_posix(),
-                    "category": item.get("category", "related"),
-                    "relation": item.get("relation"),
-                    "ownerPath": item.get("ownerPath"),
-                    "sha256": digest,
-                    "sizeBytes": source.stat().st_size,
-                }
-            )
+            raw_targets = item.get("managementPaths")
+            target_paths = raw_targets if isinstance(raw_targets, list) else [key]
+            source_paths: set[Path] = set()
+            for raw_target in target_paths:
+                if not isinstance(raw_target, str):
+                    raise SteamZeroError("E-API-SCHEMA", detail="caminho gerenciado inválido")
+                target_relative = Path(fs.validate_relative_entry(raw_target))
+                if self._has_symlink_component(self.root, target_relative):
+                    raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="conteúdo contém symlink")
+                source = fs.resolve_within(self.root, self.root / target_relative)
+                if source.is_symlink() or not source.exists():
+                    raise SteamZeroError("E-TX-STALE-PLAN", detail=f"conteúdo mudou: {raw_target}")
+                if source.is_file():
+                    source_paths.add(source)
+                elif source.is_dir() and item.get("category") in {"derived", "related"}:
+                    for child in source.rglob("*"):
+                        if child.is_symlink():
+                            raise SteamZeroError(
+                                "E-CONTENT-UNSAFE-PATH", detail="derivado contém symlink"
+                            )
+                        if child.is_file():
+                            source_paths.add(fs.resolve_within(self.root, child))
+                else:
+                    raise SteamZeroError(
+                        "E-TX-STALE-PLAN", detail=f"conteúdo não é arquivo gerenciado: {raw_target}"
+                    )
+            if not source_paths:
+                raise SteamZeroError("E-TX-STALE-PLAN", detail=f"conteúdo vazio: {key}")
+            for source in sorted(source_paths, key=lambda entry: entry.as_posix().casefold()):
+                relative_source = source.relative_to(self.root)
+                digest = fs.hash_file(source, algo="sha256")
+                target = quarantine / relative_source
+                if source in moves:
+                    continue
+                moves[source] = target
+                entries.append(
+                    {
+                        "relativePath": relative_source.as_posix(),
+                        "quarantinePath": relative_source.as_posix(),
+                        "category": item.get("category", "related"),
+                        "relation": item.get("relation"),
+                        "ownerPath": item.get("ownerPath"),
+                        "ownerPaths": item.get("ownerPaths", []),
+                        "selectedSet": key,
+                        "sha256": digest,
+                        "sizeBytes": source.stat().st_size,
+                    }
+                )
         if not moves:
             raise SteamZeroError("E-API-SCHEMA", detail="selecione conteúdo não-base no preview")
         manifest = {

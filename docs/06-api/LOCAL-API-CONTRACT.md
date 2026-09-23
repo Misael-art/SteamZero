@@ -105,3 +105,23 @@ entra em shutdown; uma conexão de stream não aceita comandos adicionais.
 Desde o schema de estado v13, `playtime.list` e `playtime.show` expõem o read
 model `feat-playtime-v1`. Ambos são read-only, limitados e não transportam PID,
 comando, ambiente ou paths internos.
+
+### Gestão da biblioteca e proveniência de derivados
+
+A auditoria `library.root.audit` relaciona conteúdo interno de diretórios de jogo,
+updates/DLCs e artefatos derivados às respectivas ROMs de origem. Os fluxos de
+extração de archive, multidisco e pacote Vita gravam `.steamzero-derived.json` junto ao
+conjunto gerado (ou como sidecar de um arquivo isolado), com `schemaVersion`, marcador de ownership,
+`artifactPath`, `ownerPaths`, `operation`, `platformId` e título. Os caminhos são
+relativos à raiz da biblioteca; manifests inválidos, symlinks e caminhos fora da
+raiz não são aceitos como prova de vínculo.
+
+A UI mostra origem e relação antes da confirmação. Selecionar uma pasta derivada
+inclui seus arquivos regulares e manifesto na quarentena; arquivos originais não
+fazem parte do plano. A operação é transacional e reversível. Pastas que ficam
+vazias após mover seus arquivos podem permanecer no diretório de derivados; o
+fluxo não as apaga fora do journal. Conteúdo legado sem manifesto permanece
+visível como derivado sem vínculo (`generated-unlinked`), nunca ganha uma origem
+presumida e ainda exige revisão do usuário. A orquestração registra o sidecar
+após a publicação atômica do conjunto; se esse registro falhar, o resultado
+explicita `unlinked` e a auditoria continua mostrando o artefato para revisão.

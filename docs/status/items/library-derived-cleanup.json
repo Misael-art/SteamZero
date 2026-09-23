@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-LIBRARY-DERIVED-CLEANUP",
+  "title": "Gestão universal de pastas e artefatos derivados da biblioteca",
+  "domain": "platform",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "docs/06-api/LOCAL-API-CONTRACT.md",
+    "docs/KNOWN-GAPS.md",
+    "src/steamzero/domain/library_derived.py",
+    "src/steamzero/domain/library_management.py",
+    "src/steamzero/adapters/discovery/vita_packaging.py",
+    "src/steamzero/adapters/emulation.py",
+    "src/steamzero/ui/qml/Main.qml",
+    "tests/unit/test_library_management.py",
+    "tests/unit/test_vita_packaging.py",
+    "tests/unit/test_emulation_controller.py",
+    "tests/integration/test_qml_harness_regressions.py",
+    "docs/status/workstreams/library-governed-management-2026-09-22.json"
+  ],
+  "scopeDigest": "4f63aa913603efad6fce8bd9e984832251e8ceef9bc807de18eed7d7cfc8ea58",
+  "dependsOn": [
+    "SZ-LIBRARY-CANONICAL"
+  ],
+  "knownGaps": [
+    "GAP-G51"
+  ],
+  "acceptanceCriteria": [
+    "A auditoria universal apresenta arquivos e pastas internas com o ownerPath em todas as plataformas reconhecidas.",
+    "Extração de archive, materialização multidisco e pacote Vita vinculam automaticamente o derivado às ROMs de origem com manifesto versionado e caminhos relativos.",
+    "Saídas legadas sem proveniência permanecem selecionáveis como generated-unlinked, sem associação inferida pelo nome.",
+    "A UI mostra categoria, caminho e origem/relação antes da confirmação de quarentena.",
+    "Quarentena de uma pasta derivada move seu conteúdo e manifesto em operação reversível, sem incluir os arquivos de origem.",
+    "Manifesto inválido, symlink, caminho fora de .steamzero/derived ou tentativa de apontar uma ROM original como derivado não é aceito.",
+    "A política comum é provada com fixtures de múltiplas plataformas e sem alterar ROMs durante auditoria ou preview."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_emulation_controller.py",
+      "command": "148 testes passaram no controlador completo; regressão geral do fluxo de emulação verde.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_emulation_controller.py",
+      "command": "2 testes focados passaram executando os handlers reais de archive.materialize e multidisc.materialize com o materializador isolado; audit confirmou ownerPaths e preservação das fontes.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_library_management.py",
+      "command": "38 testes focados passaram; inclui pastas internas, auditoria/manifests válidos e inválidos, artefato legado, quarentena reversível e pacote Vita com origem preservada.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "src/steamzero/domain/library_derived.py",
+      "command": "Lint/formatação completos, mypy em 297 módulos, fronteiras sem violações e independência de runtime passaram.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tests/integration/test_ui_control_matrix.py",
+      "command": "A suíte integral encerrou com SIGTERM durante tests/integration/test_ui_control_matrix.py/ui_control_probe.qml antes do resumo. STATUS-CHECK continua falhando em 24 scopeDigest preexistentes fora desta frente; não foram recalculados sem revalidar os respectivos escopos. COVERAGE foi regenerado.",
+      "result": "partial"
+    }
+  ],
+  "activeWorkstreams": [
+    "WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT"
+  ],
+  "nextAction": "Fechar gates remotos e resolver a lentidão da matriz visual em trabalho próprio; atualizar os scopeDigest stale sem atravessar workstreams ativos; depois promover a integração, instalar por release governada já autorizada e validar no host auditoria, vínculo e rollback em plataformas reais.",
+  "updatedAt": "2026-09-22",
+  "notes": "O sidecar multidisco é gravado pela camada de orquestração depois da publicação, sem editar o materializador/teste exclusivos do workstream de multidisco. Se falhar, o job reporta relationship=unlinked e a auditoria exibe o derivado legado para seleção explícita. Pastas vazias podem permanecer após quarentena; nenhum rmdir fora do journal é executado."
+}

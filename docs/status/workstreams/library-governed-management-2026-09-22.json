@@ -2,20 +2,25 @@
   "schemaVersion": 1,
   "kind": "workstream",
   "id": "WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT",
-  "item": "SZ-LIBRARY-CANONICAL",
-  "branch": "codex/canonical-main-2026-09-21",
-  "baseRef": "08fc957d",
+  "item": "SZ-LIBRARY-DERIVED-CLEANUP",
+  "branch": "codex/library-derived-cleanup-universal-2026-09-22",
+  "baseRef": "14995dfb",
   "owner": "codex-continuation",
   "state": "active",
   "exclusivePaths": [
+    "src/steamzero/domain/library_derived.py",
     "src/steamzero/domain/library_management.py",
+    "docs/06-api/LOCAL-API-CONTRACT.md",
+    "docs/KNOWN-GAPS.md",
+    "src/steamzero/adapters/discovery/vita_packaging.py",
     "src/steamzero/ui/qml/Main.qml",
     "src/steamzero/adapters/desktop_contracts.py",
     "tests/unit/test_library_management.py",
+    "tests/unit/test_vita_packaging.py",
     "tests/integration/test_qml_harness_regressions.py",
     "tests/integration/test_qml_handheld_offscreen.py",
     "tests/integration/test_qml_visual_capture.py",
-    "docs/status/items/library-canonical.json",
+    "docs/status/items/library-derived-cleanup.json",
     "docs/status/workstreams/library-governed-management-2026-09-22.json"
   ],
   "sharedPaths": [
@@ -27,6 +32,6 @@
     "docs/WORKLOG.md",
     "docs/status/COVERAGE.md"
   ],
-  "nextAction": "Bundle 2.0.0rc1-468c67f371b8 preparada/verificada no run push 35766898272; o release_host agora faz preflight não mutante de autorização em 90s antes de install/rollback. Promover esta correção com CI verde e, após autorização interativa do pkexec (HARD-EXTERNAL-SUBITEM: credencial/elevação ausente), retomar o mesmo cycle governado; então executar scan Vita e certificar rename universal, empacotamento, audit→preview→quarantine→verify/rollback no host sem mover a origem.",
+  "nextAction": "Gates direcionados/static verdes; o sidecar multidisco é anexado na orquestração, sem alterar o materializador exclusivo de outro workstream. A suíte integral foi interrompida por SIGTERM durante ui_control_probe.qml, cuja lentidão preexistente consta no WORKLOG; continuar com análise segura em lotes e usar CI para fechar o gate completo.",
   "updatedAt": "2026-09-22"
 }
