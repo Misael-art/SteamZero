@@ -27,6 +27,7 @@ import json
 import os
 import shutil
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -45,6 +46,10 @@ FAILING_VERDICTS = ("silent-no-op", "unrouted", "blocked-silent", "unnamed-actio
 #: gerado seria guardar a saida em vez da fonte, e o `uiContracts` repetido em
 #: cada arquivo responde por quase tudo isso.
 SCENARIO_DIR = ROOT / "build" / "ui-scenarios"
+
+# Cenários independentes rodam em processos Qt isolados. Limitar workers evita
+# transformar aceleração do gate em pressão sem limite sobre memória/CPU do CI.
+SCENARIO_PROBE_WORKERS = 4
 
 #: Ordem de precedencia do veredito ao fundir cenarios. O pior resultado vence:
 #: um botao que funciona num cenario e morre em outro continua sendo defeito.
@@ -107,6 +112,12 @@ def run_probe(timeout: int = 400, scenario: Path | None = None) -> dict[str, Any
     )
     output = completed.stdout + "\n" + (completed.stderr or "")
 
+    if completed.returncode != 0:
+        raise SystemExit(
+            f"a sonda QML terminou com return code {completed.returncode}; "
+            f"stderr:\n{(completed.stderr or '')[-2000:]}"
+        )
+
     controls: list[dict[str, Any]] = []
     context: dict[str, Any] = {}
     sections: list[dict[str, Any]] = []
@@ -140,6 +151,25 @@ def run_probe(timeout: int = 400, scenario: Path | None = None) -> dict[str, Any
         "controls": controls,
         "returncode": completed.returncode,
     }
+
+
+def _run_scenario(path: Path) -> dict[str, Any]:
+    """Roda uma fixture em seu próprio processo Qt."""
+    return run_probe(scenario=path)
+
+
+def _run_scenarios(paths: list[Path]) -> list[dict[str, Any]]:
+    """Sonda cenários isoladamente, com concorrência limitada e ordem estável.
+
+    ``Executor.map`` entrega resultados na ordem de entrada mesmo quando um
+    cenário termina antes dos anteriores; ``run_probe`` possui seu próprio
+    timeout e ``subprocess.run`` recolhe/encerra o filho antes de propagar erro.
+    """
+    if len(paths) < 2:
+        return [_run_scenario(path) for path in paths]
+    workers = min(SCENARIO_PROBE_WORKERS, len(paths))
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="qml-scenario") as pool:
+        return list(pool.map(_run_scenario, paths))
 
 
 def merge_scenarios(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -178,7 +208,7 @@ def build_inventory(scenarios: bool = True, only: list[str] | None = None) -> di
         by_name = {path.stem: path for path in paths}
         paths = [by_name[name] for name in only]
     if paths:
-        runs = [run_probe(scenario=path) for path in paths]
+        runs = _run_scenarios(paths)
         controls = merge_scenarios(runs)
         probe = {"context": {**runs[0]["context"], "scenarioCount": len(runs)}}
     else:

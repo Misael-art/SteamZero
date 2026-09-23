@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-UI-CONTROL-MATRIX-RUNTIME",
+  "title": "Execução confiável e eficiente da matriz viva de controles QML",
+  "domain": "ui",
+  "implementation": "complete",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "ready",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "tools/ui_control_inventory.py",
+    "tests/unit/test_ui_control_inventory.py",
+    "tests/integration/test_ui_control_matrix.py",
+    "docs/status/workstreams/ui-control-matrix-runtime-2026-09-22.json"
+  ],
+  "scopeDigest": "8ac9ac84663f760dacafc810b285025af15da706acdf4185d3253d46f82e2006",
+  "dependsOn": ["SZ-TEST-STATE-ISOLATION", "SZ-UI-DESKTOP-AUDIT"],
+  "knownGaps": ["GAP-UI-CONTROL-MATRIX-RUNTIME"],
+  "acceptanceCriteria": [
+    "A matriz continua executando todos os cenários declarados e mesclando por identidade estável com o pior veredito prevalecendo.",
+    "A execução de subprocessos é limitada e determinística; timeout, falha de carga, retorno não zero ou ausência de registros reprovam a sonda.",
+    "A concorrência não compartilha arquivos mutáveis nem reduz a cobertura dos controles por cenário.",
+    "O gate focado demonstra resultado funcional idêntico ao baseline serial e conclui dentro de orçamento operacional documentado.",
+    "Processos QML filhos são aguardados ou terminados pelo subprocess wrapper e nenhum fica órfão ao final do teste."
+  ],
+  "evidence": [
+    {
+      "kind": "diagnostic",
+      "reference": "tools/ui_control_inventory.py",
+      "command": "Baseline serial antes da mudança: build_inventory() percorreu 15 cenários em 585,82 s; 339 controles, 12 superfícies, 0 falhas.",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_control_matrix.py",
+      "command": "21 passaram em 160,25 s; matriz completa, 15 cenários, state home inalterado.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tools/ui_control_inventory.py",
+      "command": "build_inventory() paralelo em 152,57 s: mesmos 15 cenários, 339 controles, 12 superfícies, verdicts handled-locally=268, blocked-explained=15, decorative=31, not-probed=7, routed=18; 0 falhas. 3,84× mais rápido que o baseline serial.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_ui_control_inventory.py",
+      "command": "3 passaram: concorrência limitada e ordem de saída estável; retorno QML não zero e timeout não se tornam inventário parcial.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tests/unit/test_project_status.py",
+      "command": "Suíte integral: 6.291 passed, 47 skipped, 1 failed em 1.693,23 s. Única falha: catálogo rejeita 24 scopeDigest obsoletos preexistentes; state home antes/depois idêntico.",
+      "result": "partial"
+    }
+  ],
+  "activeWorkstreams": [],
+  "nextAction": "Implementação e matriz QML completas nesta branch; antes de promover, resolver/revalidar os 24 scopeDigest do catálogo que mantêm o gate global vermelho e repetir CI.",
+  "updatedAt": "2026-09-22",
+  "notes": "Frente de infraestrutura de teste independente de validação física; não afrouxar cobertura para reduzir duração. A matriz ficou funcionalmente idêntica ao baseline e 3,84× mais rápida. O gate integral executou tudo, mas status-check falha apenas por 24 digests de itens preexistentes; não foram recalculados sem a revalidação de cada escopo."
+}

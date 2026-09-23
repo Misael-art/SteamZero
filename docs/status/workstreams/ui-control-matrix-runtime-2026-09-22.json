@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-UI-CONTROL-MATRIX-RUNTIME",
+  "item": "SZ-UI-CONTROL-MATRIX-RUNTIME",
+  "branch": "codex/library-derived-cleanup-universal-2026-09-22",
+  "baseRef": "448e2754",
+  "owner": "codex-continuation",
+  "state": "closed",
+  "exclusivePaths": [
+    "tools/ui_control_inventory.py",
+    "tests/unit/test_ui_control_inventory.py",
+    "tests/integration/test_ui_control_matrix.py",
+    "docs/status/items/ui-control-matrix-runtime.json",
+    "docs/status/workstreams/ui-control-matrix-runtime-2026-09-22.json"
+  ],
+  "sharedPaths": [
+    "docs/status/COVERAGE.md",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Fechado no software: baseline serial e matriz paralela têm saída funcional idêntica, com redução 3,84×; unit, visual matrix, Ruff, format, mypy, boundaries e independence verdes. A suíte integral teve 6.291 pass/47 skip e uma falha exclusiva dos 24 scopeDigest globais antigos. Não promover até a governança revalidar esses escopos.",
+  "updatedAt": "2026-09-22"
+}
