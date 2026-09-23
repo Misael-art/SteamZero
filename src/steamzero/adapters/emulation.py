@@ -130,6 +130,7 @@ from steamzero.domain.library import (
     PlatformRomScanner,
     system_for_path,
 )
+from steamzero.domain.library_derived import write_derived_manifest
 from steamzero.domain.library_management import LibraryRootManager
 from steamzero.domain.media_pipeline import MediaPipeline
 from steamzero.domain.platform_composer import EmulatorFacts
@@ -7073,6 +7074,41 @@ class EmulationController:
         ctx.set_progress("done", current=1, total=1, unit="directories")
         return {"status": "audited", "auditPreview": audit}
 
+    @staticmethod
+    def _attach_derived_relationship(
+        result: dict[str, Any],
+        *,
+        library_root: Path,
+        artifact_path: Path,
+        owner_paths: Sequence[Path],
+        operation: str,
+        platform_id: str,
+        title: str,
+    ) -> None:
+        try:
+            manifest_path = write_derived_manifest(
+                library_root,
+                artifact_path,
+                owner_paths,
+                operation=operation,
+                platform_id=platform_id,
+                title=title,
+            )
+        except (OSError, SteamZeroError, ValueError) as exc:
+            result["relationship"] = {"status": "unlinked", "reason": str(exc)}
+        else:
+            resolved_root = library_root.resolve(strict=False)
+            result["relationship"] = {
+                "status": "linked",
+                "manifest": manifest_path.resolve(strict=False)
+                .relative_to(resolved_root)
+                .as_posix(),
+                "ownerPaths": [
+                    path.resolve(strict=False).relative_to(resolved_root).as_posix()
+                    for path in owner_paths
+                ],
+            }
+
     def _multidisc_materialize_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
         request = MaterializationRequest.from_mapping(job.params)
         ctx.set_progress("inspect", current=0, total=1, unit="sets")
@@ -7087,6 +7123,17 @@ class EmulationController:
                 current_item=item,
             ),
         )
+        descriptor_path = result.get("descriptor")
+        if isinstance(descriptor_path, str):
+            self._attach_derived_relationship(
+                result,
+                library_root=request.library_root,
+                artifact_path=Path(descriptor_path).parent,
+                owner_paths=request.source_paths,
+                operation="multidisc.materialize",
+                platform_id=request.platform_id,
+                title=request.title,
+            )
         # A materialização muda o filesystem e, portanto, invalida a visão
         # canônica. Sem esta segunda etapa o usuário recebia "concluído", mas
         # o M3U recém-publicado só aparecia depois de uma varredura manual — e
@@ -7127,6 +7174,17 @@ class EmulationController:
                 current_item=item,
             ),
         )
+        destination = result.get("destination")
+        if isinstance(destination, str):
+            self._attach_derived_relationship(
+                result,
+                library_root=request.library_root,
+                artifact_path=Path(destination),
+                owner_paths=(request.source_path,),
+                operation="archive.materialize",
+                platform_id=request.platform_id,
+                title=request.title,
+            )
         # O materializador publicou uma árvore nova; a mesma regra do fluxo
         # multidisco impede que o catálogo fique uma operação atrás.
         try:

@@ -12418,3 +12418,29 @@ O `make check` integral local foi iniciado, permaneceu ativo por cerca de 25
 minutos alternando os harnesses QML sem saída terminal e foi interrompido de
 forma controlada; portanto não é contado como verde local. Nenhum subprocesso
 QML ficou aberto após a interrupção.
+
+## 2026-09-22 — Proveniência universal de derivados e gestão relacionada
+
+Na branch `codex/library-derived-cleanup-universal-2026-09-22`, a auditoria da
+biblioteca passou a apresentar pastas internas e relacionar artefatos derivados
+às ROMs de origem por `.steamzero-derived.json`, com caminhos relativos e
+validação contra symlinks, manifests inválidos e saídas fora da área gerenciada.
+Extração de archives, materialização multidisco e empacotamento Vita criam o
+vínculo automaticamente; conteúdo antigo sem proveniência fica visível como
+`generated-unlinked`, sem associação presumida. A UI permite revisão e
+quarentena reversível do conjunto relacionado, incluindo arquivos e sidecar,
+sem mover a origem. Pastas vazias podem permanecer.
+
+Verificação nesta branch: 38 testes focados passaram; os 148 testes do
+controlador já haviam passado, incluindo testes dos handlers reais de archive e
+multidisco. Ruff e formatação (664 arquivos), mypy (297 módulos), fronteiras e
+independência de runtime passaram. `git diff --check` passou. A suíte integral
+foi interrompida por SIGTERM durante `ui_control_probe.qml`, antes do resumo;
+portanto não é considerada verde. `project_status.py check` segue bloqueado por
+24 `scopeDigest` obsoletos de itens fora desta frente; eles não foram alterados
+sem revalidar seus escopos. Os documentos gerados foram atualizados.
+
+Não houve publicação, preparação de release nem alteração do host nesta etapa.
+A integração permanece parcial até CI e verificação integral concluírem; falta
+validar comportamento físico do fluxo na release governada em todas as
+plataformas aplicáveis.

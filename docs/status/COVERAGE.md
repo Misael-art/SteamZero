@@ -10,7 +10,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-ADAPTERS | 129 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-ASSETS | 10 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-CORE | 44 | 1 | 1 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-DOMAIN | 122 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-DOMAIN | 123 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-INPUT-PROFILES | 22 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-JOBS | 3 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-PLATFORM-MANIFESTS | 65 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
@@ -67,6 +67,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-JOB-RECOVERY-DOCTOR | 10 | 3 | 1 | dev |  |
 | SZ-LIBRARY-CANONICAL | 166 | 15 | 9 | hw |  |
 | SZ-LIBRARY-CONVERSION-CONTRACT | 4 | 2 | 2 | unit |  |
+| SZ-LIBRARY-DERIVED-CLEANUP | 12 | 5 | 4 | unit |  |
 | SZ-MEDIA-AUDIT-PLATFORM-SCOPE | 4 | 4 | 2 | hw |  |
 | SZ-MEDIA-PIPELINE-PLATFORM-SCOPE | 3 | 7 | 5 | hw |  |
 | SZ-MEDIA-PROVIDER-PLATFORM-FILTER | 10 | 2 | 2 | unit |  |
@@ -97,4 +98,4 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-UI-PACKAGED-ICONS | 57 | 4 | 2 | unit |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 
-Arquivos em `src/`: **615**. Sob agregador apenas, sem item de capacidade: **270** (43%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
+Arquivos em `src/`: **616**. Sob agregador apenas, sem item de capacidade: **269** (43%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.

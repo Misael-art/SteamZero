@@ -10,6 +10,7 @@ import time
 import zipfile
 from collections.abc import Sequence
 from pathlib import Path
+from types import SimpleNamespace
 
 import jsonschema.exceptions
 import pytest
@@ -21,6 +22,7 @@ from steamzero.adapters.ps5_runtime import Ps5RuntimeReadiness
 from steamzero.api.contracts import validate
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
+from steamzero.domain.library_management import LibraryRootManager
 from steamzero.ports import CheatCandidate, CheatIdentity, ModCandidate, ModIdentity
 
 
@@ -1897,6 +1899,87 @@ def test_library_root_audit_requires_explicit_selection_and_quarantine_rolls_bac
     assert rolled_back["status"] == "rolled-back"
     assert unknown.read_bytes() == b"keep-until-approved"
     assert not (quarantine / "manifest.json").exists()
+
+
+@pytest.mark.parametrize(
+    ("operation", "platform_id", "title", "owner_count"),
+    [
+        ("archive.materialize", "playstation-4", "Game", 1),
+        ("multidisc.materialize", "amiga", "Set", 2),
+    ],
+)
+def test_materialization_jobs_link_outputs_to_every_source(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    operation: str,
+    platform_id: str,
+    title: str,
+    owner_count: int,
+) -> None:
+    root = tmp_path / platform_id
+    owners = [root / platform_id / f"source-{index}.zip" for index in range(owner_count)]
+    for owner in owners:
+        owner.parent.mkdir(parents=True, exist_ok=True)
+        owner.write_bytes(b"original")
+    artifact = root / ".steamzero" / "derived" / platform_id / title.lower()
+    artifact.mkdir(parents=True)
+    (artifact / "output.bin").write_bytes(b"generated")
+    controller = _controller(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        controller,
+        "_scan_library_now",
+        lambda _ctx: {"games": 1, "filesFound": 2, "errors": []},
+    )
+    context = SimpleNamespace(safepoint=lambda: None, set_progress=lambda *_a, **_k: None)
+    if operation == "archive.materialize":
+        params = {
+            "platformId": platform_id,
+            "systemId": "ps4",
+            "title": title,
+            "sourcePath": str(owners[0]),
+            "libraryRoot": str(root),
+            "manifest": {"media": {"containerPolicy": "extract"}},
+        }
+        monkeypatch.setattr(
+            emulation.ArchiveMaterializer,
+            "run",
+            lambda _self, _request, **_kwargs: {
+                "status": "materialized",
+                "destination": str(artifact),
+            },
+        )
+        result = controller._archive_materialize_job_handler(
+            SimpleNamespace(params=params), context
+        )
+    else:
+        params = {
+            "platformId": platform_id,
+            "systemId": "amiga1200",
+            "title": title,
+            "sourcePaths": [str(owner) for owner in owners],
+            "libraryRoot": str(root),
+            "manifest": {},
+        }
+        (artifact / "set.m3u").write_text("managed\n", encoding="utf-8")
+        monkeypatch.setattr(
+            emulation.MultiDiscMaterializer,
+            "run",
+            lambda _self, _request, **_kwargs: {
+                "status": "materialized",
+                "descriptor": str(artifact / "set.m3u"),
+            },
+        )
+        result = controller._multidisc_materialize_job_handler(
+            SimpleNamespace(params=params), context
+        )
+
+    assert result["relationship"]["status"] == "linked"
+    audit = LibraryRootManager(root).audit()
+    related = next(
+        item for item in audit["categories"]["derived"] if item["operation"] == operation
+    )
+    assert related["ownerPaths"] == [owner.relative_to(root).as_posix() for owner in owners]
+    assert all(owner.is_file() for owner in owners)
 
 
 def test_library_root_audit_can_run_asynchronous_with_progress(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
