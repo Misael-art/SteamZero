@@ -25,7 +25,7 @@ snapshot restaurável, console de recuperação e rollback verificado.
 | Steam Input | F-CT-01/03, SZ-CT-01..11 | parcial | layouts próprios, apply real, hot-swap, conflitos e glyphs |
 | Frontends Steam | F-FE-01..02, SZ-FE-01..02/08 | parcial | shortcuts.vdf/SRM idempotentes e launcher genérico |
 | Game Mode UI e QAM | F-UI-01/03/04, SZ-UI-01/02/04/06/09..14/16 | parcial | superfície Game Mode, QAM fino e focus graph certificado |
-| Watchdogs e suporte | SZ-OP-06..07 | pendente | healthchecks, recovery e bundle anonimizado revisável |
+| Watchdogs e suporte | SZ-OP-06..07 | parcial (bundle `verified-dev`) | healthchecks, recovery e bundle anonimizado revisável |
 | Hardware | SZ-QA-10..11 | read-only | matriz LCD/OLED/dock/suspend/storage/input/TDP por release |
 
 ## Ordem obrigatória

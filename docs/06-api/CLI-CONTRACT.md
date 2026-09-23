@@ -50,7 +50,7 @@ steamzero desktop reset --plan-id P_SAFE --confirm TOKEN
 steamzero desktop recover · steamzero desktop ui
 steamzero jobs list|pause|resume|cancel <jobId>
 steamzero state export --out state.json · steamzero backup create --full
-steamzero support bundle --preview
+steamzero support bundle --preview · steamzero support bundle --out F --confirm TOKEN
 ```
 
 (Espelha a gramática consagrada do `pz emulation library scan/plan/apply/verify/rollback` — evidência: `linux/pz` usage 96-100.)
@@ -76,3 +76,7 @@ steamzero support bundle --preview
 9. `session environment` é estritamente read-only e observa DMI/painel, sessão gráfica,
    energia, rede, conectores DRM e volumes montados por UUID. Fonte ausente degrada o
    campo correspondente; nunca dispara mount, KScreen, systemctl ou ação privilegiada.
+10. `support bundle --preview` é read-only e devolve o bundle anonimizado integral
+   (`$STATE`, `$HOME`, `$USER`) com `sha256` e `confirmToken`. A gravação exige
+   `--out` + `--confirm`; o bundle é remontado e recusado (`E-TX-CONFIRM-REQUIRED`)
+   se diferir do revisado. Nenhum envio automático (N7).

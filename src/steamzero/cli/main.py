@@ -59,6 +59,7 @@ Domínios (Fase 1):
   desktop recover        restaura snapshot de operação interrompida
   desktop keyboard       abre o primeiro teclado virtual funcional
   desktop ui             abre a central Qt/QML opcional
+  support bundle         --preview mostra bundle anonimizado; --out F --confirm T grava
 
 Flags globais:
   --json                 emite envelope v2 (stdout puro)
@@ -109,6 +110,20 @@ def _cmd_state_export(args: list[str], correlation_id: str) -> tuple[dict[str, A
     else:
         data = export
     env = build_envelope("state", "export", status="ok", data=data, correlation_id=correlation_id)
+    return env, EXIT_OK
+
+
+def _cmd_support_bundle(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    from pathlib import Path
+
+    from steamzero.diagnostics import support_bundle
+
+    out_path = _flag_value(args, "--out")
+    if out_path is None or "--preview" in args:
+        data = support_bundle.preview()
+    else:
+        data = support_bundle.write(Path(out_path), _required_flag(args, "--confirm"))
+    env = build_envelope("support", "bundle", status="ok", data=data, correlation_id=correlation_id)
     return env, EXIT_OK
 
 
@@ -529,6 +544,7 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("desktop", "recover"): _cmd_desktop_recover,
     ("desktop", "keyboard"): _cmd_desktop_keyboard,
     ("desktop", "ui"): _cmd_desktop_ui,
+    ("support", "bundle"): _cmd_support_bundle,
 }
 
 

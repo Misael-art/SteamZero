@@ -1201,3 +1201,20 @@ InputPlumber (decisão adiada) e o estado será `degraded` com causa registrada.
 
 **Gates:** 580 passed, Ruff, mypy estrito, fronteiras, independência e
 `qmllint` verdes.
+
+## 2026-09-22 — Sessão 32: support bundle anonimizado e revisável (SZ-OP-07)
+
+**Baseline:** 580 passed, gates verdes em `176da9a`.
+
+**Implementado:** `steamzero support bundle --preview` (read-only; doctor + versões +
+plataforma, anonimizado com `$STATE`/`$HOME`/`$USER`, `sha256` + `confirmToken`) e
+gravação com `--out F --confirm T`, que remonta o bundle e recusa com
+`E-TX-CONFIRM-REQUIRED` se o conteúdo diferir do revisado. Sem envio automático (N7).
+Módulo `src/steamzero/diagnostics/support_bundle.py`; testes em
+`tests/integration/test_support_bundle.py`.
+
+**Estado:** `verified-dev`. SZ-OP-06 (watchdogs/healthchecks com recovery) continua
+pendente. Sem build de release nem instalação no host nesta sessão (sem autorização
+explícita; `tools/release_host.py` não existe no repositório — HARD-EXTERNAL-SUBITEM).
+
+**Gates:** 585 passed, cobertura 85.34%, Ruff, mypy estrito, fronteiras e independência verdes.
