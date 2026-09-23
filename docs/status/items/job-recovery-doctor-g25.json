@@ -21,8 +21,10 @@
     "tests/unit/test_doctor.py",
     "tests/unit/test_service_core.py"
   ],
-  "scopeDigest": "28ba753652d3ed9c4a3dd6f6d40ba40e8444c02017a953c68d2c4ad8c73061d5",
-  "dependsOn": ["SZ-TEST-STATE-ISOLATION"],
+  "scopeDigest": "f04d50971ec1346867c96a09ba39660e99182e69ad59b753189826b36745b54f",
+  "dependsOn": [
+    "SZ-TEST-STATE-ISOLATION"
+  ],
   "knownGaps": [],
   "acceptanceCriteria": [
     "O bootstrap chama recovery de jobs e operações uma vez, em modo best-effort, sem impedir o daemon de subir.",
@@ -49,10 +51,18 @@
       "reference": "docs/09-operations/evidence/2026-09-22-system-diagnostics-guidance/README.md",
       "command": "/usr/local/bin/steamzero doctor --json (release ativa 2.0.0rc1-13c933c30ace)",
       "result": "partial"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_service_core.py",
+      "command": "Revalidacao de digest apos watchdog systemd (WS-2026-09-OP-WATCHDOG editou service/core.py e tools/install_host.py): run_tests_isolated.py tests/unit/test_service_core.py tests/unit/test_service_methods.py tests/unit/test_release_host.py tests/integration/test_host_installer.py tests/integration/test_jobs.py tests/unit/test_doctor.py -q (200 passed, 2026-09-23)",
+      "result": "passed"
     }
   ],
   "nextAction": "HARD-EXTERNAL-SUBITEM: rechecagem read-only observou staleJobs=0, mas nenhum ciclo governado de recovery/convergência é atribuível a esta sessão; preservar degraded e não executar restart ou cleanup no host.",
-  "activeWorkstreams": ["WS-2026-09-JOB-RECOVERY-G25"],
+  "activeWorkstreams": [
+    "WS-2026-09-JOB-RECOVERY-G25"
+  ],
   "updatedAt": "2026-09-21",
   "notes": "O software de G25 está integrado e verificado em ambiente isolado. A rechecagem somente leitura de 2026-09-22 observou staleJobs=0, pendingOperations=0 e nenhum órfão; como nenhum restart/convergência governado foi executado ou atribuído a esta sessão, a operação não é promovida e o host permanece fora da prova física completa. Nenhum arquivo ou serviço do host foi alterado."
 }

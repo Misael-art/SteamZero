@@ -33,7 +33,7 @@
     "docs/09-operations/evidence/2026-08-25-degraded-detail",
     "docs/09-operations/evidence/2026-08-25-melonds-smoke-install-fisico"
   ],
-  "scopeDigest": "c48312e9e3fa715f4db07093e40ef921aa0f2c277b067752282afd0479276f5b",
+  "scopeDigest": "e7f77be36031d0bc0acc947f712aa1d9f5e22e3ca1f4814457fd5c1c2a178c05",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -151,6 +151,12 @@
       "kind": "diagnostic",
       "reference": "src/steamzero/adapters/manifests/flycast.adapter.json",
       "command": "Digest derivado pela troca de icones (a5245cdb), NAO por mudanca de comportamento: em flycast e melonds mudou so presentation.iconAsset (../assets/dreamcast.svg -> ../assets/flycast.png) e os hashes correspondentes em component-lock.json. Nenhum campo de ciclo de vida, runtime, permissao ou operacao longa foi tocado. Revalidacao de escopo; as operacoes longas deste item NAO foram reexecutadas nesta integracao.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_service_core.py",
+      "command": "Revalidacao de digest apos watchdog systemd (WS-2026-09-OP-WATCHDOG editou service/core.py e tools/install_host.py): run_tests_isolated.py tests/unit/test_service_core.py tests/unit/test_service_methods.py tests/unit/test_release_host.py tests/integration/test_host_installer.py tests/integration/test_jobs.py tests/unit/test_doctor.py -q (200 passed, 2026-09-23)",
       "result": "passed"
     }
   ],

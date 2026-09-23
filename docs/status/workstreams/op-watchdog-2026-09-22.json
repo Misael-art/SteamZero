@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "item": "SZ-OP-WATCHDOG",
+  "id": "WS-2026-09-OP-WATCHDOG",
+  "branch": "codex/op-watchdog-2026-09-22",
+  "baseRef": "5e2e8194",
+  "owner": "claude-op-watchdog",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/service/watchdog.py",
+    "tests/unit/test_watchdog.py",
+    "docs/status/items/op-watchdog.json"
+  ],
+  "sharedPaths": [
+    "src/steamzero/service/core.py",
+    "tools/install_host.py",
+    "tests/integration/test_host_installer.py",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Publicar release governada e observar no host systemctl --user show steamzero-core (Type=notify, WatchdogUSec, NRestarts) com o daemon ativo.",
+  "updatedAt": "2026-09-22"
+}
