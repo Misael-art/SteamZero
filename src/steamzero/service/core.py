@@ -23,6 +23,7 @@ from steamzero import CONTRACT_VERSION, __version__
 from steamzero.api.envelope import build_envelope
 from steamzero.core import fs, ids, paths
 from steamzero.core.errors import SteamZeroError, build_error
+from steamzero.service import watchdog
 from steamzero.service.methods import METHODS, InvalidParams, capabilities
 from steamzero.service.reconciler import SessionEnvironmentReconciler
 
@@ -244,6 +245,19 @@ def serve(*, systemd: bool = False) -> int:
     )
     reconcile_thread.start()
 
+    watchdog_thread: threading.Thread | None = None
+    interval = watchdog.watchdog_interval()
+    if interval is not None:
+        watchdog_thread = threading.Thread(
+            target=watchdog.run,
+            args=(reconcile_stop, [reconcile_thread.is_alive]),
+            kwargs={"interval": interval},
+            name="steamzero-watchdog",
+            daemon=True,
+        )
+        watchdog_thread.start()
+    watchdog.notify("READY=1")
+
     def stop(_signum: int, _frame: FrameType | None) -> None:
         # shutdown precisa ocorrer fora da thread serve_forever.
         import threading
@@ -255,8 +269,11 @@ def serve(*, systemd: bool = False) -> int:
     try:
         server.serve_forever(poll_interval=0.25)
     finally:
+        watchdog.notify("STOPPING=1")
         reconcile_stop.set()
         reconcile_thread.join(timeout=6.0)
+        if watchdog_thread is not None:
+            watchdog_thread.join(timeout=1.0)
         signal.signal(signal.SIGTERM, previous_term)
         signal.signal(signal.SIGINT, previous_int)
         server.server_close()

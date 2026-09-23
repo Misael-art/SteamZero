@@ -1218,3 +1218,15 @@ pendente. Sem build de release nem instalação no host nesta sessão (sem autor
 explícita; `tools/release_host.py` não existe no repositório — HARD-EXTERNAL-SUBITEM).
 
 **Gates:** 585 passed, cobertura 85.34%, Ruff, mypy estrito, fronteiras e independência verdes.
+
+### Sessão 32 (cont.) — watchdog systemd do daemon (SZ-OP-06)
+
+`steamzero.service.watchdog` implementa sd_notify sem dependências: `READY=1` ao
+subir, `WATCHDOG=1` a cada `WATCHDOG_USEC/2` somente enquanto o reconciliador está
+vivo, `STOPPING=1` no shutdown. A unit gerada por `tools/install_host.py` passa a
+`Type=notify`, `NotifyAccess=main`, `WatchdogSec=30`, `Restart=on-failure`,
+`RestartSec=2` com `StartLimitIntervalSec=120`/`StartLimitBurst=5`.
+
+**Pendente (HARD-EXTERNAL-SUBITEM):** instalação governada e observação física de
+`systemctl --user status steamzero-core` com o watchdog ativo; exige release e
+autorização do operador. **Gates:** 590 passed, 85.37%, todos verdes.

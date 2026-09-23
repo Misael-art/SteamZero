@@ -229,6 +229,10 @@ def test_activation_publishes_and_removes_user_units_by_release_capability(
     assert str(layout.current / "venv" / "bin" / "steamzero-core") in (
         layout.user_service.read_text()
     )
+    service_unit = layout.user_service.read_text()
+    assert "Type=notify" in service_unit
+    assert "WatchdogSec=30" in service_unit
+    assert "Restart=on-failure" in service_unit
     assert "Name=SteamZero Game Mode" in layout.gamemode_session.read_text()
     assert "phasezero" not in layout.gamemode_session.read_text().casefold()
     assert layout.gamemode_command.readlink() == (
