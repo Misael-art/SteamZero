@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-OP-WATCHDOG",
+  "title": "Watchdog systemd do daemon user-scoped (SZ-OP-06)",
+  "domain": "distribution",
+  "implementation": "complete",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/service/watchdog.py",
+    "tests/unit/test_watchdog.py"
+  ],
+  "scopeDigest": "9d5c475fa23381f58dd55d18a280088ee7500a90f42f7e157d0f9218c0c307f8",
+  "dependsOn": [],
+  "knownGaps": ["GAP-OP-WATCHDOG-HUNG-PROBE", "GAP-OP-WATCHDOG-HOST-OBSERVATION"],
+  "acceptanceCriteria": [
+    "O daemon envia READY=1 ao subir e STOPPING=1 no shutdown via NOTIFY_SOCKET, sem dependência externa.",
+    "WATCHDOG=1 é enviado a cada WATCHDOG_USEC/2 somente enquanto o reconciliador está vivo; com a thread morta o ping cessa e o systemd reinicia o serviço.",
+    "Sem NOTIFY_SOCKET/WATCHDOG_USEC (execução manual ou teste) o daemon funciona como antes.",
+    "A unit gerada pelo instalador declara Type=notify, NotifyAccess=main, WatchdogSec=30, Restart=on-failure e limite de reinícios em [Unit]."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_watchdog.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_watchdog.py tests/integration/test_host_installer.py tests/unit/test_service_core.py -q (87 passed)",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Publicar release governada e observar no host systemctl --user show steamzero-core (Type=notify, WatchdogUSec=30s, NRestarts) com o daemon ativo.",
+  "activeWorkstreams": ["WS-2026-09-OP-WATCHDOG"],
+  "updatedAt": "2026-09-22",
+  "notes": "Liveness = thread do reconciliador viva; ele captura as próprias exceções e só sai por stop. Um probe travado (sample bloqueado) NÃO é detectado: GAP-OP-WATCHDOG-HUNG-PROBE exige heartbeat de progresso no reconciliador. core.py e install_host.py são caminhos compartilhados; o workstream G25 que reservava core.py já foi mergeado em main e só aguarda evidência de host."
+}

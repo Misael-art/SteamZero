@@ -26,7 +26,7 @@
     "tools/release_host.py",
     "docs/09-operations/evidence/2026-08-26-host-update-preflight"
   ],
-  "scopeDigest": "f09aaa28fa4ca55b735fa06df370b2cf1bb9ea5d7df7e29fbc6842d696850126",
+  "scopeDigest": "d8d61a001ba24b73bbb5f6b9ff5c0031da976828d4a3ce86c5301afe40f8505f",
   "dependsOn": [],
   "knownGaps": [
     "GAP-HOST-UPDATE-VM-CYCLE"
@@ -114,6 +114,12 @@
       "kind": "hardware",
       "reference": "docs/09-operations/evidence/2026-08-26-host-update-preflight",
       "command": "2026-08-27, secao 6. CAMINHO DE SUCESSO com autorizacao explicita do operador: release_host.py update --to origin/main no commit 3b296a949316 (CI verde, 8 jobs, run 33053047178). PRESERVACAO DE BANCO PROVADA NA FORMA FORTE: state.db sha256 03a52f5e488b7d5b861d42dad046ea748aa9ba640878e64013e2305b349c8d5c IDENTICO antes e depois, 2494464 bytes, 37 tabelas, 9639 linhas, integrity_check ok — enquanto a release ativa mudou de 2.0.0rc1-720928250e1a para 2.0.0rc1-3b296a949316. JOURNAL em phase=committed com deploymentHealthy=True; doctor confirma recovery.pending 0 nao-terminais e service.generation na release ativada. ROLLBACK DISPONIVEL DEPOIS da ativacao: as quatro releases coexistem em /opt/steamzero/releases, incluindo a anterior. Verificado no codigo antes de prosseguir que deploymentHealthy=false e physicalCertification=false no --plan NAO sao avisos (o primeiro so vira true apos commit, release_host.py:2044). NAO PROVADO: quarentena de candidata invalida durante a ativacao, que exigiria fabricar uma release deliberadamente quebrada.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_service_core.py",
+      "command": "Revalidacao de digest apos watchdog systemd (WS-2026-09-OP-WATCHDOG editou service/core.py e tools/install_host.py): run_tests_isolated.py tests/unit/test_service_core.py tests/unit/test_service_methods.py tests/unit/test_release_host.py tests/integration/test_host_installer.py tests/integration/test_jobs.py tests/unit/test_doctor.py -q (200 passed, 2026-09-23)",
       "result": "passed"
     }
   ],

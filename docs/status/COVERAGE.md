@@ -16,8 +16,8 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-PLATFORM-MANIFESTS | 65 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-PRIVILEGED | 7 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SCHEMAS | 53 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-SERVICE-API | 11 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-TESTS | 494 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-SERVICE-API | 12 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-TESTS | 495 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TOOLS | 41 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AURA-ASSET-SANITIZACAO | 2 | 1 | 1 | unit |  |
 | SZ-AURA-CINEMA-COMPLETION | 98 | 29 | 17 | hw |  |
@@ -45,7 +45,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-CONTROLS-INPUT-PROFILES | 16 | 8 | 4 | hw |  |
 | SZ-EMULATION-ENHANCEMENTS | 24 | 9 | 9 | unit |  |
 | SZ-EMULATION-HIGH-END-RUNTIME-READINESS | 5 | 4 | 2 | unit |  |
-| SZ-EMULATION-LONG-OPERATIONS | 28 | 18 | 12 | hw |  |
+| SZ-EMULATION-LONG-OPERATIONS | 28 | 19 | 13 | hw |  |
 | SZ-EMULATION-M10 | 6 | 3 | 2 | vm |  |
 | SZ-EMULATION-PLATFORM-CONTEXT | 3 | 4 | 2 | unit |  |
 | SZ-EMULATION-PLATFORM-SCOPE | 2 | 5 | 4 | unit |  |
@@ -63,8 +63,8 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-FRONTEND-STEAM-SHORTCUTS | 2 | 1 | 1 | unit |  |
 | SZ-GAMEMODE-READINESS | 9 | 2 | 1 | hw |  |
 | SZ-GOVERNANCE-STATUS | 22 | 9 | 8 | dev |  |
-| SZ-HOST-UPDATE-TRANSACTIONAL | 18 | 12 | 9 | hw |  |
-| SZ-JOB-RECOVERY-DOCTOR | 10 | 3 | 1 | dev |  |
+| SZ-HOST-UPDATE-TRANSACTIONAL | 18 | 13 | 10 | hw |  |
+| SZ-JOB-RECOVERY-DOCTOR | 10 | 4 | 2 | dev |  |
 | SZ-LIBRARY-CANONICAL | 169 | 21 | 12 | hw |  |
 | SZ-LIBRARY-CONVERSION-CONTRACT | 4 | 2 | 2 | unit |  |
 | SZ-MEDIA-AUDIT-PLATFORM-SCOPE | 4 | 4 | 2 | hw |  |
@@ -75,6 +75,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-MULTIDISC-MATERIALIZATION-INGESTION | 4 | 4 | 3 | unit |  |
 | SZ-MULTIDISC-SESSION-DISC-IDENTITY | 9 | 3 | 3 | hw |  |
 | SZ-ONLINE-P2P | 37 | 2 | 1 | none |  |
+| SZ-OP-WATCHDOG | 2 | 1 | 1 | unit |  |
 | SZ-PLATFORM-CORE-PER-SYSTEM | 78 | 4 | 3 | unit |  |
 | SZ-PLATFORM-PS4-CATALOG | 6 | 3 | 3 | unit |  |
 | SZ-PLATFORM-PS4-PHYSICAL-INSTALL | 8 | 3 | 2 | dev |  |
@@ -97,4 +98,4 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-UI-PACKAGED-ICONS | 57 | 4 | 2 | unit |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 
-Arquivos em `src/`: **615**. Sob agregador apenas, sem item de capacidade: **269** (43%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
+Arquivos em `src/`: **617**. Sob agregador apenas, sem item de capacidade: **269** (43%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.

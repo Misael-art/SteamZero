@@ -653,10 +653,16 @@ Description=SteamZero user control plane
 Documentation=https://github.com/Misael-art/SteamZero
 Requires=steamzero-core.socket
 After=steamzero-core.socket
+StartLimitIntervalSec=120
+StartLimitBurst=5
 
 [Service]
-Type=simple
+Type=notify
+NotifyAccess=main
 ExecStart={executable} --systemd
+WatchdogSec=30
+Restart=on-failure
+RestartSec=2
 Environment=PYTHONNOUSERSITE=1
 Environment=STEAMZERO_CLASS=daemon
 UMask=0077
