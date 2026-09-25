@@ -12490,3 +12490,39 @@ plataformas, com preview/consentimento/quarentena/rollback, sem apagar originais
 
 Central fechada; nenhum emulador, tema ou frontend ficou aberto. Nenhuma ROM
 original foi renomeada, movida ou apagada.
+## 2026-09-24 — status-check volta a ser um gate (WS-2026-09-STATUS-CHECK-CI)
+
+Revisão do trabalho preservado fora de `main`, por capacidade. O instrumento que
+decidiu esta entrega não foi contagem de commits: foi comparar, arquivo por
+arquivo, o blob do ramo com o blob atual do `main` e com o blob do merge-base.
+Um arquivo que difere porque o `main` mudou depois dele é derivação; um arquivo
+que o `main` nunca tocou desde a bifurcação é trabalho perdido. Dos 335 ramos
+locais, exatamente 6 ainda tinham código nessa segunda categoria, e este é um
+deles.
+
+O gate `make status-check` não era executado por workflow nenhum. `grep -rn
+"project_status" .github/workflows/*.yml` não retornava nada: o gate só existia
+quando um agente o rodava na máquina dele, na sessão seguinte a quem quebrou o
+catálogo. Foi assim que o histórico registrou o PR #133 — dez checks verdes e
+`main` reprovando no gate, com dois PNGs de evidência fora de todo `scopePaths`.
+
+Adicionar o step sozinho teria produzido um gate verde para sempre, e isso foi
+medido, não inferido: `_changed_paths` compara `HEAD^..HEAD`; no `fetch-depth`
+default do `actions/checkout` o `HEAD^` não existe, o `git diff` falha, o
+returncode era descartado em silêncio e o conjunto de alterados ficava vazio.
+Clone `--depth 1` de um repositório com três commits aprova qualquer conteúdo;
+o mesmo commit com histórico reprovava. Daí as duas metades irem juntas:
+`check_history_depth` reprova o clone raso sem pai em vez de imitar sucesso, e o
+checkout do job `quality` passa a usar `fetch-depth: 2`.
+
+Armadilha deixada por escrito para quem vier depois: enquanto o arquivo está
+*untracked* o check o ignora. Rodar o gate imediatamente antes do commit dá verde
+e o vermelho só aparece depois — gate verde pré-commit não prova nada sobre
+arquivo novo. É exatamente por isso que ele precisa rodar no CI, sobre o que já
+foi commitado.
+
+Limites honestos: a prova é local, em clones que reproduzem a configuração do CI
+(`--depth 1` reprova, `--depth 2` aprova, commit órfão reprova com "arquivo
+alterado sem item de status responsavel"). O gate remoto ainda não foi observado
+reprovando um PR real — isso ficou como `nextAction` do item. Sem ação de host,
+sem release, sem instalação; a frente é de CI e de governança.

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-STATUS-CHECK-CI",
+  "item": "SZ-GOVERNANCE-STATUS",
+  "branch": "codex/status-check-ci-2026-09-24",
+  "baseRef": "5e2e8194",
+  "owner": "codex-integration-revisao-2026-09-24",
+  "state": "active",
+  "exclusivePaths": [
+    "tools/project_status.py",
+    "tests/unit/test_project_status.py",
+    ".github/workflows/ci.yml",
+    "docs/status/items/governance-status.json",
+    "docs/status/workstreams/status-check-ci-2026-09-24.json"
+  ],
+  "sharedPaths": ["docs/WORKLOG.md", "docs/STATUS.md", "docs/ACTIVE-WORK.md", "docs/status/COVERAGE.md"],
+  "nextAction": "Aguardar o CI deste PR confirmar que o step 'Estado do projeto' executa e aprova; depois fechar o workstream ao integrar.",
+  "updatedAt": "2026-09-24"
+}
