@@ -183,16 +183,22 @@ def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
 
 
 def check_history_depth(root: Path = ROOT) -> list[str]:
-    """Reprova quando o commit anterior não está no clone.
+    """Reprova um clone raso que perdeu o commit pai.
 
-    ``_changed_paths`` compara ``HEAD^..HEAD``. Num clone raso esse comando
-    falha, o erro era descartado em silêncio e o conjunto de arquivos alterados
-    ficava vazio: o gate passava SEMPRE, com qualquer conteúdo. Foi medido no
-    próprio commit 99be1ee8, que reprova com histórico completo e passa num
-    ``git clone --depth 1`` do mesmo commit. Um gate que não consegue reprovar
-    precisa dizer isso em vez de imitar sucesso.
+    ``_changed_paths`` compara ``HEAD^..HEAD``. Num ``git clone --depth 1``
+    (o default do ``actions/checkout``) esse comando falha, o erro era
+    descartado em silêncio e o conjunto de arquivos alterados ficava vazio: o
+    gate passava SEMPRE, com qualquer conteúdo. Foi medido no commit 99be1ee8,
+    que reprova com histórico completo e passa num ``git clone --depth 1`` do
+    mesmo commit. Este guard cobre exatamente esse caso — shallow sem ``HEAD^``
+    — e anuncia a incapacidade de comparar em vez de imitar sucesso.
 
-    Repositório não raso com commit raiz é legítimo e não reprova.
+    Limites aceitos, onde o guard não reprova e a comparação de alterados
+    também fica vazia: (a) repositório NÃO raso cujo HEAD é o commit raiz —
+    bootstrap legítimo, sem pai a comparar; (b) caminho fora de qualquer
+    repositório git. Nenhum dos dois ocorre no checkout do CI, que usa
+    ``fetch-depth: 2`` e sempre tem pai. Ambos são fixados por teste para a
+    fronteira não se alargar em silêncio.
     """
     if _git(root, "rev-parse", "--is-shallow-repository").stdout.strip() != "true":
         return []

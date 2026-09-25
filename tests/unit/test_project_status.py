@@ -280,3 +280,40 @@ def test_history_depth_rejects_shallow_clone_without_parent(tmp_path) -> None:
     fundo = tmp_path / "fundo"
     _git(tmp_path, "clone", "--depth", "2", "--no-local", origin.as_uri(), str(fundo))
     assert project_status.check_history_depth(fundo) == []
+
+
+def test_history_depth_accepts_non_shallow_root_commit(tmp_path) -> None:
+    """Limite aceito: repositório não raso cujo HEAD é o commit raiz.
+
+    O guard cobre apenas shallow sem pai (o caso do checkout do CI). Num
+    repositório com um único commit ele não reprova, e a comparação de
+    arquivos alterados também fica vazia — não há HEAD^ a comparar. É o
+    estado de bootstrap de um projeto novo, legítimo e fora do caminho do CI;
+    o teste fixa essa fronteira para ela não se alargar em silêncio.
+    """
+    raiz = tmp_path / "raiz"
+    raiz.mkdir()
+    _git(raiz, "init")
+    _git(raiz, "config", "user.email", "test@example.com")
+    _git(raiz, "config", "user.name", "test")
+    (raiz / "novo.png").write_bytes(b"\x89PNG\r\n")
+    _git(raiz, "add", "-A")
+    _git(raiz, "commit", "-m", "commit raiz")
+
+    assert project_status.check_history_depth(raiz) == []
+    assert project_status._changed_paths(raiz) == set()
+
+
+def test_history_depth_silent_outside_git_repo(tmp_path) -> None:
+    """Limite aceito: caminho fora de qualquer repositório git não reprova.
+
+    ``rev-parse --is-shallow-repository`` falha fora de um repositório e o
+    guard devolve sem erro; ``_changed_paths`` igualmente fica vazio. O gate
+    roda sempre dentro de um checkout do CI, onde há repositório e pai.
+    """
+    sem_repo = tmp_path / "sem-repo"
+    sem_repo.mkdir()
+    (sem_repo / "arquivo.txt").write_text("x\n", encoding="utf-8")
+
+    assert project_status.check_history_depth(sem_repo) == []
+    assert project_status._changed_paths(sem_repo) == set()

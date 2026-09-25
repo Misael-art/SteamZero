@@ -12526,3 +12526,39 @@ Limites honestos: a prova é local, em clones que reproduzem a configuração do
 alterado sem item de status responsavel"). O gate remoto ainda não foi observado
 reprovando um PR real — isso ficou como `nextAction` do item. Sem ação de host,
 sem release, sem instalação; a frente é de CI e de governança.
+
+## 2026-09-25 — CI confirma o step; o guard é fail-closed só contra clone raso
+
+Fechamento da ressalva aberta na revisão deste mesmo lote (WS-2026-09-STATUS-CHECK-CI).
+
+Gate remoto obtido: o PR #234 rodou verde no SHA `75e23afd` (run `36120432437`,
+conclusão `success`, oito jobs). O step novo, `Estado do projeto`, passou nos três
+jobs da matriz `quality` (Python 3.11, 3.12 e 3.14), além de `Tipos estritos` e
+`Testes e cobertura`. A prova que antes era só local, em clones que reproduzem o
+CI, agora tem confirmação remota sobre o estado commitado.
+
+Ressalva acatada, e registrada como limite aceito — não como defeito. A frase do
+docstring dizia que `check_history_depth` reprova "quando o commit anterior não
+está no clone". Medido: isso é largo demais. O guard só reprova o clone **raso**
+sem `HEAD^`. Em dois outros casos sem pai ele fica mudo, e nesses casos a
+comparação de arquivos alterados também devolve vazio — o mesmo "imitar sucesso"
+que o guard veio eliminar:
+
+- repositório **não raso cujo HEAD é o commit raiz** (bootstrap de projeto novo):
+  `check_history_depth` → `[]` e `_changed_paths` → `set()`; um arquivo commitado
+  ali não é cobrado por item de status;
+- caminho **fora de qualquer repositório git**: as duas funções retornam sem erro.
+
+Nenhum dos dois alcança o checkout do CI, que usa `fetch-depth: 2` e sempre tem
+pai, então nenhum invalida o verde observado. Mas a proteção é específica, e foi
+escrita como específica: o docstring agora diz "reprova um clone raso que perdeu
+o commit pai" e enumera os dois limites. Dois testes novos fixam a fronteira para
+ela não se alargar em silêncio — `test_history_depth_accepts_non_shallow_root_commit`
+e `test_history_depth_silent_outside_git_repo`. O comportamento do guard não mudou:
+reprová-lo no commit raiz quebraria o bootstrap de um repositório novo e o uso em
+diretório sem git, sem ganho nenhum para o caminho que ele defende.
+
+`scopeDigest` do `SZ-GOVERNANCE-STATUS` renovado pela ferramenta (não a mão), após
+editar a docstring em `tools/project_status.py` e os dois testes — ambos dentro do
+`scopePaths` do item. Nenhuma linha anterior deste WORKLOG foi reescrita; o bloco
+é acréscimo. Sem ação de host, sem release, sem instalação.

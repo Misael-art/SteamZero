@@ -15,6 +15,6 @@
     "docs/status/workstreams/status-check-ci-2026-09-24.json"
   ],
   "sharedPaths": ["docs/WORKLOG.md", "docs/STATUS.md", "docs/ACTIVE-WORK.md", "docs/status/COVERAGE.md"],
-  "nextAction": "Aguardar o CI deste PR confirmar que o step 'Estado do projeto' executa e aprova; depois fechar o workstream ao integrar.",
-  "updatedAt": "2026-09-24"
+  "nextAction": "CI do PR #234 (run 36120432437) verde no SHA 75e23afd: o step 'Estado do projeto' passou nos tres jobs Python da matriz quality, mais tipos e testes. Resta integrar o PR no main e entao fechar o workstream.",
+  "updatedAt": "2026-09-25"
 }
