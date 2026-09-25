@@ -368,6 +368,12 @@
       "reference": "tools/ui_control_probe.qml",
       "command": "2026-09-25 WS-2026-09-HARNESS-STABILIZATION (SZ-UI-DESKTOP-AUDIT #21): corrida medida no portão do task-drawer — position >= 0.999 antecede o sinal opened, que chama refreshTasks() e muta o cenário depois de applyScenarioTaskState (task-error-retry fantasma: 122 vs 121 controles). Portão passou a exigir opened (adiado por Qt.callLater) e !taskLoading. Medido sob carga com 8 spinners: antes 5/5 cenários com fantasma (empty e ready-small-library), depois 0/5 com zero PROBE-FAIL; o cenário task-error mantém o botão real nos dois variantes. tests/integration/test_ui_control_identity.py reexecutado: 11 passed duas vezes.",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_handheld_layout_focus.qml",
+      "command": "2026-09-25 WS-2026-09-HARNESS-STABILIZATION (SZ-UI-DESKTOP-AUDIT #20): corrida medida em auditScrollEnd — contentY atribuído e lido por mapToItem no mesmo turno JS sob carga usava contentHeight antigo (463 vs 788 assentado), colapsava o scroll e deixava o último controle sob o rodapé (rc=74/EXIT=330 e rc=105/EXIT=361; falhava 3/5 e 1/3 sob carga). Harness ganhou barreira de assentamento por assinatura de geometria (duas leituras iguais consecutivas, orçamento de 60 ticks, exaustão reprova) e leitura adiada um passo. Depois: 0 falhas em ~12 runs com CHECKS=795 idêntico; teste de mutação (remover o scroll) prova que a asserção continua mordendo. Custo honesto: ocioso 5,5s→8,5s; sob carga 11–14s→17–21s direto, 12,2–14,0s via node pytest contra o timeout subprocess de 30s em tests/integration/test_qml_handheld_offscreen.py (arquivo de frente ATIVA alheia, não editado; folga observada registrada aqui).",
+      "result": "passed"
     }
   ],
   "nextAction": "Reprovar/fechar G48 com gesto físico na release 2.0.0rc1-504d10b14485: catálogo completo, foco inicial, Return/Enter/Space/clique, erro acionável e retorno. O harness QML continua evidência de contrato, não prova de usuário.",

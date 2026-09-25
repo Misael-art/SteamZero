@@ -19,6 +19,10 @@ Window {
     property int scopeCursor: 0
     property int areaCursor: 0
     property var drawerInvoker: null
+    property var pendingStep: null
+    property string lastGeometry: ""
+    property int settleTicks: 0
+    readonly property int settleBudgetTicks: 60
     readonly property var viewports: [
         {"width": 949, "height": 593},
         {"width": 1280, "height": 800}
@@ -39,6 +43,39 @@ Window {
             || item instanceof TextField
             || item instanceof TextArea
             || item instanceof Slider
+    }
+
+    // Layout e polish do Qt Quick são amarrados ao render loop, não a voltas do
+    // event loop. Um Timer de 20 ms pode disparar no meio de um relayout e ler
+    // altura de conteúdo antiga — medido na área 2 da Emulação: 463 contra 788
+    // depois de assentar, o que zerava o scroll pedido e empurrava o último
+    // controle para baixo do rodapé. A assinatura compara duas voltas
+    // consecutivas; assentada é a única hora em que ler geometria significa
+    // alguma coisa. Orçamento esgotado reprova em vez de esperar para sempre.
+    function geometrySignature(item, depth) {
+        if (!item || depth > 24 || !item.visible)
+            return ""
+        let signature = ""
+        if (isInteractive(item)) {
+            signature += "i;" + String(item.x) + ";" + String(item.y) + ";"
+                + String(item.width) + "x" + String(item.height) + ";"
+        }
+        if (item.contentHeight !== undefined) {
+            signature += "f;" + String(item.contentWidth) + "x"
+                + String(item.contentHeight) + ";y" + String(item.contentY) + ";"
+        }
+        const children = item.children || []
+        for (let index = 0; index < children.length; ++index)
+            signature += geometrySignature(children[index], depth + 1)
+        return signature
+    }
+
+    function geometrySettled() {
+        const signature = harness.geometrySignature(
+            gameplayPage.visible ? gameplayPage : emulationPage, 0)
+        const settled = signature === harness.lastGeometry
+        harness.lastGeometry = signature
+        return settled
     }
 
     function auditTargets(item, context) {
@@ -86,21 +123,30 @@ Window {
         return result
     }
 
-    function auditScrollEnd(scroll, context) {
+    function auditScrollEnd(scroll, context, then) {
         check(scroll && scroll.contentItem, context + ": área deve publicar Flickable")
-        if (!scroll || !scroll.contentItem)
+        if (!scroll || !scroll.contentItem) {
+            then()
             return
+        }
         const flickable = scroll.contentItem
         check(flickable.contentWidth <= scroll.availableWidth + 1,
               context + ": ScrollView não pode ter overflow horizontal")
         const last = deepestInteractive(flickable.contentItem, flickable, null)
-        if (!last)
+        if (!last) {
+            then()
             return
+        }
         flickable.contentY = Math.max(
             0, flickable.contentHeight - flickable.height)
-        const point = last.item.mapToItem(scroll, 0, 0)
-        check(point.y + last.item.height <= scroll.height + 0.5,
-              context + ": último controle deve subir integralmente acima do rodapé")
+        // Pedir o scroll e ler a posição no mesmo turno prova o valor antigo:
+        // o deslocamento só aparece na geometria depois do quadro seguinte.
+        harness.pendingStep = function() {
+            const point = last.item.mapToItem(scroll, 0, 0)
+            check(point.y + last.item.height <= scroll.height + 0.5,
+                  context + ": último controle deve subir integralmente acima do rodapé")
+            then()
+        }
     }
 
     function auditEmulationSelectors() {
@@ -124,7 +170,7 @@ Window {
               "seletor de plataforma deve manter alvo 48×48")
     }
 
-    function auditCurrentEmulationArea() {
+    function auditCurrentEmulationArea(then) {
         const context = "Emulação escopo " + scopeCursor + " área " + areaCursor
         check(emulationPage.scopeIndex === scopeCursor,
               context + ": escopo deve permanecer selecionado")
@@ -132,7 +178,7 @@ Window {
               context + ": área deve permanecer selecionada")
         auditTargets(emulationPage, context)
         auditHorizontalBounds(emulationPage, emulationPage, context)
-        auditScrollEnd(emulationPage.libraryListControl, context)
+        auditScrollEnd(emulationPage.libraryListControl, context, then)
     }
 
     function advanceEmulationArea() {
@@ -207,8 +253,10 @@ Window {
             emulationPage.gameDetailsControl,
             emulationPage.gameDetailsControl,
             "drawer de jogo")
-        auditScrollEnd(emulationPage.gamePanelScrollControl, "drawer de jogo")
-        emulationPage.closeGameDetails()
+        auditScrollEnd(emulationPage.gamePanelScrollControl, "drawer de jogo",
+                       function() {
+                           emulationPage.closeGameDetails()
+                       })
     }
 
     function auditDrawerFocusReturn() {
@@ -236,7 +284,7 @@ Window {
               "seletor de jogo Steam deve manter alvo 48×48")
     }
 
-    function auditCurrentGameplayArea() {
+    function auditCurrentGameplayArea(then) {
         const context = "Steam escopo " + scopeCursor + " área " + areaCursor
         check(gameplayPage.scopeIndex === scopeCursor,
               context + ": escopo deve permanecer selecionado")
@@ -244,20 +292,22 @@ Window {
               context + ": área deve permanecer selecionada")
         auditTargets(gameplayPage, context)
         auditHorizontalBounds(gameplayPage, gameplayPage, context)
-        auditScrollEnd(gameplayPage.gameplayScrollControl, context)
-        if (areaCursor === 0) {
-            check(gameplayPage.fpsControlRepeater.count === 3,
-                  "Steam deve manter as três opções de FPS")
-            for (let index = 0;
-                 index < gameplayPage.fpsControlRepeater.count; ++index) {
-                const control = gameplayPage.fpsControlRepeater.itemAt(index)
-                check(control && control.height >= 48,
-                      "opção de FPS deve ser visível e ter alvo 48×48")
+        auditScrollEnd(gameplayPage.gameplayScrollControl, context, function() {
+            if (areaCursor === 0) {
+                check(gameplayPage.fpsControlRepeater.count === 3,
+                      "Steam deve manter as três opções de FPS")
+                for (let index = 0;
+                     index < gameplayPage.fpsControlRepeater.count; ++index) {
+                    const control = gameplayPage.fpsControlRepeater.itemAt(index)
+                    check(control && control.height >= 48,
+                          "opção de FPS deve ser visível e ter alvo 48×48")
+                }
+            } else if (areaCursor === 3) {
+                check(gameplayPage.desktopModeControl.profileControlRepeater.count === 4,
+                      "Modo Desktop deve manter os quatro perfis revisáveis")
             }
-        } else if (areaCursor === 3) {
-            check(gameplayPage.desktopModeControl.profileControlRepeater.count === 4,
-                  "Modo Desktop deve manter os quatro perfis revisáveis")
-        }
+            then()
+        })
     }
 
     function advanceGameplayArea() {
@@ -311,8 +361,7 @@ Window {
             return
         }
         if (phase === 1) {
-            auditCurrentEmulationArea()
-            advanceEmulationArea()
+            auditCurrentEmulationArea(advanceEmulationArea)
             return
         }
         if (phase === 2) {
@@ -347,8 +396,7 @@ Window {
             return
         }
         if (phase === 6) {
-            auditCurrentGameplayArea()
-            advanceGameplayArea()
+            auditCurrentGameplayArea(advanceGameplayArea)
             return
         }
         if (phase === 8)
@@ -558,6 +606,25 @@ Window {
         interval: 20
         repeat: true
         running: true
-        onTriggered: harness.runPhase()
+        onTriggered: {
+            // Nenhuma leitura de geometria acontece enquanto a árvore muda. O
+            // passo adiado de auditScrollEnd também só roda assentado, e antes
+            // de a fase seguinte avançar o cursor.
+            if (!harness.geometrySettled()) {
+                harness.settleTicks += 1
+                if (harness.settleTicks < harness.settleBudgetTicks)
+                    return
+                harness.check(false,
+                              "geometria nunca assentou dentro do orçamento de quadros")
+            }
+            harness.settleTicks = 0
+            const step = harness.pendingStep
+            if (step) {
+                harness.pendingStep = null
+                step()
+                return
+            }
+            harness.runPhase()
+        }
     }
 }
