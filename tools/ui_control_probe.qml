@@ -33,6 +33,12 @@ Main {
     property var scenarioJobs: []
     property string scenarioTaskError: ""
 
+    // `position >= 0.999` não é o drawer aberto: é a animação quase no fim. O
+    // shell só chama refreshTasks() no sinal `opened`, que chega depois. Medido
+    // em carga: portão passado com position 0.99929 e taskLoading falso, e 15 ms
+    // depois o refresh mudava exatamente o estado que o coletor fotografou.
+    property bool taskDrawerOpened: false
+
     // Espera por condição, nunca por tempo arbitrário. Se a condição não
     // acontecer dentro do orçamento de quadros, a sonda REPROVA — aumentar o
     // orçamento para pintar de verde seria esconder o defeito que ela procura.
@@ -41,6 +47,20 @@ Main {
     property string _waitLabel: ""
     property int _waitFrames: 0
     readonly property int maxWaitFrames: 180
+
+    Connections {
+        target: window.responsiveTaskDrawer
+        ignoreUnknownSignals: true
+        // Adiado de propósito: quem conecta primeiro ao mesmo sinal não é
+        // garantido, e o handler do shell abre a requisição que altera o
+        // cenário. Um turno depois, refreshTasks() já rodou e taskLoading diz
+        // a verdade sobre o pedido em voo.
+        function onOpened() {
+            Qt.callLater(function() {
+                window.taskDrawerOpened = true
+            })
+        }
+    }
 
     function waitFor(label, condition, then) {
         _waitLabel = label
@@ -528,11 +548,13 @@ Main {
                             window.waitFor("drawer portátil fechado após inventário",
                                            function() { return responsiveDrawer.position <= 0.001 },
                                            function() {
+                                               window.taskDrawerOpened = false
                                                responsiveTaskDrawer.open()
                                                window.waitFor("drawer de tarefas aberto para inventário",
                                                               function() {
                                                                   return responsiveTaskDrawer.position
-                                                                      >= 0.999 && !window.taskLoading
+                                                                      >= 0.999 && window.taskDrawerOpened
+                                                                      && !window.taskLoading
                                                               },
                                                               function() {
                                                                   window.applyScenarioTaskState(
@@ -618,11 +640,14 @@ Main {
                 then()
                 return
             }
+            if (record.surface === "task-drawer")
+                window.taskDrawerOpened = false
             drawer.open()
             waitFor(record.surface + " aberto para ativação",
                     function() {
                         return drawer.position >= 0.999
-                            && (record.surface !== "task-drawer" || !window.taskLoading)
+                            && (record.surface !== "task-drawer"
+                                || (window.taskDrawerOpened && !window.taskLoading))
                     }, function() {
                         if (record.surface === "task-drawer")
                             window.applyScenarioTaskState(then)
