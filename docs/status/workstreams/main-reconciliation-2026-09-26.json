@@ -6,7 +6,7 @@
   "branch": "codex/main-worktree-reconciliation-2026-09-26",
   "baseRef": "ed097a1323d5b48c4d1334adffa00b86383303fd",
   "owner": "codex-main-reconciliation",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/adapters/managed_multidisc_projection.py",
     "tests/unit/test_managed_multidisc_projection.py",
@@ -27,6 +27,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Registrar a prova de instalação e UI real no PR; após CI verde, integrar o PR #237 e fechar o workstream com o SHA integrado.",
+  "nextAction": "Reconciliação seletiva encerrada em main 1ffafa648b3d4b0ac2691c11fd300b7e66d0c95e; lacunas físicas seguem nos itens de cobertura correspondentes.",
   "updatedAt": "2026-09-26"
 }

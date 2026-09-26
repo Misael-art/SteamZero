@@ -77,3 +77,25 @@ As decisões das sete frentes acima foram reconciliadas; as demais pontas não
 integradas permanecem preservadas nos refs locais e no bundle para revisão a
 partir do único checkout. Nenhum branch remoto foi apagado, nenhum push ou merge
 foi executado nesta limpeza.
+
+## Estado final — PR #237 integrado
+
+O PR #237 foi integrado em `main` pelo merge commit
+`1ffafa648b3d4b0ac2691c11fd300b7e66d0c95e`. O head documental
+`651022ab8ffeba8b00478166d13478f17fd9345c` passou nos oito checks remotos,
+incluindo QML; o checkpoint integral local registrou 6.294 aprovados e 47
+ignorados.
+
+A release candidata `2.0.0rc1-e2af2562ebba` foi instalada com rollback
+`2.0.0rc1-621a3389db32`, schema 22, dados preservados e boot sem alteração.
+Doctor, daemon, units, Game Mode, smoke QML e abertura da UI instalada passaram;
+a tela real está em
+`../2026-09-26-main-reconciliation-host-validation/02-desktop-ui.png`. A prova
+de produto no host permanece parcial: nenhum título estava publicado e o perfil
+Amiga não tinha seleção, então BIOS/multidisco não foram exercitados por launch.
+O item permanece partial/dev e os gaps físicos continuam abertos para trabalho
+próprio.
+
+O checkout central foi avançado para `main` em
+`1ffafa648b3d4b0ac2691c11fd300b7e66d0c95e`. Há uma única árvore de trabalho; os
+refs de recuperação, o bundle e as branches não revisadas continuam preservados.

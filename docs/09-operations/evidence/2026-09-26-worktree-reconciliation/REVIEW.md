@@ -75,3 +75,10 @@ Os sete worktrees fonte 006/029/038/045/050/054/063 foram preservados durante a
 reconciliação. As alterações locais, pontas dos worktrees e critérios de
 centralização estão registrados em `CENTRALIZATION.md`; nenhum conteúdo local
 foi usado como motivo para descartar commits sem cópia recuperável.
+
+## Atualização posterior — 2026-09-26
+
+O texto acima registra o checkpoint inicial da revisão. A centralização e a
+decisão final estão em [CENTRALIZATION.md](./CENTRALIZATION.md): os snapshots
+foram validados antes da remoção das árvores e a reconciliação seletiva entrou
+no `main` pelo PR #237, merge `1ffafa648b3d4b0ac2691c11fd300b7e66d0c95e`.

@@ -5,10 +5,10 @@
   "title": "Reconciliação seletiva de worktrees com a main",
   "domain": "governance",
   "implementation": "partial",
-  "integration": "feature-branch",
+  "integration": "integrated",
   "verification": "dev",
-  "operation": "unknown",
-  "distribution": "not-packaged",
+  "operation": "degraded",
+  "distribution": "installed",
   "scopePaths": [
     "src/steamzero/adapters/emulation.py",
     "src/steamzero/adapters/managed_multidisc_projection.py",
@@ -23,9 +23,10 @@
     "docs/09-operations/evidence/2026-09-26-main-reconciliation-host-validation/02-desktop-ui.png",
     "docs/09-operations/CI-AND-GATE-EFFICIENCY.md",
     "AGENTS.md",
-    "docs/status/workstreams/main-reconciliation-2026-09-26.json"
+    "docs/status/workstreams/main-reconciliation-2026-09-26.json",
+    "docs/WORKLOG.md"
   ],
-  "scopeDigest": "3a65800c233676c066d62d9ebedaede4b6721bc94b828442804ca45ab5484848",
+  "scopeDigest": "478d25d62707040763ca20b235e277319967634d5f1bcb85522728ebb1d8efe7",
   "dependsOn": [
     "SZ-LIBRARY-CANONICAL",
     "SZ-MULTIDISC-DESCRIPTOR-RECONCILIATION",
@@ -86,13 +87,17 @@
       "kind": "hardware",
       "reference": "docs/09-operations/evidence/2026-09-26-main-reconciliation-host-validation/README.md",
       "command": "Release candidata e2af2562 instalada via controlador; CI push 36233353596, convergência idempotente, doctor/schema/services/QML e UI real do host verificados. BIOS/multidisco seguem sem prova física: nenhum título publicado e perfil Amiga sem seleção.",
-      "result": "recorded"
+      "result": "partial"
+    },
+    {
+      "kind": "release",
+      "reference": "docs/09-operations/evidence/2026-09-26-worktree-reconciliation/CENTRALIZATION.md",
+      "command": "PR #237 integrado por merge commit 1ffafa648b3d4b0ac2691c11fd300b7e66d0c95e; CI final 36234924848 em 8/8 checks verdes.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Acompanhar o CI do PR #237 com evidência do host; integrar com gates verdes e registrar o SHA integrado no fechamento.",
-  "activeWorkstreams": [
-    "WS-2026-09-MAIN-WORKTREE-RECONCILIATION"
-  ],
+  "nextAction": "Tratar as lacunas físicas de BIOS/multidisco e a cobertura 3DS/Wii U em workstreams próprios; esta reconciliação seletiva está integrada.",
+  "activeWorkstreams": [],
   "updatedAt": "2026-09-26",
-  "notes": "Reconciliação iniciada a partir de origin/main ed097a13. Código 063 foi adaptado ao modelo multidisco atual e limitado a projeções cujos IDs, ordem, caminhos e hashes conferem; o manifesto Amiga continua declarando suporte M3U não comprovado e, portanto, não é promovido por este patch. 045/050/054 viraram plano consolidado versionado. Os worktrees foram centralizados após snapshots e bundle restaurável; branches não integrados continuam preservados, não integrados por arrasto. A release candidata e2af2562 passou smoke de instalação e UI real do host; lançamento BIOS/multidisco permanece sem prova física porque não há título publicado e o perfil Amiga está sem seleção. PR #237 aguarda CI do commit documental e integração."
+  "notes": "Reconciliação iniciada a partir de origin/main ed097a13 e integrada em 1ffafa648b3d4b0ac2691c11fd300b7e66d0c95e via PR #237. Código 063 foi adaptado ao modelo multidisco atual e limitado a projeções cujos IDs, ordem, caminhos e hashes conferem; o manifesto Amiga continua declarando suporte M3U não comprovado. 045/050/054 viraram plano consolidado versionado; 006 alinhou gates; capturas 029/038 não foram promovidas. Os worktrees foram centralizados após snapshots e bundle restaurável; conteúdo não revisado continua arquivado. A release e2af2562 foi instalada e a UI real abriu; a prova de launch BIOS/multidisco segue parcial porque o host não publicou título e não tem perfil Amiga selecionado. CI final 36234924848 passou 8/8; suíte integral local 6294 passed, 47 skipped."
 }

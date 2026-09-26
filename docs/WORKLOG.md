@@ -12601,3 +12601,28 @@ WORKLOG próprios ainda sem decisão de descarte; root e 001 também exigem guar
 artefatos/WORKLOG únicos. Os sete worktrees fonte selecionados seguem intactos
 até a promoção desta branch. Nenhum worktree ou branch foi podado. Sessão
 acrescentada ao fim; nenhuma entrada anterior foi alterada.
+
+## 2026-09-26 — fechamento integrado da reconciliação de worktrees
+
+O PR #237 entrou em `main` pelo merge commit
+`1ffafa648b3d4b0ac2691c11fd300b7e66d0c95e`. O head documental
+`651022ab8ffeba8b00478166d13478f17fd9345c` passou nos oito checks do CI
+`36234924848`; `make status-check` passou e a suíte integral local ficou em
+6.294 passed e 47 skipped.
+
+A release `2.0.0rc1-e2af2562ebba` foi instalada pelo controlador a partir do
+commit de código `e2af2562ebba3acb6ebd7ed27806ca785816e20c`, com rollback
+`2.0.0rc1-621a3389db32`, dados XDG preservados e boot inalterado. Convergência
+idempotente, Doctor/schema, socket, serviço, Game Mode, QML e abertura da UI
+real foram conferidos; a captura está em
+`docs/09-operations/evidence/2026-09-26-main-reconciliation-host-validation/02-desktop-ui.png`.
+O host não publicou títulos e o perfil Amiga permaneceu sem seleção, portanto
+não afirmo prova física do preflight de BIOS nem de multidisco. O Doctor segue
+degraded por nove backups órfãos, nove journals órfãos, entrada do Deck e
+permissão de leitura do boot. `physicalCertification=false`; nenhum jogo,
+conteúdo, perfil, boot ou dado pessoal foi alterado.
+
+As sete frentes foram reconciliadas seletivamente, as decisões visuais de 029 e
+038 ficaram documentadas, os snapshots e o bundle seguem como recuperação, e o
+checkout único foi avançado para `main` no SHA integrado. As lacunas físicas e
+de cobertura permanecem nos itens próprios; este workstream está fechado.
