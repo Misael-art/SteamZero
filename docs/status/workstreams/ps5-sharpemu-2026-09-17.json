@@ -6,7 +6,7 @@
   "branch": "codex/ps5-param-json-physical",
   "baseRef": "41180f3a9d5efe58649082e55e531250f14a8005",
   "owner": "codex-ps5-param-json-physical",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "docs/12-roadmap/SHARPEMU-PS5-DEPLOYMENT-PLAN.md",
     "docs/status/items/platform-ps5-catalog.json",
@@ -47,6 +47,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Publicar o fallback seguro param.json, executar gates e preparar a release governada. Depois, com SharpEmu instalado e os dumps PPSA02801/PPSA02929, fechar a prova física com lançamento real e captura PNG.",
-  "updatedAt": "2026-09-20"
+  "nextAction": "Publicar o fallback seguro param.json, executar gates e preparar a release governada. Depois, com SharpEmu instalado e os dumps PPSA02801/PPSA02929, fechar a prova física com lançamento real e captura PNG. RC-00 (2026-09-26): claim encerrado — tip deca5d14b34a (\"merge main: preserve PS5 evidence after AURA revalidation\") do branch codex/ps5-param-json-physical está integrado em origin/main (ancestralidade conferida em 3495c49d). Pendências de prova continuam registradas no item; fechar o claim não promove estágio.",
+  "updatedAt": "2026-09-26"
 }

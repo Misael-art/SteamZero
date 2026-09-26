@@ -6,13 +6,13 @@
   "branch": "codex/component-matriz-fisica",
   "baseRef": "edef46a",
   "owner": "codex-component-matriz",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "docs/09-operations/evidence/2026-08-27-matriz-componentes-fisica"
   ],
   "sharedPaths": [
     "docs/WORKLOG.md"
   ],
-  "nextAction": "HARD-EXTERNAL-SUBITEM: a matriz atual tem 33 installed, 2 missing (sunshine/vita3k) e xenia-canary degraded com detail explícito. Aguardar prova física autorizada de lançamento, acompanhamento de sessão e retorno ao Launcher; não mutar componentes neste ciclo.",
-  "updatedAt": "2026-09-22"
+  "nextAction": "HARD-EXTERNAL-SUBITEM: a matriz atual tem 33 installed, 2 missing (sunshine/vita3k) e xenia-canary degraded com detail explícito. Aguardar prova física autorizada de lançamento, acompanhamento de sessão e retorno ao Launcher; não mutar componentes neste ciclo. RC-00 (2026-09-26): claim encerrado — tip ff33a1e0ffbb (\"docs(components): matriz física dos 33 expõe o vazio do executor libretro\") do branch codex/component-matriz-fisica está integrado em origin/main (ancestralidade conferida em 3495c49d). Pendências de prova continuam registradas no item; fechar o claim não promove estágio.",
+  "updatedAt": "2026-09-26"
 }

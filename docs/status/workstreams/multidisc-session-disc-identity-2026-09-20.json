@@ -6,7 +6,7 @@
   "branch": "codex/aura-disc-swap-contract-2026-09-20",
   "baseRef": "87d75d90",
   "owner": "codex-aura-disc-swap-contract",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/domain/multidisc_artifacts.py",
     "src/steamzero/adapters/session_peripherals.py",
@@ -21,6 +21,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Promover a branch em release governada e repetir a captura pelo Launcher instalado; a prova do adapter com PUAE real foi concluída.",
-  "updatedAt": "2026-09-20"
+  "nextAction": "Promover a branch em release governada e repetir a captura pelo Launcher instalado; a prova do adapter com PUAE real foi concluída. RC-00 (2026-09-26): claim encerrado — tip 476333c507b1 (\"feat(aura): preserve stable disc identity in session swap\") do branch codex/aura-disc-swap-contract-2026-09-20 está integrado em origin/main (ancestralidade conferida em 3495c49d). Pendências de prova continuam registradas no item; fechar o claim não promove estágio.",
+  "updatedAt": "2026-09-26"
 }

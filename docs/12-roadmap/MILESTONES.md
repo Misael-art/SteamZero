@@ -1,5 +1,7 @@
 # MILESTONES — marcos verificáveis
 
+A execução atual segue [IMPLEMENTATION-ROADMAP](IMPLEMENTATION-ROADMAP.md), lotes RC-00–08. Os marcos abaixo são critérios de produto, não autorização para reimplementar fundações existentes. O estado atual está nos cinco eixos do catálogo.
+
 Complexidade em T-shirt (S/M/L/XL) — sem datas (dependem de Q6/Q10 e capacidade de equipe; estimar em sprints na aprovação).
 
 | # | Marco | Fase | Complexidade | Demonstração objetiva |
@@ -23,7 +25,7 @@ Complexidade em T-shirt (S/M/L/XL) — sem datas (dependem de Q6/Q10 e capacidad
 | M14 | Flatpak + canais + update/rollback da plataforma | 6 | L | RT-14 verde; downgrade demonstrado |
 | M15 | Release 1.0 stable com SBOM/assinaturas + docs de usuário | 6 | M | checklist §17 completo com hardware (Q6) |
 
-## Estado real dos marcos após a auditoria do host — 2026-09-22
+## Fotografia histórica — 2026-09-22 (não usar como estado atual)
 
 | Marco | Estado real | Bloqueio que governa a próxima ação |
 |---|---|---|
@@ -39,3 +41,21 @@ O progresso acima é um retrato de fechamento, não substitui os cinco eixos dos
 itens de status. Os relatórios detalhados permanecem apenas como evidência
 operacional; novas decisões devem atualizar o item canônico e o workstream
 correspondente.
+
+## Continuidade após auditoria — 2026-09-26
+
+| Marcos | Entregas atuais | Condição para promoção |
+|---|---|---|
+| M1–M3 | RC-02/03 e regressões transacionais | Preservar fundações existentes; comprovar cancelamento, crash/recovery e integridade nas novas jornadas |
+| M4–M6, M10-H | RC-04 e plano Steam Session | Prova no dispositivo/modo exigido, ownership e restauração; desktop genérico não certifica Deck |
+| M7–M9, M13 | RC-02/03/07 | Catálogo, BIOS, extração, multidisco, saves, sync e migração com origens preservadas |
+| M10–M11 | RC-04/05 | Runtime/frontend real, first-run e portal, launch/return e reexecução idempotente |
+| M12 | RC-01/03/05 | Controle→jogo→retorno na release atual; OSD pausado, fade, disco/save e foco; Cinema medido no alvo |
+| M12-E/M12-S | RC-06 | DoD separado de Engine e Studio, autoria física e round-trip reproduzível |
+| M14–M15 | RC-08 | Gates completos, distribuição, atualização/rollback e certificação física do escopo aprovado |
+
+O scan de 26/09 reconheceu 1.163 registros; a antiga descrição de bloqueio Vita
+não deve orientar uma nova implementação sem reprodução. A instalação observada
+é `2.0.0rc1-e2af2562ebba`, posterior à fotografia acima. Não há promoção global
+dos marcos neste ajuste documental. Evidência histórica de pausa/bezel/save-state
+continua válida para sua release; não certifica automaticamente o tip atual.

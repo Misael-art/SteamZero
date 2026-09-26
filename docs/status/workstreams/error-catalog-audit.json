@@ -6,7 +6,7 @@
   "branch": "codex/error-catalog-audit",
   "baseRef": "e93e8da",
   "owner": "codex-error-catalog-audit",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/i18n/messages_pt_br.py",
     "docs/06-api/ERROR-CATALOG.md",
@@ -19,6 +19,6 @@
     "docs/WORKLOG.md",
     "docs/status/items/aggregate-core.json"
   ],
-  "nextAction": "Auditar cada codigo do catalogo contra os sitios de emissao reais: a probableCause e a causa verdadeira e a manualAction resolve? Corrigir textos mentirosos com teste que prova.",
-  "updatedAt": "2026-08-27"
+  "nextAction": "Auditar cada codigo do catalogo contra os sitios de emissao reais: a probableCause e a causa verdadeira e a manualAction resolve? Corrigir textos mentirosos com teste que prova. RC-00 (2026-09-26): claim encerrado — tip 9562e44618e0 (\"docs(status): regenera COVERAGE apos o rebase\") do branch codex/error-catalog-audit está integrado em origin/main (ancestralidade conferida em 3495c49d). Pendências de prova continuam registradas no item; fechar o claim não promove estágio.",
+  "updatedAt": "2026-09-26"
 }

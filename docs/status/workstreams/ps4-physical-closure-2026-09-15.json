@@ -6,7 +6,7 @@
   "branch": "codex/ps4-aura-physical-closure-2026-09-14",
   "baseRef": "1f030b2d76da314ee40f9ecc6ff301cbf9e63148",
   "owner": "codex-ps4-aura-physical",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/adapters/manifests/shadps4.adapter.json",
     "src/steamzero/adapters/component-lock.json",
@@ -21,6 +21,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Release 2.0.0rc1-3c4b563242a9 instalada; repair/apply/verify do shadPS4 concluído e o Big Picture usa --appimage-extract-and-run -b sem integração gráfica do AppImageLauncher. O lançamento real e o retorno ao foco continuam bloqueados até existir conteúdo PS4 legítimo no host.",
-  "updatedAt": "2026-09-16"
+  "nextAction": "Release 2.0.0rc1-3c4b563242a9 instalada; repair/apply/verify do shadPS4 concluído e o Big Picture usa --appimage-extract-and-run -b sem integração gráfica do AppImageLauncher. O lançamento real e o retorno ao foco continuam bloqueados até existir conteúdo PS4 legítimo no host. RC-00 (2026-09-26): claim encerrado — tip 18b59cc3fa4e (\"fix(ps4): smoke test AppImage payloads without FUSE\") do branch codex/ps4-aura-physical-closure-2026-09-14 está integrado em origin/main (ancestralidade conferida em 3495c49d). Pendências de prova continuam registradas no item; fechar o claim não promove estágio.",
+  "updatedAt": "2026-09-26"
 }
