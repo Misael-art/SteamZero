@@ -1,8 +1,9 @@
 # Revisão e decisões de reconciliação — 2026-09-26
 
 Base verificada: `origin/main` em `ed097a1323d5b48c4d1334adffa00b86383303fd`.
-As árvores fonte continuam preservadas; nenhum worktree foi removido e esta
-branch ainda não foi publicada.
+Na revisão inicial, as árvores fonte continuavam preservadas e nenhum worktree
+havia sido removido. A passagem posterior de centralização está registrada em
+`CENTRALIZATION.md`.
 
 ## Checkpoint local
 
@@ -70,8 +71,7 @@ selecionado ficam marcados como candidatos à limpeza final, com estas barreiras
 | `060-steamzero-cohesive-roadmap` | 10 entradas, várias staged; inclui guideline, roadmap, evidência e `WORKLOG.md` próprios | Revisar/archive do patch staged e do WORKLOG; não é seguro apagar a árvore ainda |
 | `104-Port_Steam-theme-default-pr2` | 2 comentários `pragma: no cover`, sem mudança de comportamento | Guardar diff curto e confirmar árvore/refs antes da remoção final |
 
-Os sete worktrees fonte 006/029/038/045/050/054/063 devem ficar preservados até
-os gates da branch de reconciliação fecharem. Depois, comparar refs e garantir
-que esta branch e os relatórios de decisão contenham tudo que será retido. A
-limpeza final deve começar apenas com itens que não dependam de arquivo local
-único. Nenhuma ação destrutiva foi executada nesta etapa.
+Os sete worktrees fonte 006/029/038/045/050/054/063 foram preservados durante a
+reconciliação. As alterações locais, pontas dos worktrees e critérios de
+centralização estão registrados em `CENTRALIZATION.md`; nenhum conteúdo local
+foi usado como motivo para descartar commits sem cópia recuperável.
