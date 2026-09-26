@@ -34,7 +34,7 @@ CI, push ou merge foi executado.
   portada: é independente, afeta infraestrutura compartilhada e precisa de
   reprodução específica antes de alterar o runner.
 - **045/050/054 — planos de conteúdo:** requisitos foram consolidados em
-  `docs/12-roadmap/REAL-CONTENT-COVERAGE-PLAN.md`. Os três ramos compartilhavam
+  `docs/01-product/REAL-CONTENT-COVERAGE-PLAN.md`. Os três ramos compartilhavam
   o mesmo ponto de inserção do roadmap e apontavam para seis planos/prompts que
   não existem na main. As capacidades e formatos atuais foram conferidos nos
   manifestos; nenhum manifesto, snapshot de status ou promessa de launch foi

@@ -53,7 +53,7 @@ Critério: AC-LB-*, AC-BI-*, AC-SV-*; RT-06..11.
 
 O plano de cobertura por conteúdo real, com as lacunas atuais de Nintendo 3DS e
 Wii U e a separação entre classificação, preflight e prova física, está em
-[REAL-CONTENT-COVERAGE-PLAN](REAL-CONTENT-COVERAGE-PLAN.md). A fonte de estado e
+[REAL-CONTENT-COVERAGE-PLAN](../01-product/REAL-CONTENT-COVERAGE-PLAN.md). A fonte de estado e
 conclusão continua sendo o catálogo `docs/status/items/`.
 
 ## Fase 4 — Emuladores e frontends

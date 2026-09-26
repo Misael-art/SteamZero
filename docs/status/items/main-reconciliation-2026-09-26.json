@@ -15,7 +15,7 @@
     "tests/unit/test_managed_multidisc_projection.py",
     "tests/unit/test_amiga_bios_launch_preflight.py",
     "docs/12-roadmap/IMPLEMENTATION-ROADMAP.md",
-    "docs/12-roadmap/REAL-CONTENT-COVERAGE-PLAN.md",
+    "docs/01-product/REAL-CONTENT-COVERAGE-PLAN.md",
     "docs/09-operations/evidence/2026-09-26-worktree-reconciliation/REVIEW.md",
     "docs/09-operations/evidence/2026-09-26-worktree-reconciliation/CENTRALIZATION.md",
     "docs/09-operations/evidence/2026-09-26-worktree-reconciliation/INTEGRAL-TESTS.log",
@@ -23,7 +23,7 @@
     "AGENTS.md",
     "docs/status/workstreams/main-reconciliation-2026-09-26.json"
   ],
-  "scopeDigest": "5bbf7a13367b4b16271f99a53ba2e2683e40c1f2f8ad5afab40bdc8aa92c1b2d",
+  "scopeDigest": "fc958bb3ce67c272d9ef8aabfc707906ecb837adceed80b6b68e2058080ba46b",
   "dependsOn": [
     "SZ-LIBRARY-CANONICAL",
     "SZ-MULTIDISC-DESCRIPTOR-RECONCILIATION",
