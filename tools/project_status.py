@@ -178,14 +178,46 @@ def _paths_overlap(first: str, second: str) -> bool:
     return left == right or left.startswith(f"{right}/") or right.startswith(f"{left}/")
 
 
+def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(["git", *args], cwd=root, text=True, capture_output=True, check=False)
+
+
+def check_history_depth(root: Path = ROOT) -> list[str]:
+    """Reprova um clone raso que perdeu o commit pai.
+
+    ``_changed_paths`` compara ``HEAD^..HEAD``. Num ``git clone --depth 1``
+    (o default do ``actions/checkout``) esse comando falha, o erro era
+    descartado em silêncio e o conjunto de arquivos alterados ficava vazio: o
+    gate passava SEMPRE, com qualquer conteúdo. Foi medido no commit 99be1ee8,
+    que reprova com histórico completo e passa num ``git clone --depth 1`` do
+    mesmo commit. Este guard cobre exatamente esse caso — shallow sem ``HEAD^``
+    — e anuncia a incapacidade de comparar em vez de imitar sucesso.
+
+    Limites aceitos, onde o guard não reprova e a comparação de alterados
+    também fica vazia: (a) repositório NÃO raso cujo HEAD é o commit raiz —
+    bootstrap legítimo, sem pai a comparar; (b) caminho fora de qualquer
+    repositório git. Nenhum dos dois ocorre no checkout do CI, que usa
+    ``fetch-depth: 2`` e sempre tem pai. Ambos são fixados por teste para a
+    fronteira não se alargar em silêncio.
+    """
+    if _git(root, "rev-parse", "--is-shallow-repository").stdout.strip() != "true":
+        return []
+    if _git(root, "rev-parse", "--verify", "--quiet", "HEAD^").returncode == 0:
+        return []
+    return [
+        "clone raso sem HEAD^: a comparação de arquivos alterados não pode ser feita; "
+        "use fetch-depth: 2 ou maior no checkout"
+    ]
+
+
 def _changed_paths(root: Path) -> set[str]:
     commands = [
-        ["git", "diff", "--name-only", "HEAD"],
-        ["git", "diff", "--name-only", "HEAD^", "HEAD"],
+        ["diff", "--name-only", "HEAD"],
+        ["diff", "--name-only", "HEAD^", "HEAD"],
     ]
     changed: set[str] = set()
     for command in commands:
-        result = subprocess.run(command, cwd=root, text=True, capture_output=True, check=False)
+        result = _git(root, *command)
         if result.returncode == 0:
             changed.update(line for line in result.stdout.splitlines() if line)
     return changed
@@ -203,6 +235,7 @@ def check_catalog(root: Path = ROOT, *, check_generated: bool = True) -> list[st
     except ValueError as exc:
         return str(exc).splitlines()
     errors: list[str] = []
+    errors.extend(check_history_depth(root))
     errors.extend(check_worklog_append_only(root))
     for identifier, item in catalog.items.items():
         for dependency in item["dependsOn"]:

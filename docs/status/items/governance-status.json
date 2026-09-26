@@ -33,7 +33,7 @@
     "pyproject.toml",
     "docs/09-operations/HANDOFF-2026-08-27.md"
   ],
-  "scopeDigest": "32a9e4484f1e63f93cd41e55eac9b4099f217dabefbc86cf0247f7a0939a2dee",
+  "scopeDigest": "d8380c53dfa93112c9acdccf98905d16ab2d30b51fa5a8b8e9f3368b511d6a3b",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -96,12 +96,30 @@
       "reference": "docs/09-operations/RELEASE-LEDGER.md",
       "command": "2026-09-22: release governada 2.0.0rc1-504d10b14485 instalada do commit 504d10b144851b70eab99d1fad7110ae34e88f84; CI run 35712683583 verde; wheel SHA256 d55ea7a2ae97accc2aaf8a98abbbcf67468f648ae486dd9712054489d3fe2476; rollback 2.0.0rc1-13c933c30ace; primeira convergencia attempts=1/restarted=true e segunda idempotente attempts=0/restarted=false, daemon confirmou a identidade exata; doctor ok=true degraded, sem blockers, pending, stale ou orphan",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": ".github/workflows/ci.yml",
+      "command": "Antes desta mudanca nenhum workflow executava o status-check: grep -rn 'project_status' .github/workflows/*.yml nao retornava nada, e o gate so aparecia quando um agente o rodava localmente, na sessao seguinte. O job quality agora roda 'python tools/project_status.py check'. Prova remota obtida no CI do PR #234: run 36120432437 verde no SHA 75e23afd, o step 'Estado do projeto' passou nos jobs Python 3.11, 3.12 e 3.14.",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_project_status.py",
+      "command": "test_history_depth_rejects_shallow_clone_without_parent: clone --depth 1 sem HEAD^ reprova com 'fetch-depth', clone --depth 2 e repositorio completo aprovam. Sem isso o gate passaria verde para sempre no fetch-depth default do actions/checkout, porque _changed_paths compara HEAD^..HEAD e descartava a falha em silencio.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_project_status.py",
+      "command": "Limites aceitos do check_history_depth, fixados por teste para nao se alargarem em silencio: (a) repositorio nao raso com apenas o commit raiz — check_history_depth devolve vazio e _changed_paths tambem, pois nao ha HEAD^ a comparar; (b) caminho fora de qualquer repositorio git — as duas funcoes retornam sem erro. Em ambos o gate e silencioso; a protecao 'anuncia a incapacidade em vez de imitar sucesso' cobre apenas o clone raso sem HEAD^, unico caso que ocorre num checkout de CI com fetch-depth default. Testes: test_history_depth_accepts_non_shallow_root_commit, test_history_depth_silent_outside_git_repo.",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Manter status-check e WORKLOG append-only verdes; repetir apenas as provas fisicas restantes com a release 2.0.0rc1-504d10b14485 instalada.",
+  "nextAction": "Manter status-check e WORKLOG append-only verdes; o CI do PR #234 (run 36120432437) ja confirmou o step 'Estado do projeto' verde nos tres jobs Python no SHA 75e23afd. Resta integrar o PR e fechar o workstream ao entrar no main; repetir apenas as provas fisicas restantes com a release 2.0.0rc1-504d10b14485 instalada.",
   "activeWorkstreams": [
-    "WS-2026-08-HARMONIZE-A45"
+    "WS-2026-09-STATUS-CHECK-CI"
   ],
-  "updatedAt": "2026-09-10",
-  "notes": "WORKLOG e historico append-only e nao entra no digest funcional; check_worklog_append_only reprova reescrita de sessoes anteriores. G38 doctor service.generation usa observe(). Digest renovado apos tornar execucao autonoma, evidencia fisica e taxonomia AURA/Theme Engine/Theme Studio regras normativas do AGENTS.md; teste focado de project_status preserva a consistencia do catalogo. Em 2026-08-20 o gate acusou pyproject.toml alterado sem item responsavel: ninguem o declarava, embora ele defina entry points, dependencias e empacotamento. Passou para este item, que ja governa ci.yml, AGENTS.md e Makefile. 2026-08-24: KNOWN-GAPS.md corrigido na linha G40, que afirmava que a tabela platform_slug->systemeid 'nao existe no repositorio' quando ela existe como _PLATFORM_MAP. Documento de lacunas que envelhece sem ser conferido vira o oposto do que promete: manda reimplementar o que ja esta feito. G42 REABERTA em 2026-08-24: fora marcada fechada por 'quatro rotas na ponte HTTP', mas o enunciado dela e 'o motor existe, o caminho de usuario nao' — rota na ponte ainda e motor. Zero QML alcanca os 12 contratos theme.import. 2026-08-25: versao elevada de 0.1.0a46 para 2.0.0rc1 (pre-release, nao 2.0.0 final). O bump entra ANTES do merge porque release_host.prepare exige que o commit seja o tip de origin/main, entao a versao precisa estar na linha principal para a release 2.0.0 poder ser construida. Forma canonica PEP 440 sem hifen: RELEASE_RE monta <versao>-<12 hex>, entao 2.0.0-rc1 produziria id com dois hifens e leitura ambigua; 2.0.0rc1 nao. 2026-09-03: scopeDigest renovado por documento GERADO (COVERAGE.md e STATUS.md) apos a rota theme.scene.render entrar no contrato, em WS-2026-09-CENA-ESDE. Regerado pela ferramenta, nao editado a mao."
+  "updatedAt": "2026-09-25",
+  "notes": "WORKLOG e historico append-only e nao entra no digest funcional; check_worklog_append_only reprova reescrita de sessoes anteriores. G38 doctor service.generation usa observe(). Digest renovado apos tornar execucao autonoma, evidencia fisica e taxonomia AURA/Theme Engine/Theme Studio regras normativas do AGENTS.md; teste focado de project_status preserva a consistencia do catalogo. Em 2026-08-20 o gate acusou pyproject.toml alterado sem item responsavel: ninguem o declarava, embora ele defina entry points, dependencias e empacotamento. Passou para este item, que ja governa ci.yml, AGENTS.md e Makefile. 2026-08-24: KNOWN-GAPS.md corrigido na linha G40, que afirmava que a tabela platform_slug->systemeid 'nao existe no repositorio' quando ela existe como _PLATFORM_MAP. Documento de lacunas que envelhece sem ser conferido vira o oposto do que promete: manda reimplementar o que ja esta feito. G42 REABERTA em 2026-08-24: fora marcada fechada por 'quatro rotas na ponte HTTP', mas o enunciado dela e 'o motor existe, o caminho de usuario nao' — rota na ponte ainda e motor. Zero QML alcanca os 12 contratos theme.import. 2026-08-25: versao elevada de 0.1.0a46 para 2.0.0rc1 (pre-release, nao 2.0.0 final). O bump entra ANTES do merge porque release_host.prepare exige que o commit seja o tip de origin/main, entao a versao precisa estar na linha principal para a release 2.0.0 poder ser construida. Forma canonica PEP 440 sem hifen: RELEASE_RE monta <versao>-<12 hex>, entao 2.0.0-rc1 produziria id com dois hifens e leitura ambigua; 2.0.0rc1 nao. 2026-09-03: scopeDigest renovado por documento GERADO (COVERAGE.md e STATUS.md) apos a rota theme.scene.render entrar no contrato, em WS-2026-09-CENA-ESDE. Regerado pela ferramenta, nao editado a mao. 2026-09-24 (WS-2026-09-STATUS-CHECK-CI): o status-check entrou no CI. Duas armadilhas registradas, ambas medidas e nao inferidas: (a) enquanto o arquivo esta untracked o check o ignora, entao roda-lo imediatamente antes do commit da verde e o vermelho so aparece depois; (b) no fetch-depth default do actions/checkout o HEAD^ nao existe, o diff de alterados falhava, o erro era descartado e o gate passava com QUALQUER conteudo. check_history_depth agora reprova o clone raso em vez de imitar sucesso. 2026-09-25 (revisao do lote): o CI do PR #234 (run 36120432437) confirmou o step 'Estado do projeto' verde nos tres jobs Python no SHA 75e23afd. Ressalva acatada e registrada como limite aceito, nao como bug: o guard e fail-closed apenas para clone raso sem HEAD^; num repositorio nao raso de commit raiz, ou fora de qualquer git, check_history_depth e _changed_paths ficam vazios em silencio, e agora dois testes fixam essa fronteira. scopeDigest renovado pela ferramenta apos editar a docstring e os testes."
 }
