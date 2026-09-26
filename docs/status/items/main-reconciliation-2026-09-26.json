@@ -19,11 +19,13 @@
     "docs/09-operations/evidence/2026-09-26-worktree-reconciliation/REVIEW.md",
     "docs/09-operations/evidence/2026-09-26-worktree-reconciliation/CENTRALIZATION.md",
     "docs/09-operations/evidence/2026-09-26-worktree-reconciliation/INTEGRAL-TESTS.log",
+    "docs/09-operations/evidence/2026-09-26-main-reconciliation-host-validation/README.md",
+    "docs/09-operations/evidence/2026-09-26-main-reconciliation-host-validation/02-desktop-ui.png",
     "docs/09-operations/CI-AND-GATE-EFFICIENCY.md",
     "AGENTS.md",
     "docs/status/workstreams/main-reconciliation-2026-09-26.json"
   ],
-  "scopeDigest": "3fcd8d16f2696ade3b3f0fd673e0d10fc8854454fca7785a951abc9910d4889a",
+  "scopeDigest": "3a65800c233676c066d62d9ebedaede4b6721bc94b828442804ca45ab5484848",
   "dependsOn": [
     "SZ-LIBRARY-CANONICAL",
     "SZ-MULTIDISC-DESCRIPTOR-RECONCILIATION",
@@ -79,12 +81,18 @@
       "reference": "docs/09-operations/evidence/2026-09-26-worktree-reconciliation/REVIEW.md",
       "command": "Revisão das sete frentes; snapshots locais em refs/archive, bundle restaurado em bare repo e fsck limpo; diretórios consolidados no checkout canônico",
       "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-26-main-reconciliation-host-validation/README.md",
+      "command": "Release candidata e2af2562 instalada via controlador; CI push 36233353596, convergência idempotente, doctor/schema/services/QML e UI real do host verificados. BIOS/multidisco seguem sem prova física: nenhum título publicado e perfil Amiga sem seleção.",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Acompanhar o CI do PR #237; com todos os gates verdes, registrar a integração em origin/main e encerrar o workstream.",
+  "nextAction": "Acompanhar o CI do PR #237 com evidência do host; integrar com gates verdes e registrar o SHA integrado no fechamento.",
   "activeWorkstreams": [
     "WS-2026-09-MAIN-WORKTREE-RECONCILIATION"
   ],
   "updatedAt": "2026-09-26",
-  "notes": "Reconciliação iniciada a partir de origin/main ed097a13. Código 063 foi adaptado ao modelo multidisco atual e limitado a projeções cujos IDs, ordem, caminhos e hashes conferem; o manifesto Amiga continua declarando suporte M3U não comprovado e, portanto, não é promovido por este patch. 045/050/054 viraram plano consolidado versionado. Os worktrees foram centralizados após snapshots e bundle restaurável; branches não integrados continuam preservados, não integrados por arrasto. PR #237 está aberto e aguarda CI; merge ainda não executado."
+  "notes": "Reconciliação iniciada a partir de origin/main ed097a13. Código 063 foi adaptado ao modelo multidisco atual e limitado a projeções cujos IDs, ordem, caminhos e hashes conferem; o manifesto Amiga continua declarando suporte M3U não comprovado e, portanto, não é promovido por este patch. 045/050/054 viraram plano consolidado versionado. Os worktrees foram centralizados após snapshots e bundle restaurável; branches não integrados continuam preservados, não integrados por arrasto. A release candidata e2af2562 passou smoke de instalação e UI real do host; lançamento BIOS/multidisco permanece sem prova física porque não há título publicado e o perfil Amiga está sem seleção. PR #237 aguarda CI do commit documental e integração."
 }

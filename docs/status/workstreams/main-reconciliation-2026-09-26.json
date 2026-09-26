@@ -13,6 +13,7 @@
     "tests/unit/test_amiga_bios_launch_preflight.py",
     "docs/12-roadmap/REAL-CONTENT-COVERAGE-PLAN.md",
     "docs/09-operations/evidence/2026-09-26-worktree-reconciliation",
+    "docs/09-operations/evidence/2026-09-26-main-reconciliation-host-validation",
     "docs/09-operations/CI-AND-GATE-EFFICIENCY.md",
     "docs/status/items/main-reconciliation-2026-09-26.json",
     "docs/status/workstreams/main-reconciliation-2026-09-26.json"
@@ -26,6 +27,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Concluir a revisão das mudanças e aplicar em commit de integração final os arquivos compartilhados; rodar os gates e atualizar evidências.",
+  "nextAction": "Registrar a prova de instalação e UI real no PR; após CI verde, integrar o PR #237 e fechar o workstream com o SHA integrado.",
   "updatedAt": "2026-09-26"
 }
