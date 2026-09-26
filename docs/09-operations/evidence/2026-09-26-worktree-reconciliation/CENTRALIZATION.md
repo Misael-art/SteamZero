@@ -35,9 +35,9 @@ locais também receberam snapshots Git em `.../<nome>/working-tree`. Assim, os
 commits não integrados continuam recuperáveis e os arquivos versionáveis
 locais não dependem mais dos diretórios removidos.
 
-O bundle completo está em:
+O bundle completo está na área local de recuperação:
 
-`/home/misael/steamzero-hygiene-2026-09-24/centralization-2026-09-26/steamzero-centralization-2026-09-26.bundle`
+`centralization-2026-09-26/steamzero-centralization-2026-09-26.bundle`
 
 Ele contém 708 refs e passou por `git bundle verify`. Foi restaurado em um
 repositório bare temporário: 707 refs foram importadas, os 11 snapshots locais
@@ -58,17 +58,16 @@ repositório e checkout do SHA registrado.
 
 ## Estado terminal do disco
 
-- `git worktree list --porcelain` contém apenas
-  `/home/misael/Projects/Steam Zero/Canonical/2026-09-21`. Foram removidos 48
+- `git worktree list --porcelain` contém apenas `Canonical/2026-09-21`. Foram removidos 48
   worktrees secundários após a verificação de suas refs/snapshots.
 - `Project Backup/` e os clones de referência saíram da árvore do projeto. O
   projeto tem um único checkout; a área de recuperação externa está descrita em
-  `/home/misael/steamzero-hygiene-2026-09-24/centralization-2026-09-26/UNREGISTERED-MATERIAL.md`.
+  `centralization-2026-09-26/UNREGISTERED-MATERIAL.md`.
 - Os materiais fora do worktree list não foram apagados por engano: 17 entradas
   Codex, 2 bundles SD e 3 referências foram movidos intactos para essa área.
   O clone EmuDeck, público, limpo e reproduzível por SHA, foi removido.
 - O `status-check` e os seis testes específicos passaram novamente no checkout
-  único. A ponta local está seis commits à frente de `origin/main`; nenhum push
+  único. A ponta local está oito commits à frente de `origin/main`; nenhum push
   ou merge foi executado, então GitHub `main` ainda não contém esta reconciliação.
 
 ## Limite desta etapa
