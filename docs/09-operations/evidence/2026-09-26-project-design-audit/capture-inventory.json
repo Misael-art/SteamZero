@@ -1,0 +1,654 @@
+{
+  "schemaVersion": 1,
+  "kind": "steamzero-design-audit-capture-inventory",
+  "date": "2026-09-26",
+  "runnerExitCode": 0,
+  "elapsedSeconds": 112.45,
+  "captureCount": 55,
+  "liveBridge": true,
+  "allCapturesSettled": false,
+  "viewports": [
+    "1280x800",
+    "1600x1000",
+    "1920x1080",
+    "2560x1080",
+    "949x593"
+  ],
+  "accessibilityModes": {
+    "highContrast": [
+      false
+    ],
+    "reducedMotion": [
+      false
+    ]
+  },
+  "dataCounts": {
+    "editorialPlatforms": [
+      64
+    ],
+    "emulationGames": [
+      1145
+    ],
+    "steamGames": [
+      7
+    ]
+  },
+  "runnerWarnings": {
+    "count": 54,
+    "classifierBucket": "own",
+    "patterns": {
+      "breeze_progressbar_bottom_null": 27,
+      "breeze_progressbar_top_null": 27
+    },
+    "source": "qrc:/qt/qml/org/kde/breeze/ProgressBar.qml",
+    "classificationAssessment": "false-positive: external KDE Breeze URI uses org/kde/ while the classifier matches org.kde."
+  },
+  "screenshots": "55 PNG captures kept outside the repository because live library screenshots contain private titles and local paths; this file retains sanitized view metadata only.",
+  "captures": [
+    {
+      "name": "deck-overview",
+      "section": "overview",
+      "kind": "section",
+      "viewport": "1280x800",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "deck-emulators",
+      "section": "emulators",
+      "kind": "section",
+      "viewport": "1280x800",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "deck-steam",
+      "section": "steam",
+      "kind": "section",
+      "viewport": "1280x800",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "deck-profiles",
+      "section": "profiles",
+      "kind": "section",
+      "viewport": "1280x800",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "deck-sync",
+      "section": "sync",
+      "kind": "section",
+      "viewport": "1280x800",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "deck-cast",
+      "section": "cast",
+      "kind": "section",
+      "viewport": "1280x800",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "deck-system",
+      "section": "system",
+      "kind": "section",
+      "viewport": "1280x800",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "deck-themes",
+      "section": "themes",
+      "kind": "section",
+      "viewport": "1280x800",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "deck-library",
+      "section": "library",
+      "kind": "section",
+      "viewport": "1280x800",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "studio-overview",
+      "section": "overview",
+      "kind": "section",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "studio-emulators",
+      "section": "emulators",
+      "kind": "section",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "studio-steam",
+      "section": "steam",
+      "kind": "section",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "studio-profiles",
+      "section": "profiles",
+      "kind": "section",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "studio-sync",
+      "section": "sync",
+      "kind": "section",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "studio-cast",
+      "section": "cast",
+      "kind": "section",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "studio-system",
+      "section": "system",
+      "kind": "section",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "studio-themes",
+      "section": "themes",
+      "kind": "section",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "studio-library",
+      "section": "library",
+      "kind": "section",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "fullhd-overview",
+      "section": "overview",
+      "kind": "section",
+      "viewport": "1920x1080",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "fullhd-emulators",
+      "section": "emulators",
+      "kind": "section",
+      "viewport": "1920x1080",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "fullhd-steam",
+      "section": "steam",
+      "kind": "section",
+      "viewport": "1920x1080",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "fullhd-profiles",
+      "section": "profiles",
+      "kind": "section",
+      "viewport": "1920x1080",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "fullhd-sync",
+      "section": "sync",
+      "kind": "section",
+      "viewport": "1920x1080",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "fullhd-cast",
+      "section": "cast",
+      "kind": "section",
+      "viewport": "1920x1080",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "fullhd-system",
+      "section": "system",
+      "kind": "section",
+      "viewport": "1920x1080",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "fullhd-themes",
+      "section": "themes",
+      "kind": "section",
+      "viewport": "1920x1080",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "fullhd-library",
+      "section": "library",
+      "kind": "section",
+      "viewport": "1920x1080",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "steam-area-performance",
+      "section": "steam",
+      "kind": "steam-area",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "steam-area-controls",
+      "section": "steam",
+      "kind": "steam-area",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "steam-area-library",
+      "section": "steam",
+      "kind": "steam-area",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "steam-area-desktop",
+      "section": "steam",
+      "kind": "steam-area",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "emulation-global-management",
+      "section": "emulators",
+      "kind": "emulation-global",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "emulation-area-overview",
+      "section": "emulators",
+      "kind": "emulation-area",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "emulation-area-keysFirmware",
+      "section": "emulators",
+      "kind": "emulation-area",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "emulation-area-updatesDlc",
+      "section": "emulators",
+      "kind": "emulation-area",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "emulation-area-modsCheats",
+      "section": "emulators",
+      "kind": "emulation-area",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "emulation-area-graphicsPerformance",
+      "section": "emulators",
+      "kind": "emulation-area",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "emulation-area-controls",
+      "section": "emulators",
+      "kind": "emulation-area",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "emulation-area-saves",
+      "section": "emulators",
+      "kind": "emulation-area",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "emulation-area-shaderCache",
+      "section": "emulators",
+      "kind": "emulation-area",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "emulation-area-media",
+      "section": "emulators",
+      "kind": "emulation-area",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "emulation-area-storage",
+      "section": "emulators",
+      "kind": "emulation-area",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "emulation-area-advanced",
+      "section": "emulators",
+      "kind": "emulation-area",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "library-systems",
+      "section": "library",
+      "kind": "library-view",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "library-games-carousel",
+      "section": "library",
+      "kind": "library-view",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "library-games-grid",
+      "section": "library",
+      "kind": "library-view",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "library-games-list",
+      "section": "library",
+      "kind": "library-view",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "overlay-task-drawer",
+      "section": "overview",
+      "kind": "overlay-task-drawer",
+      "viewport": "1280x800",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 1,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "overlay-nav-drawer-handheld",
+      "section": "overview",
+      "kind": "overlay-nav-drawer",
+      "viewport": "949x593",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 1,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "overlay-credentials",
+      "section": "system",
+      "kind": "overlay-credentials",
+      "viewport": "1600x1000",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 1,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "ultrawide-overview",
+      "section": "overview",
+      "kind": "section",
+      "viewport": "2560x1080",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "ultrawide-sync",
+      "section": "sync",
+      "kind": "section",
+      "viewport": "2560x1080",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "handheld-overview",
+      "section": "overview",
+      "kind": "section",
+      "viewport": "949x593",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "handheld-emulation",
+      "section": "emulators",
+      "kind": "section",
+      "viewport": "949x593",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    },
+    {
+      "name": "handheld-library",
+      "section": "library",
+      "kind": "section",
+      "viewport": "949x593",
+      "dataOrigin": "bridge-live",
+      "pendingRequests": 0,
+      "editorialPlatformCount": 64,
+      "editorialGameCount": 1145,
+      "steamGameCount": 7
+    }
+  ]
+}

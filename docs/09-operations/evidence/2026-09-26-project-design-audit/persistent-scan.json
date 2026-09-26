@@ -1,0 +1,189 @@
+{
+  "schemaVersion": 1,
+  "kind": "steamzero-persistent-library-scan",
+  "startedAt": "2026-09-26T13:35:39.477019+00:00",
+  "completedAt": "2026-09-26T13:36:37.298740+00:00",
+  "hostRelease": "2.0.0rc1",
+  "controllerSource": "active installed release 2.0.0rc1-e2af2562ebba",
+  "scanResult": {
+    "status": "scanned",
+    "games": 1163,
+    "filesFound": 16515,
+    "updates": 102,
+    "dlcs": 144,
+    "unidentified": 0,
+    "ignoredAuxiliary": 1336,
+    "incompatible": 1343,
+    "ignored": 13763,
+    "incompatibleReasons": {
+      "archive-platform-unknown": 1343
+    },
+    "ignoredReasons": {
+      "unsupported-format": 13763
+    },
+    "platformCounts": {
+      "nes-famicom": 258,
+      "nintendo-3ds": 20,
+      "master-system": 204,
+      "nintendo-handheld": 296,
+      "snes": 109,
+      "playstation-5": 1,
+      "mega-drive": 81,
+      "sega-cd-32x": 4,
+      "sega-saturn": 18,
+      "game-gear": 41,
+      "playstation": 53,
+      "x68000": 14,
+      "playstation-2": 6,
+      "dreamcast": 5,
+      "nintendo-ds": 14,
+      "zx-spectrum": 1,
+      "switch": 15,
+      "playstation-vita": 6,
+      "xbox-360": 2,
+      "nintendo-console": 2,
+      "wii-u": 2,
+      "xbox": 1,
+      "playstation-4": 2,
+      "playstation-3": 1,
+      "neo-geo-cd": 1,
+      "amiga": 5,
+      "three-do": 1
+    },
+    "roots": 2,
+    "jobId": "01M3EYVEEQ8EHF9WMBB648R1W6"
+  },
+  "scanErrorCount": 0,
+  "job": {
+    "id": null,
+    "type": "library.scan",
+    "state": "succeeded",
+    "createdAt": "2026-09-26T13:35:39.491213+00:00",
+    "updatedAt": "2026-09-26T13:36:37.293329+00:00"
+  },
+  "sourceRoots": {
+    "before": {
+      "library-root-1": {
+        "exists": true,
+        "files": 7455,
+        "directories": 1032,
+        "symlinks": 252,
+        "bytes": 12619026563,
+        "errors": 0,
+        "maxMtimeNs": 1789827564864586548,
+        "metadataDigest": "2f3fe4daac704bc83b7d2330d25519d68d0a3e37232da67f7e34cfefdaa94a94"
+      },
+      "library-root-2": {
+        "exists": true,
+        "files": 9059,
+        "directories": 666,
+        "symlinks": 202,
+        "bytes": 354592889495,
+        "errors": 0,
+        "maxMtimeNs": 1790111041311840854,
+        "metadataDigest": "7637bed16711fdfc3a3c451e88f7bdd7161ff8a509507dc4674bf8c4647c87e8"
+      }
+    },
+    "after": {
+      "library-root-1": {
+        "exists": true,
+        "files": 7455,
+        "directories": 1032,
+        "symlinks": 252,
+        "bytes": 12619026563,
+        "errors": 0,
+        "maxMtimeNs": 1789827564864586548,
+        "metadataDigest": "2f3fe4daac704bc83b7d2330d25519d68d0a3e37232da67f7e34cfefdaa94a94"
+      },
+      "library-root-2": {
+        "exists": true,
+        "files": 9059,
+        "directories": 666,
+        "symlinks": 202,
+        "bytes": 354592889495,
+        "errors": 0,
+        "maxMtimeNs": 1790111041311840854,
+        "metadataDigest": "7637bed16711fdfc3a3c451e88f7bdd7161ff8a509507dc4674bf8c4647c87e8"
+      }
+    },
+    "unchanged": true
+  },
+  "internalPersistentState": {
+    "before": {
+      "libraryCache": {
+        "exists": true,
+        "bytes": 1648416,
+        "mtimeNs": 1790117585620468618
+      },
+      "stateDb": {
+        "exists": true,
+        "bytes": 6561792,
+        "mtimeNs": 1790206393251103137
+      }
+    },
+    "after": {
+      "libraryCache": {
+        "exists": true,
+        "bytes": 1649010,
+        "mtimeNs": 1790429797270875658
+      },
+      "stateDb": {
+        "exists": true,
+        "bytes": 6561792,
+        "mtimeNs": 1790206393251103137
+      }
+    }
+  },
+  "cacheSummary": {
+    "schemaVersion": 1,
+    "games": 1163,
+    "unidentified": 0,
+    "errors": 0,
+    "scannedAt": "2026-09-26T13:35:39.497837+00:00",
+    "platformCounts": {
+      "amiga": 5,
+      "dreamcast": 5,
+      "game-gear": 41,
+      "master-system": 204,
+      "mega-drive": 81,
+      "neo-geo-cd": 1,
+      "nes-famicom": 258,
+      "nintendo-3ds": 20,
+      "nintendo-console": 2,
+      "nintendo-ds": 14,
+      "nintendo-handheld": 296,
+      "playstation": 53,
+      "playstation-2": 6,
+      "playstation-3": 1,
+      "playstation-4": 2,
+      "playstation-5": 1,
+      "playstation-vita": 6,
+      "sega-cd-32x": 4,
+      "sega-saturn": 18,
+      "snes": 109,
+      "switch": 15,
+      "three-do": 1,
+      "wii-u": 2,
+      "x68000": 14,
+      "xbox": 1,
+      "xbox-360": 2,
+      "zx-spectrum": 1
+    },
+    "multidiscSets": 15,
+    "multidiscStates": {
+      "conflict": 7,
+      "needs-extraction": 2,
+      "needs-platform-contract": 5,
+      "needs-review": 1
+    },
+    "multidiscByPlatformState": {
+      "amiga:conflict": 2,
+      "amiga:needs-extraction": 2,
+      "sega-saturn:needs-platform-contract": 1,
+      "x68000:conflict": 5,
+      "x68000:needs-platform-contract": 4,
+      "x68000:needs-review": 1
+    }
+  },
+  "privacy": "No game titles, individual file names, absolute library root paths, BIOS names or hashes, save paths, or credentials are included; roots are labeled only by ordinal."
+}

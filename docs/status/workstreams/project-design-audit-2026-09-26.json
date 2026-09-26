@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-PROJECT-DESIGN-AUDIT",
+  "item": "SZ-PROJECT-DESIGN-AUDIT",
+  "branch": "codex/project-design-audit-2026-09-26",
+  "baseRef": "3495c49d5d7c3244267e8292beee34475f70236b",
+  "owner": "codex-project-design-audit",
+  "state": "closed",
+  "exclusivePaths": [
+    "docs/09-operations/evidence/2026-09-26-project-design-audit",
+    "docs/status/items/project-design-audit-2026-09-26.json",
+    "docs/status/workstreams/project-design-audit-2026-09-26.json"
+  ],
+  "sharedPaths": [
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Usar os achados UX-01, UX-02 e DATA-01 como prioridades de produto. Completar captura live de overlays/Theme Studio/Launcher e prova física de gamepad/jogo antes de qualquer certificacao visual ou promocao desses itens.",
+  "updatedAt": "2026-09-26"
+}

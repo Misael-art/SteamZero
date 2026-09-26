@@ -1,0 +1,189 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-PROJECT-DESIGN-AUDIT",
+  "title": "Auditoria integral de produto, telas e experiência do SteamZero",
+  "domain": "ui",
+  "implementation": "complete",
+  "integration": "feature-branch",
+  "verification": "dev",
+  "operation": "ready",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "docs/09-operations/evidence/2026-09-26-project-design-audit"
+  ],
+  "scopeDigest": "069284c9856adbe0ec65b3f221c280662e2ccae35167f8eb6c17ef08b3d5c3cc",
+  "dependsOn": [],
+  "knownGaps": [
+    "GAP-PDA-CURRENT-RELEASE-RECERTIFICATION",
+    "GAP-PDA-RETROFE-COMPACT-DIALOG",
+    "GAP-PDA-ESDE-REAL-DATA-PREVIEW",
+    "GAP-PDA-CINEMA-1280X800",
+    "GAP-PDA-THEME-STUDIO-PHYSICAL-EDIT",
+    "GAP-PDA-FULL-SUITE-STALE-STATUS",
+    "GAP-PDA-SESSION-PAUSED-OSD-VISUAL",
+    "GAP-PDA-SESSION-CURRENT-RELEASE",
+    "GAP-PDA-OSD-LOCALIZATION-REASONS",
+    "GAP-PDA-FADE-PHYSICAL",
+    "GAP-PDA-DISC-SWAP-LAUNCHER",
+    "GAP-PDA-SAVE-CHECKPOINT-HOST",
+    "GAP-PDA-BEZEL-SELECTION-SCOPE"
+  ],
+  "acceptanceCriteria": [
+    "Varredura persistente do acervo termina com resultado, contagens, erros e prova de estado antes/depois.",
+    "Todos os gates integrais exigidos pelo repositório terminam e os resultados não são inferidos de execuções anteriores.",
+    "Cada superficie implementada e jornada catalogada tem cobertura e proveniencia registradas; lacunas de captura e instrumentacao ficam explicitas sem serem atribuidas ao produto sem prova.",
+    "Capacidades planejadas são separadas de implementadas, e avaliadas contra a filosofia AURA e critérios de aceite normativos.",
+    "O quadro final prioriza causa, impacto para usuário, evidência, estado e próximo critério verificável sem promover lacunas não testadas."
+  ],
+  "evidence": [
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-26-project-design-audit/persistent-scan.json",
+      "command": "Varredura persistente somente leitura da release instalada; assinatura de arquivos de origem igual antes/depois.",
+      "result": "passed"
+    },
+    {
+      "kind": "design",
+      "reference": "docs/09-operations/evidence/2026-09-26-project-design-audit/capability-matrix.md",
+      "command": "Revisao dos 78 itens de capacidade e 12 agregadores, mantendo eixos de implementacao, integracao, operacao, verificacao e distribuicao separados.",
+      "result": "recorded"
+    },
+    {
+      "kind": "design",
+      "reference": "docs/09-operations/evidence/2026-09-26-project-design-audit/action-inventory.md",
+      "command": "Auditoria declarativa dos contratos nos read models; nao substitui ativacao fisica de cada acao.",
+      "result": "recorded"
+    },
+    {
+      "kind": "design",
+      "reference": "docs/09-operations/evidence/2026-09-26-project-design-audit/control-inventory.md",
+      "command": "Probe estrutural da arvore QML com dados fallback; lacunas de ativacao on-screen registradas.",
+      "result": "partial"
+    },
+    {
+      "kind": "design",
+      "reference": "docs/09-operations/evidence/2026-09-26-project-design-audit/capture-inventory.json",
+      "command": "55 capturas do harness live em cinco resolucoes; Theme Studio e Launcher nao entraram neste lote; evidencias historicas foram revisadas separadamente.",
+      "result": "partial"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_project_status.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_project_status.py -q (apos render); 13 passed.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-26-project-design-audit/theme-focused-tests.log",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_editor.py tests/unit/test_theme_import_retrofe.py tests/unit/test_theme_import_esde.py tests/unit/test_theme_scene.py tests/unit/test_launcher_cinema.py tests/integration/test_retrofe_vertical_slice.py tests/integration/test_scene_esde_view.py -q; 183 passed em 6.48s; estado do host identico antes/depois.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-26-project-design-audit/session-management-tests.log",
+      "command": "Testes focados de session_control, session_overlay, adapters, peripherals, emulation_controller, save_states e launcher_app; 208 passed. O guard identificou escrita concorrente de daemon externo preexistente em logs/state.db, portanto a atribuição da mutação do state store fica degradada; o caminho absoluto do host foi redigido no log publicado.",
+      "result": "partial"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-26-project-design-audit/session-management-qml-tests.log",
+      "command": "QML focado de OSD, save-state gallery e session peripherals; 3 passed, 46 deselected; estado real igual durante a janela.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-26-project-design-audit/session-persistence-tests.log",
+      "command": "Testes de sessão/saves/checkpoint e composição/observação do Launcher; 36 passed; estado real igual durante a janela.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests -q; 1 failed (views de status desatualizadas), 6293 passed, 47 skipped. Resultado integral preservado como nao verde.",
+      "result": "partial"
+    },
+    {
+      "kind": "design",
+      "reference": "docs/09-operations/evidence/2026-09-26-project-design-audit/AUDIT.md",
+      "command": "Parecer, matriz de telas, achados priorizados, filosofia, cobertura automatizada e limites evidenciais.",
+      "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-07-theme-studio-contrast/02-entrega-funcional.png",
+      "command": "Captura física do Theme Studio instalado: canvas, árvore e inspector visíveis; contraste aprovado nessa release. Mutação por input físico não provada; release anterior à atual.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-08-theme-retrofe-ui/02-entrega-funcional.png",
+      "command": "Captura física da inspeção RetroFE. Este audit identificou campos finais cortados no viewport; importação não ativa a cena automaticamente.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-10-theme-esde-fullscreen/01-fullscreen-after-render.png",
+      "command": "Cena ES-DE renderizada fullscreen no host; foco e hints visíveis. Captura sem read model de jogo, com bindings de template sem resolução.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-21-aura-harmonization/02-installed-aura-13c933c3.png",
+      "command": "Central com AURA UI instalada; captura histórica revela contraste fraco no aviso de perfil e no rodapé.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-16-aura-cinema-valid-perf/02-entrega-funcional.png",
+      "command": "AURA Cinema fullscreen Wayland, capa central e vizinhas com foco e instruções; visual provado em release anterior. Performance foi aprovada em 948x593, não no alvo 1280x800.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-13-aura-session-composition/03-pause.png",
+      "command": "Release 2.0.0rc1-79af5e5b20d5; pausa real confirmada running->suspended; captura revela bleed/textos duplicados no OSD pausado.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-17-aura-esde-active-surface/24-aura-osd-fixed.png",
+      "command": "Release 2.0.0rc1-b396aaedcc64; OSD de sessão visualmente limpo em running; não é captura do estado suspended.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-18-aura-bezel-installed/02-game-bezel.png",
+      "command": "Release instalada 2.0.0rc1-a71c2b5e17cd; jogo real em execução com bezel AURA padrão visível.",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-17-aura-esde-active-surface/25-current-osd.png",
+      "command": "Release instalada 2.0.0rc1-b396aaedcc64; OSD real mostra ações indisponíveis esmaecidas, mistura rótulos em inglês e não expõe causa em texto visível.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-20-aura-session-osd-installed/PHYSICAL-VALIDATION.json",
+      "command": "Release instalada 2.0.0rc1-3acc2104dd5a; OSD/galeria e retorno ao contexto provados; save-state vazio e troca de disco corretamente indisponível para single-disc.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-20-aura-multidisc-physical/PHYSICAL-VALIDATION.json",
+      "command": "RetroArch/PUAE físico trocou 1->2->1 via adapter, mas a release instalada não continha o commit e o Launcher não participou.",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-17-aura-esde-active-surface/session-osd-real.json",
+      "command": "Sessão real confirmou pausa/retomada e bezel; fade foi observado somente em phase=idle, sem transição visual isolada.",
+      "result": "partial"
+    }
+  ],
+  "nextAction": "Priorizar UX-01 (contraste), UX-02 (estado/custo de carregamento) e DATA-01 (fila de arquivos arquivados e multidisco); revalidar a sessão AURA na release atual cobrindo OSD pausado, save-state, fade, troca multidisco pelo Launcher e retorno; corrigir localização/causas visíveis do OSD e confirmar o escopo de seleção do bezel.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-09-26",
+  "notes": "Relatorio de auditoria concluido no branch codex/project-design-audit-2026-09-26. Nenhum codigo do produto foi alterado. Provas fisicas historicas foram visualmente revisadas para Theme Studio, RetroFE, ES-DE, AURA UI, AURA Cinema e gestao de sessao de emulacao; sao de releases anteriores e nao recertificam a release instalada em 2026-09-26. A suite integral tem uma falha documental registrada; testes focados de tema e sessao passaram. O guard detectou escrita independente do daemon do host durante a janela dos 208 testes de sessao, sem atribuir essa escrita ao runner. Permanecem gaps de OSD pausado atual, fade fisico, troca multidisco via Launcher, checkpoint fisico AC-SV-02, localizacao/causas das acoes do OSD, escolha de bezel, dialogo compacto RetroFE, preview ES-DE com dados reais, mutacao fisica do Theme Studio e performance Cinema a 1280x800. Nenhum commit, push ou merge foi feito."
+}
