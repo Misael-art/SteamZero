@@ -12562,3 +12562,12 @@ diretório sem git, sem ganho nenhum para o caminho que ele defende.
 editar a docstring em `tools/project_status.py` e os dois testes — ambos dentro do
 `scopePaths` do item. Nenhuma linha anterior deste WORKLOG foi reescrita; o bloco
 é acréscimo. Sem ação de host, sem release, sem instalação.
+
+
+## 2026-09-26 — fechamento do WS-2026-09-HARNESS-STABILIZATION
+
+O PR #235 entrou no `main` pelo merge `1873fc991ef21a0db5707d64c03beb93c24b1121`. As duas correções do harness foram medidas sob carga: a identidade do drawer passou 11 testes duas vezes; o layout handheld não falhou em cerca de 12 execuções, manteve `CHECKS=795` e continuou reprovando a mutação negativa. No head integrado `99a96c2ff297be4be82bc7f7b4c57484d2a343b4`, o CI `36175333356` terminou com 8/8 jobs requeridos verdes, incluindo o gate QML. O catálogo aponta agora para o `main` em `9176c1aeca792e4bd8ccaca0fbb55e9767ad5625`; workstream fechado.
+
+## 2026-09-26 — fechamento do WS-2026-09-STATUS-CHECK-CI
+
+O PR #234 entrou no `main` pelo merge `9176c1aeca792e4bd8ccaca0fbb55e9767ad5625`, após o PR #235. O head `99a96c2ff297be4be82bc7f7b4c57484d2a343b4` passou nos oito jobs requeridos do CI `36175333356`, inclusive `Estado do projeto` nos três Pythons da matriz. A suíte integral local terminou com saída 0: 6288 aprovados e 47 ignorados em 2118.38s. A guarda do estado do host registrou valores idênticos antes/depois (12588 arquivos, 2061 diretórios, 1327036375 bytes e `max_mtime_ns=1790206393252103130`). Nenhuma instalação, release ou mutação de host foi feita. O status-check e o WORKLOG permanecem no gate; workstream fechado.

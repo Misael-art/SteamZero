@@ -4,15 +4,17 @@
   "id": "WS-2026-09-HARNESS-STABILIZATION",
   "item": "SZ-UI-DESKTOP-AUDIT",
   "branch": "codex/harness-stabilization-2026-09-25",
-  "baseRef": "5e2e8194",
+  "baseRef": "9176c1aeca792e4bd8ccaca0fbb55e9767ad5625",
   "owner": "codex-continuation",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "tools/ui_control_probe.qml",
     "tests/qml/check_handheld_layout_focus.qml",
     "docs/status/workstreams/harness-stabilization-2026-09-25.json"
   ],
-  "sharedPaths": ["docs/WORKLOG.md"],
-  "nextAction": "Corrigir as duas corridas medidas nos harnesses visuais (identidade do drawer de tarefas e leitura de geometria depois do footer) e provar sob carga antes de declarar o lote estabilizado.",
-  "updatedAt": "2026-09-25"
+  "sharedPaths": [
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Fechado: correções integradas pelo PR #235 no main (merge 1873fc991ef21a0db5707d64c03beb93c24b1121; linha principal atual 9176c1aeca792e4bd8ccaca0fbb55e9767ad5625). Evidências sob carga e CI registradas no item SZ-UI-DESKTOP-AUDIT e no WORKLOG.",
+  "updatedAt": "2026-09-26"
 }

@@ -4,9 +4,9 @@
   "id": "WS-2026-09-STATUS-CHECK-CI",
   "item": "SZ-GOVERNANCE-STATUS",
   "branch": "codex/status-check-ci-2026-09-24",
-  "baseRef": "5e2e8194",
+  "baseRef": "9176c1aeca792e4bd8ccaca0fbb55e9767ad5625",
   "owner": "codex-integration-revisao-2026-09-24",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "tools/project_status.py",
     "tests/unit/test_project_status.py",
@@ -14,7 +14,12 @@
     "docs/status/items/governance-status.json",
     "docs/status/workstreams/status-check-ci-2026-09-24.json"
   ],
-  "sharedPaths": ["docs/WORKLOG.md", "docs/STATUS.md", "docs/ACTIVE-WORK.md", "docs/status/COVERAGE.md"],
-  "nextAction": "CI do PR #234 (run 36120432437) verde no SHA 75e23afd: o step 'Estado do projeto' passou nos tres jobs Python da matriz quality, mais tipos e testes. Resta integrar o PR no main e entao fechar o workstream.",
-  "updatedAt": "2026-09-25"
+  "sharedPaths": [
+    "docs/WORKLOG.md",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md"
+  ],
+  "nextAction": "Fechado: PR #234 integrado no main no merge 9176c1aeca792e4bd8ccaca0fbb55e9767ad5625. O status-check executa no CI; suíte integral local e matriz remota passaram no head 99a96c2ff297be4be82bc7f7b4c57484d2a343b4.",
+  "updatedAt": "2026-09-26"
 }
