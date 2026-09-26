@@ -2,10 +2,12 @@
 
 ## Direção
 
-O checkout ativo será único em `Canonical/2026-09-21`, na branch
-`codex/main-worktree-reconciliation-2026-09-26`. A base medida é
-`origin/main` (`ed097a1323d5b48c4d1334adffa00b86383303fd`); a ponta de código
-da reconciliação antes deste registro é `eef9337b4497e073233c27050ae732b71a7a27fb`.
+O único checkout SteamZero ativo está em `Canonical/2026-09-21`, na branch
+`codex/main-worktree-reconciliation-2026-09-26`. A base medida é `origin/main`
+(`ed097a1323d5b48c4d1334adffa00b86383303fd`); o código reconciliado partiu de
+`eef9337b4497e073233c27050ae732b71a7a27fb`. A árvore `.git` principal foi
+relocalizada com esse checkout; `Project Backup/` não faz mais parte da árvore
+do projeto.
 
 ## Decisão sobre as sete frentes
 
@@ -38,7 +40,7 @@ O bundle completo está em:
 `/home/misael/steamzero-hygiene-2026-09-24/centralization-2026-09-26/steamzero-centralization-2026-09-26.bundle`
 
 Ele contém 756 refs e passou por `git bundle verify`. Foi restaurado em um
-repositório bare temporário: 706 refs foram importadas, os 11 snapshots locais
+repositório bare temporário: 707 refs foram importadas, os 11 snapshots locais
 foram encontrados e `git fsck --full --no-dangling` terminou limpo.
 
 Alterações locais geradas sob `.tmp/aura-session-osd-gate` (563 arquivos,
@@ -53,6 +55,21 @@ O clone de referência EmuDeck estava limpo em
 `71d4cdc7c4dc121b99b9b1f8684cbda0f56b7fca` e aponta para
 `https://github.com/dragoonDorise/EmuDeck.git`; ele é reproduzível por clone do
 repositório e checkout do SHA registrado.
+
+## Estado terminal do disco
+
+- `git worktree list --porcelain` contém apenas
+  `/home/misael/Projects/Steam Zero/Canonical/2026-09-21`. Foram removidos 48
+  worktrees secundários após a verificação de suas refs/snapshots.
+- `Project Backup/` e os clones de referência saíram da árvore do projeto. O
+  projeto tem um único checkout; a área de recuperação externa está descrita em
+  `/home/misael/steamzero-hygiene-2026-09-24/centralization-2026-09-26/UNREGISTERED-MATERIAL.md`.
+- Os materiais fora do worktree list não foram apagados por engano: 17 entradas
+  Codex, 2 bundles SD e 3 referências foram movidos intactos para essa área.
+  O clone EmuDeck, público, limpo e reproduzível por SHA, foi removido.
+- O `status-check` e os seis testes específicos passaram novamente no checkout
+  único. A ponta local está seis commits à frente de `origin/main`; nenhum push
+  ou merge foi executado, então GitHub `main` ainda não contém esta reconciliação.
 
 ## Limite desta etapa
 
