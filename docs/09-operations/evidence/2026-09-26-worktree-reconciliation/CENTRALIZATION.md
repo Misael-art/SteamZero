@@ -39,7 +39,7 @@ O bundle completo está em:
 
 `/home/misael/steamzero-hygiene-2026-09-24/centralization-2026-09-26/steamzero-centralization-2026-09-26.bundle`
 
-Ele contém 756 refs e passou por `git bundle verify`. Foi restaurado em um
+Ele contém 708 refs e passou por `git bundle verify`. Foi restaurado em um
 repositório bare temporário: 707 refs foram importadas, os 11 snapshots locais
 foram encontrados e `git fsck --full --no-dangling` terminou limpo.
 
