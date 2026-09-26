@@ -12571,3 +12571,33 @@ O PR #235 entrou no `main` pelo merge `1873fc991ef21a0db5707d64c03beb93c24b1121`
 ## 2026-09-26 — fechamento do WS-2026-09-STATUS-CHECK-CI
 
 O PR #234 entrou no `main` pelo merge `9176c1aeca792e4bd8ccaca0fbb55e9767ad5625`, após o PR #235. O head `99a96c2ff297be4be82bc7f7b4c57484d2a343b4` passou nos oito jobs requeridos do CI `36175333356`, inclusive `Estado do projeto` nos três Pythons da matriz. A suíte integral local terminou com saída 0: 6288 aprovados e 47 ignorados em 2118.38s. A guarda do estado do host registrou valores idênticos antes/depois (12588 arquivos, 2061 diretórios, 1327036375 bytes e `max_mtime_ns=1790206393252103130`). Nenhuma instalação, release ou mutação de host foi feita. O status-check e o WORKLOG permanecem no gate; workstream fechado.
+
+## 2026-09-26 — reconciliação seletiva dos worktrees
+
+Branch local `codex/main-worktree-reconciliation-2026-09-26`, baseada em
+`origin/main` `ed097a1323d5b48c4d1334adffa00b86383303fd`. Em 063, harmonizei o
+preflight de BIOS e a projeção M3U ao modelo multidisco atual; só aceito
+projeção com ownership, conjunto/ordem/caminhos e hashes conferidos. O manifesto
+Amiga segue com M3U não comprovado e continua bloqueado. Em 045/050/054 consolidei
+as lacunas reais de biblioteca, 3DS e Wii U sem duplicar manifestos ou importar
+links quebrados. Em 006 alinhei AGENTS.md com checkpoint focado/integral. Em
+029/038 revisei imagens e registrei não promoção das duas variantes ruins ou
+redundantes.
+
+Validação focada: 237 passed em 172,38s. Checkpoint integral concluído: 6.294
+passed, 47 skipped em 2.202,78s; real-state idêntico antes/depois (12.588
+arquivos, 2.061 diretórios, 1.327.036.375 bytes, mesmo `max_mtime_ns`). Log
+preservado em `docs/09-operations/evidence/2026-09-26-worktree-reconciliation/INTEGRAL-TESTS.log`.
+Independence, boundaries, component-lock, capability-matrix, status-check, Ruff
+check/format e `python -m mypy src` passaram. A primeira sessão integral foi
+interrompida pelo ambiente sem resultado; somente a execução durável posterior
+foi contada. A reconciliação permanece local: sem push, PR, merge, instalação ou
+alteração do host.
+
+Limpeza futura registrada, sem remoção: `root-Port_Steam`,
+`001-steamzero-gap-g16`, `060-steamzero-cohesive-roadmap` e
+`104-Port_Steam-theme-default-pr2`. Em especial, 060 tem conteúdo documental e
+WORKLOG próprios ainda sem decisão de descarte; root e 001 também exigem guardar
+artefatos/WORKLOG únicos. Os sete worktrees fonte selecionados seguem intactos
+até a promoção desta branch. Nenhum worktree ou branch foi podado. Sessão
+acrescentada ao fim; nenhuma entrada anterior foi alterada.

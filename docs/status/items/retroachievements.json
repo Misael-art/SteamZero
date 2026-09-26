@@ -44,5 +44,6 @@
   "nextAction": "Implementar adapter RetroAchievements apenas apos hardening de keyring e outbox, respeitando achievement-event-v1.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-11",
-  "notes": "ADR-0025 e fixtures contratuais integrados como design only. Nao existe adapter RetroAchievements no runtime."
+  "notes": "ADR-0025 e fixtures contratuais integrados como design only. Nao existe adapter RetroAchievements no runtime.",
+  "scopeDigest": "9023cbcdcc254e6f86183b50131210a890d4034d1d57d87c096aa449bb4dcee4"
 }

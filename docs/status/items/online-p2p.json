@@ -42,5 +42,6 @@
   "nextAction": "Implementar runtime P2P apenas apos escolha de transporte e emuladores, respeitando o contrato netplay-session-v1.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-11",
-  "notes": "ADR-0024 e fixtures contratuais integrados como design only. Nao ha implementacao P2P no checkout."
+  "notes": "ADR-0024 e fixtures contratuais integrados como design only. Nao ha implementacao P2P no checkout.",
+  "scopeDigest": "eeb399957239f2c23988a7db2a17dff5a44f8247da4e4eaf7caef1a714339693"
 }

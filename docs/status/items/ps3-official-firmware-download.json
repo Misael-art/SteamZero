@@ -19,7 +19,7 @@
     "tests/unit/test_ps3_firmware.py",
     "tests/unit/test_emulation_controller.py"
   ],
-    "scopeDigest": "e9d6a2d0cf6b9bcf9189c570a9a9b8290a0d8eef16f34cac7a97d4e8a07e148f",
+  "scopeDigest": "c8921546a3ace54f317fbcbc5238808f44ba7dc4eba25191504372e1ef9ea174",
   "dependsOn": [
     "SZ-PLATFORM-REQUIREMENT-SCOPE",
     "SZ-EMULATION-REAL-DUMP-VALIDATION"

@@ -42,5 +42,6 @@
   "nextAction": "Implementar cast internet apenas apos prova LAN estavel e decisao de relay, respeitando remote-cast-session-v1.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-11",
-  "notes": "ADR-0026 e fixtures contratuais integrados como design only. Cast LAN local nao equivale a cast funcional pela internet. Os catorze .meta.json de remote-cast entraram como copia do payload com 'violates' pendurado e foram reescritos na forma fechada violates/explains/failsAt/failsWith; o teste passava antes porque so exigia falha generica."
+  "notes": "ADR-0026 e fixtures contratuais integrados como design only. Cast LAN local nao equivale a cast funcional pela internet. Os catorze .meta.json de remote-cast entraram como copia do payload com 'violates' pendurado e foram reescritos na forma fechada violates/explains/failsAt/failsWith; o teste passava antes porque so exigia falha generica.",
+  "scopeDigest": "65b87b5b45ee58b6bc45b49a160f66487f20636ed4b882a0249b5295d5451c9d"
 }
