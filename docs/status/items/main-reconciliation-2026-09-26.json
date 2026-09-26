@@ -23,7 +23,7 @@
     "AGENTS.md",
     "docs/status/workstreams/main-reconciliation-2026-09-26.json"
   ],
-  "scopeDigest": "f3138594ba82186daf5900a17fcf8ec85f76f69db4d6725c29fa9e1495cdb8cd",
+  "scopeDigest": "fea4437c81d84eacf48645a05a7bf817e6fa9e43d08634edb72ec8dc5387dc5c",
   "dependsOn": [
     "SZ-LIBRARY-CANONICAL",
     "SZ-MULTIDISC-DESCRIPTOR-RECONCILIATION",
