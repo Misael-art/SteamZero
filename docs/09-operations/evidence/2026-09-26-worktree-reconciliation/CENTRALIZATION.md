@@ -67,8 +67,8 @@ repositório e checkout do SHA registrado.
   Codex, 2 bundles SD e 3 referências foram movidos intactos para essa área.
   O clone EmuDeck, público, limpo e reproduzível por SHA, foi removido.
 - O `status-check` e os seis testes específicos passaram novamente no checkout
-  único. A ponta local continua fora de `origin/main`; nenhum push ou merge foi
-  executado, então GitHub `main` ainda não contém esta reconciliação.
+  único. A branch foi publicada no PR #237 contra `main`; o run CI
+  `36232133282` está em andamento. Nenhum merge foi executado.
 
 ## Limite desta etapa
 

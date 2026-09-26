@@ -23,7 +23,7 @@
     "AGENTS.md",
     "docs/status/workstreams/main-reconciliation-2026-09-26.json"
   ],
-  "scopeDigest": "f3f21f3b073811c09483f310691617601c8a4f7d2d99e900cb2fe68c50ac7b11",
+  "scopeDigest": "f3138594ba82186daf5900a17fcf8ec85f76f69db4d6725c29fa9e1495cdb8cd",
   "dependsOn": [
     "SZ-LIBRARY-CANONICAL",
     "SZ-MULTIDISC-DESCRIPTOR-RECONCILIATION",
@@ -81,10 +81,10 @@
       "result": "recorded"
     }
   ],
-  "nextAction": "Validar o checkout único após a centralização e preparar a publicação desta branch para integração em origin/main; merge permanece sujeito a CI verde.",
+  "nextAction": "Acompanhar o CI do PR #237; com todos os gates verdes, registrar a integração em origin/main e encerrar o workstream.",
   "activeWorkstreams": [
     "WS-2026-09-MAIN-WORKTREE-RECONCILIATION"
   ],
   "updatedAt": "2026-09-26",
-  "notes": "Reconciliação iniciada a partir de origin/main ed097a13. Código 063 foi adaptado ao modelo multidisco atual e limitado a projeções cujos IDs, ordem, caminhos e hashes conferem; o manifesto Amiga continua declarando suporte M3U não comprovado e, portanto, não é promovido por este patch. 045/050/054 viraram plano consolidado sem links ausentes. Os worktrees foram centralizados após snapshots e bundle restaurável; branches não integrados continuam preservados, não integrados por arrasto. origin/main ainda precisa receber esta branch."
+  "notes": "Reconciliação iniciada a partir de origin/main ed097a13. Código 063 foi adaptado ao modelo multidisco atual e limitado a projeções cujos IDs, ordem, caminhos e hashes conferem; o manifesto Amiga continua declarando suporte M3U não comprovado e, portanto, não é promovido por este patch. 045/050/054 viraram plano consolidado versionado. Os worktrees foram centralizados após snapshots e bundle restaurável; branches não integrados continuam preservados, não integrados por arrasto. PR #237 está aberto e aguarda CI; merge ainda não executado."
 }
