@@ -55,6 +55,7 @@ from steamzero.adapters.enhancements.installer import (
 )
 from steamzero.adapters.flatpak import FlatpakCLI, FlatpakExecutor
 from steamzero.adapters.lifecycle import ComponentLifecycle
+from steamzero.adapters.managed_multidisc_projection import discover_managed_projection
 from steamzero.adapters.mods.build_id_scanner import BuildIdScanner
 from steamzero.adapters.mods.composite_catalog import CompositeModCatalog
 from steamzero.adapters.mods.github_mod_source import GithubModSource
@@ -1541,6 +1542,33 @@ class EmulationController:
                     f"plataforma {platform_id} não declara um perfil de launch para {emulator_id}"
                 ),
             )
+        # BIOS is a runtime dependency. Check it here, in the preflight shared
+        # by readiness and launch, so the UI cannot offer a launch that will
+        # fail only after the emulator process opens.
+        missing_bios = [
+            name
+            for name in profile.requires_bios
+            if not self._bios_present_for(platform_id, emulator_id, name)
+        ]
+        if missing_bios:
+            raise SteamZeroError(
+                "E-CONTENT-BIOS-MISSING",
+                detail=(
+                    f"importe a BIOS {', '.join(missing_bios)} de {platform_id} "
+                    f"antes de iniciar com {emulator_id}"
+                ),
+            )
+        if profile.requires_bios:
+            pending_bios = self._bios_projection_copies(platform_id, emulator_id)
+            if pending_bios:
+                targets = ", ".join(str(target) for _source, target in pending_bios)
+                raise SteamZeroError(
+                    "E-CONTENT-BIOS-MISSING",
+                    detail=(
+                        f"BIOS de {platform_id} está importada, mas não foi projetada "
+                        f"para {emulator_id}; confirme bios.link antes de iniciar ({targets})"
+                    ),
+                )
         source_type, flatpak_ref, payload = self._emulator_source(emulator_id)
         if platform_id == "playstation-5":
             probe = getattr(self, "_ps5_runtime_probe", None)
@@ -2295,6 +2323,24 @@ class EmulationController:
             # cima ficava sem update e sem DLC — o Wii U com `updates/` ao lado
             # do `.wud` reportava updateCount 0.
             directory_rows = directory_inventory.inventory(root)
+            managed_by_set: dict[str, Any] = {}
+            managed_source_paths: set[str] = set()
+            managed_titles: dict[str, str] = {}
+            managed_systems: dict[str, str] = {}
+            managed_platforms: dict[str, str] = {}
+            for row in directory_rows:
+                if row.disposition != "matched" or row.platform_id is None:
+                    continue
+                system_id = platform_scanner.system_for(row.platform_id)
+                for logical_set in row.multi_disc_sets:
+                    projection = discover_managed_projection(root, logical_set)
+                    if projection is None:
+                        continue
+                    managed_by_set[logical_set.set_id] = projection
+                    managed_source_paths.update(str(part.path) for part in logical_set.parts)
+                    managed_titles[logical_set.set_id] = logical_set.display_title
+                    managed_systems[logical_set.set_id] = system_id
+                    managed_platforms[logical_set.set_id] = row.platform_id
             auxiliary.extend(
                 AuxiliaryContent.from_candidate(item)
                 for row in directory_rows
@@ -2315,9 +2361,22 @@ class EmulationController:
                         {
                             "setId": logical_set.set_id,
                             "title": logical_set.display_title,
-                            "state": logical_set.state,
-                            "reason": logical_set.reason,
+                            "state": (
+                                "ready"
+                                if logical_set.set_id in managed_by_set
+                                else logical_set.state
+                            ),
+                            "reason": (
+                                "projeção M3U gerenciada atual e validada"
+                                if logical_set.set_id in managed_by_set
+                                else logical_set.reason
+                            ),
                             "sourcePaths": source_paths,
+                            "generatedDescriptor": (
+                                str(managed_by_set[logical_set.set_id].descriptor_path)
+                                if logical_set.set_id in managed_by_set
+                                else None
+                            ),
                             "systemId": (
                                 platform_scanner.system_for(row.platform_id)
                                 if row.platform_id is not None
@@ -2365,6 +2424,10 @@ class EmulationController:
                 all_platform_matches.append(candidate)
             for pm in all_platform_matches:
                 if pm.content_kind != "base":
+                    continue
+                # Um M3U gerenciado atual substitui os archives que compõem o
+                # mesmo conjunto; publicar ambos criaria duplicatas no catálogo.
+                if str(pm.path) in managed_source_paths:
                     continue
                 if str(pm.path) in switch_claimed_paths:
                     continue
@@ -2457,6 +2520,49 @@ class EmulationController:
                     ),
                     "evidence": pm.evidence,
                 }
+            for set_id, projection in managed_by_set.items():
+                try:
+                    stat = projection.descriptor_path.stat()
+                except OSError as exc:
+                    errors.append(f"{projection.descriptor_path}: {exc}")
+                    counts["errors"] += 1
+                    continue
+                platform_id = managed_platforms[set_id]
+                fingerprint = hashlib.sha256(
+                    f"{projection.descriptor_path}\0{stat.st_size}\0{stat.st_mtime_ns}".encode()
+                ).hexdigest()
+                discovered[str(projection.descriptor_path)] = {
+                    "id": hashlib.sha256(f"multidisc:{set_id}".encode()).hexdigest()[:24],
+                    "titleId": None,
+                    "identityScheme": None,
+                    "identityDiagnosis": "managed-multidisc-set",
+                    "name": managed_titles[set_id],
+                    "state": "ready",
+                    "statusLabel": f"M3U · Platform: {platform_id}",
+                    "emulatorId": None,
+                    "path": str(projection.descriptor_path),
+                    "fingerprint": fingerprint,
+                    "size": stat.st_size,
+                    "format": "m3u",
+                    "identityVerified": False,
+                    "contentKind": "base",
+                    "metadataSource": None,
+                    "version": None,
+                    "updateCount": 0,
+                    "updateVersion": None,
+                    "dlcCount": 0,
+                    "bannerAsset": None,
+                    "coverUrl": None,
+                    "mediaSource": None,
+                    "platform": platform_id,
+                    "platformId": platform_id,
+                    "systemId": managed_systems[set_id],
+                    "evidence": "archive-multidisc-ready",
+                    "multiDiscSetId": set_id,
+                    "multiDiscState": "ready",
+                    "discCount": len(projection.entries),
+                }
+                counts["base"] += 1
             directory_report.extend(
                 {
                     "root": str(row.path),

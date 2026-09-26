@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-MAIN-WORKTREE-RECONCILIATION",
+  "item": "SZ-MAIN-WORKTREE-RECONCILIATION",
+  "branch": "codex/main-worktree-reconciliation-2026-09-26",
+  "baseRef": "ed097a1323d5b48c4d1334adffa00b86383303fd",
+  "owner": "codex-main-reconciliation",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/adapters/managed_multidisc_projection.py",
+    "tests/unit/test_managed_multidisc_projection.py",
+    "tests/unit/test_amiga_bios_launch_preflight.py",
+    "docs/12-roadmap/REAL-CONTENT-COVERAGE-PLAN.md",
+    "docs/09-operations/evidence/2026-09-26-worktree-reconciliation",
+    "docs/09-operations/CI-AND-GATE-EFFICIENCY.md",
+    "docs/status/items/main-reconciliation-2026-09-26.json",
+    "docs/status/workstreams/main-reconciliation-2026-09-26.json"
+  ],
+  "sharedPaths": [
+    "src/steamzero/adapters/emulation.py",
+    "docs/12-roadmap/IMPLEMENTATION-ROADMAP.md",
+    "AGENTS.md",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Concluir a revisão das mudanças e aplicar em commit de integração final os arquivos compartilhados; rodar os gates e atualizar evidências.",
+  "updatedAt": "2026-09-26"
+}
