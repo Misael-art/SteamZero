@@ -100,15 +100,35 @@ de wheel. Se um wheel aparecer em `dist/` no seu diff, remova-o do commit.
   precedência do host vencer um drop-in próprio, mude a colocação do NOSSO
   artefato (lição do incidente SessionDir/BigLinux de 2026-07-18, ADR-0020).
 
-## 6. Gates são inegociáveis
+## 6. Gates são inegociáveis — com checkpoint definido
 
-Após CADA item (não só no final):
+Durante um lote vertical coeso, rode testes focados e determinísticos da área
+alterada e `ruff check`/`ruff format --check` nos arquivos alterados. Um item
+fechado é um slice utilizável e verificável, não cada arquivo, microedição ou
+commit intermediário.
+
+Quando o lote estiver funcionalmente estável, antes do commit funcional de
+fechamento, execute uma vez os gates integrais:
 `.venv/bin/python tools/run_tests_isolated.py tests -q`,
 `.venv/bin/ruff check src tools tests`,
 `.venv/bin/ruff format --check src tools tests`, `.venv/bin/mypy src`,
-`make independence boundaries`. Cobertura não regride. Nunca enfraqueça ou
-delete um teste para passar; se um contrato mudou de verdade, documente no
-commit qual e por quê.
+`make independence boundaries` e `make status-check`. Cobertura não regride.
+Nunca enfraqueça ou delete um teste para passar; se um contrato mudou de
+verdade, documente no commit qual e por quê.
+
+Não repita suíte integral, build de release, `status-check` ou gates remotos
+entre microalterações. Antecipe o checkpoint somente para mudanças de
+bootstrap, empacotamento, host, segurança ou contrato transversal; quando um
+teste focado indicar regressão fora do módulo; ou por pedido explícito do
+operador. Se só uma visão ou digest gerado ficou obsoleto, regenere-o e rode
+apenas a validação de status aplicável.
+
+Push ocorre em um único checkpoint por lote: implementação completa, testes
+focados verdes, gates integrais locais, status coerente, commits funcionais e
+documentais separados e worktree limpo. Depois do push, registre branch, SHA e
+run e avance para trabalho seguro independente. Consulte CI no estado terminal
+antes de merge/release, por notificação ou quando não houver trabalho
+independente elegível; não faça polling repetitivo.
 
 > Incidente 2026-08-03: o CI aplicou `ruff format` por conta própria no PR #46
 > (CONTROLS-E2E) porque o gate de formatação rodou só lá. `ruff check` não cobre
@@ -142,7 +162,7 @@ Cada item deve seguir este ciclo, sem pular etapas aplicáveis:
 1. reproduzir o defeito ou registrar um baseline verificável;
 2. identificar a causa raiz e implementar a menor correção completa;
 3. executar testes focados durante a investigação e os gates integrais da seção
-   6 somente no fechamento da correção;
+   6 no checkpoint de fechamento do lote;
 4. criar commit funcional isolado e fazer push apenas da branch autorizada;
 5. acompanhar os gates remotos e, quando a thread atual autorizar explicitamente,
    publicar a release pelo fluxo governado;

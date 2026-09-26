@@ -22,5 +22,6 @@
   "nextAction": "Provar que um perfil aplicado tem efeito observavel antes de declarar a capacidade.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-11",
-  "notes": "Item AGREGADOR: existe para que nenhum arquivo de codigo fique sem custodia declarada, nao para alegar capacidade verificada. Onde um item de capacidade especifico cobre o mesmo caminho, ELE prevalece — o agregador responde apenas pelo resto do diretorio. Promover um recorte deste escopo a item proprio, com aceitacao e evidencia, e o caminho normal; o agregador encolhe quando isso acontece."
+  "notes": "Item AGREGADOR: existe para que nenhum arquivo de codigo fique sem custodia declarada, nao para alegar capacidade verificada. Onde um item de capacidade especifico cobre o mesmo caminho, ELE prevalece — o agregador responde apenas pelo resto do diretorio. Promover um recorte deste escopo a item proprio, com aceitacao e evidencia, e o caminho normal; o agregador encolhe quando isso acontece.",
+  "scopeDigest": "5d5cd91a1da2e6c9cbd5b236ad7cc1a75c98e451e131f93650fbef9e997fa8db"
 }

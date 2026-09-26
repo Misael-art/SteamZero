@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-MAIN-WORKTREE-RECONCILIATION",
+  "title": "Reconciliação seletiva de worktrees com a main",
+  "domain": "governance",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "dev",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/adapters/emulation.py",
+    "src/steamzero/adapters/managed_multidisc_projection.py",
+    "tests/unit/test_managed_multidisc_projection.py",
+    "tests/unit/test_amiga_bios_launch_preflight.py",
+    "docs/12-roadmap/IMPLEMENTATION-ROADMAP.md",
+    "docs/01-product/REAL-CONTENT-COVERAGE-PLAN.md",
+    "docs/09-operations/evidence/2026-09-26-worktree-reconciliation/REVIEW.md",
+    "docs/09-operations/evidence/2026-09-26-worktree-reconciliation/CENTRALIZATION.md",
+    "docs/09-operations/evidence/2026-09-26-worktree-reconciliation/INTEGRAL-TESTS.log",
+    "docs/09-operations/evidence/2026-09-26-main-reconciliation-host-validation/README.md",
+    "docs/09-operations/evidence/2026-09-26-main-reconciliation-host-validation/02-desktop-ui.png",
+    "docs/09-operations/CI-AND-GATE-EFFICIENCY.md",
+    "AGENTS.md",
+    "docs/status/workstreams/main-reconciliation-2026-09-26.json"
+  ],
+  "scopeDigest": "3a65800c233676c066d62d9ebedaede4b6721bc94b828442804ca45ab5484848",
+  "dependsOn": [
+    "SZ-LIBRARY-CANONICAL",
+    "SZ-MULTIDISC-DESCRIPTOR-RECONCILIATION",
+    "SZ-EMULATION-RUNTIME-REMEDIATION"
+  ],
+  "knownGaps": [
+    "GAP-MULTIDISC-PHYSICAL-LAUNCH",
+    "GAP-LIBRARY-PHYSICAL-CATALOG-COVERAGE",
+    "GAP-PLATFORM-NINTENDO-3DS-CONTENT-RESOLVER",
+    "GAP-PLATFORM-WII-U-CONTENT-RESOLVER"
+  ],
+  "acceptanceCriteria": [
+    "A disponibilidade de lançamento consulta os requisitos de BIOS declarados pelo perfil e recusa antes do spawn quando faltar BIOS ou projeção gerenciada.",
+    "A biblioteca publica apenas descritores multidisco SteamZero atuais e válidos, ligados a um conjunto reconciliado; o conjunto original não aparece em duplicidade.",
+    "O plano de conteúdo para todas as plataformas, 3DS e Wii U referencia contratos e gaps atuais, sem duplicar manifestos ou afirmar validação física não feita.",
+    "As evidências visuais selecionadas são comparadas com a main e recebem decisão documentada de promoção ou descarte.",
+    "A política de gates distingue testes focados durante o lote dos gates integrais no checkpoint de integração e inclui status-check.",
+    "Os diretórios de worktree são removidos somente após cada tip e cada alteração local relevante ter referência de recuperação verificável; conteúdo sem revisão de mérito não é integrado por arrasto."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_managed_multidisc_projection.py",
+      "command": "tools/run_tests_isolated.py tests/unit/test_managed_multidisc_projection.py tests/unit/test_amiga_bios_launch_preflight.py -q (6 passed; host-state guard identical)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_amiga_bios_launch_preflight.py",
+      "command": "ruff check/format e mypy nos dois adapters alterados passaram; teste confirma recusa antes do lookup/spawn",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-26-worktree-reconciliation/INTEGRAL-TESTS.log",
+      "command": "tools/run_tests_isolated.py tests -q — exit 0, 6294 passed, 47 skipped em 2202.78s; real-state antes/depois idêntico (12588 arquivos, 2061 diretórios, 1327036375 bytes, mesmo max_mtime_ns)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_emulation_controller.py",
+      "command": "Lote focado: projeção, BIOS, runtime-remediation, materialização multidisco, classificação de biblioteca e controlador — 237 passed em 172.38s; guarda real-state idêntica",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "AGENTS.md",
+      "command": "independence, boundaries, component-lock, capability-matrix, status-check, ruff check/format e python -m mypy src (297 arquivos) verdes; make typecheck não tinha binário .venv/bin/mypy, compensado pelo mesmo módulo Python",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-26-worktree-reconciliation/REVIEW.md",
+      "command": "Revisão das sete frentes; snapshots locais em refs/archive, bundle restaurado em bare repo e fsck limpo; diretórios consolidados no checkout canônico",
+      "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-09-26-main-reconciliation-host-validation/README.md",
+      "command": "Release candidata e2af2562 instalada via controlador; CI push 36233353596, convergência idempotente, doctor/schema/services/QML e UI real do host verificados. BIOS/multidisco seguem sem prova física: nenhum título publicado e perfil Amiga sem seleção.",
+      "result": "recorded"
+    }
+  ],
+  "nextAction": "Acompanhar o CI do PR #237 com evidência do host; integrar com gates verdes e registrar o SHA integrado no fechamento.",
+  "activeWorkstreams": [
+    "WS-2026-09-MAIN-WORKTREE-RECONCILIATION"
+  ],
+  "updatedAt": "2026-09-26",
+  "notes": "Reconciliação iniciada a partir de origin/main ed097a13. Código 063 foi adaptado ao modelo multidisco atual e limitado a projeções cujos IDs, ordem, caminhos e hashes conferem; o manifesto Amiga continua declarando suporte M3U não comprovado e, portanto, não é promovido por este patch. 045/050/054 viraram plano consolidado versionado. Os worktrees foram centralizados após snapshots e bundle restaurável; branches não integrados continuam preservados, não integrados por arrasto. A release candidata e2af2562 passou smoke de instalação e UI real do host; lançamento BIOS/multidisco permanece sem prova física porque não há título publicado e o perfil Amiga está sem seleção. PR #237 aguarda CI do commit documental e integração."
+}

@@ -45,5 +45,6 @@
     "WS-2026-08-V2-HARMONIZED"
   ],
   "updatedAt": "2026-08-24",
-  "notes": "Frente guarda-chuva deliberadamente permanece verification=none e operation=unknown: o produto não é promovido somando evidências de itens filhos. A release governada 2.0.0rc1-504d10b14485 e os três diagnósticos de 2026-09-22 tornam o baseline observável, mas a frente só poderá ser promovida depois que os gates G48–G54 e a certificação física de jornada forem fechados individualmente."
+  "notes": "Frente guarda-chuva deliberadamente permanece verification=none e operation=unknown: o produto não é promovido somando evidências de itens filhos. A release governada 2.0.0rc1-504d10b14485 e os três diagnósticos de 2026-09-22 tornam o baseline observável, mas a frente só poderá ser promovida depois que os gates G48–G54 e a certificação física de jornada forem fechados individualmente.",
+  "scopeDigest": "761400beb73d8048c5ae9256cf83efc520f33f421ff522a81036897dc1a10342"
 }

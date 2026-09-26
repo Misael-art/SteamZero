@@ -51,6 +51,11 @@ Critério: AC-SD-01/02, AC-OF-01, AC-PR-01/02 em VM; checklist HW iniciado (Q6).
 Entregas: Library (scan/plan/apply incremental, dedupe, `MULTIDISC-DESCRIPTOR-RECONCILIATION`, quarentena), import de dumps (safezip), conversões (CHD/RVZ/CSO/NSZ) com staging/espaço/timeout e atualização transacional dos descritores derivados, BIOS/firmware/keys store central (hash db + links), Saves store + timeline + checkpoints + backups incrementais, cloud sync com fila e conflito não-destrutivo, mídia/scraping com cache e rate limit, migração SSD↔microSD.
 Critério: AC-LB-*, AC-BI-*, AC-SV-*; RT-06..11.
 
+O plano de cobertura por conteúdo real, com as lacunas atuais de Nintendo 3DS e
+Wii U e a separação entre classificação, preflight e prova física, está em
+[REAL-CONTENT-COVERAGE-PLAN](../01-product/REAL-CONTENT-COVERAGE-PLAN.md). A fonte de estado e
+conclusão continua sendo o catálogo `docs/status/items/`.
+
 ## Fase 4 — Emuladores e frontends
 
 Entregas: engine de adapters + schema adapter.json + lockfile de componentes; adapters núcleo (lista PRD §7); templates de config (derivação EmuDeck conforme REUSE-POLICY); adapters de frontend Steam/SRM/ES-DE/RetroArch/RetroDECK/Heroic; ações semânticas de controle + perfis Steam Input; launcher genérico com perfis por jogo.

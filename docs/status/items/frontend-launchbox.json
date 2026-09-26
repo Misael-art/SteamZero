@@ -9,9 +9,13 @@
   "verification": "none",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopePaths": ["docs/EXPANSION-LEDGER.md"],
+  "scopePaths": [
+    "docs/EXPANSION-LEDGER.md"
+  ],
   "dependsOn": [],
-  "knownGaps": ["LEDGER-A10"],
+  "knownGaps": [
+    "LEDGER-A10"
+  ],
   "acceptanceCriteria": [
     "Contrato de importacao e fixtures LaunchBox sao revisados e versionados.",
     "Conversao preserva caminhos e metadados sem executar binarios de terceiros."
@@ -20,5 +24,6 @@
   "nextAction": "Criar ADR e fixtures antes de prometer compatibilidade LaunchBox.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-10",
-  "notes": "Nenhum adapter LaunchBox esta presente no checkout integrado."
+  "notes": "Nenhum adapter LaunchBox esta presente no checkout integrado.",
+  "scopeDigest": "5e62f3859eedd2cccf5f40b90beb78b7d69bda03f6c4ed6f2a70c78b2c29d403"
 }
