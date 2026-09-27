@@ -51,6 +51,8 @@ Rectangle {
 
     property alias retrofeImportDialogControl: retrofeImportDialog
     property alias retrofeImportApplyControl: retrofeImportApplyButton
+    property alias esdeImportDialogControl: esdeImportDialog
+    property alias esdeImportApplyControl: esdeImportApplyButton
 
     signal applied()
     signal exported(string destination)
@@ -409,6 +411,36 @@ Rectangle {
         if (!panel.itemInRetrofeImportDialog(item))
             return
         const scroll = retrofeImportScroll.contentItem
+        if (!scroll || !scroll.contentItem || !item.height)
+            return
+        const point = item.mapToItem(scroll.contentItem, 0, 0)
+        if (point.y < 0 || point.y > scroll.contentHeight)
+            return
+        const top = point.y - 12
+        const bottom = point.y + item.height + 12
+        if (top < scroll.contentY)
+            scroll.contentY = Math.max(0, top)
+        else if (bottom > scroll.contentY + scroll.height)
+            scroll.contentY = Math.min(
+                Math.max(0, scroll.contentHeight - scroll.height),
+                bottom - scroll.height
+            )
+    }
+
+    function itemInEsdeImportDialog(item) {
+        let current = item
+        while (current) {
+            if (current === esdeImportScroll || current === esdeImportFooter)
+                return true
+            current = current.parent
+        }
+        return false
+    }
+
+    function revealEsdeImportItem(item) {
+        if (!panel.itemInEsdeImportDialog(item))
+            return
+        const scroll = esdeImportScroll.contentItem
         if (!scroll || !scroll.contentItem || !item.height)
             return
         const point = item.mapToItem(scroll.contentItem, 0, 0)
@@ -947,72 +979,102 @@ Rectangle {
         onOpened: importSourceField.forceActiveFocus()
         onClosed: panel.resetEsdeImport()
 
-        contentItem: ColumnLayout {
-            spacing: 10
+        /// Up/Down percorrem o diálogo inteiro, exatamente como no modal RetroFE da
+        /// fatia anterior. O rodapé não é descendente do corpo rolável, então as duas
+        /// pontas chamam o mesmo passo. Andar só dentro do modal e pular o que não
+        /// aceita foco: sem isso o D-pad atravessaria para os controles atrás do
+        /// diálogo ou empacaria em um botão desabilitado.
+        function moveVertical(event, forward) {
+            const hostWindow = panel.Window.window
+            const active = hostWindow ? hostWindow.activeFocusItem : null
+            let next = active
+            do {
+                next = next ? next.nextItemInFocusChain(forward) : null
+            } while (next && next !== active
+                     && (!panel.itemInEsdeImportDialog(next) || next.enabled === false))
+            if (!next || next === active)
+                return
+            next.forceActiveFocus(Qt.TabFocusReason)
+            Qt.callLater(function() { panel.revealEsdeImportItem(next) })
+        }
 
-            Label {
-                text: qsTr("Examine primeiro. A importação cria um tema editável e não altera o tema ativo.")
-                color: panel.mutedColor
-                wrapMode: Text.WordWrap
-                Layout.fillWidth: true
+        contentItem: ScrollView {
+            id: esdeImportScroll
+            clip: true
+            contentWidth: availableWidth
+            focus: true
+            // Setas verticais navegam o diálogo; as horizontais seguem editando.
+            Keys.onUpPressed: function(event) {
+                esdeImportDialog.moveVertical(event, false)
+            }
+            Keys.onDownPressed: function(event) {
+                esdeImportDialog.moveVertical(event, true)
             }
 
-            RowLayout {
-                Layout.fillWidth: true
-                TextField {
-                    id: importSourceField
-                    objectName: "themeImportEsdeSource"
-                    text: panel.esdeImportSource
-                    placeholderText: qsTr("Pasta do tema ES-DE")
-                    Accessible.name: qsTr("Pasta do tema ES-DE")
+            ColumnLayout {
+                width: esdeImportScroll.availableWidth
+                spacing: 10
+
+                Label {
+                    text: qsTr("Examine primeiro. A importação cria um tema editável e não altera o tema ativo.")
+                    color: panel.mutedColor
+                    wrapMode: Text.WordWrap
                     Layout.fillWidth: true
-                    Layout.minimumHeight: 48
-                    onTextChanged: panel.esdeImportSource = text
                 }
-                Button {
-                    objectName: "themeImportEsdeBrowse"
-                    text: qsTr("Escolher")
-                    Accessible.name: text
-                    Layout.minimumHeight: 48
-                    onClicked: esdeImportFolderDialog.open()
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    TextField {
+                        id: importSourceField
+                        objectName: "themeImportEsdeSource"
+                        text: panel.esdeImportSource
+                        placeholderText: qsTr("Pasta do tema ES-DE")
+                        Accessible.name: qsTr("Pasta do tema ES-DE")
+                        Layout.fillWidth: true
+                        Layout.minimumHeight: 48
+                        onTextChanged: panel.esdeImportSource = text
+                    }
+                    Button {
+                        objectName: "themeImportEsdeBrowse"
+                        text: qsTr("Escolher")
+                        Accessible.name: text
+                        Layout.minimumHeight: 48
+                        onClicked: esdeImportFolderDialog.open()
+                    }
+                    Button {
+                        objectName: "themeImportEsdeInspect"
+                        text: qsTr("Examinar")
+                        enabled: !panel.esdeImportBusy && panel.esdeImportSource.trim() !== ""
+                        Accessible.name: text
+                        Accessible.description: enabled
+                            ? qsTr("Lê os esquemas sem gravar arquivos")
+                            : qsTr("Informe a pasta do tema antes de examinar")
+                        Layout.minimumHeight: 48
+                        onClicked: panel.inspectEsdeImport()
+                    }
                 }
-                Button {
-                    objectName: "themeImportEsdeInspect"
-                    text: qsTr("Examinar")
-                    enabled: !panel.esdeImportBusy && panel.esdeImportSource.trim() !== ""
-                    Accessible.name: text
-                    Accessible.description: enabled
-                        ? qsTr("Lê os esquemas sem gravar arquivos")
-                        : qsTr("Informe a pasta do tema antes de examinar")
-                    Layout.minimumHeight: 48
-                    onClicked: panel.inspectEsdeImport()
+
+                Label {
+                    objectName: "themeImportEsdeNotice"
+                    text: panel.esdeImportNotice
+                    visible: panel.esdeImportNotice !== ""
+                    color: panel.esdeImportNoticeIsError ? panel.redColor : panel.greenColor
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
                 }
-            }
 
-            Label {
-                text: panel.esdeImportNotice
-                visible: panel.esdeImportNotice !== ""
-                color: panel.esdeImportNoticeIsError ? panel.redColor : panel.greenColor
-                wrapMode: Text.WordWrap
-                Layout.fillWidth: true
-            }
+                Label {
+                    text: qsTr("Esquemas encontrados")
+                    visible: panel.esdeImportSchemes.length > 0
+                    color: panel.textColor
+                    font.weight: Font.Medium
+                }
 
-            Label {
-                text: qsTr("Esquemas encontrados")
-                visible: panel.esdeImportSchemes.length > 0
-                color: panel.textColor
-                font.weight: Font.Medium
-            }
-
-            ScrollView {
-                visible: panel.esdeImportSchemes.length > 0
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                clip: true
-                contentWidth: availableWidth
                 ColumnLayout {
-                    width: parent.availableWidth
+                    visible: panel.esdeImportSchemes.length > 0
+                    Layout.fillWidth: true
                     spacing: 4
+
                     Repeater {
                         model: panel.esdeImportSchemes
                         delegate: RowLayout {
@@ -1040,42 +1102,52 @@ Rectangle {
                         }
                     }
                 }
+
+                TextField {
+                    id: importNameField
+                    objectName: "themeImportEsdeName"
+                    text: panel.esdeImportName
+                    visible: panel.esdeImportSchemes.length > 0
+                    placeholderText: qsTr("Nome do tema importado")
+                    Accessible.name: qsTr("Nome do tema importado")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onTextChanged: panel.esdeImportName = text
+                }
+            }
+        }
+
+        footer: RowLayout {
+            id: esdeImportFooter
+            Layout.fillWidth: true
+            Keys.onUpPressed: function(event) {
+                esdeImportDialog.moveVertical(event, false)
+            }
+            Keys.onDownPressed: function(event) {
+                esdeImportDialog.moveVertical(event, true)
             }
 
-            TextField {
-                id: importNameField
-                objectName: "themeImportEsdeName"
-                text: panel.esdeImportName
-                visible: panel.esdeImportSchemes.length > 0
-                placeholderText: qsTr("Nome do tema importado")
-                Accessible.name: qsTr("Nome do tema importado")
-                Layout.fillWidth: true
+            Button {
+                objectName: "themeImportEsdeCancel"
+                text: qsTr("Cancelar")
+                Accessible.name: text
                 Layout.minimumHeight: 48
-                onTextChanged: panel.esdeImportName = text
+                onClicked: esdeImportDialog.close()
             }
-
-            RowLayout {
-                Layout.fillWidth: true
-                Button {
-                    text: qsTr("Cancelar")
-                    Accessible.name: text
-                    Layout.minimumHeight: 48
-                    onClicked: esdeImportDialog.close()
-                }
-                Item { Layout.fillWidth: true }
-                Button {
-                    objectName: "themeImportEsdeApply"
-                    text: panel.esdeImportBusy ? qsTr("Importando…") : qsTr("Importar como editável")
-                    enabled: !panel.esdeImportBusy
-                        && panel.esdeImportSchemeIndex >= 0
-                        && panel.esdeImportName.trim() !== ""
-                    Accessible.name: text
-                    Accessible.description: enabled
-                        ? qsTr("Cria o tema e deixa o tema ativo inalterado")
-                        : qsTr("Examine um esquema e informe um nome")
-                    Layout.minimumHeight: 48
-                    onClicked: panel.applyEsdeImport()
-                }
+            Item { Layout.fillWidth: true }
+            Button {
+                id: esdeImportApplyButton
+                objectName: "themeImportEsdeApply"
+                text: panel.esdeImportBusy ? qsTr("Importando…") : qsTr("Importar como editável")
+                enabled: !panel.esdeImportBusy
+                    && panel.esdeImportSchemeIndex >= 0
+                    && panel.esdeImportName.trim() !== ""
+                Accessible.name: text
+                Accessible.description: enabled
+                    ? qsTr("Cria o tema e deixa o tema ativo inalterado")
+                    : qsTr("Examine um esquema e informe um nome")
+                Layout.minimumHeight: 48
+                onClicked: panel.applyEsdeImport()
             }
         }
     }
