@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "8bc96aa2a3d1ca2fc66613e6ed424f6f279830f1caf172d661b5f8c7cafa09cb",
+  "scopeDigest": "f277d5e9d4cdc129304a4c5e824ae848a766c8e112ad7a938ef15ff6fe195924",
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun",
     "docs/09-operations/evidence/2026-09-07-theme-studio-contrast",
@@ -166,6 +166,12 @@
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/03-ux05-ux07-verde-medido.log",
       "command": "2026-09-27 renovação de escopo pela frente WS-2026-09-RC01-READINESS-FOCUS (fatia UX-05/UX-07 de RC-01, item SZ-UI-DESKTOP-AUDIT). Arquivo do escopo alterado por trabalho de outro item (RC-01 / SZ-UI-DESKTOP-AUDIT): ThemeEditorPanel.qml, restrito ao diálogo de importação RetroFE. O Studio não foi tocado e nenhuma evidência deste item foi reatestada. O digest foi regenerado pela ferramenta porque o escopo mudou; as capacidades deste item NÃO foram reatestadas, nenhuma evidência foi carimbada e nenhum eixo dele mudou de estado neste lote.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-27-esde-import-dialog-compact/03-verde-medido-com-correcao.log",
+      "command": "2026-09-27 renovação de escopo pela frente WS-2026-09-RC01-READINESS-FOCUS (3ª fatia de RC-01, item SZ-UI-DESKTOP-AUDIT). O estúdio em si não mudou: o painel ThemeEditorPanel mudou apenas no diálogo de importação ES-DE (corpo rolável, ações no rodapé, navegação por D-pad real, lista de esquemas sem scroll aninhado), e o caminho de edição de tema continua o mesmo. Nenhum teste próprio deste item foi reexecutado neste lote e nenhuma evidência foi carimbada aqui; o digest foi regenerado pela ferramenta porque o escopo compartilhado (src/steamzero/ui) mudou. Nenhum eixo deste item mudou de estado.",
       "result": "recorded"
     }
   ],

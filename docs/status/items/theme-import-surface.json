@@ -15,7 +15,7 @@
     "tests/unit/test_theme_import_esde.py",
     "tests/qml/check_theme_editor_import.qml"
   ],
-  "scopeDigest": "d636598b132f78d2de2b6a86958f5dc69ab0142f119e1514aef579a2a16d2028",
+  "scopeDigest": "337fb03df58094c8053a464de14c61b9736bfe8d9ae50d21a639aa4bdb9ce581",
   "dependsOn": [
     "SZ-THEME-STUDIO"
   ],
@@ -82,6 +82,12 @@
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/03-ux05-ux07-verde-medido.log",
       "command": "2026-09-27 renovação de escopo pela frente WS-2026-09-RC01-READINESS-FOCUS (fatia UX-05/UX-07 de RC-01, item SZ-UI-DESKTOP-AUDIT). Mudança visível na superfície de importação: corpo do diálogo RetroFE passou a rolar e as ações foram para o rodapé. Nenhum contrato deste item foi reexecutado; a prova própria anterior continua a do lote de 2026-09-03. O digest foi regenerado pela ferramenta porque o escopo mudou; as capacidades deste item NÃO foram reatestadas, nenhuma evidência foi carimbada e nenhum eixo dele mudou de estado neste lote.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-27-esde-import-dialog-compact/03-verde-medido-com-correcao.log",
+      "command": "2026-09-27 renovação de escopo pela frente WS-2026-09-RC01-READINESS-FOCUS (3ª fatia de RC-01, item SZ-UI-DESKTOP-AUDIT). Mudança visível na superfície de importação: o diálogo Importar tema ES-DE passou a ter corpo rolável com as ações no rodapé, e a lista de esquemas deixou de ser um ScrollView aninhado. Nenhum contrato deste item foi reexecutado; a prova própria anterior continua a do lote de 2026-09-03. O digest foi regenerado pela ferramenta porque o escopo compartilhado (src/steamzero/ui) mudou; as capacidades deste item NÃO foram reatestadas, nenhuma evidência foi carimbada e nenhum eixo dele mudou de estado neste lote.",
       "result": "recorded"
     }
   ],

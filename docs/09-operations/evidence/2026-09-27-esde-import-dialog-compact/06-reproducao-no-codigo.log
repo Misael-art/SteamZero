@@ -1,0 +1,121 @@
+# Reprodução no código — o defeito do diálogo ES-DE e a correção, com referência Git
+# data: 2026-09-27T10:43:26-03:00  branch: codex/rc01-readiness-focus-2026-09-27  HEAD: 330401ac
+# checkout: /home/misael/Projects/Steam Zero/Canonical/2026-09-21 (o único do projeto)
+
+## O que estava errado, em quatro causas estruturais
+
+Medido em `src/steamzero/ui/qml/ThemeEditorPanel.qml` na forma anterior ao lote
+(diálogo `esdeImportDialog`, referência Git completa mais abaixo):
+
+1. `contentItem: ColumnLayout` sem corpo rolável, com `height: Math.min(panel.height - 24, 560)`
+   no diálogo. Qualquer conteúdo que passe de 560 px sai da moldura e não tem como
+   ser alcançado — é corte, não layout. Medido no log 02: com o relatório extenso do
+   próprio caminho de erro do `Importar`, `body=519/1102` (conteúdo de 1102 px em
+   corpo de 519) e o botão primary em `(493,1041)-(634,1089)` — fora dos 560 px.
+2. As ações (Cancelar / Importar como editável) viviam DENTRO do corpo. Sem rodapé,
+   a ação mais importante do diálogo ia embora junto com o conteúdo excedente.
+3. Não havia handler de seta vertical em lugar nenhum. O D-pad não atravessava o
+   diálogo: 24 pressões de `Qt.Key_Down` e o foco continuava em
+   `themeImportEsdeSource` (log 02, test_03); a mesma tecla dentro do campo de
+   origem não saía dele (test_05).
+4. A lista de esquemas tinha um `ScrollView` ANINHADO dentro do corpo. Um segundo
+   scroll preso dentro do primeiro captura as setas para o seu primeiro foco:
+   medido como `visitas distintas: 1 em 40 pressões` (test_07) — o mesmo mecanismo
+   que a fatia anterior tinha provado no modal RetroFE.
+
+## Referência Git recuperável da árvore vermelha (não é cópia solta)
+
+- `git show HEAD:src/steamzero/ui/qml/ThemeEditorPanel.qml`
+  → sha256 `79dc0e5f68ff4008ddd0ebcd07985544b48c9974cc4fe4a11878ae5b49c790ed`, 3014 linhas
+  (blob `b5e5212d`; idêntico em `7fe9e8b2`, o commit funcional da fatia anterior).
+- O harness de contrato consome quatro nomes que essa árvore não expõe. Para montar
+  EXATAMENTE a árvore do log 02 é preciso acrescentar cinco linhas de superfície de
+  teste — nenhuma delas muda comportamento, todas são `id`/`objectName`/`alias`:
+
+  1. depois de `property alias retrofeImportApplyControl: retrofeImportApplyButton`:
+     ```
+     property alias esdeImportDialogControl: esdeImportDialog
+     property alias esdeImportApplyControl: esdeImportApplyButton
+     ```
+  2. primeira linha do `Label {` ligado a `text: panel.esdeImportNotice`:
+     `objectName: "themeImportEsdeNotice"`
+  3. primeira linha do `Button { text: qsTr("Cancelar") }` do `RowLayout` de ações:
+     `objectName: "themeImportEsdeCancel"`
+  4. primeira linha do `Button {` cujo `objectName` já era `"themeImportEsdeApply"`:
+     `id: esdeImportApplyButton`
+
+- Árvore montada (HEAD + as cinco linhas): sha256
+  `83b683dc02f4344d9ac36a858e55e756b204e855d93d43a6f7c5d54a9f77a926`, 3019 linhas —
+  é o hash registrado no cabeçalho do log 02 e impresso no log 04, seção 2.
+- Árvore corrigida: sha256
+  `fea75dead9d4839d0f8bb66043dc306c0621e0dac9bb4f1d9b106cdfb78b1656`, 3086 linhas.
+
+## Como reproduzir o vermelho, em um comando
+
+```
+cp <painel-de-83b683dc> src/steamzero/ui/qml/ThemeEditorPanel.qml
+QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QT_FORCE_STDERR_LOGGING=1 \
+  QT_LOGGING_RULES="" /usr/lib/qt6/bin/qmltestrunner \
+  -input tests/qml/check_esde_import_dialog_compact_viewport.qml
+```
+
+Resultado medido (log 02, 2026-09-27T10:30:43-03:00, rc=5):
+
+```
+FAIL!  test_03 ... 'teclas reais de descida não chegaram ao alvo em 'compacto descida' depois de 24 pressões'
+FAIL!  test_05 ... 'Down real precisa tirar o foco do campo e navegar o diálogo, não ser engolido pela edição'
+FAIL!  test_06 ... 'todo controle de texto precisa estar na banda visível ou dentro de área rolável em 'relatorio extenso': 9 ficaram fora sem como alcançar'
+FAIL!  test_07 ... 'a descida por D-pad real tem de percorrer os esquemas, não empacar no primeiro (visitas distintas: 1 em 40 pressões)'
+FAIL!  test_09 ... 'todo controle de texto precisa estar na banda visível ou dentro de área rolável em 'largo relatorio extenso': 9 ficaram fora sem como alcançar'
+Totals: 8 passed, 5 failed, 0 skipped, 0 blacklisted
+```
+
+As cinco falhas são as quatro causas acima (test_03 e test_05 são a causa 3; test_06
+e test_09 são as causas 1 e 2 em dois viewports; test_07 é a causa 4).
+
+## A correção, e onde ela está no arquivo hoje
+
+Mesma forma do modal RetroFE da fatia anterior — nenhum mecanismo novo:
+
+- `ThemeEditorPanel.qml:430` `itemInEsdeImportDialog(item)` e `:440`
+  `revealEsdeImportItem(item)` — dizem se um item pertence ao diálogo aberto e
+  rolam o corpo até ele.
+- `:987` `esdeImportDialog.moveVertical(event, forward)` — percorre a cadeia de foco
+  real, fica dentro do modal e pula desabilitados; `Qt.callLater` revela o destino.
+- `:1001` `contentItem: ScrollView { id: esdeImportScroll; clip: true;
+  contentWidth: availableWidth; focus: true }` com `Keys.onUpPressed` /
+  `Keys.onDownPressed` — as setas verticais navegam, as horizontais seguem editando.
+- `:1120` `footer: RowLayout { id: esdeImportFooter }` com as mesmas duas chaves —
+  o rodapé não é descendente do corpo rolável, por isso as duas pontas chamam o
+  mesmo passo.
+- O `ScrollView` aninhado da lista de esquemas virou `ColumnLayout` simples dentro
+  do corpo único.
+
+Nada de comportamento foi alterado além disso: as ações continuam as mesmas, o
+payload de `theme.import.esde.apply` continua `{source, scheme, name}`, o tema
+continua sem ser ativado, e `onClosed: panel.resetEsdeImport()` continua limpando o
+importador (test_08 confere as três coisas).
+
+## Onde NÃO há cópia alternativa do código
+
+`grep -rl "esdeImportDialog" src tests` devolve exatamente:
+
+```
+src/steamzero/ui/qml/Main.qml               <- o diálogo duplicado do shell, OUTRO defeito,
+                                               pertence ao recorte 5(b) desta frente
+src/steamzero/ui/qml/ThemeEditorPanel.qml   <- o arquivo corrigido
+tests/integration/test_esde_import_dialog_compact.py
+tests/qml/capture_esde_import_viewport.qml
+tests/qml/check_esde_import_dialog_compact_viewport.qml
+```
+
+As árvores vermelha e verde usadas nas medições viveram em `/tmp` (fora do checkout)
+durante a troca, e o arquivo em `src/` foi restaurado e conferido por sha256 no log
+04, seção 4. O único checkout do projeto continua sendo este.
+
+## Limite desta prova
+
+Offscreen com backend de software: mede geometria, foco e teclado real dentro do
+painel. NÃO é a release `2.0.0rc1-e2af2562ebba` instalada no host, e não alcança o
+segundo diálogo ES-DE que existe em `Main.qml` — esse é o recorte 5(b), junto com a
+certificação dos 48 px por alvo no shell inteiro.

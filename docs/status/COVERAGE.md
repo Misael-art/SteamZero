@@ -17,7 +17,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-PRIVILEGED | 7 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SCHEMAS | 53 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SERVICE-API | 11 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-TESTS | 504 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-TESTS | 507 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TOOLS | 42 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AURA-ASSET-SANITIZACAO | 2 | 1 | 1 | unit |  |
 | SZ-AURA-CINEMA-COMPLETION | 98 | 31 | 17 | hw |  |
@@ -90,13 +90,13 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-SHARPEMU-COMPONENT-SMOKE-CONTRACT | 3 | 1 | 1 | unit |  |
 | SZ-SYSTEM-DIAGNOSTICS-GUIDANCE | 5 | 7 | 3 | dev |  |
 | SZ-TEST-STATE-ISOLATION | 4 | 4 | 4 | dev |  |
-| SZ-THEME-ENGINE | 125 | 52 | 45 | hw |  |
+| SZ-THEME-ENGINE | 125 | 53 | 45 | hw |  |
 | SZ-THEME-ESDE-SCENE-RENDER | 26 | 11 | 8 | hw |  |
 | SZ-THEME-IMPORT-ESDE-LAYOUT | 32 | 12 | 10 | hw |  |
-| SZ-THEME-IMPORT-RETROFE | 10 | 11 | 9 | hw |  |
-| SZ-THEME-IMPORT-SURFACE | 4 | 9 | 7 | unit |  |
-| SZ-THEME-STUDIO | 88 | 20 | 15 | hw |  |
-| SZ-UI-DESKTOP-AUDIT | 461 | 76 | 52 | dev |  |
+| SZ-THEME-IMPORT-RETROFE | 10 | 12 | 9 | hw |  |
+| SZ-THEME-IMPORT-SURFACE | 4 | 10 | 7 | unit |  |
+| SZ-THEME-STUDIO | 88 | 21 | 15 | hw |  |
+| SZ-UI-DESKTOP-AUDIT | 481 | 82 | 55 | dev |  |
 | SZ-UI-PACKAGED-ICONS | 57 | 4 | 2 | unit |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 

@@ -13136,3 +13136,94 @@ sempre pelo valor que a própria ferramenta calcula (`tools/project_status.py di
 depois de todas as escritas no escopo, com `render --write` e `STATUS-CHECK: OK` em cada passagem.
 Conferido arquivo a arquivo: dos seis commits desta frente, **só `7fe9e8b2`** tem algo fora de `docs/`
 (4 arquivos: `ThemeEditorPanel.qml` e os três de teste); os outros cinco são puros documentos.
+
+## 2026-09-27 — RC-01, 3ª fatia: o diálogo ES-DE cabe no viewport e o D-pad percorre o modal (UX-05/UX-07)
+
+**Partida e registro antes da edição.** Branch `codex/rc01-readiness-focus-2026-09-27` sobre
+`330401ac`, o mesmo (e único) checkout do projeto, `.venv` dele próprio, `git worktree list` com uma
+linha só e nenhum processo de teste vivo (`01-preflight.log`). O painel estava byte a byte no estado
+funcional da fatia anterior: sha256 `79dc0e5f…`, 3014 linhas, blob `b5e5212d`. A frente foi registrada
+**antes** de tocar código: workstream com os quatro caminhos novos em `exclusivePaths`, item com as
+três rotas de teste e a pasta de evidência em `scopePaths`, e a pasta
+`docs/09-operations/evidence/2026-09-27-esde-import-dialog-compact/` criada com o log de pre-flight.
+
+**Reproduzir primeiro, com o instrumento final.** O harness `check_esde_import_dialog_compact_viewport.qml`
+(880 linhas, raiz `Item`, 11 cenários + init/cleanup) foi escrito como o da fatia anterior —
+`qmltestrunner` sob `QT_QPA_PLATFORM=offscreen` com backend de software, `TestCase.keyClick` e
+`mouseClick` reais, estabilização observável com limite e falha explícita — e o vermelho foi medido
+**com ele já fechado**, para o log não descrever um instrumento que depois mudou:
+**`Totals: 8 passed, 5 failed`, rc=5**, cinco falhas nomeadas:
+
+* `test_06`/`test_09` — `body=519/1102`: 1102 px de conteúdo num corpo de 519, sem área rolável, com o
+  primary em `(493,1041)-(634,1089)` numa moldura de 560 px e **9 controles de texto fora da banda "sem
+  como alcançar"**, nos dois viewports;
+* `test_03` — 24 pressões de `Qt.Key_Down` e o foco parado em `themeImportEsdeSource` (as 24 linhas
+  `PASSO` estão no log);
+* `test_05` — `Left`/`Backspace` editavam (18→17), mas o `Down` era engolido pela edição em vez de sair
+  do campo;
+* `test_07` — lista de esquemas com `ScrollView` aninhado: **1 visita distinta em 40 pressões**.
+
+As quatro causas são estruturais e estão escritas com linha do arquivo em
+`06-reproducao-no-codigo.log`. A árvore vermelha é recuperável por **Git**, não por cópia solta:
+`git show HEAD:…` + exatamente cinco linhas de superfície (`2` aliases, `objectName` do aviso,
+`objectName` do Cancelar, `id` do primary), conferida pelo sha256 `83b683dc…` de 3019 linhas. Nenhuma
+cópia alternativa ficou no repositório — `grep -rl "esdeImportDialog" src tests` devolve o painel, os
+três arquivos de teste deste lote e `Main.qml`, que tem **outro** diálogo ES-DE duplicado e pertence ao
+recorte "dentro do shell".
+
+**A correção é a forma da fatia anterior, não um mecanismo novo.** `ThemeEditorPanel.qml` em
+`+159/−87` (`git diff -w`: `+82/−10`), só o diálogo ES-DE: `contentItem` virou `ScrollView` único com
+`clip` e `contentWidth: availableWidth`, as duas ações foram para o `footer`, o `ScrollView` aninhado da
+lista de esquemas virou `ColumnLayout`, e `itemInEsdeImportDialog()` / `revealEsdeImportItem()` /
+`moveVertical()` repetem o par RetroFE — as setas verticais navegam o modal pulando quem não é do diálogo
+e quem está desabilitado, as horizontais continuam editando. Verde: **`Totals: 13 passed, 0 failed`,
+rc=0**, cinco execuções; primary alcançado por **6 pressões reais** com aviso implícito de 816 px
+rolável; 24 esquemas em corpo único com 6 pressões e 6 visitas distintas; `foraDaBandaSemRolagem=0`,
+`espremidos=0`, `overflowHorizontal=0` em todos os cenários, inclusive com escala de texto 1.5. Nenhuma
+regra de importação foi tocada: payload `{source, scheme, name}`, tema não ativado, `resetEsdeImport()`
+no `onClosed` — as três coisas são o `test_08`.
+
+**O lote também fechou uma corrida que a fatia anterior deixou no ar.** O gate de capturas do RetroFE
+reprovava intercaladamente sob o par combinado (`capturas=5 de 4`, um `undefined-gate.png`, rc=1) e
+passava sozinho. Em vez de registrar como sorte, reproduzi removendo a linha `harness.phase = 500`:
+**4 falhas em 4 execuções**; com a guarda de volta, **6 em 6**. `grabToImage` é assíncrono e o `Timer` de
+20 ms reentrava na mesma fase — a cena ES-DE nasceu com a guarda, a RetroFE recebeu a mesma linha e o
+gate das duas agora exige a linha e o comentário que diz por quê. A seção 1 do log `04` mostra o mesmo
+defeito no arquivo novo antes da correção (8 capturas para 5 nomes), com a cena restaurada e conferida
+por sha256.
+
+**Medida visual honesta.** Dez PNGs nos dois viewports, cinco de cada lado, `5 de 5` e rc=0 nas duas
+corridas, inspecionadas uma a uma. Onde o antes e o depois se parecem, o README diz: com um único
+esquema as ações aparecem nas duas imagens; o que muda é estrutural. E a imagem 3 tem o foco
+**programático de propósito** — ela prova o rodapé fixo com o destino fora da dobra, não prova rolagem;
+revelar o destino focado é caminho do D-pad real, medido no harness de contrato.
+
+**O que rodou, e o que não rodou.** `ruff check`, `ruff format --check` (672 arquivos), `mypy src`
+(297 arquivos), `make independence boundaries` — rc=0. Par de gates de viewport: `11 passed` cinco
+vezes. Regressão dirigida pela dependência real (`grep -rl ThemeEditorPanel tests/`): os 96 testes de
+`test_qml_handheld_offscreen.py` (que conduz os três harnesses do editor de temas), cobertura e jornada
+de diálogos e identidade e matriz de controles — **96 passed in 1158.03s**, rc=0, janela
+11:30:17→11:49:35 com a árvore congelada (última escrita 11:28:45, impressão do `git status` idêntica
+antes e depois). **A suíte integral não foi reexecutada aqui**: o checkpoint integral desta frente
+continua a corrida única da 2ª fatia (08:50→09:21, `1 failed, 6402 passed, 47 skipped`), e a integral da
+sequência vira no fim dos recortes 5(d)/5(b)/5(c), sobre a árvore final. Nada nesta fatia é prova da
+release `2.0.0rc1-e2af2562ebba` instalada: offscreen mede geometria, foco e teclado, não o host.
+
+**Dependência e integração.** Esta fatia senta sobre o commit funcional da anterior (`7fe9e8b2`), que
+está dentro do PR 241; a pilha declarada continua 239 (`069501ab`) → 240 (`c959be13`) → 241 (ponta desta
+branch), todos com base `main` e OPEN, ordem de integração obrigatória. Nada de 239/240 é reapresentado
+como mudança nova. Nenhuma frente se declara integrada: o merge é decisão do operador, e
+`WS-2026-09-RC01-READINESS-FOCUS` e `WS-2026-09-RC01-CENTRAL-LOADING` continuam `active` até o SHA
+realmente estar em `main`.
+
+**Governança deste passo.** Cinco `scopeDigest` envelheceram com a mudança em `src/steamzero/ui`
+(`SZ-UI-DESKTOP-AUDIT` e os quatro itens de tema), foram renovados **pelo valor que a própria ferramenta
+calcula** e as três visões regeradas com `render --write`; os quatro itens de tema receberam uma entrada
+de renovação que diz explicitamente que nenhuma capacidade deles foi reatestada, e o
+`SZ-THEME-IMPORT-RETROFE` registra que este lote **tocou** um arquivo dele (a cena de captura e o gate,
+com a guarda de fase). O WORKLOG é append-only. O `nextAction` da frente passa a listar a ordem que
+resta: conciliar o claim de `Main.qml` (evidência: `73919843`, o único commit funcional pendente de
+`WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT`, toca `adapters/emulation.py`, `adapters/discovery/vita_packaging.py`
+e dois testes unitários; `cad58bb4` é só docs; o diff de `Main.qml` e `desktop_contracts.py` entre
+`origin/main` e `cad58bb4` está **vazio**, conferido com `git diff --stat`), depois os 48 px por alvo
+dentro do shell com escala de texto, depois UX-03, e UX-04 só no que não invade `emulation.py`.

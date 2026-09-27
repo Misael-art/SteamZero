@@ -1,0 +1,112 @@
+# Gates rápidos do checkpoint — 3ª fatia de RC-01 (ES-DE, UX-05/UX-07)
+# branch=codex/rc01-readiness-focus-2026-09-27  HEAD=330401ac  data=2026-09-27T10:40:57-03:00
+
+## 1. Gates do repositório
+$ .venv/bin/ruff check src tools tests
+All checks passed!
+rc=0
+
+$ .venv/bin/ruff format --check src tools tests
+672 files already formatted
+rc=0
+
+$ .venv/bin/mypy src
+Success: no issues found in 297 source files
+rc=0
+
+$ make independence boundaries
+.venv/bin/python tools/check_independence.py
+independência de runtime: OK
+.venv/bin/python tools/lint_boundaries.py --root src
+lint de fronteiras: OK (0 violações)
+rc=0
+
+## 2. Os dois gates de viewport, juntos (11 testes)
+$ .venv/bin/python -m pytest tests/integration/test_esde_import_dialog_compact.py tests/integration/test_retrofe_import_dialog_compact.py -p no:cacheprovider -q
+...........                                                              [100%]
+11 passed in 4.76s
+rc=0
+
+## 3. Cinco execuções seguidas do par, para excluir sorte
+$ .venv/bin/python -m pytest tests/integration/test_esde_import_dialog_compact.py tests/integration/test_retrofe_import_dialog_compact.py -p no:cacheprovider -q  # tentativa 1
+11 passed in 4.88s
+rc=0 (pytest)
+$ .venv/bin/python -m pytest tests/integration/test_esde_import_dialog_compact.py tests/integration/test_retrofe_import_dialog_compact.py -p no:cacheprovider -q  # tentativa 2
+11 passed in 4.74s
+rc=0 (pytest)
+$ .venv/bin/python -m pytest tests/integration/test_esde_import_dialog_compact.py tests/integration/test_retrofe_import_dialog_compact.py -p no:cacheprovider -q  # tentativa 3
+11 passed in 4.75s
+rc=0 (pytest)
+$ .venv/bin/python -m pytest tests/integration/test_esde_import_dialog_compact.py tests/integration/test_retrofe_import_dialog_compact.py -p no:cacheprovider -q  # tentativa 4
+11 passed in 4.80s
+rc=0 (pytest)
+$ .venv/bin/python -m pytest tests/integration/test_esde_import_dialog_compact.py tests/integration/test_retrofe_import_dialog_compact.py -p no:cacheprovider -q  # tentativa 5
+11 passed in 4.75s
+rc=0 (pytest)
+
+## 4. A corrida da cena da fatia ANTERIOR, reproduzida com a guarda removida
+# O gate combinado reprovou nesta sessão com 'capturas=5 de 4' e um arquivo
+# undefined-gate.png (rc=1), e passou na execução idêntica seguinte — enquanto a
+# MESMA cena sozinha passava 4/4 executada direto e 3/3 pelo próprio gate. É
+# dependência de carga, não regressão do painel: a cena RetroFE não é tocada por
+# esta fatia. Para não registrar isso como alegação, a linha 'harness.phase = 500'
+# foi removida da cena e o par foi executado quatro vezes (seção 4): reprovou nas
+# quatro. Com a guarda de volta (seção 5), passou nas seis.
+# cena sem a guarda: sha256 cf7d637240af716b8a9512e2d29d96261f490cdcc3545418762a137d051dafe4
+$ pytest <par> -q  # tentativa 1 SEM a guarda na cena RetroFE
+1 failed, 10 passed in 4.78s
+$ pytest <par> -q  # tentativa 2 SEM a guarda na cena RetroFE
+1 failed, 10 passed in 4.79s
+$ pytest <par> -q  # tentativa 3 SEM a guarda na cena RetroFE
+1 failed, 10 passed in 4.77s
+$ pytest <par> -q  # tentativa 4 SEM a guarda na cena RetroFE
+2 failed, 9 passed in 5.02s
+# cena restaurada: sha256 16f2335e6886e2377af9de47bea515ed506a255d7feec84699ffdda64b11366b  (esperado 16f2335e6886e2377af9de47bea515ed506a255d7feec84699ffdda64b11366b)
+
+## 5. Par de novo com a guarda nos dois arquivos
+$ pytest <par> -q  # tentativa 1 COM a guarda
+11 passed in 4.79s
+$ pytest <par> -q  # tentativa 2 COM a guarda
+11 passed in 4.76s
+$ pytest <par> -q  # tentativa 3 COM a guarda
+11 passed in 4.75s
+$ pytest <par> -q  # tentativa 4 COM a guarda
+11 passed in 4.80s
+$ pytest <par> -q  # tentativa 5 COM a guarda
+11 passed in 4.79s
+$ pytest <par> -q  # tentativa 6 COM a guarda
+11 passed in 4.81s
+
+## 6. Harness QtTest das duas fatias, executado direto (sem pytest)
+# saída completa vive em 02/03; aqui só os totais de cada harness
+$ qmltestrunner -input tests/qml/check_esde_import_dialog_compact_viewport.qml   (só Totals)
+Totals: 13 passed, 0 failed, 0 skipped, 0 blacklisted, 1521ms
+rc=0 (qmltestrunner; o log do grep é outro rc)
+$ qmltestrunner -input tests/qml/check_retrofe_import_dialog_compact_viewport.qml   (só Totals)
+Totals: 13 passed, 0 failed, 0 skipped, 0 blacklisted, 1149ms
+rc=0 (qmltestrunner; o log do grep é outro rc)
+
+## 7. Subconjunto de regressão da UI tocada por este lote (noventa e seis testes)
+# NAO e a suíte integral do checkpoint — ver a nota de escopo no fim desta secao.
+# Escolhido por dependencia, nao por conveniencia: `grep -rl "ThemeEditorPanel|themeEditor" tests/`
+# devolve os tres arquivos deste lote mais check_theme_editor_{import,aura,asset_recipes}.qml,
+# e estes tres sao conduzidos por tests/integration/test_qml_handheld_offscreen.py. As outras
+# quatro cobrem identidade/matriz de controles e jornada de dialogos, isto e, o que uma
+# reestruturacao de contentItem/footer/ScrollView pode quebrar em outro lugar.
+$ .venv/bin/python -m pytest tests/integration/test_qml_handheld_offscreen.py \
+    tests/integration/test_ui_dialog_coverage.py tests/integration/test_ui_dialog_journeys.py \
+    tests/integration/test_ui_control_identity.py tests/integration/test_ui_control_matrix.py \
+    -q -p no:cacheprovider
+96 passed in 1158.03s (0:19:18)
+# rc=0  |  janela: 11:30:17 -> 11:49:35-03:00 (fim lido do mtime do arquivo de saida da tarefa;
+#        inicio = fim - 1158 s, anunciado pelo proprio pytest)
+# arvore congelada durante a corrida: a ultima escrita em qualquer caminho do checkout foi
+#        11:28:45 (docs/status/workstreams/rc01-readiness-focus-2026-09-27.json); o painel sob
+#        teste esta em 10:37:11; impressao `git status --porcelain | sort | md5sum` =
+#        3974e3cb1ab1b6d736350d0f1ffd1fe4, a mesma antes e depois.
+# por que nao a integral aqui: o operador pede UMA suíte integral por checkpoint, e o lote
+#        anterior (2a fatia) ja rodou a sua sobre arvore diferente (08:50 -> 09:21, 1 failed,
+#        6402 passed, 47 skipped). Esta frente ainda tem tres recortes pela frente (5d, 5b, 5c);
+#        a integral vira no fim da sequencia, sobre a arvore final congelada. O que este passo
+#        nao deixa de cobrir e o risco real da mudanca: os 96 testes acima sao os que leem o
+#        painel e os dialogos que ele contem.

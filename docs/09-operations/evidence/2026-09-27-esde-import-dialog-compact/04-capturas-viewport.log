@@ -1,0 +1,79 @@
+# Capturas dos dois viewports — reentrância reproduzida, antes e depois da correção
+# data: 2026-09-27T10:37:09-03:00  branch: codex/rc01-readiness-focus-2026-09-27  HEAD: 330401acd8798821effc9869e9fede1bc26ff0b5
+# cena: tests/qml/capture_esde_import_viewport.qml  sha256 (com a guarda de fase): ccce3909be5e7fa45d5811b5e70f3002f55900f9b9c838f0841cf08b3876cba6
+# comando de cada execução: QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software \
+#   QT_FORCE_STDERR_LOGGING=1 QT_LOGGING_RULES="" /usr/lib/qt6/bin/qml tests/qml/capture_esde_import_viewport.qml -- --output-dir=/tmp/esde-capturas-1790515955 --label=<rótulo>
+# as imagens vão para $OUT (fora do checkout); as cinco de cada rótulo são copiadas para esta pasta
+# plataforma: offscreen — provam geometria renderizada, NÃO a release instalada no host
+
+## 1. O defeito do próprio arquivo de captura, reproduzido
+# A primeira versão desta cena perdia o Timer de 20 ms reentrando na fase
+# enquanto o grab assíncrono não voltava: mais capturas do que nomes, algumas
+# chamadas 'undefined-<rotulo>.png', e rc=1. É corrida, então o total variou —
+# 8 na primeira execução desta sessão, 7 na reprodução abaixo (obtida removendo
+# a linha 'harness.phase = 500' da cena commitada, que é restaurada e conferida):
+# cena sem a guarda: sha256 6d758845f01664006bcdec2c633b1eb1efb227facdc3ac906d8837ebee70c271
+qml: CAPTURADO /tmp/esde-capturas-1790515955/1-compacto-acoes-e-corpo-reentrancia.png
+qml: CAPTURADO /tmp/esde-capturas-1790515955/2-compacto-listagem-24-esquemas-reentrancia.png
+qml: CAPTURADO /tmp/esde-capturas-1790515955/3-compacto-rodape-fixo-com-campo-de-nome-focado-reentrancia.png
+qml: CAPTURADO /tmp/esde-capturas-1790515955/4-compacto-relatorio-extenso-reentrancia.png
+qml: CAPTURADO /tmp/esde-capturas-1790515955/5-largo-relatorio-extenso-reentrancia.png
+qml: CAPTURADO /tmp/esde-capturas-1790515955/undefined-reentrancia.png
+qml: CAPTURADO /tmp/esde-capturas-1790515955/undefined-reentrancia.png
+qml: capturas=7 de 5
+# rc=1
+# cena restaurada: sha256 ccce3909be5e7fa45d5811b5e70f3002f55900f9b9c838f0841cf08b3876cba6  (esperado ccce3909be5e7fa45d5811b5e70f3002f55900f9b9c838f0841cf08b3876cba6)
+
+## 2. ANTES da correção — painel SEM a correção (árvore do log 02, sha256 83b683dc...)
+# painel em uso: sha256 83b683dc02f4344d9ac36a858e55e756b204e855d93d43a6f7c5d54a9f77a926
+qml: CAPTURADO /tmp/esde-capturas-1790515955/1-compacto-acoes-e-corpo-antes.png
+qml: CAPTURADO /tmp/esde-capturas-1790515955/2-compacto-listagem-24-esquemas-antes.png
+qml: CAPTURADO /tmp/esde-capturas-1790515955/3-compacto-rodape-fixo-com-campo-de-nome-focado-antes.png
+qml: CAPTURADO /tmp/esde-capturas-1790515955/4-compacto-relatorio-extenso-antes.png
+qml: CAPTURADO /tmp/esde-capturas-1790515955/5-largo-relatorio-extenso-antes.png
+qml: capturas=5 de 5
+# rc=0
+
+## 3. DEPOIS da correção — painel COM a correção (sha256 fea75dead9d4839d0f8bb66043dc306c0621e0dac9bb4f1d9b106cdfb78b1656)
+# painel em uso: sha256 fea75dead9d4839d0f8bb66043dc306c0621e0dac9bb4f1d9b106cdfb78b1656
+qml: CAPTURADO /tmp/esde-capturas-1790515955/1-compacto-acoes-e-corpo-depois.png
+qml: CAPTURADO /tmp/esde-capturas-1790515955/2-compacto-listagem-24-esquemas-depois.png
+qml: CAPTURADO /tmp/esde-capturas-1790515955/3-compacto-rodape-fixo-com-campo-de-nome-focado-depois.png
+qml: CAPTURADO /tmp/esde-capturas-1790515955/4-compacto-relatorio-extenso-depois.png
+qml: CAPTURADO /tmp/esde-capturas-1790515955/5-largo-relatorio-extenso-depois.png
+qml: capturas=5 de 5
+# rc=0
+
+## 4. Conferência final das árvores
+# painel:      fea75dead9d4839d0f8bb66043dc306c0621e0dac9bb4f1d9b106cdfb78b1656
+# cena:        ccce3909be5e7fa45d5811b5e70f3002f55900f9b9c838f0841cf08b3876cba6
+# git diff --stat:
+ docs/ACTIVE-WORK.md                                |   2 +-
+ docs/status/items/ui-desktop-audit.json            |   3 +-
+ .../rc01-readiness-focus-2026-09-27.json           |   8 +-
+ src/steamzero/ui/qml/ThemeEditorPanel.qml          | 246 +++++++++++++--------
+ 4 files changed, 168 insertions(+), 91 deletions(-)
+
+## 5. As dez imagens desta pasta, conferidas uma a uma
+# data: 2026-09-27T10:43:53-03:00
+# 1709a3c9d8bcb65c450f28752c963fc5adf39d5704059992ef54db638a5711ad  1-compacto-acoes-e-corpo-antes.png
+# 62541f33f81e064889062d9d820c0fddd98258e6452e6756f11cac4473468e24  1-compacto-acoes-e-corpo-depois.png
+# 3858b4492a72b91906c9dd129ffc9ad4f70f7af8082c6632f92456b5bdd29e35  2-compacto-listagem-24-esquemas-antes.png
+# 1b8f43ad6bcd9a863f79cb357250542d307c3e0774241a07961dc306e962137b  2-compacto-listagem-24-esquemas-depois.png
+# 8e794199aa13ea3ae5a05935096ff99db676d0b1a256d6f696e2ff86a40e3132  3-compacto-rodape-fixo-com-campo-de-nome-focado-antes.png
+# 02beda49b153d470e3beb848c569d8aaf1b379cb2adef894c1461ed1c8f1e3bd  3-compacto-rodape-fixo-com-campo-de-nome-focado-depois.png
+# 41604b2b697bfa4bd0b1f9d27fb1a88d9528bde20e49c853c4db7e8fccbbaa04  4-compacto-relatorio-extenso-antes.png
+# 5581e820916b2f3509736624f37e82acaafbaea67b4476a99e0c69e9af75cf96  4-compacto-relatorio-extenso-depois.png
+# 70b5cd4f9d017851ae1c69d6056d924b3254ba86b5f0a554436ae05f53f912f6  5-largo-relatorio-extenso-antes.png
+# 608b0d75d0340ed2a6ccc0322748d034022460e14353ddf625b91c0699778398  5-largo-relatorio-extenso-depois.png
+# tamanhos:
+#   1-compacto-acoes-e-corpo-antes.png (949, 593)
+#   1-compacto-acoes-e-corpo-depois.png (949, 593)
+#   2-compacto-listagem-24-esquemas-antes.png (949, 593)
+#   2-compacto-listagem-24-esquemas-depois.png (949, 593)
+#   3-compacto-rodape-fixo-com-campo-de-nome-focado-antes.png (949, 593)
+#   3-compacto-rodape-fixo-com-campo-de-nome-focado-depois.png (949, 593)
+#   4-compacto-relatorio-extenso-antes.png (949, 593)
+#   4-compacto-relatorio-extenso-depois.png (949, 593)
+#   5-largo-relatorio-extenso-antes.png (1280, 800)
+#   5-largo-relatorio-extenso-depois.png (1280, 800)
