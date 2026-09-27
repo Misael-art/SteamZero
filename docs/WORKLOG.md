@@ -13004,3 +13004,81 @@ o SHA realmente integrado em main.
 multidisco e preview de espaço, reclassificando os 18 arquivos / 15 candidatos sem somar conjuntos
 sobrepostos, em cópias controladas — ROMs, BIOS e saves originais intocados. Antes disso, o fecho
 desta fatia: commits funcional e documental separados, push desta branch e PR.
+---
+
+## 2026-09-27 — Adendo ao lote RC-01 (2ª fatia): evidência no caminho canônico, reprodução recuperável por Git e PRs consultados no SHA exato
+
+Entrada **append-only**; nada do texto acima foi reescrito. Três afirmações deste mesmo lote estavam
+insuficientes ou erradas, e as correções abaixo valem a partir de agora.
+
+**1. "Um hash isolado do arquivo não basta" — a reprodução do vermelho agora é recuperável por Git.** O
+log `02-ux05-ux07-vermelho-medido.log` identificava a árvore pré-correção só pelo sha256 de um backup em
+`/tmp`. O painel sem correção é o blob `7368fd385b8dc793c2ba83c6dc647c0b20f0dc9d094be8783bf01d1a35bb4dda`
+(2924 linhas), **idêntico** em `origin/main` (`3495c49d`), em `c959be13` (PR 240) e em `449b68c3`; obtém-se
+com `git show origin/main:src/steamzero/ui/qml/ThemeEditorPanel.qml`. Sobre ele o reproduzidor acrescenta
+**seis linhas** de superfície de teste (2 `property alias`, 1 linha em branco, `objectName` do aviso,
+`objectName` do Cancelar, `id` do primary), cada uma com o número de linha do blob no log; a conferência é
+o sha256 `13d5c644…` (2930 linhas) do resultado. O `4 ++++` registrado no pre-flight descrevia o instante
+10:45:42Z e **não** cobre as três últimas linhas — correção escrita no próprio log `01`. Conferido também
+que não há cópia alternativa do painel no repositório: `grep -rl retrofeImportDialog src tests` devolve
+apenas o painel e os três arquivos de teste do lote; o backup de trabalho ficou fora do checkout.
+
+**2. Caminho canônico: a evidência de registro voltou a viver dentro do checkout.** Os brutos e a
+reprodução por leitura estavam só em `~/evidence-logs/2026-09-27-rc01-readiness/` e
+`~/evidence-logs/2026-09-27-rc01-slice2/`, que um revisor que clona o repositório não vê. Entraram em
+`docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/` como `08-reproducao-no-codigo.log`,
+`09-sonda-foco-mecanismos.log`, `10-gates-rapidos-bruto.log` e `11-checkpoint-integral-bruto.log`, no
+precedente da pasta `2026-09-26-rc01-central-loading/`, que já guarda `15-…-bruto.log` e
+`17-…-bruto.log`. Os gêmeos no host continuam lá, com md5 declarado em `05` e `06`; as linhas `# bruto:`
+agora apontam primeiro para o arquivo do repositório. `03` e `04` deixaram de citar caminhos absolutos do
+host como referência e passaram a citar o blob do Git; a linha `# runtime:  -help : This help`, que era
+ruído de captura, foi substituída pela versão real do runner.
+
+**3. "CI terminal 10/10 verde" era arredondamento indevido.** Consultei os PRs no SHA exato e gravei
+comando + resposta crua em `12-estado-dos-prs-no-sha-consultado.log`. Em `c959be13` (PR 240) há **9
+check-runs — 8 `success` + 1 `skipped` (Sourcery review)** — mais **1 commit status legado, CodeRabbit,
+`success`**; nenhum `failure`, nenhum em andamento. O PR 241 estava, no instante da consulta, com 6
+`success`, 1 `skipped` e **2 em andamento** (`Python 3.12`, `Gate visual QML`), `mergeStateStatus=UNSTABLE`;
+não fiz polling depois disso. E cometi um erro de atribuição, também corrigido ali: `c17def05` e
+`069501ab` são os dois commits do **PR 239** (RC-00), não do 240.
+
+**4. Dependência declarada, sem reapresentar commits alheios como novos.** A pilha é 239 (`069501ab`) →
+240 (`c959be13`) → 241 (ponta desta branch), todos com base `main` e todos `OPEN`. Verifiquei os 11 commits
+um a um com `git merge-base --is-ancestor … origin/main`: **nenhum** está em main. Portanto a ordem de
+integração é 239, 240, 241, e mesclar o 241 sem os anteriores arrasta o conteúdo deles. O que é desta
+fatia são os 4 commits desta frente, dos quais **só `7fe9e8b2` toca código**. Nenhuma frente foi fechada
+como integrada; `WS-2026-09-RC01-READINESS-FOCUS` e `WS-2026-09-RC01-CENTRAL-LOADING` seguem `active` até o
+merge efetivo, que é decisão do operador.
+
+**5. Sequência corrigida.** O parágrafo "Próximo lote" acima apontava RC-02. A instrução do operador coloca
+antes disso o que falta em RC-01, e esta frente segue nessa ordem: (a) diálogo **ES-DE** com os contratos de
+escopo, teclado real, foco visível e conteúdo extenso já provados; (b) **48 px** por alvo e a experiência
+medida **dentro do shell**, incluindo escala de texto em viewport compacto; (c) **UX-03**, explicar a
+prontidão sem confundir preflight com gameplay; (d) **UX-04**, conciliar o claim com a evidência atual e o
+dono real — `WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT` continua `active` (atualizado em 26/09) com
+`adapters/emulation.py` **e `Main.qml`** em `exclusivePaths`, e é isso que preciso verificar contra o estado
+de hoje antes de tratar UX-04 como adiada. RC-02 vem depois, não no lugar. A primeira dobra da Home e a
+prova física na release instalada continuam pendentes; offscreen não as substitui.
+
+**Governança deste adendo.** Os quatro arquivos novos e os seis editados caem no escopo de
+`SZ-UI-DESKTOP-AUDIT`; o `scopeDigest` foi renovado **pela ferramenta** depois de todas as escritas
+(`3c271359 → d17e35ea`, via `tools/project_status.py digest --item SZ-UI-DESKTOP-AUDIT`, valor gravado por
+`scope_digest()` do próprio módulo — nunca à mão), as três visões foram regeradas com `render --write` e a
+validação aplicável é esta, executada com a árvore final às 09:51-03:00 (bloco abaixo, gravado no host em
+`/tmp/fecho-documental.txt`) e reproduzida igual na janela 09:52:58 → 09:53:05-03:00:
+
+```
+$ .venv/bin/ruff check src tools tests        All checks passed!                 rc=0
+$ .venv/bin/ruff format --check src tools tests   671 files already formatted     rc=0
+$ .venv/bin/pytest tests/unit/test_project_status.py -q   13 passed in 4,81 s    rc=0
+$ make status-check                           STATUS-CHECK: OK                   rc=0
+```
+
+A suíte integral **não** foi reexecutada: nada aqui muda comportamento, e o checkpoint já tem a corrida
+única sobre a árvore congelada (`06`, bruto em `11`). O gate novo deste lote
+(`tests/integration/test_retrofe_import_dialog_compact.py`) roda em CI no SHA final. Uma razão a mais para
+este registro viver aqui e não na pasta do lote: `docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/`
+está no `scopePaths` do item, então um log dentro dela sobre o `status-check` invalidaria o digest que
+pretende atestar — paradoxo já declarado em `07-status-final.log`. `docs/WORKLOG.md` não está no escopo, e
+a verificação mais forte fica disponível para qualquer pessoa: no commit final deste lote,
+`make status-check` dá `OK`.

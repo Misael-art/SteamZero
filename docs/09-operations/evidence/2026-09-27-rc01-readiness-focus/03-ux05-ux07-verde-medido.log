@@ -1,10 +1,13 @@
 # UX-05/UX-07 — VERDE com a menor correção completa no diálogo RetroFE
 # data: 2026-09-27T08:41:55-03:00  branch: codex/rc01-readiness-focus-2026-09-27  HEAD: 449b68c3c2e9dd9a0544fcdd8370ac6277683c98
-# harness: /home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_retrofe_import_dialog_compact_viewport.qml
+# harness: tests/qml/check_retrofe_import_dialog_compact_viewport.qml (caminho canônico relativo ao checkout)
 #   sha256 harness: 63d3843baa28f259a687b12ec22d6745650ff8aaddd286b69f29d9d21d143abe
-# painel COM a correção: /home/misael/Projects/Steam Zero/Canonical/2026-09-21/src/steamzero/ui/qml/ThemeEditorPanel.qml
+# painel COM a correção: src/steamzero/ui/qml/ThemeEditorPanel.qml
+#   referência Git: git show 7fe9e8b2:src/steamzero/ui/qml/ThemeEditorPanel.qml (commit "fix(ui)" desta PR)
 #   sha256 painel: 79dc0e5f68ff4008ddd0ebcd07985544b48c9974cc4fe4a11878ae5b49c790ed
-# runtime:  -help      : This help
+#   o estado ANTERIOR a esta correção é recuperável por Git e está descrito linha por linha em
+#   02-ux05-ux07-vermelho-medido.log
+# runtime: Qt 6.11.2 / qmltestrunner (cabeçalho da própria saída, abaixo)
 # plataforma: offscreen — geometria e foco medidos no runtime Qt 6 do projeto; NÃO é prova
 #             da release 2.0.0rc1-e2af2562ebba instalada no host (nada foi empacotado/instalado).
 # comando: QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QT_FORCE_STDERR_LOGGING=1 QT_LOGGING_RULES="" /usr/lib/qt6/bin/qmltestrunner -input tests/qml/check_retrofe_import_dialog_compact_viewport.qml

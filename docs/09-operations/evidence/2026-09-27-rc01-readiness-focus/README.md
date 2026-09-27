@@ -25,9 +25,14 @@ Todo número deste README vem de leitura direta do disco ou da saída capturada 
 | `02-ux05-ux07-vermelho-medido.log` | 99 linhas, `# exit_code=6` — saída integral do harness **com o painel sem a correção**; os 6 contratos violados nomeados no cabeçalho |
 | `03-ux05-ux07-verde-medido.log` | 118 linhas, `# exit_code=0` — mesma cena **com a correção**; 13 casos (11 cenários + init/cleanup), executado 3× com resultado estável |
 | `04-capturas-viewport.log` | comandos de captura (antes e depois), `exit_code=0` nas duas corridas e sha256 das 8 PNGs |
-| `05-gates-rapidos.log` | os cinco gates rápidos do checkpoint: `ruff check`, `ruff format --check` (671 arquivos), `mypy src` (297 arquivos) e `make independence boundaries` verdes na primeira passada; `make status-check` reprovou 5 digests + 3 visões — ordem de escrita, não comportamento |
-| `06-checkpoint-integral.log` | a **única** suíte integral: comando, janela 08:50:33→09:21:16, `1 failed, 6402 passed, 47 skipped`, rc=1, fingerprint da árvore idêntico no lançamento e no fim (`ee04994d…`), state home do operador byte a byte igual, a reconciliação `6397 + 5 = 6402` e o que a corrida não cobre |
+| `05-gates-rapidos.log` | os gates rápidos do checkpoint: `ruff check`, `ruff format --check` (671 arquivos), `mypy src` (297 arquivos) e `make independence boundaries` — quatro dos seis verdes na primeira passada; `make status-check` reprovou 5 digests + 3 visões, ordem de escrita e não comportamento. Bruto em `10-gates-rapidos-bruto.log`, nesta mesma pasta |
+| `06-checkpoint-integral.log` | a **única** suíte integral: comando, janela 08:50:33→09:21:16, `1 failed, 6402 passed, 47 skipped`, rc=1, fingerprint da árvore idêntico no lançamento e no fim (`ee04994d…`), state home do operador byte a byte igual, a reconciliação `6397 + 5 = 6402` e o que a corrida não cobre. Bruto em `11-checkpoint-integral-bruto.log`, nesta mesma pasta |
 | `07-status-final.log` | a coerência final do catálogo: os cinco digests renovados pela ferramenta, as três visões regravadas, `STATUS-CHECK: OK` e `13 passed` em `tests/unit/test_project_status.py`, com o limite auto-referente declarado |
+| `08-reproducao-no-codigo.log` | a reprodução **por leitura**, anterior a qualquer mudança: UX-03 (sete produtores alimentando o mesmo `percent` sem denominador), UX-04 (quatro formatadores de bytes, três saídas diferentes para 1 GiB), UX-05/UX-07 (o corpo do modal fora de qualquer `ScrollView`), cada linha conferida no arquivo |
+| `09-sonda-foco-mecanismos.log` | a sonda executada no Qt 6.11.2 instalado que respondeu à dúvida de foco (3 passed, exit 0) antes de qualquer generalização |
+| `10-gates-rapidos-bruto.log` | saída bruta dos gates rápidos, incluindo a reprovação do `status-check` com os cinco digests esperados/atuais |
+| `11-checkpoint-integral-bruto.log` | saída bruta da suíte integral única |
+| `12-estado-dos-prs-no-sha-consultado.log` | o estado real de 239/240/241 consultado no SHA exato (comando + resposta crua), a pilha de dependência e as correções numéricas a claims anteriores |
 | `1-compacto-acoes-e-corpo-{antes,depois}.png` | 949×593, conteúdo normal |
 | `2-compacto-foco-rola-destino-{antes,depois}.png` | 949×593, foco navegado e destino revelado |
 | `3-compacto-relatorio-extenso-{antes,depois}.png` | 949×593, relatório de erro extenso |
@@ -50,10 +55,58 @@ QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QT_FORCE_STDERR_LOGGING=1 QT
   /usr/lib/qt6/bin/qml tests/qml/capture_retrofe_import_viewport.qml -- --output-dir=/tmp/cap-rc01 --label=depois
 ```
 
-Para o "vermelho", troque `src/steamzero/ui/qml/ThemeEditorPanel.qml` pelo painel sem a
-correção (sha256 `13d5c644ce82d36c357b0d9d957078ca6c22b849ffb0826c412292e808c36140`, já com a
-superfície de teste) e rode os dois comandos com `--label=antes`. O painel corrigido mede
-sha256 `79dc0e5f68ff4008ddd0ebcd07985544b48c9974cc4fe4a11878ae5b49c790ed`.
+Para reproduzir o **"vermelho"**, monte a árvore anterior a partir do Git — não de cópia solta. O
+painel sem a correção é o blob `7368fd385b8dc793c2ba83c6dc647c0b20f0dc9d094be8783bf01d1a35bb4dda`,
+idêntico em `origin/main` (`3495c49d`), em `c959be13` (PR 240) e em `449b68c3`:
+
+```sh
+git show origin/main:src/steamzero/ui/qml/ThemeEditorPanel.qml > /tmp/ThemeEditorPanel.qml   # fora do checkout
+```
+
+Esse arquivo ainda não expõe nada ao harness, então acrescente **exatamente estas seis linhas** (nenhuma
+muda comportamento; elas só dão nome/identidade ao que o teste alcança):
+
+| Local (número de linha do blob) | Linha a inserir |
+| --- | --- |
+| depois de `property var exportPlan: null` (~49), antes de `signal applied()` | `property alias retrofeImportDialogControl: retrofeImportDialog` |
+| logo abaixo | `property alias retrofeImportApplyControl: retrofeImportApplyButton` |
+| e uma linha em branco antes de `signal applied()` | *(em branco)* |
+| primeira linha de `Label {` ligado a `text: panel.retrofeImportNotice` (~1109) | `objectName: "themeImportRetrofeNotice"` |
+| primeira linha do `Button { text: qsTr("Cancelar") }` do rodapé (~1238) | `objectName: "themeImportRetrofeCancel"` |
+| primeira linha do `Button {` do primary (~1245; o `objectName: "themeImportRetrofeApply"` já existia) | `id: retrofeImportApplyButton` |
+
+Conferência: com as seis linhas, o arquivo deve medir sha256
+`13d5c644ce82d36c357b0d9d957078ca6c22b849ffb0826c412292e808c36140` (2930 linhas) — é a árvore exata do
+log `02-…-vermelho-medido.log`. O apêndice daquele log traz o **unified diff** dessas seis linhas, e ele
+foi aplicado ao blob de `origin/main` como verificação: o resultado saiu byte a byte idêntico ao arquivo
+usado na corrida vermelha (`cmp` sem saída, mtime 09:54:32-03:00). Copie-o sobre
+`src/steamzero/ui/qml/ThemeEditorPanel.qml`, rode os dois
+comandos acima com `--label=antes` e o harness deve dar **exit 6, 6 falhas nomeadas**. O painel corrigido
+é `git show 7fe9e8b2:src/steamzero/ui/qml/ThemeEditorPanel.qml`, sha256
+`79dc0e5f68ff4008ddd0ebcd07985544b48c9974cc4fe4a11878ae5b49c790ed`, e dá **exit 0, 13 passed**.
+Ao terminar, devolva o checkout ao estado do PR com `git checkout -- ThemeEditorPanel.qml` (a partir de
+`src/steamzero/ui/qml`, ou o caminho completo) e confirme `git status --porcelain` vazio. Não deixe a árvore
+do vermelho dentro do repositório: nada aqui depende de cópia alternativa, e `grep -rl
+retrofeImportDialog src tests` deve devolver apenas o painel e os três arquivos de teste deste lote.
+
+## Caminho canônico desta evidência
+
+Tudo que sustenta as afirmações do lote está **dentro do checkout**, em
+`docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/` — inclusive os brutos (`10-`, `11-`), no
+precedente da pasta `2026-09-26-rc01-central-loading/`. As versões que existiam só no host
+(`~/evidence-logs/2026-09-27-rc01-readiness/`, `~/evidence-logs/2026-09-27-rc01-slice2/`) continuam lá,
+com md5 declarado nos logs `05` e `06`, mas não são referência: um revisor que clone o repositório
+encontra aqui o mesmo conteúdo, byte a byte.
+
+## Pilha de PRs (dependência declarada)
+
+`239` (RC-00, `069501ab`) → `240` (1ª fatia de RC-01, UX-01/UX-02, `c959be13`) → `241` (esta fatia,
+`244bf550`). Todos têm base `main` e todos seguem **OPEN**; nenhum commit da pilha é ancestral de
+`origin/main` (`3495c49d`), verificado um a um. Portanto o **241 depende do 240**, que depende do 239: a
+ordem de integração é 239 → 240 → 241, e mesclar o 241 sem os anteriores arrastaria o conteúdo deles.
+O que é novo neste PR são os quatro commits `3495c49d..HEAD` desta fatia (`449b68c3`, `7fe9e8b2`,
+`3fd059da`, `244bf550`), dos quais **só `7fe9e8b2` toca código**; o resto do histórico visível no PR é o
+que já está em 239/240. Comando e resposta crua em `12-estado-dos-prs-no-sha-consultado.log`.
 
 ## Limite honesto da evidência
 

@@ -1,8 +1,13 @@
 # Capturas UX-05/UX-07 — mesmo cenário, painel sem e com a correção
 # data: 2026-09-27T08:42:14-03:00  branch: codex/rc01-readiness-focus-2026-09-27  HEAD: 449b68c3c2e9dd9a0544fcdd8370ac6277683c98
-# cena: /home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/capture_retrofe_import_viewport.qml
-# painel sem correção: sha256 13d5c644ce82d36c357b0d9d957078ca6c22b849ffb0826c412292e808c36140
-# painel com correção:  sha256 79dc0e5f68ff4008ddd0ebcd07985544b48c9974cc4fe4a11878ae5b49c790ed
+# cena: tests/qml/capture_retrofe_import_viewport.qml (caminho canônico relativo ao checkout)
+# painel sem correção: sha256 13d5c644ce82d36c357b0d9d957078ca6c22b849ffb0826c412292e808c36140 — obtido do blob
+#   7368fd385b8dc793c2ba83c6dc647c0b20f0dc9d094be8783bf01d1a35bb4dda (git show origin/main:src/steamzero/ui/qml/ThemeEditorPanel.qml)
+#   mais as seis linhas de superfície de teste listadas em 02-ux05-ux07-vermelho-medido.log
+# painel com correção:  git show 7fe9e8b2:src/steamzero/ui/qml/ThemeEditorPanel.qml,
+#   sha256 79dc0e5f68ff4008ddd0ebcd07985544b48c9974cc4fe4a11878ae5b49c790ed
+# cópias de registro: as 8 PNGs desta pasta, dentro do checkout, são a evidência. O --output-dir apontado
+#   abaixo (/tmp/cap-rc01) foi só o diretório temporário de escrita fora do checkout.
 # comando (antes e depois, variando --label):
 #   QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QT_FORCE_STDERR_LOGGING=1 QT_LOGGING_RULES="" \
 #     /usr/lib/qt6/bin/qml tests/qml/capture_retrofe_import_viewport.qml -- --output-dir=<pasta> --label=antes|depois
