@@ -1,0 +1,5 @@
+# UX-01 — medição DEPOIS, mesma árvore da entrega (correção aplicada).
+# Comando: QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_warning_surface_contrast.qml
+# Gate: pytest tests/integration/test_qml_handheld_offscreen.py -k warning_surface
+qml: OK: 44 verificações de contraste, 0 falhas
+# exit=0

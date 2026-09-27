@@ -12711,3 +12711,96 @@ Nenhum jogo foi lançado e nenhum ROM/save pessoal foi tocado nesta revisão.
 - Nenhum código de produto alterado, nenhuma instalação, commit, push ou merge nesta revisão. Estágios das capacidades de produto não foram promovidos. A integral anterior permanece registrada como não verde; validação desta entrega é documental/status.
 
 Validação do fechamento: links locais e os 21 IDs de achados conferidos; 13 testes de status aprovados em 5.34s, guard antes/depois idêntico. A primeira execução intermediária teve 2 falhas de catálogo em atualização (digests e verificação prematura), corrigidas antes da reexecução.
+
+
+## 2026-09-26 — RC-01: a Central declara o que ainda não foi medido (UX-01/UX-02)
+
+Item `SZ-UI-DESKTOP-AUDIT`, workstream `WS-2026-09-RC01-CENTRAL-LOADING`, frente
+`codex/rc01-central-loading-2026-09-26` aberta sobre `069501ab954c` (registro da RC-00; o
+PR da RC-00 seguia aguardando merge no fechamento deste lote).
+
+**O que foi implementado.** `src/steamzero/ui/qml/Main.qml` ganhou o ciclo de fase do
+bootstrap (`statusPhase`, `statusInFlight`, `statusStale`, `statusAttempt`,
+`statusElapsedMs`, `statusFailure`) e uma faixa de fase inline — não um overlay modal, que
+bloquearia a navegação justamente enquanto a central demora — com título, detalhe,
+BusyIndicator e oferta de retry. `retryStatus()` repete somente o `GET /status` e recusa
+sobreposição: duas consultas em andamento deixariam "o último estado" indefinido, e a mais
+lenta poderia chegar por último e regravar a mais nova. Uma renovação que falha depois de
+uma leitura real preserva a leitura e marca `stale`; sem bridge e sem seed a fase abre em
+`error` declarável; um status semeado na linha de comando é tratado como dado medido, não
+como carregamento eterno. `pendingRows()` neutraliza os fallbacks não verificados, e
+`EditorialHome.qml` passou a declarar "a central ainda não publicou" em vez de "Nenhum jogo
+publicado ainda", sem contar o estado `pending` como pendência. Em
+`src/steamzero/adapters/theme_catalog.py`, o validador do manifesto é compilado uma vez por
+processo e o detalhe de `E-THEME-MANIFEST` passou a ser `json_path: mensagem` limitado a 400
+caracteres; a validação da instância e a primeira falha não mudaram. Os três helpers de
+contraste do shell (`_relativeLuminance`, `_contrastRatio`, `_contrastTextColor`) passaram a
+receber `color` tipado: com o argumento textificado a luminância dava `NaN`, toda comparação
+falhava em silêncio e a função devolvia a cor de fundo do tema.
+
+**Provas novas.** `tools/central_status_probe.py` (instrumento refazível do `/status`, com
+contratos em `tests/unit/test_central_status_probe.py`), `tests/qml/check_central_loading.qml`
+(cena de quatro fases contra ponte que atrasa, falha e recupera; 43 e 42 contratos nas duas
+capturas), `tests/qml/check_warning_surface_contrast.qml` (quatro temas nos três modos, 44
+verificações) e `tests/unit/test_ui_attention_surface_contrast.py`. A cena não é prova vazia:
+contra a árvore anterior reprova rc=1 em 6/6 e não grava quadro.
+
+**Onde foi integrado.** Dois commits na frente (funcional e documental), push e PR. Nada foi
+promovido a `integrated`: o workstream fecha com o SHA realmente em main, e os eixos do item
+(`implementation`/`integration`/`verification`/`operation`/`distribution`) continuam nos
+estágios anteriores a este lote.
+
+**Gates executados.** Suíte integral isolada no checkpoint estável: 6395 aprovados, 47
+ignorados, 2118,42 s, rc=0, com a fotografia do state home real idêntica byte a byte antes e
+depois (12816 arquivos, 2068 diretórios, 1372712391 bytes, mesmo `max_mtime_ns`). Uma corrida
+anterior, lançada na sessão passada, terminou sobreposta a esta e obteve o mesmo total em
+2108,36 s; esta segunda é a que corresponde à árvore final e rodou sob a carga da primeira.
+`ruff check`, `ruff format --check` (670 arquivos), `mypy src` (297 arquivos),
+`make independence boundaries` e `make status-check` passaram. Lote focal da frente: 207
+aprovados em 64,53 s; gate `-k central_loading`: 3 aprovados em 11,98 s. Depois da escrita do
+log integral regeneraram-se apenas digest e views, e a validação de status aplicável foi
+reexecutada (`test_project_status.py` e `make status-check`), conforme a política de não
+repetir suíte integral por mudança de visão gerada.
+
+**Medição, não opinião.** `GET /status`: p50 8944 → 6432 ms (−2512 ms, ~28 %), corpo idêntico
+em 3131 KiB, bloco `theme` 4100,2 → 413,3 ms/consulta. A cauda quase não mexe (p95 11709 →
+11409 ms) porque `emulation` subiu 3867,1 → 5106,6 ms/consulta entre as duas corridas e a
+RC-01 não a toca; as corridas são sequenciais num host vivo, então o que sustenta a
+atribuição é a queda local do bloco `theme`, não a mediana global. O "não atribuído" sai
+impresso nos dois relatórios (−385,2 → +38,4 ms), porque esconder o termo que não fecha é
+pior que exibi-lo.
+
+**O que foi visto no host.** As duas imagens de 1280×800 foram lidas no quadro capturado: a
+primeira declara "Consultando a central local" e nenhum cartão afirma ausência; a segunda
+preserva a leitura medida com "Última leitura preservada; a renovação falhou" e o botão
+"Tentar novamente" legível. São quadros do `QT_QPA_PLATFORM=offscreen` contra uma ponte de
+teste local, não da release instalada `2.0.0rc1-e2af2562ebba`. A latência, esta sim, veio da
+bridge do produto sobre o estado real do host, em somente leitura. Nenhuma ROM, BIOS ou save
+foi alterado, nenhum jogo foi lançado, nenhum comando privilegiado foi executado, nenhuma
+instalação ou build de release foi feito.
+
+**Riscos que permanecem.** (1) A cauda do `/status` não melhorou e a RC-01 não alega isso:
+`emulation` é o próximo dono legítimo do problema. (2) No pior caso de atenção simultânea
+(faixa de fase + banner de perfil + cartão de falha), as três superfícies escuras empurram
+Pendências e Recentes para baixo da dobra em 800 px — registrado no README da evidência sem
+correção neste lote. (3) Nada aqui é prova de gesto físico nem de release instalada: G48 e a
+recaptura da Central continuam abertos, e o retry da faixa nunca foi acionado por teclado ou
+controle num app empacotado. (4) O `E-THEME-MANIFEST` publicado em `theme.list` mudou de
+forma (detalhe truncado): é intencional e preso por teste, mas quem lê o Studio de Temas verá
+uma mensagem diferente da anterior. (5) O harness de captura depende de composição real do
+Qt: um ambiente sem o runtime reprova no gate `visual`, nunca pula — o que torna o verde
+condicionado ao provisionamento do CI.
+
+**Observação de governança encontrada ao conferir os digests.** Onze itens além do
+`SZ-UI-DESKTOP-AUDIT` tiveram o `scopeDigest` envelhecido por esta frente (Main.qml,
+`tests/integration/test_qml_handheld_offscreen.py` e `theme_catalog.py` estão nos escopos
+deles). Cada um recebeu uma evidência explícita de "renovação de escopo, não carimbo", e
+nenhum critério deles foi reatestado. Dois pontos adjacentes ficaram de fora porque não são
+deste lote: os itens agregados `SZ-AGG-*` não têm digest validado pelo `check_catalog` e
+foram deixados como estão; e `SZ-AGG-ASSETS` declara `src/steamzero/py.typed`, que não existe
+no checkout — invisível hoje apenas porque a verificação desse item é `none`.
+
+**Próximo lote.** RC-02 (DATA-01): fila acionável de arquivos e conjuntos multidisco,
+extração segura, derivados vinculados ao original, preview de espaço e scan assíncrono
+cancelável, classificado com o catálogo atual sem somar conjuntos sobrepostos. Antes disso,
+fechar `WS-2026-09-RC01-CENTRAL-LOADING` com o SHA integrado, quando o merge ocorrer.

@@ -1,0 +1,44 @@
+# RC-01 — suíte integral isolada no checkpoint estável do lote
+# Data: 2026-09-26. Frente: codex/rc01-central-loading-2026-09-26 (SHA do registro: 64932141a276).
+# Árvore no momento da corrida: código e governança da entrega completos, incluindo os
+#   scopeDigests dos 12 itens tocados e as views geradas (STATUS/ACTIVE-WORK/COVERAGE).
+#   O único artefato escrito depois desta corrida é este log e o WORKLOG (append-only,
+#   propositalmente fora do digest), seguidos da regeneração do digest deste item.
+# Comando (gate integral da AGENTS.md):
+#   .venv/bin/python tools/run_tests_isolated.py tests -q
+# Sai para este arquivo via redirecionamento; o runner cria os cinco homes XDG isolados
+#   antes de abrir o pytest e fotografa o state home real do operador antes e depois.
+
+6395 passed, 47 skipped in 2118.42s (0:35:18)
+real-state before: exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790468657040383066 source=HOME-default
+real-state after:  exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790468657040383066 source=HOME-default
+rc=0
+
+# Nenhum teste da suíte toca o estado real do operador: a fotografia é byte a byte
+#   idêntica, inclusive o max_mtime_ns (portanto nenhuma entrada foi criada, removida
+#   nem modificada durante os 35 min).
+# A suíte não emitiu tabela de cobertura: o comando do gate não habilita o relatório.
+#   A checagem de cobertura continua sendo do CI, não deste checkpoint.
+
+# Sobreposição (registrada em vez de escondida): uma corrida integral anterior, lançada
+#   na sessão anterior e gravada em /tmp/rc01-full-suite.log, terminou durante esta.
+#   Resultado dela: 6395 passed, 47 skipped em 2108.36s, rc=0, com a mesma fotografia de
+#   estado antes/depois. As duas convergiram no mesmo total de aprovados; esta segunda
+#   corrida é a que corresponde à árvore final do lote, e ela rodou sob a carga da
+#   primeira — ou seja, o veredito verde foi obtido com contenção, não sem ela.
+
+# Artefato de exibição encontrado ao conferir as 47 linhas de skip: três delas apontam
+#   para /mnt/sdcard/Projects/Port_Steam/tests/..., caminho que não existe mais. Não são
+#   testes de outro checkout: os módulos são daqui
+#   (tests/unit/test_metadata_import_pegasus.py e
+#    tests/integration/test_metadata_to_catalog_pipeline.py), e os seus .pyc reescritos
+#   (test_*.cpython-314-pytest-9.1.1.pyc) ainda trazem gravado o caminho absoluto anterior
+#   à mudança do checkout — o pytest imprime a localização a partir do código compilado.
+#   Conferido com grep nos dois .pyc. O total de coletados não é afetado.
+
+# Gates focais da frente, registrados antes deste checkpoint:
+#   pytest -k central_loading ......... 3 passed em 11,98 s
+#   lote focal da RC-01 (6 módulos) ... 207 passed em 64,53 s
+#   ruff check / ruff format --check ... All checks passed / 670 files already formatted
+#   mypy src .......................... Success: no issues found in 297 source files
+#   make independence boundaries ...... OK de runtime / OK de fronteiras (0 violações)

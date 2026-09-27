@@ -12,11 +12,17 @@
     "docs/status/items/ui-desktop-audit.json",
     "docs/status/workstreams/rc01-central-loading-2026-09-26.json",
     "tools/central_status_probe.py",
-    "tests/unit/test_central_status_probe.py"
+    "tests/unit/test_central_status_probe.py",
+    "tests/qml/check_central_loading.qml",
+    "tests/qml/check_warning_surface_contrast.qml",
+    "tests/unit/test_ui_attention_surface_contrast.py"
   ],
   "sharedPaths": [
     "src/steamzero/ui/qml/Main.qml",
     "src/steamzero/ui/qml/EditorialHome.qml",
+    "src/steamzero/adapters/theme_catalog.py",
+    "tests/integration/test_qml_handheld_offscreen.py",
+    "tests/unit/test_themes.py",
     "src/steamzero/adapters/desktop_dashboard.py",
     "src/steamzero/adapters/desktop_ui.py",
     "tests/unit/test_desktop_dashboard.py",
@@ -25,6 +31,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "RC-01 (UX-01/UX-02): reproduzir baseline medido do /status e do primeiro frame, implementar estado carregando/erro/retry honesto na Central, reduzir custo mediano da consulta e corrigir contraste do aviso de perfil/rodapé; medir antes/depois com o mesmo catálogo.",
+  "nextAction": "Aguarda revisao e merge do PR da frente. Ao integrar, fechar com o SHA realmente em main e promover os eixos do item SZ-UI-DESKTOP-AUDIT somente com a prova correspondente (host fisico e release instalada seguem sem prova neste lote).",
   "updatedAt": "2026-09-26"
 }

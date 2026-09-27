@@ -42,7 +42,7 @@
     "tests/unit/test_session_overlay.py",
     "tests/unit/test_session_overlay_adapter.py"
   ],
-  "scopeDigest": "075d315a505563e7c0aeeaee65345039a7d1632e703e8f6831ab18112fddbb86",
+  "scopeDigest": "315d9e7cdb5266ff751ae35d59d3eceac41be53847976f53706d1f14785d3d0c",
   "dependsOn": [
     "SZ-AURA-SAVE-STATE-GALLERY",
     "SZ-AURA-SESSION-OSD",
@@ -234,12 +234,18 @@
       "reference": "docs/09-operations/evidence/2026-09-18-aura-bezel-installed/03-performance-installed.json",
       "command": "release 2.0.0rc1-a71c2b5e17cd, Wayland/OpenGL 948x593; startup 724 ms, p95 16.515 ms, VRAM 103692 KiB, meetsBudget=true",
       "result": "passed"
+    },
+{
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/README.md",
+      "command": "2026-09-26 renovacao de escopo pela frente WS-2026-09-RC01-CENTRAL-LOADING: tests/integration/test_qml_handheld_offscreen.py recebeu as portas da cena de fases da Central (ponte local servindo tres GET /status: um atrasado, um com E-STATUS-SCENE, um de recuperacao) e dois quadros capturaveis marcados 'visual'. Nenhuma evidencia deste item foi reatestada: o que existe e o arquivo compartilhado do harness verde com o Main.qml modificado (gate '-k central_loading' 3 passed em 11,98 s; lote focado da frente 207 passed em 64,53 s). Os criterios proprios seguem com as provas anteriores.",
+      "result": "recorded"
     }
   ],
   "nextAction": "Bezel e performance foram revalidados na release a71; manter aberto o orçamento na superfície de referência 1280x800, a troca de disco com jogo multi-disc legítimo, fade físico e a prova física PS4.",
   "activeWorkstreams": [
     "WS-2026-09-AURA-CINEMA-COMPLETION"
   ],
-  "updatedAt": "2026-09-18",
+  "updatedAt": "2026-09-26",
   "notes": "Frente de continuação do AURA Launcher/Theme Engine. A release 2.0.0rc1-a71c2b5e17cd foi instalada pelo fluxo governado, o daemon convergiu e a captura de jogo real confirmou o bezel AURA após a declaração de overlays do RetroArch. A nova medição Wayland/OpenGL passou startup, p95 e VRAM na superfície real 948x593; a referência 1280x800 continua sem prova. A medição e a captura visual não promovem AURA UI ou Theme Studio; cobrem apenas a cadeia de sessão e a composição fullscreen especificadas no plano."
 }

@@ -57,9 +57,16 @@
     "docs/09-operations/evidence/2026-09-05-ux-gap-closure",
     "docs/09-operations/evidence/2026-09-06-theme-active-physical",
     "docs/09-operations/evidence/2026-09-06-ui-contrast-footer-physical",
-    "docs/09-operations/evidence/2026-09-08-ux-audit"
+    "docs/09-operations/evidence/2026-09-08-ux-audit",
+    "docs/09-operations/evidence/2026-09-26-rc01-central-loading",
+    "tools/central_status_probe.py",
+    "tests/unit/test_central_status_probe.py",
+    "tests/unit/test_ui_attention_surface_contrast.py",
+    "tests/qml/check_central_loading.qml",
+    "tests/qml/check_warning_surface_contrast.qml",
+    "src/steamzero/adapters/theme_catalog.py"
   ],
-  "scopeDigest": "53b6c6e2229c578e52d6a679a4b680bf771faea728cdaadd1377f1ee0b4099aa",
+  "scopeDigest": "640262d79688fde7646aa52d8bcfb26098a85cad90e3af17ce9331c040f1c84f",
   "dependsOn": [],
   "knownGaps": [
     "GAP-UI-LIVE-LAUNCHER-ROUTING",
@@ -84,7 +91,11 @@
     "ComboBox e exercitado por tecla real e observa activated; bloqueado explica o motivo.",
     "Enfeite e provado por ativacao, nao presumido pela forma; controle que age sem se anunciar reprova como unnamed-actionable.",
     "O shell pinta o proprio fundo num Item capturavel, em vez de depender da cor da janela.",
-    "O rotulo do item selecionado e legivel em todo tema empacotado, com a cor escolhida por contraste."
+    "O rotulo do item selecionado e legivel em todo tema empacotado, com a cor escolhida por contraste.",
+    "Nenhum cartao da Central afirma ausencia antes de a central ter respondido; o nao medido se distingue do medido zero.",
+    "A faixa de fase oferece retry que repete somente a leitura, nao empilha consultas e preserva a ultima leitura real quando a renovacao falha.",
+    "Todo aviso pintado sobre superficie fixa escura escolhe a tinta por contraste, inclusive o botao de retry da faixa de fase.",
+    "Toda afirmacao de latencia tem um comando refazivel e um antes/depois do mesmo instrumento, com a cauda e o nao atribuido impressos."
   ],
   "evidence": [
     {
@@ -380,10 +391,78 @@
       "reference": "tools/ui_control_probe.qml",
       "command": "2026-09-26 fechamento WS-2026-09-HARNESS-STABILIZATION: PR #235 integrado via merge 1873fc991ef21a0db5707d64c03beb93c24b1121 (commits de correção 0ec0d0c9 e 0048dad5); CI 36175333356 no head integrado 99a96c2ff297be4be82bc7f7b4c57484d2a343b4: gate QML e 8/8 jobs verdes. Sob carga: identidade do drawer 11 passed duas vezes; handheld layout 0 falhas em cerca de 12 execuções, CHECKS=795 estável e mutação negativa reprovada.",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/01-baseline-status-probe.log",
+      "command": "2026-09-26 RC-01: existe um instrumento refazivel (tools/central_status_probe.py) porque o '14,26 s e 3,2 MB' registrado em UX-02 veio de captura improvisada, que nao sustenta nem um antes nem um depois. Baseline no host, 5 GET /status contra a bridge do produto: p50 8944 ms, p95/max 11709 ms, corpo p50 3131 KiB. Bloco themeState dominava a consulta (4100,2 ms/consulta) e a soma das atribucoes excedia o tempo medido (-- nao atribuido -385,2 ms/consulta), que e por que o numero sai impresso no relatorio em vez de escondido. Somente leitura: nenhuma rota de mutacao exercida; o inquerito antes/depois da corrida registrou a arvore intacta (12818 arquivos).",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/02-final-status-probe.log",
+      "command": "2026-09-26 RC-01: mesma metodologia, mesmo host, mesma arvore de catalogos. p50 6432 ms (-2512 ms, ~28 por cento), corpo identico em 3131 KiB, themeState 413,3 ms/consulta onde era 4100,2. A cauda quase nao se move (p95 11709 -> 11409) porque emulation subiu de 3867,1 para 5106,6 ms/consulta entre as duas corridas e a RC-01 nao a toca; o 'nao atribuido' virou +38,4 ms. Leitura honesta: as duas corridas sao sequenciais num host vivo, entao a diferenca de emulation mostra ruido da ordem de segundos, e o que sustenta a atribuicao e a queda local do bloco theme, muito maior que qualquer ruido plausivel, nao a mediana global.",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_themes.py",
+      "command": "2026-09-26 RC-01: a queda do bloco theme vem de compilar o validador do manifesto uma vez por processo (jsonschema.validate rechecava o schema empacotado a cada manifesto: 305 ms medidos na ponte) e de trocar o despejo de str(ValidationError) por 'json_path: mensagem' ate 400 caracteres. A validacao da instancia nao mudou: a primeira falha continua literalmente a que os quatro pacotes ES-DE malformados do host produziam ('$: compatibility is a required property'), a identidade do cache esta presa, e o teste reprova se o dump do schema ou da instancia voltar a ser publicado em theme.list (373 KB por manifesto na baseline).",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_warning_surface_contrast.qml",
+      "command": "2026-09-26 RC-01 (UX-01): a causa do aviso illegivel e calculavel e foi tratada como calculavel, sem depender do analisador de pixels que o proprio projeto registra como medicao nao confiavel. Os parametros de _relativeLuminance/_contrastRatio/_contrastTextColor nao eram tipados como color: a superficie literal chegava como texto, a luminancia dava NaN, toda comparacao abaixo falhava em silencio e a funcao devolvia a cor de fundo do tema — escuro sobre escuro em tema escuro. Antes: 44 verificacoes, 37 falhas, exit 3 (03-contraste-antes.log). Depois: 44 verificacoes, 0 falhas, exit 0 (04-contraste-depois.log). A arvore anterior foi obtida por git show HEAD:<caminho> e o md5 conferido na restauracao.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_ui_attention_surface_contrast.py",
+      "command": "2026-09-26 RC-01 (UX-01): a regra de tinta aplicada aos quatro temas empacotados nas seis superficies fixas escuras do shell, no AA normal (4,5:1) e no minimo 7:1 que o ThemeBridge impoe sob alto contraste; reprova se algum dia uma cor fixa servir para todos os temas. Quatro pontos de contorno corrigidos alem dos tres originais: rotulos do botao de atencao da navegacao, retorno transitario de acao, codigo do cartao de conflito E-DESKTOP-OWNER-CONFLICT e o rotulo do botao de retry da faixa de fase.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_central_loading.qml",
+      "command": "2026-09-26 RC-01 (UX-02): cena de quatro fases contra uma ponte que atrasa a primeira consulta, devolve E-STATUS-SCENE na segunda e recupera na terceira (loading -> ready -> stale -> ready); 43 contratos na captura de carregamento e 42 na de estado nao renovado, com saida sempre precedida de veredito (guarda de excecao, watchdog de 12 s da cena e de 5 s da composicao). Nao e prova vazia: executada contra Main.qml e EditorialHome.qml de 64932141a276 reprova com rc=1 e 6/6 falhas e nao grava quadro (05-carregamento-antes.log); na arvore da entrega passa (06-carregamento-depois.log). A assercao da tinta do retry foi provada por mutacao: sem a linha o harness reprova com a razao 1,06:1 medida.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/quadro-carregando.png",
+      "command": "2026-09-26 RC-01: primeiro frame lido, nao inferido. Faixa 'Consultando a central local / Os cartoes abaixo ainda sao valores de referencia, nao medicoes' com BusyIndicator; heroi 'Consultando as fontes gerenciadas / A primeira leitura da central ainda nao foi concluida'; Favoritos e Colecoes declaram que a central ainda nao publicou; Pendencias traz 'nada foi atestado, nem a ausencia de pendencias'. Nenhuma linha afirma 'Nao instalado' nem 'Nenhum jogo publicado ainda' antes da medicao. PNG 1280x800 RGB com 2043 cores, md5 af6caba22c18d3486fb8bd61bbb0a210, gravado pelo proprio harness offscreen.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/quadro-nao-renovado.png",
+      "command": "2026-09-26 RC-01: renovacao falha com leitura anterior preservada — faixa 'Ultima leitura preservada; a renovacao falhou' com botao 'Tentar novamente' legivel, banner de atencao do perfil e cartao E-STATUS-SCENE; o conteudo ja medido permanece na tela e nao voltou a pending. PNG 1280x800 RGB com 3153 cores, md5 a0b7ee716f9ade76665aa40d98026309. Ressalva lida no proprio quadro e registrada sem correcao neste lote: faixa, banner e cartao empilham tres superficies escuras e empurram Pendencias e Recentes para baixo da dobra em 800 px no cenario maximo de atencao simultanea.",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_qml_handheld_offscreen.py",
+      "command": "2026-09-26 RC-01: gate visual da frente — '-k central_loading' 3 passed em 11,98 s (a cena de fases e os dois quadros capturaveis, estes marcados visual, com ambiente que reprova quando o Qt falta em vez de pular). O lote focado (handheld offscreen, sonda do /status, tres modulos de contraste e test_themes) fechou 207 passed em 64,53 s. Suite integral, ruff, mypy e gates de independencia/fronteiras registrados no WORKLOG do fechamento.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_central_status_probe.py",
+      "command": "2026-09-26 RC-01: contratos do instrumento, porque um numero sem aritmetica verificada so parece rigoroso. Rotulos de atribuicao unicos entre os tres tipos de injecao (duplicar faria a soma tratar duas coisas diferentes como uma), a conta que nao pode somar mediana por chamada como custo por consulta nem subtrair media de p50, e o relatorio sem token e sem conteudo do acervo — o teste afirma que a evidencia publicada e so medicao.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/07-suite-integral.log",
+      "command": "2026-09-26 checkpoint integral da frente: '.venv/bin/python tools/run_tests_isolated.py tests -q' fechou 6395 passed, 47 skipped em 2118,42 s com rc=0, e a fotografia do state home real identica byte a byte antes e depois (12816 arquivos, 2068 diretorios, 1372712391 bytes, mesmo max_mtime_ns) — a suíte nao tocou o estado do operador. Uma corrida anterior, lancada na sessao anterior, terminou sobreposta a esta e obteve o mesmo total (2108,36 s, rc=0); esta segunda corresponde a arvore final e rodou sob a carga da primeira. Tres linhas de skip apontam para /mnt/sdcard/Projects/Port_Steam: os .pyc reescritos dos dois módulos ainda carregam o caminho absoluto anterior a mudanca do checkout (conferido por grep), e a contagem nao e afetada.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Reprovar/fechar G48 com gesto físico na release 2.0.0rc1-504d10b14485: catálogo completo, foco inicial, Return/Enter/Space/clique, erro acionável e retorno. O harness QML continua evidência de contrato, não prova de usuário.",
-  "activeWorkstreams": [],
-  "updatedAt": "2026-09-25",
+  "nextAction": "Aguardar o merge da frente WS-2026-09-RC01-CENTRAL-LOADING e fechar o workstream com o SHA realmente integrado em main. Continuam pendentes, e esta frente nao os promove: o gesto fisico e a recaptura do primeiro frame na release instalada (G48 e a auditoria 2026-09-26), pois as provas de RC-01 sao de contrato offscreen contra ponte de teste e de latencia na bridge do produto, nao do app empacotado.",
+  "activeWorkstreams": [
+    "WS-2026-09-RC01-CENTRAL-LOADING"
+  ],
+  "updatedAt": "2026-09-26",
   "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45 e reconciliada em codex/v2-harmonized-functional-release: a limpeza automatica dos marcadores de conflito havia descartado escopo, criterios e seis evidencias do lado f92734b, todos restaurados aqui. QML-KEY-INJECTION-001 esta FECHADO: o commit ff0b80e trocou o qmltestrunner do qt5-declarative pelo executor Qt 6 (/usr/lib/qt6/bin/qmltestrunner) com raiz Item, e tests/integration/test_ui_dialog_keys.py exige o runner (sem skip), returncode 0 e ausencia de FAIL. Por isso o criterio de Escape/Tab deixou de ser PENDENTE — a troca foi verificada re-executando o harness em 2026-08-24 (Qt 6.11.1, 7 passed / 0 skipped). Continua fora de prova: confirmacao com bridge alem da abertura, clique repetido, drawers e P0 visuais na release instalada. 2026-08-24: o CI (run 32726720427) reprovou em 3.11/3.12/3.14 porque tres provas portadas que exigem qmltestrunner Qt 6 estavam no job 'Testes e cobertura', que nao provisiona Qt. Elas foram marcadas 'visual', que ROTEIA para o job qml-visual-linux e nao dispensa — o gate visual reprova quando o Qt falta. A guarda de codigo de test_ui_dialog_keys.py ficou SEM marcador de proposito: ela existe para rodar justamente onde o runtime nao esta. 2026-08-24, ampliacao do denominador: a sonda de jornadas percorria 6 dos 15 modais do shell e NADA apontava a diferenca. Ao registrar os 8 restantes (o 15o e um FileDialog nativo, excluido com motivo), a auditoria encontrou um defeito real de acessibilidade: os OITO abriam sem receber o foco, deixando quem navega por teclado ou controle do lado de fora. Faltava a linha onOpened: root.focusDialogContent(...) que os seis ja sondados tinham desde 1bcb564 — a correcao anterior so alcancou o que estava no denominador. Um gate estatico novo impede o denominador de encolher de novo. 2026-08-24, ComboBox: a sonda de controles so clica, e clicar num ComboBox nao seleciona nada — por isso todos ficavam not-probed. A prova foi para um harness QuickTest com tecla REAL, nao para uma emissao de activated() na mao, que seria a mesma troca ja rejeitada quando close() fazia as vezes de Escape. O harness exige as duas coisas: que o indice mude E que activated seja emitido com o indice novo, porque currentIndex tambem muda por atribuicao. Percorrer as quatro areas da tela Steam revelou 10 ComboBox visiveis, nao os 5 que a matriz via, e DOIS deles estavam desabilitados SEM motivo (controllerLayoutPicker e mediaAccountPicker): cinzas e mudos, indistinguiveis de defeito para leitor de tela. Ambos ganharam Accessible.description condicional. 2026-08-24, decoracao: a sonda declarava 'icone decorativo' pela FORMA — sem rotulo, sem nome acessivel e desabilitado. Isso e hipotese, e classificar acao por forma ja produziu falso positivo neste projeto. O candidato passou a ser ATIVADO: inercia medida vira 'decorative', e qualquer efeito vira 'unnamed-actionable', que entra em FAILING_VERDICTS porque o controle existiria para quem enxerga e nao para quem usa leitor de tela. Resultado: os 31 provaram inercia, ZERO unnamed-actionable, e not-probed caiu de 38 para 7. Dois gates novos impedem a volta do atalho. 2026-08-24, contraste: medi e NAO entreguei. A sonda de tentativa acusaria varios textos abaixo de 4,5:1, mas o mesmo rotulo aparecia duas vezes — uma com 13,69 e outra com exatamente 1,0 — o que denuncia erro do heuristico, nao defeito do produto. Publicar essa contagem repetiria o padrao de falso positivo que esta sonda ja teve. Fica como GAP-UI-CONTRAST-MEASUREMENT com o caminho certo escrito: medir pixel renderizado. 2026-08-24, contraste (segunda tentativa): a sonda por PIXEL foi construida e captura as 9 secoes, com alinhamento de caixa conferido a olho. Tres vieses meus foram encontrados e corrigidos no caminho — adivinhar fundo pelo ancestral opaco, cortar candidatos por FRACAO de pixels (vies de largura em Label com fillWidth) e compor alpha sobre preto. O bloqueio que sobrou nao e vies e sim nao-determinismo da captura, e por isso a ferramenta fica registrada como medicao, NAO como gate: nenhuma contagem foi publicada como acusacao. 2026-08-24, superficie do shell: nenhum Item do Main pintava o fundo — quem pintava era a `color` da ApplicationWindow, que grabToImage de Item nenhum captura. O appShell passou a ficar dentro de um Rectangle que pinta root.backgroundColor, exposto como shellSurfaceControl. Isso torna o conteudo do shell capturavel e embutivel e serve a qualquer auditoria visual futura, nao so ao contraste. 2026-08-24, contraste do item selecionado CORRIGIDO: medi os dois temas com o resolvedor real e nenhuma cor fixa servia — no claro `text` da 1,95 e `background` da 7,02; no escuro e o inverso (4,53 contra 3,53). O QML passou a escolher entre as duas a que contrasta mais com o fundo selecionado, em seis delegates. Um teste prova a regra contra os tokens reais de cada tema empacotado, e um segundo reprova se algum dia UMA cor fixa passar em todos, para que simplificar nao reintroduza o defeito. Biblioteca e home editoriais passaram a declarar o tamanho de desenho das capas (LOD) em vez de decodificar a arte inteira, com decode assincrono. O harness check_editorial_library deixou de assumir Image.Ready no mesmo tick e passou a esperar pelo carregamento com orcamento limitado, de modo que uma capa que nunca carrega continua reprovando. Sem certificacao visual neste ciclo: o efeito foi verificado por gate offscreen, nao por captura no host. Varredura dos quatro usos do MediaEffectLayer: o backdrop contextual da biblioteca nao declarava teto e foi corrigido. Era exatamente o caso que o required existe para pegar. 2026-09-03: scopeDigest renovado por mudanca da frente WS-2026-09-CENA-ESDE (rota theme.scene.render e o botao de previa). A evidencia NAO foi carimbada: foi reexecutada e passou (matriz de controles 21 passed e gestos de ComboBox 13 passed, com os 5 seletores novos da previa). 2026-09-03: scopeDigest renovado por WS-2026-09-CENA-ESDE (SceneEsdeView ganhou os renderizadores de carousel, video e helpSystem). A evidencia NAO foi carimbada: foi reexecutada e passou (matriz de controles e gestos de ComboBox, 23 testes). 2026-09-04: scopeDigest renovado pela correcao do video em SceneEsdeView. A matriz NAO foi carimbada: foi reexecutada e passou (21 testes)."
 }

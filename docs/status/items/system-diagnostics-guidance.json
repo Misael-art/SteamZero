@@ -16,7 +16,7 @@
     "tests/qml/check_main_handheld_sections.qml",
     "docs/09-operations/evidence/2026-09-22-system-diagnostics-guidance/README.md"
   ],
-  "scopeDigest": "7431afd75a30a9314c1a7c210586c53c1eb44e257ee0e37932993f3fd2dc233f",
+  "scopeDigest": "4e1aa44ae47adb961d8b0dddd0db6462dd4c786c2e85f48b49493fdb075a362c",
   "dependsOn": [],
   "knownGaps": ["GAP-EMULATION-PHYSICAL-LAUNCH"],
   "acceptanceCriteria": [
@@ -55,10 +55,16 @@
       "reference": "docs/09-operations/evidence/2026-09-22-system-diagnostics-guidance/README.md",
       "command": "/usr/local/bin/steamzero doctor --json; readlink -f /opt/steamzero/current",
       "result": "partial"
+    },
+{
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/README.md",
+      "command": "2026-09-26 renovacao de escopo pela frente WS-2026-09-RC01-CENTRAL-LOADING: src/steamzero/ui/qml/Main.qml mudou por trabalho de outro item (RC-01, SZ-UI-DESKTOP-AUDIT): propriedades de fase do bootstrap (statusPhase, statusInFlight, statusStale), a faixa de fase inline com oferta de retry, cartoes em 'pending' em vez de afirmar ausencia nao medida, e tinta dos avisos escolhida por contraste. A mudanca e aditiva no shell e nao toca as rotas nem as cenas deste item, mas o arquivo esta no escopo declarado, entao o digest envelheceria em silencio sem registro. Nenhuma evidencia deste item foi reexecutada nem reatestada.",
+      "result": "recorded"
     }
   ],
   "nextAction": "HARD-EXTERNAL-SUBITEM: repetir a jornada na release instalada com um estado de atenção e confirmar foco/ação pelo operador; não executar recovery no host sem autorização.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-22",
+  "updatedAt": "2026-09-26",
   "notes": "O Doctor publica guidance estruturado sem caminhos pessoais nos checks, e a tela Sistema renderiza observado, impacto, orientação e ações allowlisted. Ações de tarefas e exportação apenas abrem rotas já publicadas; nenhum recovery é executado automaticamente. A prova física na release instalada continua externa."
 }

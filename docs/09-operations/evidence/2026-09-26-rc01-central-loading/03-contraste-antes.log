@@ -1,0 +1,45 @@
+# UX-01 — medição ANTES da correção, harness tests/qml/check_warning_surface_contrast.qml
+# Árvore: Main.qml revertido localmente com /tmp/rc01_revert_contrast.py --apply (parâmetros
+#   sem tipo, três rótulos com a tinta semântica direta) e restaurado em seguida; o md5 de
+#   Main.qml foi conferido depois da restauração.
+# Comando: QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_warning_surface_contrast.qml
+qml: FAIL: em tema escuro o aviso tem de usar a tinta clara do tema
+qml: FAIL: tema escuro: razão NaN em #24180b — a superfície chegou como texto
+qml: FAIL: tema escuro: tinta sobre #24180b fica em NaN:1, mínimo 4.5:1
+qml: FAIL: tema escuro: razão NaN em #211a10 — a superfície chegou como texto
+qml: FAIL: tema escuro: tinta sobre #211a10 fica em NaN:1, mínimo 4.5:1
+qml: FAIL: tema escuro: razão NaN em #080d13 — a superfície chegou como texto
+qml: FAIL: tema escuro: tinta sobre #080d13 fica em NaN:1, mínimo 4.5:1
+qml: FAIL: tema escuro: razão NaN em #352020 — a superfície chegou como texto
+qml: FAIL: tema escuro: tinta sobre #352020 fica em NaN:1, mínimo 4.5:1
+qml: FAIL: tema escuro: razão NaN em #35171b — a superfície chegou como texto
+qml: FAIL: tema escuro: tinta sobre #35171b fica em NaN:1, mínimo 4.5:1
+qml: FAIL: tema escuro: razão NaN em #102b20 — a superfície chegou como texto
+qml: FAIL: tema escuro: tinta sobre #102b20 fica em NaN:1, mínimo 4.5:1
+qml: FAIL: tema claro: razão NaN em #24180b — a superfície chegou como texto
+qml: FAIL: tema claro: tinta sobre #24180b fica em NaN:1, mínimo 4.5:1
+qml: FAIL: tema claro: razão NaN em #211a10 — a superfície chegou como texto
+qml: FAIL: tema claro: tinta sobre #211a10 fica em NaN:1, mínimo 4.5:1
+qml: FAIL: tema claro: razão NaN em #080d13 — a superfície chegou como texto
+qml: FAIL: tema claro: tinta sobre #080d13 fica em NaN:1, mínimo 4.5:1
+qml: FAIL: tema claro: razão NaN em #352020 — a superfície chegou como texto
+qml: FAIL: tema claro: tinta sobre #352020 fica em NaN:1, mínimo 4.5:1
+qml: FAIL: tema claro: razão NaN em #35171b — a superfície chegou como texto
+qml: FAIL: tema claro: tinta sobre #35171b fica em NaN:1, mínimo 4.5:1
+qml: FAIL: tema claro: razão NaN em #102b20 — a superfície chegou como texto
+qml: FAIL: tema claro: tinta sobre #102b20 fica em NaN:1, mínimo 4.5:1
+qml: FAIL: alto contraste: razão NaN em #24180b — a superfície chegou como texto
+qml: FAIL: alto contraste: tinta sobre #24180b fica em NaN:1, mínimo 7:1
+qml: FAIL: alto contraste: razão NaN em #211a10 — a superfície chegou como texto
+qml: FAIL: alto contraste: tinta sobre #211a10 fica em NaN:1, mínimo 7:1
+qml: FAIL: alto contraste: razão NaN em #080d13 — a superfície chegou como texto
+qml: FAIL: alto contraste: tinta sobre #080d13 fica em NaN:1, mínimo 7:1
+qml: FAIL: alto contraste: razão NaN em #352020 — a superfície chegou como texto
+qml: FAIL: alto contraste: tinta sobre #352020 fica em NaN:1, mínimo 7:1
+qml: FAIL: alto contraste: razão NaN em #35171b — a superfície chegou como texto
+qml: FAIL: alto contraste: tinta sobre #35171b fica em NaN:1, mínimo 7:1
+qml: FAIL: alto contraste: razão NaN em #102b20 — a superfície chegou como texto
+qml: FAIL: alto contraste: tinta sobre #102b20 fica em NaN:1, mínimo 7:1
+qml: OK: 44 verificações de contraste, 37 falhas
+# exit=3
+# falhas registradas: 37

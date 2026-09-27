@@ -1,0 +1,19 @@
+# UX-02 — medição ANTES da RC-01: o harness da fase de carregamento contra a árvore de HEAD.
+# Árvore: Main.qml e EditorialHome.qml trocados por `git show HEAD:<caminho>` (HEAD = 64932141,
+#   o registro da workstream, sem nenhuma mudança funcional da RC-01). md5 de ambos conferido
+#   antes e depois: b051dd848dcde2186eb723708533ddcb / 5df8d072aea3c71093c43e91cef41dd4.
+# Comando (argv idêntico ao do teste
+#   `pytest tests/integration/test_qml_handheld_offscreen.py -k "central_loading and frames_are_capturable[loading]"`):
+#   qml6 tests/qml/check_central_loading.qml -- --steamzero-api http://127.0.0.1:<porta> \
+#     --steamzero-token cena-rc01 --capture-phase=loading --capture-output=<tmp>/central-loading.png
+#   com QT_QPA_PLATFORM=offscreen, QT_FORCE_STDERR_LOGGING=1, QT_LOGGING_RULES vazio.
+# Veredito: rc=1 — a API de fase não existia. As cinco primeiras falhas são as propriedades
+#   que a RC-01 introduziu; a exceção aborta a aferição no `statusBandTitle` inexistente.
+# Nenhum quadro foi gravado ("png ausente"): sem a faixa de fase não havia o que capturar.
+qml: FAIL: a fase inicial deve ser loading
+qml: FAIL: statusIsLoading deve ser verdadeiro sem resposta
+qml: FAIL: sem resposta não pode haver dado
+qml: FAIL: nenhuma consulta pode ter sido concluída nesta fase
+qml: FAIL: a faixa de fase deve estar visível durante o carregamento
+qml: FAIL: a aferição da fase de carregamento lançou exceção: Cannot read property 'length' of undefined
+qml: FALHAS: 6 de 6 (primeira: 1)
