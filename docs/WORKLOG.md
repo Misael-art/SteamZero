@@ -13082,3 +13082,44 @@ está no `scopePaths` do item, então um log dentro dela sobre o `status-check` 
 pretende atestar — paradoxo já declarado em `07-status-final.log`. `docs/WORKLOG.md` não está no escopo, e
 a verificação mais forte fica disponível para qualquer pessoa: no commit final deste lote,
 `make status-check` dá `OK`.
+
+## 2026-09-27 — Passo 4 da mesma fatia: dependência declarada no PR 241
+
+O passo anterior deixou o PR 241 dizendo que "o PR 240 ainda está OPEN, então o diff contra `main` inclui
+os commits dele". Correto, mas insuficiente: não declarava **ordem de integração** nem o estado lido no SHA
+de cada ponta, e citava um commit (`244b9550`) com um dígito trocado. O corpo foi reescrito com uma seção
+"Dependência: este PR depende do #240, e o #240 depende do #239", contendo a tabela de pontas, o estado
+consultado e a ordem **239 → 240 → 241**, mais a ressalva de que mesclar este sem os anteriores arrasta o
+conteúdo deles porque a base é `main` para os três.
+
+As três pontas e os estados foram lidos de novo, com `date -Iseconds` nas bordas, às **10:01:56 →
+10:02:07-03:00**, e o bruto está em
+`docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/12-estado-dos-prs-no-sha-consultado.log`
+(seção "Segunda leitura"): #239 `069501ab` OPEN/`CLEAN`; #240 `c959be13` OPEN/`MERGEABLE`/`CLEAN`; #241
+`f9256642` OPEN/`MERGEABLE`/`UNSTABLE`, com **4 `success` + 1 `skipped` + 4 `in_progress`** em 9
+check-runs e 1 status legado CodeRabbit `success`. `UNSTABLE` aqui significa checks em andamento, não
+checks quebrados — e `MERGEABLE` trata de conflitos, não de verde. Nenhuma consulta repetida depois dessa
+janela. O número de commits desta ponta até `origin/main` passou de 11 para **12** com `f9256642`; a
+afirmação de que nenhum é ancestral de `main` vale para os 12 (verificada individualmente).
+
+Nada de código foi tocado neste passo: `f9256642` tem 18 arquivos e **zero** fora de `docs/`
+(`git show --name-only f9256642 | grep -v '^docs/'` vazio). O push continuou fast-forward, sem force, e a
+decisão de merge permanece do operador — nenhuma frente se declara integrada aqui.
+
+**Governança deste passo.** Sete arquivos alterados, todos sob `docs/`. O `scopeDigest` de
+`SZ-UI-DESKTOP-AUDIT` foi renovado **pela ferramenta** depois de todas as escritas no escopo
+(`26b8c2d2 → 29f47724`, com `ps.scope_digest(ps.ROOT, item["scopePaths"])` às 10:06:19-03:00), as visões
+foram regeradas com `render --write`, e a validação aplicável foi corrida com a árvore final na janela
+10:06:36 → 10:06:45-03:00 (bruto em `/tmp/fecho-passo4.txt`):
+
+```
+$ .venv/bin/ruff check src tools tests        All checks passed!                 rc=0
+$ .venv/bin/ruff format --check src tools tests   671 files already formatted     rc=0
+$ .venv/bin/pytest tests/unit/test_project_status.py -q   13 passed in 4,47 s    rc=0
+$ make status-check                           STATUS-CHECK: OK                   rc=0
+$ make independence boundaries                independência OK / fronteiras OK   rc=0
+```
+
+A suíte integral não foi reexecutada (nada aqui muda comportamento), e nenhuma frente se declara
+integrada: `WS-2026-09-RC01-READINESS-FOCUS` e `WS-2026-09-RC01-CENTRAL-LOADING` continuam `active` até
+o merge efetivo do operador.

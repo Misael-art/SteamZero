@@ -32,7 +32,7 @@ Todo número deste README vem de leitura direta do disco ou da saída capturada 
 | `09-sonda-foco-mecanismos.log` | a sonda executada no Qt 6.11.2 instalado que respondeu à dúvida de foco (3 passed, exit 0) antes de qualquer generalização |
 | `10-gates-rapidos-bruto.log` | saída bruta dos gates rápidos, incluindo a reprovação do `status-check` com os cinco digests esperados/atuais |
 | `11-checkpoint-integral-bruto.log` | saída bruta da suíte integral única |
-| `12-estado-dos-prs-no-sha-consultado.log` | o estado real de 239/240/241 consultado no SHA exato (comando + resposta crua), a pilha de dependência e as correções numéricas a claims anteriores |
+| `12-estado-dos-prs-no-sha-consultado.log` | o estado real de 239/240/241 consultado no SHA exato (comando + resposta crua), em duas leituras (09:42 e 10:01–10:02), a pilha de dependência e as correções numéricas a claims anteriores |
 | `1-compacto-acoes-e-corpo-{antes,depois}.png` | 949×593, conteúdo normal |
 | `2-compacto-foco-rola-destino-{antes,depois}.png` | 949×593, foco navegado e destino revelado |
 | `3-compacto-relatorio-extenso-{antes,depois}.png` | 949×593, relatório de erro extenso |
@@ -101,12 +101,14 @@ encontra aqui o mesmo conteúdo, byte a byte.
 ## Pilha de PRs (dependência declarada)
 
 `239` (RC-00, `069501ab`) → `240` (1ª fatia de RC-01, UX-01/UX-02, `c959be13`) → `241` (esta fatia,
-`244bf550`). Todos têm base `main` e todos seguem **OPEN**; nenhum commit da pilha é ancestral de
-`origin/main` (`3495c49d`), verificado um a um. Portanto o **241 depende do 240**, que depende do 239: a
-ordem de integração é 239 → 240 → 241, e mesclar o 241 sem os anteriores arrastaria o conteúdo deles.
-O que é novo neste PR são os quatro commits `3495c49d..HEAD` desta fatia (`449b68c3`, `7fe9e8b2`,
-`3fd059da`, `244bf550`), dos quais **só `7fe9e8b2` toca código**; o resto do histórico visível no PR é o
-que já está em 239/240. Comando e resposta crua em `12-estado-dos-prs-no-sha-consultado.log`.
+ponta `f9256642`). Todos têm base `main` e todos seguem **OPEN**; nenhum dos 12 commits entre
+`origin/main` (`3495c49d`) e esta ponta é ancestral do main, verificado um a um. Portanto o **241 depende
+do 240**, que depende do 239: a ordem de integração é 239 → 240 → 241, e mesclar o 241 sem os anteriores
+arrastaria o conteúdo deles. O que é novo neste PR são os cinco commits desta frente (`449b68c3`,
+`7fe9e8b2`, `3fd059da`, `244bf550`, `f9256642`), dos quais **só `7fe9e8b2` toca código** — `244bf550` é
+governança e `f9256642` é documental (18 arquivos, zero fora de `docs/`); o resto do histórico visível no
+PR é o que já está em 239/240. Comando e resposta crua em `12-estado-dos-prs-no-sha-consultado.log`, que
+tem duas leituras: 09:42 e 10:01–10:02-03:00.
 
 ## Limite honesto da evidência
 
