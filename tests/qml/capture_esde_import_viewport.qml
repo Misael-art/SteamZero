@@ -126,12 +126,44 @@ Window {
     /// capturas que nomes, com `undefined-<rotulo>.png` e rc=1; é corrida, por isso
     /// o total varia de execução), e o `captureIndex` passa do fim da lista.
     /// 500 é a fase "grab em andamento", que nenhum ramo trata.
+    ///
+    /// `rectOf`/`rectOfPopup` publicam os retângulos reais da cena junto de cada
+    /// PNG. Um arquivo com o tamanho certo não prova nada sozinho: é a geografia
+    /// da captura que diz ONDE o gate deve achar tinta, e por que caminho o
+    /// conteúdo saiu da banda.
+    function rectOf(item) {
+        if (!item)
+            return "ausente"
+        const topLeft = item.mapToItem(harness.contentItem, 0, 0)
+        const bottomRight = item.mapToItem(harness.contentItem, item.width, item.height)
+        return Math.round(topLeft.x) + "," + Math.round(topLeft.y) + ","
+            + Math.round(bottomRight.x - topLeft.x) + ","
+            + Math.round(bottomRight.y - topLeft.y)
+    }
+
+    function rectOfPopup(popup) {
+        if (!popup)
+            return "ausente"
+        return Math.round(popup.x) + "," + Math.round(popup.y) + ","
+            + Math.round(popup.width) + "," + Math.round(popup.height)
+    }
+
+    function geometryLine(name) {
+        return "GEOMETRIA|" + name
+            + "|janela=" + Math.round(harness.width) + "x" + Math.round(harness.height)
+            + "|dialogo=" + harness.rectOfPopup(panel.esdeImportDialogControl)
+            + "|corpo=" + harness.rectOf(panel.esdeImportDialogControl.contentItem)
+            + "|rodape=" + harness.rectOf(panel.esdeImportDialogControl.footer)
+            + "|acao=" + harness.rectOf(panel.esdeImportApplyControl)
+    }
+
     function capture(nextPhase) {
         harness.phase = 500
         harness.contentItem.grabToImage(function(result) {
-            const path = harness.outputDirectory + "/"
-                + harness.captureNames[harness.captureIndex] + "-" + harness.label + ".png"
+            const nome = harness.captureNames[harness.captureIndex]
+            const path = harness.outputDirectory + "/" + nome + "-" + harness.label + ".png"
             console.log((result.saveToFile(path) ? "CAPTURADO " : "FALHA ") + path)
+            console.log(harness.geometryLine(nome))
             harness.captureIndex += 1
             harness.phase = nextPhase
         }, Qt.size(harness.width, harness.height))

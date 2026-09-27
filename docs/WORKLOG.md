@@ -13349,3 +13349,128 @@ a copiar de `credentialDialog` `Main.qml:2173-2232`); UX-03; os formatadores de 
 não reivindicados; e UX-05 na primeira dobra da Home com prova física na release
 `2.0.0rc1-e2af2562ebba` instalada, que depende de autorização — captura offscreen não
 substitui. O WORKLOG é append-only.
+
+## 2026-09-27 — Destravamento do gate visual do PR 241: a imagem canônica não tem fonte nenhuma, o upload nunca casou e o contrato de captura era um proxy
+
+Autorização desta rodada: **exclusivamente** o bloqueio visual do #241. Nenhum merge,
+nenhuma 4ª fatia, nenhuma segunda cópia da árvore. Evidência em
+`docs/09-operations/evidence/2026-09-27-gate-visual-causa-e-contrato/`.
+
+**A causa, medida na própria imagem do CI e não inferida dela.** O job não roda no
+runner do Ubuntu: roda em `ghcr.io/misael-art/steamzero-qml-visual@sha256:8b832ec124ae…`
+com digest fixado, e confere o container contra `ci/qml-visual/environment.lock.json`
+**antes** de renderizar. Essa guarda passou — o Qt é o Qt declarado (6.11.2). O que a
+imagem não instala é fonte: `fc-list` devolve **0** arquivos, embora `fontconfig`,
+`freetype2` e `harfbuzz` estejam presentes (`ci/qml-visual/Containerfile:31-41`). Os
+dois gates de captura de diálogo faziam `os.environ.copy()` e sobrescreviam quatro
+variáveis Qt, ou seja, herdavam o fontconfig de quem executa. No host há 828 fontes em
+573 famílias; na imagem, nenhuma. Experimento de uma variável só, no mesmo container e
+no mesmo commit: `FONTCONFIG_FILE` apontando para a fonte empacotada
+(`tests/fixtures/fonts/liberation-sans-2.1.5`, 4 faces) levou `fc-list` de 0 a 4 e a
+cena 1 de **7.147** para **31.184** bytes — exatamente o número que o CI reportou e o
+número do golden. Conclusão separada: **não há defeito de produto nesta história**; o
+diálogo renderiza certo nos dois viewports, todo glifo é tofu e nada está cortado. O
+defeito era de harness, e o precedente de conserto já estava no repositório
+(`CanonicalEnvironment`, usado por `test_qml_visual_capture.py` em três pontos) — foi
+reutilizado, não reinventado. É também por isso que `main`, #239 e #240 estão verdes no
+mesmo gate com a imagem sem fonte: o gate que existia declarava ambiente; os dois gates
+novos do #241, não.
+
+**Por que a evidência nunca chegou ao CI — duas causas independentes.** O passo de
+upload rodava (o `if: always()` estava certo; linha 447 do log do job), mas pedia
+`/tmp/pytest-of-*/**/*.png` enquanto `tools/run_tests_isolated.py:371` realoca
+`TMPDIR`/`TEMP`/`TMP` para `/tmp/steamzero-tests-*/tmp/…` e, em `:491`, apaga essa
+árvore ao sair. O log do run `36333208783` traz o aviso explícito de glob não casado
+(linha 465), e `gh api actions/artifacts` mostra **0** artefatos `qml-visual*` nos 100
+mais recentes — nunca foi publicado, em nenhum run. Um glob certo também não salvaria:
+os arquivos já teriam sumido quando o step subsequente rodasse. Corrigido dos dois
+lados: `_publicar()` copia as capturas e escreve `geometria.json`, `ambiente.json` e
+`saida-do-runner.txt` em `build/visual-evidence/<diálogo>/` **antes** de qualquer
+asserção, e o workflow passou a publicar `build/visual-evidence/**` com
+`if-no-files-found: error` — a ausência deixa de poder passar por sucesso. Nada de
+pessoal é publicado: o log sai com `str(tmp_path)` substituído por `<tmp>`, o
+`ambiente.json` traz os nove campos semânticos do contrato e não o ambiente cru, e a
+busca por `token|ghp_|authorization|password|secret|/home/` nos arquivos publicados não
+acha nada.
+
+**O contrato de captura, e por que não é trocar o número.** `st_size > 20_000` media a
+intenção "a cena tem conteúdo" por uma grande que não a representa: um golden adulterado
+com **um** pixel tem 34.554 bytes e passava; a captura sem fonte reprova, mas o número
+não diz *o quê* falta. Antes de decidir, medi um substituto plausível e o rejeitei por
+evidência — cobertura de tinta (pixels que diferem da cor modal da região em >32) deu
+3,0 % no corpo sem fonte e 2,4 % no corpo com fonte: os glifos tofu são decoration
+larga e o texto real tem entrelinha, então a métrica **inverte** o sinal e não
+discrimina. O contrato atual, por cena: o PNG existe, decodifica e tem o viewport
+pedido; a cena **declarou** o mesmo viewport na linha `GEOMETRIA|` que o harness QML
+agora emite por `mapToItem`; `assert_not_empty` contra `#071019`; rodapé e botão de
+ação dentro da moldura; e igualdade pixel a pixel com baseline versionada
+(`changed_pixel_count == 0`), com `diff.png`/`overlay.png`/`expected.png`/`metrics.json`
+escritos no diretório de evidência. Nada foi removido: as guardas de intenção e os 13
+casos de `qmltestrunner` de cada diálogo continuam, e nenhum limiar foi abaixado. A
+mordida virou asserção no repositório (`test_o_contrato_de_captura_reprova_vazio_ausente_e_corte`,
+sem Qt): fundo uniforme reprova em `assert_not_empty` **e** em 562.724/562.757 pixels; a
+captura real do runner sem fonte reprova por pixel-exact em 58.288 pixels (10,36 %)
+embora passe em `assert_not_empty`; um pixel trocado reprova (bbox `400,300,401,301`) e
+passava no proxy antigo; e `acao=(493,1041,141,48)` numa janela de 593 px está fora da
+moldura, enquanto `(663,529,132,48)` está dentro.
+
+**Nove baselines novas, geradas no contrato e não no host.**
+`tests/qml/golden/import-dialogs/{esde,retrofe}/*.png`, produzidas com
+`CanonicalEnvironment().to_env()`. A cena 1 ES-DE é **byte idêntica** ao render feito
+dentro da imagem fixada do runner (sha256 `84080a23b89dc3ba…`), e a regeneração completa
+das nove, depois de já estarem na árvore, deu `cmp` silencioso nas nove. Ficaram em
+subdiretório porque `test_every_fixture_has_a_baseline` e `test_no_orphan_baseline_survives`
+(`tests/integration/test_visual_goldens.py:113,117`) varrem glob raso. Limitação
+registrada em vez de escondida: `make update-qml-goldens` **não** as cobre — regrava-las
+é o ato manual documentado em `07-baselines-produzidas.log`.
+
+**Gates executados nesta rodada.** `-m visual` completo no ambiente isolado: **342
+passed, 6118 deselected em 1279,64s**, zero falha e zero skip (o run vermelho dava
+`2 failed, 328 passed, 12 skipped`), com a guarda `real-state` byte-idêntica antes e
+depois — nenhuma escrita em `$HOME`. Como os dois arquivos de gate foram reformatados e
+tiveram a docstring ajustada *durante* aquela corrida de 21 min, o subconjunto afetado
+foi reexecutado com a árvore parada: **67 passed, 10 deselected em 16,43s**, rc=0; os 10
+desmarcados são `test_the_capture_matches_the_versioned_baseline` das dez fixtures
+históricas, que rodou verde na corrida `-m visual` minutos antes e não é tocada por esta
+rodada. `ruff check src tools tests` e `ruff format --check src tools tests` passam
+(672 arquivos formatados); `mypy src` exit 0. A integral `tests -q` **não** foi
+repetida: as mudanças são de teste, harness QML, um workflow e documentação — nenhum
+arquivo de `src/` foi tocado, e repetir o gate integral sem necessidade concreta está
+fora da autorização.
+
+**Correções ao que eu havia afirmado, registradas aqui e não em particular.**
+(a) `git stash list` **não** estava vazio: há 5 entradas de 2026-07-24 a 2026-08-17,
+anteriores a este lote; nada foi tocado, aplicado ou removido. (b) O vermelho do gate
+visual não era "ambiente do runner" nem "possível corrida" — as duas hipóteses que
+registrei em rodadas anteriores e que a medição derruba. (c) Para o SHA `3b0778fe` eu
+havia anotado "8 success + 1 skipped + 1 failure"; a grade medida por
+`gh api commits/<oid>/check-runs` dá **7 success + 1 skipped + 1 failure**, porque o job
+que eu contava como verde é justamente o que reprova. (d) Havia escrito que a
+atualização das baselines se fazia por `make update-qml-goldens`; não se faz, e o texto
+foi corrigido antes do commit.
+
+**Ancestralidade e ordem de integração (medidas com `git merge-base`/`rev-list`).** Os
+três PRs abertos têm `base=main` e `mergeable=MERGEABLE, e isto engana: o grafo é uma
+pilha linear. `main` está parado em `3495c49d` desde 26/09; `#239` (`069501ab`) é
+`main+2`; `#240` (`c959be13`) é `main+7` e **contém** `069501ab`; `#241` (`3b0778fe`) é
+`main+18` e **contém** `c959be13`; o merge-base com o `main` é `3495c49d` nos três.
+Consequência: fundir #241 sozinho hoje integra 18 commits, não 11. A sequência que evita
+duplicação é **239 → 240 → 241 em merge commit** — que é como este `main` é mantido
+(`3495c49d`, `1ffafa64`, `ed097a13`, `9176c1ae` são todos `Merge pull request #NNN`), e
+em regime de merge a ancestralidade faz os commits de baixo saírem do diff do PR de
+cima, sem rebase nem cherry-pick. Squash-merge quebraria a propriedade: achatar #239
+cria commit novo, `069501ab` deixa de ser ancestral e o conteúdo reaparece como se fosse
+novo. Fundir na ordem inversa deixa o diff do PR de baixo vazio e o conteúdo entra sem o
+cartão dele ter passado pelo próprio gate. Não deixo de dizer o óbvio: **merge é do
+operador**, e nenhum dos três integra nesta rodada.
+
+**Pendências, sem promover eixo algum.** `integration` segue `feature-branch`,
+`verification` `dev`, `operation` `degraded`, `distribution` `not-packaged`. Faltam: a
+grade terminal no SHA desta rodada e a conferência de que `qml-visual-artifacts` existe
+com os PNGs (só o CI no SHA novo prova isso — nada aqui antecipa); a prova física na
+release `2.0.0rc1-e2af2562ebba` instalada em viewport compacto real, que captura
+offscreen não substitui e que depende de autorização; a 4ª fatia (segundo diálogo ES-DE
+duplicado em `Main.qml`, `2822-2971` aberto em `6313`, forma a copiar de
+`credentialDialog` `Main.qml:2173-2232`), não iniciada; UX-03; os formatadores não
+reivindicados de UX-04; e UX-05 na primeira dobra da Home, com critérios próprios —
+**RC-01 não está concluído**. O WORKLOG é append-only.

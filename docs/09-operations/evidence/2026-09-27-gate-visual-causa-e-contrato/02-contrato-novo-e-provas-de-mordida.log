@@ -1,0 +1,120 @@
+# Contrato de captura: por que o limiar de 20 000 bytes caiu e o que o substituiu
+
+Data: 2026-09-27. Autor: Misael Oliveira (Codex, tarefas 20 e 21 do lote RC-01).
+Arquivos afetados: `tests/integration/test_esde_import_dialog_compact.py`,
+`tests/integration/test_retrofe_import_dialog_compact.py`,
+`tests/qml/capture_esde_import_viewport.qml`, `tests/qml/capture_retrofe_import_viewport.qml`,
+`tests/qml/golden/import-dialogs/**` (9 baselines novos).
+
+## 1. O contrato antigo e a intenção que ele deveria guardar
+
+O gate de capturas afirmava, para cada cena:
+
+    assert arquivo.stat().st_size > 20_000, "PNG suspeito: provavelmente vazio"
+
+A intenção legítima é "a cena renderizou conteúdo real, não um quadro em branco ou
+um shell sem texto". O número de bytes era uma estimativa indireta dessa intenção.
+
+## 2. Por que o proxy é inadequado (medido, não opinado)
+
+Dois fatos independentes, ambos medidos nesta rodada:
+
+* **Falsos positivos (deixa passar defeito).** O golden `1-compacto-acoes-e-corpo.png`
+  adulterado com um único pixel vermelho tem 34 554 bytes e passa no limiar de 20 000,
+  mas tem 1 pixel divergente do baseline. Ver `04-sonda-de-mordida-do-contrato.txt`,
+  bloco "golden com exatamente um pixel trocado".
+* **Falsos negativos (reprova o que não deveria) e diagnóstico enganoso.** O limiar
+  reprova o render sem fonte do runner (7 147 bytes) **e** reprovaria uma captura
+  pequena porém correta se o tema fosse mais simples. Ele aponta para "arquivo
+  pequeno" quando a verdade medida é "o texto não foi desenhado e o rodapé mudou de
+  forma". Nenhum dos dois diagnóstico vem do tamanho.
+
+Um terceiro dado, obtido antes de decidir: uma métrica de "cobertura de tinta"
+(píxeis que diferem da cor modal da região em >32) deu 3,0 % no corpo **sem** fonte e
+2,4 % no corpo **com** fonte. Os glifos tofu são decoration larga e pontiaguda; o
+texto real tem entrelinha e entreletra. Cobertura de pixels **não discrimina** — ela
+inverte o sinal. Essa métrica foi rejeitada, e registradas aqui estão as razões para
+não ser tentada de novo.
+
+Conclusão: nenhum escalar de tamanho ou de tinta representa a intenção. A única
+verificação que preserva a intenção é comparar o render com uma referência visual
+aprovada, mais as verificações geométricas que já existem.
+
+## 3. O contrato novo
+
+Por cena, nesta ordem, com publicação de evidência **antes** das asserções (para que
+a falha seja inspecionável no CI):
+
+1. o PNG existe no caminho declarado pelo harness;
+2. é decodificável e tem exatamente o viewport pedido (`Image.open(...).size == esperado`);
+3. a cena declarou a janela que o contrato pede (`cena["janela"] == esperado`);
+4. `assert_not_empty(..., background="#071019")` — a imagem não é um fundo uniforme;
+5. rodapé e botão de ação estão **dentro** da moldura do viewport (`_dentro_da_banda`),
+   a partir da linha `GEOMETRIA|...` que o harness QML agora emite via `mapToItem`;
+6. `compare_with_golden(arquivo, GOLDEN_DIR/<cena>.png, EVIDENCE_DIR/<cena>)` com
+   `changed_pixel_count == 0` — igualdade pixel a pixel, e o runner já escreve
+   `diff.png`, `overlay.png`, `expected.png` e `metrics.json` no diretório de evidência.
+
+Nada foi removido: os cinco contratos de intenção do harness (teclado/click reais,
+espera observável com limite e falha, dados locais, cenário extenso não vazio, e os
+13 casos `qmltestrunner` de geometria e foco) continuam rodando e continuam verdes.
+O limiar de 20 000 bytes foi substituído, não diminuído — não há número novo para
+"ajustar até ficar verde".
+
+## 4. Prova de que o contrato novo ainda morde
+
+Sonda em `04-sonda-de-mordida.py`, saída em `04-sonda-de-mordida-do-contrato.txt`.
+Todos os casos abaixo foram executados de verdade contra o golden ES-DE cena 1
+(949x593):
+
+| caso | decodifica | `assert_not_empty` | `compare_with_golden` | proxy antigo |
+|---|---|---|---|---|
+| fundo uniforme do tamanho exato | sim | **REPROVA** (`QML-VISUAL-EMPTY-IMAGE-006`) | **REPROVA** (562 724/562 757 px) | reprova |
+| a captura real do runner que reprovou o CI (sem fonte, 7 147 B) | sim | passa | **REPROVA** (58 288 px, 10,36 %) | reprova |
+| golden com 1 pixel trocado | sim | passa | **REPROVA** (1 px, bbox 400,300,401,301) | **PASSA** ← o proxy cega aqui |
+| golden correto | sim | passa | passa (0 px) | passa |
+
+E o corte de regime, por geometria declarada (moldura por cena, não um número único):
+
+* ES-DE compacto sem fonte: `acao=(493, 1041, 141, 48)` contra janela de 593 px de
+  altura → **fora** da moldura → reprova;
+* RetroFE compacto sem fonte: `acao=(742, 1210, 83, 48)` → **fora** → reprova;
+* ES-DE com fonte `(663, 529, 132, 48)` e RetroFE com fonte `(742, 537, 83, 44)` →
+  **dentro** → passam;
+* viewports largos usam a própria moldura: ES-DE `(828, 632, 132, 48)` e RetroFE
+  `(907, 681, 83, 44)` contra 1280x800 → **dentro** → passam.
+
+Estes quatro casos viraram asserção no repositório, em
+`test_o_contrato_de_captura_reprova_vazio_ausente_e_corte` (não-visual, roda sem Qt),
+para que a regressão do próprio contrato seja detectável e não apenas uma memória
+desta sessão.
+
+## 5. Como os baselines foram produzidos e por que são confiáveis
+
+* Gerados com `CanonicalEnvironment().to_env()` — o mesmo construtor que o gate já
+  usa para declarar o ambiente, agora aplicado à produção de referência.
+* O golden ES-DE cena 1 é **byte idêntico** ao render produzido dentro da imagem
+  fixada do CI (`sha256 84080a23b89dc3ba1242424a0d48158867defcfdd4cb5ca0b5fcc0d5a7e91fe4`,
+  31 184 bytes). Ver `01-causa-raiz-container-sem-fonte.log`. Ou seja: a referência
+  não é "o que dá no meu notebook", é o que o contrato canônico produz.
+* Determinismo conferido por reexecução: mesma saída, mesmo hash.
+* Os baselines ficam em `tests/qml/golden/import-dialogs/{esde,retrofe}/`, um
+  subdiretório novo, para não confundir o inventário flat de
+  `tests/qml/golden/*.png` que `test_every_fixture_has_a_baseline` e
+  `test_no_orphan_baseline_survives` percorrem.
+
+## 6. Limites honestos deste contrato
+
+* Igualdade pixel a pixel é deliberadamente rígida: muda o tema, a fonte empacotada,
+  o freetype/harfbuzz ou o DPI e o gate reprova. Isso é decisão consciente — o
+  ambiente é fixado por imagem e `environment.lock.json`, e o job confere o container
+  contra o lock **antes** de renderizar. A atualização é um ato manual e explícito
+  (o comando está em `07-baselines-produzidas.log`), nunca automática. Estas nove
+  baselines **não** passam por `make update-qml-goldens`, que só conhece as dez
+  fixtures planas de `tests/qml/golden/` — ver a limitação escrita na última seção
+  daquele arquivo.
+* O gate prova o render do **harness** no ambiente canônico. Continua sem provar o
+  app instalado (`2.0.0rc1-e2af2562ebba`) num viewport compacto real — pendência já
+  registrada em cartão.
+* As regiões verificadas por geometria são rodapé e botão de ação. Corpo de texto,
+  lista e relatório são cobertos pelo pixel-exact, não por asserção nominal.

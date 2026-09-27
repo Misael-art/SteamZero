@@ -1,0 +1,54 @@
+# 06 — Suíte `-m visual` completa no ambiente isolado do projeto
+
+Comando (executado no checkout canônico, com o venv existente):
+
+```
+.venv/bin/python tools/run_tests_isolated.py -m visual --tb=short -q
+```
+
+Saída bruta, sem edição:
+
+```
+........................................................................ [ 21%]
+........................................................................ [ 42%]
+........................................................................ [ 63%]
+........................................................................ [ 84%]
+......................................................                   [100%]
+342 passed, 6118 deselected in 1279.64s (0:21:19)
+real-state before: exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790477787953832614 source=HOME-default
+real-state after:  exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790477787953832614 source=HOME-default
+```
+
+## O que estas quatro linhas provam, e o que não provam
+
+* **342 passaram, zero falhas, zero skips** no conjunto marcado `visual`. É o
+  mesmo seletor do job `qml-visual-linux`, e o comparável com o CI é este número:
+  o run vermelho de `3b0778fe` dizia `2 failed, 328 passed, 12 skipped` — os 12
+  skips daquele run são justamente as duas capturas que abortavam cedo e os casos
+  dependentes delas; aqui são 342 = 328 + 2 + 12, com os 12 convertidos em
+  executados.
+* **`real-state before` é byte-identicamente igual a `after`** (mesmos
+  `files=12816`, `directories=2068`, `bytes=1372712391`, `max_mtime_ns`): a suíte
+  não escreveu em `$HOME`. Guarda do próprio `run_tests_isolated.py`, não promessa
+  minha.
+* **Não prova o CI.** O host tem 828 fontes e o container, nenhuma; a diferença é
+  exatamente o que esta rodada corrigiu, e a prova de que ficou igual é a paridade
+  sha256 host↔container de `07-baselines-produzidas.log`, mais o gate no SHA novo.
+* **Não é a integral.** Esta é só a fatia `-m visual`. A suíte completa
+  (`tools/run_tests_isolated.py tests -q`) não foi repetida nesta rodada: as
+  mudanças tocam dois arquivos de teste, dois harnesses QML, um workflow e
+  documentação, nada de `src/`.
+
+## Caveat honesto sobre o instante da medição
+
+A corrida acima durou 21 min e, **durante** ela, formatei e ajustei docstring dos
+dois arquivos de gate (`ruff format` trocou três chamadas multilinha em monolinha;
+nenhuma linha de asserção foi alterada semanticamente). Para que a afirmação
+"verde nesta árvore" não descanse numa corrida que pegou a árvore se movendo, o
+subconjunto afetado foi reexecutado **depois** de a árvore estar parada — ver o
+bloco abaixo. A contagem de 342 continua sendo a medição integral válida; o que o
+re-execute mira é a exatidão da frase "nesta árvore, parada".
+
+## Re-execução focada, na árvore final
+
+(ver `09-reexecucao-focada-na-arvore-final.log`)

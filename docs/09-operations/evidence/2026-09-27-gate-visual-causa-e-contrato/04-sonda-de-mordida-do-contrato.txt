@@ -1,0 +1,31 @@
+baseline tests/qml/golden/import-dialogs/esde/1-compacto-acoes-e-corpo.png: viewport (949, 593), 31184 bytes
+
+--- captura vazia (fundo uniforme, viewport correto): uniforme-fundo.png (3576 bytes)
+    decodifica e tem o viewport pedido: True
+    assert_not_empty .............. REPROVA -> QML-VISUAL-EMPTY-IMAGE-006: <scratch>/uniforme-fundo.png tem uma cor só; o componente não desenhou nada sobre o fundo
+    compare_with_golden ........... REPROVA (changed=562724/562757, ratio=0.9999, maxDelta=248, bbox=(0, 0, 949, 593))
+    proxy antigo (> 20 000 bytes) ... reprova
+
+--- a captura real do runner que reprovou o CI: runner-sem-fonte.png (7147 bytes)
+    decodifica e tem o viewport pedido: True
+    assert_not_empty .............. passa
+    compare_with_golden ........... REPROVA (changed=58288/562757, ratio=0.1036, maxDelta=255, bbox=(6, 18, 898, 577))
+    proxy antigo (> 20 000 bytes) ... reprova
+
+--- golden com exatamente um pixel trocado: um-pixel.png (34554 bytes)
+    decodifica e tem o viewport pedido: True
+    assert_not_empty .............. passa
+    compare_with_golden ........... REPROVA (changed=1/562757, ratio=0.0000, maxDelta=239, bbox=(400, 300, 401, 301))
+    proxy antigo (> 20 000 bytes) ... passa
+
+--- golden correto (deve passar): 1-compacto-acoes-e-corpo.png (31184 bytes)
+    decodifica e tem o viewport pedido: True
+    assert_not_empty .............. passa
+    compare_with_golden ........... passa (changed=0/562757, ratio=0.0000, maxDelta=0, bbox=None)
+    proxy antigo (> 20 000 bytes) ... passa
+
+--- corte de regime, decidido pela geografia declarada pela cena
+    acao ES-DE compacto ANTES da 3a fatia: ret (493, 1041, 141, 48) contra moldura (949, 593) -> FORA
+    acao ES-DE compacto DEPOIS: ret (663, 529, 132, 48) contra moldura (949, 593) -> dentro
+    acao ES-DE no viewport largo: ret (828, 632, 132, 48) contra moldura (1280, 800) -> dentro
+    a mesma acao larga, na moldura compacta: ret (828, 632, 132, 48) contra moldura (949, 593) -> FORA

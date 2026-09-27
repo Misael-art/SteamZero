@@ -1,0 +1,123 @@
+# 07 — Como os 9 baselines novos foram produzidos (e por que são a saída do contrato, não do meu host)
+
+Data: 2026-09-27. Diretório: `tests/qml/golden/import-dialogs/{esde,retrofe}/`.
+
+## O comando exato
+
+Geração é só o harness QML do próprio repositório rodando sob o ambiente que o
+projeto já declara — `CanonicalEnvironment`, a mesma classe usada por
+`tests/integration/test_qml_visual_capture.py` desde sempre:
+
+```bash
+cd "/home/misael/Projects/Steam Zero/Canonical/2026-09-21"   # <repo>
+.venv/bin/python - <<'PY' > $SCRATCH/env.sh
+import sys, shlex; sys.path.insert(0,'tools')
+from qml_capture_runner import CanonicalEnvironment
+for k, v in sorted(CanonicalEnvironment().to_env().items()):
+    print(f"export {k}={shlex.quote(str(v))}")
+PY
+source $SCRATCH/env.sh
+/usr/lib/qt6/bin/qml tests/qml/capture_esde_import_viewport.qml   -- --output-dir=$SCRATCH/esde   --label=gate
+/usr/lib/qt6/bin/qml tests/qml/capture_retrofe_import_viewport.qml -- --output-dir=$SCRATCH/retrofe --label=gate
+# os arquivos vêm com sufixo -gate.png; o baseline versionado é <cena>.png
+```
+
+O ambiente efetivo (sanitizado — o valor real de `FONTCONFIG_FILE` é
+`<repo>/build/qml-fontconfig/fonts.conf`, gerado pelo próprio runner). Listado
+aqui como `CanonicalEnvironment().to_env()` devolve, sem acréscimos:
+
+```
+FONTCONFIG_FILE=<repo>/build/qml-fontconfig/fonts.conf   # expõe só tests/fixtures/fonts/liberation-sans-2.1.5 (4 faces)
+QT_QPA_PLATFORM=offscreen
+QT_QUICK_BACKEND=software
+QT_SCALE_FACTOR=1.0
+QT_SCREEN_SCALE_FACTORS=1.0
+QT_ENABLE_HIGHDPI_SCALING=0
+QT_FONT_DPI=96
+QT_FORCE_STDERR_LOGGING=1
+QT_MESSAGE_PATTERN=%{type}|%{message}
+QT_LOGGING_RULES=
+QML_DISABLE_DISK_CACHE=1
+LC_ALL=C.UTF-8   LANG=C.UTF-8
+```
+
+Honestidade sobre o que **não** é isolado: `to_env()` declara do zero as famílias
+`QT_*`, `QML_*`, `QSG_*`, `LC_*`/`LANG` e o fontconfig, mas preserva o resto do
+ambiente do processo pai (`HOME`, `PATH`, `DISPLAY`, `WAYLAND_DISPLAY`, variáveis
+da sessão). Sob `QT_QPA_PLATFORM=offscreen` isso não afeta o pixel renderizado — a
+paridade byte a byte com o container do CI, medida acima, é a prova de que o que
+importa está declarado. Consequência prática para esta pasta: nenhum despejo de
+ambiente é publicado como evidência. O `ambiente.json` que vai ao artefato do CI
+contém apenas os nove campos semânticos do contrato (`platform`, `backend`,
+`devicePixelRatio`, `fontDpi`, `locale`, `scaleFactor`, `animations`,
+`reducedMotion`, `highContrast`), nunca o `env` cru.
+
+Saída das duas execuções: `capturas=5 de 5` e `capturas=4 de 4`, cada cena com a
+linha `GEOMETRIA|…` que o harness agora emite. Exemplo literal da cena 1 ES-DE:
+
+```
+GEOMETRIA|1-compacto-acoes-e-corpo|janela=949x593|dialogo=155,17,640,560|corpo=161,49,628,474|rodape=155,529,640,48|acao=663,529,132,48
+```
+
+## Por que isto é o contrato e não "o que dá no meu notebook"
+
+* **Paridade com o CI, medida byte a byte.** A cena 1 ES-DE renderizada *dentro* da
+  imagem fixada do runner (`ghcr.io/…/steamzero-qml-visual@sha256:8b832ec1…`) com
+  `FONTCONFIG_FILE` apontando para a fonte empacotada tem sha256
+  `84080a23b89dc3ba1242424a0d48158867defcfdd4cb5ca0b5fcc0d5a7e91fe4` — o mesmo hash
+  do golden versionado. Ver `01-causa-raiz-container-sem-fonte.log`.
+* **Determinismo re-medido nesta rodada.** As dez cenas foram geradas de novo, do
+  zero, depois de os baselines já estarem commitados na árvore de trabalho, e o
+  `cmp` entre cada regeneração e cada baseline deu idêntico para as nove:
+
+  ```
+  IDENTICO esde/1-compacto-acoes-e-corpo.png       (31 184 B, 84080a23…)
+  IDENTICO esde/2-compacto-listagem-24-esquemas.png (44 607 B, 3c7d76bf…)
+  IDENTICO esde/3-compacto-rodape-fixo-com-campo-de-nome-focado.png (44 513 B, 52a917e6…)
+  IDENTICO esde/4-compacto-relatorio-extenso.png    (106 557 B, ef51bc1a…)
+  IDENTICO esde/5-largo-relatorio-extenso.png       (117 176 B, 25c6d99f…)
+  IDENTICO retrofe/1-compacto-acoes-e-corpo.png     (38 748 B, bc19440f…)
+  IDENTICO retrofe/2-compacto-foco-rola-destino.png (38 731 B, 563fa3eb…)
+  IDENTICO retrofe/3-compacto-relatorio-extenso.png (71 450 B, ca820b1d…)
+  IDENTICO retrofe/4-largo-relatorio-extenso.png    (87 128 B, 9448ba7c…)
+  ```
+
+* **O precedente já existia no repositório.** `tests/integration/test_qml_visual_capture.py`
+  usa `CanonicalEnvironment().to_env()` em três pontos e é o gate das dez baselines
+  versionadas — inclusive foi por isso que o job ficou verde em `main`, `#239` e
+  `#240` apesar de a imagem não ter fonte nenhuma. Os dois gates de diálogo do #241
+  eram os únicos que copiavam `os.environ`; agora seguem o mesmo caminho.
+
+## Formato do commit
+
+Baselines em subdiretório (`golden/import-dialogs/esde/`, `…/retrofe/`) e não no
+flat de `tests/qml/golden/*.png`, para que a varredura de
+`test_every_fixture_has_a_baseline` / `test_no_orphan_baseline_survives` continue
+enxergando só as dez referências antigas. Os dois inventários foram reexecutados
+depois desta mudança; resultado em `06-suite-visual-local.log`.
+
+## O que muda se o ambiente mudar
+
+Nada aqui é tolerante por design: se Qt, FreeType, Harfbuzz, fontconfig, a fonte
+empacotada ou o DPI se moverem, o pixel-exact reprova. O job confere a imagem
+contra `ci/qml-visual/environment.lock.json` **antes** de renderizar justamente
+para que divergência de ambiente nunca apareça como diferença de pixel.
+
+**Limitação concreta, retificando uma afirmação que eu tinha escrito aqui:** as
+novas baselines **não** são cobertas por `make check-qml-goldens` /
+`make update-qml-goldens`. `tools/update_qml_goldens.py:38,58` itera as
+`FIXTURES` planas de `tests/qml/golden/*.png` (as dez antigas) e nada mais — os
+inventários `test_every_fixture_has_a_baseline` / `test_no_orphan_baseline_survives`
+(`tests/integration/test_visual_goldens.py:113,117`) também varrem glob raso, e foi
+por isso que as novas baselines entraram em subdiretório. Consequência: a
+referência dos dois diálogos é guardada **pelos próprios gates**
+(`-m visual -k "import_dialog"`), e regrava-la é um ato manual e explícito —
+
+1. rodar o comando desta seção para uma pasta fora do checkout;
+2. conferir `diff.png`/`overlay.png`/`metrics.json` que o gate já escreveu em
+   `build/visual-evidence/<diálogo>/<cena>/`;
+3. só então copiar a cena nova sobre o baseline, no mesmo commit em que se explica
+   por que o ambiente mudou.
+
+Se um dia estas cenas entrarem no `tools/update_qml_goldens.py`, isso é mudança de
+ferramenta e pede cartão próprio — não está feito aqui e não está sendo afirmado.
