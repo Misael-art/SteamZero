@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-RC01-READINESS-FOCUS",
+  "item": "SZ-UI-DESKTOP-AUDIT",
+  "branch": "codex/rc01-readiness-focus-2026-09-27",
+  "baseRef": "c959be13",
+  "owner": "qoder-continuation",
+  "state": "active",
+  "exclusivePaths": [
+    "docs/09-operations/evidence/2026-09-27-rc01-readiness-focus",
+    "docs/status/workstreams/rc01-readiness-focus-2026-09-27.json"
+  ],
+  "sharedPaths": [
+    "src/steamzero/ui/qml/Emulation.qml",
+    "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+    "src/steamzero/ui/qml/Main.qml",
+    "src/steamzero/domain/emulation_workspace.py",
+    "tests/integration/test_qml_handheld_offscreen.py",
+    "docs/status/items/ui-desktop-audit.json",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "2026-09-27: segunda fatia de RC-01 (UX-03 prontidão compreensível, UX-05/UX-07 foco e rolagem em viewport compacto incluindo o modal RetroFE). Reprodução por leitura já feita e registrada fora do checkout em ~/evidence-logs/2026-09-27-rc01-slice2/00-reproducao-no-codigo.log; o próximo passo é a sonda de execução em 949x593 antes de qualquer mudança. UX-04 (unidades de armazenamento) está ADIADA por decisão do operador: src/steamzero/adapters/emulation.py está em exclusivePaths de WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT com 37 linhas pendentes no arquivo (hunks 2844-2859, 7161, 9601-9633); esta frente não toca esse caminho e não reivindica a região dos cartões. Edições em sharedPaths são seriais, em commit próprio, com o diff dos claimants conferido antes (precedente RC-00 para Main.qml). O item SZ-UI-DESKTOP-AUDIT fica listado como compartilhado porque o claim exclusivo dele é de WS-2026-09-RC01-CENTRAL-LOADING, ainda active até o merge do PR 240: as evidências desta frente entram nesse mesmo arquivo serialmente e o digest só é renovado quando a frente fechar.",
+  "updatedAt": "2026-09-27"
+}
