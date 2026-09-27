@@ -13474,3 +13474,44 @@ duplicado em `Main.qml`, `2822-2971` aberto em `6313`, forma a copiar de
 `credentialDialog` `Main.qml:2173-2232`), não iniciada; UX-03; os formatadores não
 reivindicados de UX-04; e UX-05 na primeira dobra da Home, com critérios próprios —
 **RC-01 não está concluído**. O WORKLOG é append-only.
+
+### 2026-09-27 (continuação) — o gate visual fecha verde no SHA `723cfcde`, e o `STATUS-CHECK` reprovou no mesmo run
+
+Leitura terminal do run `36341332344`, evento `pull_request`, `headSha =
+723cfcde35266a163cf141626a65c3d52c5cd59b` — um único `gh run watch`, sem commit fabricado para
+"testar" o pipeline. O job **`Gate visual QML (Linux)` fechou `success`** (18:37:30Z → 18:57:43Z), o
+mesmo job que estava vermelho em `fe5751a0`, em `3b0778fe` e nas duas tentativas anteriores. A causa
+era a da rodada: a imagem canônica não tem nenhum arquivo de fonte e os dois gates de captura
+herdavam o fontconfig do host. `src/` não mudou uma linha nesta rodada.
+
+**A publicação de evidência, que nunca existiu, foi conferida arquivo por arquivo.** O run publicou
+`qml-visual-artifacts` (1 620 705 bytes) — nos 100 runs anteriores a contagem de artefatos com esse
+nome era **zero**. Baixado fora do checkout: **51 arquivos, 36 PNG**, os mesmos 51/36 medidos
+localmente, e **as nove capturas do runner byte idênticas às nove baselines versionadas** (sha256 dos
+dois lados). A varredura case-insensitive de `home/|token|ghp_|authoriz|password|secret|misael|pytest-of`
+nos 15 `.txt`/`.json` publicados devolve **0 ocorrências**. Fecha a limitação que `07-…log` declarava:
+a paridade antes conferida só na cena 1 agora existe para as nove, e qualquer pessoa a reproduce a
+partir do artefato.
+
+**O mesmo run reprovou o que a minha escrita documental deveria garantir.** Os três jobs
+`Python 3.11/3.12/3.14` falharam em ~26 s no passo `python tools/project_status.py check`:
+`SZ-UI-DESKTOP-AUDIT` esperava `513c214c…` e o conteúdo commitado devolve `b83a9c78…`. Não é ambiente
+do runner: com o `06-suite-visual-local.log` devolvido ao conteúdo de `HEAD` (sha256 `a512825b5b4b`,
+minha versão `3cf667b30078`), a ferramenta imprime **exatamente `b83a9c78…`** aqui. Causa: renovei os
+digests e medi `STATUS-CHECK: OK` **antes** das últimas edições da pasta de evidência, e não reexecutei
+o check depois — a armadilha da 2ª fatia na direção inversa (log editado depois do digest, e não antes).
+Corrigido no commit seguinte, com o digest renovado pelo valor que a própria ferramenta imprime.
+
+**Duas afirmações minhas caíram nesta leitura, e ficam registradas como caídas.** (a) Escrevi no log
+`06` que os `12 skipped` do container eram "as capturas que abortavam cedo e os dependentes". Não são:
+são as variantes `MultiEffect` de `tests/integration/test_qml_asset_recipes.py`, que pulam por
+`QT_QUICK_BACKEND=software` (`:44`) — e a imagem canônica traz esse valor no próprio `Config.Env`,
+conferido por `docker image inspect`. Os 342 coletados são os mesmos 342 dos dois lados. (b) A prova
+de mordida que relatei como "o gate de bytes reprovava" não distingue defeito de virtude: um golden com
+**um** pixel trocado tem 34 554 bytes e passava no limiar — é por isso que o contrato é pixel-exact.
+
+**Pendências, sem promover eixo algum.** A condição de saída pede CI aprovado **no SHA final**, e o SHA
+final é o que carrega a correção do digest — nada aqui antecipa aquela leitura. Continua fora de prova:
+a primeira dobra da Home (UX-05), UX-03, os formatadores de UX-04, a prova física na release
+`2.0.0rc1-e2af2562ebba`, e as nove baselines novas, que `make update-qml-goldens` não cobre. A 4ª fatia
+não foi iniciada, e merge é do operador. **RC-01 não está concluído.** O WORKLOG é append-only.

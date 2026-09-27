@@ -30,6 +30,7 @@ Recorte desta rodada: **exclusivamente** o bloqueio visual do #241. Nenhum merge
 | `07-baselines-produzidas.log` | como os 9 baselines novos foram gerados, com o comando exato, o ambiente efetivo, a re-geração byte a byte e a limitação de que `make update-qml-goldens` não os cobre |
 | `08-ancestralidade-e-ordem-de-integracao.log` | grafo medido de `#239 ⊂ #240 ⊂ #241` (2/7/18 commits acima de `main`, ancestralidade confirmada), a grade terminal dos três SHAs, por que #239/#240 estão verdes no mesmo gate e a ordem de integração que evita commits duplicados |
 | `09-reexecucao-focada-na-arvore-final.log` | `67 passed` na árvore parada dos dois gates de diálogo + inventários de baseline, com o motivo explícito dos 10 desmarcados e a guarda de `$HOME` inalterado |
+| `10-ci-723cfcde-verde-e-artefatos-conferidos.log` | a grade terminal do run `36341332344` (Gate visual **success**), a conferência arquivo por arquivo do artefato `qml-visual-artifacts` (51 arquivos / 36 PNG, as 9 capturas **byte idênticas** às baselines, varredura de privacidade com 0 ocorrências), e o vermelho residual dos três jobs de Python com a causa medida: o `scopeDigest` commitado estava velho para o conteúdo da pasta |
 | `imagens/01-cena-1-no-container-sem-fonte.png` | 7 147 B, sha256 `c488b3c2…` — o render do CI: layout correto, todo glifo tofu |
 | `imagens/02-cena-1-no-container-com-fonte-empacotada.png` | 31 184 B, sha256 `84080a23…` — mesma cena com a fonte empacotada; byte idêntica ao golden versionado |
 | `imagens/03-cena-4-relatorio-extenso-sem-fonte.png` | 7 959 B, sha256 `36001b41…` — a cena mais densa em texto, menor que a cena 1 com fonte: tamanho não separa os casos |
@@ -54,8 +55,11 @@ docker run --rm -v "$PWD:/work:ro" -v /tmp/gate-ci:/out -w /work \
 
 * Nada aqui foi executado contra o app instalado (`2.0.0rc1-e2af2562ebba`) num viewport compacto real: o gate
   prova o **harness** no ambiente canônico. Pendência registrada em cartão.
-* A publicação corrigida só se confirma pelo CI no SHA novo — a verificação é "o artefato
-  `qml-visual-artifacts` existe e contém os PNGs", não este texto.
+* A publicação corrigida **está** confirmada: `10-ci-723cfcde-verde-e-artefatos-conferidos.log` confere
+  o artefato `qml-visual-artifacts` do run `36341332344` arquivo por arquivo (51 arquivos / 36 PNG, as
+  nove capturas byte idênticas às baselines versionadas). O que a corrida de `723cfcde` ainda reprovou
+  foi o `STATUS-CHECK` dos três jobs de Python, por digest documental velho — causa e correção no mesmo
+  log.
 * Baselines pixel-exact são deliberadamente rígidas: trocar tema, fonte, freetype/harfbuzz ou DPI reprova, e a
   atualização é manual e explícita (o comando está em `07-baselines-produzidas.log`), nunca automática. O ambiente
   é fixado por digest de imagem e por `ci/qml-visual/environment.lock.json`, conferidos **antes** de renderizar.

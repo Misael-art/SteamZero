@@ -138,6 +138,18 @@
       "result": "recorded",
       "reference": "docs/09-operations/evidence/2026-09-27-gate-visual-causa-e-contrato/00-preflight.log",
       "command": "correcao de duas afirmacoes minhas de rodadas anteriores: git stash list tem 5 entradas antigas (2026-07-24 a 2026-08-17), nao estava vazio, e nada foi tocado; e o vermelho do gate visual nao era ambiente do runner nem corrida"
+    },
+    {
+      "kind": "test",
+      "result": "passed",
+      "reference": "docs/09-operations/evidence/2026-09-27-gate-visual-causa-e-contrato/10-ci-723cfcde-verde-e-artefatos-conferidos.log",
+      "command": "certificacao em CI da publicacao corrigida: run 36341332344 no SHA 723cfcde produziu o artefato qml-visual-artifacts (1620705 bytes, 51 arquivos / 36 PNG) que nunca existiu nos 100 runs anteriores, e o job gate visual QML (Linux) fechou success. O if-no-files-found: error e o que impede a ausencia de voltar a passar por sucesso."
+    },
+    {
+      "kind": "diagnostic",
+      "result": "failed",
+      "reference": "docs/09-operations/evidence/2026-09-27-gate-visual-causa-e-contrato/10-ci-723cfcde-verde-e-artefatos-conferidos.log",
+      "command": "o mesmo run reprovou o passo 'Estado do projeto' nos tres jobs Python: SZ-UI-DESKTOP-AUDIT com scopeDigest 513c214c esperado contra b83a9c78 do conteudo commitado. Reproduzido local com o arquivo devolvido ao conteudo de HEAD, imprimindo o mesmo hash do CI. Falha de procedimento documental (digest renovado antes das ultimas edicoes da pasta), nao de produto; corrigida no commit seguinte."
     }
   ],
   "nextAction": "Manter status-check e WORKLOG append-only verdes; PR #234 integrado no main em 9176c1aeca792e4bd8ccaca0fbb55e9767ad5625. Repetir apenas as provas físicas restantes com a release 2.0.0rc1-504d10b14485 instalada.",

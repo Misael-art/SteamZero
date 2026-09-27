@@ -62,7 +62,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-FRONTEND-SRM | 3 | 1 | 1 | unit |  |
 | SZ-FRONTEND-STEAM-SHORTCUTS | 2 | 1 | 1 | unit |  |
 | SZ-GAMEMODE-READINESS | 9 | 4 | 1 | hw |  |
-| SZ-GOVERNANCE-STATUS | 22 | 16 | 12 | dev |  |
+| SZ-GOVERNANCE-STATUS | 22 | 18 | 13 | dev |  |
 | SZ-HOST-UPDATE-TRANSACTIONAL | 18 | 12 | 9 | hw |  |
 | SZ-JOB-RECOVERY-DOCTOR | 10 | 3 | 1 | dev |  |
 | SZ-LIBRARY-CANONICAL | 169 | 23 | 12 | hw |  |
@@ -96,7 +96,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-THEME-IMPORT-RETROFE | 10 | 12 | 9 | hw |  |
 | SZ-THEME-IMPORT-SURFACE | 4 | 10 | 7 | unit |  |
 | SZ-THEME-STUDIO | 88 | 21 | 15 | hw |  |
-| SZ-UI-DESKTOP-AUDIT | 510 | 96 | 63 | dev |  |
+| SZ-UI-DESKTOP-AUDIT | 511 | 99 | 65 | dev |  |
 | SZ-UI-PACKAGED-ICONS | 57 | 4 | 2 | unit |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 

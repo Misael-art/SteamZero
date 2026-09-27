@@ -79,7 +79,7 @@
     "docs/09-operations/evidence/2026-09-27-gate-visual-causa-e-contrato",
     "tests/qml/golden/import-dialogs"
   ],
-  "scopeDigest": "513c214cfea37139d18655f82e4d288dfa257a0b2c31eb338ad11110a743dbad",
+  "scopeDigest": "2f02c06d5959739345a15347dffdcd40523564e98fa8857e88e4537377542998",
   "dependsOn": [],
   "knownGaps": [
     "GAP-UI-LIVE-LAUNCHER-ROUTING",
@@ -688,9 +688,27 @@
       "result": "passed",
       "reference": "docs/09-operations/evidence/2026-09-27-gate-visual-causa-e-contrato/09-reexecucao-focada-na-arvore-final.log",
       "command": "re-execucao focada na arvore parada: run_tests_isolated.py dos dois gates de dialogo + test_visual_goldens.py -k 'not test_the_capture_matches_the_versioned_baseline' devolveu 67 passed, 10 deselected em 16,43s, rc=0. Os 10 desmarcados rodam na corrida -m visual acima e nada desta rodada toca o runner nem as dez baselines antigas"
+    },
+    {
+      "kind": "test",
+      "result": "passed",
+      "reference": "docs/09-operations/evidence/2026-09-27-gate-visual-causa-e-contrato/10-ci-723cfcde-verde-e-artefatos-conferidos.log",
+      "command": "CI run 36341332344 no SHA exato 723cfcde: o job 'Gate visual QML (Linux)' fechou SUCCESS em 20m13s (18:37:30Z->18:57:43Z), contra o mesmo job vermelho em fe5751a0 e 3b0778fe. Grade terminal da corrida: wheel+smoke e as tres variantes de smoke success, os tres jobs Python failure pelo STATUS-CHECK documental, gate visual success. A causa do vermelho visual era o container sem fonte; src/ nao mudou."
+    },
+    {
+      "kind": "diagnostic",
+      "result": "passed",
+      "reference": "docs/09-operations/evidence/2026-09-27-gate-visual-causa-e-contrato/10-ci-723cfcde-verde-e-artefatos-conferidos.log",
+      "command": "artefato qml-visual-artifacts do run 36341332344 baixado e conferido fora do checkout: 1620705 bytes, 51 arquivos dos quais 36 PNG (os mesmos 51/36 medidos localmente), as NOVE capturas do runner byte identicas as baselines versionadas por sha256 (esde/1 = 84080a23b89d...). Varredura case-insensitive de home/|token|ghp_|authoriz|password|secret|misael|pytest-of nos 15 .txt/.json publicados: 0 ocorrencias."
+    },
+    {
+      "kind": "diagnostic",
+      "result": "failed",
+      "reference": "docs/09-operations/evidence/2026-09-27-gate-visual-causa-e-contrato/10-ci-723cfcde-verde-e-artefatos-conferidos.log",
+      "command": "STATUS-CHECK: FALHOU no CI de 723cfcde nos tres jobs Python: SZ-UI-DESKTOP-AUDIT esperava scopeDigest 513c214c... e o conteudo commitado devolve b83a9c78... . Reproduzido local: com o log 06 devolvido ao conteudo de HEAD a ferramenta imprime exatamente b83a9c78..., ou seja diferenca de conteudo e nao de ambiente. Causa: digests renovados antes das ultimas edicoes da pasta de evidencia; nenhuma linha de src/ envolvida."
     }
   ],
-  "nextAction": "2026-09-27, rodada EXCLUSIVA de destravamento do gate visual do PR #241 (nenhum merge, nenhuma 4a fatia). CAUSAS medidas na propria imagem do CI: a imagem canônica nao tem nenhum arquivo de fonte (fc-list=0) e os dois gates de captura de dialogo herdavam o fontconfig do host por os.environ.copy(); o host tem 828 fontes, entao o defeito so aparecia no runner. Nao ha defeito de produto na historia: o dialog renderiza certo nos dois viewports. ARTEFATOS: o upload nunca casou com o glob (0 artefatos qml-visual* nos 100 ultimos runs) porque tools/run_tests_isolated.py realoca TMPDIR para /tmp/steamzero-tests-*/tmp e apaga a arvore na saida; agora o gate publica em build/visual-evidence/** ANTES das assercoes e o workflow usa if-no-files-found: error. CONTRATO: st_size>20.000 era proxy inadequado (golden com 1 pixel trocado tem 34.554 bytes e passava); substituido por decodificavel + viewport declarado + nao uniforme + rodape/acao dentro da moldura + igualdade pixel a pixel com nove baselines novas geradas em CanonicalEnvironment e byte identicas ao render dentro da imagem do CI. Nada foi removido: os 13 casos de geometria/foco de cada dialogo continuam, e as tres guardas de intencao tambem. PENDENTE desta rodada: o CI terminal no SHA novo (este cartao nao antecipa) e a conferencia de que o artefato qml-visual-artifacts existe com os PNGs. FORA DE PROVA e continua aberto: UX-01 tem uma dobra da Home com criterios proprios; UX-03 (significado dos percentuais de prontidao); as 48 px no shell inteiro fora dos dois dialogos; e nenhuma evidencia fisica na release instalada 2.0.0rc1-e2af2562ebba num viewport compacto real. A 4a fatia (dialogo ES-DE duplicado em Main.qml) nao comecou.",
+  "nextAction": "2026-09-27, rodada EXCLUSIVA de destravamento do gate visual do PR #241 (nenhum merge, nenhuma 4a fatia). FECHADO com evidencia: a causa do vermelho era a imagem canonica sem nenhum arquivo de fonte (fc-list=0) somada ao os.environ.copy() dos dois gates, que herdava o fontconfig do host; o gate de capturas foi reescrito como contrato de conteudo (viewport declarado + nao uniforme + rodape/acao dentro da moldura + igualdade pixel a pixel contra nove baselines geradas em CanonicalEnvironment) sem baixar limiar nenhum; e a publicacao passou a acontecer em build/visual-evidence/** antes das assercoes, com if-no-files-found: error. No run 36341332344 (SHA 723cfcde) o job 'Gate visual QML (Linux)' fechou SUCCESS e o artefato qml-visual-artifacts existe pela primeira vez: 51 arquivos / 36 PNG, as nove capturas byte identicas as baselines, sem caminho pessoal nem segredo. PENDENTE desta mesma rodada: o STATUS-CHECK reprovou nos tres jobs Python daquela corrida por scopeDigest documental velho (conteudo commitado devolve b83a9c78 contra o 513c214c esperado) -- correcao em commit proprio, e o CI terminal so se confere no SHA dessa correcao; este cartao nao antecipa o resultado. FORA DE PROVA e continua aberto: UX-01 tem uma dobra da Home com criterios proprios; UX-03 (significado dos percentuais de prontidao); as 48 px fisicas na release 2.0.0rc1-e2af2562ebba; as nove baselines novas nao sao cobertas por make update-qml-goldens; e RC-01 nao se declara concluido.",
   "activeWorkstreams": [
     "WS-2026-09-RC01-CENTRAL-LOADING",
     "WS-2026-09-RC01-READINESS-FOCUS"

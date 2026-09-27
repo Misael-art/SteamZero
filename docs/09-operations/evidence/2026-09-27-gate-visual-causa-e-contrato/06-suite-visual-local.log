@@ -23,10 +23,21 @@ real-state after:  exists=True files=12816 directories=2068 bytes=1372712391 max
 
 * **342 passaram, zero falhas, zero skips** no conjunto marcado `visual`. É o
   mesmo seletor do job `qml-visual-linux`, e o comparável com o CI é este número:
-  o run vermelho de `3b0778fe` dizia `2 failed, 328 passed, 12 skipped` — os 12
-  skips daquele run são justamente as duas capturas que abortavam cedo e os casos
-  dependentes delas; aqui são 342 = 328 + 2 + 12, com os 12 convertidos em
-  executados.
+  o run vermelho de `3b0778fe` dizia `2 failed, 328 passed, 12 skipped`, ou seja,
+  **342 coletados nos dois lados** — a diferença é só de classificação.
+
+  Correção de uma leitura minha, escrita errada na primeira versão deste log: eu
+  afirmei que os 12 skips do container eram "as duas capturas que abortavam cedo e
+  os casos dependentes". Não são, e isso era inference, não medição. Os 12 são as
+  variantes `MultiEffect` de `tests/integration/test_qml_asset_recipes.py`, que
+  pulam por `QT_QUICK_BACKEND=software` (`:44`) — e a imagem canônica traz
+  exatamente esse valor no próprio `Config.Env`, conferido por
+  `docker image inspect …@sha256:8b832ec1…` (`QT_QPA_PLATFORM=offscreen`,
+  `QT_QUICK_BACKEND=software`, `QT_FONT_DPI=96`, `QT_SCALE_FACTOR=1`). No meu host
+  a variável não está no ambiente externo, então os 12 rodam sob OpenGL. O próprio
+  `CanonicalEnvironment` registra que RHI não inicializa sob `offscreen`
+  (`tools/qml_capture_runner.py:649-657`): o skip é o contrato, não um efeito da
+  falha.
 * **`real-state before` é byte-identicamente igual a `after`** (mesmos
   `files=12816`, `directories=2068`, `bytes=1372712391`, `max_mtime_ns`): a suíte
   não escreveu em `$HOME`. Guarda do próprio `run_tests_isolated.py`, não promessa
