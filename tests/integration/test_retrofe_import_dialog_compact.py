@@ -133,6 +133,11 @@ def test_a_captura_de_evidencia_existe_e_usa_dados_locais() -> None:
         "a captura precisa aceitar pasta e rótulo para registrar antes/depois"
     )
     assert "TIMEOUT" in source, "captura sem limite de tempo pode travar o gate"
+    assert "harness.phase = 500\n        harness.contentItem.grabToImage" in source, (
+        "grabToImage é assíncrono: sem tomar a fase antes do grab o Timer reentra na "
+        "mesma fase e emite capturas fora da lista (medido sob carga: 'capturas=5 de "
+        "4' com undefined-gate.png e rc=1, intercalado com 4 de 4)"
+    )
     for texto in ("theme.import.retrofe.inspect", "theme.import.retrofe.apply"):
         assert texto in source, f"a captura não exercita {texto}"
 

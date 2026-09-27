@@ -114,7 +114,13 @@ Window {
 
     /// Window não é Item: quem tem grabToImage é o contentItem da janela, que
     /// inclui o overlay onde o Popup é renderizado.
+    /// `grabToImage` é assíncrono: sem tomar a fase antes do grab, o Timer de 20 ms
+    /// reentra na mesma fase enquanto a imagem ainda não saiu e o `captureIndex`
+    /// passa do fim da lista (medido sob carga: "capturas=5 de 4" com um arquivo
+    /// `undefined-gate.png` e rc=1, intercalado com execuções 4 de 4 — é corrida).
+    /// 500 é a fase "grab em andamento", que nenhum ramo trata.
     function capture(nextPhase) {
+        harness.phase = 500
         harness.contentItem.grabToImage(function(result) {
             const path = harness.outputDirectory + "/"
                 + harness.captureNames[harness.captureIndex] + "-" + harness.label + ".png"
