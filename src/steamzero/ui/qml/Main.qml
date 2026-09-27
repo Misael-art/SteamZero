@@ -388,6 +388,11 @@ ApplicationWindow {
     // de "a central mediu zero".
     property string statusPhase: "loading"
     property bool statusInFlight: false
+    /// RC-01: no máximo UMA re-consulta espera a leitura em andamento terminar.
+    /// A fila é de um único pedido por desenho: dez mutações durante uma leitura
+    /// lenta viram uma relênia, não dez. É o que permite coerçar sem abrir a
+    /// porta ao empilhamento que o guarda de sobreposição existe para evitar.
+    property bool statusRefreshQueued: false
     property bool statusStale: false
     property int statusAttempt: 0
     property real statusStartedAt: 0
@@ -1100,13 +1105,28 @@ ApplicationWindow {
         notify(qsTr("Esta orientação não possui uma rota segura publicada."), true)
     }
 
+    function drainStatusRefresh() {
+        // A leitura que acabou de resolver era mais antiga que a última mutação.
+        // Relê uma vez — e só uma, porque a fila não cresce.
+        if (!statusRefreshQueued)
+            return
+        statusRefreshQueued = false
+        refreshStatus("")
+    }
+
     function refreshStatus(message) {
         // RC-01: duas consultas sobrepostas deixariam "o último estado"
         // indefinido — a mais lenta poderia chegar por último e regravar uma
-        // leitura mais nova. A consulta em andamento vale; a nova é descartada.
+        // leitura mais nova. A consulta em andamento vale; a nova não é emitida.
         if (statusInFlight) {
-            // Descartar a re-consulta não pode descartar a confirmação de uma
-            // mutação: a operação já aconteceu e o usuário precisa saber.
+            // Mas a nova também não pode ser jogada fora: uma mutação confirmada
+            // precisa chegar ao estado apresentado, senão a tela afirma "feito"
+            // com os dados de antes. Fica um pedido coerçado para quando a
+            // leitura em andamento resolver — sucesso ou falha dela.
+            statusRefreshQueued = true
+            // Descartar a re-consulta não podia descartar a confirmação de uma
+            // mutação: a operação já aconteceu e o usuário precisa saber. Sai
+            // agora, uma vez; a relênia não a repete.
             if (message)
                 notify(message, false)
             return
@@ -1132,6 +1152,7 @@ ApplicationWindow {
             }
             if (message)
                 notify(message, false)
+            drainStatusRefresh()
         }, function(failure) {
             statusInFlight = false
             statusElapsedMs = Date.now() - statusStartedAt
@@ -1145,6 +1166,7 @@ ApplicationWindow {
                 statusStale = true
             else
                 statusPhase = "error"
+            drainStatusRefresh()
         })
     }
 

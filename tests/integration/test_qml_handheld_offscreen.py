@@ -11,10 +11,12 @@ import subprocess
 import tempfile
 import threading
 import time
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
+
+from steamzero.adapters.desktop_contracts import handheld_ui_contracts
 
 QML = shutil.which("qml6")
 ROOT = Path(__file__).resolve().parents[2]
@@ -643,7 +645,10 @@ def test_central_loading_phases_are_observable_offscreen() -> None:
     completed = _run_central_loading_harness(port)
     with _CENTRAL_LOADING_LOCK:
         served = len(_CENTRAL_LOADING_CALLS)
-    assert served == 3, f"a cena esperava três GET /status, a ponte serviu {served}"
+    # 1 leitura atrasada, 2 renovação recusada, 3 retry que recupera, 4+5 a
+    # sondagem do guarda de sobreposição no fim da cena (uma emissão + a
+    # relênia coerçada). Mudou de 3 para 5 quando o descarte virou coerção.
+    assert served == 5, f"a cena esperava cinco GET /status, a ponte serviu {served}"
     _assert_qml_clean(completed, "ponte de cena da RC-01")
 
 
@@ -722,3 +727,224 @@ def _start_central_loading_bridge() -> int:
         threading.Thread(target=server.serve_forever, daemon=True).start()
         return port
     raise RuntimeError("nenhuma porta livre para a ponte de cena da RC-01")
+
+
+#: Cena RC-01 (UX-02, governança de estado): a re-consulta provocada por uma
+#: mutação não pode ser descartada porque existe uma leitura antiga no ar.
+_STATUS_REFRESH_LOCK = threading.Lock()
+_STATUS_REFRESH_CALLS: list[str] = []
+_STATUS_REFRESH_MUTATION_SEEN = threading.Event()
+#: Registrado pela ponte: se a mutação chegou enquanto a leitura #2 estava aberta.
+_STATUS_REFRESH_OVERLAP: list[bool] = []
+
+#: Gerações que a ponte publica. A tela tem de terminar na pós-mutação.
+_STATUS_GENERATION_BEFORE = "2407"
+_STATUS_GENERATION_AFTER = "2412"
+
+#: Quantos centésimos cada leitura segura a resposta, e qual delas a ponte recusa.
+_STATUS_REFRESH_SCENES: dict[str, dict[str, object]] = {
+    "success": {"fail_on_read": None, "read_seconds": {1: 0.25, 2: 0.15, 3: 0.15}},
+    "in-flight-fails": {"fail_on_read": 2, "read_seconds": {1: 0.25, 2: 0.15, 3: 0.4}},
+    "refresh-fails": {"fail_on_read": 3, "read_seconds": {1: 0.25, 2: 0.15, 3: 0.15}},
+}
+
+
+def _status_refresh_payload(generation: str) -> dict[str, object]:
+    """/status da cena: a forma real do produto, com contratos publicados.
+
+    Os contratos vêm de `handheld_ui_contracts()`, o mesmo catálogo que a ponte do
+    host serve. Sem eles o `requestAction` recusaria a mutação com "a bridge não
+    publicou o contrato", e o teste exercitaria uma cena que não existe.
+    """
+    status = _central_loading_status()
+    dashboard = dict(status["dashboard"])  # type: ignore[index]
+    row = dict(dashboard["components"][0])  # type: ignore[index]
+    row["versionLabel"] = generation
+    row["targetVersion"] = generation
+    row["detail"] = f"Dolphin {generation} medido pela ponte."
+    dashboard["components"] = [row]
+    dashboard["uiContracts"] = handheld_ui_contracts()
+    status["dashboard"] = dashboard
+    return status
+
+
+def _status_refresh_error(code: str) -> str:
+    return json.dumps(
+        {
+            "error": {
+                "code": code,
+                "title": "A renovação do estado falhou",
+                "detail": "A central não pôde reler o host nesta tentativa.",
+                "what": "Leitura GET /status recusada pela cena.",
+                "impact": "O último estado lido permanece na tela.",
+                "autoAction": "",
+                "manualAction": "Tente novamente.",
+                "probableCause": "Cena controlada pelo teste.",
+                "operationId": "",
+            }
+        }
+    )
+
+
+_STATUS_REFRESH_SCENE: dict[str, object] = {
+    "name": "success",
+    "fail_on_read": None,
+    "read_seconds": {1: 0.25, 2: 0.15, 3: 0.15},
+}
+
+
+class _StatusRefreshHandler(BaseHTTPRequestHandler):
+    """Ponte que abre uma leitura, segura-a até a mutação acontecer e responde.
+
+    A sobreposição não é pedida por aposta de timing: a leitura #2 dorme o mínimo e
+    depois espera o evento que a mutação levanta. Se a mutação não chegar em 5 s, a
+    ponte responde mesmo assim e a asserção de sequência reprova a cena.
+    """
+
+    def do_GET(self) -> None:
+        if self.path.split("?")[0] != "/status":
+            self._send(404, "rota fora da cena")
+            return
+        with _STATUS_REFRESH_LOCK:
+            reads = 1 + sum(1 for call in _STATUS_REFRESH_CALLS if call.startswith("GET "))
+            _STATUS_REFRESH_CALLS.append(f"GET /status#{reads}")
+            scene = dict(_STATUS_REFRESH_SCENE)
+        seconds = float(scene["read_seconds"][reads])  # type: ignore[index]
+        time.sleep(seconds)
+        if reads == 2:
+            _STATUS_REFRESH_OVERLAP.append(_STATUS_REFRESH_MUTATION_SEEN.wait(timeout=5.0))
+        # O marcador é escrito antes de qualquer resposta: ele diz que a leitura em
+        # andamento fechou, e uma recusa fecha tanto quanto um 200.
+        with _STATUS_REFRESH_LOCK:
+            _STATUS_REFRESH_CALLS.append(f"answered#{reads}")
+        if scene["fail_on_read"] == reads:
+            self._send(500, _status_refresh_error("E-STATUS-SCENE"))
+            return
+        generation = _STATUS_GENERATION_AFTER if reads >= 3 else _STATUS_GENERATION_BEFORE
+        self._send(200, json.dumps(_status_refresh_payload(generation)))
+
+    def do_POST(self) -> None:
+        length = int(self.headers.get("Content-Length") or 0)
+        if length:
+            self.rfile.read(length)
+        route = self.path.split("?")[0]
+        if route != "/emulation/library/scan":
+            self._send(404, "rota fora da cena")
+            return
+        with _STATUS_REFRESH_LOCK:
+            _STATUS_REFRESH_CALLS.append(f"POST {route}")
+        self._send(200, json.dumps({"games": 7}))
+        _STATUS_REFRESH_MUTATION_SEEN.set()
+
+    def _send(self, code: int, body: str) -> None:
+        payload = body.encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def log_message(self, fmt: str, *args: object) -> None:
+        pass
+
+
+def _start_status_refresh_bridge(scene: str) -> int:
+    """Sobe a ponte da cena de re-consulta e zera o estado compartilhado."""
+    config = _STATUS_REFRESH_SCENES[scene]
+    with _STATUS_REFRESH_LOCK:
+        del _STATUS_REFRESH_CALLS[:]
+        del _STATUS_REFRESH_OVERLAP[:]
+    _STATUS_REFRESH_SCENE.update(
+        {
+            "name": scene,
+            "fail_on_read": config["fail_on_read"],
+            "read_seconds": config["read_seconds"],
+        }
+    )
+    _STATUS_REFRESH_MUTATION_SEEN.clear()
+    host = "127.0.0.1"
+    for port in range(44000, 45000):
+        try:
+            # ThreadingHTTPServer: a cena exige que a leitura #2 fique aberta
+            # enquanto o POST é servido. Um servidor serializado mataria a
+            # sobreposição que se quer reproduzir.
+            server = ThreadingHTTPServer((host, port), _StatusRefreshHandler)
+        except OSError:
+            continue
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        return port
+    raise RuntimeError("nenhuma porta livre para a ponte de re-consulta da RC-01")
+
+
+def _run_status_refresh_harness(port: int, scene: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [
+            str(QML),
+            "tests/qml/check_status_refresh_coalesced.qml",
+            "--",
+            "--steamzero-api",
+            f"http://127.0.0.1:{port}",
+            "--steamzero-token",
+            "cena-rc01",
+            f"--scene={scene}",
+        ],
+        cwd=ROOT,
+        env=_qml_environment(),
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+
+
+#: A única sequência que prova o contrato: uma leitura nova depois que a antiga
+#: resolveu, disparada pela mutação que aconteceu *com* a antiga no ar.
+_STATUS_REFRESH_EXPECTED = [
+    "GET /status#1",
+    "answered#1",
+    "GET /status#2",
+    "POST /emulation/library/scan",
+    "answered#2",
+    "GET /status#3",
+    "answered#3",
+]
+
+
+@pytest.mark.visual
+@pytest.mark.parametrize("scene", ("success", "in-flight-fails", "refresh-fails"))
+def test_a_mutation_refresh_is_not_discarded_by_an_in_flight_read(scene: str) -> None:
+    """RC-01 — mutação confirmada tem de terminar em leitura do estado pós-mutação.
+
+    Reproduz o defeito apontado na revisão de 2026-09-26: com `statusInFlight`
+    verdadeiro, `refreshStatus()` descarta a re-consulta. A leitura antiga chega
+    depois, regrava o estado pré-mutação e nenhuma nova consulta sai — a tela
+    afirma "Biblioteca atualizada" mostrando os dados de antes. Os três ramos
+    cobrem a consulta em andamento dando certo (success) e dando errado
+    (in-flight-fails), mais a re-consulta coerçada falhando (refresh-fails).
+    """
+    port = _start_status_refresh_bridge(scene)
+    completed = _run_status_refresh_harness(port, scene)
+    with _STATUS_REFRESH_LOCK:
+        calls = list(_STATUS_REFRESH_CALLS)
+    # A cena só vale se a sobreposição aconteceu de verdade: sem isso, um verde
+    # poderia vir de uma cena em que a leitura #2 já tinha respondido.
+    assert _STATUS_REFRESH_OVERLAP == [True], (
+        f"a ponte não segurou a leitura #2 aberta até a mutação: {calls}"
+    )
+    assert calls == _STATUS_REFRESH_EXPECTED, (
+        f"cena {scene} produziu outra sequência de requisições:\n"
+        + "\n".join(calls)
+        + "\nesperado:\n"
+        + "\n".join(_STATUS_REFRESH_EXPECTED)
+    )
+    # O `console.log` do Qt sai pelo stderr — exigir stdout produziria um gate que
+    # nunca vê o denominador.
+    published = completed.stdout + completed.stderr
+    assert f"verificações da cena {scene}" in published, (
+        f"o harness não publicou seu denominador de verificações:\n{published}"
+    )
+    summary = [line for line in published.splitlines() if f"verificações da cena {scene}" in line]
+    assert len(summary) == 1 and ", 0 falhas" in summary[0], (
+        f"o harness não publicou um denominador legível: {summary}"
+    )
+    assert "FAIL:" not in published, f"cena {scene} publicou falhas de contrato:\n{published}"
+    _assert_qml_clean(completed, f"cena de re-consulta {scene}")

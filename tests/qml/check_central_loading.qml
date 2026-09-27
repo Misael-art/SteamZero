@@ -58,6 +58,8 @@ Main {
     property bool exitPending: false
     property bool staleChecked: false
     property int ticks: 0
+    /// Contador de tentativas na fase em que a sondagem de sobreposição começou.
+    property int probeBaseAttempt: 0
 
     function check(condition, message) {
         checks += 1
@@ -303,11 +305,14 @@ Main {
             // da ponte chegaria antes e a evidência mostraria a Home pronta.
             if (!window.captureSettled("loading"))
                 return
-            // O guard de sobreposição só é observável com uma consulta viva:
-            // uma segunda refresh não pode empilhar tentativa.
-            const tentativas = window.statusAttempt
-            window.refreshStatus("")
-            check(window.statusAttempt === tentativas, "consultas não podem se sobrepor")
+        }
+        if (window.phase === 1 && !window.statusInFlight
+                && window.statusPhase === "ready") {
+            // A resposta pode chegar antes de o quadro compor: a cena espera o
+            // frame de "carregando" nos dois casos, senão a evidência seria da
+            // Home pronta.
+            if (!window.captureSettled("loading"))
+                return
             window.advance(2)
             return
         }
@@ -332,8 +337,48 @@ Main {
         }
         if (window.phase === 4 && !window.statusStale && !window.statusInFlight) {
             window.checkRecoveredPhase()
+            window.advance(5)
+            return
+        }
+        // FASE 5 — o guarda de sobreposição, aferido com uma consulta viva.
+        // Ele já esteve aqui no meio da cena, onde a segunda `refreshStatus`
+        // era descartada; agora a chamada excedente fica devendo uma relênia, e
+        // testá-la no meio renumeraria as respostas da ponte e apagaria a fase
+        // "stale" que a cena veio medir. A sondagem é a última coisa da cena.
+        if (window.phase === 5) {
+            window.probeOverlapGuard()
+            return
+        }
+        if (window.phase === 6 && !window.statusInFlight) {
+            window.checkOverlapDrained()
             window.finish()
         }
+    }
+
+    /// Duas chamadas na mesma janela de uma consulta em andamento: a segunda não
+    /// pode abrir uma consulta concorrente, nem pode simplesmente sumir.
+    function probeOverlapGuard() {
+        const tentativas = window.statusAttempt
+        window.refreshStatus("")
+        window.refreshStatus("")
+        check(window.statusAttempt === tentativas + 1,
+              "consultas não podem se sobrepor: houve "
+              + (window.statusAttempt - tentativas) + " tentativa(s) nova(s)")
+        check(window.statusRefreshQueued,
+              "a chamada feita durante a consulta tem de ficar coerçada")
+        window.probeBaseAttempt = tentativas
+        window.advance(6)
+    }
+
+    function checkOverlapDrained() {
+        const esperado = window.probeBaseAttempt + 2
+        check(window.statusAttempt === esperado,
+              "a relênia coerçada tinha de sair: tentativa " + window.statusAttempt
+              + ", esperado " + esperado)
+        check(window.statusRefreshQueued === false, "a fila de relênia esvazia ao emitir")
+        check(window.statusPhase === "ready", "a cena termina com leitura presente")
+        check(window.statusStale === false, "a relênia bem-sucedida não deixa rastro de falha")
+        check(window.statusBandVisible === false, "sem pendência medida, sem faixa de fase")
     }
 
     Timer {
