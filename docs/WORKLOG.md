@@ -13123,3 +13123,16 @@ $ make independence boundaries                independência OK / fronteiras OK 
 A suíte integral não foi reexecutada (nada aqui muda comportamento), e nenhuma frente se declara
 integrada: `WS-2026-09-RC01-READINESS-FOCUS` e `WS-2026-09-RC01-CENTRAL-LOADING` continuam `active` até
 o merge efetivo do operador.
+
+**Continuação do passo 4 (10:07 → 10:12-03:00), para o registro não ficar um commit atrás da
+realidade.** Escrever o corpo de um PR e consultá-lo no GitHub não é atômico: depois do commit
+documental `00de2ec8` a ponta do PR 241 mudou de novo, e o log 12 recebeu uma terceira leitura
+(10:08:04 → 10:08:06-03:00) nela. Nessa ponta nova **só o check "Sourcery review" existia** (`skipped`),
+com os demais jobs ainda sem check-run criado, e `mergeStateStatus=CLEAN` — que ali significa "sem
+conflito e sem falha registrada", não "CI verde". A contagem de commits entre `origin/main` e esta ponta
+passou de 11 para 12 e para **13**, e a verificação de ancestralidade foi refeita sobre eles
+individualmente. O `scopeDigest` de `SZ-UI-DESKTOP-AUDIT` acompanhou: `26b8c2d2 → 29f47724 → 408390f9`,
+sempre pelo valor que a própria ferramenta calcula (`tools/project_status.py digest --item …`), gravado
+depois de todas as escritas no escopo, com `render --write` e `STATUS-CHECK: OK` em cada passagem.
+Conferido arquivo a arquivo: dos seis commits desta frente, **só `7fe9e8b2`** tem algo fora de `docs/`
+(4 arquivos: `ThemeEditorPanel.qml` e os três de teste); os outros cinco são puros documentos.

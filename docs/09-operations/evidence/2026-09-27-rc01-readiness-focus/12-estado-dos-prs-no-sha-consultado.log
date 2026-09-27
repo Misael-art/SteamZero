@@ -117,6 +117,37 @@ final. Os 239 e 240 aparecem aqui como `mergeStateStatus=CLEAN`, o que reforça 
 de integração 239 → 240 → 241 é a que faz sentido: mesclar o mais antigo primeiro encolhe o diff dos
 outros dois.
 
+## Terceira leitura (10:08:04 -> 10:08:06-03:00), na ponta documental `00de2ec8`
+
+Depois da segunda leitura esta branch avançou com um commit **puramente documental** (`00de2ec8`,
+7 arquivos, todos sob `docs/`; `git diff --cached --name-only | grep -vc '^docs/'` deu 0 antes do
+commit), que era a ponta do PR 241 no instante desta leitura. Escrever o corpo de um PR e lê-lo no
+GitHub não são atômicos: a ponta pode ter avançado entre os dois, e foi o que aconteceu — o registro
+desta terceira leitura entrou em commit documental seguinte, e o corpo do PR diz isso em vez de fingir
+que a leitura é da ponta final.
+
+$ date -Iseconds
+2026-09-27T10:08:04-03:00
+$ gh api repos/Misael-art/SteamZero/commits/00de2ec81c4fbf12153c527cb14598071173afa0/check-runs --jq '.check_runs[] | "\(.name)\t\(.status)\t\(.conclusion)"'
+Sourcery review	completed	skipped
+
+$ gh pr view 241 --json headRefOid,mergeStateStatus,mergeable
+{"headRefOid":"00de2ec81c4fbf12153c527cb14598071173afa0","mergeStateStatus":"CLEAN","mergeable":"MERGEABLE"}
+$ date -Iseconds
+2026-09-27T10:08:06-03:00
+
+$ git rev-list --count origin/main..HEAD
+13
+$ git merge-base --is-ancestor HEAD origin/main; echo "rc=$?  (1 = NÃO está no main)"
+rc=1
+
+Dito com precisão, porque é exatamente onde uma afirmação apressada mentiria: nesta ponta nova **só o
+check "Sourcery review" existia** (conclusão `skipped`); os outros jobs ainda não tinham check-run
+criado no instante da leitura. O `mergeStateStatus=CLEAN` nesse mesmo instante **não** significa CI
+verde — significa que não há conflito pendente e que nenhum check obrigatório estava em falha. A última
+leitura com a grade completa de jobs é a anterior, em `f9256642`. Nenhuma consulta repetida foi feita
+depois desta janela.
+
 ## Como refazer
 
   git fetch origin main
