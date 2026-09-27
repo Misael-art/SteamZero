@@ -114,6 +114,10 @@ ApplicationWindow {
         return -1
     }
     property alias responsiveShell: appShell
+    //: Oferta de retry da faixa de fase. Exposta pelo mesmo motivo dos outros
+    //: aliases: o harness da RC-01 cobra a tinta do rótulo na fase em que ele
+    //: aparece, que é justamente onde a faixa é escura em qualquer tema.
+    property alias statusBandRetryButton: statusRetryButton
     //: Item capturavel que carrega conteudo E fundo do shell.
     property alias shellSurfaceControl: shellSurface
     property alias responsiveNavigation: navRepeater
@@ -165,6 +169,10 @@ ApplicationWindow {
     property alias credentialCloseControl: credentialCloseButton
     // Exposto para harness de auditoria visual (tools/ui_audit_capture.qml)
     property alias editorialLibraryControl: editorialLibraryPage
+    // Exposto para o harness de fase da Central (check_central_loading.qml): a
+    // Home precisa declarar que ainda não há medição, e isso tem de ser legível
+    // de fora sem expor estado mutável novo ao produto.
+    property alias editorialHomeControl: editorialHome
 
     property var desktopStatus: ({
         "truthState": "unapplied",
@@ -272,7 +280,8 @@ ApplicationWindow {
         "processes": []
     })
     readonly property var emulatorItems: desktopStatus.dashboard && desktopStatus.dashboard.components
-        ? desktopStatus.dashboard.components : fallbackComponents
+        ? desktopStatus.dashboard.components
+        : (statusHasData ? fallbackComponents : pendingRows(fallbackComponents))
     readonly property var emulationData: desktopStatus.dashboard
         && desktopStatus.dashboard.emulation
         ? desktopStatus.dashboard.emulation : ({
@@ -282,7 +291,8 @@ ApplicationWindow {
             "platforms": []
         })
     readonly property var steamItems: desktopStatus.dashboard && desktopStatus.dashboard.steam
-        ? desktopStatus.dashboard.steam : fallbackSteam
+        ? desktopStatus.dashboard.steam
+        : (statusHasData ? fallbackSteam : pendingRows(fallbackSteam))
     readonly property var steamGameplayData: desktopStatus.dashboard
         && desktopStatus.dashboard.steamGameplay
         ? desktopStatus.dashboard.steamGameplay : fallbackSteamGameplay
@@ -320,8 +330,11 @@ ApplicationWindow {
         ? desktopStatus.dashboard.uiContracts : ({"actions": [], "byId": {}})
     readonly property bool hasConflicts: Boolean(desktopStatus.context
         && desktopStatus.context.conflicts && desktopStatus.context.conflicts.length > 0)
-    readonly property bool desktopTruthNeedsAttention: ["stale", "degraded", "unapplied"]
-        .indexOf(desktopStatus.truthState) >= 0
+    // O veredito de atenção só pode sair de uma leitura real. O fallback inicial
+    // traz truthState "unapplied", e antes disto a Home abria afirmando "Nenhum
+    // perfil foi aplicado" antes de a central ter respondido uma vez sequer.
+    readonly property bool desktopTruthNeedsAttention: statusHasData && ["stale", "degraded",
+        "unapplied"].indexOf(desktopStatus.truthState) >= 0
     // Banner de atenção: o utilizador pode reconhecer na sessão sem mentir o truth.
     property bool attentionBannerDismissed: false
     readonly property bool showLegacyOverview: false
@@ -369,6 +382,88 @@ ApplicationWindow {
     // representam a mesma acao nao possam publicar a mesma requisicao.
     property var pendingActionKeys: ({})
     property bool bridgeUnavailable: false
+    // RC-01 (UX-02): o primeiro frame não pode parecer um estado medido. Antes
+    // destas fases a Home abria com os fallbacks ("Não instalado", "0 títulos
+    // publicados") e não havia como distinguir "a central ainda não respondeu"
+    // de "a central mediu zero".
+    property string statusPhase: "loading"
+    property bool statusInFlight: false
+    property bool statusStale: false
+    property int statusAttempt: 0
+    property real statusStartedAt: 0
+    property real statusElapsedMs: 0
+    property var statusFailure: null
+    readonly property bool statusIsLoading: statusPhase === "loading"
+    readonly property bool statusHasFailed: statusPhase === "error"
+    readonly property bool statusHasData: statusPhase === "ready"
+    // Acima disto, o carregamento deixa de ser esperado e passa a ser um
+    // problema do operador: o retry fica oferecido com o tempo decorrido à vista.
+    readonly property int statusPatienceMs: 20000
+    readonly property bool statusIsSlow: statusInFlight && statusElapsedMs > statusPatienceMs
+    readonly property bool statusNeedsRetry: !statusInFlight
+        && (statusPhase === "error" || statusStale)
+    // Sem bridge não existe consulta possível: a faixa própria de
+    // "Central desconectada" já diz isso, e duplicar seria dois alertas para a
+    // mesma causa.
+    readonly property bool statusBandIsError: statusPhase === "error" && !bridgeUnavailable
+    readonly property bool statusBandVisible: statusIsLoading || statusStale
+        || statusBandIsError
+    readonly property bool statusBandRetry: statusNeedsRetry && apiUrl !== ""
+        && apiToken !== ""
+    readonly property color statusBandBackground: statusBandIsError ? "#352020"
+        : statusStale ? "#24180b" : surfaceColor
+    readonly property color statusBandAccent: statusBandIsError ? "#d45454"
+        : statusStale ? amberColor : borderColor
+    readonly property color statusBandText: _contrastTextColor(statusBandBackground)
+    readonly property string statusBandTitle: statusIsLoading
+        ? qsTr("Consultando a central local")
+        : statusStale
+            ? qsTr("Última leitura preservada; a renovação falhou")
+            : statusFailure && statusFailure.code === "BRIDGE-UNAVAILABLE"
+                ? qsTr("Nenhuma central local foi informada")
+                : qsTr("A central local não respondeu")
+    readonly property string statusBandDetail: statusIsLoading
+        ? (statusIsSlow
+            ? qsTr("A consulta já dura %1 s. Nenhuma ausência listada abaixo foi medida.")
+                .arg(Math.round(statusElapsedMs / 1000))
+            : qsTr("Os cartões abaixo ainda são valores de referência, não medições."))
+        : statusFailureText()
+
+    function statusFailureText() {
+        const failure = statusFailure
+        if (!failure || typeof failure !== "object")
+            return String(failure || "")
+        return failure.detail || failure.title || failure.code || ""
+    }
+
+    function pendingRows(rows) {
+        // Um fallback ainda não verificado não pode afirmar ausência. O estado
+        // "pending" cai no neutro de stateColor() de propósito: nem verde, nem
+        // alerta.
+        return (rows || []).map(function(row) {
+            const copy = Object.assign({}, row)
+            copy.state = "pending"
+            copy.statusLabel = statusIsLoading ? qsTr("Consultando") : qsTr("Não medido")
+            copy.detail = statusIsLoading
+                ? qsTr("A central local ainda não publicou este estado.")
+                : qsTr("Nenhuma leitura da central foi concluída; referência, não medição.")
+            return copy
+        })
+    }
+
+    function retryStatus() {
+        // O retry não empilha consultas: se há uma em andamento, ela já é a
+        // tentativa mais recente do mesmo read model.
+        if (statusInFlight)
+            return
+        // De "error" volta a "loading"; de um estado preservado mas desatualizado
+        // fica no lugar — os dados na tela continuam sendo a última verdade.
+        if (statusPhase === "error")
+            statusPhase = "loading"
+        statusFailure = null
+        refreshStatus("")
+    }
+
     property var activeErrors: []
     property var castReceivers: []
     property string selectedReceiverId: ""
@@ -710,9 +805,11 @@ ApplicationWindow {
     function parseArguments() {
         const args = Qt.application.arguments
         const marker = args.indexOf("--steamzero-status")
+        let seeded = false
         if (marker >= 0 && marker + 1 < args.length) {
             try {
                 desktopStatus = JSON.parse(args[marker + 1])
+                seeded = true
             } catch (error) {
                 notify(qsTr("Status inválido; modo observador mantido"), true)
             }
@@ -735,8 +832,19 @@ ApplicationWindow {
                     .indexOf(args[steamAreaMarker + 1]) >= 0)
             steamArea = args[steamAreaMarker + 1]
         ensureSelections()
-        if (apiUrl !== "" && apiToken !== "")
+        if (apiUrl !== "" && apiToken !== "") {
             Qt.callLater(function() { refreshStatus("") })
+        } else if (seeded) {
+            // Um status semeado na linha de comando É o estado medido: tratá-lo
+            // como "carregando para sempre" esconderia dados reais.
+            statusPhase = "ready"
+        } else {
+            // Sem bridge e sem seed não há consulta possível: é erro declarável,
+            // e a faixa de "Central desconectada" continua informando o operador.
+            statusPhase = "error"
+            statusFailure = {"code": "BRIDGE-UNAVAILABLE",
+                "detail": qsTr("Nenhuma central local foi informada ao iniciar a interface.")}
+        }
         if (desktopStatus.recoveryRequired) {
             recoveryPromptShown = true
             Qt.callLater(recoveryDialog.open)
@@ -993,8 +1101,27 @@ ApplicationWindow {
     }
 
     function refreshStatus(message) {
+        // RC-01: duas consultas sobrepostas deixariam "o último estado"
+        // indefinido — a mais lenta poderia chegar por último e regravar uma
+        // leitura mais nova. A consulta em andamento vale; a nova é descartada.
+        if (statusInFlight) {
+            // Descartar a re-consulta não pode descartar a confirmação de uma
+            // mutação: a operação já aconteceu e o usuário precisa saber.
+            if (message)
+                notify(message, false)
+            return
+        }
+        statusInFlight = true
+        statusAttempt += 1
+        statusStartedAt = Date.now()
+        statusElapsedMs = 0
         // /status é o único bootstrap: ele entrega o próprio catálogo de contratos.
         request("GET", "/status", {}, function(response) {
+            statusInFlight = false
+            statusElapsedMs = Date.now() - statusStartedAt
+            statusPhase = "ready"
+            statusStale = false
+            statusFailure = null
             desktopStatus = response
             liveTasks = null
             currentPlan = null
@@ -1005,6 +1132,19 @@ ApplicationWindow {
             }
             if (message)
                 notify(message, false)
+        }, function(failure) {
+            statusInFlight = false
+            statusElapsedMs = Date.now() - statusStartedAt
+            statusFailure = failure && typeof failure === "object"
+                ? failure : {"code": "", "detail": String(failure)}
+            // Uma falha depois de já ter dados reais não apaga a última verdade:
+            // o shell continua mostrando o estado medido, agora marcado como
+            // desatualizado. Sem resposta bem-sucedida anterior não há o que
+            // preservar — os fallbacks nunca viram "dados".
+            if (statusHasData)
+                statusStale = true
+            else
+                statusPhase = "error"
         })
     }
 
@@ -1060,19 +1200,24 @@ ApplicationWindow {
                                 : Math.pow((value + 0.055) / 1.055, 2.4)
     }
 
-    function _relativeLuminance(value) {
+    // Os parâmetros são tipados como `color` de propósito: um literal "#24180b"
+    // chega como texto, `value.r` é indefinido e a razão vira NaN. Com NaN toda
+    // comparação abaixo falha em silêncio e `_contrastTextColor` devolvia
+    // `backgroundColor` — escuro sobre escuro em tema escuro. Era o aviso de
+    // perfil e o rodapé "quase indistinguíveis do fundo" da auditoria UX-01.
+    function _relativeLuminance(value: color): real {
         return 0.2126 * _channelLuminance(value.r)
              + 0.7152 * _channelLuminance(value.g)
              + 0.0722 * _channelLuminance(value.b)
     }
 
-    function _contrastRatio(first, second) {
+    function _contrastRatio(first: color, second: color): real {
         const a = _relativeLuminance(first)
         const b = _relativeLuminance(second)
         return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
     }
 
-    function _contrastTextColor(surface) {
+    function _contrastTextColor(surface: color): color {
         return _contrastRatio(textColor, surface)
             >= _contrastRatio(backgroundColor, surface)
             ? textColor : backgroundColor
@@ -1404,6 +1549,15 @@ ApplicationWindow {
                 keyboardVisible ? qsTr("aberto") : qsTr("fechado")
             ).arg(response.provider || "steamzero"), false)
         })
+    }
+
+    Timer {
+        id: statusElapsedTimer
+        interval: 1000
+        repeat: true
+        running: root.statusInFlight
+        triggeredOnStart: true
+        onTriggered: root.statusElapsedMs = Date.now() - root.statusStartedAt
     }
 
     Component.onCompleted: parseArguments()
@@ -3407,14 +3561,14 @@ ApplicationWindow {
                                 ToolButton {
                                     enabled: false
                                     icon.name: "security-high"
-                                    icon.color: root.amberColor
+                                    icon.color: root._contrastTextColor("#211a10")
                                     background: Item {}
                                 }
                                 ColumnLayout {
                                     visible: !root.compactLayout
                                     spacing: 1
-                                    Label { text: attentionButton.text; color: root.amberColor; font.bold: true }
-                                    Label { text: qsTr("Requer sua atenção"); color: root.mutedColor; font.pixelSize: root.scaledTextSize(12) }
+                                    Label { text: attentionButton.text; color: root._contrastTextColor("#211a10"); font.bold: true }
+                                    Label { text: qsTr("Requer sua atenção"); color: root._contrastTextColor("#211a10"); font.pixelSize: root.scaledTextSize(12) }
                                 }
                             }
                         }
@@ -3606,6 +3760,94 @@ ApplicationWindow {
                             }
                         }
 
+                        // RC-01 (UX-02): faixa de fase do bootstrap. Ela é inline e
+                        // não intercepta entrada alguma: o overlay modal foi rejeitado
+                        // porque bloqueava toda a navegação enquanto o /status demorava.
+                        Rectangle {
+                            id: statusPhaseBand
+                            visible: root.statusBandVisible
+                            color: root.statusBandBackground
+                            border.color: root.statusBandAccent
+                            border.width: 1
+                            radius: 8
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: root.ultrawideLayout ? 1400 : -1
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.leftMargin: root.compactLayout ? 8 : 14
+                            Layout.rightMargin: root.compactLayout ? 8 : 14
+                            Layout.topMargin: root.compactLayout ? 7 : 12
+                            Layout.preferredHeight: root.compactLayout ? 48 : 60
+                            Accessible.name: root.statusBandTitle
+                            Accessible.description: root.statusBandDetail
+                            Accessible.role: Accessible.Notification
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: root.compactLayout ? 10 : 18
+                                anchors.rightMargin: root.compactLayout ? 8 : 14
+                                spacing: root.compactLayout ? 7 : 12
+                                BusyIndicator {
+                                    running: root.statusIsLoading && !root.reducedMotion
+                                    visible: running
+                                    Layout.preferredWidth: 24
+                                    Layout.preferredHeight: 24
+                                    Accessible.name: root.statusBandTitle
+                                }
+                                ToolButton {
+                                    enabled: false
+                                    visible: !root.statusIsLoading
+                                    icon.name: root.statusBandIsError
+                                        ? "network-offline" : "dialog-warning"
+                                    icon.color: root.statusBandAccent
+                                    icon.width: 22
+                                    icon.height: 22
+                                    background: Item {}
+                                }
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 2
+                                    Label {
+                                        text: root.statusBandTitle
+                                        color: root.statusBandText
+                                        font.pixelSize: root.scaledTextSize(root.compactLayout ? 13 : 16)
+                                        font.bold: true
+                                        elide: Text.ElideRight
+                                        Layout.fillWidth: true
+                                    }
+                                    Label {
+                                        text: root.statusBandDetail
+                                        color: root.statusBandText
+                                        font.pixelSize: root.scaledTextSize(root.compactLayout ? 11 : 12)
+                                        elide: Text.ElideRight
+                                        maximumLineCount: 1
+                                        Layout.fillWidth: true
+                                    }
+                                }
+                                DarkButton {
+                                    id: statusRetryButton
+                                    visible: root.statusBandRetry
+                                    text: qsTr("Tentar novamente")
+                                    icon.name: "view-refresh"
+                                    // A faixa é uma superfície fixa escura mesmo em
+                                    // tema claro: sem a tinta calculada o rótulo
+                                    // herdava o texto escuro do tema e sumia.
+                                    palette.buttonText: root.statusBandText
+                                    Layout.minimumHeight: 48
+                                    Layout.minimumWidth: root.compactLayout ? 48 : 150
+                                    Accessible.name: text
+                                    Accessible.description: qsTr("Repete somente a leitura GET /status; nenhuma mudança é feita.")
+                                    background: Rectangle {
+                                        color: statusRetryButton.activeFocus ? root.raisedColor : "transparent"
+                                        radius: 6
+                                        border.color: statusRetryButton.activeFocus
+                                            ? root.cyanColor : root.statusBandAccent
+                                        border.width: statusRetryButton.activeFocus ? 2 : 1
+                                    }
+                                    onClicked: root.retryStatus()
+                                }
+                            }
+                        }
+
                         Rectangle {
                             visible: root.showAttentionBanner
                             color: "#24180b"
@@ -3784,6 +4026,7 @@ ApplicationWindow {
                                     // Home só recebe projeções já publicadas e
                                     // delega a navegação à fonte única de seções.
                                     EditorialHome {
+                                        id: editorialHome
                                         steamGames: root.steamGameplayData.games || []
                                         emulation: root.emulationData
                                         playtime: root.playtimeData
@@ -3794,6 +4037,7 @@ ApplicationWindow {
                                         doctor: root.desktopStatus.dashboard && root.desktopStatus.dashboard.doctor
                                             ? root.desktopStatus.dashboard.doctor : ({})
                                         libraryHealth: root.libraryHealthData
+                                        loading: !root.statusHasData
                                         needsAttention: root.needsAttention
                                         reducedMotion: root.reducedMotion
                                         highContrast: root.highContrast
@@ -5535,7 +5779,7 @@ ApplicationWindow {
                                             ColumnLayout {
                                                 Layout.fillWidth: true
                                                 Label { text: qsTr("Conflito de controle do sistema"); color: root._contrastTextColor("#24180b"); font.pixelSize: root.scaledTextSize(18); font.bold: true }
-                                                Label { text: "E-DESKTOP-OWNER-CONFLICT"; color: root.mutedColor; font.pixelSize: root.scaledTextSize(12) }
+                                                Label { text: "E-DESKTOP-OWNER-CONFLICT"; color: root._contrastTextColor("#24180b"); font.pixelSize: root.scaledTextSize(12) }
                                             }
                                             Button { text: qsTr("Resolver conflito"); Layout.minimumHeight: 48; Accessible.name: text; onClicked: root.beginConflictResolution() }
                                         }
@@ -6299,7 +6543,8 @@ ApplicationWindow {
             anchors.fill: parent
             anchors.margins: 14
             text: root.lastRequest
-            color: root.textColor
+            color: root._contrastTextColor(
+                root.lastRequestIsError ? "#35171b" : "#102b20")
             wrapMode: Text.WordWrap
             Accessible.name: text
         }

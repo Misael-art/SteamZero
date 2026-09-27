@@ -9,7 +9,10 @@ import jsonschema
 import pytest
 
 from steamzero.adapters.theme_catalog import (
+    _MAX_VALIDATION_DETAIL,
     ThemeCatalog,
+    _manifest_validator,
+    _validate_manifest,
     list_builtin_theme_ids,
     read_builtin_manifest,
     validate_theme_directory,
@@ -90,6 +93,63 @@ def test_manifest_schema_rejects_invalid(desc: str, manifest: dict, expect: str)
 def test_valid_manifest_accepts() -> None:
     schema = _load_schema("theme-manifest-v1.schema.json")
     jsonschema.validate(_VALID, schema)
+
+
+def _manifest_detail(manifest: dict) -> str:
+    with pytest.raises(SteamZeroError) as excinfo:
+        _validate_manifest(manifest)
+    assert excinfo.value.code == "E-THEME-MANIFEST"
+    return excinfo.value.detail
+
+
+def test_manifest_validation_detail_stays_readable() -> None:
+    """RC-01: o diagnóstico de um manifesto inválido cabe numa linha da UI.
+
+    ``str(ValidationError)`` faz pprint do schema *e* da instância. Medido no
+    host: 373 KB por manifesto malformado, 1,2 s de CPU na composição do
+    ``theme`` e o despejo publicado em ``theme.list`` dentro do Estúdio de
+    Temas. O caminho JSON e a mensagem preservam o diagnóstico; o resto era
+    ruído.
+    """
+    detail = _manifest_detail(
+        {
+            "schemaVersion": 1,
+            "kind": "steamzero-theme-v1",
+            "id": "a.b",
+            "name": "X",
+            "version": "1.0.0",
+            "author": "X",
+            "license": "MIT",
+            "tokens": {"color": {"background": "não-é-cor"}},
+            "padding": {"shell": "y" * 4000},
+        }
+    )
+    assert len(detail) <= _MAX_VALIDATION_DETAIL
+    assert "y" * 4000 not in detail, "a instância não pode ser despejada no detalhe"
+    assert "theme-manifest-v1.schema.json" not in detail, "o schema não é o diagnóstico"
+
+
+def test_manifest_validation_keeps_the_first_failure() -> None:
+    """A ordem e o teor da primeira falha continuam os mesmos do validador de módulo.
+
+    É o caso real do host na baseline da RC-01: quatro pacotes ES-DE sem a chave
+    ``compatibility``. A mensagem abaixo é literalmente a que eles produziam antes
+    de o dump do schema engolir o detalhe.
+    """
+    manifest = dict(_VALID)
+    del manifest["compatibility"]
+    detail = _manifest_detail(manifest)
+    assert detail == "$: 'compatibility' is a required property"
+
+
+def test_manifest_validator_is_compiled_once() -> None:
+    """O validador é por processo: ``jsonschema.validate`` recheca o schema a cada chamada.
+
+    É a regressão de performance da RC-01: validar o manifesto empacotado 305 ms
+    por chamada dominava o bloco ``theme`` do /status. Se alguém voltar a usar a
+    função de módulo, a identidade do cache quebra aqui.
+    """
+    assert _manifest_validator() is _manifest_validator()
 
 
 def test_schema_additional_properties_false() -> None:

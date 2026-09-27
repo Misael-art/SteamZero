@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
@@ -244,6 +245,9 @@ def _error_server() -> tuple[int, threading.Thread, HTTPServer]:
         "check_credentials.qml",
         "check_credential_dialog_responsive.qml",
         "check_high_contrast.qml",
+        # UX-01: a tinta dos avisos sobre superfície fixa é calculada, e o
+        # cálculo precisa sobreviver ao tema escuro e ao alto contraste.
+        "check_warning_surface_contrast.qml",
         # Prova Image.Ready de cada asset empacotado, não apenas o caminho.
         "check_packaged_assets.qml",
         # Identidade AURA no editor: preview no ThemeBridge, cancelar restaura.
@@ -468,3 +472,253 @@ def test_controls_profile_card_never_shows_green_without_proof() -> None:
         check=False,
     )
     _assert_qml_clean(completed, "check_controls_profile_card.qml")
+
+
+#: Contagem de GET /status servidos pela ponte de cena da RC-01. O servidor é de
+#: sessão (porta estável), então o estado da sequência vive aqui e é zerado pelo
+#: fixture de teste.
+_CENTRAL_LOADING_CALLS: list[str] = []
+_CENTRAL_LOADING_LOCK = threading.Lock()
+
+
+def _central_loading_status() -> dict[str, object]:
+    """Um /status mínimo, mas com a forma que o `Main.qml` consome.
+
+    Não é o payload do produto: é a menor leitura que ainda exercita os bindings
+    reais. Se uma chave obrigatória faltar, o Qt reclama em stderr e
+    `_assert_qml_clean` reprova — que é exatamente o contrato que a RC-01 abriu.
+    """
+    return {
+        "truthState": "stale",
+        "desiredProfile": "handheld-desktop",
+        "appliedProfile": None,
+        "observedProfile": None,
+        "effectiveProfile": "handheld-desktop",
+        "recommendedProfile": "handheld-desktop",
+        "statusReasons": ["A leitura da cena encontrou perfil desejado não aplicado."],
+        "recoveryRequired": False,
+        "independentRuntime": True,
+        "observation": {
+            "checkedEffects": [],
+            "unavailableEffects": [],
+            "ambiguousCandidates": [],
+            "errors": [],
+        },
+        "context": {
+            "deviceKind": "deck-lcd",
+            "displays": [],
+            "capabilities": [],
+            "conflicts": [],
+        },
+        "dashboard": {
+            "accessibility": {"reducedMotion": False, "highContrast": False},
+            "components": [
+                {
+                    "id": "dolphin",
+                    "name": "Dolphin",
+                    "description": "Emulador de Wii e GameCube",
+                    "iconName": "dolphin-emu",
+                    "systems": ["Wii", "GameCube"],
+                    "state": "installed",
+                    "statusLabel": "Instalado",
+                    "versionLabel": "2407",
+                    "targetVersion": "2407",
+                    "detail": "Dolphin 2407 medido pela ponte.",
+                    "blockedReason": "",
+                    "action": {
+                        "kind": "detail",
+                        "label": "Detalhes",
+                        "enabled": False,
+                    },
+                }
+            ],
+            "steam": [],
+            "sync": {
+                "pending": 0,
+                "conflicted": 0,
+                "done": 0,
+                "items": [],
+                "dependency": "Cena RC-01; nenhuma mutação exposta.",
+            },
+            "doctor": {"state": "healthy", "checks": []},
+            "playtime": {"schemaVersion": 1, "totalPlayedSeconds": 0, "games": []},
+            "collections": {"schemaVersion": 1, "favorites": [], "tags": [], "collections": []},
+            "libraryHealth": {
+                "schemaVersion": 1,
+                "state": "unchecked",
+                "counts": {
+                    "verified": 0,
+                    "suspect": 0,
+                    "missing": 0,
+                    "error": 0,
+                    "unavailable": 0,
+                    "unchecked": 0,
+                },
+            },
+            "emulation": {
+                "schemaVersion": 1,
+                "truthState": "ready",
+                "contextLabel": "Cena RC-01",
+                "platforms": [],
+                "jobs": [],
+            },
+            "steamGameplay": {"schemaVersion": 1, "games": [], "environment": []},
+            "uiContracts": {"schemaVersion": 1, "states": [], "actions": [], "byId": {}},
+        },
+    }
+
+
+class _CentralLoadingHandler(BaseHTTPRequestHandler):
+    """Ponte de cena da RC-01: leitura boa, renovação que falha, recuperação.
+
+    A primeira resposta é atrasada de propósito. Sem atraso o `Main.qml` já
+    estaria em `ready` quando o harness olhasse, e o guard de sobreposição e a
+    fase `loading` seriam declarados verdes sem nunca terem sido observados.
+    """
+
+    first_response_delay_seconds = 0.5
+
+    def do_GET(self) -> None:
+        if self.path.split("?")[0] != "/status":
+            self._send(404, "rota fora da cena")
+            return
+        with _CENTRAL_LOADING_LOCK:
+            _CENTRAL_LOADING_CALLS.append(self.path)
+            call_number = len(_CENTRAL_LOADING_CALLS)
+        if call_number == 2:
+            self._send(
+                500,
+                json.dumps(
+                    {
+                        "error": {
+                            "code": "E-STATUS-SCENE",
+                            "title": "A renovação do estado falhou",
+                            "detail": "A central não pôde reler o host nesta tentativa.",
+                            "what": "Leitura GET /status recusou.",
+                            "impact": "O último estado lido permanece na tela.",
+                            "autoAction": "",
+                            "manualAction": "Tente novamente.",
+                            "probableCause": "Cena controlada pelo teste.",
+                            "operationId": "",
+                        }
+                    }
+                ),
+            )
+            return
+        if call_number == 1:
+            time.sleep(self.first_response_delay_seconds)
+        self._send(200, json.dumps(_central_loading_status()))
+
+    def _send(self, code: int, body: str) -> None:
+        payload = body.encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def log_message(self, fmt: str, *args: object) -> None:
+        pass
+
+
+@pytest.mark.visual
+def test_central_loading_phases_are_observable_offscreen() -> None:
+    """RC-01 (UX-02) — a Central tem de ser legível enquanto carrega.
+
+    O `/status` do host real leva segundos; durante esse intervalo a Home
+    publicava os fallbacks como se fossem medições ("Não instalado", "Nenhum
+    jogo publicado ainda", "Nenhuma pendência" em verde). Este teste roda o
+    `Main.qml` contra uma ponte que demora, falha e recupera, e cobra as quatro
+    fases no objeto vivo.
+
+    Sem runtime QML o teste reprova: verde sem renderização é o modo como a
+    regressão de ícones já atravessou os gates (G13).
+    """
+    if QML is None:
+        pytest.fail(
+            f"{DIAG_VISUAL_ENVIRONMENT}: qml6 ausente. As fases de carregamento "
+            "da Central não podem ser verificadas sem runtime QML, e declarar "
+            "verde sem renderizar é o defeito que a RC-01 combate."
+        )
+    port = _start_central_loading_bridge()
+    completed = _run_central_loading_harness(port)
+    with _CENTRAL_LOADING_LOCK:
+        served = len(_CENTRAL_LOADING_CALLS)
+    assert served == 3, f"a cena esperava três GET /status, a ponte serviu {served}"
+    _assert_qml_clean(completed, "ponte de cena da RC-01")
+
+
+def _run_central_loading_harness(port: int, *extra: str) -> subprocess.CompletedProcess[str]:
+    """Roda o harness da RC-01 contra a ponte de cena na porta dada.
+
+    O `--` é obrigatório: sem ele o `qml6` trata cada argumento como outro
+    arquivo de componente e gasta um load falho por parâmetro.
+    """
+    return subprocess.run(
+        [
+            str(QML),
+            "tests/qml/check_central_loading.qml",
+            "--",
+            "--steamzero-api",
+            f"http://127.0.0.1:{port}",
+            "--steamzero-token",
+            "cena-rc01",
+            *extra,
+        ],
+        cwd=ROOT,
+        env=_qml_environment(),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+
+
+@pytest.mark.visual
+@pytest.mark.parametrize("phase", ("loading", "stale"))
+def test_central_loading_frames_are_capturable(tmp_path: Path, phase: str) -> None:
+    """RC-01 — o quadro que as asserções descrevem pode virar evidência.
+
+    A fase aferida tem de ser gravável sem depender de timing humano: a
+    capturing é pedida ao harness, que só sai depois de o frame compor. Um PNG
+    em branco passaria por evidência, então a cena real também é medida.
+    """
+    if QML is None:
+        pytest.fail(f"{DIAG_VISUAL_ENVIRONMENT}: qml6 ausente; nenhum frame é gravável")
+    output = tmp_path / f"central-{phase}.png"
+    completed = _run_central_loading_harness(
+        _start_central_loading_bridge(),
+        f"--capture-phase={phase}",
+        f"--capture-output={output}",
+    )
+    _assert_qml_clean(completed, f"captura {phase} da Central")
+    assert output.is_file() and output.stat().st_size > 0, (
+        f"harness pediu o quadro `{phase}` e nenhuma imagem foi gravada em {output}"
+    )
+    from PIL import Image
+
+    image = Image.open(output)
+    image.load()
+    assert image.width >= 1280 and image.height >= 800, (
+        f"o quadro `{phase}` saiu com {image.width}x{image.height}, menor que a janela"
+    )
+    # Um frame ainda não composto seria uma superfície vazia de uma cor só.
+    colors = image.convert("RGB").getcolors(maxcolors=1_000_000)
+    distinct = len(colors) if colors is not None else 1_000_000
+    assert distinct > 8, f"o quadro `{phase}` tem {distinct} cores: não mostra a cena aferida"
+
+
+def _start_central_loading_bridge() -> int:
+    """Sobe uma ponte por teste: a sequência de respostas é por instância."""
+    host = "127.0.0.1"
+    for port in range(43000, 44000):
+        try:
+            server = HTTPServer((host, port), _CentralLoadingHandler)
+        except OSError:
+            continue
+        # A sequência é contada por módulo, não por servidor: sem este reset,
+        # um segundo teste veria "4a chamada" e a cena mudaria de significado.
+        with _CENTRAL_LOADING_LOCK:
+            del _CENTRAL_LOADING_CALLS[:]
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        return port
+    raise RuntimeError("nenhuma porta livre para a ponte de cena da RC-01")

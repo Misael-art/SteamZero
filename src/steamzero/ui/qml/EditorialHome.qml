@@ -20,6 +20,9 @@ Item {
     property var sync: ({})
     property var doctor: ({})
     property var libraryHealth: ({})
+    // RC-01 (UX-02): enquanto a central não respondeu, os contadores e as
+    // ausências abaixo não são medidas — são a ausência de dados ainda.
+    property bool loading: false
     property bool needsAttention: false
     property bool reducedMotion: false
     property bool highContrast: false
@@ -99,9 +102,11 @@ Item {
     readonly property var systems: {
         const rows = [{
             "id": "steam", "name": qsTr("Steam"), "gameCount": (steamGames || []).length,
-            "state": (steamGames || []).length > 0 ? "ready" : "unavailable",
-            "detail": (steamGames || []).length > 0 ? qsTr("Biblioteca disponível")
-                : qsTr("Nenhum jogo Steam publicado")
+            "state": root.loading ? "pending"
+                : (steamGames || []).length > 0 ? "ready" : "unavailable",
+            "detail": root.loading ? qsTr("Consultando a biblioteca Steam")
+                : (steamGames || []).length > 0 ? qsTr("Biblioteca disponível")
+                    : qsTr("Nenhum jogo Steam publicado")
         }]
         const platforms = editorialPlatforms
         for (let i = 0; i < platforms.length; ++i) {
@@ -116,14 +121,21 @@ Item {
         }
         return rows
     }
+    // "pending" é estado de contrato (desktop_contracts._STATES) e significa
+    // "ainda não publicado", não "precisa de atenção". Contá-lo como pendência
+    // faria a Home denunciar quatro sistemas exigindo configuração durante o
+    // carregamento — uma alerta inventado a partir de ausência de dados.
     readonly property var attentionSystems: systems.filter(function(system) {
         return system.state !== "ready" && system.state !== "installed"
+            && system.state !== "pending"
     })
     readonly property int componentAttention: (components || []).filter(function(component) {
         return component.state !== "installed" && component.state !== "ready"
+            && component.state !== "pending"
     }).length
     readonly property int syncAttention: Number(sync && sync.pending || 0)
         + Number(sync && sync.conflicted || 0)
+    readonly property bool attentionClaim: needsAttention || attentionSystems.length > 0
     readonly property int libraryAttention: Number(libraryHealth && libraryHealth.counts
         && libraryHealth.counts.suspect || 0) + Number(libraryHealth && libraryHealth.counts
         && libraryHealth.counts.missing || 0) + Number(libraryHealth && libraryHealth.counts
@@ -207,7 +219,8 @@ Item {
                 Layout.fillWidth: true
             }
             Label {
-                text: qsTr("%1 títulos publicados").arg(root.catalog.length)
+                text: root.loading ? qsTr("Consultando a biblioteca")
+                    : qsTr("%1 títulos publicados").arg(root.catalog.length)
                 color: root.mutedColor
                 font.pixelSize: root.typeSize("metadata")
             }
@@ -286,6 +299,7 @@ Item {
                     }
                     Label {
                         text: root.featured ? String(root.featured.title || root.featured.name || qsTr("Jogo"))
+                            : root.loading ? qsTr("Consultando as fontes gerenciadas")
                             : qsTr("Nenhum jogo publicado ainda")
                         color: root.textColor
                         font.pixelSize: root.typeSize("display", root.compact ? 0.64 : 0.89)
@@ -299,6 +313,7 @@ Item {
                             ? qsTr("%1 · %2").arg(String(root.featured.source || qsTr("Sessão")))
                                 .arg(root.playtimeLabel(root.featured.playedSeconds))
                             : root.featured ? String(root.featured.systemName || qsTr("Biblioteca"))
+                            : root.loading ? qsTr("A primeira leitura da central ainda não foi concluída")
                             : qsTr("Adicione uma fonte gerenciada para começar")
                         color: root.mutedColor
                         Layout.fillWidth: true
@@ -345,10 +360,11 @@ Item {
                     RowLayout {
                         Layout.fillWidth: true
                         Label { text: qsTr("Favoritos"); color: root.textColor; font.pixelSize: root.typeSize("title", 0.95); font.weight: Font.DemiBold; Layout.fillWidth: true }
-                        Label { text: String(root.favorites.length); color: root.cyanDarkColor; font.weight: Font.DemiBold }
+                        Label { text: root.loading ? "—" : String(root.favorites.length); color: root.cyanDarkColor; font.weight: Font.DemiBold }
                     }
                     Label {
-                        text: root.favorites.length > 0 ? root.favorites.slice(0, 3).map(function(game) { return game.title }).join(" · ")
+                        text: root.loading ? qsTr("A central ainda não publicou os favoritos desta sessão.")
+                            : root.favorites.length > 0 ? root.favorites.slice(0, 3).map(function(game) { return game.title }).join(" · ")
                             : qsTr("Marque favoritos nas sessões e coleções gerenciadas.")
                         color: root.mutedColor
                         wrapMode: Text.WordWrap
@@ -378,10 +394,11 @@ Item {
                     RowLayout {
                         Layout.fillWidth: true
                         Label { text: qsTr("Coleções"); color: root.textColor; font.pixelSize: root.typeSize("title", 0.95); font.weight: Font.DemiBold; Layout.fillWidth: true }
-                        Label { text: String(root.collectionItems.length); color: root.cyanDarkColor; font.weight: Font.DemiBold }
+                        Label { text: root.loading ? "—" : String(root.collectionItems.length); color: root.cyanDarkColor; font.weight: Font.DemiBold }
                     }
                     Label {
-                        text: root.primaryCollection
+                        text: root.loading ? qsTr("A central ainda não publicou as coleções desta sessão.")
+                            : root.primaryCollection
                             ? qsTr("%1 · %2 jogo(s)").arg(String(root.primaryCollection.name || qsTr("Coleção")))
                                 .arg(root.primaryCollection.members ? root.primaryCollection.members.length : 0)
                             : qsTr("Nenhuma coleção foi publicada ainda.")
@@ -406,7 +423,7 @@ Item {
             Rectangle {
                 color: root.surfaceColor
                 radius: 14
-                border.color: root.needsAttention || root.attentionSystems.length > 0 ? root.amberColor : root.borderColor
+                border.color: root.attentionClaim ? root.amberColor : root.borderColor
                 Layout.fillWidth: true
                 Layout.preferredHeight: 164
                 ColumnLayout {
@@ -415,10 +432,12 @@ Item {
                     RowLayout {
                         Layout.fillWidth: true
                         Label { text: qsTr("Pendências"); color: root.textColor; font.pixelSize: root.typeSize("title", 0.95); font.weight: Font.DemiBold; Layout.fillWidth: true }
-                        Label { text: root.needsAttention || root.attentionSystems.length > 0 ? qsTr("Revisar") : qsTr("Nenhuma"); color: root.needsAttention || root.attentionSystems.length > 0 ? root.amberColor : root.greenColor; font.weight: Font.DemiBold }
+                        Label { text: root.loading ? qsTr("Consultando") : root.attentionClaim ? qsTr("Revisar") : qsTr("Nenhuma"); color: root.loading ? root.mutedColor : root.attentionClaim ? root.amberColor : root.greenColor; font.weight: Font.DemiBold }
                     }
                     Label {
-                        text: root.needsAttention ? qsTr("O estado do Desktop pede revisão antes de aplicar mudanças.")
+                        text: root.loading
+                            ? qsTr("A central ainda não publicou o estado operacional: nada foi atestado, nem a ausência de pendências.")
+                            : root.needsAttention ? qsTr("O estado do Desktop pede revisão antes de aplicar mudanças.")
                             : root.attentionSystems.length > 0
                                 ? qsTr("%1 sistema(s) ainda exigem configuração ou verificação.").arg(root.attentionSystems.length)
                                 : qsTr("Nenhuma ação operacional urgente foi publicada.")
