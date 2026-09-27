@@ -15,6 +15,12 @@
 // dependa de nenhum clique ter dado certo.
 //
 // Uso: qml6 tools/ui_control_probe.qml -- --steamzero-out /caminho/saida.json
+//      qml6 tools/ui_control_probe.qml -- --steamzero-scenario /caminho/cenario.json \
+//          --steamzero-viewport 949x593 --steamzero-text-scale 1.5
+// Sem os dois argumentos abaixo a sonda roda exatamente como sempre rodou:
+// 1600x1000, escala de texto a que o cenário trouxer. Eles existem porque um
+// alvo de toque medido só na janela larga não diz nada sobre o layout portátil
+// do Deck — e o produto se opera com o polegar nos dois.
 
 import QtQuick
 import QtQuick.Controls
@@ -23,8 +29,15 @@ import "../src/steamzero/ui/qml"
 Main {
     id: window
     visible: true
-    width: 1600
-    height: 1000
+    width: probeWidth
+    height: probeHeight
+
+    // Definidos por argumento, nunca por edição do arquivo: medir o layout
+    // portátil exige rodar a MESMA sonda em duas janelas, e um segundo arquivo
+    // de sonda seria uma segunda verdade sobre o que é um controle.
+    property int probeWidth: 1600
+    property int probeHeight: 1000
+    property real probeTextScale: 0
 
     property string outPath: ""
     property var collected: []
@@ -756,6 +769,10 @@ Main {
         console.log("PROBE-CONTEXT " + JSON.stringify({
             "scenario": scenarioName,
             "viewport": width + "x" + height,
+            "requestedViewport": probeWidth + "x" + probeHeight,
+            "textScale": visualScale,
+            "requestedTextScale": probeTextScale,
+            "handheldLayout": handheldLayout,
             "themeId": _themeBridge.themeId,
             "highContrast": highContrast,
             "reducedMotion": reducedMotion,
@@ -796,11 +813,53 @@ Main {
         desktopStatus = payload
     }
 
+    // "949x593" troca a janela antes de qualquer medição. Forma inválida
+    // REPROVA em vez de medir na janela larga em silêncio: um argumento
+    // ignorado é exatamente o jeito pelo qual um gate de 48 px passaria por
+    // prova do layout portátil sem nunca ter olhado para ele.
+    function applyViewport(value) {
+        if (value === "")
+            return
+        const partes = /^([0-9]+)x([0-9]+)$/.exec(value)
+        if (!partes) {
+            console.log("PROBE-FAIL viewport com forma inválida (esperado LARGURAxALTURA): " + value)
+            requestExit(3)
+            return
+        }
+        probeWidth = parseInt(partes[1], 10)
+        probeHeight = parseInt(partes[2], 10)
+    }
+
+    // A escala de texto do produto vem de `dashboard.accessibility.visualScale`
+    // (leitura do Plasma; 1.0–2.0 em ThemeBridge). Sobrescrever esse caminho é
+    // o mesmo canal que o host usa, não um atalho de teste.
+    function applyTextScale(value) {
+        if (value === "")
+            return
+        const scale = Number(value)
+        if (!(scale >= 1 && scale <= 2)) {
+            console.log("PROBE-FAIL escala de texto fora da faixa do produto [1.0, 2.0]: " + value)
+            requestExit(3)
+            return
+        }
+        probeTextScale = scale
+        const payload = desktopStatus || ({})
+        const dashboard = payload.dashboard || ({})
+        const accessibility = dashboard.accessibility || ({})
+        // Cópia rasa em cada nível: o binding só reavalia se a identidade do
+        // mapa mudar. Gravar a chave no objeto existente deixaria a escala
+        // aplicada no papel e o shell medindo na escala antiga.
+        dashboard.accessibility = Object.assign({}, accessibility, {"visualScale": scale})
+        desktopStatus = Object.assign({}, payload, {"dashboard": dashboard})
+    }
+
     Component.onCompleted: {
         outPath = argumentValue("--steamzero-out")
         const scenario = argumentValue("--steamzero-scenario")
         if (scenario !== "")
             loadScenario(scenario)
+        applyViewport(argumentValue("--steamzero-viewport"))
+        applyTextScale(argumentValue("--steamzero-text-scale"))
         Qt.callLater(nextSection)
     }
 }

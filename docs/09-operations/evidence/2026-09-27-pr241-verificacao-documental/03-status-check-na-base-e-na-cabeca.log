@@ -1,0 +1,130 @@
+# status-check na base e na cabeca, e o motivo de nenhum digest ter sido renovado nesta sessao
+# sessao documental do PR #241 — 2026-09-27, janela 12:44 -> 12:58-03:00
+# checkout unico: /home/misael/Projects/Steam Zero/Canonical/2026-09-21 (fe5751a0 + docs desta sessao)
+
+# ---------------------------------------------------------------------------
+# BASE: fe5751a0, medido pelo proprio CI (job Python 3.14, passo "Estado do projeto")
+# ---------------------------------------------------------------------------
+$ gh run view --repo Misael-art/SteamZero --job 108643755429 --log | grep "Estado do projeto"
+Python 3.14	Estado do projeto	STATUS-CHECK: OK
+# e o gate visual do mesmo SHA, para nao confundir os dois: FALHOU (02-gate-visual-vermelho-no-runner.log).
+# Ou seja: o catalogo governado estava coerente na base; o vermelho nao e de governanca.
+
+# ---------------------------------------------------------------------------
+# CABECA (pre-commit): arvore com os tres arquivos de MEDICAO da 4a fatia restaurados a HEAD
+# ---------------------------------------------------------------------------
+# A medicao da 4a fatia editou tools/ui_control_probe.qml, tools/ui_control_inventory.py e
+# tests/integration/test_ui_control_matrix.py, que estao em scopePaths de SZ-UI-DESKTOP-AUDIT.
+# scopeDigest e calculado do DISCO (tools/project_status.py:261-274), entao com esses tres
+# arquivos sujos o check local reprova por conteudo que ainda nao existe em nenhum SHA:
+$ make status-check          # arvore suja da medicao, antes desta sessao
+STATUS-CHECK: FALHOU
+- SZ-UI-DESKTOP-AUDIT: evidencia obsoleta; scopeDigest esperado 02435ffe03aa8ae3a7ccd08e430175d9bfed246eef1cc8a414ce2b218cc1e70e, atual fae75c04b3b91284a4a9143a281b208463a56ec9c0f2e065b0d561932d203dbe
+make: *** [Makefile:55: status-check] Error 1
+
+# Para medir a cabeca documental SEM conteudo nao commitado no meio do caminho, os tres arquivos
+# foram devolvidos ao estado de HEAD por procedimento explicito e reversivel (backup em /tmp com
+# hash dos dois lados; NENHUM stash, nenhuma copia alternativa dentro do repositorio), o check foi
+# corrido, e as edicoes foram restituidas na mesma sequencia:
+$ cp <3 arquivos> /tmp/slice4-backup/ && sha256sum /tmp/slice4-backup/*
+732389e0f98bc42a2edfe35e7e7a4016e36ef1dac4b82396fd5bc7b8eb62af04  test_ui_control_matrix.py
+82f6170cffef1f2f1e364294671a939dd8735446dea3d2dda4e7acf455fa667e  ui_control_inventory.py
+6db2a573834b8a1e29d1316f3e48ce0dcc76443c1e0e4d6b69a1a43b1d173531  ui_control_probe.qml
+$ for f in <os tres>; do git show HEAD:$f | sha256sum; done      # o que o HEAD diz
+0aee707f5b1792b307504c5e6ac2e3b20fa8f9c060c949a94644421762687f02  tools/ui_control_probe.qml
+af3fa86e18de62c65ef131a7264549b241b8555c3532dd93a796627d6967aa8a  tools/ui_control_inventory.py
+e857390d1c2ae07262ae77bbd741f09254417dc62b8cbeb19d8ac12324e812dd  tests/integration/test_ui_control_matrix.py
+# (os tres hashes de HEAD coincidem com o baseline gravado em
+#  docs/09-operations/evidence/2026-09-27-shell-touch-targets/01-preflight.log)
+
+$ git checkout -- tools/ui_control_probe.qml tools/ui_control_inventory.py tests/integration/test_ui_control_matrix.py
+$ .venv/bin/python tools/project_status.py check
+STATUS-CHECK: OK
+$ .venv/bin/python -m pytest tests/unit/test_project_status.py -q
+13 passed in 4.71s
+$ cp /tmp/slice4-backup/* ...   # restituicao das edicoes da medicao
+6db2a573834b8a1e29d1316f3e48ce0dcc76443c1e0e4d6b69a1a43b1d173531  tools/ui_control_probe.qml
+82f6170cffef1f2f1e364294671a939dd8735446dea3d2dda4e7acf455fa667e  tools/ui_control_inventory.py
+732389e0f98bc42a2edfe35e7e7a4016e36ef1dac4b82396fd5bc7b8eb62af04  tests/integration/test_ui_control_matrix.py
+$ git status --porcelain
+ M docs/ACTIVE-WORK.md
+ M docs/status/workstreams/rc01-readiness-focus-2026-09-27.json
+ M tests/integration/test_ui_control_matrix.py
+ M tools/ui_control_inventory.py
+ M tools/ui_control_probe.qml
+?? docs/09-operations/evidence/2026-09-27-pr241-verificacao-documental/
+?? docs/09-operations/evidence/2026-09-27-shell-touch-targets/
+# Nenhum dos tres hashes restituídos difere do backup, e nenhum outro arquivo foi tocado.
+
+# ---------------------------------------------------------------------------
+# DECISAO DE DIGEST, ESCRITA ANTES DE QUALQUER RENOVAÇÃO
+# ---------------------------------------------------------------------------
+# NAO renuei scopeDigest nesta sessao, e o motivo e de verificacao, nao de conveniencia:
+# 1. A sessao nao mudou conteudo em scopePaths (so docs/, visoes geradas e WORKLOG). Uma renovacao
+#    aqui carimbaria "evidencia atual" sem conteudo novo de escopo — que e exatamente o selo
+#    indevido que as notas deste item ja denunciam ("A evidencia NAO foi carimbada: foi
+#    reexecutada e passou").
+# 2. O unico digest que a medicao da 4a fatia mudaria (SZ-UI-DESKTOP-AUDIT) so pode ser renovado
+#    JUNTO do commit que contem os tres arquivos medidos. Renovado agora, com conteudo so na
+#    arvore de trabalho, o check do commit documental diria OK para um SHA que nao tem aquela
+#    arvore — e o CI da branch reprovaria.
+# 3. `tools/project_status.py digest --item X` imprime, e so `--write` grava. Usei a ferramenta
+#    autorizada nas duas leituras acima (`check`) e `render --write` para as visoes; nenhuma
+#    linha de digest foi editada a mao.
+# A re-impressao do check no SHA deste commit documental (ja sem os tres arquivos sujos no meio)
+# vai na entrega e no corpo do PR, porque so passa a existir depois de o commit nascer.
+
+# ---------------------------------------------------------------------------
+# AS "16 REPROVACOES": o que existe de diferenca entre o que foi pedido e o que foi medido
+# ---------------------------------------------------------------------------
+# Pedia-se corrigir 16 reprovacoes do status-check. Nos tres estados que pude medir ha:
+#   - base fe5751a0 no CI: 0 (STATUS-CHECK: OK, transcrito acima);
+#   - arvore de trabalho desta secao, com a medicao suja: 1 (SZ-UI-DESKTOP-AUDIT, causa acima);
+#   - arvore com a medicao devolvida a HEAD: 0, com 13 passed no teste de consistencia.
+# Procurei tambem por estado concorrente: `git worktree list` devolve UM worktree (o canônico),
+# `git stash list` devolve saida vazia, e nao ha segunda copia do checkout neste caminho.
+# Se as 16 vierem de outro clone/checkout ou de outro comando, preciso do comando e do SHA antes
+# de mexer em digest: renovacao por intuicao produz catalogo verde sobre arvore errada, que e a
+# falha que esta governanca existe para impedir. Registro aqui, e nao corrijo por suposicao.
+
+# ---------------------------------------------------------------------------
+# ADENDO (mesma data): a CABECA depois de corrigir os textos e renovar os digests
+# ---------------------------------------------------------------------------
+# Esta sessao editou documento governado, entao a lista de reprovacoes cresceu
+# antes de fechar: alem do SZ-UI-DESKTOP-AUDIT, o AGENT-HANDOFF.md esta no
+# scopePaths de SZ-GOVERNANCE-STATUS e de SZ-ROADMAP-CONTINUATION. Medido com
+# os cartoes, o handoff e as evidencias ja escritos:
+$ .venv/bin/python tools/project_status.py check
+STATUS-CHECK: FALHOU
+- SZ-GOVERNANCE-STATUS: evidencia obsoleta; scopeDigest esperado 3344a33c..., atual 46bb5b71...
+- SZ-ROADMAP-CONTINUATION: evidencia obsoleta; scopeDigest esperado 7ace66b2..., atual 64cab367...
+- SZ-UI-DESKTOP-AUDIT: evidencia obsoleta; scopeDigest esperado 02435ffe..., atual ef28a051...
+- docs/STATUS.md esta desatualizado; execute tools/project_status.py render --write
+- docs/ACTIVE-WORK.md esta desatualizado; execute tools/project_status.py render --write
+- docs/status/COVERAGE.md esta desatualizado; execute tools/project_status.py render --write
+# Sao 6 linhas: 3 digests + 3 visoes. Vale contra a premissa de "16 reprovacoes":
+# nenhuma arvore desta frente produziu 16; o que existe e 1 (so a medicao suja),
+# 6 (documento governado editado, visoes velhas) e 0 (estado final abaixo).
+#
+# Renovacao pelo mecanismo autorizado do projeto: a ferramenta so IMPRIME o valor
+# (tools/project_status.py:513-517; o --write dela so serve ao render), entao o
+# numero gravado e o que ela calculou, copiado sem edicao:
+$ .venv/bin/python tools/project_status.py digest --item SZ-UI-DESKTOP-AUDIT
+ef28a051080f6f79b951f747298fa056bf0579e11266ebad9e1e0b7fd36e6824
+$ .venv/bin/python tools/project_status.py digest --item SZ-GOVERNANCE-STATUS
+46bb5b71683b440e8b04003fe93070d962c7b1bcf2f37343ace2a78836113652
+$ .venv/bin/python tools/project_status.py digest --item SZ-ROADMAP-CONTINUATION
+64cab367961430a1fdce66adebb0897926f66b46f78a07e051defce6387792d9
+# Nenhum dos tres itens tem docs/status/items/*.json no proprio scopePaths, por
+# isso escrever o scopeDigest nao realimenta o calculo (conferido antes de gravar).
+# docs/WORKLOG.md esta fora do digest por decisao documentada da ferramenta
+# (scope_digest exclui o append-only historico), entao o acrescimo desta sessao
+# nao envelhece evidencia de governanca.
+$ .venv/bin/python tools/project_status.py render --write && .venv/bin/python tools/project_status.py check
+STATUS-CHECK: OK
+# rc=0. Este e o estado da CABECA medido na arvore final, antes do commit.
+# Nota de autorreferencia, para o log nao virar mentira ao ser assinado: esta
+# pasta esta no scopePaths do SZ-UI-DESKTOP-AUDIT, entao o acrescimo desta secao
+# move o digest do item uma ultima vez. O valor gravado no cartao e o que a
+# ferramenta calcula com este arquivo ja completo, e o estado final medido e o
+# que segue abaixo.

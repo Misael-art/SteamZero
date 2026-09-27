@@ -15,7 +15,7 @@
     "docs/12-roadmap/MILESTONES.md",
     "docs/09-operations/AGENT-HANDOFF.md"
   ],
-  "scopeDigest": "7ace66b2a6198c648ffebfb79eb665c8fd46fd45f98449ea7dc0d35decec2f69",
+  "scopeDigest": "64cab367961430a1fdce66adebb0897926f66b46f78a07e051defce6387792d9",
   "dependsOn": [
     "SZ-PROJECT-DESIGN-AUDIT"
   ],

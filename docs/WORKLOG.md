@@ -13227,3 +13227,125 @@ resta: conciliar o claim de `Main.qml` (evidência: `73919843`, o único commit 
 e dois testes unitários; `cad58bb4` é só docs; o diff de `Main.qml` e `desktop_contracts.py` entre
 `origin/main` e `cad58bb4` está **vazio**, conferido com `git diff --stat`), depois os 48 px por alvo
 dentro do shell com escala de texto, depois UX-03, e UX-04 só no que não invade `emulation.py`.
+
+## 2026-09-27 — RC-01, rodada de fechamento do PR 241: estado real das PRs, 48 px medidos dentro do shell e a evidência visual não certificada no CI
+
+**O que esta rodada é, e o que não é.** Instrução do operador: concluir a rodada
+atual do #241 antes de iniciar a quarta fatia. Ela fecha a documentação das fatias
+2 e 3 e entrega o recorte 5(b) — o mínimo de 48 px por alvo medido **dentro do
+shell**, com viewport compacto e escala de texto. **A 4ª fatia não começou**: nenhum
+arquivo de `src/` foi tocado (`Main.qml` segue `b6a47495…`, `EditorialHome.qml` segue
+`ee80c0b9…`, ambos conferidos byte a byte contra `HEAD` em `01-preflight.log`). O
+registro desta frente tinha sido escrito na sessão anterior como "4ª fatia iniciada",
+editando `Main.qml` sob a autorização escrita da outra frente; com a instrução nova,
+esse texto estava **falso** e foi corrigido — inclusive porque listava em
+`exclusivePaths` um arquivo que nunca existiu,
+`tests/qml/capture_shell_touch_targets_compact.qml` (removido; `ls tests/qml/` não o
+acha). O `git worktree list` continua com uma linha só e `git stash list` vazio.
+
+**Estado real das PRs, medido e não relatado**
+(`docs/09-operations/evidence/2026-09-27-pr241-verificacao-documental/01-estado-real-das-prs.log`).
+Três fontes independentes (`gh pr view`, `git rev-parse origin/main`, `git log -1
+origin/main`) dizem a mesma coisa: **#239 (`069501ab`), #240 (`c959be13`) e #241
+(`fe5751a0`) estão todas OPEN** e `main` está parado em `3495c49d` desde
+26/09 10:55Z — nada desta frente foi integrado, e a premissa de que o #240 já estava
+fechado não se sustentou. O `merge_commit_sha` que a API devolve para PR aberta é o
+ref de *test merge* do GitHub, não evidência de integração. A ordem de integração
+sai da mesma medição: os três têm base `main` e o #241 contém o conteúdo dos
+anteriores, então aplicar o #241 arrasta #239 e #240; o #241 não reabre o #240.
+Conciliado aqui, sem edição: o claim de `exclusivePaths` de
+`WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT` sobre `Main.qml` não é sustentado por
+conteúdo pendente (`git diff --stat origin/main..cad58bb4` vazio para `Main.qml` e
+`desktop_contracts.py`), mas **não exerci essa autorização nesta rodada**.
+
+**5(b): os 48 px deixaram de ser pendência e passaram a ser medição**
+(`docs/09-operations/evidence/2026-09-27-shell-touch-targets/`). Reutilizei o
+instrumento que o projeto já tinha em vez de criar um: `tools/ui_control_probe.qml`
+percorre a árvore viva de `Main {}` e `tools/ui_control_inventory.py` já despachava os
+14 cenários. Saíram daí dois parâmetros **aditivos** (`--viewport LGxAL` e
+`--text-scale`, com o inválido morrendo em `PROBE-FAIL` e rc=3) e o eco do contexto
+medido (`PROBE-CONTEXT` devolve `viewport`, `textScale`, `handheldLayout`), porque a
+escala de texto só existe como cópia nova de `accessibility.visualScale` dentro do
+payload — mutar no lugar não re-dispara o *binding*. Medido em quatro contextos:
+
+* `1600x1000` escala 1.0 é o denominador que já existia; `949x593` (a janela do Deck)
+  com escalas 1.0, 1.5 e 2.0 é o que a auditoria pedia;
+* nos três contextos portáteis: **284 controles registrados, 263 acionáveis,
+  `abaixo_de_48=0`, `maiores_que_a_janela=0`, piso exatamente 48×48**, estável em duas
+  passadas idênticas;
+* o par de gates novo (`test_actionable_targets_keep_a_48px_hit_area_in_the_portable_window`
+  e `test_the_portable_window_holds_48px_targets_at_the_host_text_scale`) passou com o
+  módulo inteiro: `23 passed in 614,86s`.
+
+**O gate morde, e isso foi provado antes de alegado.** Duas mutações em
+`EditorialHome.qml` (reduzir `Math.max(48…)` para 40 e `minimumTarget` para 40)
+**não reprovaram nada** e ficaram registradas como no-op, não apagadas. A que mordeu
+foi `Main.qml:6298`, `Layout.minimumHeight: 48` → `24`, montada por
+`git show HEAD:caminho` + edição exata, com hash da mutação `da037b33…` conferido e o
+original `b6a47495…` restaurado e reconferido: os dois gates reprovaram nomeando
+`system → 'Exportar estado' (98x25)` (`2 failed, 21 deselected in 69,19s`). Nenhuma
+cópia alternativa do arquivo ficou no repositório.
+
+**O claim de UX-05 foi estreitado, não ampliado.** `AUDIT.md:125` probe **reduzir**
+alvos de 48 px — não afirma que havia alvo abaixo de 48 no shell. O número de 44 px
+que anda citado pela frente é **minha** nota de WORKLOG (`docs/WORKLOG.md:12995`) sobre
+os botões do rodapé num painel isolado sem tema, propriedade pré-existente dos
+controles, não violação medida dentro do shell. UX-04 pelo canonical é **unidade de
+armazenamento** (`AUDIT.md:124`: "sem unidade SI/IEC"); nenhuma norma do repositório
+define UX-04 como formatação de data, e é assim que o cartão passa a dizer.
+
+**A evidência visual continua vermelha no CI, e agora sabe-se por que ela é
+inspecionável — não.** No SHA exato `fe5751a0` o job *Gate visual QML (Linux)* devolveu
+`2 failed, 326 passed, 12 skipped, 6116 deselected in 1111,46s`: as duas cenas de
+captura do diálogo ES-DE do painel saíram com 7147 B e 8021 B contra o piso de
+20 000 B do gate. No mesmo ambiente, localmente, a **mesma** captura deu 40249 B em
+6/6 execuções, inclusive com `HOME` vazia — logo não é flake declarável nem diferença
+de conteúdo. A corrida `36327779040` **não publicou** o artefato `qml-visual-artifacts`
+porque o workflow globa `/tmp/pytest-of-*` enquanto `tools/run_tests_isolated.py`
+realoca `TMPDIR` para `/tmp/steamzero-tests-*`: quem vai investigar a falha não recebe
+nenhuma das duas imagens (log `02-gate-visual-vermelho-no-runner.log`, com os candidatos
+de mecanismo linha a linha e um "ainda não sei" explícito onde ele termina).
+Consequências registradas: **não baixei o limiar de bytes**, **não expandi o lote**, e o
+item ganhou a evidência com `result: "failed"` mais o gap
+`GAP-UI-VISUAL-CAPTURE-NOT-CERTIFIED-IN-CI`. Os dois consertos candidatos (espera
+observável pela transição de entrada no harness; caminho do artefato no workflow) vão
+para decisão do operador, não para este commit.
+
+**`status-check` medido na base e na cabeça, com a saída real.** A premissa de "16
+reprovações" **não se reproduziu** em nenhuma das três árvores que existem para medir:
+com os três arquivos de medição sujos, a ferramenta devolve **1** reprovação
+(`SZ-UI-DESKTOP-AUDIT`, esperado `02435ffe…`, atual `fae75c04…`); com eles devolvidos a
+`HEAD`, `STATUS-CHECK: OK` (e `13 passed in 4,71s` no teste de consistência do
+catálogo); e o CI já tinha devolvido `STATUS-CHECK: OK` no mesmo `fe5751a0`. Depois
+desta rodada documental, com `AGENT-HANDOFF.md` e os três cartões alterados, a lista
+cresceu para **3 digests + 3 visões** — que é exatamente a contagem que cresce quando
+se edita documento governado, e é por isso que os três digests foram renovados **pelo
+valor que a ferramenta calcula** (`digest --item … --write`), nunca à mão, e no mesmo
+commit que carrega o código medido (os três caminhos de medição pertencem ao
+`scopePaths` do item, então separar em dois commits deixaria um deles reprovando).
+
+**Governança.** `ruff check src tools tests` reprovou **esta** entrega duas vezes — dois
+en dashes em `1.0–2.0` escritos por mim em comentário e *docstring* do arquivo de gate
+(`RUF003`/`RUF002`). Corrigidos por hífen, sem tocar linha de código, o hash do gate
+mudou de `732389e0…` para `f625cbe0…` e o par portátil foi **reexecutado no conteúdo
+final** (`2 passed in 69,67s`) em vez de herdar o verde anterior; os `23 passed em
+614,86s` citados são do conteúdo pré-ajuste, e o log diz isso. Verdes: `ruff format
+--check` (672 arquivos), `mypy src` (297 arquivos), `make independence boundaries`,
+`make component-lock`, `make capability-matrix`. **A suíte integral não foi
+reexecutada**, por instrução explícita do operador: o checkpoint desta frente continua
+a corrida única (`1 failed, 6402 passed, 47 skipped`) registrada na pasta da 2ª fatia,
+que cobre a árvore pré-documental; a falha continua atribuída documentalmente e não
+escondida. Build de release não foi gerado — proibido sem solicitação —, então o que
+cobra "build" aqui é o par `component-lock`/`capability-matrix` mais a validação de
+gerados do `status-check`.
+
+**Pendências, sem promover eixo algum.** `integration` segue `feature-branch`,
+`verification` `dev`, `operation` `degraded`, `distribution` `not-packaged`. Faltam: a
+decisão de merge da pilha 239 → 240 → 241; fechar `WS-2026-09-RC01-READINESS-FOCUS` e
+`WS-2026-09-RC01-CENTRAL-LOADING` como integrados só com o SHA em `main`; os dois
+consertos do gate de capturas; a 4ª fatia (o segundo diálogo ES-DE duplicado em
+`Main.qml`, `dialog 2822-2971` aberto em `6313`, corpo sem `ScrollView` nem teto, forma
+a copiar de `credentialDialog` `Main.qml:2173-2232`); UX-03; os formatadores de UX-04
+não reivindicados; e UX-05 na primeira dobra da Home com prova física na release
+`2.0.0rc1-e2af2562ebba` instalada, que depende de autorização — captura offscreen não
+substitui. O WORKLOG é append-only.

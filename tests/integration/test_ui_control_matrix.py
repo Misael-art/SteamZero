@@ -229,6 +229,116 @@ def test_every_actionable_target_is_at_least_48px(inventory: dict) -> None:
     assert offenders == [], "alvos acionáveis abaixo de 48x48:\n" + "\n".join(offenders)
 
 
+#: A janela portátil do Deck, a mesma dos harnesses de contrato do shell, e a
+#: escala de texto do host dentro da faixa que o ThemeBridge aceita (1.0-2.0).
+PORTABLE_VIEWPORT = "949x593"
+HOST_TEXT_SCALE = 1.5
+
+
+@pytest.fixture(scope="module")
+def portable_inventory() -> dict:
+    """A MESMA sonda na janela portátil, sobre o cenário mais rico.
+
+    Reusar a sonda em vez de escrever um segundo percorredor: duas sondas
+    significa duas verdades sobre o que é um controle acionável, e a segunda
+    sempre fica atrás da primeira.
+    """
+    return matrix.build_inventory(only=["everything-ready"], viewport=PORTABLE_VIEWPORT)
+
+
+@pytest.fixture(scope="module")
+def portable_scaled_inventory() -> dict:
+    return matrix.build_inventory(
+        only=["everything-ready"],
+        viewport=PORTABLE_VIEWPORT,
+        text_scale=HOST_TEXT_SCALE,
+    )
+
+
+def _assert_measured_where_declared(inventory: dict, scale: float | None = None) -> None:
+    """Um argumento silenciosamente ignorado transformaria este gate em enfeite.
+
+    A sonda ecoa no contexto a janela que aplicou e a escala que o shell
+    realmente está usando; conferir as duas coisas antes de medir alvos é o que
+    impede o gate de continuar verde depois de alguém quebrar o argumento.
+    """
+    context = inventory["context"]
+    assert context["viewport"] == PORTABLE_VIEWPORT, (
+        f"a sonda mediu em {context['viewport']}, não na janela portátil"
+    )
+    assert context["handheldLayout"] is True, "o shell não caiu no layout portátil"
+    if scale is not None:
+        assert float(context["textScale"]) == scale, (
+            f"escala de texto efetiva {context['textScale']}, esperado {scale}"
+        )
+
+
+def _heights_by_identity(controls: list[dict]) -> dict[str, int]:
+    return {control["controlId"]: control["height"] for control in controls}
+
+
+def test_actionable_targets_keep_a_48px_hit_area_in_the_portable_window(
+    portable_inventory: dict,
+) -> None:
+    """O gate de cima media o polegar numa janela que o Deck não tem.
+
+    48 px é físico: trocar a janela não pode comprar folga, e era exatamente
+    isso que faltava certificar — o layout portátil espreme alvo ou não.
+    """
+    _assert_measured_where_declared(portable_inventory)
+    actionable = _actionable(portable_inventory)
+    assert len(actionable) >= 200, (
+        f"apenas {len(actionable)} alvos visíveis na janela portátil; "
+        "o cenário não chegou à tela e o gate estaria vazio"
+    )
+    offenders = [
+        f"{control['surface']} → {control['label'] or control['accessibleName']!r} "
+        f"({control['width']}x{control['height']})"
+        for control in actionable
+        if control["width"] < 48 or control["height"] < 48
+    ]
+    assert offenders == [], (
+        f"alvos acionáveis abaixo de 48x48 em {PORTABLE_VIEWPORT}:\n" + "\n".join(offenders)
+    )
+
+
+def test_the_portable_window_holds_48px_targets_at_the_host_text_scale(
+    portable_inventory: dict, portable_scaled_inventory: dict
+) -> None:
+    """Escala de texto grande é o pior caso do polegar: mais fonte, menos ar.
+
+    A escala do host só cresce (1.0-2.0, `ThemeBridge.hostVisualScale`); se
+    algum alvo dependesse de folga vertical, era aqui que ele furaria.
+    """
+    _assert_measured_where_declared(portable_scaled_inventory, scale=HOST_TEXT_SCALE)
+    scaled = _actionable(portable_scaled_inventory)
+    offenders = [
+        f"{control['surface']} → {control['label'] or control['accessibleName']!r} "
+        f"({control['width']}x{control['height']})"
+        for control in scaled
+        if control["width"] < 48 or control["height"] < 48
+    ]
+    assert offenders == [], (
+        f"alvos abaixo de 48x48 em {PORTABLE_VIEWPORT} com escala {HOST_TEXT_SCALE}:\n"
+        + "\n".join(offenders)
+    )
+
+    # Não-vacuidade: a escala tem de aparecer na geometria, não só no contexto.
+    # Se `applyTextScale` parasse de surtir efeito, o teste acima continuaria
+    # verde medindo duas vezes a mesma tela.
+    antes = _heights_by_identity(_actionable(portable_inventory))
+    depois = _heights_by_identity(scaled)
+    cresceram = [
+        identity
+        for identity, height in depois.items()
+        if identity in antes and height > antes[identity]
+    ]
+    assert cresceram, (
+        f"nenhum alvo mudou de altura entre escala 1 e {HOST_TEXT_SCALE}: "
+        "a escala não chegou à geometria medida"
+    )
+
+
 def test_decorative_icons_are_not_announced_as_actionable(inventory: dict) -> None:
     """O inverso do gate acima: ícone decorativo não pode virar botão anunciado.
 

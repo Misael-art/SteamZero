@@ -17,6 +17,10 @@ central.
 Uso:
   .venv/bin/python tools/ui_control_inventory.py
   .venv/bin/python tools/ui_control_inventory.py --json out.json --markdown out.md
+
+  # mesma sonda na janela do Deck, com a escala de texto do host:
+  .venv/bin/python tools/ui_control_inventory.py --only everything-ready \
+      --viewport 949x593 --text-scale 1.5 --json /tmp/compacto.json
 """
 
 from __future__ import annotations
@@ -77,8 +81,19 @@ def scenario_paths() -> list[Path]:
     return ui_scenario_fixtures.write_all(SCENARIO_DIR)
 
 
-def run_probe(timeout: int = 400, scenario: Path | None = None) -> dict[str, Any]:
-    """Executa a sonda offscreen e devolve contexto + registros por controle."""
+def run_probe(
+    timeout: int = 400,
+    scenario: Path | None = None,
+    viewport: str | None = None,
+    text_scale: float | None = None,
+) -> dict[str, Any]:
+    """Executa a sonda offscreen e devolve contexto + registros por controle.
+
+    ``viewport`` (``"949x593"``) e ``text_scale`` (``1.5``) são aditivos: sem
+    eles a sonda roda na janela larga de sempre, que é o que a matriz mede desde
+    que existe. Um alvo de 48 px medido só ali não diz nada sobre o layout
+    portátil, e é isso que os gates compactos vieram medir.
+    """
     if not QML:
         raise SystemExit("qml6 ausente; a matriz de controles exige o runtime QML")
 
@@ -92,10 +107,19 @@ def run_probe(timeout: int = 400, scenario: Path | None = None) -> dict[str, Any
         }
     )
     argv = [QML, str(ROOT / "tools" / "ui_control_probe.qml")]
+    extras: list[str] = []
+    if viewport is not None:
+        extras += ["--steamzero-viewport", str(viewport)]
+    if text_scale is not None:
+        extras += ["--steamzero-text-scale", str(text_scale)]
     if scenario is not None:
         # A sonda le a fixture do proprio repo por file://.
         env["QML_XHR_ALLOW_FILE_READ"] = "1"
         argv += ["--", "--steamzero-scenario", str(scenario)]
+    if extras:
+        if scenario is None:
+            argv.append("--")
+        argv += extras
     completed = subprocess.run(
         argv,
         cwd=ROOT,
@@ -167,22 +191,34 @@ def merge_scenarios(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return list(merged.values())
 
 
-def build_inventory(scenarios: bool = True, only: list[str] | None = None) -> dict[str, Any]:
+def build_inventory(
+    scenarios: bool = True,
+    only: list[str] | None = None,
+    viewport: str | None = None,
+    text_scale: float | None = None,
+) -> dict[str, Any]:
     """``only`` escolhe e ORDENA os cenarios; repetir um nome roda-o duas vezes.
 
     Os testes de estabilidade dependem disso: reordenar ou duplicar um cenario
     nao pode mudar identidade nem contagem.
+
+    ``viewport`` e ``text_scale`` valem para TODAS as corridas deste convite. É
+    assim que se mede o mesmo controle em duas janelas sem inventar um segundo
+    caminho de sondagem — e por isso ficam no mesmo lugar onde o contexto já é
+    registrado, não em uma sonda paralela.
     """
     paths = scenario_paths() if scenarios else []
     if only is not None:
         by_name = {path.stem: path for path in paths}
         paths = [by_name[name] for name in only]
     if paths:
-        runs = [run_probe(scenario=path) for path in paths]
+        runs = [
+            run_probe(scenario=path, viewport=viewport, text_scale=text_scale) for path in paths
+        ]
         controls = merge_scenarios(runs)
         probe = {"context": {**runs[0]["context"], "scenarioCount": len(runs)}}
     else:
-        probe = run_probe()
+        probe = run_probe(viewport=viewport, text_scale=text_scale)
         controls = probe["controls"]
 
     by_verdict: dict[str, int] = {}
@@ -264,9 +300,32 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", type=Path, default=None)
     parser.add_argument("--markdown", type=Path, default=None)
+    parser.add_argument(
+        "--viewport",
+        default=None,
+        metavar="LGxAL",
+        help="tamanho da janela da sonda, ex.: 949x593 (a janela do Deck)",
+    )
+    parser.add_argument(
+        "--text-scale",
+        type=float,
+        default=None,
+        metavar="FATOR",
+        help="accessibility.visualScale injetado no status, de 1.0 a 2.0",
+    )
+    parser.add_argument(
+        "--only",
+        default=None,
+        metavar="CENARIO[,CENARIO...]",
+        help="restringe a matriz a estes cenarios, na ordem dada",
+    )
     args = parser.parse_args(argv)
 
-    inventory = build_inventory()
+    inventory = build_inventory(
+        only=None if args.only is None else args.only.split(","),
+        viewport=args.viewport,
+        text_scale=args.text_scale,
+    )
     if args.json:
         args.json.write_text(
             json.dumps(inventory, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
@@ -275,6 +334,15 @@ def main(argv: list[str] | None = None) -> int:
         args.markdown.write_text(render_markdown(inventory), encoding="utf-8")
 
     print(json.dumps(inventory["verdictCounts"], indent=2, ensure_ascii=False))
+    context = inventory["context"]
+    print(
+        "medido em: "
+        f"viewport={context.get('viewport')} "
+        f"(pedido {context.get('requestedViewport')}), "
+        f"escala de texto={context.get('textScale')} "
+        f"(pedida {context.get('requestedTextScale')}), "
+        f"handheldLayout={context.get('handheldLayout')}"
+    )
     print(f"controles: {inventory['controlCount']} em {inventory['surfaceCount']} superfícies")
     print(
         "identidade: "

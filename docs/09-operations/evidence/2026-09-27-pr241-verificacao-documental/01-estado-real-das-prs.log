@@ -1,0 +1,152 @@
+# sessao documental de verificacao do PR #241 — estado real das PRs e da grade — 2026-09-27
+# checkout unico: /home/misael/Projects/Steam Zero/Canonical/2026-09-21
+# branch codex/rc01-readiness-focus-2026-09-27, HEAD/ponta remota fe5751a0
+# janela das leituras: 12:44 -> 12:52-03:00, uma passada por comando, sem polling.
+
+# ---------------------------------------------------------------------------
+# PERGUNTA QUE MOTIVOU ESTA LEITURA
+# ---------------------------------------------------------------------------
+# O operador afirmou que "#240 ja foi fechado e integrado" e pediu que os textos parassem de
+# dizer que o #240 aguarda merge. Antes de escrever qualquer texto nesse sentido, conferi o
+# estado por tres vias independentes. As tres dizem o contrario da premissa. Registro isto
+# ANTES de corrigir qualquer documento, porque escrever "integrado" sem que esteja seria
+# exatamente o tipo de afirmação que este lote vem corrigindo nos textos alheios.
+
+# ---------------------------------------------------------------------------
+# 1) ESTADO DAS TRES PRs, UMA CONSULTA CADA
+# ---------------------------------------------------------------------------
+$ gh pr view 239 --repo Misael-art/SteamZero --json state,mergedAt,mergeCommit,mergedBy
+{"mergeCommit":null,"mergedAt":null,"mergedBy":null,"state":"OPEN"}
+
+$ gh pr view 240 --repo Misael-art/SteamZero --json state,mergedAt,mergeCommit,mergedBy,baseRefName,headRefName,title
+{"baseRefName":"main","headRefName":"codex/rc01-central-loading-2026-09-26","mergeCommit":null,"mergedAt":null,"mergedBy":null,"state":"OPEN","title":"RC-01: Central declara o que ainda não mediu (UX-01/UX-02)"}
+
+$ gh pr view 241 --repo Misael-art/SteamZero --json state,mergedAt,mergeCommit,mergeable,headRefOid
+{"headRefOid":"fe5751a0dc4271a83466b909336b9d10015f0cef","mergeCommit":null,"mergedAt":null,"state":"OPEN","mergeable":"MERGEABLE"}
+
+$ gh api repos/Misael-art/SteamZero/pulls/240 --jq '{state,merged,merged_at,merge_commit_sha,updated_at,closed_at}'
+{"closed_at":null,"merge_commit_sha":"d8877bea54c7660e6af1cc40268bb69ea6361e99","merged":false,"merged_at":null,"state":"open","updated_at":"2026-09-27T04:40:03Z"}
+# merge_commit_sha em PR ABERTO e o ref de test-merge do GitHub, NAO uma integracao. As duas
+# fontes que importam dizem o contrario dela: merged=false, merged_at=null, closed_at=null.
+
+# ---------------------------------------------------------------------------
+# 2) O QUE EXISTE DEPOIS DE origin/main — nada das tres pontas
+# ---------------------------------------------------------------------------
+$ git fetch origin && git log --oneline -1 origin/main
+3495c49d Merge pull request #238 from Misael-art/codex/main-worktree-reconciliation-closeout-2026-09-26
+$ gh api repos/Misael-art/SteamZero/commits/main --jq '{sha:.sha[0:8],date:.commit.committer.date}'
+{"date":"2026-09-26T10:55:38Z","sha":"3495c49d"}
+
+$ for c in 069501ab c959be13 fe5751a0; do git merge-base --is-ancestor $c origin/main && echo "$c em main" || echo "$c NAO esta em main"; done
+069501ab NAO esta em origin/main
+c959be13 NAO esta em origin/main
+fe5751a0 NAO esta em origin/main
+
+$ gh pr list --repo Misael-art/SteamZero --state merged --limit 6 --json number,mergedAt,mergeCommit
+[{"number":238,"mergedAt":"2026-09-26T10:55:38Z","mergeCommit":{"oid":"3495c49d..."}},
+ {"number":237,"mergedAt":"2026-09-26T10:29:23Z","mergeCommit":{"oid":"1ffafa64..."}},
+ {"number":236,"mergedAt":"2026-09-26T01:49:44Z","mergeCommit":{"oid":"ed097a13..."}},
+ {"number":235,"mergedAt":"2026-09-25T18:31:58Z","mergeCommit":{"oid":"1873fc99..."}},
+ {"number":234,"mergedAt":"2026-09-26T00:44:56Z","mergeCommit":{"oid":"9176c1ae..."}},
+ {"number":232,"mergedAt":"2026-09-22T23:27:04Z","mergeCommit":{"oid":"5e2e8194..."}}]
+# Última PR integrada: #238, 2026-09-26T10:55:38Z. Nenhuma PR 239/240/241 aparece em merged.
+
+# Resposta a "registre o SHA exato, a hora e o estado da task correspondente":
+#   SHA exato de integracao do #240: NAO EXISTE. mergeCommit=null, mergedAt=null, state=OPEN,
+#   updated_at=2026-09-27T04:40:03Z (ultimo empurramento de conteudo, nao de merge).
+#   A "task correspondente" (frente WS-2026-09-RC01-CENTRAL-LOADING sobre UX-01/UX-02) continua
+#   com integration=feature-branch no proprio cartao SZ-UI-DESKTOP-AUDIT, e e isso que esta certo.
+# Consequencia documental: os textos que dizem "aguarda merge do operador" estao CORRETOS e nao
+# devem ser alterados para "integrado". O que estava desatualizado neles e outra coisa: a grade
+# de checks, descrita como "ainda nao terminal" — ver 02-gate-visual-vermelho-no-runner.log.
+
+# ---------------------------------------------------------------------------
+# 3) GRADE TERMINAL NO SHA fe5751a0 (leitura unica, 12:47-03:00)
+# ---------------------------------------------------------------------------
+$ gh api repos/Misael-art/SteamZero/commits/fe5751a0/check-runs --jq '.check_runs[] | [.name,.status,.conclusion] | @tsv'
+Sourcery review	completed	skipped
+Python 3.14	completed	success
+Smoke Arch Linux	completed	success
+Python 3.12	completed	success
+Python 3.11	completed	success
+Wheel limpo, smoke e supply chain	completed	success
+Smoke Ubuntu 24.04	completed	success
+Smoke Manjaro	completed	success
+Gate visual QML (Linux)	completed	failure     <-- VERMELHO
+
+$ gh run list --repo Misael-art/SteamZero --branch codex/rc01-readiness-focus-2026-09-27 --limit 12
+completed failure  ... run 36327779040  19m37s  2026-09-27T14:57:23Z   (a leitura anterior, ~12:02-03:00, pegou a grade em andamento)
+completed failure  ... run 36321499833  20m22s  2026-09-27T13:10:48Z
+completed cancelled ... 36321321766 / 36320705451 / 36319183612 / 36319256458 (involucros cancelados pelos empurramentos)
+# Nota honesta: a corrida anterior a esta (36321499833, 13:10Z) tambem terminou em falha. As
+# duas tentativas que chegaram ao fim reprovaram no MESMO gate; as outras quatro foram
+# canceladas antes de concluir, o que nao e evidencia nem de um lado nem de outro.
+
+$ gh run view 36327779040 --json jobs --jq '.jobs[] | [.name,.conclusion] | @tsv'
+Gate visual QML (Linux)	failure
+Smoke Manjaro	success
+Smoke Ubuntu 24.04	success
+Wheel limpo, smoke e supply chain	success
+Python 3.11	success
+Python 3.12	success
+Smoke Arch Linux	success
+Python 3.14	success
+
+# No job Python 3.14, o passo "Estado do projeto" (python tools/project_status.py check)
+# imprimiu em fe5751a0:
+Python 3.14	Estado do projeto	STATUS-CHECK: OK
+# Ou seja: a governanca do catalogo estava verde no SHA; o vermelho e do gate visual.
+
+# ---------------------------------------------------------------------------
+# 4) UX-04 E UX-05: QUAL E A DEFINICAO CANONICA, PARA O TEXTO DO PR E DO ITEM nao ERRAREM
+# ---------------------------------------------------------------------------
+$ grep -rn "UX-04" docs/09-operations/evidence/2026-09-26-project-design-audit/AUDIT.md
+124:| UX-04 / P2 | Leitura de armazenamento | Os cards exibem volumes em inteiros de bytes muito
+       longos, sem unidade SI/IEC nem arredondamento para decisão rápida. | ... | Usar unidades
+       localizadas e consistentes; exibir disponível/total e impacto projetado ... |
+# Conferido em todos os registros de RC-01 desta frente: UX-04 e UNIDADES DE ARMAZENAMENTO
+# (bytes legiveis), nao "formatacao de datas". Nenhum documento do checkout define UX-04 como
+# datas; a unica mencao a datas em codigo de auditoria vem de outro roteiro (08-deep-functional-ux-
+# audit.md), com outra numeracao. O corpo do PR #241 ja diz "unidades de armazenamento legiveis"
+# — esta correto, e a correcao aqui e impedir que a proxima pessoa o renomeie para datas.
+
+$ sed -n '125p' docs/09-operations/evidence/2026-09-26-project-design-audit/AUDIT.md
+| UX-05 / P2 | Janela compacta, foco e rolagem | Em 949×593, conteúdo da Home fica abaixo do corte
+  de viewport e a primeira ação pode aparecer parcialmente; o screenshot não mostra uma indicação
+  forte de continuação. | Foco nunca pousa em controle encoberto; entrada por gamepad rola a ação
+  para dentro da área visível; **revisar a primeira dobra sem diminuir alvos mínimos de 48 px**. |
+# Leitura correta do criterio: a auditoria NAO afirma que os alvos de 48 px estao violados. Ela
+# impunha uma RESTRICAO sobre a revisao da primeira dobra ("nao diminuir os alvos minimos"). O
+# numero 44 px que anda circulado neste lote e meu, e foi medido no PAINEL ISOLADO sem tema
+# (docs/WORKLOG.md:12994-12996, "no painel isolado sem tema os botões do rodapé medem 44 px"),
+# nao no shell. Onde este lote, ou qualquer registro futuro, disser "a auditoria reprova os 48 px",
+# isso e over-claim: a origem da frase e a nota de rodape da 2a fatia sobre um painel fora do shell.
+
+
+# ---------------------------------------------------------------------------
+# 5) AS "16 REPROVACOES DO STATUS-CHECK" — o que medi, e o que nao consegui reproduzir
+# ---------------------------------------------------------------------------
+$ make status-check            (arvore de trabalho desta secao: 3 arquivos de tools/tests sujos
+                                pela medicao da 4a fatia, ainda NAO commitados)
+STATUS-CHECK: FALHOU
+- SZ-UI-DESKTOP-AUDIT: evidencia obsoleta; scopeDigest esperado 02435ffe..., atual fae75c04...
+make: *** [Makefile:55: status-check] Error 1
+1 falha, 16 nao.
+
+$ git stash list (nada; nao uso stash)
+$ gh run view --job 108643755429 --log | grep "Estado do projeto"  -> STATUS-CHECK: OK em fe5751a0
+
+# Causa da unica falha local, identificada: scopePaths de SZ-UI-DESKTOP-AUDIT inclui
+# tools/ui_control_probe.qml, tools/ui_control_inventory.py e
+# tests/integration/test_ui_control_matrix.py — os tres arquivos que a medicao da 4a fatia
+# editou e que ainda estao sujos na arvore. O scopeDigest e calculado do disco
+# (tools/project_status.py:261-274), entao a edicao nao commitada ja "quebra" o check local.
+# NAO renuei o digest: renovalo agora registraria conteudo que nao existe em nenhum SHA, e o
+# check do commit documental passaria a mentir na ponta da branch. A renovacao vai junto com o
+# commit dessa medicao. A comprobacao na base e na cabeca, com os tres arquivos voltados ao
+# estado de HEAD e depois restituidos por hash, esta em 03-status-check-e-digestos.log.
+# Sobre o numero "16": nao reproduzi 16 reprovacoes em nenhum dos tres estados que pude medir
+# (HEAD limpo via CI, esta arvore suja: 1; e `tests/unit/test_project_status.py`: 1 falha de
+# consistencia de catalogo pelo mesmo motivo). Se as 16 vierem de outra copia do repositorio
+# ou de outro comando, o comando exato e o SHA de leitura precisam ir no log antes de qualquer
+# digest ser renovado — renovacao por intuicao e o que produz catalogo verde sobre arvore errada.

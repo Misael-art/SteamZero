@@ -1,14 +1,17 @@
-# Handoff do agente — 26/09/2026
+# Handoff do agente — atualizado em 27/09/2026 (registrado em 26/09/2026)
 
 ## Onde continuar
 
 Checkout único: `/home/misael/Projects/Steam Zero/Canonical/2026-09-21`.
-A conferência desta revisão encontrou somente esse worktree, na branch
-`codex/project-design-audit-2026-09-26`, HEAD
-`3495c49d5d7c3244267e8292beee34475f70236b`.
-A auditoria e a revisão do roadmap são alterações locais; confira `git status`
-antes de agir e preserve todo conteúdo pendente. Não criar outro diretório de
-trabalho para contornar uma árvore suja.
+Na retomada de 27/09 a conferência mediu um só worktree (listado por
+`git worktree list`), na branch `codex/rc01-readiness-focus-2026-09-27`, HEAD
+`fe5751a0dc4271a83466b909336b9d10015f0cef`, com `origin/main` parado em
+`3495c49d5d7c3244267e8292beee34475f70236b` desde 26/09 10:55Z — nada das três
+PRs abertas (239 `069501ab`, 240 `c959be13`, 241 `fe5751a0`) foi integrado.
+Quando esta revisão foi registrada, em 26/09, o mesmo checkout estava na branch
+`codex/project-design-audit-2026-09-26` no HEAD `3495c49d`.
+Confira `git status` antes de agir e preserve todo conteúdo pendente. Não criar
+outro diretório de trabalho para contornar uma árvore suja.
 
 A ordem executiva está exclusivamente em
 [IMPLEMENTATION-ROADMAP](../12-roadmap/IMPLEMENTATION-ROADMAP.md).
@@ -36,7 +39,9 @@ Este handoff não mantém uma segunda fila de tarefas.
 
 ## Primeira ação e limites
 
-Preservar/conferir a entrega documental pendente, RC-00 curto, depois RC-01.
+RC-00 foi concluído e a frente em curso é RC-01: as fatias 2 e 3 estão abertas no
+PR #241 aguardando decisão de merge, e a próxima ação concreta de cada item está
+somente no campo `nextAction` de `docs/status/items/*.json`, que é a fonte.
 Claims ativos antigos devem ser reconciliados com Git, catálogo e dono; não
 assumir que branch antiga significa código ausente ou trabalho abandonado.
 A tabela de rastreabilidade do roadmap cobre todos os achados e define aceite

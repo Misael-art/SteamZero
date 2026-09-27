@@ -1,0 +1,115 @@
+# gate visual VERMELHO no runner em fe5751a0 — o que falhou, o que medi local, o que ainda nao sei
+# sessao documental do PR #241 — 2026-09-27, janela 12:44 -> 12:56-03:00
+# checkout unico: /home/misael/Projects/Steam Zero/Canonical/2026-09-21
+
+# ---------------------------------------------------------------------------
+# 1) A FALHA, VERBATIM DO LOG DO CI (run 36327779040, job 108643755237, passo "Gate visual")
+# ---------------------------------------------------------------------------
+##[group]Run python tools/run_tests_isolated.py -m visual --tb=short -q
+real-state before: exists=False files=0 directories=0 bytes=0 max_mtime_ns=0 source=HOME-default
+.F....ssssssssssss...................................................... [ 21%]
+........................................................................ [ 42%]
+.......................................F................................ [ 63%]
+........................................................................ [ 84%]
+....................................................                     [100%]
+=================================== FAILURES ===================================
+________________ test_capturas_de_evidencia_dos_dois_viewports _________________
+tests/integration/test_esde_import_dialog_compact.py:213: in test_capturas_de_evidencia_dos_dois_viewports
+    assert arquivo.stat().st_size > 20_000, f"{nome} é uma tela quase vazia"
+E   AssertionError: 1-compacto-acoes-e-corpo é uma tela quase vazia
+E   assert 7147 > 20000
+E    +      where stat = PosixPath('/tmp/steamzero-tests-a2icffzp/tmp/pytest-of-root/pytest-0/test_capturas_de_evidencia_dos0/esde-import-viewport/1-compacto-acoes-e-corpo-gate.png').stat
+________________ test_capturas_de_evidencia_dos_dois_viewports _________________
+tests/integration/test_retrofe_import_dialog_compact.py:196: in test_capturas_de_evidencia_dos_dois_viewports
+    assert arquivo.stat().st_size > 20_000, f"{nome} é uma tela quase vazia"
+E   AssertionError: 1-compacto-acoes-e-corpo é uma tela quase vazia
+E   assert 8021 > 20000
+E    +      where stat = PosixPath('/tmp/steamzero-tests-a2icffzp/tmp/pytest-of-root/pytest-0/test_capturas_de_evidencia_dos1/retrofe-import-viewport/1-compacto-acoes-e-corpo-gate.png').stat
+...
+2 failed, 326 passed, 12 skipped, 6116 deselected in 1111.46s (0:18:31)
+##[error]Process completed with exit code 1.
+
+# O que isso significa para a fatia 2 e a fatia 3: os 13 cenarios de CONTRATO de cada dialogos
+# passaram no runner (o teste do harness nao esta na lista de falhas). O que reprovou e o gate de
+# CAPTURAS de evidencia, na primeira das cinco cenas, nas duas frentes ao mesmo tempo. Nenhuma
+# capturas das cenas 2..5 chegou a ser conferida, porque a asseritiva reprova na primeira.
+# A tentativa anterior da mesma branch (run 36321499833, 13:10Z) tambem terminou em falha; as
+# outras quatro corridas da branch foram canceladas por empurramento, o que nao prova nada.
+
+# ---------------------------------------------------------------------------
+# 2) MEDICAO NO HOST, NAS MESMAS CONDICOES DE RENDERIZACAO QUE O CI USA
+# ---------------------------------------------------------------------------
+# (a) pelo proprio gate, com o involucro isolado do projeto (HOME padrao do operador):
+$ .venv/bin/python tools/run_tests_isolated.py -m visual -k "capturas_de_evidencia" \
+    tests/integration/test_esde_import_dialog_compact.py tests/integration/test_retrofe_import_dialog_compact.py
+2 passed, 9 deselected in 1.47s
+# (b) direto na cena de captura, com HOME/XDG em diretorio vazio (a condicao do runner, que
+#     imprimiu 'real-state before: exists=False files=0'):
+$ rm -rf /tmp/ci-home /tmp/ci-captures && mkdir -p /tmp/ci-home /tmp/ci-captures
+$ env -u DBUS_SESSION_BUS_ADDRESS -u KDE_FULL_SESSION -u XDG_CURRENT_DESKTOP \
+      HOME=/tmp/ci-home XDG_CONFIG_HOME=/tmp/ci-home/.config XDG_CACHE_HOME=/tmp/ci-home/.cache \
+      XDG_DATA_HOME=/tmp/ci-home/.local/share \
+      QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QT_FORCE_STDERR_LOGGING=1 QT_LOGGING_RULES="" \
+      /usr/lib/qt6/bin/qml tests/qml/capture_esde_import_viewport.qml -- \
+      --output-dir=/tmp/ci-captures --label=cihome
+qml: capturas=5 de 5
+$ ls -l /tmp/ci-captures
+40249  1-compacto-acoes-e-corpo-cihome.png
+53760  2-compacto-listagem-24-esquemas-cihome.png
+53681  3-compacto-rodape-fixo-com-campo-de-nome-focado-cihome.png
+149898 4-compacto-relatorio-extenso-cihome.png
+162596 5-largo-relatorio-extenso-cihome.png
+# (c) seis corridas seguidas da mesma cena, para separar "variancia" de "diferenca de ambiente":
+run 1..6: 1-compacto-acoes-e-corpo = 40249 bytes em todas as seis.
+# Deterministico no host: 40249 B, seis de seis, inclusive com HOME esvaziado. O numero do CI
+# (7147 B) e 5,6x menor e NAO e variancia local — e diferenca de ambiente ou de temporalidade.
+
+# Ambiente do job (do mesmo log): ubuntu-24.04, qt6-declarative 6.11.2-1, qt6-base 6.11.2-3,
+# pillow 12.3.0 rodando como root. No host: Manjaro, qt6-base 6.11.2-3 (mesma versao de base),
+# Qt 6.11.2 pelos dois canais. Diferenca residual conhecida: families de fonte do sistema
+# (o repositorio NAO embute fontes; grep de font.family em src/steamzero/ui/qml/*.qml devolve so
+# "monospace" e model.fontFamily), e carga/timing do runner.
+
+# ---------------------------------------------------------------------------
+# 3) O QUE A ASSETIVA FAZ, E POR QUE ELA NAO E SO "UM LIMITE ARBITRARIO"
+# ---------------------------------------------------------------------------
+# tests/integration/test_esde_import_dialog_compact.py:208-213 confere, para cada um dos cinco
+# nomes: existe, e imagem.size == viewport pedido. O st_size > 20_000 e o UNICO proxy de
+# "tem conteudo". Uma cena 949x593 de retangulos chatos com texto comprimiu para 7 KB no runner
+# e para 40 KB aqui. Reduzir o limiar para 5_000 deixaria o gate verde sem certificar nada:
+# e exatamente o tipo de "consertar a reprovação trocando a asseritiva" que as guardas deste
+# proprio lote existem para impedir. NAO fiz isso e nao recomendo.
+#
+# Mecanismo candidato, com linha de arquivo — a cena nao espera o fim da transicao de entrada:
+#   tests/qml/capture_esde_import_viewport.qml:175-183  fase 30 espera
+#       panel.esdeImportDialogControl.visible === true   (:177)
+#   Em Popup/Dialog, `visible` vira true no COMECO do enter transition; o fade de opacidade ainda
+#   esta correndo. A fase 40 (:184-188) espera so `applyControl.enabled === true` — que vale no
+#   mesmo instante em que o dialog abre — e chama harness.capture(50) em :188.
+#   tests/qml/capture_esde_import_viewport.qml:129-140  capture() faz grabToImage no contentItem.
+#   O helper observavel existe e esta ali ao lado (:142-157, `until(condition)` com 250 ticks de
+#   20 ms e TIMEOUT explicito), mas nenhuma fase o usa para a opacidade do modal.
+# Numeros que sustentam a hipotese: so a CENA 1 reprova nas duas frentes (e a primeira apos
+# abrir o dialog; as cenas 2..5, ja com o modal estável, nao chegaram a ser lidas porque a
+# asseritiva para na primeira); o geometrico passou (949x593 exatos); e o valor e sempre menor
+# que o de uma cena pintada. Se a causa fosse fonte ausente, o texto sumiria em todas as cenas.
+#
+# O que ainda NAO sei, e digo antes de qualquer correcao: nao reproduzi no host, entao nao
+# certify o mechanimo — e hipotese com linha e com numeros, nao conclusao. A prova sai de um
+# gate que espere a transicao terminar (p.ex. `until(() => control.opacity === 1.0)` antes do
+# capture, ou aguardar o sinal `entered` do Popup) e, para fechar a duvida do ambiente, de uma
+# corrida no proprio runner com a imagem preservada como artefato. Ambos sao mudanca em codigo
+# de teste das fatias 2/3, e vao por decisao do operador: a instrucao vigente e nao abrir
+# recorte novo antes de o #241 estar integrado.
+
+# ---------------------------------------------------------------------------
+# 4) CONSEQUENCIA IMEDIATA PARA OS TEXTOS DO LOTE (o que foi corrigido nesta sessao)
+# ---------------------------------------------------------------------------
+# - "fatia 3 enviada e verificada" passa a dizer: verificada no host (13 passed x5, gates rapidos
+#   rc=0, 96 testes em 1158,03 s), e VERMELHA no gate visual do runner em fe5751a0. O eixo
+#   verification do item continua `dev` (medido em ambiente de desenvolvimento), porque no CI o
+#   lote ainda nao passou.
+# - O corpo do PR #241 deixa de descrever a grade como "ainda nao terminal, nada em falha":
+#   a grade e terminal e ha uma falha obrigatoria nomeada.
+# - O proximo checkpoint integral nao deve ser corrido antes de decidir esta captura: se ela for
+#   reescrita, a integral muda de denomidador, e o oposto tambem e verdade.
