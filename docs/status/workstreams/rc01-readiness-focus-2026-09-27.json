@@ -25,6 +25,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Fatia UX-05/UX-07 funcionalmente pronta e verde (harness de eventos reais: 13 passed, exit 0, estavel em tres execucoes; vermelho medido antes com exit 6 e seis falhas nominais). Falta fechar o lote: checkpoint integral unico de AGENTS.md se6, commits funcional e documental, push desta branch e PR. RC-01 nao encerra aqui: UX-03 e UX-04 seguem abertas (UX-04 adiada pelo claim de adapters/emulation.py em WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT), a primeira dobra da Home e o minimo de 48 px por alvo de UX-05 nao foram medidos neste lote, o dialogo ES-DE conserva a mesma classe de defeito, e a prova fisica na release instalada depende de autorizacao.",
+  "nextAction": "Lote enviado: checkpoint integral unico feito (1 failed, 6402 passed, 47 skipped; ordem de catalogo, nao comportamento), gates rapidos verdes, commit funcional 7fe9e8b2, commit documental 3fd059da, push e PR 241 contra main (empilhado sobre o PR 240). Falta: CI terminal no SHA final e merge, que e do operador; fechar esta frente como integrated so com o SHA realmente integrado em main. RC-01 nao encerra: UX-03 e UX-04 seguem abertas (UX-04 adiada pelo claim de adapters/emulation.py em WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT), a primeira dobra da Home e o minimo de 48 px por alvo de UX-05 nao foram medidos neste lote, o dialogo ES-DE conserva a mesma classe de defeito e a prova fisica na release instalada depende de autorizacao.",
   "updatedAt": "2026-09-27"
 }
