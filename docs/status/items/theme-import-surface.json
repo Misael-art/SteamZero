@@ -15,7 +15,7 @@
     "tests/unit/test_theme_import_esde.py",
     "tests/qml/check_theme_editor_import.qml"
   ],
-  "scopeDigest": "2f8486455e56844ac128e1da718250965e3a8c692b1a32ad67a42923b792b5ca",
+  "scopeDigest": "d636598b132f78d2de2b6a86958f5dc69ab0142f119e1514aef579a2a16d2028",
   "dependsOn": [
     "SZ-THEME-STUDIO"
   ],
@@ -77,6 +77,12 @@
       "reference": "tests/qml/check_theme_editor_import.qml",
       "command": "QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qml tests/qml/check_theme_editor_import.qml",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/03-ux05-ux07-verde-medido.log",
+      "command": "2026-09-27 renovação de escopo pela frente WS-2026-09-RC01-READINESS-FOCUS (fatia UX-05/UX-07 de RC-01, item SZ-UI-DESKTOP-AUDIT). Mudança visível na superfície de importação: corpo do diálogo RetroFE passou a rolar e as ações foram para o rodapé. Nenhum contrato deste item foi reexecutado; a prova própria anterior continua a do lote de 2026-09-03. O digest foi regenerado pela ferramenta porque o escopo mudou; as capacidades deste item NÃO foram reatestadas, nenhuma evidência foi carimbada e nenhum eixo dele mudou de estado neste lote.",
+      "result": "recorded"
     }
   ],
   "nextAction": "Validar na release 2.0.0rc1-504d10b14485 com fontes ES-DE e pacote SteamZero reais; manter ausência explícita enquanto ES-DE/SRM não estiverem instalados e RetroFE não tiver pacote lançável.",

@@ -1,0 +1,37 @@
+# Capturas UX-05/UX-07 — mesmo cenário, painel sem e com a correção
+# data: 2026-09-27T08:42:14-03:00  branch: codex/rc01-readiness-focus-2026-09-27  HEAD: 449b68c3c2e9dd9a0544fcdd8370ac6277683c98
+# cena: /home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/capture_retrofe_import_viewport.qml
+# painel sem correção: sha256 13d5c644ce82d36c357b0d9d957078ca6c22b849ffb0826c412292e808c36140
+# painel com correção:  sha256 79dc0e5f68ff4008ddd0ebcd07985544b48c9974cc4fe4a11878ae5b49c790ed
+# comando (antes e depois, variando --label):
+#   QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QT_FORCE_STDERR_LOGGING=1 QT_LOGGING_RULES="" \
+#     /usr/lib/qt6/bin/qml tests/qml/capture_retrofe_import_viewport.qml -- --output-dir=<pasta> --label=antes|depois
+# saída (antes):
+#   qml: CAPTURADO /tmp/cap-rc01/1-compacto-acoes-e-corpo-antes.png
+#   qml: CAPTURADO /tmp/cap-rc01/2-compacto-foco-rola-destino-antes.png
+#   qml: CAPTURADO /tmp/cap-rc01/3-compacto-relatorio-extenso-antes.png
+#   qml: CAPTURADO /tmp/cap-rc01/4-largo-relatorio-extenso-antes.png
+#   qml: capturas=4 de 4
+#   exit_code=0
+# saída (depois):
+#   qml: CAPTURADO /tmp/cap-rc01/1-compacto-acoes-e-corpo-depois.png
+#   qml: CAPTURADO /tmp/cap-rc01/2-compacto-foco-rola-destino-depois.png
+#   qml: CAPTURADO /tmp/cap-rc01/3-compacto-relatorio-extenso-depois.png
+#   qml: CAPTURADO /tmp/cap-rc01/4-largo-relatorio-extenso-depois.png
+#   qml: capturas=4 de 4
+#   exit_code=0
+-------------------------------------------------------------------------------
+# Plataforma offscreen: as imagens provam GEOMETRIA no runtime Qt 6 do projeto, com
+# dados locais sintéticos. Nada foi publicado no host e nada aqui é prova da release
+# 2.0.0rc1-e2af2562ebba instalada. Os controles aparecem com o estilo claro padrão
+# porque a captura carrega o painel isolado, sem o tema do shell — o que se mede é
+# retângulo, alcance e rolagem, não cor.
+-------------------------------------------------------------------------------
+52321e0e0058ccf93aee51c4828190f3ec71db6a79659c06b9130ba805427861  1-compacto-acoes-e-corpo-antes.png
+9247435a183ffdc6d6b734aa2abb6da41ae03c47d0fb304b3ce10bbf64a6a74a  1-compacto-acoes-e-corpo-depois.png
+65aa8d482cd0c60a563d5c0559e18d7741bf7cdd0f146d1b00b02062742d42b4  2-compacto-foco-rola-destino-antes.png
+b7268a78ccd557f61d22d0280e838ada98b4155f0160d7d743ac508a9f11079d  2-compacto-foco-rola-destino-depois.png
+04f4fb81eb5c2dccbe12c35767493665f0477d7f193eadacf9d231dee3c04fac  3-compacto-relatorio-extenso-antes.png
+b13e3c2d35c0e163ffecf27be8713fef88c87d3d312418c1af5bcb5179cdc4ed  3-compacto-relatorio-extenso-depois.png
+4514dbc5d2b7a225dcf3783668652132410895bdc6f87ae39f72734e9b661cb4  4-largo-relatorio-extenso-antes.png
+a7ebae2a21fe6bb97316e40cd2a8fdf143f26805aee1e643a4255a94ae7fbbb8  4-largo-relatorio-extenso-depois.png

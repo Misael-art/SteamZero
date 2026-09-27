@@ -12913,3 +12913,94 @@ formatadores humanos divergentes (`Main.qml:1298`, `SteamGameplay.qml:290`, `Emu
 `ThemeEditorPanel.qml:1048-1266` para o diálogo RetroFE, cujo `contentItem: ColumnLayout` não é
 rolável. RC-02 (DATA-01) vem depois, com os 18 arquivos / 15 candidatos reclassificados sem somar
 conjuntos sobrepostos.
+
+## 2026-09-27 — RC-01, 2ª fatia: o diálogo RetroFE cabe no viewport e o D-pad percorre o modal (UX-05/UX-07)
+
+**Ponto de partida e leitura divergente.** Branch `codex/rc01-readiness-focus-2026-09-27` sobre
+`449b68c3`, um worktree, `.venv` do próprio checkout, nenhum processo de teste vivo. A sessão
+anterior tinha mostrado um resultado de leitura incompatível com o disco para
+`tests/qml/check_theme_editor_import.qml`. Em vez de discutir a anomalia, fixei o estado: caminho
+absoluto, sha256 `b9b000bb…`, 146 linhas / 6391 bytes, `git diff HEAD` vazio, mtime 2026-09-08,
+último commit `8364a24b`. Não atribuo a causa a outro agente ou processo — não há evidência de
+escrita nenhuma. Registrado em `01-preflight-e-estado-do-disco.log`, e daqui em diante toda
+afirmação do lote saiu de leitura direta com `rtk`.
+
+**Reproduzir antes de mexer, com eventos reais.** Reescrevi o instrumento como QtTest
+(`tests/qml/check_retrofe_import_dialog_compact_viewport.qml`, raiz `Item`, 11 cenários) usando o
+mecanismo que o projeto já tem: `/usr/lib/qt6/bin/qmltestrunner` sob
+`QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software`, o mesmo de `check_dialog_keys.qml`. Chamar
+`moveFocus` diretamente não conta como prova, então o contrato é teclado/click reais
+(`TestCase.keyClick`, `mouseClick`) e estabilização observável com limite e falha explícita — e o
+gate de integração tem três guardas de intenção que reprovam se alguém trocar a tecla pela chamada
+interna, por `wait()` fixo ou por rolagem manual. Vermelho medido com o painel sem correção:
+**exit 6, 7 passed / 6 failed**, cada falha com o número na mão — moldura de 569 px contra a linha
+de ações em `(610,547)-(694,591)` (22 px para fora, sem qualquer corpo rolável); com relatório de
+erro extenso o *Publicar cena* caia em `y=1210`, inacessível; 24 pressões de Down sem sair do
+primeiro `RadioButton`; Tab real pousando em controle recortado; Down partindo de campo focado sem
+navegar. Nada foi publicado no host para testar geometria — a cena é local e sintética.
+
+**A menor correção completa.** `ThemeEditorPanel.qml`, 99 inserções / 9 remoções (`-U2`, apenas o
+diálogo RetroFE; o ES-DE está byte a byte igual): o `contentItem` passou a ser um `ScrollView` com
+as ações num `footer` fixo; `itemInRetrofeImportDialog()` e `revealRetrofeImportItem()` revelam o
+destino dentro da banda; `moveVertical()` percorre o modal pelo padrão que `Emulation.qml` e
+`Main.qml` já usam, pulando quem não é do diálogo e quem está desabilitado. Corpo rolável **e**
+ações fixas não foi escolha por gosto: com um relatório de 24 frases o texto precisa ser lido por
+inteiro, e o primary tem de continuar alcançável.
+
+**Três medidas do Qt 6.11.2 que decidiram o desenho** (e uma que não decide nada): (1) o
+`ScrollView` aninhado da lista de layouts prendia o foco no primeiro `RadioButton` — 24 pressões sem
+progresso — e `contentItem.keyNavigationEnabled = false` **não** soltava, impresso e conferido; só
+retirar o scroll aninhado resolveu. (2) O `footer` de um `Dialog` não é descendente do corpo
+rolável, então as setas precisaram de handler nos dois lados, apontando o mesmo passo. (3) Handlers
+`Keys.onUpPressed/onDownPressed` de um ancestral **disparam** com um `TextField` de linha única
+focado: `Left`/`Backspace` continuaram editando (caret 7→5, texto 7→6) enquanto `Down` navega — ou
+seja, as setas não roubam a digitação. (4) Um probe sintético não conseguiu dar foco a um campo
+dentro de `Popup`. Isso é limite do probe, não propriedade das anexações: nenhuma conclusão geral
+foi tirada daí, e a prova veio do painel real.
+
+**Verde pelo comportamento.** **exit 0, 13 passed / 0 failed**, estável em três execuções. Nos dois
+viewports preservados: 949×593 → banda 484, conteúdo normal 396 sem exigir rolagem, primary em
+`(616,525)-(700,569)`; conteúdo extenso → 11 pressões reais de Down até o primary; 1280×800 → banda
+650, primary em `(616,606)-(700,650)`. `foraDaBandaSemRolagem=0 espremidos=0 overflowHorizontal=0`
+em todos os cenários. A jornada whole foi exercitada por input real: abrir pelo botão, examinar,
+preencher, navegar até publicar/cancelar, Escape, Cancelar, payload do aplicar sem ativação e
+ausência de vazamento de estado. Vermelho e verde estão em `02-…-vermelho-medido.log` e
+`03-…-verde-medido.log`; a prova visual é `04-capturas-viewport.log` com 8 PNGs (antes/depois × 4
+fases), cada uma inspecionada: em `3-…-antes.png` a grade de créditos e as duas ações aparecem
+inteiramente fora do diálogo, sem área de rolagem; em `3-…-depois.png` vê-se a banda rolável com a
+linha seguinte cortada e as ações fixas acima da divisória do rodapé. **Tudo isso é offscreen** —
+geometria e foco no runtime Qt do projeto, painel isolado sem o tema do shell; **não** é a release
+`2.0.0rc1-e2af2562ebba` instalada, que não foi tocada, empacotada nem revalidada no host.
+
+**Checkpoint.** Uma única suíte integral, com a árvore congelada: janela 08:50:33→09:21:16
+(1838,54 s), `1 failed, 6402 passed, 47 skipped`, rc=1, e o state home real do operador idêntico
+byte a byte antes e depois (12816 arquivos, 2068 diretórios, 1372712391 bytes, mesmo
+`max_mtime_ns`). A contagem reconcilia com a fatia 1: 6397 + 5 = 6402, os cinco testes do gate novo,
+e os mesmos 47 skips — nada foi silenciado por skip. A única falha é
+`test_committed_catalog_and_generated_views_are_consistent`, causada pela **ordem** em que escrevi:
+os itens do catálogo já continham as evidências do lote quando a suíte rodou, e o `scopeDigest` só
+pode ser renovado depois que todos os arquivos do escopo existem (os logs 05/06/07 e este WORKLOG
+ainda não existiam). Zero arquivo do checkout foi escrito durante a corrida (`find -newermt` da
+janela, excluindo caches e `build/`, não devolve nada; a impressão de `git status` é a mesma no
+lançamento e no fim, `ee04994d…`) — as gravações dentro do checkout durante a suíte foram artefatos
+ignorados em `build/`, regravados pela própria ferramenta. Ruff (`check` e `format --check`, 671
+arquivos), mypy (297 arquivos) e `make independence boundaries` passaram na primeira passada; a
+coerência final do catálogo é provada por `make status-check` sozinho, no fim, em
+`07-status-final.log`.
+
+**O que esta fatia NÃO fecha.** RC-01 continua aberto, e resolver UX-07 não o encerra: **UX-03**
+(percentuais de prontidão sem dimensão nomeada) segue; **UX-04** (unidades de armazenamento) fica
+adiada porque `adapters/emulation.py` está sob claim exclusivo de
+`WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT`; de **UX-05** este lote não mede a primeira dobra da Home
+nem o mínimo de 48 px por alvo — no painel isolado sem tema os botões do rodapé medem 44 px, o que
+é propriedade pré-existente dos controles e não foi reduzido aqui, mas também não foi certificado;
+o **diálogo ES-DE** conserva exatamente a mesma classe de defeito (corpo não rolável, ações fora da
+moldura) e foi deixado de fora por escopo, não por estar bom; e falta a prova física na release
+instalada, que depende de autorização. A etapa 1 (UX-01/UX-02) está com CI terminal 10/10 verde em
+`c959be13` e PR 240 OPEN — o merge é do operador, e `WS-2026-09-RC01-CENTRAL-LOADING` só fecha com
+o SHA realmente integrado em main.
+
+**Próximo lote.** RC-02 (DATA-01): fila acionável de arquivos/sets com extração segura, projeções
+multidisco e preview de espaço, reclassificando os 18 arquivos / 15 candidatos sem somar conjuntos
+sobrepostos, em cópias controladas — ROMs, BIOS e saves originais intocados. Antes disso, o fecho
+desta fatia: commits funcional e documental separados, push desta branch e PR.

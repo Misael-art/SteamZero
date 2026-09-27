@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "ready",
   "distribution": "installed",
-  "scopeDigest": "f094ddc8b43e274613aed93421d92c49568d16a931be8ee3083e3024f218ef1b",
+  "scopeDigest": "921522d6e90d358c70a8aef756dacc2109341f54cdc661851ae7cab6bc0c7899",
   "scopePaths": [
     "src/steamzero/adapters/desktop_contracts.py",
     "src/steamzero/adapters/desktop_dashboard.py",
@@ -94,6 +94,12 @@
       "reference": "docs/09-operations/evidence/2026-09-08-ux-audit/README.md",
       "command": "Auditoria confirmou a entrada/inspeção RetroFE no release 2.0.0rc1-435f9108eeb7 e separou o resultado da ausência de ativação automática da cena.",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/03-ux05-ux07-verde-medido.log",
+      "command": "2026-09-27 renovação de escopo pela frente WS-2026-09-RC01-READINESS-FOCUS (fatia UX-05/UX-07 de RC-01, item SZ-UI-DESKTOP-AUDIT). Comportamento visível deste item: o diálogo de importação RetroFE ganhou corpo rolável (ScrollView no contentItem), ações fixas no footer, navegação vertical por Up/Down dentro do modal e a lista de layouts deixou de ser um ScrollView aninhado. Os contratos próprios deste item (inspeção, payload, sem ativação automática) não foram reexecutados neste lote; o que os cobre agora é o harness novo, fora deste escopo. O digest foi regenerado pela ferramenta porque o escopo mudou; as capacidades deste item NÃO foram reatestadas, nenhuma evidência foi carimbada e nenhum eixo dele mudou de estado neste lote.",
+      "result": "recorded"
     }
   ],
   "nextAction": "Manter a entrada RetroFE instalada e documentar explicitamente que inspeção/importação não promove ativação automática da cena.",

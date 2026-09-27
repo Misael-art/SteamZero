@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "b5d0db609363634b605d9a5449125968ff9662169b1788690fc42f456b3e07ea",
+  "scopeDigest": "264c1c4c3da65fbb1943f08fc759597e0dcd16d9c0d6b62ee3b65b084360ea64",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -431,6 +431,12 @@
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/09-refresh-coercido.log",
       "command": "2026-09-27 renovacao de escopo pela frente WS-2026-09-RC01-CENTRAL-LOADING (fatia UX-01/UX-02 de RC-01). Arquivos deste escopo alterados: src/steamzero/ui/qml/Main.qml: Main.qml ganhou a coercao de renovacao de status (statusRefreshQueued + drainStatusRefresh nos dois callbacks da leitura): uma renovacao pedida durante uma leitura em andamento deixa de ser descartada. E mudanca visivel no shell, nao neste item; nenhum contrato deste item foi reexecutado. O digest foi regenerado pela ferramenta porque o escopo mudou; as capacidades deste item NAO foram reatestadas, nenhuma evidencia deste item foi carimbada, e nenhum eixo dele mudou de estado neste lote.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/03-ux05-ux07-verde-medido.log",
+      "command": "2026-09-27 renovação de escopo pela frente WS-2026-09-RC01-READINESS-FOCUS (fatia UX-05/UX-07 de RC-01, item SZ-UI-DESKTOP-AUDIT). Arquivo do escopo alterado por trabalho de outro item (RC-01 / SZ-UI-DESKTOP-AUDIT): ThemeEditorPanel.qml, no diálogo RetroFE. Aditivo na geometria e no foco; nenhuma rota de tema, token ou engine foi tocada e nenhuma evidência deste item foi reexecutada. O digest foi regenerado pela ferramenta porque o escopo mudou; as capacidades deste item NÃO foram reatestadas, nenhuma evidência foi carimbada e nenhum eixo dele mudou de estado neste lote.",
       "result": "recorded"
     }
   ],

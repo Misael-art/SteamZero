@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "96d17e677ccb109abf26688026732470ad835a92fb51163c0349caef3903dad3",
+  "scopeDigest": "8bc96aa2a3d1ca2fc66613e6ed424f6f279830f1caf172d661b5f8c7cafa09cb",
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun",
     "docs/09-operations/evidence/2026-09-07-theme-studio-contrast",
@@ -161,6 +161,12 @@
       "reference": "docs/09-operations/evidence/2026-09-22-media-theme-first-run/README.md",
       "command": "Backend real em XDG temporário criou, editou metadados/token, gerou preview, salvou, exportou ZIP e cancelou tema sem tocar o host; suíte editor/efeitos/asset-recipes/catalog passou com 126 testes. EffectSpec segue sem edição no painel, profiler measured=false e scene preview expirou em 20s.",
       "result": "partial"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/03-ux05-ux07-verde-medido.log",
+      "command": "2026-09-27 renovação de escopo pela frente WS-2026-09-RC01-READINESS-FOCUS (fatia UX-05/UX-07 de RC-01, item SZ-UI-DESKTOP-AUDIT). Arquivo do escopo alterado por trabalho de outro item (RC-01 / SZ-UI-DESKTOP-AUDIT): ThemeEditorPanel.qml, restrito ao diálogo de importação RetroFE. O Studio não foi tocado e nenhuma evidência deste item foi reatestada. O digest foi regenerado pela ferramenta porque o escopo mudou; as capacidades deste item NÃO foram reatestadas, nenhuma evidência foi carimbada e nenhum eixo dele mudou de estado neste lote.",
+      "result": "recorded"
     }
   ],
   "nextAction": "P1-THEME-STUDIO: tornar EffectSpec, efeitos e timeline editáveis com undo/redo, validar o scene preview sem timeout e medir custo/frame/GPU; depois repetir mutação, persistência, export/import/reopen por input físico na release instalada. Não promover inspector ou harness a autoria concluída.",

@@ -65,9 +65,13 @@
     "tests/qml/check_central_loading.qml",
     "tests/qml/check_warning_surface_contrast.qml",
     "src/steamzero/adapters/theme_catalog.py",
-    "tests/qml/check_status_refresh_coalesced.qml"
+    "tests/qml/check_status_refresh_coalesced.qml",
+    "tests/qml/check_retrofe_import_dialog_compact_viewport.qml",
+    "tests/qml/capture_retrofe_import_viewport.qml",
+    "tests/integration/test_retrofe_import_dialog_compact.py",
+    "docs/09-operations/evidence/2026-09-27-rc01-readiness-focus"
   ],
-  "scopeDigest": "32520ddb360e0b2d973e7a9e9726b407a099cc3ffde7ecd32e058a337b216fab",
+  "scopeDigest": "3c271359d4f7e9adc289d77fb03eba09304059ed843661bd02e680907e1c8785",
   "dependsOn": [],
   "knownGaps": [
     "GAP-UI-LIVE-LAUNCHER-ROUTING",
@@ -507,9 +511,33 @@
       "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/18-checkpoint-integral.log",
       "command": "2026-09-27 registro do checkpoint: o comando exato e a janela, a falha reproduzida e atribuida (os mesmos seis IDs, todos com o arquivo reformatado em escopo), o que a corrida integral cobre e o que ela nao cobre (os quatro logs escritos depois, os seis scopeDigest regenerados e as tres visoes geradas), e os limites declarados sem maquiagem: o pre-lancamento por pgrep casava o proprio involucro e nao prova isolamento, a checagem manual de ps anterior nao foi gravada e por isso nao conta como prova, e o roteiro esqueceu de reimprimir a identidade da arvore no fim — corrigenda para o proximo checkpoint, registrada em 16.",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/02-ux05-ux07-vermelho-medido.log",
+      "command": "2026-09-27 RC-01 (UX-05/UX-07): defeito reproduzido ANTES de editar, com o harness de eventos reais apontado no painel sem correcao (sha256 13d5c644...). Saida integral do qmltestrunner Qt 6.11.2, exit 6, '7 passed, 6 failed'. As seis falhas sao nominais e cada uma carrega o numero medido: no viewport 949x593 a linha de acoes ficava em (610,547)-(694,591) contra uma moldura de 569 px, ou seja 22 px para fora e sem qualquer corpo rolavel; com relatorio de erro extenso o 'Publicar cena' caia em y=1210, inacessivel; 24 pressoes de Down sem sair do primeiro RadioButton da lista de layouts; Tab real pousando em controle recortado no passo 6; Down partindo de um campo focado sem navegar. O pre-flight que fixa a divergencia de leitura do lote esta em 01-preflight-e-estado-do-disco.log.",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/03-ux05-ux07-verde-medido.log",
+      "command": "2026-09-27 RC-01 (UX-05/UX-07): mesma cena com a menor correcao completa aplicada no dialogo RetroFE (corpo virou ScrollView, acoes no rodape fixo, Up/Down percorrendo o modal, lista de layouts sem o ScrollView aninhado). 'Totals: 13 passed, 0 failed', exit 0, estavel em tres execucoes. Numeros: 949x593 com conteudo normal -> banda 484, conteudo 396, primary em (616,525)-(700,569) dentro da moldura; com relatorio extenso -> 11 pressoes reais de Down ate o primary, aviso implicito 680; nos dois viewports 'foraDaBandaSemRolagem=0 espremidos=0 overflowHorizontal=0'; 1280x800 -> primary em (616,606)-(700,650). Escrita de texto preservada contra navegacao: Left/Backspace editam (caret 7->5, texto 7->6) e Down navega. Escape, Cancelar, payload do aplicar e o carater modal continuam provados por clique/tecla reais, nao por chamada direta de funcao - e o proprio harness tem guarda de codigo que reprova se alguem trocar os eventos reais pela chamada interna.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/04-capturas-viewport.log",
+      "command": "2026-09-27 RC-01 (UX-05/UX-07): evidencia visual do mesmo cenario antes e depois - 8 PNGs (4 fases x 2 estados) obtidas por /usr/lib/qt6/bin/qml em offscreen, com o comando, o exit code de cada corrida e o sha256 de cada imagem no log. Rotulo honesto: offscreen prova GEOMETRIA no runtime Qt do projeto (retangulo, alcance, rolagem) e NAO e a release 2.0.0rc1-e2af2562ebba instalada no host, que nao foi tocada nem revalidada visualmente; os controles saem no estilo claro porque a captura carrega o painel isolado, sem o tema do shell. Imagens conferidas uma a uma: 3-...-antes.png mostra a grade de creditos e as duas acoes inteiramente fora do dialogo, sem area de rolagem; 3-...-depois.png mostra a banda rolavel com a linha seguinte cortada no rodape da banda e as acoes fixas acima da divisoria.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/README.md",
+      "command": "2026-09-27 RC-01 (UX-05/UX-07): indice do lote com a tabela antes/depois medida, o comando de reproducao, o limite da prova offscreen e as quatro decisoes de projeto - corpo rolavel em vez de so acoes fixas (o relatorio longo precisa ser lido por inteiro); remocao do ScrollView aninhado na lista de layouts, onde o foco ficava preso (24 pressoes sem progresso) e keyNavigationEnabled=false nao soltava; Keys.onUp/DownPressed no corpo E no footer, porque o rodape nao e descendente do corpo rolavel; e nenhuma conclusao geral sobre propriedades anexadas a partir do probe sintetico que nao conseguiu focar um campo dentro de Popup - a prova veio do painel real. Pendencias nomeadas: o dialogo ES-DE tem a mesma classe de defeito e NAO foi alterado; UX-05 continua aberto na parte que este lote nao mede (primeira dobra da Home e alvos minimos de 48 px, que aqui dao 44 px no painel isolado sem tema); prova fisica no host nao feita.",
+      "result": "recorded"
     }
   ],
-  "nextAction": "2026-09-27, etapa 1 enviada. Esta fatia cobre UX-01/UX-02 dentro de RC-01 e nao encerra RC-01. Feito: commit funcional 72579141 (Main.qml com a renovacao coerada, check_status_refresh_coalesced.qml de tres cenas, check_central_loading.qml reestruturado e a ponte de tres cenas no gate de integracao) e commit documental c959be13 (evidencias 08-18, README da pasta, esta governanca e as visoes regeneradas); push em codex/rc01-central-loading-2026-09-26 e PR 240 reescrito e OPEN em c959be13, com o bloco RETIFICACAO do gate integral e a conciliacao das duas suites. Falta, nesta ordem: (1) CI terminal no SHA final c959be13 (smokes de Arch/Ubuntu/Manjaro e o gate de wheel ja verdes; Python 3.11/3.12/3.14 e o gate visual QML em voo); (2) merge, que e do operador; (3) fechar WS-2026-09-RC01-CENTRAL-LOADING como integrated apenas com o SHA realmente em main. Conteudo aberto da frente, nomeado: cauda de latencia do /status (~11,4 s; cinco amostras sao exploratorias), experiencia dos alertas empilhados em 800 px, prova fisica na release instalada, UX-03/04/05/07 e o conflito normativo do contraste semantico abaixo de 7:1. Segunda fatia ja registrada como WS-2026-09-RC01-READINESS-FOCUS (UX-03/05/07); UX-04 fica adiada porque adapters/emulation.py esta sob claim exclusivo de WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT.",
+  "nextAction": "2026-09-27, etapa 2 de RC-01 enviada como fatia (UX-05/UX-07 no dialogo RetroFE). Feito nesta frente: pre-flight com a divergencia de leitura fixada por caminho absoluto, hash e leitura direta (01-preflight-e-estado-do-disco.log); harness de EVENTOS REAIS escrito ANTES da implementacao e vermelho medido (exit 6, seis falhas nominais); menor correcao completa no modal RetroFE (corpo rolavel, acoes no rodape, Up/Down percorrendo o dialogo, lista de layouts sem o ScrollView aninhado que prendia o foco); verde medido 13 passed / 0 failed, exit 0, estavel em tres execucoes; integracao no runner pytest com guardas de intencionalidade (o arquivo que chamar a funcao interna em vez da tecla real reprova); evidencia visual antes/depois com as 8 PNGs inspecionadas. Falta, nesta ordem: (1) gates integrais do checkpoint, uma única suíte integral sem tocar a arvore; (2) commits funcional e documental com push desta branch e PR; (3) CI terminal e merge, que e do operador. Nao declarar RC-01 concluido por resolver UX-07: continua aberto UX-03 (significado dos percentuais de prontidao), UX-04 (unidades legiveis de armazenamento, adiada porque adapters/emulation.py esta sob claim exclusivo de WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT), a parte de UX-05 que este lote nao mede (primeira dobra da Home e o minimo de 48 px por alvo, que no painel isolado sem tema marca 44 px), o dialogo ES-DE com a mesma classe de defeito e a prova fisica na release instalada. A etapa 1 (UX-01/UX-02) segue aguardando CI terminal em c959be13 e merge no PR 240; WS-2026-09-RC01-CENTRAL-LOADING so fecha com o SHA realmente integrado em main.",
   "activeWorkstreams": [
     "WS-2026-09-RC01-CENTRAL-LOADING"
   ],

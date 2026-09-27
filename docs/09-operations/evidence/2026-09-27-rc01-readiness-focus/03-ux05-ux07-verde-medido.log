@@ -1,0 +1,118 @@
+# UX-05/UX-07 — VERDE com a menor correção completa no diálogo RetroFE
+# data: 2026-09-27T08:41:55-03:00  branch: codex/rc01-readiness-focus-2026-09-27  HEAD: 449b68c3c2e9dd9a0544fcdd8370ac6277683c98
+# harness: /home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_retrofe_import_dialog_compact_viewport.qml
+#   sha256 harness: 63d3843baa28f259a687b12ec22d6745650ff8aaddd286b69f29d9d21d143abe
+# painel COM a correção: /home/misael/Projects/Steam Zero/Canonical/2026-09-21/src/steamzero/ui/qml/ThemeEditorPanel.qml
+#   sha256 painel: 79dc0e5f68ff4008ddd0ebcd07985544b48c9974cc4fe4a11878ae5b49c790ed
+# runtime:  -help      : This help
+# plataforma: offscreen — geometria e foco medidos no runtime Qt 6 do projeto; NÃO é prova
+#             da release 2.0.0rc1-e2af2562ebba instalada no host (nada foi empacotado/instalado).
+# comando: QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QT_FORCE_STDERR_LOGGING=1 QT_LOGGING_RULES="" /usr/lib/qt6/bin/qmltestrunner -input tests/qml/check_retrofe_import_dialog_compact_viewport.qml
+# cwd: /home/misael/Projects/Steam Zero/Canonical/2026-09-21
+#
+# Correção: corpo do diálogo virou ScrollView real com as ações no rodapé fixo; Up/Down
+# percorrem o modal pelo mesmo padrão de Emulation.qml/Main.qml; a lista de layouts deixou
+# de ser um ScrollView aninhado (media-se ali o foco preso: 21 pressões de Down sem sair
+# do primeiro RadioButton). 13 casos: 11 cenários + init/cleanup.
+-------------------------------------------------------------------------------
+********* Start testing of qmltestrunner *********
+Config: Using QtTest library 6.11.2, Qt 6.11.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 16.2.1 20260810), biglinux unknown
+PASS   : qmltestrunner::RetrofeImportDialogViewport::initTestCase()
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_01_o_botao_real_abre_o_modal_e_o_foco_entra_no_corpo() qml: ESTABILIZOU 'aberto' em 40 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/17|body=484/88
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_01_o_botao_real_abre_o_modal_e_o_foco_entra_no_corpo() qml: MEDIDA aberto viewport=949x593 banda=484 apply=(616,525)-(700,569)
+PASS   : qmltestrunner::RetrofeImportDialogViewport::test_01_o_botao_real_abre_o_modal_e_o_foco_entra_no_corpo()
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_02_conteudo_que_cabe_nao_exige_rolagem_e_mantem_acoes_alcancaveis() qml: ESTABILIZOU 'aberto' em 20 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/17|body=484/88
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_02_conteudo_que_cabe_nao_exige_rolagem_e_mantem_acoes_alcancaveis() qml: ESTABILIZOU 'examinado' em 40 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/17|body=484/396
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_02_conteudo_que_cabe_nao_exige_rolagem_e_mantem_acoes_alcancaveis() qml: ESTABILIZOU 'compacto normal' em 20 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/17|body=484/396
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_02_conteudo_que_cabe_nao_exige_rolagem_e_mantem_acoes_alcancaveis() qml: MEDIDA compacto normal moldura=700x569 nodes=33 foraDaBandaSemRolagem=0 espremidos=0 overflowHorizontal=0
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_02_conteudo_que_cabe_nao_exige_rolagem_e_mantem_acoes_alcancaveis() qml: MEDIDA compacto normal rolagem=não apply=(616,525)-(700,569)
+PASS   : qmltestrunner::RetrofeImportDialogViewport::test_02_conteudo_que_cabe_nao_exige_rolagem_e_mantem_acoes_alcancaveis()
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: ESTABILIZOU 'aberto' em 40 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/17|body=484/88
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: ESTABILIZOU 'examinado' em 40 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/17|body=484/396
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: ESTABILIZOU 'compacto navegação' em 20 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/17|body=484/396
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 1 tag=compacto descida foco=themeImportRetrofeBrowseFolder em (438,44)-(518,88) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 2 tag=compacto descida foco=themeImportRetrofeBrowseFile em (523,44)-(603,88) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 3 tag=compacto descida foco=themeImportRetrofeInspect em (608,44)-(688,88) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 4 tag=compacto descida foco=RadioButton_QMLTYPE_65(0x564b5b4db010) em (0,160)-(61,189) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 5 tag=compacto descida foco=themeImportRetrofeSceneId em (70,233)-(688,258) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 6 tag=compacto descida foco=themeImportRetrofeName em (70,266)-(688,291) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 7 tag=compacto descida foco=themeImportRetrofeAuthor em (70,299)-(688,324) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 8 tag=compacto descida foco=themeImportRetrofeLicense em (70,332)-(688,357) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 9 tag=compacto descida foco=themeImportRetrofeOverwrite em (0,367)-(285,396) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 10 tag=compacto descida foco=themeImportRetrofeCancel em (0,525)-(80,569) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 11 tag=compacto descida foco=themeImportRetrofeApply em (616,525)-(700,569) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 1 tag=compacto subida foco=themeImportRetrofeCancel em (0,525)-(80,569) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 2 tag=compacto subida foco=themeImportRetrofeOverwrite em (0,367)-(285,396) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 3 tag=compacto subida foco=themeImportRetrofeLicense em (70,332)-(688,357) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 4 tag=compacto subida foco=themeImportRetrofeAuthor em (70,299)-(688,324) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 5 tag=compacto subida foco=themeImportRetrofeName em (70,266)-(688,291) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 6 tag=compacto subida foco=themeImportRetrofeSceneId em (70,233)-(688,258) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 7 tag=compacto subida foco=RadioButton_QMLTYPE_65(0x564b5b4db010) em (0,160)-(61,189) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 8 tag=compacto subida foco=themeImportRetrofeInspect em (608,44)-(688,88) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 9 tag=compacto subida foco=themeImportRetrofeBrowseFile em (523,44)-(603,88) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 10 tag=compacto subida foco=themeImportRetrofeBrowseFolder em (438,44)-(518,88) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 11 tag=compacto subida foco=themeImportRetrofeSource em (0,44)-(433,88) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: MEDIDA navegação compacto pressõesDescida=11 pressõesSubida=11
+PASS   : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel()
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_04_tab_e_shift_tab_reais_avancam_retrocedem_e_mantem_foco_a_vista() qml: ESTABILIZOU 'aberto' em 40 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/17|body=484/88
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_04_tab_e_shift_tab_reais_avancam_retrocedem_e_mantem_foco_a_vista() qml: ESTABILIZOU 'examinado' em 40 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/17|body=484/396
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_04_tab_e_shift_tab_reais_avancam_retrocedem_e_mantem_foco_a_vista() qml: ESTABILIZOU 'compacto tabulação' em 20 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/17|body=484/396
+PASS   : qmltestrunner::RetrofeImportDialogViewport::test_04_tab_e_shift_tab_reais_avancam_retrocedem_e_mantem_foco_a_vista()
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_05_setas_nao_roubam_a_navegacao_de_dentro_do_campo() qml: ESTABILIZOU 'aberto' em 40 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/17|body=484/88
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_05_setas_nao_roubam_a_navegacao_de_dentro_do_campo() qml: ESTABILIZOU 'examinado' em 40 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/17|body=484/396
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_05_setas_nao_roubam_a_navegacao_de_dentro_do_campo() qml: ESTABILIZOU 'compacto edição' em 20 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/17|body=484/396
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_05_setas_nao_roubam_a_navegacao_de_dentro_do_campo() qml: MEDIDA edição caret=7->5 texto=7->6
+PASS   : qmltestrunner::RetrofeImportDialogViewport::test_05_setas_nao_roubam_a_navegacao_de_dentro_do_campo()
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro() qml: ESTABILIZOU 'aberto' em 40 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/17|body=484/88
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro() qml: ESTABILIZOU 'examinado' em 40 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/17|body=484/396
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro() qml: ESTABILIZOU 'compacto extenso antes do erro' em 20 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/17|body=484/396
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro() qml: ESTABILIZOU 'compacto extenso' em 40 ms :: 700x569|apply=(616,525)-(700,569)|notice=680/680|body=484/1059
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro() qml: MEDIDA compacto extenso moldura=700x569 nodes=33 foraDaBandaSemRolagem=0 espremidos=0 overflowHorizontal=0
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro() qml: PASSO 1 tag=compacto extenso foco=themeImportRetrofeBrowseFolder em (438,44)-(518,88) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro() qml: PASSO 2 tag=compacto extenso foco=themeImportRetrofeBrowseFile em (523,44)-(603,88) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro() qml: PASSO 3 tag=compacto extenso foco=themeImportRetrofeInspect em (608,44)-(688,88) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro() qml: PASSO 4 tag=compacto extenso foco=RadioButton_QMLTYPE_65(0x564b5b524090) em (0,443)-(61,472) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro() qml: PASSO 5 tag=compacto extenso foco=themeImportRetrofeSceneId em (70,447)-(688,472) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro() qml: PASSO 6 tag=compacto extenso foco=themeImportRetrofeName em (70,447)-(688,472) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro() qml: PASSO 7 tag=compacto extenso foco=themeImportRetrofeAuthor em (70,447)-(688,472) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro() qml: PASSO 8 tag=compacto extenso foco=themeImportRetrofeLicense em (70,447)-(688,472) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro() qml: PASSO 9 tag=compacto extenso foco=themeImportRetrofeOverwrite em (0,455)-(285,484) banda=484
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro() qml: PASSO 10 tag=compacto extenso foco=themeImportRetrofeCancel em (0,525)-(80,569) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro() qml: PASSO 11 tag=compacto extenso foco=themeImportRetrofeApply em (616,525)-(700,569) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro() qml: MEDIDA extenso compacto banda=569 avisoImplicito=680 pressõesAtéPrimary=11 applyBanda=(616,525)-(700,569)
+PASS   : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro()
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: ESTABILIZOU 'aberto' em 40 ms :: 700x650|apply=(616,606)-(700,650)|notice=17/680|body=565/88
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: ESTABILIZOU 'examinado' em 40 ms :: 700x650|apply=(616,606)-(700,650)|notice=17/17|body=565/396
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: ESTABILIZOU 'largo normal' em 20 ms :: 700x650|apply=(616,606)-(700,650)|notice=17/17|body=565/396
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: MEDIDA largo normal moldura=700x650 nodes=33 foraDaBandaSemRolagem=0 espremidos=0 overflowHorizontal=0
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: ESTABILIZOU 'largo extenso' em 40 ms :: 700x650|apply=(616,606)-(700,650)|notice=680/680|body=565/1059
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: MEDIDA largo extenso moldura=700x650 nodes=33 foraDaBandaSemRolagem=0 espremidos=0 overflowHorizontal=0
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: PASSO 1 tag=largo extenso foco=themeImportRetrofeBrowseFolder em (438,44)-(518,88) banda=565
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: PASSO 2 tag=largo extenso foco=themeImportRetrofeBrowseFile em (523,44)-(603,88) banda=565
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: PASSO 3 tag=largo extenso foco=themeImportRetrofeInspect em (608,44)-(688,88) banda=565
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: PASSO 4 tag=largo extenso foco=RadioButton_QMLTYPE_65(0x564b5b4f3950) em (0,524)-(61,553) banda=565
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: PASSO 5 tag=largo extenso foco=themeImportRetrofeSceneId em (70,528)-(688,553) banda=565
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: PASSO 6 tag=largo extenso foco=themeImportRetrofeName em (70,528)-(688,553) banda=565
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: PASSO 7 tag=largo extenso foco=themeImportRetrofeAuthor em (70,528)-(688,553) banda=565
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: PASSO 8 tag=largo extenso foco=themeImportRetrofeLicense em (70,528)-(688,553) banda=565
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: PASSO 9 tag=largo extenso foco=themeImportRetrofeOverwrite em (0,536)-(285,565) banda=565
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: PASSO 10 tag=largo extenso foco=themeImportRetrofeCancel em (0,606)-(80,650) banda=650
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: PASSO 11 tag=largo extenso foco=themeImportRetrofeApply em (616,606)-(700,650) banda=650
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: MEDIDA extenso largo banda=650 pressõesAtéPrimary=11
+PASS   : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte()
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_08_primary_permanece_bloqueado_sem_conteudo_e_escape_fecha() qml: ESTABILIZOU 'aberto' em 40 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/680|body=484/88
+PASS   : qmltestrunner::RetrofeImportDialogViewport::test_08_primary_permanece_bloqueado_sem_conteudo_e_escape_fecha()
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_09_cancelar_pelo_clique_real_fecha_e_nao_publica() qml: ESTABILIZOU 'aberto' em 20 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/680|body=484/88
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_09_cancelar_pelo_clique_real_fecha_e_nao_publica() qml: ESTABILIZOU 'examinado' em 40 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/17|body=484/396
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_09_cancelar_pelo_clique_real_fecha_e_nao_publica() qml: ESTABILIZOU 'cancelar' em 20 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/17|body=484/396
+PASS   : qmltestrunner::RetrofeImportDialogViewport::test_09_cancelar_pelo_clique_real_fecha_e_nao_publica()
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_10_publicar_pelo_clique_real_envia_payload_e_nao_ativa() qml: ESTABILIZOU 'aberto' em 40 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/17|body=484/88
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_10_publicar_pelo_clique_real_envia_payload_e_nao_ativa() qml: ESTABILIZOU 'examinado' em 40 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/17|body=484/396
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_10_publicar_pelo_clique_real_envia_payload_e_nao_ativa() qml: ESTABILIZOU 'publicar' em 20 ms :: 700x569|apply=(616,525)-(700,569)|notice=17/17|body=484/396
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_10_publicar_pelo_clique_real_envia_payload_e_nao_ativa() qml: MEDIDA publicar viewport=949x593 sceneId=org.exemplo.retrofe
+PASS   : qmltestrunner::RetrofeImportDialogViewport::test_10_publicar_pelo_clique_real_envia_payload_e_nao_ativa()
+PASS   : qmltestrunner::RetrofeImportDialogViewport::test_11_estado_de_teste_nao_vaza_para_o_proximo_cenario()
+PASS   : qmltestrunner::RetrofeImportDialogViewport::cleanupTestCase()
+Totals: 13 passed, 0 failed, 0 skipped, 0 blacklisted, 1136ms
+********* Finished testing of qmltestrunner *********
+# exit_code=0
