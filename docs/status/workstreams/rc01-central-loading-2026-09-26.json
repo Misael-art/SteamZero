@@ -13,6 +13,7 @@
     "docs/status/workstreams/rc01-central-loading-2026-09-26.json",
     "tools/central_status_probe.py",
     "tests/unit/test_central_status_probe.py",
+    "tests/qml/check_status_refresh_coalesced.qml",
     "tests/qml/check_central_loading.qml",
     "tests/qml/check_warning_surface_contrast.qml",
     "tests/unit/test_ui_attention_surface_contrast.py"
@@ -31,6 +32,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Aguarda revisao e merge do PR da frente. Ao integrar, fechar com o SHA realmente em main e promover os eixos do item SZ-UI-DESKTOP-AUDIT somente com a prova correspondente (host fisico e release instalada seguem sem prova neste lote).",
-  "updatedAt": "2026-09-26"
+  "nextAction": "2026-09-27: checkpoint integral rodado (uma execucao; 1 falha de consistencia de catalogo atribuida, regenerada e revalidada; 6397 passed, estado real do operador intocado) e gates rapidos verdes na 2a passada. Falta: commits funcional e documental, push, atualizacao do PR 240 (OPEN em d215e320, sem a correção da renovação coerada), CI terminal no SHA final e merge do operador. O workstream segue 'active' e so fecha como 'integrated' com o SHA em main; os eixos do item SZ-UI-DESKTOP-AUDIT nao promovem sem prova de host fisico e release instalada.",
+  "updatedAt": "2026-09-27"
 }

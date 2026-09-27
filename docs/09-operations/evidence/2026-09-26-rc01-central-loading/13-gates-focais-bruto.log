@@ -1,0 +1,196 @@
+..................................................FFF................... [ 33%]
+........................................................................ [ 66%]
+..........................................................F............  [100%]
+=================================== FAILURES ===================================
+_____________ test_central_loading_phases_are_observable_offscreen _____________
+
+    @pytest.mark.visual
+    def test_central_loading_phases_are_observable_offscreen() -> None:
+        """RC-01 (UX-02) — a Central tem de ser legível enquanto carrega.
+    
+        O `/status` do host real leva segundos; durante esse intervalo a Home
+        publicava os fallbacks como se fossem medições ("Não instalado", "Nenhum
+        jogo publicado ainda", "Nenhuma pendência" em verde). Este teste roda o
+        `Main.qml` contra uma ponte que demora, falha e recupera, e cobra as quatro
+        fases no objeto vivo.
+    
+        Sem runtime QML o teste reprova: verde sem renderização é o modo como a
+        regressão de ícones já atravessou os gates (G13).
+        """
+        if QML is None:
+            pytest.fail(
+                f"{DIAG_VISUAL_ENVIRONMENT}: qml6 ausente. As fases de carregamento "
+                "da Central não podem ser verificadas sem runtime QML, e declarar "
+                "verde sem renderizar é o defeito que a RC-01 combate."
+            )
+        port = _start_central_loading_bridge()
+        completed = _run_central_loading_harness(port)
+        with _CENTRAL_LOADING_LOCK:
+            served = len(_CENTRAL_LOADING_CALLS)
+        assert served == 3, f"a cena esperava três GET /status, a ponte serviu {served}"
+>       _assert_qml_clean(completed, "ponte de cena da RC-01")
+
+tests/integration/test_qml_handheld_offscreen.py:649: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+completed = CompletedProcess(args=['/usr/sbin/qml6', 'tests/qml/check_central_loading.qml', '--', '--steamzero-api', 'http://127.0...e fase deve sair quando há dado\nqml: FAIL: tempo esgotado aguardando a fase 3\nqml: FALHAS: 4 de 27 (primeira: 20)\n')
+label = 'ponte de cena da RC-01'
+
+    def _assert_qml_clean(completed: subprocess.CompletedProcess[str], label: str) -> None:
+        diagnostics = (
+            "Binding loop",
+            "Unable to assign",
+            "TypeError:",
+            "ReferenceError:",
+            "Cannot open:",
+        )
+>       assert completed.returncode == 0, (
+            f"{label} falhou ({completed.returncode})\n"
+            f"stdout:\n{completed.stdout}\nstderr:\n{completed.stderr}"
+        )
+E       AssertionError: ponte de cena da RC-01 falhou (1)
+E         stdout:
+E         
+E         stderr:
+E         qml: FAIL: uma única consulta deve ter sido feita
+E         qml: FAIL: sem falha nesta fase
+E         qml: FAIL: a faixa de fase deve sair quando há dado
+E         qml: FAIL: tempo esgotado aguardando a fase 3
+E         qml: FALHAS: 4 de 27 (primeira: 20)
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/usr/sbin/qml6', 'tests/qml/check_central_loading.qml', '--', '--steamzero-api', 'http://127.0...e fase deve sair quando há dado\nqml: FAIL: tempo esgotado aguardando a fase 3\nqml: FALHAS: 4 de 27 (primeira: 20)\n').returncode
+
+tests/integration/test_qml_handheld_offscreen.py:112: AssertionError
+_____________ test_central_loading_frames_are_capturable[loading] ______________
+
+tmp_path = PosixPath('/tmp/steamzero-tests-ykoo493p/tmp/pytest-of-misael/pytest-0/test_central_loading_frames_ar0')
+phase = 'loading'
+
+    @pytest.mark.visual
+    @pytest.mark.parametrize("phase", ("loading", "stale"))
+    def test_central_loading_frames_are_capturable(tmp_path: Path, phase: str) -> None:
+        """RC-01 — o quadro que as asserções descrevem pode virar evidência.
+    
+        A fase aferida tem de ser gravável sem depender de timing humano: a
+        capturing é pedida ao harness, que só sai depois de o frame compor. Um PNG
+        em branco passaria por evidência, então a cena real também é medida.
+        """
+        if QML is None:
+            pytest.fail(f"{DIAG_VISUAL_ENVIRONMENT}: qml6 ausente; nenhum frame é gravável")
+        output = tmp_path / f"central-{phase}.png"
+        completed = _run_central_loading_harness(
+            _start_central_loading_bridge(),
+            f"--capture-phase={phase}",
+            f"--capture-output={output}",
+        )
+>       _assert_qml_clean(completed, f"captura {phase} da Central")
+
+tests/integration/test_qml_handheld_offscreen.py:695: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+completed = CompletedProcess(args=['/usr/sbin/qml6', 'tests/qml/check_central_loading.qml', '--', '--steamzero-api', 'http://127.0...e fase deve sair quando há dado\nqml: FAIL: tempo esgotado aguardando a fase 3\nqml: FALHAS: 4 de 29 (primeira: 22)\n')
+label = 'captura loading da Central'
+
+    def _assert_qml_clean(completed: subprocess.CompletedProcess[str], label: str) -> None:
+        diagnostics = (
+            "Binding loop",
+            "Unable to assign",
+            "TypeError:",
+            "ReferenceError:",
+            "Cannot open:",
+        )
+>       assert completed.returncode == 0, (
+            f"{label} falhou ({completed.returncode})\n"
+            f"stdout:\n{completed.stdout}\nstderr:\n{completed.stderr}"
+        )
+E       AssertionError: captura loading da Central falhou (1)
+E         stdout:
+E         
+E         stderr:
+E         qml: HARNESS-CAPTURED /tmp/steamzero-tests-ykoo493p/tmp/pytest-of-misael/pytest-0/test_central_loading_frames_ar0/central-loading.png
+E         qml: FAIL: uma única consulta deve ter sido feita
+E         qml: FAIL: sem falha nesta fase
+E         qml: FAIL: a faixa de fase deve sair quando há dado
+E         qml: FAIL: tempo esgotado aguardando a fase 3
+E         qml: FALHAS: 4 de 29 (primeira: 22)
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/usr/sbin/qml6', 'tests/qml/check_central_loading.qml', '--', '--steamzero-api', 'http://127.0...e fase deve sair quando há dado\nqml: FAIL: tempo esgotado aguardando a fase 3\nqml: FALHAS: 4 de 29 (primeira: 22)\n').returncode
+
+tests/integration/test_qml_handheld_offscreen.py:112: AssertionError
+______________ test_central_loading_frames_are_capturable[stale] _______________
+
+tmp_path = PosixPath('/tmp/steamzero-tests-ykoo493p/tmp/pytest-of-misael/pytest-0/test_central_loading_frames_ar1')
+phase = 'stale'
+
+    @pytest.mark.visual
+    @pytest.mark.parametrize("phase", ("loading", "stale"))
+    def test_central_loading_frames_are_capturable(tmp_path: Path, phase: str) -> None:
+        """RC-01 — o quadro que as asserções descrevem pode virar evidência.
+    
+        A fase aferida tem de ser gravável sem depender de timing humano: a
+        capturing é pedida ao harness, que só sai depois de o frame compor. Um PNG
+        em branco passaria por evidência, então a cena real também é medida.
+        """
+        if QML is None:
+            pytest.fail(f"{DIAG_VISUAL_ENVIRONMENT}: qml6 ausente; nenhum frame é gravável")
+        output = tmp_path / f"central-{phase}.png"
+        completed = _run_central_loading_harness(
+            _start_central_loading_bridge(),
+            f"--capture-phase={phase}",
+            f"--capture-output={output}",
+        )
+>       _assert_qml_clean(completed, f"captura {phase} da Central")
+
+tests/integration/test_qml_handheld_offscreen.py:695: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+completed = CompletedProcess(args=['/usr/sbin/qml6', 'tests/qml/check_central_loading.qml', '--', '--steamzero-api', 'http://127.0...i composto para a captura stale\nqml: FAIL: tempo esgotado aguardando a fase 3\nqml: FALHAS: 5 de 28 (primeira: 20)\n')
+label = 'captura stale da Central'
+
+    def _assert_qml_clean(completed: subprocess.CompletedProcess[str], label: str) -> None:
+        diagnostics = (
+            "Binding loop",
+            "Unable to assign",
+            "TypeError:",
+            "ReferenceError:",
+            "Cannot open:",
+        )
+>       assert completed.returncode == 0, (
+            f"{label} falhou ({completed.returncode})\n"
+            f"stdout:\n{completed.stdout}\nstderr:\n{completed.stderr}"
+        )
+E       AssertionError: captura stale da Central falhou (1)
+E         stdout:
+E         
+E         stderr:
+E         qml: FAIL: uma única consulta deve ter sido feita
+E         qml: FAIL: sem falha nesta fase
+E         qml: FAIL: a faixa de fase deve sair quando há dado
+E         qml: FAIL: nenhum quadro foi composto para a captura stale
+E         qml: FAIL: tempo esgotado aguardando a fase 3
+E         qml: FALHAS: 5 de 28 (primeira: 20)
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/usr/sbin/qml6', 'tests/qml/check_central_loading.qml', '--', '--steamzero-api', 'http://127.0...i composto para a captura stale\nqml: FAIL: tempo esgotado aguardando a fase 3\nqml: FALHAS: 5 de 28 (primeira: 20)\n').returncode
+
+tests/integration/test_qml_handheld_offscreen.py:112: AssertionError
+__________ test_committed_catalog_and_generated_views_are_consistent ___________
+
+    def test_committed_catalog_and_generated_views_are_consistent() -> None:
+>       assert project_status.check_catalog() == []
+E       AssertionError: assert ['SZ-AURA-CIN...d854fa3', ...] == []
+E         
+E         Left contains 13 more items, first extra item: 'SZ-AURA-CINEMA-COMPLETION: evidencia obsoleta; scopeDigest esperado 315d9e7cdb5266ff751ae35d59d3eceac41be53847976f53706d1f14785d3d0c, atual b0a6991745042fbb05ea499ac8ef4edf5702b0e5bc6d9e1ae12498f0c745724d'
+E         Use -v to get more diff
+
+tests/unit/test_project_status.py:15: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/test_qml_handheld_offscreen.py::test_central_loading_phases_are_observable_offscreen
+FAILED tests/integration/test_qml_handheld_offscreen.py::test_central_loading_frames_are_capturable[loading]
+FAILED tests/integration/test_qml_handheld_offscreen.py::test_central_loading_frames_are_capturable[stale]
+FAILED tests/unit/test_project_status.py::test_committed_catalog_and_generated_views_are_consistent
+4 failed, 211 passed in 101.06s (0:01:41)
+real-state before: exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790477787953832614 source=HOME-default
+real-state after:  exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790477787953832614 source=HOME-default

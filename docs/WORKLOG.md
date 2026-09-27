@@ -12804,3 +12804,112 @@ no checkout — invisível hoje apenas porque a verificação desse item é `non
 extração segura, derivados vinculados ao original, preview de espaço e scan assíncrono
 cancelável, classificado com o catálogo atual sem somar conjuntos sobrepostos. Antes disso,
 fechar `WS-2026-09-RC01-CENTRAL-LOADING` com o SHA integrado, quando o merge ocorrer.
+
+
+## 2026-09-27 — RC-01, rodada corretiva da revisão: renovação coerada, conciliação das suítes e contraste contra a norma
+
+**O que a revisão do operador apontou.** Quatro coisas: (1) duas suítes integrais rodaram
+simultaneamente no mesmo checkout em 2026-09-26; (2) `Main.qml:1103` descartava uma renovação
+de status pedida enquanto uma leitura rodava — inclusive a que vem depois de uma mutação — e
+isso pedia regressão determinística antes de fechar; (3) a governança estava redigida adiante do
+momento real, presumindo PR e fechamento; (4) o lote é uma fatia de RC-01 (UX-01/UX-02), não
+RC-01 inteiro, e as cinco amostras de latência são exploratórias. O operador não alterou
+arquivos nem interrompeu processos do agente.
+
+**O que mudou no produto.** `Main.qml` ganhou `statusRefreshQueued` e `drainStatusRefresh()`:
+uma renovação pedida durante uma leitura em andamento deixa de ser descartada e passa a esperar,
+com **um único slot** por desenho — dez mutações durante uma leitura lenta viram uma relênia, não
+dez — e o dreno roda nos dois callbacks (sucesso *e* falha da leitura em andamento), para não
+perder nem o retry nem o estado `stale`/`error`. `retryStatus()` permanece com o retorno cedo que
+já tinha.
+
+**Como foi provado.** `tests/qml/check_status_refresh_coalesced.qml` dirige a janela contra uma
+ponte que segura a leitura #2 aberta até o harness confirmar que `POST /emulation/library/scan`
+chegou e então responde com a geração antiga; a asserção é uma terceira leitura com o estado
+pós-mutação. Autoridade é a sequência bruta de chamadas na ponte, idêntica nas três cenas
+(sucesso, leitura em andamento falha, renovação falha): `GET /status#1, answered#1,
+GET /status#2, POST /emulation/library/scan, answered#2, GET /status#3, answered#3`. Vermelho
+antes da correção (`3 failed`), verde depois (`3 passed, 53 deselected em 8,82 s`), e a sonda de
+não-vacuidade: um `return` injetado em `drainStatusRefresh()` devolve `3 failed`; revertido,
+`3 passed` com `diff -q` idêntico. O harness `check_central_loading.qml`, que tinha o descarte
+pinado como contrato, foi **reestruturado e não enfraquecido** — a cena ganhou a sondagem de
+sobreposição no fim e a contagem de leituras da ponte passou de 3 para 5, mudança declarada em
+`09-refresh-coercido.log` §5.
+
+**Conciliação das duas suítes.** `08-duas-suites-concorrentes.log`: 17 min 53 s de sobreposição, as
+duas com o mesmo total, nenhuma interrompida, nenhuma terceira suíte lançada e nenhum arquivo
+alheio tocado; a linha do tempo de mtime mostra que **nenhuma** das duas cobriu as escritas
+finais de governança. Os dois logs brutos de `/tmp` se perderam no reboot de 23:55 (tmpfs) e o
+que sobreviveu são os excerptos verbatim registrados lá. A causa é minha: relancei após a
+compactação de contexto sem conferir processos. Duas afirmações do `07-suite-integral.log` que
+eu havia escrito foram corrigidas por um bloco `RETIFICAÇÃO` no próprio arquivo, e o texto da
+evidência no item também.
+
+**Contraste contra a política normativa, não contra o piso do teste.** `14-contraste-politica-normativa.log`:
+a norma escrita é `ACCESSIBILITY.md:8` e `THEME-ENGINE-AND-STUDIO.md:309` (razão ≥ 7:1 para texto
+essencial; não há ata que adote a "política aprovada equivalente"). Medição independente dos números
+reais: 24/24 pares das seis superfícies fixas de aviso entre 12,67:1 e 16,50:1 e alto contraste
+entre 15,12:1 e 19,49:1 — a afirmação desta frente passa na norma, não apenas no piso 4,5:1.
+Encontrado e registrado sem maquiagem: 28 dos 32 pares semânticos (`success`/`warning`/`danger`/
+`textMuted` sobre `surface`/`surfaceRaised`/`background`) ficam abaixo de 7:1, pior 4,99:1, e o
+docstring do próprio teste chama esse texto de "essencial". Nenhum comportamento de tema foi
+alterado: a decisão (adotar 4,5:1 formalmente ou subir os tokens) é de produto, não deste lote.
+
+**Checkpoint integral.** `15-checkpoint-integral-bruto.log`: `1 failed, 6397 passed, 47 skipped
+em 1815,74 s`, rc=1, uma execução, log gravado fora do checkout, estado real do operador
+byte a byte idêntico antes e depois. A única falha é de consistência do catálogo e tem causa
+minha de ordenação: renovei os `scopeDigest` e *depois* `ruff format` reescreveu
+`tests/integration/test_qml_handheld_offscreen.py`, que está no escopo dos seis itens apontados.
+Reproduzida (os mesmos seis IDs, todos com o mesmo arquivo em escopo), regenerada pela
+ferramenta e revalidada pelo caminho que `AGENTS.md` §6 abre para digest/visão envelhecidos:
+`69 passed em 61,20 s`, `STATUS-CHECK: OK`. Os gates rápidos pegaram duas violações de lint no
+código novo (`RUF100`) na 1ª passada, verdes na 2ª (`17-gates-rapidos-bruto.log`, com as duas).
+`18-checkpoint-integral.log` discrimina o que a corrida cobre do que não cobre, e registra dois
+defeitos do meu próprio roteiro de pré-lançamento (`/usr/bin/time` inexistente; `pgrep` casando
+o próprio invólucro, o que torna aquela linha imprópria como prova de isolamento).
+
+**Governança.** `nextAction` do item e do workstream agora descrevem o momento real: checkpoint
+feito, restando commits → push → atualização do PR 240 (OPEN em `d215e320`, sem esta correção) →
+CI terminal no SHA final → merge do operador. O workstream continua `active` — a tentativa de
+rotulá-lo `awaiting-integration` foi reprovada pelo schema do catálogo, que está vivo e vale.
+Onze itens além do `SZ-UI-DESKTOP-AUDIT` tiveram o digest envelhecido por esta frente e cada um
+recebeu evidência explícita de "renovação de escopo, não carimbo"; nenhum critério deles foi
+reatestado.
+
+**No ato do commit: um nome não-ASCII reprova o gate por engano.** Ao staged o lote documental,
+`make status-check` passou a falhar com "arquivo alterado sem item de status responsavel"
+apontando `08-suítes-concorrentes.log` — e só ele, dos onze logs novos. Reproduzido e lido o
+código: `_changed_paths` (`tools/project_status.py:213-223`) chama `git diff --name-only` sem
+`-c core.quotepath=false`, então o git devolve aquele caminho escapado e entreaspasado, que nunca
+casa com um `scopePaths`. O gate estava certo sobre um nome errado — o arquivo é do escopo do
+`SZ-UI-DESKTOP-AUDIT`. Corrigido pelo caminho mínimo: renomeado para
+`08-duas-suites-concorrentes.log` (convenção dos outros logs do lote, todos ASCII), nove
+referências reescritas (README, logs 07 e 18, três do item, uma aqui), digest do item renovado,
+visões regeradas, `STATUS-CHECK: OK` e `13 passed em 4,13 s` com o estado real do operador
+idêntico. A limitação do `quotepath` NÃO foi consertada nesta fatia: é ferramenta compartilhada
+fora do escopo, e fica registrada como pendência real — qualquer nome não-ASCII em evidência
+reprova a posse com falsidade. Antes do commit os arquivos novos não eram vistos pelo
+`git diff HEAD`, então o erro só aparece na hora de versionar: é um gate de índice de trabalho,
+não de histórico. Duas coisas deste passo merecem registro contra a minha própria escrita: o
+`README.md` do lote está dentro do escopo do item, então renova-lo depois do digest invalidou o
+digest de novo — a renovação foi refeita (`32520ddb…`, que é o que vai no commit; o valor
+intermediário `183c987f…` nunca descreveu uma árvore versionada); e a minha primeira versão do
+segundo roteiro de renovação substituiu a linha inteira pela hash nua, corrompendo o JSON. O
+`load_catalog` reprovou na hora ("JSON invalido: line 70") e nada foi commitado quebrado — o
+mesmo validador que já tinha barrado o `state` inexistente do workstream.
+
+**O que esta fatia NÃO fecha.** RC-01 continua aberto: cauda do `/status` (~11,4 s, dominada por
+`emulation`; as cinco amostras do probe são exploratórias — com n=5 o "p95" é o máximo ordenado),
+experiência dos alertas empilhados na dobra de 800 px, prova física na release instalada,
+UX-03/04/05/07 (readiness compreensível, unidades de armazenamento legíveis, foco/scroll e o
+modal RetroFE em viewport compacto) e o conflito normativo do contraste semântico abaixo de 7:1.
+
+**Próximo lote.** Fechar a fatia com o SHA realmente integrado, quando o merge ocorrer; depois,
+a segunda fatia de RC-01 (UX-03/04/05/07), reproduzindo cada ponto antes de mexer — os locais
+já mapeados: `Emulation.qml:184-192,1601-1613,3240-3284` e `domain/emulation_workspace.py:430-474`
+para prontidão; `adapters/emulation.py:5394-5405,2967` despejando bytes crus contra quatro
+formatadores humanos divergentes (`Main.qml:1298`, `SteamGameplay.qml:290`, `Emulation.qml:533`,
+`ThemeCatalogPanel.qml:82` e o vazamento `Tamanho: %2 bytes` em `ThemeEditorPanel.qml:2259`);
+`ThemeEditorPanel.qml:1048-1266` para o diálogo RetroFE, cujo `contentItem: ColumnLayout` não é
+rolável. RC-02 (DATA-01) vem depois, com os 18 arquivos / 15 candidatos reclassificados sem somar
+conjuntos sobrepostos.

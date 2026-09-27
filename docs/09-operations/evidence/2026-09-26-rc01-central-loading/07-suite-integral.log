@@ -27,6 +27,21 @@ rc=0
 #   corrida é a que corresponde à árvore final do lote, e ela rodou sob a carga da
 #   primeira — ou seja, o veredito verde foi obtido com contenção, não sem ela.
 
+# RETIFICAÇÃO (2026-09-27, 00:20 -0300) — três afirmações acima e no cabeçalho deste
+#   arquivo estavam erradas, e o detalhamento completo está em 08-duas-suites-concorrentes.log:
+#   1. O cabeçalho ("código e governança da entrega completos, incluindo os scopeDigests
+#      dos 12 itens tocados e as views geradas") e a frase "esta segunda corrida é a que
+#      corresponde à árvore final do lote" são falsos. As duas
+#      terminaram antes da última escrita de governança: ui-desktop-audit.json às 22:37:04,
+#      WORKLOG às 22:37:13 e as três views às 22:37:14, contra término desta corrida às
+#      22:33:10. O que cobriu o estado final foi apenas `make status-check`.
+#   2. "O único artefato escrito depois desta corrida é este log e o WORKLOG" é falso: o
+#      próprio scopeDigest deste item e as views geradas também foram escritos depois.
+#   3. Os logs brutos das duas corridas (/tmp/rc01-full-suite.log e
+#      /tmp/rc01_suite_integral.log) não existem mais: o host reiniciou às 23:55 de
+#      2026-09-26 e /tmp é tmpfs. Sobreviveram apenas os trechos literais copiados em
+#      08-duas-suites-concorrentes.log, mais este resumo.
+
 # Artefato de exibição encontrado ao conferir as 47 linhas de skip: três delas apontam
 #   para /mnt/sdcard/Projects/Port_Steam/tests/..., caminho que não existe mais. Não são
 #   testes de outro checkout: os módulos são daqui

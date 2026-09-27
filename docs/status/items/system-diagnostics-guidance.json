@@ -16,9 +16,11 @@
     "tests/qml/check_main_handheld_sections.qml",
     "docs/09-operations/evidence/2026-09-22-system-diagnostics-guidance/README.md"
   ],
-  "scopeDigest": "4e1aa44ae47adb961d8b0dddd0db6462dd4c786c2e85f48b49493fdb075a362c",
+  "scopeDigest": "a677c84a48f13e5726c4357e8363121a830f3c032506e0258a908ff01a9ebf00",
   "dependsOn": [],
-  "knownGaps": ["GAP-EMULATION-PHYSICAL-LAUNCH"],
+  "knownGaps": [
+    "GAP-EMULATION-PHYSICAL-LAUNCH"
+  ],
   "acceptanceCriteria": [
     "Cada check do Doctor publica estado, causa, impacto e orientação sem expor segredos ou caminhos pessoais.",
     "Alertas com ação segura publicam ação allowlisted, alvo, rótulo e se a ação está habilitada.",
@@ -56,10 +58,16 @@
       "command": "/usr/local/bin/steamzero doctor --json; readlink -f /opt/steamzero/current",
       "result": "partial"
     },
-{
+    {
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/README.md",
       "command": "2026-09-26 renovacao de escopo pela frente WS-2026-09-RC01-CENTRAL-LOADING: src/steamzero/ui/qml/Main.qml mudou por trabalho de outro item (RC-01, SZ-UI-DESKTOP-AUDIT): propriedades de fase do bootstrap (statusPhase, statusInFlight, statusStale), a faixa de fase inline com oferta de retry, cartoes em 'pending' em vez de afirmar ausencia nao medida, e tinta dos avisos escolhida por contraste. A mudanca e aditiva no shell e nao toca as rotas nem as cenas deste item, mas o arquivo esta no escopo declarado, entao o digest envelheceria em silencio sem registro. Nenhuma evidencia deste item foi reexecutada nem reatestada.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/09-refresh-coercido.log",
+      "command": "2026-09-27 renovacao de escopo pela frente WS-2026-09-RC01-CENTRAL-LOADING (fatia UX-01/UX-02 de RC-01). Arquivos deste escopo alterados: src/steamzero/ui/qml/Main.qml: Main.qml ganhou a coercao de renovacao de status (statusRefreshQueued + drainStatusRefresh nos dois callbacks da leitura): uma renovacao pedida durante uma leitura em andamento deixa de ser descartada. E mudanca visivel no shell, nao neste item; nenhum contrato deste item foi reexecutado. O digest foi regenerado pela ferramenta porque o escopo mudou; as capacidades deste item NAO foram reatestadas, nenhuma evidencia deste item foi carimbada, e nenhum eixo dele mudou de estado neste lote.",
       "result": "recorded"
     }
   ],

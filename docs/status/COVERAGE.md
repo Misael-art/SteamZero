@@ -17,13 +17,13 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-PRIVILEGED | 7 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SCHEMAS | 53 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SERVICE-API | 11 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-TESTS | 500 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-TESTS | 501 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TOOLS | 42 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AURA-ASSET-SANITIZACAO | 2 | 1 | 1 | unit |  |
-| SZ-AURA-CINEMA-COMPLETION | 98 | 30 | 17 | hw |  |
+| SZ-AURA-CINEMA-COMPLETION | 98 | 31 | 17 | hw |  |
 | SZ-AURA-CONTRACTS | 38 | 3 | 3 | unit |  |
 | SZ-AURA-CURRENT-RELEASE-EVIDENCE | 17 | 4 | 4 | hw |  |
-| SZ-AURA-ESDE-ACTIVE-SURFACE | 8 | 4 | 3 | dev |  |
+| SZ-AURA-ESDE-ACTIVE-SURFACE | 8 | 5 | 3 | dev |  |
 | SZ-AURA-ESDE-RUNTIME-BRIDGE | 11 | 6 | 6 | unit |  |
 | SZ-AURA-LAUNCHER | 267 | 60 | 42 | hw |  |
 | SZ-AURA-LAUNCHER-EXIT | 5 | 1 | 1 | dev |  |
@@ -33,10 +33,10 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AURA-PLATFORM-MEDIA-SCOPE | 3 | 2 | 2 | unit |  |
 | SZ-AURA-RETROFE-MEDIA-INGESTION | 9 | 4 | 2 | hw |  |
 | SZ-AURA-RICH-MEDIA-PROJECTION | 9 | 5 | 3 | hw |  |
-| SZ-AURA-SAVE-STATE-GALLERY | 22 | 10 | 8 | hw |  |
+| SZ-AURA-SAVE-STATE-GALLERY | 22 | 11 | 8 | hw |  |
 | SZ-AURA-SEARCH-CONTRACT | 5 | 5 | 3 | dev |  |
-| SZ-AURA-SESSION-OSD | 32 | 8 | 5 | hw |  |
-| SZ-AURA-UI | 16 | 6 | 4 | unit |  |
+| SZ-AURA-SESSION-OSD | 32 | 9 | 5 | hw |  |
+| SZ-AURA-UI | 16 | 7 | 4 | unit |  |
 | SZ-AURA-VISUAL-COMPLETION | 38 | 14 | 5 | hw |  |
 | SZ-AURA-VISUAL-RICH-SURFACE | 11 | 9 | 8 | hw |  |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
@@ -61,11 +61,11 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-FRONTEND-RETROFE | 6 | 3 | 2 | dev |  |
 | SZ-FRONTEND-SRM | 3 | 1 | 1 | unit |  |
 | SZ-FRONTEND-STEAM-SHORTCUTS | 2 | 1 | 1 | unit |  |
-| SZ-GAMEMODE-READINESS | 9 | 3 | 1 | hw |  |
+| SZ-GAMEMODE-READINESS | 9 | 4 | 1 | hw |  |
 | SZ-GOVERNANCE-STATUS | 22 | 14 | 11 | dev |  |
 | SZ-HOST-UPDATE-TRANSACTIONAL | 18 | 12 | 9 | hw |  |
 | SZ-JOB-RECOVERY-DOCTOR | 10 | 3 | 1 | dev |  |
-| SZ-LIBRARY-CANONICAL | 169 | 22 | 12 | hw |  |
+| SZ-LIBRARY-CANONICAL | 169 | 23 | 12 | hw |  |
 | SZ-LIBRARY-CONVERSION-CONTRACT | 4 | 2 | 2 | unit |  |
 | SZ-MAIN-WORKTREE-RECONCILIATION | 15 | 8 | 6 | dev |  |
 | SZ-MEDIA-AUDIT-PLATFORM-SCOPE | 4 | 4 | 2 | hw |  |
@@ -83,20 +83,20 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-PLATFORM-REQUIREMENT-SCOPE | 7 | 3 | 2 | unit |  |
 | SZ-PLATFORM-VITA-CATALOG | 5 | 8 | 5 | hw |  |
 | SZ-PROJECT-DESIGN-AUDIT | 12 | 24 | 6 | dev |  |
-| SZ-PS3-OFFICIAL-FIRMWARE-DOWNLOAD | 8 | 3 | 1 | unit |  |
+| SZ-PS3-OFFICIAL-FIRMWARE-DOWNLOAD | 8 | 4 | 1 | unit |  |
 | SZ-RESOURCE-QML-PROBE | 7 | 2 | 1 | dev |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
 | SZ-ROADMAP-CONTINUATION | 4 | 4 | 2 | dev |  |
 | SZ-SHARPEMU-COMPONENT-SMOKE-CONTRACT | 3 | 1 | 1 | unit |  |
-| SZ-SYSTEM-DIAGNOSTICS-GUIDANCE | 5 | 6 | 3 | dev |  |
+| SZ-SYSTEM-DIAGNOSTICS-GUIDANCE | 5 | 7 | 3 | dev |  |
 | SZ-TEST-STATE-ISOLATION | 4 | 4 | 4 | dev |  |
-| SZ-THEME-ENGINE | 125 | 50 | 45 | hw |  |
+| SZ-THEME-ENGINE | 125 | 51 | 45 | hw |  |
 | SZ-THEME-ESDE-SCENE-RENDER | 26 | 11 | 8 | hw |  |
-| SZ-THEME-IMPORT-ESDE-LAYOUT | 32 | 11 | 10 | hw |  |
+| SZ-THEME-IMPORT-ESDE-LAYOUT | 32 | 12 | 10 | hw |  |
 | SZ-THEME-IMPORT-RETROFE | 10 | 10 | 9 | hw |  |
 | SZ-THEME-IMPORT-SURFACE | 4 | 8 | 7 | unit |  |
 | SZ-THEME-STUDIO | 88 | 19 | 15 | hw |  |
-| SZ-UI-DESKTOP-AUDIT | 425 | 60 | 41 | dev |  |
+| SZ-UI-DESKTOP-AUDIT | 437 | 68 | 49 | dev |  |
 | SZ-UI-PACKAGED-ICONS | 57 | 4 | 2 | unit |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 

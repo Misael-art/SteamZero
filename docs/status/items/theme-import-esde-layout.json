@@ -43,7 +43,7 @@
     "tests/unit/test_theme_import_esde_layout.py",
     "tests/unit/test_theme_sources.py"
   ],
-  "scopeDigest": "b5f23222e3e234af5563706726bb8f372938727ffd6772dd796c42e719e9aff9",
+  "scopeDigest": "67bfe962f728c50c941cb25047265d68e182cded1a02c882889cbcf860947321",
   "dependsOn": [],
   "knownGaps": [
     "GAP-THEME-ESDE-SCENE-NOT-RENDERED",
@@ -124,10 +124,16 @@
       "command": "ciclo na release 2.0.0rc1-ba79eaae8d82 instalada: reinstalar nso-menu criou staging registrado e o cleanup-plan NAO o lista (baseline antes da correcao: 1 item de 122349 bytes de rollback vivo); o residuo criado sob o codigo velho continua listado, como esperado; rollback restaurou o manifesto, removeu o staging e preservou os assets",
       "result": "passed"
     },
-{
+    {
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/README.md",
       "command": "2026-09-26 renovacao de escopo pela frente WS-2026-09-RC01-CENTRAL-LOADING: src/steamzero/ui/qml/Main.qml mudou por trabalho de outro item (RC-01, SZ-UI-DESKTOP-AUDIT): propriedades de fase do bootstrap (statusPhase, statusInFlight, statusStale), a faixa de fase inline com oferta de retry, cartoes em 'pending' em vez de afirmar ausencia nao medida, e tinta dos avisos escolhida por contraste. A mudanca e aditiva no shell e nao toca as rotas nem as cenas deste item, mas o arquivo esta no escopo declarado, entao o digest envelheceria em silencio sem registro. Nenhuma evidencia deste item foi reexecutada nem reatestada.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/09-refresh-coercido.log",
+      "command": "2026-09-27 renovacao de escopo pela frente WS-2026-09-RC01-CENTRAL-LOADING (fatia UX-01/UX-02 de RC-01). Arquivos deste escopo alterados: src/steamzero/ui/qml/Main.qml: Main.qml ganhou a coercao de renovacao de status (statusRefreshQueued + drainStatusRefresh nos dois callbacks da leitura): uma renovacao pedida durante uma leitura em andamento deixa de ser descartada. E mudanca visivel no shell, nao neste item; nenhum contrato deste item foi reexecutado. O digest foi regenerado pela ferramenta porque o escopo mudou; as capacidades deste item NAO foram reatestadas, nenhuma evidencia deste item foi carimbada, e nenhum eixo dele mudou de estado neste lote.",
       "result": "recorded"
     }
   ],

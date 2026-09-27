@@ -39,7 +39,7 @@
     "tests/integration/test_qml_handheld_offscreen.py",
     "tests/integration/test_qml_visual_capture.py"
   ],
-  "scopeDigest": "50f83f2866e73566a12d567cdc0b3dbef6ddfb99e99e724febc93cd3ca89cc77",
+  "scopeDigest": "def856cd2071cfa85a93a7468b7d3b2506e4e40028a58fb275fc5c3f50b842a0",
   "dependsOn": [],
   "activeWorkstreams": [
     "WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT"
@@ -191,10 +191,16 @@
       "command": "Após release, workspace host truthState=ready e Vita=6 (cinco ZIP + directory-native PCSF00516 com SFO); root scan atualizou lastScan 22:52:02Z (1162 bases, 102 updates, 144 DLC, 368 incompatíveis, 7284 ignorados, 202 erros). library.root.scan é síncrona: cliente HTTP de 60s expirou, ação concluiu e bridge gerou BrokenPipe. Preview físico library.vita.package: 686 files, sourceBytes=1712471393, estimatedOutputBytes=1713173857, packageSpaceBytes=1721562465; sem criar preview output. G58 derivados ainda fora da gestão; G59 scan sync aberto.",
       "result": "partial"
     },
-{
+    {
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/README.md",
       "command": "2026-09-26 renovacao de escopo pela frente WS-2026-09-RC01-CENTRAL-LOADING: src/steamzero/ui/qml/Main.qml mudou por trabalho de outro item (RC-01, SZ-UI-DESKTOP-AUDIT): propriedades de fase do bootstrap (statusPhase, statusInFlight, statusStale), a faixa de fase inline com oferta de retry, cartoes em 'pending' em vez de afirmar ausencia nao medida, e tinta dos avisos escolhida por contraste. A mudanca e aditiva no shell e nao toca as rotas nem as cenas deste item, mas o arquivo esta no escopo declarado, entao o digest envelheceria em silencio sem registro. Nenhuma evidencia deste item foi reexecutada nem reatestada. O mesmo arquivo de harness compartilhado tambem entrou no escopo.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/09-refresh-coercido.log",
+      "command": "2026-09-27 renovacao de escopo pela frente WS-2026-09-RC01-CENTRAL-LOADING (fatia UX-01/UX-02 de RC-01). Arquivos deste escopo alterados: src/steamzero/ui/qml/Main.qml: Main.qml ganhou a coercao de renovacao de status (statusRefreshQueued + drainStatusRefresh nos dois callbacks da leitura): uma renovacao pedida durante uma leitura em andamento deixa de ser descartada. E mudanca visivel no shell, nao neste item; nenhum contrato deste item foi reexecutado. tests/integration/test_qml_handheld_offscreen.py: o gate offscreen compartilhado ganhou a ponte de tres cenas do refresh coerado (leituras com atraso controlado, POST /emulation/library/scan e a sequencia bruta de chamadas como prova). Nada aqui e arquivo deste item alterado por comportamento deste item; e o invólucro de teste comum. O digest foi regenerado pela ferramenta porque o escopo mudou; as capacidades deste item NAO foram reatestadas, nenhuma evidencia deste item foi carimbada, e nenhum eixo dele mudou de estado neste lote.",
       "result": "recorded"
     }
   ],

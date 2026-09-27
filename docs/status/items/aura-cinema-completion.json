@@ -42,7 +42,7 @@
     "tests/unit/test_session_overlay.py",
     "tests/unit/test_session_overlay_adapter.py"
   ],
-  "scopeDigest": "315d9e7cdb5266ff751ae35d59d3eceac41be53847976f53706d1f14785d3d0c",
+  "scopeDigest": "75095b1ddd0743573c40500085e8c63ba8ff683aec194d54e07f394f6860212f",
   "dependsOn": [
     "SZ-AURA-SAVE-STATE-GALLERY",
     "SZ-AURA-SESSION-OSD",
@@ -235,10 +235,16 @@
       "command": "release 2.0.0rc1-a71c2b5e17cd, Wayland/OpenGL 948x593; startup 724 ms, p95 16.515 ms, VRAM 103692 KiB, meetsBudget=true",
       "result": "passed"
     },
-{
+    {
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/README.md",
       "command": "2026-09-26 renovacao de escopo pela frente WS-2026-09-RC01-CENTRAL-LOADING: tests/integration/test_qml_handheld_offscreen.py recebeu as portas da cena de fases da Central (ponte local servindo tres GET /status: um atrasado, um com E-STATUS-SCENE, um de recuperacao) e dois quadros capturaveis marcados 'visual'. Nenhuma evidencia deste item foi reatestada: o que existe e o arquivo compartilhado do harness verde com o Main.qml modificado (gate '-k central_loading' 3 passed em 11,98 s; lote focado da frente 207 passed em 64,53 s). Os criterios proprios seguem com as provas anteriores.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/09-refresh-coercido.log",
+      "command": "2026-09-27 renovacao de escopo pela frente WS-2026-09-RC01-CENTRAL-LOADING (fatia UX-01/UX-02 de RC-01). Arquivos deste escopo alterados: tests/integration/test_qml_handheld_offscreen.py: o gate offscreen compartilhado ganhou a ponte de tres cenas do refresh coerado (leituras com atraso controlado, POST /emulation/library/scan e a sequencia bruta de chamadas como prova). Nada aqui e arquivo deste item alterado por comportamento deste item; e o invólucro de teste comum. O digest foi regenerado pela ferramenta porque o escopo mudou; as capacidades deste item NAO foram reatestadas, nenhuma evidencia deste item foi carimbada, e nenhum eixo dele mudou de estado neste lote.",
       "result": "recorded"
     }
   ],

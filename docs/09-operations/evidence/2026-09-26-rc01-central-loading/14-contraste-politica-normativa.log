@@ -1,0 +1,227 @@
+# RC-01 / UX-01 — o contraste da entrega conferido contra a política normativa
+# Passo 4 da revisão do operador (2026-09-27): "verificar o contraste contra a
+# política normativa aplicável", em vez de confiar no piso que o próprio teste escolheu.
+#
+# 1. A política escrita no repositório (duas linhas, e só estas):
+#    docs/07-ui-ux/ACCESSIBILITY.md:8
+#      | Alto contraste | tema dedicado (não filtro), razão >= 7:1 para texto essencial |
+#    docs/01-product/THEME-ENGINE-AND-STUDIO.md:309 (§16 Acessibilidade)
+#      - contraste essencial >=7:1 ou política aprovada equivalente;
+#    Procura por "política aprovada equivalente" adotada em docs normativos: sem
+#    registro (rtk grep -rniE "política aprovada|equivalente" docs, exceto evidências).
+#    Ou seja: o repo exige 7:1 para texto essencial; não há ata que adote 4,5:1.
+#
+# 2. O que os testes aplicam hoje:
+#    tests/unit/test_ui_attention_surface_contrast.py:39-41
+#      WCAG_AA_NORMAL = 4.5   (piso das superfícies fixas e dos tokens semânticos)
+#      HIGH_CONTRAST_MINIMUM = 7.0   (alto contraste)
+#    tests/qml/check_warning_surface_contrast.qml:125,144,156
+#      assertSurfacesLegible("tema escuro", 4.5) / ("tema claro", 4.5) / ("alto contraste", 7.0)
+#
+# 3. Medição independente (não usa as asserções: calcula e imprime os números).
+#    Instrumento: /tmp/rc01_contraste_politica.py (listado no fim deste log; morou
+#    fora do checkout de propósito, é leitura pura do produto empacotado).
+#    Comando exato, no checkout canônico, com o venv existente:
+#      .venv/bin/python /tmp/rc01_contraste_politica.py
+#    Saída bruta completa, sem edição (md5 e9989d9232a8a95805b8d5d6711e7bb0):
+
+temas empacotados: 4 -> org.steamzero.asset-recipes-demo, org.steamzero.aura, org.steamzero.default, org.steamzero.steamdeck
+superfícies fixas de aviso: 6
+critérios: AA aplicado pelos testes = 4.5:1; norma essencial = 7.0:1
+
+== org.steamzero.asset-recipes-demo (text #16212a, background #e7eceb)
+   #24180b tinta #e7eceb = 14.54:1  [OK ] [>=7:1]
+   #211a10 tinta #e7eceb = 14.42:1  [OK ] [>=7:1]
+   #080d13 tinta #e7eceb = 16.33:1  [OK ] [>=7:1]
+   #352020 tinta #e7eceb = 12.76:1  [OK ] [>=7:1]
+   #35171b tinta #e7eceb = 13.64:1  [OK ] [>=7:1]
+   #102b20 tinta #e7eceb = 12.67:1  [OK ] [>=7:1]
+
+== org.steamzero.aura (text #e8ecf7, background #0b1020)
+   #24180b tinta #e8ecf7 = 14.68:1  [OK ] [>=7:1]
+   #211a10 tinta #e8ecf7 = 14.57:1  [OK ] [>=7:1]
+   #080d13 tinta #e8ecf7 = 16.50:1  [OK ] [>=7:1]
+   #352020 tinta #e8ecf7 = 12.89:1  [OK ] [>=7:1]
+   #35171b tinta #e8ecf7 = 13.78:1  [OK ] [>=7:1]
+   #102b20 tinta #e8ecf7 = 12.80:1  [OK ] [>=7:1]
+
+== org.steamzero.default (text #16212a, background #e7eceb)
+   #24180b tinta #e7eceb = 14.54:1  [OK ] [>=7:1]
+   #211a10 tinta #e7eceb = 14.42:1  [OK ] [>=7:1]
+   #080d13 tinta #e7eceb = 16.33:1  [OK ] [>=7:1]
+   #352020 tinta #e7eceb = 12.76:1  [OK ] [>=7:1]
+   #35171b tinta #e7eceb = 13.64:1  [OK ] [>=7:1]
+   #102b20 tinta #e7eceb = 12.67:1  [OK ] [>=7:1]
+
+== org.steamzero.steamdeck (text #16212a, background #e7eceb)
+   #24180b tinta #e7eceb = 14.54:1  [OK ] [>=7:1]
+   #211a10 tinta #e7eceb = 14.42:1  [OK ] [>=7:1]
+   #080d13 tinta #e7eceb = 16.33:1  [OK ] [>=7:1]
+   #352020 tinta #e7eceb = 12.76:1  [OK ] [>=7:1]
+   #35171b tinta #e7eceb = 13.64:1  [OK ] [>=7:1]
+   #102b20 tinta #e7eceb = 12.67:1  [OK ] [>=7:1]
+
+pares medidos nas superfícies fixas: 24
+pares abaixo de 7:1: 0 de 24
+
+pares semânticos medidos: 32; abaixo de 7.0:1: 28
+   razao  tema                                  tinta       sobre
+   4.99:1  org.steamzero.asset-recipes-demo      success #167a45   surface #f4f7f5  [<7:1]
+   4.99:1  org.steamzero.default                 success #167a45   surface #f4f7f5  [<7:1]
+   4.99:1  org.steamzero.steamdeck               success #167a45   surface #f4f7f5  [<7:1]
+   5.07:1  org.steamzero.asset-recipes-demo      warning #9a5a00   surface #f4f7f5  [<7:1]
+   5.07:1  org.steamzero.default                 warning #9a5a00   surface #f4f7f5  [<7:1]
+   5.07:1  org.steamzero.steamdeck               warning #9a5a00   surface #f4f7f5  [<7:1]
+   5.35:1  org.steamzero.asset-recipes-demo      textMuted #53616b   background #e7eceb  [<7:1]
+   5.35:1  org.steamzero.default                 textMuted #53616b   background #e7eceb  [<7:1]
+   5.35:1  org.steamzero.steamdeck               textMuted #53616b   background #e7eceb  [<7:1]
+   5.38:1  org.steamzero.asset-recipes-demo      success #167a45   surfaceRaised #ffffff  [<7:1]
+   5.38:1  org.steamzero.default                 success #167a45   surfaceRaised #ffffff  [<7:1]
+   5.38:1  org.steamzero.steamdeck               success #167a45   surfaceRaised #ffffff  [<7:1]
+   5.47:1  org.steamzero.asset-recipes-demo      warning #9a5a00   surfaceRaised #ffffff  [<7:1]
+   5.47:1  org.steamzero.default                 warning #9a5a00   surfaceRaised #ffffff  [<7:1]
+   5.47:1  org.steamzero.steamdeck               warning #9a5a00   surfaceRaised #ffffff  [<7:1]
+   5.53:1  org.steamzero.aura                    danger #ff6b73   surfaceRaised #1c2440  [<7:1]
+   5.62:1  org.steamzero.aura                    textMuted #8b93a8   surface #141a2e  [<7:1]
+   5.92:1  org.steamzero.asset-recipes-demo      textMuted #53616b   surface #f4f7f5  [<7:1]
+   5.92:1  org.steamzero.default                 textMuted #53616b   surface #f4f7f5  [<7:1]
+   5.92:1  org.steamzero.steamdeck               textMuted #53616b   surface #f4f7f5  [<7:1]
+   6.16:1  org.steamzero.aura                    textMuted #8b93a8   background #0b1020  [<7:1]
+   6.23:1  org.steamzero.asset-recipes-demo      danger #ae2634   surface #f4f7f5  [<7:1]
+   6.23:1  org.steamzero.default                 danger #ae2634   surface #f4f7f5  [<7:1]
+   6.23:1  org.steamzero.steamdeck               danger #ae2634   surface #f4f7f5  [<7:1]
+   6.25:1  org.steamzero.aura                    danger #ff6b73   surface #141a2e  [<7:1]
+   6.72:1  org.steamzero.asset-recipes-demo      danger #ae2634   surfaceRaised #ffffff  [<7:1]
+   6.72:1  org.steamzero.default                 danger #ae2634   surfaceRaised #ffffff  [<7:1]
+   6.72:1  org.steamzero.steamdeck               danger #ae2634   surfaceRaised #ffffff  [<7:1]
+   7.43:1  org.steamzero.aura                    warning #ff9f1a   surfaceRaised #1c2440  [>=7:1]
+   7.92:1  org.steamzero.aura                    success #59d35d   surfaceRaised #1c2440  [>=7:1]
+   8.40:1  org.steamzero.aura                    warning #ff9f1a   surface #141a2e  [>=7:1]
+   8.96:1  org.steamzero.aura                    success #59d35d   surface #141a2e  [>=7:1]
+pior par semantico medido: 4.99:1
+alto contraste #ffffff sobre as 6 superfícies: mín 15.12:1 máx 19.49:1 (critério 7.0:1)
+
+# 4. Leitura da medição:
+#
+#    a) O que ESTA entrega corrigiu e o que ela afirma — a tinta dos avisos sobre as
+#       seis superfícies fixas escuras do shell: 24/24 pares medidos (4 temas
+#       empacotados x 6 superfícies) caem entre 12,67:1 e 16,50:1, e o alto contraste
+#       (branco puro do ThemeBridge) entre 15,12:1 e 19,49:1. Zero pares abaixo de
+#       7:1. A afirmação, portanto, passa na norma escrita (>=7:1), não apenas no
+#       piso 4,5:1 que o teste impõe. O harness offscreen (04-contraste-depois.log)
+#       mede a mesma regra com o fixture dele e aprova 44/44.
+#
+#    b) O que a norma NÃO está satisfeita, e não foi esta entrega que criou: os 32
+#       pares semânticos (success/warning/danger/textMuted sobre surface,
+#       surfaceRaised e background dos temas) — 28 abaixo de 7:1, pior valor 4,99:1
+#       (#167a45 "success" sobre #f4f7f5 "surface" nos três temas claros empacotados).
+#       Esses pares são as certificações de estado "ready / degraded / missing" do
+#       texto de prontidão, cobertas por
+#       test_status_semantic_text_is_legible_on_the_surfaces_it_uses a 4,5:1.
+#       O docstring do próprio teste chama isso de "texto essencial" (linha ~152), o
+#       que conflita com ACCESSIBILITY.md:8 e THEME-ENGINE-AND-STUDIO.md:309.
+#
+#    c) Consequência para a redação desta entrega: onde ela diz "contraste verificado",
+#       vale (a) — as superfícies fixas de aviso. Não se alega 7:1 para o texto
+#       semântico dos temas regulares: há conflito normativo aberto, e a decisão é de
+#       produto (adotar 4,5:1 formalmente, ou subir os tokens dos temas para >=7:1),
+#       não deste lote. Nenhum comportamento de tema foi alterado aqui; registrar e
+#       deferir, conforme "não agrupar mudanças não relacionadas".
+#
+# 5. Limites desta verificação:
+#    * razão WCAG sobre sRGB, calculada por tools/ui_contrast_inventory.py — a
+#      fórmula é a do produto/testes, não um analisador de pixels (o repo registra
+#      GAP-UI-CONTRAST-MEASUREMENT para a via de captura);
+#    * cobre os 4 temas empacotados e as 6 superfícies fixas + 8 pares semânticos
+#      listados nos testes. Qualquer outra combinação de token não foi medida;
+#    * nada aqui é prova de release instalada nem de leitura humana no painel do Deck.
+#
+# 6. Instrumento usado (listagem integral; reproduz com o comando da seção 3):
+
+
+"""Medição independente da política de contraste aplicável (RC-01 / UX-01).
+
+Importa o inventário e os temas empacotados do próprio produto e imprime a
+razão real de cada tinta sobre cada superfície fixa de aviso, separando o
+critério de 4,5:1 (usado pelos testes) do de 7:1 (exigido por ACCESSIBILITY.md
+e THEME-ENGINE-AND-STUDIO.md para texto essencial).
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path("/home/misael/Projects/Steam Zero/Canonical/2026-09-21")
+sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT / "tools"))
+
+spec = importlib.util.spec_from_file_location(
+    "ux01", ROOT / "tests/unit/test_ui_attention_surface_contrast.py"
+)
+assert spec is not None and spec.loader is not None
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+
+AA = module.WCAG_AA_NORMAL
+HC = module.HIGH_CONTRAST_MINIMUM
+surfaces = module.FIXED_WARNING_SURFACES
+colors = module.COLORS
+
+print(f"temas empacotados: {len(colors)} -> {', '.join(sorted(colors))}")
+print(f"superfícies fixas de aviso: {len(surfaces)}")
+print(f"critérios: AA aplicado pelos testes = {AA}:1; norma essencial = {HC}:1")
+print()
+
+below_seven: list[str] = []
+rows = 0
+for theme_id in sorted(colors):
+    theme_colors = colors[theme_id]
+    print(f"== {theme_id} (text {theme_colors['text']}, background {theme_colors['background']})")
+    for surface in surfaces:
+        ink, ratio = module._ink_for(theme_colors, surface)
+        rows += 1
+        flag = "OK " if ratio >= AA else "AA-FAIL"
+        seven = ">=7:1" if ratio >= HC else "<7:1"
+        print(f"   {surface} tinta {ink} = {ratio:5.2f}:1  [{flag}] [{seven}]")
+        if ratio < HC:
+            below_seven.append(f"{theme_id}/{surface} = {ratio:.2f}:1")
+    print()
+
+print(f"pares medidos nas superfícies fixas: {rows}")
+print(f"pares abaixo de 7:1: {len(below_seven)} de {rows}")
+for item in below_seven:
+    print(f"   - {item}")
+print()
+
+# Tabela semântica (verde/dourado/vermelho, textMuted) também medida contra 7:1
+SEMANTIC_PAIRS = [
+    ("warning", "surface"), ("success", "surface"), ("danger", "surface"),
+    ("warning", "surfaceRaised"), ("success", "surfaceRaised"), ("danger", "surfaceRaised"),
+    ("textMuted", "surface"), ("textMuted", "background"),
+]
+sem_rows = []
+for theme_id in sorted(colors):
+    c = colors[theme_id]
+    for token, surface_token in SEMANTIC_PAIRS:
+        sem_rows.append((
+            module.contrast_ratio(module._rgb(c[token]), module._rgb(c[surface_token])),
+            theme_id, token, c[token], surface_token, c[surface_token],
+        ))
+sem_below = [row for row in sem_rows if row[0] < HC]
+print(f"pares semânticos medidos: {len(sem_rows)}; abaixo de {HC}:1: {len(sem_below)}")
+print(f"{'razao':>8}  {'tema':36}  {'tinta':11} sobre")
+for ratio, theme_id, token, ink, st, surf in sorted(sem_rows):
+    tag = "<7:1" if ratio < HC else ">=7:1"
+    print(f"{ratio:7.2f}:1  {theme_id:36}  {token} {ink:9} "
+          f"{st} {surf}  [{tag}]")
+worst = min(row[0] for row in sem_rows)
+print(f"pior par semantico medido: {worst:.2f}:1")
+
+# Alto contraste: tinta do bridge sobre as superfícies fixas
+ink = module.HIGH_CONTRAST_INKS["text"]
+hc = [module.contrast_ratio(module._rgb(ink), module._rgb(s)) for s in surfaces]
+print(f"alto contraste {ink} sobre as {len(surfaces)} superfícies: "
+      f"mín {min(hc):.2f}:1 máx {max(hc):.2f}:1 (critério {HC}:1)")

@@ -1,0 +1,82 @@
+# RC-01 checkpoint 2026-09-27 — gates rápidos
+# árvore: codex/rc01-central-loading-2026-09-26 @ d215e320 + alterações de trabalho
+2026-09-27T00:47:55-03:00
+$ .venv/bin/ruff check src tools tests
+RUF100 [*] Unused `noqa` directive (non-enabled: `N802`)
+   --> tests/integration/test_qml_handheld_offscreen.py:804:32
+    |
+802 |     """
+803 |
+804 |     def do_GET(self) -> None:  # noqa: N802
+    |                                ^^^^^^^^^^^^
+805 |         if self.path.split("?")[0] != "/status":
+806 |             self._send(404, "rota fora da cena")
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `N802`)
+   --> tests/integration/test_qml_handheld_offscreen.py:826:33
+    |
+824 |         self._send(200, json.dumps(_status_refresh_payload(generation)))
+825 |
+826 |     def do_POST(self) -> None:  # noqa: N802
+    |                                 ^^^^^^^^^^^^
+827 |         length = int(self.headers.get("Content-Length") or 0)
+828 |         if length:
+    |
+help: Remove unused `noqa` directive
+
+Found 2 errors.
+[*] 2 fixable with the `--fix` option.
+rc=1
+$ .venv/bin/ruff format --check src tools tests
+Would reformat: tests/integration/test_qml_handheld_offscreen.py
+1 file would be reformatted, 669 files already formatted
+rc=1
+$ .venv/bin/mypy src
+Success: no issues found in 297 source files
+rc=0
+$ make independence boundaries
+.venv/bin/python tools/check_independence.py
+independência de runtime: OK
+.venv/bin/python tools/lint_boundaries.py --root src
+lint de fronteiras: OK (0 violações)
+rc=0
+$ make status-check
+.venv/bin/python tools/project_status.py check
+STATUS-CHECK: OK
+rc=0
+
+########################################################################
+# 2ª passada — depois de corrigir as duas achas acima e de regenerar os
+# scopeDigest que a formatação envelheceu
+########################################################################
+# RC-01 checkpoint 2026-09-27 — gates rápidos, 2ª passada (árvore final, pós-regeneração de digests)
+# ramo: codex/rc01-central-loading-2026-09-26 @ d215e320
+início: 2026-09-27T01:21:39-03:00
+$ .venv/bin/ruff check src tools tests
+All checks passed!
+rc=0
+$ .venv/bin/ruff format --check src tools tests
+670 files already formatted
+rc=0
+$ .venv/bin/mypy src
+Success: no issues found in 297 source files
+rc=0
+$ make independence boundaries
+.venv/bin/python tools/check_independence.py
+independência de runtime: OK
+.venv/bin/python tools/lint_boundaries.py --root src
+lint de fronteiras: OK (0 violações)
+rc=0
+$ make status-check
+.venv/bin/python tools/project_status.py check
+STATUS-CHECK: OK
+rc=0
+$ .venv/bin/python tools/run_tests_isolated.py tests/unit/test_project_status.py tests/integration/test_qml_handheld_offscreen.py -q
+.....................................................................    [100%]
+69 passed in 61.20s (0:01:01)
+real-state before: exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790477787953832614 source=HOME-default
+real-state after:  exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790477787953832614 source=HOME-default
+rc=0
+fim: 2026-09-27T01:22:46-03:00

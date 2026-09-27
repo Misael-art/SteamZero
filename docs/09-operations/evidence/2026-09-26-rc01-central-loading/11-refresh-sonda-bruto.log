@@ -1,0 +1,162 @@
+FFF                                                                      [100%]
+=================================== FAILURES ===================================
+____ test_a_mutation_refresh_is_not_discarded_by_an_in_flight_read[success] ____
+
+scene = 'success'
+
+    @pytest.mark.visual
+    @pytest.mark.parametrize("scene", ("success", "in-flight-fails", "refresh-fails"))
+    def test_a_mutation_refresh_is_not_discarded_by_an_in_flight_read(scene: str) -> None:
+        """RC-01 — mutação confirmada tem de terminar em leitura do estado pós-mutação.
+    
+        Reproduz o defeito apontado na revisão de 2026-09-26: com `statusInFlight`
+        verdadeiro, `refreshStatus()` descarta a re-consulta. A leitura antiga chega
+        depois, regrava o estado pré-mutação e nenhuma nova consulta sai — a tela
+        afirma "Biblioteca atualizada" mostrando os dados de antes. Os três ramos
+        cobrem a consulta em andamento dando certo (success) e dando errado
+        (in-flight-fails), mais a re-consulta coerçada falhando (refresh-fails).
+        """
+        port = _start_status_refresh_bridge(scene)
+        completed = _run_status_refresh_harness(port, scene)
+        with _STATUS_REFRESH_LOCK:
+            calls = list(_STATUS_REFRESH_CALLS)
+        # A cena só vale se a sobreposição aconteceu de verdade: sem isso, um verde
+        # poderia vir de uma cena em que a leitura #2 já tinha respondido.
+        assert _STATUS_REFRESH_OVERLAP == [True], (
+            f"a ponte não segurou a leitura #2 aberta até a mutação: {calls}"
+        )
+>       assert calls == _STATUS_REFRESH_EXPECTED, (
+            f"cena {scene} produziu outra sequência de requisições:\n"
+            + "\n".join(calls)
+            + "\nesperado:\n"
+            + "\n".join(_STATUS_REFRESH_EXPECTED)
+        )
+E       AssertionError: cena success produziu outra sequência de requisições:
+E         GET /status#1
+E         answered#1
+E         GET /status#2
+E         POST /emulation/library/scan
+E         answered#2
+E         esperado:
+E         GET /status#1
+E         answered#1
+E         GET /status#2
+E         POST /emulation/library/scan
+E         answered#2
+E         GET /status#3
+E         answered#3
+E       assert ['GET /status... 'answered#2'] == ['GET /status...tatus#3', ...]
+E         
+E         Right contains 2 more items, first extra item: 'GET /status#3'
+E         Use -v to get more diff
+
+tests/integration/test_qml_handheld_offscreen.py:931: AssertionError
+_ test_a_mutation_refresh_is_not_discarded_by_an_in_flight_read[in-flight-fails] _
+
+scene = 'in-flight-fails'
+
+    @pytest.mark.visual
+    @pytest.mark.parametrize("scene", ("success", "in-flight-fails", "refresh-fails"))
+    def test_a_mutation_refresh_is_not_discarded_by_an_in_flight_read(scene: str) -> None:
+        """RC-01 — mutação confirmada tem de terminar em leitura do estado pós-mutação.
+    
+        Reproduz o defeito apontado na revisão de 2026-09-26: com `statusInFlight`
+        verdadeiro, `refreshStatus()` descarta a re-consulta. A leitura antiga chega
+        depois, regrava o estado pré-mutação e nenhuma nova consulta sai — a tela
+        afirma "Biblioteca atualizada" mostrando os dados de antes. Os três ramos
+        cobrem a consulta em andamento dando certo (success) e dando errado
+        (in-flight-fails), mais a re-consulta coerçada falhando (refresh-fails).
+        """
+        port = _start_status_refresh_bridge(scene)
+        completed = _run_status_refresh_harness(port, scene)
+        with _STATUS_REFRESH_LOCK:
+            calls = list(_STATUS_REFRESH_CALLS)
+        # A cena só vale se a sobreposição aconteceu de verdade: sem isso, um verde
+        # poderia vir de uma cena em que a leitura #2 já tinha respondido.
+        assert _STATUS_REFRESH_OVERLAP == [True], (
+            f"a ponte não segurou a leitura #2 aberta até a mutação: {calls}"
+        )
+>       assert calls == _STATUS_REFRESH_EXPECTED, (
+            f"cena {scene} produziu outra sequência de requisições:\n"
+            + "\n".join(calls)
+            + "\nesperado:\n"
+            + "\n".join(_STATUS_REFRESH_EXPECTED)
+        )
+E       AssertionError: cena in-flight-fails produziu outra sequência de requisições:
+E         GET /status#1
+E         answered#1
+E         GET /status#2
+E         POST /emulation/library/scan
+E         answered#2
+E         esperado:
+E         GET /status#1
+E         answered#1
+E         GET /status#2
+E         POST /emulation/library/scan
+E         answered#2
+E         GET /status#3
+E         answered#3
+E       assert ['GET /status... 'answered#2'] == ['GET /status...tatus#3', ...]
+E         
+E         Right contains 2 more items, first extra item: 'GET /status#3'
+E         Use -v to get more diff
+
+tests/integration/test_qml_handheld_offscreen.py:931: AssertionError
+_ test_a_mutation_refresh_is_not_discarded_by_an_in_flight_read[refresh-fails] _
+
+scene = 'refresh-fails'
+
+    @pytest.mark.visual
+    @pytest.mark.parametrize("scene", ("success", "in-flight-fails", "refresh-fails"))
+    def test_a_mutation_refresh_is_not_discarded_by_an_in_flight_read(scene: str) -> None:
+        """RC-01 — mutação confirmada tem de terminar em leitura do estado pós-mutação.
+    
+        Reproduz o defeito apontado na revisão de 2026-09-26: com `statusInFlight`
+        verdadeiro, `refreshStatus()` descarta a re-consulta. A leitura antiga chega
+        depois, regrava o estado pré-mutação e nenhuma nova consulta sai — a tela
+        afirma "Biblioteca atualizada" mostrando os dados de antes. Os três ramos
+        cobrem a consulta em andamento dando certo (success) e dando errado
+        (in-flight-fails), mais a re-consulta coerçada falhando (refresh-fails).
+        """
+        port = _start_status_refresh_bridge(scene)
+        completed = _run_status_refresh_harness(port, scene)
+        with _STATUS_REFRESH_LOCK:
+            calls = list(_STATUS_REFRESH_CALLS)
+        # A cena só vale se a sobreposição aconteceu de verdade: sem isso, um verde
+        # poderia vir de uma cena em que a leitura #2 já tinha respondido.
+        assert _STATUS_REFRESH_OVERLAP == [True], (
+            f"a ponte não segurou a leitura #2 aberta até a mutação: {calls}"
+        )
+>       assert calls == _STATUS_REFRESH_EXPECTED, (
+            f"cena {scene} produziu outra sequência de requisições:\n"
+            + "\n".join(calls)
+            + "\nesperado:\n"
+            + "\n".join(_STATUS_REFRESH_EXPECTED)
+        )
+E       AssertionError: cena refresh-fails produziu outra sequência de requisições:
+E         GET /status#1
+E         answered#1
+E         GET /status#2
+E         POST /emulation/library/scan
+E         answered#2
+E         esperado:
+E         GET /status#1
+E         answered#1
+E         GET /status#2
+E         POST /emulation/library/scan
+E         answered#2
+E         GET /status#3
+E         answered#3
+E       assert ['GET /status... 'answered#2'] == ['GET /status...tatus#3', ...]
+E         
+E         Right contains 2 more items, first extra item: 'GET /status#3'
+E         Use -v to get more diff
+
+tests/integration/test_qml_handheld_offscreen.py:931: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/test_qml_handheld_offscreen.py::test_a_mutation_refresh_is_not_discarded_by_an_in_flight_read[success]
+FAILED tests/integration/test_qml_handheld_offscreen.py::test_a_mutation_refresh_is_not_discarded_by_an_in_flight_read[in-flight-fails]
+FAILED tests/integration/test_qml_handheld_offscreen.py::test_a_mutation_refresh_is_not_discarded_by_an_in_flight_read[refresh-fails]
+3 failed, 53 deselected in 8.78s
+real-state before: exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790477787953832614 source=HOME-default
+real-state after:  exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790477787953832614 source=HOME-default

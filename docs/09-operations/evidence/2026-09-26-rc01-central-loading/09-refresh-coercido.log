@@ -1,0 +1,159 @@
+# RC-01 — a re-consulta provocada por uma mutação deixou de ser descartada
+# Registrado em 2026-09-27, ~00:40 -0300. Árvore: `codex/rc01-central-loading-2026-09-26`
+# em `d215e320` + as alterações desta entrega (`git describe --dirty` →
+# v2.0.0rc1-425-gd215e320-dirty). Nenhum arquivo de outro trabalho estava no tree:
+# `git status --porcelain` listava 10 caminhos, todos desta frente.
+
+## 1. O defeito, como a revisão o apontou
+
+`Main.qml:1103` — `refreshStatus()` tinha um guarda de sobreposição introduzido
+nesta mesma frente: com `statusInFlight` verdadeiro, a chamada seguinte era
+**descartada** (só a confirmação de mutação sobrevivia, via `notify`). O guarda está
+certo — duas consultas simultâneas deixam "o último estado" indefinido, porque a mais
+lenta pode chegar por último e regravar uma leitura mais nova. A ação tomada estava
+errada: uma mutação que termina com uma leitura antiga no ar nunca era relida, e a
+resposta antiga ainda pintava o estado pré-mutação. Resultado observado na tela: rodapé
+afirmando "Biblioteca atualizada" com os dados de antes da varredura.
+
+## 2. Reprodução antes do conserto (vermelho)
+
+Teste novo: `tests/integration/test_qml_handheld_offscreen.py::
+test_a_mutation_refresh_is_not_discarded_by_an_in_flight_read`, em três cenas, com o
+harness `tests/qml/check_status_refresh_coalesced.qml` rodando o `Main.qml` real
+contra uma ponte HTTP do teste.
+
+A cena não aposta em timing: a ponte **segura a leitura #2 aberta até a mutação
+chegar** (espera um evento com teto de 5 s) e registra a sequência
+`GET /status#n` / `answered#n` / `POST <rota>`. Assim a sobreposição é um fato
+registrado pelo servidor, e não uma janela de wall-clock.
+
+Sequência que a cena provoca, nos três ramos:
+
+| cena | o que a ponte recusa | contrato cobrado |
+|---|---|---|
+| `success` | nada | a mutação termina em leitura nova com o estado pós-mutação na tela |
+| `in-flight-fails` | a leitura #2, que estava em andamento | a recusa aparece na tela antes da recuperação, e a relênia sai do mesmo jeito |
+| `refresh-fails` | a relênia coerçada (#3) | nada de erro é perdido: dado anterior preservado, marcado como não renovado, com retry oferecido |
+
+Comportamento cobrado no objeto vivo, além da sequência do servidor: contagem de
+tentativas, a geração que a linha medida apresenta (`emulatorItems[0].versionLabel`,
+o mesmo campo que a Home publica no rótulo da linha), `statusStale`,
+`statusBandVisible`, `statusBandRetry`, `statusFailure` e o número de vezes que a
+confirmação da mutação apareceu no rodapé (uma; nem zero nem duas).
+
+**Vermelho, com o código tal como estava** — bruto em `10-refresh-red-bruto.log`
+(md5 `5f48061fe3ed70f7021671cc53f5d12f`):
+
+```
+.venv/bin/python tools/run_tests_isolated.py tests/integration/test_qml_handheld_offscreen.py -q -k "mutation_refresh_is_not_discarded"
+3 failed, 53 deselected in 9.41s
+E  cena refresh-fails produziu outra sequência de requisições:
+E    GET /status#1 / answered#1 / GET /status#2 / POST /emulation/library/scan / answered#2
+E   esperado: … / GET /status#3 / answered#3
+```
+
+Nas três cenas a leitura nova simplesmente não existia. Nessa corrida a asserção da
+ordem no servidor era a única sensível ao marcador `answered#n` — a posição do
+marcador mudou depois (ver §4); nenhuma leitura extra foi perdida de vista.
+
+## 3. O conserto
+
+`Main.qml`: um único bit de fila (`statusRefreshQueued`) e um dreno chamado nos dois
+ramos da consulta:
+
+* com `statusInFlight`, a chamada agora marca a fila e emite a confirmação — não
+  empilha consulta, não descarta a relênia;
+* ao resolver (sucesso **ou** falha), `drainStatusRefresh()` emite exatamente uma
+  relênia e limpa a fila;
+* a fila é de um só pedido por desenho: dez mutações durante uma leitura lenta viram
+  uma relênia, não dez — o teto que o guarda existia para garantir continua de pé;
+* a notificação da mutação sai na hora da chamada, uma vez, e a relênia não a repete
+  (`refreshStatus("")` no dreno);
+* `retryStatus()` mantém o early-return que já existia: retry com consulta no ar não
+  é uma relênia, a consulta em andamento já é a tentativa mais recente do mesmo read
+  model.
+
+## 4. Verde, e a prova de que o teste não é verde de graça
+
+Com o conserto (bruto em `12-refresh-verde-bruto.log`, md5
+`0f182eebe1909aba8c130fa7baf3e6d9`):
+
+```
+.venv/bin/python tools/run_tests_isolated.py tests/integration/test_qml_handheld_offscreen.py -q -k "mutation_refresh_is_not_discarded"
+3 passed, 53 deselected in 8.82s
+```
+
+**Sonda de não-vacuidade**: com o arquivo já no estado consertado, o corpo de
+`drainStatusRefresh()` recebeu um `return` no topo — nada mais mudou — e as três cenas
+reprovaram de novo (`11-refresh-sonda-bruto.log`, md5
+`d203fd8273723348f701617981f874bf`):
+
+```
+3 failed, 53 deselected in 9.?s        # rc=1
+FAILED …[success]  FAILED …[in-flight-fails]  FAILED …[refresh-fails]
+```
+
+Depois o `return` da sonda foi removido e o arquivo conferido byte a byte contra a
+cópica guardada antes da sonda (`diff -q` → idêntico). O teste portanto falha por
+ausência do conserto, não por construção.
+
+## 5. Contrato que mudou de propósito (declarado, como exige a AGENTS.md §6)
+
+`tests/qml/check_central_loading.qml` media a cena de fases e, no meio dela, sondava o
+guarda de sobreposição com uma segunda `refreshStatus("")` — e aprovava o **descarte**
+("uma única consulta deve ter sido feita"). Com a coerção, essa sondagem no meio da
+cena passou a renumerar as respostas da ponte e apagava a fase `stale` que a cena veio
+medir. O que foi alterado:
+
+* a sondagem saiu do meio da cena e virou a fase final dela (5 e 6), onde não
+  interfere nas três respostas que definem `loading → ready → stale → recovered`;
+* a asserção passou a cobrar o contrato novo: com consulta no ar, a chamada extra não
+  empilha tentativa **e** fica coerçada, e depois drena em uma leitura nova que deixa o
+  estado final `ready`, sem rastro de falha;
+* a contagem esperada da ponte foi de 3 para 5 `GET /status` (as duas últimas são a
+  emissão + a relênia da sondagem).
+
+Nenhum teste foi enfraquecido nem removido: o que era verde porque o comportamento era
+errado passou a ser verde porque o comportamento está certo.
+
+## 6. Gates focais após a mudança
+
+Bruto em `13-gates-focais-bruto.log` (md5 `9b684889a435a1b691a8a4f6e84f06ad`), rodado
+antes do item 5 acima, portanto com as três reprovações conhecidas da cena antiga:
+
+```
+.venv/bin/python tools/run_tests_isolated.py \
+  tests/integration/test_qml_handheld_offscreen.py tests/unit/test_ui_attention_surface_contrast.py \
+  tests/unit/test_central_status_probe.py tests/unit/test_themes.py tests/unit/test_project_status.py -q
+4 failed, 211 passed in 101.06s (0:01:41)
+```
+
+As quatro reprovações daquele registro eram: as três cenas de captura/fases de
+`check_central_loading.qml` (o contrato renumerado do §5, já resolvido) e
+`test_committed_catalog_and_generated_views_are_consistent`, que é o catálogo pedindo a
+renovação de escopo desta entrega nova — 12 itens com `scopeDigest` obsoleto porque
+reclamam `src/steamzero/ui` (Main.qml), mais `docs/status/COVERAGE.md` desatualizado.
+Essa renovação é governança e é feita no checkpoint do lote, não aqui.
+
+Depois do §5:
+
+```
+.venv/bin/python tools/run_tests_isolated.py tests/integration/test_qml_handheld_offscreen.py -q -k "central_loading or mutation_refresh"
+6 passed, 50 deselected in 15.85s
+```
+
+## 7. Limites do que isto prova
+
+* Validação **offscreen** com ponte sintética. Nenhuma liberação instalada foi tocada,
+  então nada aqui é evidência de experiência física no host (ver §"não prova" no
+  README da pasta).
+* O "estado apresentado" é aferido no modelo que alimenta o rótulo visível da linha
+  medida (`emulatorItems[0].versionLabel` → o texto da Home), não por pixel. Um quadro
+  capturado desta cena não foi gerado; a cena de captura continua sendo a do log 06.
+* Uma rota de mutação foi exercida (`library.scan`, pelo contrato publicado pela
+  própria ponte). As outras ~35 chamadas de `refreshStatus` no shell partilham o mesmo
+  ponto de entrada, mas não foram atravessadas uma a uma.
+* O teto de custo é estrutural (fila de um bit), medido pela contagem exata de
+  requisições da cena — não é uma garantia estatística de latência.
+* A sonda do §4 desligou o conserto por uma linha e foi revertida em minutos; durante
+  essa janela não havia gate correndo, e nenhum outro arquivo foi tocado.

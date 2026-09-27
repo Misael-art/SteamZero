@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-    "scopeDigest": "9504c45e8f8b2325f6ae4f7244897d2b604c5b3692f0290657a40c5769a6722e",
+  "scopeDigest": "b5d0db609363634b605d9a5449125968ff9662169b1788690fc42f456b3e07ea",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -421,10 +421,16 @@
       "command": "2026-09-22: release governada 2.0.0rc1-504d10b14485 instalada do commit 504d10b144851b70eab99d1fad7110ae34e88f84; CI run 35712683583 verde; wheel SHA256 d55ea7a2ae97accc2aaf8a98abbbcf67468f648ae486dd9712054489d3fe2476; rollback 2.0.0rc1-13c933c30ace; convergencia inicial 1 restart e convergencia idempotente 0 restart; sourceTreeState clean; hashes de retrofe_text_slice.py, scene_serialization.py, cast_engine.py e screencast_web.py coincidem entre src/ e /opt/steamzero/current; doctor ok=true degraded somente por deck.input.keys=false e bootDirect=unknown, sem blockers/pending/stale/orphan",
       "result": "passed"
     },
-{
+    {
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/README.md",
       "command": "2026-09-26 renovacao de escopo pela frente WS-2026-09-RC01-CENTRAL-LOADING: src/steamzero/adapters/theme_catalog.py mudou por trabalho da RC-01 (SZ-UI-DESKTOP-AUDIT), e aqui a mudanca e de comportamento visivel: o validador do manifesto passou a ser compilado uma vez por processo (jsonschema.validate rechecava o schema empacotado a cada manifesto: 305 ms medidos na ponte) e o detalhe de E-THEME-MANIFEST deixou de despejar schema e instancia, passando a 'json_path: mensagem' limitado a 400 caracteres. A validacao da instancia nao mudou, e isso esta preso em tests/unit/test_themes.py (a primeira falha literal dos quatro pacotes ES-DE malformados do host, mais a identidade do cache). O arquivo esta no escopo deste item, entao o digest foi renovado; as evidencias propriamente dizem, e nao foram reexecutadas: nada do Theme Engine foi provado no host fis ou na release instalada neste lote.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/09-refresh-coercido.log",
+      "command": "2026-09-27 renovacao de escopo pela frente WS-2026-09-RC01-CENTRAL-LOADING (fatia UX-01/UX-02 de RC-01). Arquivos deste escopo alterados: src/steamzero/ui/qml/Main.qml: Main.qml ganhou a coercao de renovacao de status (statusRefreshQueued + drainStatusRefresh nos dois callbacks da leitura): uma renovacao pedida durante uma leitura em andamento deixa de ser descartada. E mudanca visivel no shell, nao neste item; nenhum contrato deste item foi reexecutado. O digest foi regenerado pela ferramenta porque o escopo mudou; as capacidades deste item NAO foram reatestadas, nenhuma evidencia deste item foi carimbada, e nenhum eixo dele mudou de estado neste lote.",
       "result": "recorded"
     }
   ],
