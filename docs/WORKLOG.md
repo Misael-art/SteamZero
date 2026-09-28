@@ -13515,3 +13515,97 @@ final é o que carrega a correção do digest — nada aqui antecipa aquela leit
 a primeira dobra da Home (UX-05), UX-03, os formatadores de UX-04, a prova física na release
 `2.0.0rc1-e2af2562ebba`, e as nove baselines novas, que `make update-qml-goldens` não cobre. A 4ª fatia
 não foi iniciada, e merge é do operador. **RC-01 não está concluído.** O WORKLOG é append-only.
+
+## 2026-09-28 — RC-01, 5ª fatia (UX-03): o contrato de prontidão foi corrigido, não rotulado — e a inspeção visual achou três defeitos que 103 pinos não viam
+
+Autorização: concluir as pendências funcionais de RC-01 começando por UX-03, com entregas
+verificáveis e integração preparada. Nada de merge, nada de segunda cópia da árvore, nada de
+release fora do fluxo do operador. Evidência em
+`docs/09-operations/evidence/2026-09-28-rc01-readiness-semantics/` (logs `00`–`10`, sete PNGs
+com `SHA256SUMS.txt`).
+
+**A missão estava no diagnóstico medido antes de codar (log `00`).** Nove produtores publicavam
+`readiness.percent` com grandezas diferentes entre si: `emulation_workspace` codificava
+categorias em 20/45/35/100; `steam_gameplay` dividia requisitos obrigatórios por um denominador
+onde `missing` também contava opcionais, e devolvia 100 quando o denominador era zero;
+`emulation.editorial_platform_index` dava 100 ou 0 pela *existência* de jogos; `platform_composer`
+por launchability; `cloud_platforms` 50 por `xdg-open` existir; `platforms` e `desktop_dashboard`
+0; e duas páginas sintetizavam um fallback no próprio QML. Os consumidores tratavam tudo como a
+mesma coisa com uma única regra `percent >= 80`, de modo que 20%, 35%, 45% e 0% renderizavam a
+mesma cor e «pronto» podia ser alegado sem gameplay demonstrado. Corrigir o rótulo não tocaria
+nisto.
+
+**O que entrou no contrato.** `src/steamzero/domain/readiness.py` separa estado/label/causa/
+próxima-ação de uma proporção mensurável (`dimension`, `numerator`, `denominator`, `percent`
+nullable, `absentReason`), declara `verification` (`verified|not_performed|not_applicable|unknown`)
+e `basis` (`preflight|demonstrated_gameplay|inventory_existence|none`). Denominador zero e dado
+ausente produzem **percentual ausente**, nunca 100 nem 0; payload legado sem `contractVersion` é
+normalizado explicitamente para `unverified` com o número escondido. `READY_BASES` recusa `ready`
+com base de mera existência — registrado com precisão: nenhum dos nove produtores publicava `ready`
+assim, então o guard fecha um buraco **latente**, não um defeito em execução, e é dito desta forma
+para ninguém alegar uma correção que não houve.
+
+**Red Green medido, produtor por produtor** (logs `01`–`05`), e depois a superfície QML lendo o
+módulo compartilhado `src/steamzero/ui/qml/readiness.js`: nenhuma página reimplementa tom,
+superfície ou barra, e o `>= 80` foi retirado das duas páginas que o tinham.
+
+**A inspeção visual não foi formalidade — ela achou o que os testes não achavam.** As seis
+capturas promovidas eram todas de 1208×696 ou 949×593, e a sonda de reachabilidade (log `08`)
+mede que o painel de contexto só abre fora da biblioteca de jogos com largura ≥ 1500 e layout não
+compacto: nenhuma imagem anterior mostrava a caixa «Antes de continuar». Uma captura em 1656×954
+expôs três defeitos de produção:
+
+1. `Readiness.blockers()` devolvia lista **vazia** na página montada. Uma lista JS que cruza a
+   fronteira `required property var` chega como `QVariantList`: `Array.isArray` responde `false`
+   com o conteúdo e o `length` intactos (medido em sonda antes e depois da fronteira). O guard em
+   `Array.isArray` não era defesa — era o modo de falha silencioso. Corrigido com `_lista()`.
+2. O cabeçalho e o glifo do painel pintavam `blocked` com âmbar via `stateColor()` da plataforma,
+   enquanto o cartão e a caixa pintavam vermelho pelo contrato: a mesma dobra afirmava dois
+   estados ao mesmo tempo.
+3. A próxima ação aparecia duas vezes — uma como ação e outra como primeiro bloqueio, porque o
+   contrato publica `blockers` como as frases de ação. Corrigido na superfície, sem mexer no
+   contrato.
+
+Cada correção passou por bateria de mutação (logs `05`, `07`, `09`): 6/6, 8/8 e 6/6 pegas, com
+restauração byte a byte conferida por sha256 antes e depois. Duas recusas metodológicas ficaram
+registradas: fixar o fundo do cartão escapou da rodada 1 e virou pino próprio; e uma mutação que
+«pegava» com código 1 e **zero linhas FAIL** (propriedade duplicada no QML interrompe o
+carregamento) não é prova de nada — foi refeita como substituição com `erros_de_carga=0` e só
+então pegou com dois FAIL nomeados.
+
+**Checkpoint único, árvore congelada** (log `10`). Identidade antes da execução: HEAD
+`5d95034b`, árvore git `4b23b239`, 29 arquivos com sha256. `.venv/bin/python tools/run_tests_isolated.py tests -q`
+= **1 failed, 6483 passed, 47 skipped em 2071,39 s**; o sha256 dos 29 arquivos refeito depois da
+suíte dá `diff` vazio, e o isolador imprimiu `real-state before/after` idênticos (12816 arquivos,
+1.372.712.391 bytes) — nada tocou acervo, saves ou estado do host. ruff check, ruff format --check
+(676 arquivos), mypy (298 arquivos) e `make independence boundaries` verdes na mesma árvore. A
+suíte **não** foi substituída por testes focados quando falhou: a falha única é o gate de catálogo,
+e a causa foi medida — 33 itens com `scopeDigest` obsoleto, **33 de 33** contendo ao menos um
+arquivo desta frente no escopo e **0 de 33** reprovando por obsolescência anterior (19 deles por
+`src/steamzero/adapters/emulation.py`, que está no escopo de muitos itens). Renovar os 33 digests é
+atribuição desta frente; a alternativa foi medida antes de descartada. `docs/06-api/JSON-SCHEMAS.md`
+estava alterado sem item responsável e passou ao escopo de `SZ-UI-DESKTOP-AUDIT`. Duas visões
+geradas foram regravadas por `render --write`. Uma nota de honestidade está no próprio log copiado:
+o `CODIGO_DE_SAIDA 0` impresso é do `echo` do meu envoltório, não do pytest.
+
+**Empacotamento: a conclusão anterior estava sobre-alegada e foi re-registrada como pendente.**
+«`git check-ignore` não responde» não prova que `readiness.js` entra no wheel. O único wheel de CI
+disponível (`steamzero-wheel-5704c813`, run 36372744311, 622 entradas, 61 `.qml`, **zero** `.js`)
+foi construído em `5704c813`, antes do arquivo existir — a ausência não prova nada sobre este
+arquivo. A prova se fecha baixando o artefato do CI no SHA final deste lote e conferindo a entrada
+`steamzero/ui/qml/readiness.js` contra `build/SHA256SUMS`. Nenhum wheel foi montado fora do fluxo
+de release do operador (AGENTS.md §4). Registrado como `GAP-UI-QML-JS-NAO-PROVADO-DENTRO-DO-WHEEL-DO-CI`.
+
+**Cadeia de integração, conferida sem presumir merge.** `origin/main` em `3495c49d`. #239
+(`069501ab`), #240 (`c959be13`), #241 (`190ea683`) e #242 (`5d95034b`) seguem **abertas**, todas
+com base em `main`, todas MERGEABLE, e a ancestralidade entre elas é real (cada head contém o
+anterior; 24 commits à frente de `main`). Esta branch é o quinto elo sobre `5d95034b`. Fora desta
+frente: #233 (`codex/op-watchdog-2026-09-22`) está CONFLICTING desde 22/09 e continua sem dono
+nesta sessão. Merge é do operador; nada aqui alega integração antes do SHA realmente mergeado.
+
+**O que permanece pendente depois deste lote, declarado sem maquiagem:** (a) CI terminal no SHA
+final e leitura do wheel; (b) integração na ordem 239→240→241→242→este, com o operador; (c) prova
+física na release instalada `2.0.0rc1-e2af2562ebba`, que offscreen nenhum substitui; (d) UX-04
+(unidades humanas, valores exatos, ausência ≠ zero), a primeira dobra da Home em viewport
+compacto e a resposta tardia dos importadores no RetroFE — nada disso foi começado aqui. RC-01
+continua sem critérios obrigatórios completos.

@@ -1,0 +1,25 @@
+PEGOU (exit=1) M1 readiness.js: tom decidido pelo número, não pelo estado
+      qml: FAIL: um percentual alto não pode salvar um bloqueio
+      qml: FAIL: 100% medido não salva um bloqueio na superfície da plataforma
+      qml: FAIL: a tinta do cartão vem do estado publicado
+      qml: FAIL: 100% medido não salva um bloqueio no cartão do ambiente
+PEGOU (exit=1) M2 readiness.js: medição ausente vira 0%
+      qml: FAIL: denominador zero não é uma medição
+      qml: FAIL: percentual ausente é null, não 0
+      qml: FAIL: o número ausente aparece como traço, nunca como 0%
+      qml: FAIL: sem medição não há barra de progresso
+PEGOU (exit=1) M3 readiness.js: legenda da dimensão suprimida
+      qml: FAIL: o número medido chega acompanhado do que foi medido
+      qml: FAIL: o cartão da Emulação nomeia a dimensão do número que exibe
+      qml: FAIL: 67% sem dimensão nomeada repete o problema que a UX-03 eliminou
+PEGOU (exit=1) M4 Emulation.qml: reimplementa a cor pelo número
+      qml: FAIL: o cartão da Emulação colore pelo estado, não pelo percentual
+      qml: FAIL: sem observação o cartão não pode parecer sucesso nem falha
+      qml: FAIL: 100% medido não salva um bloqueio na superfície da plataforma
+ESCAPOU (exit=0) M5 Emulation.qml: tinta do cartão fixa
+      qml: check_readiness_surface: 62 verificação(ões) ok
+PEGOU (exit=1) M6 SteamGameplay.qml: reimplementa a cor pelo número
+      qml: FAIL: gameplay bloqueado é vermelho mesmo com 67% medido
+      qml: FAIL: 100% medido não salva um bloqueio no cartão do ambiente
+
+5/6 mutações pegas

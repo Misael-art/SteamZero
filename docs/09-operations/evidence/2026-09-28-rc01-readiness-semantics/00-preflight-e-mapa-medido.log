@@ -1,0 +1,142 @@
+=== UX-03 / RC-01 — preflight e mapa medido (2026-09-28) ===
+timestamp: 2026-09-28T05:09:37-03:00
+
+$ git rev-parse --abbrev-ref HEAD
+codex/rc01-readiness-semantics-2026-09-28
+$ git rev-parse HEAD
+5d95034b67fb50fd1218f267afbfe189d4444bd2
+$ git rev-parse origin/main
+3495c49d5d7c3244267e8292beee34475f70236b
+
+$ git status --porcelain (excluindo os arquivos desta frente)
+
+=== PRs abertos da pilha (gh pr list --state open) ===
+#242  codex/rc01-shell-esde-dialog-2026-09-27  head=5d95034b6  mergeState=CLEAN
+#241  codex/rc01-readiness-focus-2026-09-27  head=190ea683a  mergeState=CLEAN
+#240  codex/rc01-central-loading-2026-09-26  head=c959be139  mergeState=CLEAN
+#239  codex/project-design-audit-2026-09-26  head=069501ab9  mergeState=CLEAN
+
+=== identidade do 5o elo: base desta branch = ponta do PR #242 ===
+$ git merge-base --is-ancestor 5d95034b HEAD
+rc=0
+$ git rev-list --count origin/main..HEAD
+24
+
+=== conciliacao do claim de src/steamzero/adapters/emulation.py ===
+claim exclusivo: WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT (baseRef 621a3389db32, atualizado 2026-09-26)
+$ git merge-base origin/main cad58bb4 -> caf9d922d15c061ea6655e7100c27cf56f1e3459
+$ git rev-list --count caf9d922d15c061ea6655e7100c27cf56f1e3459..origin/main -> 28 (dono atras de main)
+$ git rev-list --count caf9d922d15c061ea6655e7100c27cf56f1e3459..cad58bb4 -> 2 (commits proprios do dono)
+
+$ git diff -U0 caf9d922d15c061ea6655e7100c27cf56f1e3459 cad58bb4 -- src/steamzero/adapters/emulation.py | grep '^@@'  (hunks INTRODUZIDOS pelo dono)
+@@ -2843,0 +2844,3 @@ class EmulationController:
+@@ -2856 +2859,3 @@ class EmulationController:
+@@ -7155,0 +7161,2 @@ class EmulationController:
+@@ -9594 +9601,24 @@ class EmulationController:
+@@ -9596 +9625,0 @@ class EmulationController:
+@@ -9604 +9633 @@ class EmulationController:
+$ git diff --numstat caf9d922d15c061ea6655e7100c27cf56f1e3459 cad58bb4 -- src/steamzero/adapters/emulation.py
+33	4	src/steamzero/adapters/emulation.py
+$ git diff --name-only caf9d922d15c061ea6655e7100c27cf56f1e3459 cad58bb4 -- src/steamzero/ui/qml/Main.qml src/steamzero/adapters/desktop_contracts.py
+(vazio: o dono nao introduz nada nesses dois caminhos)
+
+=== mapa medido: produtores python de readiness ===
+src/steamzero/adapters/desktop_dashboard.py:637:                "readiness": {
+src/steamzero/adapters/desktop_ui.py:815:                "readiness": status,
+src/steamzero/adapters/emulation.py:210:                "readiness": {"percent": 100 if has_games else 0},
+src/steamzero/adapters/emulation.py:765:        truth_state, truth_label, readiness = compute_readiness(
+src/steamzero/adapters/emulation.py:770:        platform["readiness"] = readiness
+src/steamzero/adapters/emulation.py:1580:            readiness = probe()
+src/steamzero/adapters/emulation.py:1588:            readiness = self._xemu_runtime_probe()
+src/steamzero/adapters/emulation.py:9061:                launch_readiness = {
+src/steamzero/adapters/steam_gameplay.py:241:        readiness = round(100 * ready_count / required_count) if required_count else 100
+src/steamzero/adapters/steam_gameplay.py:247:            "readiness": {
+src/steamzero/domain/cloud_platforms.py:106:                "readiness": {
+src/steamzero/domain/emulation_workspace.py:189:        blockers = list((platform.get("readiness") or {}).get("blockers") or ())
+src/steamzero/domain/emulation_workspace.py:199:                "readiness": dict(platform["readiness"]),
+src/steamzero/domain/emulation_workspace.py:279:    state, status_label, readiness = compute_readiness(requirements, emulators)
+src/steamzero/domain/emulation_workspace.py:291:        "readiness": readiness,
+src/steamzero/domain/platform_composer.py:339:        payload["readiness"] = {
+src/steamzero/domain/platform_composer.py:348:        payload["readiness"] = {
+src/steamzero/domain/platforms.py:295:        "readiness": {
+src/steamzero/domain/retro_experience.py:128:                "readiness": readiness,
+
+=== mapa medido: consumidores QML de readiness ===
+src/steamzero/ui/qml/EditorialLibrary.qml:116:            "readiness": {"percent": steam.length > 0 ? 100 : 0},
+src/steamzero/ui/qml/EditorialLibrary.qml:131:                "readiness": platform.readiness || ({"percent": 0}),
+src/steamzero/ui/qml/Emulation.qml:147:            "readiness": {
+src/steamzero/ui/qml/Emulation.qml:184:    readonly property var readiness: selectedPlatform.readiness || ({
+src/steamzero/ui/qml/Emulation.qml:425:    function readinessPercent() {
+src/steamzero/ui/qml/Emulation.qml:426:        const value = Number(readiness.percent || 0)
+src/steamzero/ui/qml/Emulation.qml:985:                return difference.readiness === "ready"
+src/steamzero/ui/qml/Emulation.qml:1601:                        : page.readinessPercent() >= 80 ? "#0c2a21" : "#24180b"
+src/steamzero/ui/qml/Emulation.qml:1603:                        : page.readinessPercent() >= 80 ? page.greenColor : page.amberColor
+src/steamzero/ui/qml/Emulation.qml:1611:                                ? page.globalManagement.technicalPlatformCount : page.readinessPercent() + "%"
+src/steamzero/ui/qml/Emulation.qml:1613:                                : page.readinessPercent() >= 80 ? page.greenColor : page.amberColor
+src/steamzero/ui/qml/Emulation.qml:2024:                                            text: modelData.readiness.percent + "%"
+src/steamzero/ui/qml/Emulation.qml:3240:                        color: page.readinessPercent() >= 80 ? "#0c2a21" : "#24180b"
+src/steamzero/ui/qml/Emulation.qml:3241:                        border.color: page.readinessPercent() >= 80
+src/steamzero/ui/qml/Emulation.qml:3246:                            id: readinessRow
+src/steamzero/ui/qml/Emulation.qml:3255:                                iconColor: page.readinessPercent() >= 80
+src/steamzero/ui/qml/Emulation.qml:3264:                                    text: page.readiness.title || qsTr("Verificando plataforma")
+src/steamzero/ui/qml/Emulation.qml:3265:                                    color: page.readinessPercent() >= 80
+src/steamzero/ui/qml/Emulation.qml:3271:                                    text: page.readiness.detail || ""
+src/steamzero/ui/qml/Emulation.qml:3281:                                value: page.readinessPercent()
+src/steamzero/ui/qml/Emulation.qml:3284:                                Accessible.description: qsTr("%1 por cento").arg(page.readinessPercent())
+src/steamzero/ui/qml/Emulation.qml:3410:                                                    text: modelData.readiness === "ready"
+src/steamzero/ui/qml/Emulation.qml:3412:                                                    color: modelData.readiness === "ready"
+src/steamzero/ui/qml/Emulation.qml:3745:                                || page.readiness.title || qsTr("Estado desconhecido")
+src/steamzero/ui/qml/Emulation.qml:3764:                        visible: page.readiness.blockers && page.readiness.blockers.length > 0
+src/steamzero/ui/qml/Emulation.qml:3779:                                model: page.readiness.blockers || []
+src/steamzero/ui/qml/Main.qml:244:        "readiness": {"percent": 0, "title": "Ambiente Steam indisponível", "detail": "Abra Sistema para diagnosticar"},
+src/steamzero/ui/qml/SteamGameplay.qml:1081:                border.color: page.gameplay && page.gameplay.readiness && page.gameplay.readiness.percent >= 80
+src/steamzero/ui/qml/SteamGameplay.qml:1088:                            text: page.gameplay && page.gameplay.readiness
+src/steamzero/ui/qml/SteamGameplay.qml:1089:                                ? page.gameplay.readiness.percent + "%" : "—"
+src/steamzero/ui/qml/SteamGameplay.qml:1098:                            text: page.gameplay && page.gameplay.readiness
+src/steamzero/ui/qml/SteamGameplay.qml:1099:                                ? page.gameplay.readiness.title : qsTr("Verificando ambiente")
+src/steamzero/ui/qml/SteamGameplay.qml:1105:                            text: page.gameplay && page.gameplay.readiness
+src/steamzero/ui/qml/SteamGameplay.qml:1106:                                ? String(page.gameplay.readiness.detail || "") : ""
+src/steamzero/ui/qml/SteamGameplay.qml:1111:                        value: page.gameplay && page.gameplay.readiness
+src/steamzero/ui/qml/SteamGameplay.qml:1112:                            ? page.gameplay.readiness.percent / 100 : 0
+
+=== mapa medido: testes que pinjam percent hoje ===
+tests/fixtures/desktop-steam-gameplay-status.json:48:      "readiness": {"percent": 85, "title": "Pronto com 1 ajuste recomendado", "detail": "Hardware compatível · Perfil seguro disponível"},
+tests/qml/capture_responsive.qml:65:                    "readiness": {"percent": 100, "title": "Pronto",
+tests/qml/capture_responsive.qml:109:                "readiness": {"percent": 100, "title": "Pronto para configurar",
+tests/qml/check_editorial_canonical_systems.qml:24:                "readiness": {"percent": 0},
+tests/qml/check_editorial_library.qml:106:                "readiness": {"percent": 0},
+tests/qml/check_editorial_library.qml:220:                "statusLabel": "Verificação pendente", "readiness": {"percent": 45},
+tests/qml/check_emulation.qml:78:                "readiness": {"percent": 75, "title": "Quase pronto", "blockers": []},
+tests/qml/check_emulation.qml:140:                "readiness": {"percent": 80, "title": "Pronto", "blockers": []},
+tests/qml/check_emulation.qml:176:                    "readiness": {"percent": 80, "title": "Pronto", "blockers": []},
+tests/qml/check_emulation.qml:190:                    "readiness": {"percent": 0, "title": "Planejado", "blockers": []},
+tests/qml/check_emulation.qml:243:                    "readiness": {"percent": 45, "title": "Revisar", "detail": "Core ausente", "blockers": ["Core ausente"]},
+tests/qml/check_emulation.qml:255:                "readiness": {"percent": 45, "title": "Revisar", "blockers": ["Core ausente"]},
+tests/qml/check_emulation.qml:287:                    "readiness": {"percent": 10, "title": "Bloqueado", "blockers": []},
+tests/qml/check_emulation.qml:312:                "readiness": {"percent": 10, "title": "Bloqueado", "blockers": []},
+tests/qml/check_emulation.qml:349:                    "readiness": {"percent": 10, "title": "Bloqueado", "blockers": []},
+tests/qml/check_emulation.qml:364:                "readiness": {"percent": 10, "title": "Bloqueado", "blockers": []},
+tests/qml/check_emulation.qml:418:                "readiness": {"percent": 10, "title": "Bloqueado", "blockers": []},
+tests/qml/check_emulation.qml:454:                    "readiness": {"percent": 10, "title": "Bloqueado", "blockers": []},
+tests/qml/check_emulation.qml:469:                "readiness": {"percent": 10, "title": "Bloqueado", "blockers": []},
+tests/qml/check_emulation.qml:491:                    "readiness": {"percent": 100, "title": "Pronto", "blockers": []},
+tests/qml/check_emulation.qml:504:                "readiness": {"percent": 100, "title": "Pronto", "blockers": []},
+tests/qml/check_emulation.qml:532:                "readiness": {"percent": 100, "title": "Pronto", "blockers": []},
+tests/qml/check_emulation.qml:572:                "readiness": {"percent": 20, "title": "Preparação", "blockers": ["Keys"]},
+tests/qml/check_emulation.qml:617:                "readiness": {"percent": 100, "title": "Pronto", "blockers": []},
+tests/qml/check_emulation.qml:695:                "readiness": {"percent": 100, "title": "Pronto", "blockers": []},
+tests/qml/check_emulation.qml:736:                "readiness": {"percent": 100, "title": "Pronto", "blockers": []},
+tests/qml/check_emulation.qml:838:                    "readiness": {"percent": state === "ready" ? 100 : 0,
+tests/qml/check_emulation.qml:861:                "readiness": {"percent": 100, "title": "Pronto", "blockers": []},
+tests/qml/check_emulation.qml:940:                "readiness": {"percent": 100, "title": "Pronto", "blockers": []},
+tests/qml/check_handheld_layout_focus.qml:534:            "readiness": {"percent": 100, "title": "Pronto"},
+tests/qml/check_steam_gameplay_responsive.qml:32:            "readiness": {"percent": 100, "title": "Pronto"},
+tests/unit/test_desktop_dashboard.py:79:        return {"readiness": {"percent": 100}, "games": []}
+tests/unit/test_desktop_dashboard.py:418:    assert snapshot["steamGameplay"]["readiness"]["percent"] == 100
+tests/unit/test_desktop_dashboard.py:725:    assert snapshot["readiness"]["percent"] == 100
+tests/unit/test_emulation_controller.py:288:    assert platform["readiness"]["percent"] == 45
+tests/unit/test_emulation_workspace.py:189:        "readiness": {"percent": 0, "blockers": ["o emulador desta plataforma não está instalado"]},
+tests/unit/test_emulation_workspace.py:273:        "readiness": {"percent": 100, "blockers": []},
+tests/unit/test_emulation_workspace.py:310:                "readiness": {"percent": 0, "blockers": []},
+tests/unit/test_gamemode_probe.py:280:        assert result["readiness"]["percent"] < 100
+tests/unit/test_gamemode_probe.py:297:        assert result["readiness"]["percent"] == 67

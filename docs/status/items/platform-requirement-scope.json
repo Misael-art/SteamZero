@@ -18,7 +18,7 @@
     "src/steamzero/schemas/platform-manifest-v1.schema.json",
     "tests/unit/test_platform_requirements.py"
   ],
-  "scopeDigest": "1512ea7d8fead9f2dc3e5cc2bf09ac5c784e6c256960648f2f6b0df0eb89a1a0",
+  "scopeDigest": "59190aebaec8aef2efcde2d19968f41565b7c64e5400513556d58eade34d3809",
   "dependsOn": [
     "SZ-AGG-PLATFORM-MANIFESTS"
   ],

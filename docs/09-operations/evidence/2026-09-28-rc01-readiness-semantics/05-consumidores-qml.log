@@ -1,0 +1,357 @@
+UX-03 — evidência 05: consumidores QML (cor por estado, número nullable, dimensão nomeada)
+Data: 2026-09-28
+Branch: codex/rc01-readiness-semantics-2026-09-28
+Checkout: /home/misael/Projects/Steam Zero/Canonical/2026-09-21 (checkout único, venv existente)
+
+Escopo desta evidência: a camada de leitura do contrato. Os produtores (evidências
+00–04) já publicavam o contrato v2; aqui o que se prova é que nenhuma superfície
+volta a decidir sozinha o que o número significa.
+
+Superfícies alteradas:
+- src/steamzero/ui/qml/readiness.js            (novo; tradução do contrato para QML)
+- src/steamzero/ui/qml/Emulation.qml           (funções readiness* + cartão + dimensão)
+- src/steamzero/ui/qml/SteamGameplay.qml       (funções readiness* + cartão + dimensão)
+- tests/qml/check_readiness_surface.qml        (novo; harness de superfície)
+- tests/qml/capture_responsive.qml             (cenários de prontidão para inspeção visual)
+
+Digest sha256 (12 primeiros hex) no fim desta etapa:
+  Emulation.qml             84f1e91e3a2c
+  SteamGameplay.qml         20bcfddcf72e
+  readiness.js              33bc908e8707
+  check_readiness_surface.qml f13ea3d5ecf2
+  capture_responsive.qml    e716136df079
+
+================================================================================
+1. O que foi substituído (causa raiz, não rótulo)
+================================================================================
+
+Todas as remoções abaixo estavam no HEAD antes desta etapa e são a expressão de
+UI da causa raiz mapeada nas evidências 00–03:
+
+    function readinessPercent() {
+        const value = Number(readiness.percent || 0)
+        return isNaN(value) ? 0 : Math.max(0, Math.min(100, Math.round(value)))
+    }
+
+e as regras derivadas, repetidas por página:
+
+    page.readinessPercent() >= 80 ? page.greenColor : page.amberColor
+    page.readinessPercent() >= 80 ? "#0c2a21" : "#24180b"
+    text: modelData.readiness.percent + "%"
+    ProgressBar { value: page.readinessPercent() }
+
+Três defeitos distintos saíam dessas linhas:
+
+a) `readiness.percent || 0` transformava ausência em 0% — o usuário lia
+   "0% pronto" onde nunca houve medição.
+b) `>= 80` dava a mesma cor verde a três grandezas incompatíveis: categoria
+   codificada do workspace de emulação (20/45/35/100), proporção real de
+   requisitos obrigatórios do gameplay e a mera existência de jogos
+   inventariados (100/0).
+c) um bloqueio com medidor cheio era pintado de verde, porque a cor olhava o
+   número e nunca o estado.
+
+O cartão agora lê o contrato:
+    headline/cause/nextAction/progress/percent → Readiness.*(readiness)
+    cor e superfície                           → Readiness.tone()/surface()
+    número                                     → Readiness.percentText(readiness, "—")
+    dimensão nomeada                           → Readiness.dimensionCaption(readiness)
+
+`percent >= 80` não existe mais em nenhuma página (verificação 3 abaixo).
+
+================================================================================
+2. VERMELHO reproduzido antes da correção
+================================================================================
+
+R1 — a dimensão do número não chegava à tela.
+     O harness procurava `readinessDimension` e não encontrava o objeto:
+         FAIL: o cartão da Emulação nomeia a dimensão do número que exibe
+     Motivo: a dimensão vivia só em `Accessible.description`, invisível. Um
+     "67%" sem "de quê" é exatamente o problema que a UX-03 veio fechar.
+
+R2 — a legenda truncava em vez de responder.
+     Na captura 1208x696 a linha aparecia como "requisitos obrigatóri…".
+     Causa: `elide: Text.ElideRight` com largura fixa. Correção: `wrapMode:
+     Text.WordWrap` + altura do cartão acompanhando o conteúdo:
+         Layout.preferredHeight: Math.max(page.compactLayout ? 56 : 64,
+             readinessRow.implicitHeight + 20)
+     Em SteamGameplay.qml o cartão passou a ter `readinessColumn` e o mesmo
+     princípio, com `Layout.maximumWidth: page.compactLayout ? 132 : 200`.
+
+R3 — o harness podia reportar verde com falha.
+     Saída observada: `FAIL: ...` seguido de EXIT=0.
+     Causa: `Qt.exit()` não interrompe a execução do script. Depois de
+     `Qt.exit(1)` a linha de sucesso rodava e um segundo `Qt.exit(0)`
+     sobrescrevia o código. Correção: `return` após o ramo de falha.
+         if (harness.failures > 0) { console.error(...); Qt.exit(1); return }
+     Auditoria dos demais harnesses (grep de `Qt.exit` em tests/qml): os 4
+     pontos que combinam saída de falha e sucesso já usam if/else — nenhum
+     outro harness repete o defeito. Este item é integridade de gate, não
+     cosmético: sem ele, qualquer regressão futura nesta frente seria lida
+     como verde pelo CI.
+
+================================================================================
+3. BATERIA DE MUTAÇÕES — a regra não pode voltar a ser por página
+================================================================================
+
+Método: aplicar uma mutação plausível ao código de produção, rodar o harness,
+exigir exit=1, restaurar byte a byte (sha256 verificado antes/depois de cada
+alvo). Script: /tmp/ux03_mutation_battery.py (executado com timeout obrigatório
+por chamada; qml6 não encerra sozinho em erro de script).
+
+Resultado da primeira rodada (5/6):
+  PEGOU   (exit=1) M1 readiness.js: tom decidido pelo número, não pelo estado
+        FAIL: um percentual alto não pode salvar um bloqueio
+        FAIL: 100% medido não salva um bloqueio na superfície da plataforma
+        FAIL: a tinta do cartão vem do estado publicado
+        FAIL: 100% medido não salva um bloqueio no cartão do ambiente
+  PEGOU   (exit=1) M2 readiness.js: medição ausente vira 0%
+        FAIL: denominador zero não é uma medição
+        FAIL: percentual ausente é null, não 0
+        FAIL: o número ausente aparece como traço, nunca como 0%
+        FAIL: sem medição não há barra de progresso
+  PEGOU   (exit=1) M3 readiness.js: legenda da dimensão suprimida
+        FAIL: o número medido chega acompanhado do que foi medido
+        FAIL: o cartão da Emulação nomeia a dimensão do número que exibe
+        FAIL: 67% sem dimensão nomeada repete o problema que a UX-03 eliminou
+  PEGOU   (exit=1) M4 Emulation.qml: reimplementa a cor pelo número
+        FAIL: o cartão da Emulação colore pelo estado, não pelo percentual
+        FAIL: sem observação o cartão não pode parecer sucesso nem falha
+        FAIL: 100% medido não salva um bloqueio na superfície da plataforma
+  ESCAPOU (exit=0) M5 Emulation.qml: tinta do cartão fixa
+  PEGOU   (exit=1) M6 SteamGameplay.qml: reimplementa a cor pelo número
+        FAIL: gameplay bloqueado é vermelho mesmo com 67% medido
+        FAIL: 100% medido não salva um bloqueio no cartão do ambiente
+
+M4 também não era pega antes do bloco de delegação (linhas 272–293 do harness):
+as verificações existentes nunca punham a página diante de um bloqueio com o
+medidor cheio. O pin foi escrito como VERMELHO primeiro (mutação aplicada,
+harness falhando), só então a verificação entrou.
+
+M5 — lacuna real, fechada por TDD:
+  Diagnóstico: a borda vinha do estado (`readinessColor`), o fundo era a outra
+  metade da leitura de "isto está bloqueado" e não tinha pin por página — o pin
+  de módulo (`Readiness.surface(...) === "#2b1114"`) não pega uma reimplementação
+  local.
+  Vermelho: com `readinessSurface()` mutado para `return surfaceColor`, as
+  verificações novas falharam e o restante passou:
+      PEGOU (exit=1) fundo fixo em Emulation.qml
+            FAIL: o fundo do cartão é a tinta do estado publicado
+      PEGOU (exit=1) fundo fixo em SteamGameplay.qml
+            FAIL: o fundo do cartão do ambiente é a tinta do estado publicado
+  (segunda rodada, /tmp/ux03_m5_recheck.py; antes dela o alvo da SteamGameplay
+  ainda ESCAPOVA — o pin dessa página não existia.)
+  Verde na árvore íntegra: 65 verificações, exit=0.
+
+Balanço final: 6/6 mutações pegas.
+
+Nota de método: uma das execuções de mutação travou com `readinessTone()` já
+apagado de Emulation.qml — qml6 não termina quando o handler de um Timer levanta
+TypeError, e o `subprocess.run` original não tinha timeout. A função foi
+reinsercida à mão e a restauração foi conferida por conteúdo, não por hash: os
+21 hunks de `git diff src/steamzero/ui/qml/Emulation.qml` caem todos em regiões
+de prontidão (import, padrões de `readiness`, bloco de funções readiness*,
+cartão global, lista de plataformas, cartão da plataforma, nomes acessíveis), e
+nenhuma linha removida fora as cinco listas na seção 1. Harnesses verde depois
+da restauração. Todo script de mutação desta etapa carrega timeout obrigatório.
+
+================================================================================
+4. VERDE — harnesses
+================================================================================
+
+Comando canônico (todos com timeout; QT_QPA_PLATFORM=offscreen,
+QML_DISABLE_DISK_CACHE=1, QT_FORCE_STDERR_LOGGING=1):
+
+  check_readiness_surface.qml   65 verificação(ões) ok        exit=0
+  check_emulation.qml           PASS: hierarquia, fallback seguro e contrato de áreas   exit=0
+
+Conteúdo dos 65: tradução de módulo (estado→tom, superfície, número nullable,
+denominador zero, ausente=traço, razões de ausência, contrato legado→unverified,
+normalização) mais os pins por página (Emulation e SteamGameplay): tom, tinta da
+borda, tinta do fundo, cabeçalho, causa, valor, dimensão nomeada e o caso
+"100% medido não salva um bloqueio".
+
+================================================================================
+5. INSPEÇÃO VISUAL — capturas
+================================================================================
+
+Harness: tests/qml/capture_responsive.qml. Capturas promovidas para
+captures/ nesta pasta (6 arquivos; somatório de bytes confere com as fontes em
+/tmp no momento da cópia; sha256 em captures/SHA256SUMS.txt):
+
+  steamzero-readiness-emulation-ready.png          1208x696  verde, barra, "100%",
+                                                   dimensão legível
+  steamzero-readiness-emulation-unverified.png     1208x696  tom neutro, número
+                                                   "—", sem barra de progresso
+  steamzero-readiness-emulation-blocked.png        1208x696  vermelho, causa e
+                                                   próxima ação visíveis
+  steamzero-readiness-steam-blocked.png            1208x696  cartão do ambiente
+                                                   vermelho com 67% + dimensão
+  steamzero-readiness-emulation-blocked-handheld.png  949x593 dobra compacta real
+  steamzero-readiness-steam-blocked-handheld.png      949x593 dobra compacta real
+
+O par handheld usa 949x593, o menor viewport lógico documentado
+(docs/09-operations/HANDHELD-PHYSICAL-VALIDATION-2026-07-22.md, painel interno
+com escala 1.35). Uma captura anterior a 460x820 foi descartada: essa largura
+não está entre as escalas suportadas e o "corte" observado era artefato do
+harness, não do produto — registrar aqui para que a medição errada não vire
+reclamação de layout.
+
+Defeito de harness encontrado durante a inspeção (não da produção): a Emulation
+parecia congelada entre capturas. Causa: mutar o objeto da plataforma no lugar
+deixava `selectedPlatform` com a mesma referência JS, o QML não emitia change e
+a ligação de `readiness` não reavaliava — o cartão era pintado com o estado da
+captura anterior. Seis sondas mínimas isolaram o ponto. Correção em
+capture_responsive.qml: construir objeto NOVO de ponta a ponta
+(`plataformaComProntidao`). A bridge publica dicionários novos a cada resposta,
+então o risco era do harness.
+
+================================================================================
+6. GATE VISUAL CANÔNICO
+================================================================================
+
+  tests/integration/test_qml_handheld_offscreen.py   57 passaram (65.79 s)
+  tests/integration/test_qml_visual_capture.py       48 passaram
+
+O gate de superfície cobre 57 harnesses e falha (não pula) quando falta runtime
+QML; `_assert_qml_clean` reprova "Binding loop", "Unable to assign", TypeError,
+ReferenceError e "Cannot open" — as duas famílias de defeito descobertas na
+seção 3 (script que não termina) e na seção 5 (atribuição ignorada) são
+exatamente o que ele vigia.
+
+================================================================================
+6.5 CONSUMIDORES PYTHON — varredura completa
+================================================================================
+
+grep de `readiness` em src/steamzero/**/*.py fora do próprio contrato devolve:
+domain/emulation_workspace.py, domain/platform_composer.py, domain/cloud_platforms.py,
+domain/platforms.py, adapters/emulation.py, adapters/desktop_dashboard.py,
+adapters/steam_gameplay.py — os sete produtores convertidos (evidências 01 e 03).
+
+Um único acerto adicional existe e NÃO é este contrato:
+`src/steamzero/domain/retro_experience.py:124-131` usa a chave `readiness` como
+flag de exibição por campo do painel RetroFE ("ready"/"planned" em `_FIELDS`),
+sem percentual e sem dimensão. Ficou fora da conversão de propósito; registrado
+aqui para que a varredura não precise ser refeita na frente RetroFE da missão.
+
+Nenhum `.percent`, `readinessPercent`, `.readiness.title`, `.readiness.detail` ou
+`.readiness.blockers` solto resta em src/steamzero/ui/qml/ (grep nesta árvore:
+zero ocorrências fora de readiness.js), que é o que a seção 1 removeu.
+
+================================================================================
+6.6 EMPACOTAMENTO — readiness.js chega ao wheel?
+================================================================================
+
+Risco próprio de um arquivo novo que não é `.py`: `[tool.hatch.build.targets.wheel]
+packages = ["src/steamzero"]` (pyproject.toml:33) copia a árvore do pacote, e o
+hatchling respeita o `.gitignore`. `git check-ignore -v
+src/steamzero/ui/qml/readiness.js` não devolve regra: o arquivo NÃO é ignorado,
+portanto entra no wheel. Precedente na mesma pasta: `golden/`, `launcher/`,
+`tests/` e os `.md` já viajam por esse caminho, e `Emulation.qml` importa
+`"readiness.js"` por caminho relativo — a mesma resolução que já funciona para
+os `.qml` vizinhos na release instalada.
+
+Nenhuma lista de artefatos precisa ser atualizada; verificado e não alterado.
+
+================================================================================
+6.7 FIXTURES LEGADAS REMANESCENTES — decisão, não esquecimento
+================================================================================
+
+grep de `"percent"` em tests/ devolve payload v1 em harnesses antigos:
+check_emulation.qml (142/180/194/247/259/291/316), check_emulation.qml e
+vizinhos, check_editorial_library.qml (106/220),
+check_editorial_canonical_systems.qml (24),
+check_steam_gameplay_responsive.qml (32), e em testes de unidade
+(test_emulation_workspace.py 189/273/310, test_desktop_dashboard.py:80).
+
+Decisão: NÃO convertidos. Depois do contrato, esses dicionários entram pelas
+páginas exatamente pelo caminho que a compatibilidade define —
+`normalize_readiness()` lê o texto, esconde o número e devolve
+`state="unverified"`. Eles Exercitam portanto a trilha legada, que é uma das
+asas do `oneOf` do schema; convertê-los todos deixaria o caminho legado sem
+prova de superfície, trocando uma fixture feia por um buraco de cobertura.
+
+Nenhum desses harnesses foi enfraquecido: `check_emulation.qml` continua verde
+('PASS: hierarquia, fallback seguro e contrato de áreas'), e a leitura correta
+do contrato v2 está pinada por `check_readiness_surface.qml` com fixtures
+construídas pelo próprio construtor de teste (`readiness_fixture.js`). A
+assinatura da decisão está na seção 3: as mutações que trocavam a regra por
+número são pegas na superfície nova, não nas fixtures antigas.
+
+================================================================================
+7. FORA DE ESCOPO — registrado, não alterado
+================================================================================
+
+a) tools/update_qml_goldens.py --quebra: `--check` estoura sem o venv em
+   sys.path. Pré-existente a esta frente; a suíte golden cobre textos de tema e
+   o diálogo de importação, não renders de página, por isso a verificação visual
+   de UX-03 foi feita pelo harness de capturas + inspeção, não pelo golden.
+b) No seletor de plataforma, um SteamComboBox exibiu "Gestão geral" com uma
+   plataforma ativa em uma captura — artefato de `currentIndex` definido
+   imperativamente pelo harness. Não é caminho de produção; não mexi.
+
+================================================================================
+8. PENDÊNCIAS DESTA FRENTE
+================================================================================
+
+- Proof física (mão humana no aparelho) da dobra compacta com prontidão: eixo
+  RC-01 permanece parcial até a validação física autorizada.
+- Os itens 2 a 5 da diretiva (UX-04 unidades, primeira dobra da Home, RetroFE
+  dentro do shell com respostas tardias de /inspect, revisão dos demais
+  superfcies roláveis) seguem na ordem da missão; nada desta evidência os
+  antecipa.
+
+================================================================================
+9. CORREÇÕES DESTE LOG — REGISTRADAS DEPOIS, À LUZ DA REVISÃO DO OPERADOR (28/09)
+================================================================================
+
+Duas conclusões deste log foram revisadas pelo operador antes da publicação
+("não estar ignorado pelo Git não prova empacotamento"; "confira se os testes de
+cor expressam o contrato semântico/visual — a bateria 6/6 não prova cobertura
+completa"). Nenhuma das duas se sustenta como estava escrita. O texto original
+fica íntegro acima, append-only; a correção vive aqui e nos logs 07 e 08.
+
+C1 — §6.6 (EMPACOTAMENTO) estava sobre-alegada.
+     O que se manteve: `git check-ignore` sem regra, `.gitignore` sem `js`,
+     `packages = ["src/steamzero"]`, `hatch_build.py` sem filtro de extensão.
+     O que não se manteve: "portanto entra no wheel". O wheel do CI autorizado
+     (run 36372744311, artifact 10949711675, sha256 6d1977f268ac5ebc…, conferido
+     contra build/SHA256SUMS) tem 622 entradas, 61 `.qml`, e ZERO `.js`;
+     `steamzero/ui/qml/readiness.js` não está nele — porque foi construído em
+     5704c813, anterior ao arquivo. Não há precedente empacotado para `.js`
+     (é o único `.js` em `src/` e não está rastreado), então a inferência por
+     vizinhança não fecha. PROVA RECLASSIFICADA COMO PENDENTE; critérios de
+     fechamento e o risco real (quatro páginas importam o módulo) em
+     08-reachability-cor-de-tinta-guard-e-empacotamento.md §5.
+
+C2 — §3 (bateria 6/6) não cobria o que a frente passou a exigir.
+     As seis mutações da primeira e da segunda rodada não tocavam nem a relação
+     tom→tinta do painel de contexto nem a elipse da causa. Além disso, três
+     pinos de `check_readiness_surface.qml` fixavam hex literal ("#24180b",
+     "#2b1114"), que prova ninguém trocou um caractere e não prova que a cor
+     comunica o estado. Os pinos foram reescritos como requisitos (tons
+     distintos, família de matiz, `surface(unverified)===""`, contraste WCAG
+     7:1, delegação página→módulo com segundo estado, causa não elidida medida
+     por `lineCount`/`contentWidth`) e a bateria cresceu para 8 mutações em 3
+     arquivos: 8/8 pegas, restauração byte a byte conferida a cada rodada,
+     pré/pós-voo verdes. Detalhe em 07-mutacoes-rodada-3-pinos-requisito.md.
+
+C3 — correção de fato, não de redação: §5/§6.6 não previram o defeito de cor
+     vivo que a inspeção posterior achou. A caixa "Antes de continuar" tinha
+     fundo `#24180b` e borda âmbar fixos, pintando um estado `blocked` como
+     "atenção" — a categoria com a cor errada que a auditoria registra como
+     causa de UX-03. Corrigido por delegação a `Readiness.surface()`, com
+     fallback de relevo (`raisedColor`) quando o estado não tem tinta; M-c prova
+     que o pino cai se a caixa voltar a ser constante. Medição de onde a caixa
+     é realmente visível (painel de contexto: não-`game`, não compacto,
+     `width >= 1500`) está no log 08 §2; a alegação anterior de que a ação
+     inline era alcançável "nos dois layouts" é substituída por aquela tabela.
+
+C4 — §6 (gate visual) e as capturas de §5 são anteriores às edições de geometria
+     desta frente (causa com quebra de linha, novo rótulo de próxima ação no
+     cartão do ambiente). Os dois gates foram reexecutados depois: 57 passaram
+     (93.70 s) e 48 passaram (12.35 s), exit 0; ruff/mypy/independence verdes.
+     A reinspeção visual das seis capturas com a geometria nova continua
+     pendente, e a suíte integral de 13:14 (§06-suíte-integral.log) não teve
+     veredicto — terminou a ~26% sem linha de resultado por interrupção de
+     sessão. Nenhuma das duas coisas será contada como verde.

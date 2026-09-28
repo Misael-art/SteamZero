@@ -1,0 +1,39 @@
+itens reprovados: 33
+arquivos desta frente (fora da pasta de evidencia): 30
+
+=== REPROVADOS POR ESTA FRENTE (33) ===
+- SZ-AURA-CINEMA-COMPLETION: 3 -> src/steamzero/adapters/emulation.py, tests/integration/test_qml_handheld_offscreen.py, tests/unit/test_emulation_controller.py
+- SZ-AURA-ESDE-ACTIVE-SURFACE: 2 -> src/steamzero/adapters/desktop_dashboard.py, src/steamzero/ui/qml/Main.qml
+- SZ-AURA-ESDE-RUNTIME-BRIDGE: 2 -> src/steamzero/adapters/desktop_dashboard.py, tests/unit/test_desktop_dashboard.py
+- SZ-AURA-LAUNCHER: 1 -> src/steamzero/adapters/emulation.py
+- SZ-AURA-SAVE-STATE-GALLERY: 1 -> tests/integration/test_qml_handheld_offscreen.py
+- SZ-AURA-SESSION-OSD: 2 -> src/steamzero/adapters/emulation.py, tests/integration/test_qml_handheld_offscreen.py
+- SZ-AURA-UI: 1 -> tests/integration/test_qml_handheld_offscreen.py
+- SZ-EMULATION-ENHANCEMENTS: 1 -> src/steamzero/adapters/emulation.py
+- SZ-EMULATION-HIGH-END-RUNTIME-READINESS: 1 -> src/steamzero/adapters/emulation.py
+- SZ-EMULATION-LONG-OPERATIONS: 1 -> tests/unit/test_desktop_dashboard.py
+- SZ-EMULATION-PLATFORM-CONTEXT: 1 -> src/steamzero/domain/platform_composer.py
+- SZ-EMULATION-PLATFORM-SCOPE: 1 -> src/steamzero/adapters/emulation.py
+- SZ-EMULATION-RUNTIME-REMEDIATION: 1 -> src/steamzero/adapters/emulation.py
+- SZ-EMULATION-STORAGE-MANAGEMENT: 1 -> src/steamzero/adapters/emulation.py
+- SZ-EMULATION-STORAGE-PLATFORM-SCOPE: 1 -> src/steamzero/adapters/emulation.py
+- SZ-EMULATION-STORAGE-READMODEL: 2 -> src/steamzero/adapters/emulation.py, src/steamzero/schemas/emulation-workspace-v1.schema.json
+- SZ-GAMEMODE-READINESS: 3 -> src/steamzero/ui/qml/Main.qml, tests/unit/test_desktop_dashboard.py, tests/unit/test_gamemode_probe.py
+- SZ-LIBRARY-CANONICAL: 5 -> src/steamzero/adapters/emulation.py, src/steamzero/domain/emulation_workspace.py, src/steamzero/ui/qml/Main.qml, tests/integration/test_qml_handheld_offscreen.py ...
+- SZ-MAIN-WORKTREE-RECONCILIATION: 1 -> src/steamzero/adapters/emulation.py
+- SZ-MEDIA-AUDIT-PLATFORM-SCOPE: 1 -> src/steamzero/adapters/emulation.py
+- SZ-MEDIA-PIPELINE-PLATFORM-SCOPE: 1 -> src/steamzero/adapters/emulation.py
+- SZ-MEDIA-PROVIDER-PLATFORM-FILTER: 1 -> src/steamzero/adapters/emulation.py
+- SZ-MULTIDISC-MATERIALIZATION-INGESTION: 1 -> src/steamzero/adapters/emulation.py
+- SZ-PLATFORM-CORE-PER-SYSTEM: 3 -> src/steamzero/adapters/emulation.py, src/steamzero/domain/platform_composer.py, tests/unit/test_emulation_controller.py
+- SZ-PLATFORM-REQUIREMENT-SCOPE: 3 -> src/steamzero/adapters/emulation.py, src/steamzero/domain/platform_composer.py, src/steamzero/domain/platforms.py
+- SZ-PS3-OFFICIAL-FIRMWARE-DOWNLOAD: 6 -> src/steamzero/adapters/emulation.py, src/steamzero/domain/platforms.py, src/steamzero/schemas/emulation-workspace-v1.schema.json, src/steamzero/ui/qml/EditorialLibrary.qml ...
+- SZ-SYSTEM-DIAGNOSTICS-GUIDANCE: 1 -> src/steamzero/ui/qml/Main.qml
+- SZ-THEME-ENGINE: 4 -> src/steamzero/ui/qml/EditorialLibrary.qml, src/steamzero/ui/qml/Emulation.qml, src/steamzero/ui/qml/Main.qml, src/steamzero/ui/qml/SteamGameplay.qml
+- SZ-THEME-ESDE-SCENE-RENDER: 1 -> src/steamzero/adapters/desktop_dashboard.py
+- SZ-THEME-IMPORT-ESDE-LAYOUT: 2 -> src/steamzero/adapters/desktop_dashboard.py, src/steamzero/ui/qml/Main.qml
+- SZ-THEME-IMPORT-RETROFE: 1 -> src/steamzero/adapters/desktop_dashboard.py
+- SZ-THEME-IMPORT-SURFACE: 1 -> src/steamzero/adapters/desktop_dashboard.py
+- SZ-UI-DESKTOP-AUDIT: 9 -> src/steamzero/adapters/desktop_dashboard.py, src/steamzero/ui/qml/EditorialLibrary.qml, src/steamzero/ui/qml/Emulation.qml, src/steamzero/ui/qml/Main.qml ...
+
+=== REPROVADOS SEM NENHUM ARQUIVO DESTA FRENTE NO ESCOPO (0) ===

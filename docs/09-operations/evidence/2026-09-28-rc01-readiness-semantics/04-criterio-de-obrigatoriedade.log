@@ -1,0 +1,165 @@
+# Evidência 04 — critério de obrigatoriedade (UX-03, produtores)
+# data: 2026-09-28T14:53:21Z
+# checkout: /home/misael/Projects/Steam Zero/Canonical/2026-09-21
+# branch: codex/rc01-readiness-semantics-2026-09-28
+
+## Problema reproduzido
+compute_readiness e a proporção compartilhada decidiam vigor por
+bool(row['required']). No contrato real 'required' é a VERSAO exigida
+(RequirementCheck.required) e o escopo global do host o preenche como None
+para keys/firmware que a plataforma exige sempre. Consequencia: o par
+'keys ok + firmware ok' do host produzia denominador zero ('nada a medir'),
+e uma linha 'missing' com required=None caia no mesmo balde de isento.
+A secao de mutacao abaixo reproduz esse estado de forma verificavel: com o
+criterio revertido, os testes desta entrega falham.
+
+## Vermelho observado antes da correcao (mesma rodada)
+cmd: pytest tests/unit/test_readiness_producers.py -q -k 'ausencia_que_bloca or blocks_play_vale'
+  -> 2 failed, 18 deselected   (0, 0, None) != (0, 1, 0)
+cmd: pytest tests/unit/test_readiness_producers.py -q
+  -> 5 failed, 15 passed
+     - requisito isento gerava causa/proxima-acao inventadas sobre estado pronto
+     - pendencia nao bloqueante (outdated) nao era contada como ajuste
+     - steam_gameplay: (2, 7, 29) em vez de (2, 3, 67) - o booleano 'required'
+       do documentario de ambiente foi tratado como versao exigida
+cmd: pytest tests/unit/test_readiness_contract.py -q
+  -> 2 failed (proporcao com 'required' booleano pinhava o criterio antigo)
+
+## Correcao
+- readiness.py: NOT_REQUIRED_STATUS + requirement_in_force(row) como criterio
+  padrão; proportion_from_requirements(..., in_force=...) aceita o vocabulario
+  do produtor (steam_gameplay injeta bool(required) das capacidades).
+- emulation_workspace.compute_readiness: pendingOptional = pendencia EM VIGOR
+  que nao barra o jogo (mesmo predicado da proporcao, sem dupla contagem);
+  linha isenta nao gera causa nem proxima acao e nao entra em nenhum balde.
+
+## Verde - suites de prontidao
+................................................                         [100%]
+48 passed in 1.32s
+
+## Verde - suites adjacentes que consomem readiness
+........................................................................ [ 25%]
+........................................................................ [ 50%]
+........................................................................ [ 76%]
+...................................................................      [100%]ipc connect failed: [Errno 2] No such file or directory
+ipc connect failed: [Errno 2] No such file or directory
+
+283 passed in 133.18s (0:02:13)
+
+## Mutacao: vigor volta a ser bool(row['required'] or row['blocksPlay'])
+...........................FF...................                         [100%]
+=================================== FAILURES ===================================
+________ test_proporcao_de_requisitos_separa_obrigatorios_de_opcionais _________
+
+    def test_proporcao_de_requisitos_separa_obrigatorios_de_opcionais() -> None:
+        """O que está em vigor é o que o contrato declara: ``not-required`` isenta.
+    
+        ``required`` é a versão exigida (``RequirementCheck.required``), e o escopo
+        global do host o preenche como ``None`` para keys e firmware que a plataforma
+        exige sempre. Usar a truthiness dele como obrigatoriedade tirava toda
+        ausência real do denominador.
+        """
+        rows = [
+            {"required": "rev5", "status": "ok"},
+            {"required": "rev5", "status": "missing"},
+            {"required": None, "status": "unverified"},
+            {"required": None, "status": "not-required"},
+            {"required": None, "status": "not-required"},
+        ]
+        media = proportion_from_requirements(rows)
+    
+        assert media["numerator"] == 1  # apenas o atendido conta
+>       assert media["denominator"] == 3  # os três em vigor, não as cinco linhas
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       assert 2 == 3
+
+tests/unit/test_readiness_contract.py:171: AssertionError
+_______ test_criterio_de_vigor_e_unico_e_o_produtor_pode_injetar_o_dele ________
+
+    def test_criterio_de_vigor_e_unico_e_o_produtor_pode_injetar_o_dele() -> None:
+        """Um documentário com obrigatoriedade em booleano injeta o próprio critério.
+    
+        É a mesma função que decide a proporção e a contagem de ajustes: se o
+        produtor usasse um critério em cada lugar, a linha contaria nos dois baldes.
+        """
+>       assert requirement_in_force({"required": None, "status": "missing"}) is True
+E       AssertionError: assert False is True
+E        +  where False = requirement_in_force({'required': None, 'status': 'missing'})
+
+tests/unit/test_readiness_contract.py:187: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/test_readiness_contract.py::test_proporcao_de_requisitos_separa_obrigatorios_de_opcionais
+FAILED tests/unit/test_readiness_contract.py::test_criterio_de_vigor_e_unico_e_o_produtor_pode_injetar_o_dele
+2 failed, 46 passed in 0.91s
+
+## Restauracao (byte a byte) e verde final
+arquivo restaurado byte a byte: src/steamzero/domain/readiness.py
+................................................                         [100%]
+48 passed in 0.78s
+
+## Gates focais (AGENTS.md paragrafo 6, durante o lote)
+cmd: ruff check src/steamzero/domain tests/unit/test_readiness_contract.py tests/unit/test_readiness_producers.py
+All checks passed!
+cmd: ruff format --check src tools tests
+676 files already formatted
+cmd: mypy src
+Success: no issues found in 298 source files
+
+## Mutacao 2: mesmo criterio revertido, suite do controller (host real)
+cmd: pytest tests/unit/test_emulation_controller.py -q -k degraded_emulator
+.F                                                                       [100%]
+=================================== FAILURES ===================================
+________________ test_degraded_emulator_blocks_global_readiness ________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f20da609940>
+tmp_path = PosixPath('/tmp/pytest-of-misael/pytest-4/test_degraded_emulator_blocks_0')
+
+    def test_degraded_emulator_blocks_global_readiness(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+        """G27: degradado presente nunca alega "pronto"."""
+        controller = _controller(monkeypatch, tmp_path)
+        _plant_portable_deployment(tmp_path, "eden", "1.0.0", b"#!/bin/sh\necho ok\n")
+        _plant_degraded_deployment(tmp_path, "citron", "1.0.0")
+    
+        keys = tmp_path / "prod.keys"
+        keys.write_text(
+            "master_key_00 = " + "01" * 16 + "\n"
+            "master_key_01 = " + "02" * 16 + "\n"
+            "header_key = " + "03" * 16 + "\n"
+            "titlekek_00 = " + "04" * 16 + "\n",
+            encoding="utf-8",
+        )
+        key_plan = controller.plan_action({"actionId": "keys.import", "path": str(keys)})
+        _apply(controller, key_plan)
+    
+        firmware = tmp_path / "firmware.nca"
+        firmware.write_bytes(b"owned-firmware")
+        firmware_plan = controller.plan_action(
+            {"actionId": "firmware.import", "path": str(firmware), "version": "18.1.0"}
+        )
+        _apply(controller, firmware_plan)
+    
+        platform = controller.snapshot({"context": {}})["platforms"][0]
+        assert platform["state"] == "attention"
+        # UX-03: 45 era o código da categoria "attention", não uma medição. A
+        # proporção agora nomeia o que mede (requisitos obrigatórios: keys +
+        # firmware atendidos), e o que o emulador degradado realmente barra é a
+        # alegação de prontidão — não o número.
+        readiness = platform["readiness"]
+        assert readiness["contractVersion"] == READINESS_CONTRACT_VERSION
+        assert readiness["state"] == "attention"
+        measure = readiness["measure"]
+        assert measure["dimension"] == "required_requirements"
+>       assert (measure["numerator"], measure["denominator"], measure["percent"]) == (2, 2, 100)
+E       assert (0, 0, None) == (2, 2, 100)
+E         
+E         At index 0 diff: 0 != 2
+E         Use -v to get more diff
+
+tests/unit/test_emulation_controller.py:298: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/test_emulation_controller.py::test_degraded_emulator_blocks_global_readiness
+1 failed, 1 passed, 144 deselected in 2.91s
+arquivo restaurado byte a byte: src/steamzero/domain/readiness.py
+cmd: pytest tests/unit/test_emulation_controller.py -q -k degraded_emulator (restaurado)
+..                                                                       [100%]
+2 passed, 144 deselected in 2.67s

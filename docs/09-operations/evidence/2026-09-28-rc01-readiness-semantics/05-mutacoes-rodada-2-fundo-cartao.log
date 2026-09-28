@@ -1,0 +1,8 @@
+PEGOU (exit=1) fundo fixo em Emulation.qml
+      qml: FAIL: o fundo do cartão é a tinta do estado publicado
+ESCAPOU (exit=0) fundo fixo em SteamGameplay.qml
+      qml: check_readiness_surface: 64 verificação(ões) ok
+PEGOU (exit=1) fundo fixo em Emulation.qml
+      qml: FAIL: o fundo do cartão é a tinta do estado publicado
+PEGOU (exit=1) fundo fixo em SteamGameplay.qml
+      qml: FAIL: o fundo do cartão do ambiente é a tinta do estado publicado

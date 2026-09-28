@@ -1,0 +1,308 @@
+# UX-03 — vermelho: produtores adapters/steam_gameplay.py e adapters/desktop_dashboard.py
+# comando: .venv/bin/python -m pytest tests/unit/test_readiness_producers.py -k gameplay -q
+# data: 2026-09-28T09:11:15Z  SHA-base: 5d95034b67fb50fd1218f267afbfe189d4444bd2
+
+FFF                                                                      [100%]
+=================================== FAILURES ===================================
+_____ test_gameplay_pronto_com_opcional_pendente_separa_as_duas_contagens ______
+
+tmp_path = PosixPath('/tmp/pytest-of-misael/pytest-22/test_gameplay_pronto_com_opcio0')
+
+    def test_gameplay_pronto_com_opcional_pendente_separa_as_duas_contagens(
+        tmp_path: Path,
+    ) -> None:
+        """Antes: ``percent=100`` com título ``Pronto com 4 ajuste(s)`` — os ajustes
+        contavam opcionais e o percentual, só obrigatórios. As duas coisas continuam
+        reais, mas deixam de ser a mesma frase.
+        """
+>       readiness = _gameplay_snapshot(tmp_path, installed=("gamescope",))["readiness"]
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_readiness_producers.py:322: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/unit/test_readiness_producers.py:312: in _gameplay_snapshot
+    return controller.snapshot({"context": {"deviceKind": "linux"}})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <steamzero.adapters.steam_gameplay.SteamGameplayController object at 0x7f454440fcb0>
+desktop_status = {'context': {'deviceKind': 'linux'}}
+
+    def snapshot(self, desktop_status: dict[str, Any]) -> dict[str, Any]:
+        games = self._games()
+        capabilities = self._capabilities()
+        context = desktop_status.get("context")
+        context_dict = context if isinstance(context, dict) else {}
+        device_kind = str(context_dict.get("deviceKind", "linux"))
+        displays = context_dict.get("displays", [])
+        resolution = self._resolution(displays)
+        selected_id = games[0]["id"] if games else ""
+        saved = self._launcher.desired_profile(selected_id) if selected_id else None
+        selected_profile = self._complete_profile(saved, selected_id)
+        launcher = self._launcher.status(selected_id)
+        if selected_id:
+            launcher["configuration"] = self._launch_options.status(selected_id)
+        gamemode = self._gamemode()
+        environment = self._environment(capabilities, gamemode)
+        return {
+            "games": games,
+            "selectedGameId": selected_id,
+            "environment": environment,
+>           "readiness": _environment_readiness(environment),
+                         ^^^^^^^^^^^^^^^^^^^^^^
+            "hardware": {
+                "deviceLabel": "Deck LCD" if device_kind == "deck-lcd" else "Linux",
+                "tdpMin": 3 if device_kind.startswith("deck-") else None,
+                "tdpMax": 15 if device_kind.startswith("deck-") else None,
+                "gpuMin": 200 if device_kind.startswith("deck-") else None,
+                "gpuMax": 1600 if device_kind.startswith("deck-") else None,
+                "refreshHz": self._refresh(displays),
+                "memoryGb": self._memory_gb(),
+                "withinSafeLimits": device_kind.startswith("deck-"),
+            },
+            "context": {
+                "device": "Deck LCD" if device_kind == "deck-lcd" else "Linux",
+                "battery": self._battery_percent(),
+                "mode": "Modo Desktop",
+            },
+            "currentProfile": selected_profile,
+            "gamemode": gamemode.to_dict(),
+            "truthState": (
+                launcher["state"]
+                if saved
+                else "desired"
+                if self._saved_controls(selected_id)
+                else "recommended"
+            ),
+            "launcher": launcher,
+            "impact": self._impact(selected_profile, resolution),
+            "profiles": [
+                {"id": "economy", "label": "Economia", "fps": 30},
+                {"id": "balanced", "label": "Equilibrado", "fps": 40, "recommended": True},
+                {"id": "performance", "label": "Desempenho", "fps": 60},
+            ],
+            "lsfgInstaller": self._lsfg.status(),
+            "maintenance": self._maintenance.snapshot(selected_id),
+            "media": self._media.snapshot(selected_id) if selected_id else {"accounts": []},
+            "sessionManager": session_readiness(which=self._which),
+            "hostPreparation": host_preparation_snapshot(device_kind, which=self._which),
+            "hud": hud_catalog(mangohud_available=capabilities["mangohud"]),
+            "vkBasalt": vkbasalt.catalog(available=capabilities["vkbasalt"]),
+        }
+E       NameError: name '_environment_readiness' is not defined
+
+___________ test_gameplay_obrigatorio_ausente_nao_e_rotulado_pronto ____________
+
+tmp_path = PosixPath('/tmp/pytest-of-misael/pytest-22/test_gameplay_obrigatorio_ause0')
+
+    def test_gameplay_obrigatorio_ausente_nao_e_rotulado_pronto(tmp_path: Path) -> None:
+        """Antes: 67% com o mesmo título ``Pronto`` — um obrigatório ausente é
+        impedimento observado, e a superfície precisa dizer qual e o que fazer."""
+>       snapshot = _gameplay_snapshot(tmp_path)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_readiness_producers.py:340: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/unit/test_readiness_producers.py:312: in _gameplay_snapshot
+    return controller.snapshot({"context": {"deviceKind": "linux"}})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <steamzero.adapters.steam_gameplay.SteamGameplayController object at 0x7f45442c2210>
+desktop_status = {'context': {'deviceKind': 'linux'}}
+
+    def snapshot(self, desktop_status: dict[str, Any]) -> dict[str, Any]:
+        games = self._games()
+        capabilities = self._capabilities()
+        context = desktop_status.get("context")
+        context_dict = context if isinstance(context, dict) else {}
+        device_kind = str(context_dict.get("deviceKind", "linux"))
+        displays = context_dict.get("displays", [])
+        resolution = self._resolution(displays)
+        selected_id = games[0]["id"] if games else ""
+        saved = self._launcher.desired_profile(selected_id) if selected_id else None
+        selected_profile = self._complete_profile(saved, selected_id)
+        launcher = self._launcher.status(selected_id)
+        if selected_id:
+            launcher["configuration"] = self._launch_options.status(selected_id)
+        gamemode = self._gamemode()
+        environment = self._environment(capabilities, gamemode)
+        return {
+            "games": games,
+            "selectedGameId": selected_id,
+            "environment": environment,
+>           "readiness": _environment_readiness(environment),
+                         ^^^^^^^^^^^^^^^^^^^^^^
+            "hardware": {
+                "deviceLabel": "Deck LCD" if device_kind == "deck-lcd" else "Linux",
+                "tdpMin": 3 if device_kind.startswith("deck-") else None,
+                "tdpMax": 15 if device_kind.startswith("deck-") else None,
+                "gpuMin": 200 if device_kind.startswith("deck-") else None,
+                "gpuMax": 1600 if device_kind.startswith("deck-") else None,
+                "refreshHz": self._refresh(displays),
+                "memoryGb": self._memory_gb(),
+                "withinSafeLimits": device_kind.startswith("deck-"),
+            },
+            "context": {
+                "device": "Deck LCD" if device_kind == "deck-lcd" else "Linux",
+                "battery": self._battery_percent(),
+                "mode": "Modo Desktop",
+            },
+            "currentProfile": selected_profile,
+            "gamemode": gamemode.to_dict(),
+            "truthState": (
+                launcher["state"]
+                if saved
+                else "desired"
+                if self._saved_controls(selected_id)
+                else "recommended"
+            ),
+            "launcher": launcher,
+            "impact": self._impact(selected_profile, resolution),
+            "profiles": [
+                {"id": "economy", "label": "Economia", "fps": 30},
+                {"id": "balanced", "label": "Equilibrado", "fps": 40, "recommended": True},
+                {"id": "performance", "label": "Desempenho", "fps": 60},
+            ],
+            "lsfgInstaller": self._lsfg.status(),
+            "maintenance": self._maintenance.snapshot(selected_id),
+            "media": self._media.snapshot(selected_id) if selected_id else {"accounts": []},
+            "sessionManager": session_readiness(which=self._which),
+            "hostPreparation": host_preparation_snapshot(device_kind, which=self._which),
+            "hud": hud_catalog(mangohud_available=capabilities["mangohud"]),
+            "vkBasalt": vkbasalt.catalog(available=capabilities["vkbasalt"]),
+        }
+E       NameError: name '_environment_readiness' is not defined
+
+____ test_gameplay_sondagem_falha_e_verificacao_pendente_com_causa_do_dado _____
+
+tmp_path = PosixPath('/tmp/pytest-of-misael/pytest-22/test_gameplay_sondagem_falha_e0')
+
+    def test_gameplay_sondagem_falha_e_verificacao_pendente_com_causa_do_dado(
+        tmp_path: Path,
+    ) -> None:
+        """``unverified`` não é ``missing``: a linha não-observada continua no
+        denominador, e causa/ação vêm da própria verdade sondada."""
+        failure = GameModeTruth.failure()
+>       snapshot = _gameplay_snapshot(tmp_path, installed=("gamescope",), gamemode=failure)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_readiness_producers.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/unit/test_readiness_producers.py:312: in _gameplay_snapshot
+    return controller.snapshot({"context": {"deviceKind": "linux"}})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <steamzero.adapters.steam_gameplay.SteamGameplayController object at 0x7f45442c3610>
+desktop_status = {'context': {'deviceKind': 'linux'}}
+
+    def snapshot(self, desktop_status: dict[str, Any]) -> dict[str, Any]:
+        games = self._games()
+        capabilities = self._capabilities()
+        context = desktop_status.get("context")
+        context_dict = context if isinstance(context, dict) else {}
+        device_kind = str(context_dict.get("deviceKind", "linux"))
+        displays = context_dict.get("displays", [])
+        resolution = self._resolution(displays)
+        selected_id = games[0]["id"] if games else ""
+        saved = self._launcher.desired_profile(selected_id) if selected_id else None
+        selected_profile = self._complete_profile(saved, selected_id)
+        launcher = self._launcher.status(selected_id)
+        if selected_id:
+            launcher["configuration"] = self._launch_options.status(selected_id)
+        gamemode = self._gamemode()
+        environment = self._environment(capabilities, gamemode)
+        return {
+            "games": games,
+            "selectedGameId": selected_id,
+            "environment": environment,
+>           "readiness": _environment_readiness(environment),
+                         ^^^^^^^^^^^^^^^^^^^^^^
+            "hardware": {
+                "deviceLabel": "Deck LCD" if device_kind == "deck-lcd" else "Linux",
+                "tdpMin": 3 if device_kind.startswith("deck-") else None,
+                "tdpMax": 15 if device_kind.startswith("deck-") else None,
+                "gpuMin": 200 if device_kind.startswith("deck-") else None,
+                "gpuMax": 1600 if device_kind.startswith("deck-") else None,
+                "refreshHz": self._refresh(displays),
+                "memoryGb": self._memory_gb(),
+                "withinSafeLimits": device_kind.startswith("deck-"),
+            },
+            "context": {
+                "device": "Deck LCD" if device_kind == "deck-lcd" else "Linux",
+                "battery": self._battery_percent(),
+                "mode": "Modo Desktop",
+            },
+            "currentProfile": selected_profile,
+            "gamemode": gamemode.to_dict(),
+            "truthState": (
+                launcher["state"]
+                if saved
+                else "desired"
+                if self._saved_controls(selected_id)
+                else "recommended"
+            ),
+            "launcher": launcher,
+            "impact": self._impact(selected_profile, resolution),
+            "profiles": [
+                {"id": "economy", "label": "Economia", "fps": 30},
+                {"id": "balanced", "label": "Equilibrado", "fps": 40, "recommended": True},
+                {"id": "performance", "label": "Desempenho", "fps": 60},
+            ],
+            "lsfgInstaller": self._lsfg.status(),
+            "maintenance": self._maintenance.snapshot(selected_id),
+            "media": self._media.snapshot(selected_id) if selected_id else {"accounts": []},
+            "sessionManager": session_readiness(which=self._which),
+            "hostPreparation": host_preparation_snapshot(device_kind, which=self._which),
+            "hud": hud_catalog(mangohud_available=capabilities["mangohud"]),
+            "vkBasalt": vkbasalt.catalog(available=capabilities["vkbasalt"]),
+        }
+E       NameError: name '_environment_readiness' is not defined
+
+=========================== short test summary info ============================
+FAILED tests/unit/test_readiness_producers.py::test_gameplay_pronto_com_opcional_pendente_separa_as_duas_contagens
+FAILED tests/unit/test_readiness_producers.py::test_gameplay_obrigatorio_ausente_nao_e_rotulado_pronto
+FAILED tests/unit/test_readiness_producers.py::test_gameplay_sondagem_falha_e_verificacao_pendente_com_causa_do_dado
+3 failed, 14 deselected in 0.52s
+
+# comando: .venv/bin/python -m pytest tests/unit/test_desktop_dashboard.py -k gameplay_failure_degrades -q
+
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______________ test_gameplay_failure_degrades_only_steam_section _______________
+
+tmp_path = PosixPath('/tmp/pytest-of-misael/pytest-23/test_gameplay_failure_degrades0')
+
+    def test_gameplay_failure_degrades_only_steam_section(tmp_path: Path) -> None:
+        dashboard = DesktopDashboard(
+            store_factory=lambda: StateStore(tmp_path / "state.db"),
+            flatpak_factory=FakeFlatpak,  # type: ignore[arg-type]
+            doctor_runner=lambda: ({"version": "test"}, []),
+            steam=SteamDesktopController(
+                which=lambda _command: None,
+                running_probe=lambda: False,
+                spawn=lambda _argv: None,
+            ),
+            gameplay=BrokenGameplay(),  # type: ignore[arg-type]
+            which=lambda _command: None,
+            spawn=lambda _argv: None,
+        )
+    
+        snapshot = dashboard.snapshot(_status())
+    
+        assert snapshot["steamGameplay"]["truthState"] == "degraded"
+        assert snapshot["doctor"]["state"] == "healthy"
+        assert len(snapshot["components"]) == 3
+    
+        # "Indisponível" não é uma medição de 0%: sem dados, o número desaparece e a
+        # superfície diz o que aconteceu e o que fazer em seguida.
+        readiness = snapshot["steamGameplay"]["readiness"]
+>       assert readiness["contractVersion"] == READINESS_CONTRACT_VERSION
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'contractVersion'
+
+tests/unit/test_desktop_dashboard.py:754: KeyError
+=========================== short test summary info ============================
+FAILED tests/unit/test_desktop_dashboard.py::test_gameplay_failure_degrades_only_steam_section
+1 failed, 50 deselected in 3.39s
