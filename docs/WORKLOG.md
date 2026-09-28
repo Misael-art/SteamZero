@@ -13609,3 +13609,131 @@ física na release instalada `2.0.0rc1-e2af2562ebba`, que offscreen nenhum subst
 (unidades humanas, valores exatos, ausência ≠ zero), a primeira dobra da Home em viewport
 compacto e a resposta tardia dos importadores no RetroFE — nada disso foi começado aqui. RC-01
 continua sem critérios obrigatórios completos.
+
+## 2026-09-28 — RC-01 / UX-03, rodada 13-14: o CI terminal reprovou, a causa foi medida, e o empacotamento foi fechado lendo o wheel
+
+**O veredito do CI, registrado como vermelho antes de qualquer correção.** PR #243,
+cabeça `ec86c228`, run 36475422213: `Python 3.11/3.12/3.14` SUCCESS,
+`Wheel limpo, smoke e supply chain` SUCCESS, `Smoke Ubuntu 24.04 / Arch / Manjaro`
+SUCCESS, `CodeRabbit` SUCCESS, e **`Gate visual QML (Linux)` FAILURE** —
+`1 failed, 343 passed, 12 skipped, 6176 deselected in 1185.23s`, com
+`FAIL: o texto quebrado continua dentro da largura do cartão` e
+`check_readiness_surface: 1 falha(s) de 112 (primeira em #71)`. Localmente o mesmo
+harness passava 112/112. A frente não reescreveu esse resultado nem o substituiu por
+teste focado: o comando do CI foi re-executado na árvore (`-m visual`) até ele ficar
+verde.
+
+**A causa, medida — e não é do produto.** Sonda no mesmo harness, lendo geometria no
+`tick` em que o modelo é atribuído e depois de assentar:
+
+| sítio | transitório (`ticks=0`) | assentado (`ticks=2`) |
+| --- | --- | --- |
+| Emulação 1360 | `w=76.00 cw=74.17 lines=9 h=17.00 ch=153.00` | `w=786.00 cw=489.70 lines=1 h=17.00 ch=17.00` |
+| Ambiente 1208 | `w=159.00 cw=141.84 lines=6 h=17.00 ch=102.00` | `w=797.00 cw=689.45 lines=1 h=17.00 ch=17.00` |
+| Ambiente 720×480 | `w=159.00 cw=141.84 lines=6 h=17.00 ch=102.00` | `w=309.00 cw=305.63 lines=3 h=51.00 ch=51.00` |
+
+Os Qt Quick Layouts são polidos num frame posterior. Na coluna transitória de 76 px a
+causa legítima estoura a largura por construção — 76 px não comporta uma palavra —, e
+`contentHeight` (153 px) media dentro de 17 px de altura. Foi aí que a folga local de
+1,83 px virou +1 px no runner: a asserção media métrica de fonte, não requisito. O
+produto assentado está correto (1100×786).
+
+**Duas correções recusadas, registradas.** Baixar o limiar (de `+1` para `+8`) foi
+recusado. Também foi recusada a substituição que esta própria rodada havia começado —
+trocar o pixel por comparação de string e atribuir o vermelho inteiro à métrica de
+fonte — porque a explicação estava incompleta (a causa é o *momento* da leitura) e
+deixava o requisito "nada é cortado" sem nenhuma medição.
+
+**Feito no harness (mudança de teste; nenhum arquivo de produto tocado):** obrigações
+geométricas acumuladas e executadas quando a largura se repete entre dois ticks
+(espiador de 16 ms, teto de 120 ticks como testemunha que falha alto em vez de tempo
+arbitrário); `contentWidth <= width` e `contentHeight <= height` **sem tolerância**,
+com guarda de não-vacuidade `contentWidth > 100` para "caber" não ser consequência de
+item vazio; e a demonstração de quebra movida para o regime onde ela é exigida —
+`Main.qml:12-13` fixa `minimumWidth: 720`/`minimumHeight: 480`, ali a coluna do
+ambiente assenta em 309 px e a causa de 121 caracteres precisa de 689 px numa linha
+(folga 2,2×), então `lineCount > 1` é requisito. Na Emulação à mesma largura a folga
+seria 1,13×, por isso nenhuma asserção de contagem de linha foi posta lá: seria o
+mesmo erro com outro nome. Harness de 112 para 125 verificações, verde em 1,09 s
+(o gate concede 30 s por harness).
+
+**Bateria de mutações rodada 5, executada sobre CÓPIA fora do checkout** (`/tmp/rp`,
+`diff -rq` sem saída e `sha256` iguais antes e depois, impressos no log): M0 pristine
+125 ok · M1 `NoWrap` na Emulação → 1 falha · M2 coluna a 200 px **com** WordWrap →
+**125 ok, controle negativo** (sem esta cena verde, `contentWidth <= width` poderia
+estar medindo qualquer coisa) · M3 200 px **sem** quebra → 2 falhas (`folga medida:
+-290 px`) · M4 `NoWrap` no ambiente → 3 falhas · M5 `elide` + `maximumLineCount: 1` →
+2 falhas · M6 `Layout.maximumHeight: 17` → 1 falha. Limitação que a bateria obriga a
+registrar e que agora está no comentário do harness: com a elipse ativa,
+`contentWidth`, `contentHeight` e a igualdade de texto **continuam verdes** — nada na
+geometria detecta corte por elipse; quem pega é o pino estrutural de `elide`/
+`maximumLineCount`. O erro da rodada anterior (mutar `Emulation.qml` dentro do
+checkout) não se repetiu.
+
+**Empacotamento fechado lendo o artefato, e a conclusão anterior corrigida.**
+`readiness.js` foi lido dentro do wheel da pipeline governada: `sha256sum -c` contra o
+`SHA256SUMS` do próprio CI (seis SUCESSO), `tools/release_provenance.py verify-wheel`
+→ `{"project": "steamzero", "sha256": "db92dbed…09eb", "version": "2.0.0rc1"}`, e a
+entrada `steamzero/ui/qml/readiness.js` = 8614 B com o mesmo `sha256`
+(`7d76be27…29f5`) do blob git de `ec86c228`; 86 entradas `ui/qml` no pacote.
+`GAP-UI-QML-JS-NAO-PROVADO-DENTRO-DO-WHEEL-DO-CI` saiu de `knownGaps`. A nuance fica
+declarada em vez de escondida: em run `pull_request` o artefato é nomeado pelo
+**merge ref** (`ddab4bda…`, `refs/pull/243/merge`), não pela cabeça enviada; o wheel
+nomeado pelo SHA integrado continua sendo do fluxo de release do operador (AGENTS.md
+§4), e nada aqui o antecipa. Cobertura lida do mesmo run: **85,4897 %**
+(41761/5603/47364) contra `fail_under = 85`, sem regressão — é o único número de
+cobertura que existe, pois a suíte local roda desinstrumentada. Erro de processo
+confesso: o `gh run download` foi tentado duas vezes com o nome do artefato em `-D`
+(que é destino, e extrai plano), criando dois diretórios na **raiz do checkout**;
+foram movidos para `/tmp` e a árvore reconferida. Nenhum wheel foi montado fora do
+fluxo do operador.
+
+**Checkpoint 13, uma execução por passo, identidade reimpressa depois de cada um dos
+sete passos (as sete leituras idênticas).** Integral `tools/run_tests_isolated.py
+tests -q` = **1 failed, 6484 passed, 47 skipped** em 1966,18 s. Gate visual
+`-m visual` = **356 passed, 6176 deselected** em 1307,21 s — o gate que reprovou no CI
+ficou verde no runner real, na árvore testada. `ruff check`, `ruff format --check`
+(676 arquivos), `mypy src` (298 arquivos) e `make independence boundaries`: todos
+verdes. `make status-check`: **uma** linha, `SZ-UI-DESKTOP-AUDIT: evidencia obsoleta …
+atual e47bf54b4c82b1e141650af46027e0bbbb0953003b35ce8cd2aa5714793475a2`, atribuída por
+inteiro a esta frente — o harness está em `scopePaths` do item, então qualquer mudança
+honesta envelhece o digest por construção; nenhum outro item obsoleto (contra os 33 do
+checkpoint 10). O `real-state before/after` do executor ficou idêntico em cada suíte
+(12816 arquivos, 1.372.712.391 bytes).
+
+**Consumidores do contrato v2 verificados, item por item do operador** (parágrafo 7 de
+`15-checkpoint-13-gates-integrais.md`): numerador+denominador juntos, denominador zero
+→ traço, dado ausente → traço (nunca 0 nem 100), não-verificado recusado, opcional não
+drena obrigatório, v1 continua aceito com as duas formas mutualmente exclusivas,
+nenhum percentual artificial — e na UI o título, a causa, o valor, a dimensão e a
+próxima ação estão pinados como **itens renderizados**, com `READY_BASES` recusando
+`ready` por mera existência e o cartão nomeando a grandeza medida para "12 de 14
+requisitos" nunca se ler como "o jogo roda".
+
+**Cadeia de integração, conferida sem presumir merge.** `origin/main` em `3495c49d`.
+#239 (`069501ab`), #240 (`c959be13`), #241 (`190ea683`), #242 (`5d95034b`) **OPEN** e
+`CLEAN`; #243 (`ec86c228`) **OPEN**, `MERGEABLE` e `UNSTABLE` exatamente pelo gate
+visual corrigido nesta rodada. Ancestralidade real: os quatro heads anteriores estão
+contidos em `ec86c228`. #233 (`codex/op-watchdog-2026-09-22`) continua CONFLICTING
+desde 22/09 e sem dono nesta sessão. Merge é do operador; nenhum merge foi feito aqui.
+
+**Depois do checkpoint, a árvore testada recebeu só documento** (declaração do item 4
+da instrução): evidências `13-*`, `14-*`, `15-*`, o índice da pasta, o cartão
+(6 evidências novas, gap fechado, `nextAction`), o workstream, o digest renovado do
+valor impresso pela ferramenta na árvore final e as visões regeradas. Nenhum arquivo
+funcional foi tocado depois do passo 7; a integral não foi re-rodada localmente e
+volta a valer como prova no SHA publicado, onde o CI a executa do zero.
+
+**O que permanece pendente:** (a) CI **terminal** no SHA final deste envio — a frente
+só se declara fechada com o veredito lido, nunca com "CI rodando"; (b) integração na
+ordem 239→240→241→242→243, com o operador; (c) `GAP-UI-VISUAL-CAPTURE-NOT-CERTIFIED-IN-CI`
+(escala de texto 100/125/150 %) e a prova física na release instalada
+`2.0.0rc1-e2af2562ebba`, que offscreen nenhum substitui; (d) UX-04, já medido: quatro
+formatadores divergentes (`Main.qml:1355` e `SteamGameplay.qml:339` são cópias
+idênticas em KiB/MiB/GiB; `Emulation.qml:597` põe rótulo `GB`/`MB` sobre divisor 1024;
+`ThemeCatalogPanel.qml:81` para em MB), com o mesmo `1073741824 B` lido como `1.00 GiB`,
+`1.00 GB` ou `1024.0 MB` conforme a tela, três dos quatro transformando ausência em
+`0 B`, `512 B` saindo como `0.0 MB`, e o texto cru dos cartões de armazenamento
+nascendo no produtor (`adapters/emulation.py:5410`, `:5422`, `:5429-5432`) sem um único
+pino em testes. Depois: primeira dobra da Home e RetroFE dentro do shell com respostas
+tardias dos importadores. RC-01 continua sem critérios obrigatórios completos.

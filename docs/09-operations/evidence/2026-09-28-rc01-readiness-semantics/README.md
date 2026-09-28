@@ -2,8 +2,8 @@
 
 Frente: `WS-2026-09-RC01-READINESS-SEMANTICS`, branch
 `codex/rc01-readiness-semantics-2026-09-28`, base `5d95034b` (ponta do PR #242),
-quinto elo da pilha #239 → #240 → #241 → #242. Item normativo:
-`SZ-UI-DESKTOP-AUDIT`.
+quinto elo da pilha #239 → #240 → #241 → #242, publicado como PR #243 na cabeça
+`ec86c228`. Item normativo: `SZ-UI-DESKTOP-AUDIT`.
 
 Esta pasta é o único lugar onde os resultados deste lote existem fora do Git.
 Nada aqui foi resumido de chat: todo log abaixo foi gravado pelo comando que o
@@ -34,16 +34,28 @@ produziu, e os comandos estão impressos nos próprios arquivos.
 | `11-passada-documental.md` | A passada documental depois do checkpoint: cartão, 33 digests renovados com o valor impresso pela própria ferramenta, visões regeradas, sessão de WORKLOG acrescentada (e o incidente do `sed` global, corrigido e confessado no arquivo) |
 | `12-isolamento-mainqml.md` | Rodada de processo depois do checkpoint: `Main.qml` (claim exclusivo de outra frente) sai do commit das páginas e vai para commit próprio, com o pino que faltava no fallback do shell — vermelho e verde medidos, conteúdo da árvore provado idêntico |
 | `12-comandos-e-saidas.log` | Saídas cruas da rodada 12: pilha, identidade entre as duas pontas, vermelho/verde do pino, gates focados e os gates de §6 re-rodados na ponta reconstruída |
+| `13-wheel-do-ci-contem-readiness-js.md` + `.log` | Fecho da pendência de empacotamento: o wheel produzido pela pipeline governada (run 36475422213) baixado, conferido contra o `SHA256SUMS` do próprio CI, verificado pelo `release_provenance.py verify-wheel` do projeto, e `readiness.js` lido byte a byte dentro dele — `sha256` idêntico ao blob enviado. Registra também a nuance do merge ref, a cobertura medida no CI (85,4897 %) e o erro de processo do `gh run download` |
+| `14-geometria-transitoria-vs-assentada-e-mutacoes.md` | Causa **medida** do vermelho do gate visual no CI (PR #243): os Qt Quick Layouts assentam num frame posterior, e a asserção lia `width`/`contentWidth` no mesmo tick da atribuição do modelo (76 px de coluna contra 786 px assentados). Recusa de baixar limiar, espera por condição em vez de tempo, a quebra demonstrada no menor tamanho suportado (720×480, folga de 2,2×) e a bateria de mutações rodada 5 |
+| `14-bateria-mutacoes-rodada-5.log` | Saída crua das seis cenas, executadas sobre **cópia** do QML fora do checkout: cinco mutações pegas, um controle negativo deliberado (M2 verde por construção correta) e as limitações que a bateria obriga a registrar — nada na geometria detecta corte por elipse |
+| `15-checkpoint-13-gates-integrais.md` | O checkpoint da árvore com o harness corrigido: suíte integral única (1 failed, 6484 passed, 47 skipped), gate visual do CI verde no runner real (356 passed), ruff/format/mypy/independence verdes, identidade reimpressa **depois de cada passo**, a única falha atribuída por inteiro (1 item, desta frente, por construção) e a declaração do que foi mudado depois (só documento). §7 verifica os consumidores do contrato v2 sub-item por sub-item do operador, com o teste citado pelo nome |
+| `15-comandos-e-saidas.log` | Saída crua dos sete passos acima, com o `real-state before/after` do executor isolado em cada suíte |
+| `15-gates-focados-pos-documental.log` | A reconfirmação depois da passada documental, com o comando impresso no arquivo: 70 passed (13 do gate de catálogo + os 57 harnesses parametrizados, soma conferida em `--collect-only`), ruff check, ruff format, mypy, independence e status-check verdes, e o `sha256` do harness inalterado — o conteúdo funcional testado é o conteúdo enviado |
 | `captures/` | Sete PNGs inspecionados um a um, com `SHA256SUMS.txt` e as dimensões lógicas de cada viewport |
 
 ## O que este lote não prova
 
-- **Empacotamento.** `readiness.js` dentro do wheel ainda não foi lido de um
-  artefato construído no SHA deste lote. Registrado como pendência
-  (`GAP-UI-QML-JS-NAO-PROVADO-DENTRO-DO-WHEEL-DO-CI`), com o procedimento de
-  fechamento em `08-…md` §5.
+- **Empacotamento: provado, com o resto declarado.** `readiness.js` foi lido
+  dentro do wheel construído pela pipeline governada e é byte a byte o blob
+  enviado (`13-…md`). O que **não** está provado aqui, e não pode estar: o wheel
+  nomeado pelo SHA *integrado*, depois do merge — esse é artefato do fluxo de
+  release do operador (AGENTS.md §4), e em run `pull_request` o artefato existe
+  sob o merge ref, não sob a cabeça enviada.
+- **Física do gate visual.** O vermelho do PR #243 foi corrigido por medição de
+  harness, não por mudança de produto; a causa está em `14-…md` e a verificação
+  no runner em `15-…md`. O que continua sem prova é a aparência em escala de
+  texto real (100/125/150 %), fora do offscreen.
 - **Release instalada.** Todo o verde QML aqui é offscreen no runtime Qt 6.11 do
   projeto. A release `2.0.0rc1-e2af2562ebba` no host não foi tocada: prova física
   segue autorização específica do operador.
 - **Integração.** Nada aqui alega merge. A ordem de integração e os bloqueios
-  estão em `10-…causa.md` e no `nextAction` do workstream.
+  estão em `10-…causa.md`, em `15-…md` e no `nextAction` do workstream.
