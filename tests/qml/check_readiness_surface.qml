@@ -92,6 +92,75 @@ Window {
         return encontrados
     }
 
+    // --- geometria só vale depois que o layout assenta -----------------------
+    // Os Qt Quick Layouts são polidos num frame posterior: medir `width` na mesma
+    // volta do event loop em que o modelo foi atribuído devolve a distribuição do
+    // frame anterior. Foi assim que o gate visual reprovou 1 de 112 no runner
+    // (SHA ec86c228) sem nenhuma mudança de produto. Sonda no mesmo estado, página
+    // de 1360 px: coluna da causa em 76 px no transitório (folga de 1,83 px, que o
+    // runner converteu em +1 px) e 786 px um frame depois no harness, 804 px na
+    // sonda isolada. Setenta e seis px é mais estreito que uma palavra, então a
+    // causa "estourava" a largura por construção do harness, não por corte no
+    // produto. As verificações geométricas abaixo só rodam quando a largura do item
+    // para de mudar entre dois ticks consecutivos; assentar por tempo fixo voltaria
+    // a ser arbitrário.
+    property var geometricas: []
+
+    // Cada obrigação guarda o item observado e a verificação a executar depois.
+    // O teto (120 ticks de 16 ms ~ 2 s) é uma testemunha, não uma espera: um
+    // layout que não assentou nesse tempo não pode ser medido, e falhas abaixo
+    // dizem isso em vez de reprovar por folga de fonte.
+    readonly property int limiteTicksGeometria: 120
+
+    function exigirGeometriaAssentada(rotulo, item, verificacao) {
+        geometricas.push({
+            "rotulo": rotulo, "item": item, "verificacao": verificacao,
+            "larguraAnterior": -1, "estavel": false
+        })
+    }
+
+    function geometricasAssentadas() {
+        let estaveis = 0
+        for (let index = 0; index < geometricas.length; index++) {
+            const obrigacao = geometricas[index]
+            const atual = obrigacao.item !== null ? obrigacao.item.width : -1
+            obrigacao.estavel = atual > 0 && atual === obrigacao.larguraAnterior
+            obrigacao.larguraAnterior = atual
+            if (obrigacao.estavel)
+                estaveis += 1
+        }
+        return estaveis === geometricas.length
+    }
+
+    function executarGeometricas() {
+        for (let index = 0; index < geometricas.length; index++) {
+            const obrigacao = geometricas[index]
+            // Assentar é precondição da medição: sem isto a verificação leria o
+            // frame anterior e o gate reprovaria de novo por motivo de harness.
+            if (!obrigacao.estavel) {
+                harness.check(false, "\"" + obrigacao.rotulo + "\" não estabilizou a largura em "
+                    + harness.limiteTicksGeometria + " ticks: medir agora mediria o frame anterior")
+                continue
+            }
+            obrigacao.verificacao()
+        }
+        geometricas = []
+    }
+
+    function encerrar() {
+        // `Qt.exit()` não interrompe o script: sem o `else`, a linha de sucesso
+        // rodava depois da falha e o segundo `Qt.exit(0)` sobrescrevia o código
+        // de saída — o harness tinha falha e o gate lia verde.
+        if (harness.failures > 0) {
+            console.error("check_readiness_surface: " + harness.failures
+                + " falha(s) de " + harness.checks + " (primeira em #" + harness.firstFailure + ")")
+            Qt.exit(1)
+            return
+        }
+        console.info("check_readiness_surface: " + harness.checks + " verificação(ões) ok")
+        Qt.exit(0)
+    }
+
     // --- fixtures do contrato v2 ---------------------------------------------
     readonly property var cores: ({
         "green": "#59d35d", "amber": "#ff9f1a", "red": "#ff6b73", "muted": "#9eabba"
@@ -401,19 +470,41 @@ Window {
             }]
         }
         const causaLonga = harness.itemWithObjectName(objeto, "readinessCause")
-        check(causaLonga !== null && causaLonga.lineCount > 1,
-              "com a largura do cartão a causa longa ocupa mais de uma linha, então houve "
-              + "quebra de linha e não corte")
-        check(causaLonga !== null
-                && causaLonga.contentWidth <= causaLonga.width + 1,
-              "o texto quebrado continua dentro da largura do cartão")
+        check(causaLonga !== null,
+              "a segunda plataforma publica um item de causa na mesma página")
+        check(causaLonga !== null && causaLonga.text === atencaoLonga.cause,
+              "a causa longa chega ao item palavra por palavra: se houvesse corte, "
+              + "ele estaria aqui, não num pixel")
+        // A versão anterior media `contentWidth <= width + 1` e `lineCount > 1` na
+        // mesma volta do event loop da atribuição do modelo. As duas leram o frame
+        // anterior: a coluna assenta em 786 px (harness) / 804 px (sonda) e a
+        // leitura transitória dava 76 px, onde a folga de 1,83 px local virou +1 px
+        // no runner (SHA ec86c228, 1 de 112) porque 76 px não comporta uma palavra
+        // inteira — no mesmo transitório o item media 9 linhas em 17 px de altura
+        // (contentHeight 153), ou seja, nenhuma medição vertical fazia sentido ali.
+        // Assentado, `contentWidth <= width` volta a ser o requisito — e deixa de
+        // ser sorte de fonte, porque é a quebra de linha que garante a largura de
+        // cada linha.
+        if (causaLonga !== null) {
+            harness.exigirGeometriaAssentada("causa do cartão da Emulação", causaLonga,
+                                             function () {
+                harness.check(causaLonga.contentWidth <= causaLonga.width,
+                              "nenhuma linha da causa sai da coluna do cartão (folga medida: "
+                              + (causaLonga.width - causaLonga.contentWidth).toFixed(0) + " px)")
+                harness.check(causaLonga.contentHeight <= causaLonga.height,
+                              "o cartão cresce com a causa: nada é cortado na vertical")
+                harness.check(causaLonga.contentWidth > 100,
+                              "a medição acima tem texto layoutado: caber não é consequência "
+                              + "de o item estar vazio")
+                objeto.destroy()
+            })
+        }
         // Segundo estado, mesma página: é isto que impede uma tinta escrita à mão
         // de passar por delegação no único caso que o teste exercitava antes.
         check(objeto.readinessSurface() === Readiness.surface(atencaoLonga),
               "a página segue o módulo quando o estado muda, em vez de guardar uma cor")
         check(objeto.readinessSurface() !== Readiness.surface(bloqueioMedido),
               "atenção e bloqueio têm fundos distintos na mesma superfície")
-        objeto.destroy()
     }
 
     function testSteamGameplayRenderizaOCampoPublicado() {
@@ -489,7 +580,10 @@ Window {
         check(acaoAmbiente !== null
                 && acaoAmbiente.text === "Crie um perfil antes de iniciar.",
               "a ação exibida é a publicada no contrato, palavra por palavra")
-        pagina.gameplay = {
+        // A causa de produtor real que cabe numa linha larga e não cabe no menor
+        // tamanho que o shell aceita; o estado fica guardado porque a geometria é
+        // lida depois, e a última atribuição da página é que define o que se mede.
+        const ambienteComCausaLonga = {
             "games": [{"id": "3311720", "name": "Gimmick! 2 Demo"}],
             "environment": [],
             "readiness": harness.medido("blocked", 1, 4, {
@@ -500,9 +594,11 @@ Window {
             "hardware": {"tdpMin": 3, "tdpMax": 15, "refreshHz": 60},
             "currentProfile": {"gameId": "3311720", "scope": "game"}
         }
+        pagina.gameplay = ambienteComCausaLonga
         const causaLongaAmbiente = harness.itemWithObjectName(pagina, "gameplayReadinessCause")
-        check(causaLongaAmbiente !== null && causaLongaAmbiente.lineCount > 1,
-              "a causa longa do ambiente ocupa mais de uma linha em vez de sumir em reticências")
+        check(causaLongaAmbiente !== null
+                && causaLongaAmbiente.text === ambienteComCausaLonga.readiness.cause,
+              "a causa longa do ambiente chega inteira ao item, em vez de sumir em reticências")
 
         // Outro tom na mesma página: uma tinta escrita à mão sobreviveria ao
         // bloqueio acima e cairia aqui.
@@ -525,7 +621,81 @@ Window {
         check(!Qt.colorEqual(pagina.readinessSurfaceColor,
                              Readiness.surface(ambienteBloqueado.readiness)),
               "atenção e bloqueio têm fundos distintos no cartão do ambiente")
-        pagina.destroy()
+
+        // Última atribuição volta a ser a causa longa: é o estado que a verificação
+        // geométrica abaixo vai encontrar depois que o layout assentar.
+        pagina.gameplay = ambienteComCausaLonga
+        const causaAssentada = harness.itemWithObjectName(pagina, "gameplayReadinessCause")
+        check(causaAssentada !== null,
+              "o cartão do ambiente mantém o item de causa através das trocas de estado")
+        if (causaAssentada !== null) {
+            harness.exigirGeometriaAssentada("causa do cartão do ambiente", causaAssentada,
+                                             function () {
+                harness.check(causaAssentada.contentWidth <= causaAssentada.width,
+                              "nenhuma linha da causa do ambiente sai da coluna do cartão "
+                              + "(folga medida: "
+                              + (causaAssentada.width - causaAssentada.contentWidth).toFixed(0)
+                              + " px)")
+                harness.check(causaAssentada.contentHeight <= causaAssentada.height,
+                              "o cartão do ambiente cresce com a causa: nada é cortado na vertical")
+                harness.check(causaAssentada.contentWidth > 100,
+                              "a medição do ambiente tem texto layoutado: o cartão não está vazio")
+                pagina.destroy()
+            })
+        }
+    }
+
+    // --- no menor tamanho que o shell aceita, a causa quebra em vez de cortar ---
+    // `Main.qml:12` fixa minimumWidth: 720. Medido em sonda, nessa largura a
+    // coluna do cartão do ambiente assenta em 309 px, e a mesma causa de 121
+    // caracteres precisa de 689 px para caber numa linha só. É o único regime em
+    // que `lineCount > 1` deixa de ser sorte de fonte — folga de 2,2×, não os 1,13×
+    // da Emulação na mesma largura — e passa a ser o requisito: se não coubesse,
+    // teria que quebrar, porque a elipse está proibida acima.
+    function testCausaQuebraNoMenorTamanhoSuportado() {
+        const causa = "Gamescope não está disponível (SteamZero). Instale ou ative o "
+            + "compositor para que o perfil de lançamento seja verificado."
+        const pagina = gameplayComponent.createObject(harness, {
+            "width": 720, "height": 480,
+            "backgroundColor": "#071019", "surfaceColor": "#0d1924",
+            "raisedColor": "#122131", "borderColor": "#2a3a49",
+            "textColor": "#f2f6fb", "mutedColor": "#9eabba",
+            "cyanColor": "#13bdf2", "cyanDarkColor": "#0a5f85",
+            "greenColor": harness.cores.green, "amberColor": harness.cores.amber,
+            "redColor": harness.cores.red,
+            "desktopStatus": ({}),
+            "gameplay": {
+                "games": [{"id": "3311720", "name": "Gimmick! 2 Demo"}],
+                "environment": [],
+                "readiness": harness.medido("blocked", 1, 4, {
+                    "label": "Ação necessária", "cause": causa,
+                    "action": "Instale Gamescope e reabra a verificação do ambiente."}),
+                "hardware": {"tdpMin": 3, "tdpMax": 15, "refreshHz": 60},
+                "currentProfile": {"gameId": "3311720", "scope": "game"}
+            }
+        })
+        check(pagina !== null,
+              "a página do ambiente abre em 720x480, o menor tamanho que o shell aceita")
+        if (!pagina)
+            return
+        const item = harness.itemWithObjectName(pagina, "gameplayReadinessCause")
+        check(item !== null, "a causa continua na tela no layout compacto")
+        if (item === null) {
+            pagina.destroy()
+            return
+        }
+        harness.exigirGeometriaAssentada("causa do ambiente em 720 px", item, function () {
+            harness.check(item.lineCount > 1,
+                          "a causa que não cabe em 720 px ocupa mais de uma linha: quebrou, "
+                          + "não foi cortada (linhas medidas: " + item.lineCount + ")")
+            harness.check(item.contentWidth <= item.width,
+                          "mesmo quebrada nenhuma linha estoura a coluna compacta")
+            harness.check(item.contentHeight <= item.height,
+                          "o cartão compacto cresce com as linhas extras")
+            harness.check(item.text === causa,
+                          "e o texto inteiro continua no item")
+            pagina.destroy()
+        })
     }
 
     // --- o painel de contexto pinta o estado, não uma suposição --------------
@@ -723,6 +893,26 @@ Window {
         SteamGameplay {}
     }
 
+    // Uma verificação de geometria não pode rodar na mesma volta do event loop da
+    // atribuição do modelo (ver o bloco `exigirGeometriaAssentada` acima): este
+    // espiador espera a largura estabilizar entre dois ticks e só então executa as
+    // obrigações. O `encerrar()` vive lá porque o `Qt.exit()` não pode acontecer
+    // antes das medições assentadas.
+    Timer {
+        id: espiadorGeometria
+        interval: 16
+        repeat: true
+        property int ticks: 0
+        onTriggered: {
+            ticks += 1
+            if (harness.geometricasAssentadas() || ticks >= harness.limiteTicksGeometria) {
+                harness.executarGeometricas()
+                stop()
+                harness.encerrar()
+            }
+        }
+    }
+
     Timer {
         interval: 150
         running: true
@@ -730,19 +920,13 @@ Window {
             testSemanticaDoContrato()
             testEmulationRenderizaONumeroSomenteComMedicao()
             testSteamGameplayRenderizaOCampoPublicado()
+            testCausaQuebraNoMenorTamanhoSuportado()
             testPainelDeContextoUsaATintaDoEstado()
             testPainelNaoRepeteAProximaAcao()
-            // `Qt.exit()` não interrompe o script: sem o `else`, a linha de sucesso
-            // rodava depois da falha e o segundo `Qt.exit(0)` sobrescrevia o código
-            // de saída — o harness tinha falha e o gate lia verde.
-            if (harness.failures > 0) {
-                console.error("check_readiness_surface: " + harness.failures
-                    + " falha(s) de " + harness.checks + " (primeira em #" + harness.firstFailure + ")")
-                Qt.exit(1)
-                return
-            }
-            console.info("check_readiness_surface: " + harness.checks + " verificação(ões) ok")
-            Qt.exit(0)
+            // O resultado só é conhecido depois das verificações assentadas: sem
+            // este passo intermediário a linha de sucesso poderia sobrescrever o
+            // código de saída de uma falha descoberta mais tarde.
+            espiadorGeometria.start()
         }
     }
 }
