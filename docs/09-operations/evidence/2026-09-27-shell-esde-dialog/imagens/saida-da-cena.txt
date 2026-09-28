@@ -1,0 +1,29 @@
+===== aviso-longo =====
+
+# log: <CHECKOUT>/build/qml-logs/shell-esde-captura-aviso-longo.txt
+debug|ALVO|4-compacto-recusa-com-aviso|QQuickRootItem(0x5582c2340290, "Main")|949x593
+debug|CAPTURADO /tmp/pytest-of-<USER>/pytest-19/test_capturas_de_evidencia_da_0/capturas/4-compacto-recusa-com-aviso.png
+debug|GEOMETRIA|4-compacto-recusa-com-aviso|capturado=Main|janela=949x593|moldura=155,17,640,560|corpo=161,49,628,474|rodape=155,529,640,48|acao=715,529,80,48|esquemas=24|aviso=2328|cenario=aviso-longo
+debug|ALVO|5-largo-recusa-com-aviso|QQuickRootItem(0x5582c2340290, "Main")|1280x800
+debug|CAPTURADO /tmp/pytest-of-<USER>/pytest-19/test_capturas_de_evidencia_da_0/capturas/5-largo-recusa-com-aviso.png
+debug|GEOMETRIA|5-largo-recusa-com-aviso|capturado=Main|janela=1280x800|moldura=320,120,640,560|corpo=326,152,628,474|rodape=320,632,640,48|acao=880,632,80,48|esquemas=24|aviso=2328|cenario=aviso-longo
+debug|capturas=2 de 2 (cenário aviso-longo, publicadas=2)
+
+===== nomes-longos =====
+
+# log: <CHECKOUT>/build/qml-logs/shell-esde-captura-nomes-longos.txt
+debug|ALVO|3-compacto-nome-focado|QQuickRootItem(0x55be2cfc4cb0, "Main")|949x593
+debug|CAPTURADO /tmp/pytest-of-<USER>/pytest-19/test_capturas_de_evidencia_da_0/capturas/3-compacto-nome-focado.png
+debug|GEOMETRIA|3-compacto-nome-focado|capturado=Main|janela=949x593|moldura=155,17,640,560|corpo=161,49,628,474|rodape=155,529,640,48|acao=715,529,80,48|esquemas=24|aviso=0|cenario=nomes-longos
+debug|capturas=1 de 1 (cenário nomes-longos, publicadas=1)
+
+===== tipico =====
+
+# log: <CHECKOUT>/build/qml-logs/shell-esde-captura-tipico.txt
+debug|ALVO|1-compacto-aberto|QQuickRootItem(0x557daf111f30, "Main")|949x593
+debug|CAPTURADO /tmp/pytest-of-<USER>/pytest-19/test_capturas_de_evidencia_da_0/capturas/1-compacto-aberto.png
+debug|GEOMETRIA|1-compacto-aberto|capturado=Main|janela=949x593|moldura=155,17,640,560|corpo=161,49,628,474|rodape=155,529,640,48|acao=715,529,80,48|esquemas=0|aviso=0|cenario=tipico
+debug|ALVO|2-compacto-24-esquemas|QQuickRootItem(0x557daf111f30, "Main")|949x593
+debug|CAPTURADO /tmp/pytest-of-<USER>/pytest-19/test_capturas_de_evidencia_da_0/capturas/2-compacto-24-esquemas.png
+debug|GEOMETRIA|2-compacto-24-esquemas|capturado=Main|janela=949x593|moldura=155,17,640,560|corpo=161,49,628,474|rodape=155,529,640,48|acao=715,529,80,48|esquemas=24|aviso=0|cenario=tipico
+debug|capturas=2 de 2 (cenário tipico, publicadas=2)

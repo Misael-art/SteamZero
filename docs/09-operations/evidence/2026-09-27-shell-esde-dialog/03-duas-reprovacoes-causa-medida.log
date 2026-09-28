@@ -1,0 +1,70 @@
+# 03 — as duas reprovações que sobraram DEPOIS da correção, cada uma pela causa medida
+
+Execução intermediária, com o produto já corrigido e os dois bugs de medição
+ainda no teste:
+
+    $ .venv/bin/python -m pytest tests/integration/test_ui_shell_esde_import_dialog.py -q
+    2 failed, 18 passed in 59.34s
+
+Nenhuma das duas reprovações era defeito de produto, e nenhuma foi 'consertada'
+às cegas: as duas têm número que as descreve, abaixo, tirado dos logs desta
+pasta. O que mudou foi o teste — que media a grandeza errada, no primeiro
+caso, e pedia um POST que o produto corretamente não faz, no segundo.
+
+## A) 'a escala de texto publicada muda a geometria do diálogo'
+
+Sintoma: 1.0 → 474 px, 1.5 → 474 px, e a asserção concluía 'o diálogo ignora a
+preferência de tipografia do host'.
+
+Causa medida: o corpo do diálogo é o viewport de um ScrollView dentro de um
+teto de altura. Essa altura NÃO É a do conteúdo; é o teto, e na janela do Deck
+o teto já é a própria janela. Ela não pode responder à escala — nem deveria.
+As grandezas que a escala publicada move, medidas nas duas execuções:
+
+| grandeza | escala 1.0 | escala 1.5 | de onde |
+| --- | --- | --- | --- |
+| corpo | 161,49,628,474 | 161,49,628,474 | linha GEOMETRIA\|dialogo\| dos dois logs |
+| conteudo | 1606 | 1642 | linha GEOMETRIA\|dialogo\| dos dois logs |
+| rotulo | 15 | 44 | linha GEOMETRIA\|dialogo\| dos dois logs |
+
+Corpo, nas duas escalas: 161,49,628,474 — retângulo x,y,largura,altura; a altura 474
+é o que a asserção media antes da correção.
+
+Como reproduzir a tabela sem cair num número de outra linha: os mesmos logs
+contêm um segundo campo chamado corpo=, impresso por ESTABILIZOU como
+'altura/implicitHeight do ScrollView' (ex.: corpo=474/0). Um grep por 'corpo='
+sem filtro apanha esse primeiro e devolve um número que não é a geografia
+declarada — foi o que esta tabela mostrou na primeira montagem. O filtro é
+sempre a linha GEOMETRIA|dialogo|.
+
+Leitura honesta: 'corpo' é invariante por construção (474 nas duas);
+'rotulo' passa de 15 px para 44 px e 'conteudo' passa de
+1606 px para 1642 px. A asserção foi movida para as duas que
+respondem, e o corpo passou a ser declarado sem servir de prova — declarado
+para que o invariante fique visível, não para ser ignorado.
+
+Não-vacuidade da asserção nova: se algum dia o diálogo parar de escalar, 'rotulo'
+e 'conteudo' voltam a ser iguais nas duas escalas e o teste reprova com os dois
+números; se a cena parar de declarar as grandezas, o teste reprova antes de
+comparar ('a cena não declarou rotulo/conteudo'), em vez de comparar contra zero.
+
+## B) 'a jornada cabe no viewport dado[949x593-sem-esquema]'
+
+Sintoma: AssertionError: nenhum POST a /theme/import/esde/apply.
+
+Causa medida: o cenário sem-esquema publica 0 esquemas, então o produto mantém
+'Importar' desabilitado, e a jornada termina no aviso de estado vazio. A asserção
+exigia POST de apply em TODAS as oito linhas da matriz — inclusive na linha onde
+não publicar é exatamente o contrato. O harness imprime o desfecho (fechar=0,
+aviso=1) e a cena declara esquemas=0; nada disso mudou.
+
+Correção: a expectativa de alcançar Importar virou declarativa por cenário
+('chega_em_importar'), e a linha do estado vazio passou a assertar o INVERSO —
+nenhum POST. Assim a cena continua provando alguma coisa:
+se o botão habilitar sem esquema selecionado, um import fantasma reprova.
+
+Guarda contra a asserção inversa virar código morto: o teste de matriz exige
+agora que exatamente UM cenário tenha 'chega_em_importar' falso e que esse
+cenário tenha 0 esquemas ('a expectativa de importação inalcansável mudou de
+dono'). Sem essa guarda, apagar a linha do estado vazio deixaria o inverso
+sem nunca rodar.

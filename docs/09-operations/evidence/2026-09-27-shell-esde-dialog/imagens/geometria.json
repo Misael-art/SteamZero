@@ -1,0 +1,57 @@
+{
+  "4-compacto-recusa-com-aviso": {
+    "capturado": "Main",
+    "janela": "949x593",
+    "moldura": "155,17,640,560",
+    "corpo": "161,49,628,474",
+    "rodape": "155,529,640,48",
+    "acao": "715,529,80,48",
+    "esquemas": "24",
+    "aviso": "2328",
+    "cenario": "aviso-longo"
+  },
+  "5-largo-recusa-com-aviso": {
+    "capturado": "Main",
+    "janela": "1280x800",
+    "moldura": "320,120,640,560",
+    "corpo": "326,152,628,474",
+    "rodape": "320,632,640,48",
+    "acao": "880,632,80,48",
+    "esquemas": "24",
+    "aviso": "2328",
+    "cenario": "aviso-longo"
+  },
+  "3-compacto-nome-focado": {
+    "capturado": "Main",
+    "janela": "949x593",
+    "moldura": "155,17,640,560",
+    "corpo": "161,49,628,474",
+    "rodape": "155,529,640,48",
+    "acao": "715,529,80,48",
+    "esquemas": "24",
+    "aviso": "0",
+    "cenario": "nomes-longos"
+  },
+  "1-compacto-aberto": {
+    "capturado": "Main",
+    "janela": "949x593",
+    "moldura": "155,17,640,560",
+    "corpo": "161,49,628,474",
+    "rodape": "155,529,640,48",
+    "acao": "715,529,80,48",
+    "esquemas": "0",
+    "aviso": "0",
+    "cenario": "tipico"
+  },
+  "2-compacto-24-esquemas": {
+    "capturado": "Main",
+    "janela": "949x593",
+    "moldura": "155,17,640,560",
+    "corpo": "161,49,628,474",
+    "rodape": "155,529,640,48",
+    "acao": "715,529,80,48",
+    "esquemas": "24",
+    "aviso": "0",
+    "cenario": "tipico"
+  }
+}

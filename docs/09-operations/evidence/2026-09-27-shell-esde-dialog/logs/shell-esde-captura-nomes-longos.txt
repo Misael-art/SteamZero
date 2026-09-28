@@ -1,0 +1,10 @@
+# comando: /usr/lib/qt6/bin/qml <CHECKOUT>/tests/qml/capture_shell_esde_import_dialog.qml -- --output-dir=/tmp/pytest-of-<USER>/pytest-19/test_capturas_de_evidencia_da_0/capturas --cenario=nomes-longos
+# returncode: 0
+
+--- stdout ---
+
+--- stderr ---
+debug|ALVO|3-compacto-nome-focado|QQuickRootItem(0x55be2cfc4cb0, "Main")|949x593
+debug|CAPTURADO /tmp/pytest-of-<USER>/pytest-19/test_capturas_de_evidencia_da_0/capturas/3-compacto-nome-focado.png
+debug|GEOMETRIA|3-compacto-nome-focado|capturado=Main|janela=949x593|moldura=155,17,640,560|corpo=161,49,628,474|rodape=155,529,640,48|acao=715,529,80,48|esquemas=24|aviso=0|cenario=nomes-longos
+debug|capturas=1 de 1 (cenário nomes-longos, publicadas=1)

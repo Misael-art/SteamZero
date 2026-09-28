@@ -1,0 +1,100 @@
+# 02 — gate focado verde na árvore da entrega
+
+    $ .venv/bin/python -m pytest tests/integration/test_ui_shell_esde_import_dialog.py -q
+    20 passed in 60.77s
+
+Base da comparação: 01-vermelho-geografia-medida.log (12 failed, 7 passed,
+1 deselected, na MESMA suíte). O que mudou entre os dois foi apenas
+src/steamzero/ui/qml/Main.qml (o produto) e os dois bugs de medição descritos
+em 03-duas-reprovacoes-causa-medida.log.
+
+Denominador: 20 itens coletados pela suíte hoje.
+No vermelho um item estava desenfileirado e a corrida verde roda os vinte — a
+contagem abaixo é 20, não 19, e a cena de capturas conta como aprovada.
+
+## denominador por cenário (funções QtTest que aparecem como PASS)
+
+| log | PASS | funções da suíte |
+| --- | --- | --- |
+| shell-esde-949x593-aviso-longo-e1.0.txt | 11 | initTestCase + 9 + cleanupTestCase |
+| shell-esde-949x593-falha-de-rede-e1.0.txt | 11 | initTestCase + 9 + cleanupTestCase |
+| shell-esde-949x593-nomes-longos-e1.0.txt | 11 | initTestCase + 9 + cleanupTestCase |
+| shell-esde-949x593-recusa-e1.0.txt | 11 | initTestCase + 9 + cleanupTestCase |
+| shell-esde-949x593-sem-esquema-e1.0.txt | 11 | initTestCase + 9 + cleanupTestCase |
+| shell-esde-949x593-tipico-e1.0.txt | 11 | initTestCase + 9 + cleanupTestCase |
+| shell-esde-1280x800-aviso-longo-e1.0.txt | 11 | initTestCase + 9 + cleanupTestCase |
+| shell-esde-1280x800-tipico-e1.0.txt | 11 | initTestCase + 9 + cleanupTestCase |
+| shell-esde-48px-escala-1.0.txt | 11 | initTestCase + 9 + cleanupTestCase |
+| shell-esde-48px-escala-1.25.txt | 11 | initTestCase + 9 + cleanupTestCase |
+| shell-esde-48px-escala-1.5.txt | 11 | initTestCase + 9 + cleanupTestCase |
+| shell-esde-escala-par-1.0.txt | 11 | initTestCase + 9 + cleanupTestCase |
+| shell-esde-escala-par-1.5.txt | 11 | initTestCase + 9 + cleanupTestCase |
+
+Nove funções de jornada + init + cleanup = 11 PASS por cenário completo. Os
+cenários de estado vazio têm PASS a menos porque cinco funções declaram
+PULADO com motivo (test_03/04/05/08/09) — e o gate reprova se alguma função
+desaparecer sem estar na lista, em 'PULADO' ou em 'PASS' (_assert_denominador).
+
+## geografia declarada pela cena, por cenário (linha GEOMETRIA)
+
+### shell-esde-949x593-tipico-e1.0.txt
+    GEOMETRIA|aberto|janela=949x593|moldura=155,17,640,560|corpo=161,49,628,474|conteudo=1606|rodape=155,529,640,48|acao=715,529,80,48|rotulo=15|esquemas=24|escala=1
+    GEOMETRIA|depois|janela=949x593|moldura=155,17,640,560|corpo=161,23,628,548|conteudo=1606|rodape=155,529,640,48|acao=715,529,80,48|rotulo=15|esquemas=0|escala=1
+    GEOMETRIA|dialogo|janela=949x593|moldura=155,17,640,560|corpo=161,49,628,474|conteudo=1606|rodape=155,529,640,48|acao=715,529,80,48|rotulo=15|esquemas=24|escala=1
+
+### shell-esde-949x593-sem-esquema-e1.0.txt
+    GEOMETRIA|aberto|janela=949x593|moldura=155,17,640,560|corpo=161,49,628,474|conteudo=156|rodape=155,529,640,48|acao=715,529,80,48|rotulo=15|esquemas=0|escala=1
+    GEOMETRIA|vazio|janela=949x593|moldura=155,17,640,560|corpo=161,49,628,474|conteudo=131|rodape=155,529,640,48|acao=715,529,80,48|rotulo=15|esquemas=0|escala=1
+
+### shell-esde-949x593-aviso-longo-e1.0.txt
+    GEOMETRIA|aberto|janela=949x593|moldura=155,17,640,560|corpo=161,49,628,474|conteudo=1606|rodape=155,529,640,48|acao=715,529,80,48|rotulo=15|esquemas=24|escala=1
+    GEOMETRIA|depois|janela=949x593|moldura=155,17,640,560|corpo=161,49,628,474|conteudo=1961|rodape=155,529,640,48|acao=715,529,80,48|rotulo=15|esquemas=24|escala=1
+    GEOMETRIA|dialogo|janela=949x593|moldura=155,17,640,560|corpo=161,49,628,474|conteudo=1606|rodape=155,529,640,48|acao=715,529,80,48|rotulo=15|esquemas=24|escala=1
+
+### shell-esde-1280x800-tipico-e1.0.txt
+    GEOMETRIA|aberto|janela=1280x800|moldura=320,120,640,560|corpo=326,152,628,474|conteudo=1606|rodape=320,632,640,48|acao=880,632,80,48|rotulo=15|esquemas=24|escala=1
+    GEOMETRIA|depois|janela=1280x800|moldura=320,120,640,560|corpo=326,126,628,548|conteudo=1606|rodape=320,632,640,48|acao=880,632,80,48|rotulo=15|esquemas=0|escala=1
+    GEOMETRIA|dialogo|janela=1280x800|moldura=320,120,640,560|corpo=326,152,628,474|conteudo=1606|rodape=320,632,640,48|acao=880,632,80,48|rotulo=15|esquemas=24|escala=1
+
+## as três leituras de 48 px, na moldura real do shell
+
+### shell-esde-48px-escala-1.0.txt
+    GEOMETRIA|dialogo|janela=949x593|moldura=155,17,640,560|corpo=161,49,628,474|conteudo=1606|rodape=155,529,640,48|acao=715,529,80,48|rotulo=15|esquemas=24|escala=1
+### shell-esde-48px-escala-1.25.txt
+    GEOMETRIA|dialogo|janela=949x593|moldura=155,17,640,560|corpo=161,49,628,474|conteudo=1610|rodape=155,529,640,48|acao=715,529,80,48|rotulo=17|esquemas=24|escala=1.25
+### shell-esde-48px-escala-1.5.txt
+    GEOMETRIA|dialogo|janela=949x593|moldura=155,17,640,560|corpo=161,49,628,474|conteudo=1642|rodape=155,529,640,48|acao=715,529,80,48|rotulo=44|esquemas=24|escala=1.5
+
+## atualização na árvore congelada (22:28) — a jornada ganhou a função 10
+
+A tabela acima foi escrita com nove funções de jornada. Depois dela entrou
+`test_10_a_banda_que_muda_mantem_o_foco_revelado`, e os logs desta pasta foram
+refreshados pela corrida que produziu `logs/corrida-promovida.txt`. Relida dos
+próprios arquivos, a coluna PASS hoje é outra — e é ela que vale:
+
+| log | PASS | funções da suíte |
+| --- | --- | --- |
+| shell-esde-949x593-aviso-longo-e1.0.txt | 12 | initTestCase + 10 + cleanupTestCase |
+| shell-esde-949x593-falha-de-rede-e1.0.txt | 12 | initTestCase + 10 + cleanupTestCase |
+| shell-esde-949x593-nomes-longos-e1.0.txt | 12 | initTestCase + 10 + cleanupTestCase |
+| shell-esde-949x593-recusa-e1.0.txt | 12 | initTestCase + 10 + cleanupTestCase |
+| shell-esde-949x593-sem-esquema-e1.0.txt | 12 | initTestCase + 10 + cleanupTestCase |
+| shell-esde-949x593-tipico-e1.0.txt | 12 | initTestCase + 10 + cleanupTestCase |
+| shell-esde-1280x800-aviso-longo-e1.0.txt | 12 | initTestCase + 10 + cleanupTestCase |
+| shell-esde-1280x800-tipico-e1.0.txt | 12 | initTestCase + 10 + cleanupTestCase |
+| shell-esde-48px-escala-1.0.txt | 12 | initTestCase + 10 + cleanupTestCase |
+| shell-esde-48px-escala-1.25.txt | 12 | initTestCase + 10 + cleanupTestCase |
+| shell-esde-48px-escala-1.5.txt | 12 | initTestCase + 10 + cleanupTestCase |
+| shell-esde-escala-par-1.0.txt | 12 | initTestCase + 10 + cleanupTestCase |
+| shell-esde-escala-par-1.5.txt | 12 | initTestCase + 10 + cleanupTestCase |
+
+O denominador do gate pytest não mudou (20 itens), porque as funções QtTest são
+contadas dentro de cada célula viewport × cenário: o que sobe de 11 para 12 é o
+PASS por cenário, e o gate reprova se alguma função desaparecer sem estar em PASS
+ou em PULADO com motivo — a asserção é sobre a lista nominal, não sobre um número.
+Verde da árvore congelada: `20 passed in 67.62s`, com sha256 dos quatro arquivos
+testados conferido igual antes e depois e registrado em `logs/corrida-promovida.txt`.
+A corrida imediatamente anterior, `20 passed in 60.96s`, está preservada em bruto em
+`logs/carga-e-causa/gate-focado-final-sem-carga.txt`: é a mesma árvore menos uma
+palavra do docstring do gate (`491 × 431` virou `491 contra 431` depois que
+`ruff check` reprovou o caractere como RUF002 no alvo `lint` de `make check`).

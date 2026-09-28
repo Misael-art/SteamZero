@@ -1,0 +1,20 @@
+# corrida que produziu os artefatos desta pasta
+# data: 2026-09-27T22:57:26-03:00
+# comando: .venv/bin/python -m pytest tests/integration/test_ui_shell_esde_import_dialog.py -q
+# resultado: 20 passed in 67.62s (0:01:07) (árvore congelada, sem carga concorrente)
+# motivo desta re-promoção: a última edição na árvore testada foi uma palavra do
+#   docstring deste gate ('491 × 431' -> '491 contra 431'), reprovada por
+#   ruff check como RUF002 no alvo lint de make check. O sha256 abaixo é o da
+#   árvore re-medida depois dessa edição; as corridas anteriores, cujos brutos
+#   estão em carga-e-causa/, registraram a árvore em que de fato rodaram.
+# árvore testada (sha256, iguais antes e depois da corrida):
+# árvore (sha256 antes):
+4c06718a68dd37e8aa927b9c13ed0685543df466f7ef3ad31714825da45ac9a9  src/steamzero/ui/qml/Main.qml
+54db5889b3b8f46c8454d1e4227bdb8e21233dfe05a7c953b6562f173a119772  tests/integration/test_ui_shell_esde_import_dialog.py
+16b8f321d0e52bd0c4f8adfe401d8175b33a9d7308317c8be597d40f516fa7e7  tests/qml/check_shell_esde_import_dialog_journey.qml
+97fde9dc4112c09fd915455cae6bfd54184dec27dbf999874bba439e4a817c49  tests/qml/capture_shell_esde_import_dialog.qml
+# igualdade com os arquivos vivos do checkout (conferida agora):
+4c06718a68dd37e8aa927b9c13ed0685543df466f7ef3ad31714825da45ac9a9  src/steamzero/ui/qml/Main.qml
+54db5889b3b8f46c8454d1e4227bdb8e21233dfe05a7c953b6562f173a119772  tests/integration/test_ui_shell_esde_import_dialog.py
+16b8f321d0e52bd0c4f8adfe401d8175b33a9d7308317c8be597d40f516fa7e7  tests/qml/check_shell_esde_import_dialog_journey.qml
+97fde9dc4112c09fd915455cae6bfd54184dec27dbf999874bba439e4a817c49  tests/qml/capture_shell_esde_import_dialog.qml

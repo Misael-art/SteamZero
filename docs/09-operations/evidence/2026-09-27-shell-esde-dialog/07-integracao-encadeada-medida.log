@@ -1,0 +1,168 @@
+# 07 — a cadeia #239 → #240 → #241 medida para a integração
+
+Medido em 2026-09-28T00:01:33-03:00 nesta frente (`codex/rc01-shell-esde-dialog-2026-09-27`). Nada aqui é merge: merge é do
+operador. Este arquivo é a medição que precede a decisão e o roteiro de
+re-verificação depois de cada passo.
+
+## A. heads e bases, lidos do remoto neste instante
+
+```
+069501ab954c42118b5aaf91c450b58800e90219	refs/heads/codex/project-design-audit-2026-09-26
+c959be139f95c673dc258b9d8b8011313d5c97f6	refs/heads/codex/rc01-central-loading-2026-09-26
+190ea683a941f8dc37036ef6402ffabaf7843799	refs/heads/codex/rc01-readiness-focus-2026-09-27
+3495c49d5d7c3244267e8292beee34475f70236b	refs/heads/main
+```
+
+| PR | base | head | estado | arquivos no diff hoje |
+| --- | --- | --- | --- | --- |
+| #239 | `main` | `069501ab` | OPEN | 51 |
+| #240 | `main` | `c959be13` | OPEN | 98 |
+| #241 | `main` | `190ea683` | OPEN | 181 |
+
+## B. ancestralidade — os três heads são uma linha, não três pontas
+
+```
+$ git merge-base --is-ancestor 069501ab95 190ea683a9   # head do #239 contido na ponta do #241
+  -> rc=0 (SIM)
+$ git merge-base --is-ancestor 3495c49d5d 069501ab95   # main contido no head do #239
+  -> rc=0 (SIM)
+$ git merge-base --is-ancestor c959be139f 190ea683a9   # head do #240 contido na ponta do #241
+  -> rc=0 (SIM)
+$ git merge-base --is-ancestor 3495c49d5d c959be139f   # main contido no head do #240
+  -> rc=0 (SIM)
+$ git merge-base --is-ancestor 190ea683a9 190ea683a9   # head do #241 contido na ponta do #241
+  -> rc=0 (SIM)
+$ git merge-base --is-ancestor 3495c49d5d 190ea683a9   # main contido no head do #241
+  -> rc=0 (SIM)
+```
+
+Os três objetos estão presentes no clone local (verificado com
+`git cat-file -t` em cada um), então as cargas próprias medem-se daqui:
+
+| elo | intervalo | commits próprios |
+| --- | --- | --- |
+| #239 | `main..head239` | 2 |
+| #240 | `head239..head240` | 5 |
+| #241 | `head240..head241` | 13 |
+
+Os commits de cada elo, na ordem em que chegariam a `main`:
+
+```
+# 239
+069501ab docs(RC-00): integra plano de continuidade e reconcilia claims ativos
+c17def05 docs: registra auditoria integral de produto, telas e experiência (26/09)
+# 240
+c959be13 docs(RC-01): rotula a entrega como fatia, concilia as duas suítes e confere o contraste contra a norma
+72579141 fix(ui): uma renovação pedida durante a leitura em andamento não some mais
+d215e320 docs(RC-01): registra a medição antes/depois e renova o escopo envelhecido
+6df5afde feat(ui): declara o que a Central ainda não mediu
+64932141 chore(workstream): registra RC-01 central legivel durante carregamento
+# 241
+190ea683 docs(RC-01): certifica o gate visual verde no CI e corrige o digest que reprovou o status-check
+723cfcde test(qml): fecha o gate visual dos dois diálogos de importação pela causa medida
+3b0778fe test(RC-01): mede os 48 px dentro do shell na janela do Deck e fecha a documentação do #241
+fe5751a0 docs(RC-01): registra a 3ª fatia com vermelho recuperável por Git e as dez capturas
+cf80927e fix(ui): o diálogo ES-DE cabe no viewport e o D-pad percorre o modal
+3ef6287e test(qml): a cena de captura do RetroFE toma a fase antes do grab assíncrono
+330401ac docs(RC-01): registra a terceira leitura de CI e deixa a ponta do PR em prosa conferível
+00de2ec8 docs(RC-01): declara a pilha 239->240->241 no PR e lê o estado na ponta nova
+f9256642 docs(RC-01): traz a evidência para o caminho canônico e torna o vermelho recuperável por Git
+244bf550 chore(workstream): espelha o envio do lote — PR 241 aberto em 3fd059da, restando CI terminal e merge
+3fd059da docs(RC-01): registra o vermelho/verde medido do diálogo RetroFE e renova o escopo envelhecido
+7fe9e8b2 fix(ui): o diálogo RetroFE cabe no viewport e o D-pad percorre o modal
+449b68c3 chore(workstream): registra a segunda fatia de RC-01 e põe a governança da primeira no momento real
+```
+
+## C. o que cada merge tira do diff do próximo (medido, não afirmado)
+
+Hoje o GitHub compara cada head com `main`, então o diff do #240 ainda carrega o
+conteúdo do #239 e o do #241 carrega os dois. Integrado o elo anterior, sobra
+somente o elo próprio — e isso é mensurável antes de qualquer merge:
+
+| PR | arquivos hoje (`main..head`) | arquivos que sobram (delta do elo próprio) |
+| --- | --- | --- |
+| #239 | 51 | 51 |
+| #240 | 98 | 51 |
+| #241 | 181 | 93 |
+
+A coluna da direita é o esperado depois de cada integração; se o diff real do
+PR seguir divergindo dela, há algo mais em `main` que precisa ser olhado antes.
+
+## D. estratégia que preserva a ancestralidade
+
+**Merge commit em cada elo, na ordem crescente #239 → #240 → #241, sem squash e
+sem rebase.** A razão é estrutural, não estética:
+
+- Com merge commit, o novo `main` contém o head do elo como ancestral. Como o
+  head do elo seguinte já contém esse head (medição B), ele passa a ser
+  automaticamente 'main + o elo próprio': o diff do próximo encolhe exatamente
+  para a coluna da direita da tabela C, sem tocar em qualquer um dos dois
+  branches.
+- Com squash, o conteúdo entra mas a identidade não: `main` ganha um commit novo
+  que **não** é ancestral do head do próximo elo. O PR seguinte volta a
+  reapresentar todo o conteúdo do elo esmagado no seu diff, e passa a ser
+  possível conflito onde não havia. Rebase tem o mesmo efeito, pelo mesmo
+  motivo: reescreve a base.
+
+Não é preferência de quem mede. Nos últimos 20 commits de `main`:
+
+```
+# janela: 20 commits de origin/main
+# merges: 4 | não-merge: 16 | merges com o rótulo "Merge pull request #NNN from ...": 4
+# (os não-merge são o conteúdo dos próprios PRs; os merges da janela são todos
+#  de pull request — não há squash nem rebase nesta janela)
+```
+
+E a última cadeia do mesmo tipo entrou assim: #234 com `mergeCommit`
+`9176c1aec` e #235 com `mergeCommit` `1873fc991` — lidos do GitHub neste instante.
+O que preserva a ancestralidade é também o que o repositório já faz.
+
+## E. re-verificação depois de CADA merge (nada é presumido persistente)
+
+```
+# 1. o novo main, e a ancestralidade reconfirmada contra o próximo head
+$ git ls-remote origin refs/heads/main
+$ git merge-base --is-ancestor <novo-main> <head-do-próximo-elo>
+
+# 2. o diff que restou, comparado com a coluna da direita da tabela C
+$ git fetch origin main && git diff --name-only origin/main <head-do-próximo-elo>
+
+# 3. os checks exigidos, contra a nova base — a rolagem anterior não vale
+$ gh pr checks <pr-seguinte>
+```
+
+O ponto (3) é o que a instrução do operador chama de 'não presumir que CLEAN
+permanece válido': os checks rodam no head, mas a *composição* head+base mudou.
+Se `main` tiver avançado com algo além do elo anterior, o que vale é o rollup na
+ponta com a base atualizada (update de branch no GitHub, ou reexecução do
+workflow), não o rollup antigo registrado aqui.
+
+## F. o 'antes' dos checks, lido uma vez e sem reexecução
+
+- #239 em `069501ab`: Python 3.11=SUCCESS Python 3.12=SUCCESS Python 3.14=SUCCESS Wheel limpo  smoke e supply chain=SUCCESS Smoke Ubuntu 24.04=SUCCESS Smoke Arch Linux=SUCCESS Smoke Manjaro=SUCCESS Gate visual QML (Linux)=SUCCESS Sourcery review=SKIPPED CodeRabbit=-
+- #240 em `c959be13`: Python 3.11=SUCCESS Python 3.12=SUCCESS Python 3.14=SUCCESS Wheel limpo  smoke e supply chain=SUCCESS Smoke Ubuntu 24.04=SUCCESS Smoke Arch Linux=SUCCESS Smoke Manjaro=SUCCESS Gate visual QML (Linux)=SUCCESS Sourcery review=SKIPPED CodeRabbit=-
+- #241 em `190ea683`: Python 3.11=SUCCESS Python 3.12=SUCCESS Python 3.14=SUCCESS Wheel limpo  smoke e supply chain=SUCCESS Smoke Ubuntu 24.04=SUCCESS Smoke Arch Linux=SUCCESS Smoke Manjaro=SUCCESS Gate visual QML (Linux)=SUCCESS Sourcery review=SKIPPED CodeRabbit=-
+
+## G. onde esta frente entra na cadeia
+
+```
+# base desta frente (é o head do #241):
+190ea683a941f8dc37036ef6402ffabaf7843799
+# #241 é ancestral desta frente?
+  -> SIM
+# HEAD local == head do #241? (a geração desta medição acontece com o trabalho
+# ainda na árvore de trabalho, antes dos commits do lote — então 'sim' aqui é o
+# esperado, e a carga própria da frente é a lista de arquivos sujos abaixo)
+  -> SIM, HEAD local é exatamente a ponta do #241
+# caminhos sujos no instante desta medição:
+17
+# conteúdo próprio desta frente (sha256 dos quatro arquivos de código/teste):
+4c06718a68dd37e8…  src/steamzero/ui/qml/Main.qml
+54db5889b3b8f46c…  tests/integration/test_ui_shell_esde_import_dialog.py
+16b8f321d0e52bd0…  tests/qml/check_shell_esde_import_dialog_journey.qml
+97fde9dc4112c09f…  tests/qml/capture_shell_esde_import_dialog.qml
+```
+
+O PR desta frente é o quarto elo da pilha: só pode ser integrado depois do #241,
+e declara isso no próprio corpo pelo mesmo padrão usado quando o #241 declarou
+dependência do #240. Nenhum merge é feito por esta frente.

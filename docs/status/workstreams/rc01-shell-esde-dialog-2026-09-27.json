@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-RC01-SHELL-ESDE-DIALOG",
+  "item": "SZ-UI-DESKTOP-AUDIT",
+  "branch": "codex/rc01-shell-esde-dialog-2026-09-27",
+  "baseRef": "190ea683",
+  "owner": "qoder-continuation",
+  "state": "active",
+  "exclusivePaths": [
+    "tests/integration/test_ui_shell_esde_import_dialog.py",
+    "tests/qml/check_shell_esde_import_dialog_journey.qml",
+    "tests/qml/capture_shell_esde_import_dialog.qml",
+    "docs/09-operations/evidence/2026-09-27-shell-esde-dialog",
+    "docs/status/workstreams/rc01-shell-esde-dialog-2026-09-27.json"
+  ],
+  "sharedPaths": [
+    "src/steamzero/ui/qml/Main.qml",
+    "docs/status/items/ui-desktop-audit.json",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "4a fatia de RC-01 implementada sobre 190ea683: o dialogo ES-DE duplicado em Main.qml ganhou teto de altura, corpo rolavel, rodape fixo e navegacao por tecla real, com jornada de 10 funcoes QtTest e 5 capturas inspecionadas (gate focado 20 passed, denominador conferido log a log). Serializacao de Main.qml conciliada COM EVIDENCIA, nao por autorizacao presumida: (a) o claim exclusivo e de WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT (exclusivePaths contem src/steamzero/ui/qml/Main.qml, baseRef 621a3389db32, atualizado 2026-09-26); (b) o proprio nextAction daquele workstream declara em RC-00 que 'o lote RC-01 da continuidade editara esses arquivos compartilhados em commit proprio e serial'; (c) medido agora: git diff --name-only origin/main cad58bb49f7bc17215d8cff20be93746c7acfce9 -- src/steamzero/ui/qml/Main.qml esta VAZIO, ou seja, a frente do dono do claim nao carrega nenhuma alteracao naquele arquivo, e nao ha PR aberto dela. Main.qml permanece em sharedPaths desta frente por respeito ao claim, e esta entrada e o registro da transferencia. A secao Sistema, alcancada pela mesma janela, teve a falha propria resolvida e nao so ao redor do dialogo: o oráculo comparava a banda contra o ScrollView quando quem recorta e o Flickable interno (491 vs 431 px; o 'faltam 4 px' da escala 1.25 era um corte de 64 px), e a revelacao de foco era instantanea (one-shot) - ao mudar a altura da banda com o foco preso dentro, nada reposicionava. Causa, vermelho deterministico sem carga e controle sob carga estao em docs/09-operations/evidence/2026-09-27-shell-esde-dialog/08-causa-medida-revelacao-e-oraculo.log. Proximo passo, nesta ordem: roda unica dos gates integrais com arvore congelada, fechamento documental (SHA integrado, WORKLOG, eixos sustentados), push de um unico checkpoint e PR; merge permanece com o operador, e nenhum merge e feito por esta frente. Limites declarados: a revalidacao de banda cobre o caminho exercitado pela jornada, e as outras cinco superficies rolaveis do shell (Emulation.qml, SectionNavigator.qml, SteamGameplay.qml e os dois dialogos de ThemeEditorPanel.qml) seguem nao medidas nesse cenario; uma resposta antiga de /inspect ainda pode chegar depois de fechado o dialogo. RC-01 nao se declara concluido: primeira dobra da Home, UX-03, UX-04, RetroFE dentro do shell e validacao fisica na release instalada seguem abertos e nao sao promovidos pelo verde desta fatia.",
+  "updatedAt": "2026-09-27"
+}

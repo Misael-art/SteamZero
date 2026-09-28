@@ -1,0 +1,211 @@
+# 06 — a corrida ÚNICA dos gates integrais, com a árvore congelada
+
+Execução: `make check` seguido de `make qml-visual`, uma vez cada, sem edição
+de árvore entre os dois nem depois deles. Log bruto:
+
+| campo | valor |
+| --- | --- |
+| caminho (fora do checkout, efêmero) | `/tmp/esde_batch/gates/integral-congelada.log` |
+| sha256 | `be774b34f97cdf877441d6b6670eabdb78001f5336cdebc2c546cf47b8c7e37f` |
+| bytes | 104671 |
+| linhas | 957 |
+
+A última linha do log bruto é um auto-hash: a corrida anexa o `sha256sum` dela
+mesma. Por construção esse valor é o hash do conteúdo ANTES da anexação, então ele
+difere do da tabela acima — e a diferença é conferível, não um descuido:
+
+```
+$ head -n -1 integral-congelada.log | sha256sum
+  6e8d71a6efc6dcf1e1cf2a2e379d467cbfb6bf081f2317fe05bfde87fc3e79c8   # igual à última linha do log
+$ sha256sum integral-congelada.log
+  be774b34f97cdf877441d6b6670eabdb78001f5336cdebc2c546cf47b8c7e37f   # igual à tabela acima
+```
+
+A corrida anterior da mesma suíte, na árvore pré-correção, é lida contra este
+resultado na tabela de reconciliação abaixo. O agregado dela sai do log bruto
+`/tmp/esde_batch/gates/integral-anterior-com-falha.log` (efêmero, como o desta
+corrida); o que está versionado neste lote é a célula que reprova —
+`logs/falha-integral-shell-esde-48px-escala-1.25.txt`, o stdout do
+`qmltestrunner` daquela célula com `returncode: 8` — porque é linha a linha
+dela que o log 08 trata. O agregado não foi colado dentro daquele arquivo: ele
+está extraído aqui, e a diferença dos dois denominadores é o resultado desta
+corrida.
+
+Antes desta há uma tentativa abortada, registrada em bruto em
+`/tmp/esde_batch/gates/integral-abortado-lint.log`: `make check` morreu no alvo
+`lint` em 12 s com `RUF002` — um `×` (sinal de multiplicação) no docstring do
+gate `test_ui_shell_esde_import_dialog.py`, linha 32, que `ruff format --check`
+não pega mas `ruff check` pega. Foi a última edição naquela árvore: corrigida a
+palavra, o `sha256` do gate mudou (`cf03183a…` → `54db5889…`), o gate focado foi
+re-medido (`20 passed em 67,62 s`, `logs/corrida-promovida.txt`) e só então esta
+corrida foi lançada. Não é suíte repetida por cautela: é uma falha encontrada,
+corrigida e re-medida, e a identidade da árvore desta corrida é a da re-medição.
+
+O log bruto fica em `/tmp` e não é versionado: quem reproduz esta corrida é o CI
+do SHA enviado, que roda os mesmos alvos. As linhas abaixo são extraídas do log
+bruto com o número da linha de origem impresso junto, para a extração ser conferível.
+
+## Identidade da árvore no fim da corrida (nada foi editado entre os dois gates)
+
+```
+   922| ===== identidade da árvore (depois) — 23:34:30-03:00 =====
+   923| $ git rev-parse --abbrev-ref HEAD; git rev-parse HEAD
+   924| codex/rc01-shell-esde-dialog-2026-09-27
+   925| 190ea683a941f8dc37036ef6402ffabaf7843799
+   926| $ git status --porcelain            (imutável; o hash é o resumo)
+   927|  M docs/ACTIVE-WORK.md
+   928|  M docs/STATUS.md
+   929|  M docs/status/COVERAGE.md
+   930|  M docs/status/items/aura-esde-active-surface-2026-09-17.json
+   931|  M docs/status/items/gamemode-readiness-g29.json
+   932|  M docs/status/items/library-canonical.json
+   933|  M docs/status/items/ps3-official-firmware-download.json
+   934|  M docs/status/items/system-diagnostics-guidance.json
+   935|  M docs/status/items/theme-engine.json
+   936|  M docs/status/items/theme-import-esde-layout.json
+   937|  M docs/status/items/ui-desktop-audit.json
+   938|  M src/steamzero/ui/qml/Main.qml
+   939| ?? docs/09-operations/evidence/2026-09-27-shell-esde-dialog/
+   940| ?? docs/status/workstreams/rc01-shell-esde-dialog-2026-09-27.json
+   941| ?? tests/integration/test_ui_shell_esde_import_dialog.py
+   942| ?? tests/qml/capture_shell_esde_import_dialog.qml
+   943| ?? tests/qml/check_shell_esde_import_dialog_journey.qml
+   944| sha256 do porcelain acima: b0203ecb6612b62c
+   945| $ git diff -- src tests | sha256sum (conteúdo alterado em código, não só a lista)
+   946| 733ad249e34a0b3c6cd46dbb1eaf46dfe205e535de9cf51d70b07dfddf193de3  -
+   947| 
+   948| ## varredura de processos concorrentes (aula de 2026-09-26: o padrão casa o
+   949| ## próprio involucro; aqui cada linha carrega PID, etime e cmd, e etime é o
+   950| ## discriminante — o involucro desta varredura vive < 1 s)
+   951| nenhum outro processo de teste
+   952| 
+   953| ## estado real do operador (conferido pelo próprio harness; impresso aqui só
+   954| ## como referência de que nada nesta frente escreve fora do checkout)
+   955| $ du -sb ~/.local/share/steamzero 2>/dev/null
+   956| 2057367933	<HOME>/.local/share/steamzero
+   957| 6e8d71a6efc6dcf1e1cf2a2e379d467cbfb6bf081f2317fe05bfde87fc3e79c8  /tmp/esde_batch/gates/integral-congelada.log
+```
+
+## `make check` — alvo por alvo, na ordem do Makefile (barato → caro)
+
+```
+39:.venv/bin/ruff format --check src tests tools
+41:.venv/bin/ruff check src tests tools
+42:All checks passed!
+43:.venv/bin/python tools/lint_boundaries.py --root src
+44:lint de fronteiras: OK (0 violações)
+45:.venv/bin/python tools/check_independence.py
+46:independência de runtime: OK
+47:.venv/bin/python tools/update_component_lock.py --check
+48:component-lock: OK
+49:.venv/bin/python tools/capability_matrix.py --check
+50:matriz de capacidades: OK
+51:.venv/bin/python tools/project_status.py check
+52:STATUS-CHECK: OK
+53:.venv/bin/mypy
+54:Success: no issues found in 297 source files
+55:.venv/bin/coverage erase
+56:.venv/bin/python tools/run_tests_isolated.py --cov=steamzero --cov-report=term-missing
+882:TOTAL                                                               47202   5566  15482   2787  85.52%
+883:Required test coverage of 85.0% reached. Total coverage: 85.52%
+907:========== 6433 passed, 47 skipped, 19 warnings in 2087.08s (0:34:47) ==========
+910:RC_CHECK=0
+913:.venv/bin/python tools/run_tests_isolated.py tests/integration/test_qml_visual_capture.py -q
+915:48 passed in 9.24s
+```
+
+As duas linhas terminais, verbatim:
+
+```
+882:TOTAL                                                               47202   5566  15482   2787  85.52%
+883:Required test coverage of 85.0% reached. Total coverage: 85.52%
+907:========== 6433 passed, 47 skipped, 19 warnings in 2087.08s (0:34:47) ==========
+910:RC_CHECK=0
+```
+
+## `make qml-visual` — o gate de capturas
+
+```
+907:========== 6433 passed, 47 skipped, 19 warnings in 2087.08s (0:34:47) ==========
+912:===== make qml-visual — início 2026-09-27T23:34:19-03:00 =====
+918:RC_VISUAL=0
+919:===== make qml-visual — fim 2026-09-27T23:34:30-03:00 =====
+```
+
+## Reconciliação de contagens
+
+| gate | linha terminal do log bruto |
+| --- | --- |
+| RC_CHECK | RC_CHECK=0 |
+| RC_VISUAL | RC_VISUAL=0 |
+| suíte do `cov` | ========== 6433 passed, 47 skipped, 19 warnings in 2087.08s (0:34:47) ========== |
+| suíte do `qml-visual` | 48 passed in 9.24s |
+
+### As duas corridas, lado a lado
+
+| grandeza | pré-correção (`/tmp/esde_batch/gates/integral-anterior-com-falha.log`) | esta corrida |
+| --- | --- | --- |
+| suíte integral | ===== 1 failed, 6432 passed, 47 skipped, 19 warnings in 2109.75s (0:35:09) ===== | ========== 6433 passed, 47 skipped, 19 warnings in 2087.08s (0:34:47) ========== |
+| cobertura | Required test coverage of 85.0% reached. Total coverage: 85.54% | Required test coverage of 85.0% reached. Total coverage: 85.52% |
+| TOTAL de statements | 47202 statements, 5557 em falta | 47202 statements, 5566 em falta |
+
+O denominador é a reconciliação, não um número de confiança: `6 433 = 6 432 + 1`,
+ou seja, a coleção não mudou (47 pulados e 19 avisos nas duas corridas) e exatamente
+um resultado se moveu — o item que a suíte integral reprova antes da correção. Se
+esta entrega tivesse acrescentado ou retirado um teste, o denominador teria mudado.
+
+### Cobertura: o delta, atribuído arquivo por arquivo
+
+`make check` tem a regra `Cobertura não regride` (AGENTS.md:115). Entre as duas
+corridas o agregado cai 0,02 pp. A tabela abaixo não é uma explicação: é a
+diferença linha a linha, calculada dos dois logs brutos por
+`/tmp/esde_batch/cov_delta.py` (o script falha se os dois conjuntos de arquivos
+diferirem, ou se a soma de statements não for 47 202 nas duas).
+
+| arquivo | statements | em falta | ramos em falta | cobertura |
+| --- | --- | --- | --- | --- |
+| `src/steamzero/adapters/desktop_dashboard.py` | 959 nas duas | 176 → 178 (+2) | 55 → 55 (+0) | 80.00% → 79.83% |
+| `src/steamzero/adapters/emulation.py` | 4403 nas duas | 646 → 648 (+2) | 325 → 325 (+0) | 83.02% → 82.99% |
+| `src/steamzero/adapters/scraping/cache.py` | 121 nas duas | 4 → 6 (+2) | 1 → 1 (+0) | 96.12% → 94.57% |
+| `src/steamzero/adapters/screencast_web.py` | 374 nas duas | 7 → 7 (+0) | 8 → 9 (+1) | 96.35% → 96.14% |
+| `src/steamzero/adapters/steam_media.py` | 148 nas duas | 30 → 32 (+2) | 12 → 12 (+0) | 75.73% → 74.76% |
+| `src/steamzero/domain/bitrot.py` | 180 nas duas | 11 → 12 (+1) | 11 → 12 (+1) | 90.83% → 90.00% |
+
+As linhas que estavam cobertas e deixaram de estar, com o fonte ao lado:
+
+- `src/steamzero/adapters/desktop_dashboard.py` → `151: except OSError:` · `152: continue`
+- `src/steamzero/adapters/emulation.py` → `8610: except (OSError, ProcessLookupError):` · `8611: continue`
+- `src/steamzero/adapters/scraping/cache.py` → `84: except sqlite3.OperationalError:` · `85: time.sleep(0.05)` · `86: else:`
+- `src/steamzero/adapters/steam_media.py` → `37: except OSError:` · `38: continue`
+- `src/steamzero/domain/bitrot.py` → `336: raise SteamZeroError("E-STATE-INTEGRITY", detail="documento anti-bitrot inválido")`
+
+arquivos: 6 de 297 | statements totais: 47202 nas duas | em falta: 5557 → 5566 | soma dos deltas individuais: +9
+
+Ler a tabela, porém, ainda não responde à regra `Cobertura não regride`: falta
+saber se o instrumento repete o mesmo conjunto de linhas na mesma árvore. Isso foi
+medido em três rodadas de um subconjunto sobre esta mesma árvore congelada, e a
+resposta — duas linhas do delta flutuam sem código nenhum mudar, quatro não foram
+reproduzidas — está em `09-cobertura-delta-medido.log`, com o comando, as três
+saídas e o fonte das linhas citadas.
+
+## O que esta corrida NÃO cobre
+
+- A diferença documental escrita depois dela: este arquivo, o `07` de integração
+  da cadeia, a normalização de caminhos nos logs deste lote, os digests renovados por
+  causa desses arquivos e as visões regeneradas. Essa diferença é validada por
+  `make status-check` isolado, registrado abaixo, e não altera `src/` nem `tests/`.
+- `update-qml-goldens`/baselines: não regravadas nesta frente.
+
+## Revalidação documental da árvore final, e por que o resultado não é copiado aqui
+
+Depois desta corrida, a última escrita na árvore é documental: os digests das oito
+cartões que declaram `Main.qml` (renovados a partir do valor impresso pela própria
+ferramenta, com este arquivo e o `07` já existentes) e as três visões regeneradas por
+`project_status.py render --write`. `make status-check` foi reexecutado depois dessas
+escritas e o resultado está no corpo do PR e, de forma reproduzível para qualquer
+leitor, no job `status-check` do CI **deste mesmo SHA**.
+
+Ele não é copiado para dentro deste arquivo por um motivo de ponto fixo: este lote
+está dentro de `scopePaths` do cartão, então copiar um resultado para cá mudaria o
+digest que o próprio resultado atesta. A validação final vive onde não pode
+auto-invalidar-se.

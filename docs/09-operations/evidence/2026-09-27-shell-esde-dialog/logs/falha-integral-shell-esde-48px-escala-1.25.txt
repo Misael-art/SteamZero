@@ -1,0 +1,33 @@
+# comando: /usr/lib/qt6/bin/qmltestrunner -input <CHECKOUT>/tests/qml/check_shell_esde_import_dialog_journey.qml
+# returncode: 8
+
+--- stdout ---
+********* Start testing of qmltestrunner *********
+Config: Using QtTest library 6.11.2, Qt 6.11.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 16.2.1 20260810), biglinux unknown
+PASS   : qmltestrunner::ShellEsdeImportJourney::initTestCase()
+QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_01_o_botao_real_abre_o_modal_e_o_foco_entra_no_corpo() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x560|apply=(560,512)-(640,560)|corpo=474/0|rodape=(0,512)-(640,560)
+QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_01_o_botao_real_abre_o_modal_e_o_foco_entra_no_corpo() debug|FOCO ABERTO theme-import-esde-source
+QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_01_o_botao_real_abre_o_modal_e_o_foco_entra_no_corpo() debug|DESBFECHO fechar=0
+QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_01_o_botao_real_abre_o_modal_e_o_foco_entra_no_corpo() debug|DESBFECHO aviso=0
+PASS   : qmltestrunner::ShellEsdeImportJourney::test_01_o_botao_real_abre_o_modal_e_o_foco_entra_no_corpo()
+FAIL!  : qmltestrunner::ShellEsdeImportJourney::test_02_examinar_pela_rota_real_publica_os_esquemas() 'o foco não revelou o botão dentro do ScrollView da seção Sistema: (239,349)-(362,397) na banda de 393 px (expirou o limite de 4000 ms após 4000 ms)' returned FALSE. ()
+   Loc: [<CHECKOUT>/tests/qml/check_shell_esde_import_dialog_journey.qml(353)]
+FAIL!  : qmltestrunner::ShellEsdeImportJourney::test_03_teclas_reais_de_d_pad_percorrem_o_dialogo_com_foco_visivel() 'o foco não revelou o botão dentro do ScrollView da seção Sistema: (239,349)-(362,397) na banda de 393 px (expirou o limite de 4000 ms após 4000 ms)' returned FALSE. ()
+   Loc: [<CHECKOUT>/tests/qml/check_shell_esde_import_dialog_journey.qml(353)]
+FAIL!  : qmltestrunner::ShellEsdeImportJourney::test_04_tab_e_shift_tab_reais_nao_saem_do_modal() 'o foco não revelou o botão dentro do ScrollView da seção Sistema: (239,349)-(362,397) na banda de 393 px (expirou o limite de 4000 ms após 4000 ms)' returned FALSE. ()
+   Loc: [<CHECKOUT>/tests/qml/check_shell_esde_import_dialog_journey.qml(353)]
+FAIL!  : qmltestrunner::ShellEsdeImportJourney::test_05_as_setas_e_backspace_editam_sem_roubar_a_navegacao() 'o foco não revelou o botão dentro do ScrollView da seção Sistema: (239,349)-(362,397) na banda de 393 px (expirou o limite de 4000 ms após 4000 ms)' returned FALSE. ()
+   Loc: [<CHECKOUT>/tests/qml/check_shell_esde_import_dialog_journey.qml(353)]
+FAIL!  : qmltestrunner::ShellEsdeImportJourney::test_06_publicar_pela_tecla_real_exerce_a_rota_e_recupera() 'o foco não revelou o botão dentro do ScrollView da seção Sistema: (239,349)-(362,397) na banda de 393 px (expirou o limite de 4000 ms após 4000 ms)' returned FALSE. ()
+   Loc: [<CHECKOUT>/tests/qml/check_shell_esde_import_dialog_journey.qml(353)]
+FAIL!  : qmltestrunner::ShellEsdeImportJourney::test_07_escape_e_cancelar_fecham_sem_gravar_nada() 'o foco não revelou o botão dentro do ScrollView da seção Sistema: (239,349)-(362,397) na banda de 393 px (expirou o limite de 4000 ms após 4000 ms)' returned FALSE. ()
+   Loc: [<CHECKOUT>/tests/qml/check_shell_esde_import_dialog_journey.qml(353)]
+FAIL!  : qmltestrunner::ShellEsdeImportJourney::test_08_o_rodape_fica_na_banda_com_conteudo_que_excede() 'o foco não revelou o botão dentro do ScrollView da seção Sistema: (239,349)-(362,397) na banda de 393 px (expirou o limite de 4000 ms após 4000 ms)' returned FALSE. ()
+   Loc: [<CHECKOUT>/tests/qml/check_shell_esde_import_dialog_journey.qml(353)]
+FAIL!  : qmltestrunner::ShellEsdeImportJourney::test_09_escala_de_texto_nao_corta_a_moldura() 'o foco não revelou o botão dentro do ScrollView da seção Sistema: (239,349)-(362,397) na banda de 393 px (expirou o limite de 4000 ms após 4000 ms)' returned FALSE. ()
+   Loc: [<CHECKOUT>/tests/qml/check_shell_esde_import_dialog_journey.qml(353)]
+PASS   : qmltestrunner::ShellEsdeImportJourney::cleanupTestCase()
+Totals: 3 passed, 8 failed, 0 skipped, 0 blacklisted, 32826ms
+********* Finished testing of qmltestrunner *********
+
+--- stderr ---

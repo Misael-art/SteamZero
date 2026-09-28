@@ -1,0 +1,48 @@
+# 05 — qual item captura o diálogo do shell, medido item a item
+
+Pergunta: a cena de captura precisa de UM alvo que (a) seja capturável e
+(b) contenha o overlay onde o Dialog vive. Errar isso produz o sintoma que
+este lote teve: PNG de 46 KB 'publicado' sem nenhum pixel do diálogo.
+
+## 1. 'tem grabToImage' não é guarda: todo Item responde true, inclusive os
+##    que depois falham com 'item has no QML engine' (probe_grab5.txt)
+debug|PROBE|contentItem|toString=QQuickContentItem(0x55d8ff457240, "ApplicationWindow")|meta=indef|obj=ApplicationWindow|temGrab=true|tam=949x593
+debug|PROBE|ci.parent|toString=QQuickControl(0x55d8ff456e30, "ApplicationWindowContentControl")|meta=indef|obj=ApplicationWindowContentControl|temGrab=true|tam=949x593
+debug|PROBE|ci.parent.parent|toString=QQuickRootItem(0x55d8ff4f6770, "Main")|meta=indef|obj=Main|temGrab=true|tam=949x593
+debug|PROBE|shell|toString=Main_QMLTYPE_1_QML_229(0x55d8ff45e040)|meta=indef|obj=|temGrab=false|tam=949x593
+debug|PROBE|shell.contentData0|toString=QQmlConnections_QML_198(0x55d8ff50ee00)|meta=indef|obj=|temGrab=false|tam=NaNxNaN
+debug|PROBE|shell.childItems0|indef
+debug|PROBE|filhosDoParent=1
+debug|PROBE|parent.filho0|toString=QQuickContentItem(0x55d8ff457240, "ApplicationWindow")|meta=indef|obj=ApplicationWindow|temGrab=true|tam=949x593
+
+## 2. Popup/Dialog nem é Item: grabToImage é 'not a function' (probe_grab3.txt)
+debug|PROBE|dialogo|visivel=true|opened=true|tipo=Dialog_QMLTYPE_23(0x55ba406466f0)|pos=155,0|tam=640x593
+debug|PROBE|asc|0|tipo=Dialog_QMLTYPE_23(0x55ba406466f0)|obj=|tam=640x593|pos=155,0|filhos=indef|window=nao
+debug|PROBE|tentar|asc0|tipo=Dialog_QMLTYPE_23(0x55ba406466f0)|tam=640x593
+warning|file:///tmp/probe_shell_trigger/probe_grab3.qml:29: TypeError: Property 'grabToImage' of object Dialog_QMLTYPE_23(0x55ba406466f0) is not a function
+
+## 3. A cadeia real a partir do corpo do diálogo (probe_grab4.txt):
+##    QQuickPopupItem('Dialog') -> QQuickOverlay -> QQuickRootItem('Main');
+##    o Overlay reprova, a raiz 'Main' é a que salva.
+debug|PROBE|corpo|asc0|tipo=QQuickContentItem(0x55a2de0d3900, "QQuickPopupItem")|obj=QQuickPopupItem|tam=628x555|pos=6,32|filhos=1
+debug|PROBE|tentar|corpo_asc0|tipo=QQuickContentItem(0x55a2de0d3900, "QQuickPopupItem")|tam=628x555
+debug|PROBE|corpo|asc1|tipo=QQuickPopupItem(0x55a2de0ccb20, "Dialog")|obj=Dialog|tam=640x593|pos=155,0|filhos=4
+debug|PROBE|tentar|corpo_asc1|tipo=QQuickPopupItem(0x55a2de0ccb20, "Dialog")|tam=640x593
+debug|PROBE|corpo|asc2|tipo=QQuickOverlay(0x55a2ddf5e600)|obj=|tam=949x593|pos=0,0|filhos=2
+debug|PROBE|tentar|corpo_asc2|tipo=QQuickOverlay(0x55a2ddf5e600)|tam=949x593
+debug|PROBE|corpo|asc3|tipo=QQuickRootItem(0x55a2ddf372f0, "Main")|obj=Main|tam=949x593|pos=0,0|filhos=2
+debug|PROBE|tentar|corpo_asc3|tipo=QQuickRootItem(0x55a2ddf372f0, "Main")|tam=949x593
+debug|PROBE|rodape|asc0|tipo=DialogButtonBox_QMLTYPE_51(0x55a2de0cf650)|obj=|tam=640x34|pos=0,559|filhos=2
+debug|PROBE|tentar|rodape_asc0|tipo=DialogButtonBox_QMLTYPE_51(0x55a2de0cf650)|tam=640x34
+debug|PROBE|rodape|asc1|tipo=QQuickPopupItem(0x55a2de0ccb20, "Dialog")|obj=Dialog|tam=640x593|pos=155,0|filhos=4
+debug|PROBE|tentar|rodape_asc1|tipo=QQuickPopupItem(0x55a2de0ccb20, "Dialog")|tam=640x593
+debug|PROBE|rodape|asc2|tipo=QQuickOverlay(0x55a2ddf5e600)|obj=|tam=949x593|pos=0,0|filhos=2
+debug|PROBE|tentar|rodape_asc2|tipo=QQuickOverlay(0x55a2ddf5e600)|tam=949x593
+
+## conclusão aplicada em tests/qml/capture_shell_esde_import_dialog.qml
+captureTarget() sobe de shell.contentItem até o ancestral sem pai e captura
+essa raiz — medida: QQuickContentItem('ApplicationWindow') ->
+QQuickControl('ApplicationWindowContentControl') 949x593 ->
+QQuickRootItem('Main') 949x593, que é o único dos três que contém o overlay
+E salva. A cena imprime o escolhido em 'capturado=' justamente para que o
+gate possa reprovar troca de alvo em vez de reprovar ausência de tinta.

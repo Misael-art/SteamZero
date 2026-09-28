@@ -1,0 +1,9 @@
+# rodada de carga ANTES da correção do produto
+# 16 burners em 8 núcleos, suíte focada inteira, oráculo ainda medindo a moldura do ScrollView
+# preservado: o resumo da saída (stdout integral não foi copiado na época; os logs por
+#   cenário viviam em build/qml-logs e foram sobrescritos pelas rodadas seguintes)
+# nomes das 6 reprovações: 3 sobreviveram na cauda preservada, as outras 3 não
+FAILED tests/integration/test_ui_shell_esde_import_dialog.py::test_a_jornada_esde_do_shell_cabe_no_viewport_dado[949x593-nomes-longos]
+FAILED tests/integration/test_ui_shell_esde_import_dialog.py::test_alvos_de_48_px_e_escala_de_texto_no_dialogo_do_shell[1.0]
+FAILED tests/integration/test_ui_shell_esde_import_dialog.py::test_a_escala_de_texto_publicada_muda_a_geometria_do_dialogo
+6 failed, 14 passed in 374.17s (0:06:14)

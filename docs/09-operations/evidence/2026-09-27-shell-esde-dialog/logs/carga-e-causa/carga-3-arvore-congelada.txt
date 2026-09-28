@@ -1,0 +1,15 @@
+# data: 2026-09-27T22:23:06-03:00  # nproc=8  # loadago=2.73 9.33 9.70
+# árvore testada (sha256 dos arquivos que a suíte lê):
+4c06718a68dd37e8aa927b9c13ed0685543df466f7ef3ad31714825da45ac9a9  src/steamzero/ui/qml/Main.qml
+cf03183a05827d8cdddce13ddc4afa021c74058cad4e984e768cec8250175ff7  tests/integration/test_ui_shell_esde_import_dialog.py
+16b8f321d0e52bd0c4f8adfe401d8175b33a9d7308317c8be597d40f516fa7e7  tests/qml/check_shell_esde_import_dialog_journey.qml
+97fde9dc4112c09fd915455cae6bfd54184dec27dbf999874bba439e4a817c49  tests/qml/capture_shell_esde_import_dialog.qml
+# burners: 16
+# carga instalada: 2.73 9.33 9.70
+....................                                                     [100%]
+20 passed in 209.35s (0:03:29)
+# rc da suíte sob carga: 0
+# burners vivos depois do kill: 0
+0
+# load depois: 22.36 16.06 12.31
+# fim: 2026-09-27T22:26:41-03:00

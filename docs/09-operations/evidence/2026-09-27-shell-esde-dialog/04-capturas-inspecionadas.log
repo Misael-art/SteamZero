@@ -1,0 +1,114 @@
+# 04 — as capturas inspecionadas, com hash e o que cada uma mostra
+
+Publicadas por `tests/qml/capture_shell_esde_import_dialog.qml` na corrida
+verde do gate (`test_capturas_de_evidencia_da_jornada_do_shell`), em
+`build/visual-evidence/shell-esde-import/` — o glob do job `qml-visual-linux` —
+e copiadas para cá. As duas cópias têm o mesmo sha256, o que é a prova de que
+esta pasta guarda exatamente o que o CI anexa:
+
+| arquivo | sha256 (12) | bytes | dimensão |
+| --- | --- | --- | --- |
+| imagens/1-compacto-aberto.png | 122513a894ae | 39243 | 949x593 |
+| imagens/2-compacto-24-esquemas.png | c6fdb935fa2b | 49725 | 949x593 |
+| imagens/3-compacto-nome-focado.png | 9fbde18bb402 | 61528 | 949x593 |
+| imagens/4-compacto-recusa-com-aviso.png | 2cb92c1d9b9e | 112721 | 949x593 |
+| imagens/5-largo-recusa-com-aviso.png | 63c121f5cc0f | 145990 | 1280x800 |
+| imagens/vermelho/4-compacto-recusa-com-aviso.png | ff34d997545a | 107801 | 949x593 |
+| imagens/vermelho/5-largo-recusa-com-aviso.png | 6661561688d0 | 142274 | 1280x800 |
+
+## conferência de igualdade com a árvore viva
+
+  1-compacto-aberto.png              IGUAL  (viva: 122513a894ae…)
+  2-compacto-24-esquemas.png         IGUAL  (viva: c6fdb935fa2b…)
+  3-compacto-nome-focado.png         IGUAL  (viva: 9fbde18bb402…)
+  4-compacto-recusa-com-aviso.png    IGUAL  (viva: 2cb92c1d9b9e…)
+  5-largo-recusa-com-aviso.png       IGUAL  (viva: 63c121f5cc0f…)
+
+## o que cada imagem mostra, lido do `geometria.json` da própria corrida
+
+As quatro grandezas são retângulos `x,y,largura,altura` na janela; `acao` é o
+botão `Importar`. Na base vermelha o mesmo campo dava `acao=709,1646,80,48`
+numa moldura que terminava em y=593 — a ação existia 1 053 px abaixo do que a
+tela mostra (ver 01-vermelho-geografia-medida.log).
+
+- `1-compacto-aberto.png` — janela 949x593, cenário tipico, esquemas=0, aviso=0 caracteres
+    moldura=155,17,640,560 · corpo=161,49,628,474 · rodapé=155,529,640,48 · Importar=715,529,80,48
+- `2-compacto-24-esquemas.png` — janela 949x593, cenário tipico, esquemas=24, aviso=0 caracteres
+    moldura=155,17,640,560 · corpo=161,49,628,474 · rodapé=155,529,640,48 · Importar=715,529,80,48
+- `3-compacto-nome-focado.png` — janela 949x593, cenário nomes-longos, esquemas=24, aviso=0 caracteres
+    moldura=155,17,640,560 · corpo=161,49,628,474 · rodapé=155,529,640,48 · Importar=715,529,80,48
+- `4-compacto-recusa-com-aviso.png` — janela 949x593, cenário aviso-longo, esquemas=24, aviso=2328 caracteres
+    moldura=155,17,640,560 · corpo=161,49,628,474 · rodapé=155,529,640,48 · Importar=715,529,80,48
+- `5-largo-recusa-com-aviso.png` — janela 1280x800, cenário aviso-longo, esquemas=24, aviso=2328 caracteres
+    moldura=320,120,640,560 · corpo=326,152,628,474 · rodapé=320,632,640,48 · Importar=880,632,80,48
+
+Leituras que só a imagem dá, e que por isso foram inspeccionadas uma a uma:
+
+- 1: o diálogo aberto ainda **sem** esquemas (lista vazia). `esquemas=0` aqui é
+  o estado correto — a lista é populada pela rota real `/theme/import/esde`, e a
+  cena 2 é a prova de que foi ela, não o teste, que encheu a lista.
+- 2: as 24 linhas roláveis com o rodapé de ações fixo embaixo e o foco visível.
+- 3: nome longo truncado com reticências dentro da coluna, sem empurrar o rodapé.
+- 4: aviso de recusa com 2328 caracteres de texto
+  rolável dentro de um corpo de 474 px — o texto extenso cabe no diálogo sem
+  empurrar o rodapé. `aviso=` é o comprimento da string do aviso na propriedade
+  `esdeImportNotice`, não uma medida em px (medidas em px são os retângulos).
+- 5: a mesma cena em 1280x800, provando que a geografia não é efeito de tela.
+
+## vermelho preservado
+
+Dos cinco PNGs vermelhos, dois sobreviveram à sobrescrita da corrida verde
+(4 e 5, os maiores); os três primeiros têm a geografia vermelha registrada em
+01-vermelho-geografia-medida.log, e a forma que os produziu é a árvore de
+190ea683. `build/visual-evidence/shell-esde-import/vermelho/LEIAME.txt` guarda
+a mesma advertência no diretório vivo.
+
+## par a par: a mesma cena, vermelha e verde
+
+As duas imagens que sobreviveram permitem comparar sem narrativa. Vermelho lido
+de 01-vermelho-geografia-medida.log, verde do `geometria.json` acima:
+
+| cena | moldura (vermelho → verde) | Importar (vermelho → verde) |
+| --- | --- | --- |
+| 4-compacto-recusa-com-aviso | 155,0,640,593 → 155,17,640,560 | 709,1950,80,48 → 715,529,80,48 |
+| 5-largo-recusa-com-aviso | 320,0,640,800 → 320,120,640,560 | 874,1950,80,48 → 880,632,80,48 |
+
+## reproduzir
+
+    $ .venv/bin/python -m pytest tests/integration/test_ui_shell_esde_import_dialog.py::test_capturas_de_evidencia_da_jornada_do_shell -q
+
+A cena escreve em `tmp_path`, e o teste copia para `build/visual-evidence/`
+antes de asserir — reprovou, a imagem que desmente a asserção vai anexada.
+Rodar isto sobrescreve a árvore viva (foi assim que três vermelhos se perderam);
+as cópias desta pasta, uma vez gravadas, não são tocadas pelo teste.
+
+## re-promoção na árvore congelada (22:28) — byte a byte iguais
+
+A corrida final do gate focado (logs/corrida-promovida.txt) regravou as cinco
+capturas. Os sha256 abaixo são os das duas cópias, conferidos depois da corrida:
+a evidência versionada e a árvore viva. As cinco são o MESMO arquivo:
+
+122513a894ae48c879b11e9a79ecacb9d3e2552dd4bc62e2952725f2299a9fc2  1-compacto-aberto.png
+c6fdb935fa2b1934ed0633b183e9dbb83517990c94b892d1a23d149703974500  2-compacto-24-esquemas.png
+9fbde18bb402474d204c993119c8f8fbc3c18d815f53c653fadb584a4b27d845  3-compacto-nome-focado.png
+2cb92c1d9b9e2f351987bf40355d51e26395167272768c2e40d3394e647e1dee  4-compacto-recusa-com-aviso.png
+63c121f5cc0f4b5b68dad900d82005839586a08531a895c3acac98d5478c8e43  5-largo-recusa-com-aviso.png
+
+122513a894ae48c879b11e9a79ecacb9d3e2552dd4bc62e2952725f2299a9fc2  1-compacto-aberto.png
+c6fdb935fa2b1934ed0633b183e9dbb83517990c94b892d1a23d149703974500  2-compacto-24-esquemas.png
+9fbde18bb402474d204c993119c8f8fbc3c18d815f53c653fadb584a4b27d845  3-compacto-nome-focado.png
+2cb92c1d9b9e2f351987bf40355d51e26395167272768c2e40d3394e647e1dee  4-compacto-recusa-com-aviso.png
+63c121f5cc0f4b5b68dad900d82005839586a08531a895c3acac98d5478c8e43  5-largo-recusa-com-aviso.png
+
+Geometria: `geometria.json` idêntico (`diff -q` vazio); `saida-da-cena.txt` e
+`ambiente.json` diferem apenas em dois campos que NÃO são medida — o endereço de
+memória do `QQuickRootItem` impresso em `ALVO` e o número do `tmp` do pytest
+(pytest-11 → pytest-18 → pytest-19 na re-promoção de 22:57, que foi a última e
+devolveu os mesmos cinco sha256 acima).
+
+Isso era esperado e é declarado em vez de escondido: a correção da revelação
+muda o `contentY` quando a banda muda, e a cena de captura dimensiona a janela
+uma vez antes de abrir o diálogo, então a geografia gravada não muda. As
+capturas provam a forma do diálogo e a ausência de regressão visual; a
+revalidação por banda é provada por `test_10` e pelos instantâneos
+`REVELA` de 08-causa-medida-revelacao-e-oraculo.log, não por aqui.
