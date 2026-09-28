@@ -2,6 +2,7 @@
 import QtQuick
 import QtQuick.Window
 import "../../src/steamzero/ui/qml"
+import "readiness_fixture.js" as Fixtures
 
 Window {
     id: harness
@@ -75,7 +76,7 @@ Window {
                 "iconKey": "switch",
                 "state": "ready",
                 "statusLabel": "Pronto",
-                "readiness": {"percent": 75, "title": "Quase pronto", "blockers": []},
+                "readiness": Fixtures.medido("attention", 3, 4, {"label": "Quase pronto"}),
                 "emulators": [{"id": "eden", "name": "Eden", "state": "ready", "iconAsset": "../assets/eden.svg"}],
                 "games": [{"id": "0100", "name": "Jogo de teste"}],
                 "runtimeProfiles": {
@@ -109,7 +110,8 @@ Window {
               "o cabeçalho inicial deve representar a gestão global")
         check(object.selectedPlatform.id === "switch",
               "a seleção técnica preserva a primeira plataforma sem torná-la contexto inicial")
-        check(object.readinessPercent() === 75, "prontidão deve ser normalizada")
+        check(object.readinessTone() === "amber", "o estado publicado decide a cor")
+        check(object.readinessValueText() === "75%", "a proporção medida mostra o número")
         check(object.scopes.length === 5, "devem existir cinco escopos")
         check(object.areas.length === 11, "devem existir onze áreas especializadas")
         object.scopeIndex = 1
@@ -156,7 +158,9 @@ Window {
             return
         check(object.selectedPlatform.id === "unavailable",
               "fallback não pode escolher uma plataforma sem o catálogo")
-        check(object.readinessPercent() === 0, "fallback não pode alegar prontidão")
+        check(object.readinessValueText() === "—",
+              "fallback não pode alegar prontidão: sem medição não há 0% nem 100%")
+        check(object.readinessTone() === "muted", "fallback não recebe cor de sucesso")
         check(object.emulators.length === 0, "fallback não pode inventar emulador")
         check(object.games.length === 0, "fallback não pode inventar jogo")
         check(object.primaryAction().enabled === false, "ação sem backend deve ficar bloqueada")

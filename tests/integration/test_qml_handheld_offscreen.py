@@ -243,6 +243,10 @@ def _error_server() -> tuple[int, threading.Thread, HTTPServer]:
         "check_theme_studio_canvas.qml",
         "check_operational_metric_card.qml",
         "check_handheld_layout_focus.qml",
+        # UX-03: a superfície lê o contrato de prontidão (estado, medição, causa,
+        # próxima ação). A regra de cor vivia inteiramente no QML, e é ali que ela
+        # voltaria a morar se alguém reimplementá-la por página.
+        "check_readiness_surface.qml",
         "check_main_handheld_sections.qml",
         "check_credentials.qml",
         "check_credential_dialog_responsive.qml",

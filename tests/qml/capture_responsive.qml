@@ -2,12 +2,35 @@
 import QtQuick
 import QtQuick.Window
 import "../../src/steamzero/ui/qml"
+import "readiness_fixture.js" as Fixtures
 
 Window {
     id: harness
     visible: true
     color: "#071019"
     property int captureIndex: 0
+
+    // UX-03: os três casos que a inspeção visual precisa distinguir. Um número
+    // pintado de verde não prova nada; o que tem de ser visto é a cor vir do
+    // estado, o número só existir com medição, e a legenda da dimensão caber no
+    // cartão quando o nome do que foi medido é longo.
+    readonly property var prontidoPronto: Fixtures.medido("ready", 3, 3,
+        {"label": "Pronto", "cause": "Ambiente pronto para uso."})
+    readonly property var prontidoBloqueado: Fixtures.medido("blocked", 2, 3, {
+        "label": "Ação necessária",
+        "cause": "Keys e firmware próprios ainda não foram importados.",
+        "action": "Importe keys e firmware próprios antes de iniciar jogos."})
+    readonly property var prontidoNaoMedido: Fixtures.semMedicao("unverified",
+        {"label": "Verificação pendente", "cause": "Nenhum requisito foi observado ainda."})
+    // O painel de contexto lista bloqueios; um payload de produção bloqueado os
+    // traz preenchidos, então a captura do painel usa a forma completa.
+    readonly property var prontidoBloqueadoComLista: Fixtures.medido("blocked", 1, 3, {
+        "label": "Ação necessária",
+        "cause": "Gamescope não está disponível (SteamZero).",
+        "action": "Instale ou ative Gamescope (SteamZero).",
+        "blockers": ["Instale ou ative Gamescope (SteamZero).",
+                     "Importe keys e firmware próprios antes de iniciar jogos."]})
+
     readonly property var captures: [
         {"width": 1208, "height": 696, "page": "emulation",
          "path": "/tmp/steamzero-responsive-1280x800-emulation.png"},
@@ -18,8 +41,77 @@ Window {
         {"width": 2296, "height": 954, "page": "emulation",
          "path": "/tmp/steamzero-responsive-2560x1080-emulation.png"},
         {"width": 2296, "height": 954, "page": "steam",
-         "path": "/tmp/steamzero-responsive-2560x1080-steam.png"}
+         "path": "/tmp/steamzero-responsive-2560x1080-steam.png"},
+        {"width": 1208, "height": 696, "page": "emulation", "platformView": true,
+         "estado": "ready", "readiness": harness.prontidoPronto,
+         "path": "/tmp/steamzero-readiness-emulation-ready.png"},
+        {"width": 1208, "height": 696, "page": "emulation", "platformView": true,
+         "estado": "blocked", "readiness": harness.prontidoBloqueado,
+         "path": "/tmp/steamzero-readiness-emulation-blocked.png"},
+        {"width": 1208, "height": 696, "page": "emulation", "platformView": true,
+         "estado": "unverified", "readiness": harness.prontidoNaoMedido,
+         "path": "/tmp/steamzero-readiness-emulation-unverified.png"},
+        {"width": 1208, "height": 696, "page": "steam",
+         "readiness": harness.prontidoBloqueado,
+         "path": "/tmp/steamzero-readiness-steam-blocked.png"},
+        {"width": 949, "height": 593, "page": "emulation", "platformView": true,
+         "estado": "blocked", "readiness": harness.prontidoBloqueado,
+         "path": "/tmp/steamzero-readiness-emulation-blocked-handheld.png"},
+        {"width": 949, "height": 593, "page": "steam",
+         "readiness": harness.prontidoBloqueado,
+         "path": "/tmp/steamzero-readiness-steam-blocked-handheld.png"},
+        // A caixa "Antes de continuar" só é visível com o painel de contexto
+        // aberto — medido: escopo não-`game`, não compacto e `width >= 1500`.
+        // Sem esta captura, a única superfície corrigida nesta frente (a tinta
+        // que pintava um bloqueio como "atenção") ficaria sem inspeção visual.
+        {"width": 1656, "height": 954, "page": "emulation",
+         "estado": "blocked", "readiness": harness.prontidoBloqueadoComLista,
+         "path": "/tmp/steamzero-readiness-emulation-blocked-panel.png"}
     ]
+
+    function comProntidao(payload, readiness) {
+        const copia = {}
+        const chaves = Object.keys(payload)
+        for (let i = 0; i < chaves.length; i += 1)
+            copia[chaves[i]] = payload[chaves[i]]
+        copia.readiness = readiness
+        return copia
+    }
+
+    function plataformaComProntidao(base, capture) {
+        // Objeto NOVO de ponta a ponta. Mutar `base` no lugar faria o `selectedPlatform`
+        // guardar a mesma referência JS de antes: o QML não emite change, a ligação
+        // de `readiness` não reavalia e o cartão permanece pintado com o estado da
+        // captura anterior — que foi exatamente o que este harness mostrou antes
+        // desta linha existir. A bridge publica dicionários novos a cada resposta,
+        // então o risco é do harness, não da produção.
+        const plataforma = {}
+        const chaves = Object.keys(base)
+        for (let i = 0; i < chaves.length; i += 1)
+            plataforma[chaves[i]] = base[chaves[i]]
+        plataforma.readiness = capture.readiness
+        plataforma.state = capture.estado
+        plataforma.statusLabel = capture.readiness.label
+        return plataforma
+    }
+
+    function applyReadiness(item, capture) {
+        if (capture.platformView === true)
+            item.globalManagementActive = false
+        if (capture.readiness === undefined)
+            return
+        if (capture.page === "emulation") {
+            const plataformas = []
+            plataformas.push(harness.plataformaComProntidao(
+                item.emulation.platforms[0], capture))
+            for (let i = 1; i < item.emulation.platforms.length; i += 1)
+                plataformas.push(item.emulation.platforms[i])
+            item.emulation = {"contextLabel": item.emulation.contextLabel,
+                              "platforms": plataformas}
+            return
+        }
+        item.gameplay = harness.comProntidao(item.gameplay, capture.readiness)
+    }
 
     function prepareCapture() {
         if (captureIndex >= captures.length) {
@@ -29,8 +121,13 @@ Window {
         const capture = captures[captureIndex]
         width = capture.width
         height = capture.height
+        // Página nova a cada captura: com o mesmo Componente o Loader reaproveitava
+        // o item anterior, e a captura seguinte saía com o estado da anterior.
+        pageLoader.active = false
         pageLoader.sourceComponent = capture.page === "emulation"
             ? emulationComponent : steamComponent
+        pageLoader.active = true
+        applyReadiness(pageLoader.item, capture)
         renderTimer.restart()
     }
 
@@ -62,8 +159,8 @@ Window {
                 "platforms": [{
                     "id": "switch", "name": "Nintendo Switch", "iconKey": "switch",
                     "state": "ready", "statusLabel": "Pronto",
-                    "readiness": {"percent": 100, "title": "Pronto",
-                        "detail": "Ambiente pronto para uso.", "blockers": []},
+                    "readiness": Fixtures.medido("ready", 3, 3,
+                        {"label": "Pronto", "cause": "Ambiente pronto para uso."}),
                     "emulators": [
                         {"id": "eden", "name": "Eden", "state": "ready",
                          "statusLabel": "Instalado"},
@@ -106,8 +203,9 @@ Window {
                     {"id": "mangohud", "name": "MangoHud", "detail": "Métricas",
                      "owner": "SteamZero", "state": "ready", "statusLabel": "pronto"}
                 ],
-                "readiness": {"percent": 100, "title": "Pronto para configurar",
-                    "detail": "Hardware compatível • Perfil seguro disponível"},
+                "readiness": Fixtures.medido("ready", 4, 4, {
+                    "label": "Pronto para configurar",
+                    "cause": "Hardware compatível • Perfil seguro disponível"}),
                 "hardware": {"deviceLabel": "Deck LCD", "tdpMin": 3, "tdpMax": 15,
                     "gpuMin": 200, "gpuMax": 1600, "refreshHz": 60,
                     "memoryGb": 16, "withinSafeLimits": true},

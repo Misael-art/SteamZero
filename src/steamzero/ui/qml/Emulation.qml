@@ -4,6 +4,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
 import QtQuick.Window
+import "readiness.js" as Readiness
 
 Item {
     id: page
@@ -144,12 +145,11 @@ Item {
             "statusLabel": qsTr("Aguardando catálogo de plataformas"),
             "scopes": defaultScopes,
             "areas": defaultAreas,
-            "readiness": {
-                "percent": 0,
-                "title": qsTr("Verificação ainda não disponível"),
-                "detail": qsTr("A bridge local ainda não publicou o catálogo de plataformas."),
-                "blockers": [qsTr("Backend de emulação ainda não conectado")]
-            },
+            "readiness": Readiness.notInspected(
+                qsTr("Verificação ainda não disponível"),
+                qsTr("A bridge local ainda não publicou o catálogo de plataformas."),
+                null,
+                [qsTr("Backend de emulação ainda não conectado")]),
             "emulators": [],
             "games": []
         })
@@ -181,12 +181,9 @@ Item {
         compactGameRepeater.count + desktopGameRepeater.count
     readonly property var selectedArea: areas.length > 0 && areaIndex < areas.length
         ? areas[areaIndex] : defaultAreas[0]
-    readonly property var readiness: selectedPlatform.readiness || ({
-        "percent": 0,
-        "title": qsTr("Verificando plataforma"),
-        "detail": qsTr("Nenhuma mudança será feita durante a verificação."),
-        "blockers": []
-    })
+    readonly property var readiness: Readiness.normalize(selectedPlatform.readiness,
+        Readiness.notInspected(qsTr("Verificando plataforma"),
+            qsTr("Nenhuma mudança será feita durante a verificação."), null, []))
     readonly property var areaData: {
         const allData = selectedPlatform.areaData || {}
         return allData[selectedArea.id] || {}
@@ -422,9 +419,76 @@ Item {
         return "—"
     }
 
-    function readinessPercent() {
-        const value = Number(readiness.percent || 0)
-        return isNaN(value) ? 0 : Math.max(0, Math.min(100, Math.round(value)))
+    // UX-03: o contrato decide estado, número e causa; a página só entrega ao
+    // módulo compartilhado as tintas do seu tema. `percent >= 80` não existe mais
+    // aqui — ele pintava de verde uma categoria codificada, uma proporção real e
+    // a mera existência de jogos com a mesma cor.
+
+    function readinessTone() {
+        return Readiness.tone(readiness)
+    }
+
+    function readinessColor() {
+        return Readiness.accent(readiness, {
+            "green": greenColor, "amber": amberColor, "red": redColor, "muted": mutedColor
+        })
+    }
+
+    function readinessSurface() {
+        const tint = Readiness.surface(readiness)
+        return tint === "" ? surfaceColor : tint
+    }
+
+    // A caixa de bloqueios fica sobre o painel, que já é `surfaceColor`: sem
+    // tinta de estado ela precisa de um relevo próprio para continuar visível,
+    // mas nunca de uma cor de estado. O âmbar fixo que havia aqui pintava de
+    // "atenção" um estado `blocked` — a mesma categoria com a cor errada.
+    function readinessBlockersSurface() {
+        const tint = Readiness.surface(readiness)
+        return tint === "" ? raisedColor : tint
+    }
+
+    function readinessValueText() {
+        return Readiness.percentText(readiness, "—")
+    }
+
+    function readinessActionText() {
+        return Readiness.action(readiness)
+    }
+
+    // `compute_readiness` publica `blockers` com a ação de cada impedimento e
+    // `nextAction` com a primeira delas (domain/emulation_workspace.py:553-558).
+    // Na caixa "Antes de continuar" a mesma frase saía como próxima ação e como
+    // primeiro bloco. A deduplicação é da superfície: o contrato continua
+    // publicando a lista completa para quem precisar dela inteira.
+    function readinessBlockerRows() {
+        const acao = Readiness.action(readiness)
+        const todos = Readiness.blockers(readiness)
+        if (acao === "")
+            return todos
+        const restantes = []
+        for (let indice = 0; indice < todos.length; indice++)
+            if (todos[indice] !== acao)
+                restantes.push(todos[indice])
+        return restantes
+    }
+
+    // A próxima ação precisa ser alcançada mesmo quando o painel de contexto está
+    // fora da tela: abaixo de 1500 px ele é ocultado, e ali o cartão é o único
+    // lugar onde o usuário leria "o que fazer agora".
+    function readinessActionVisible() {
+        return !showContextPanel && readinessActionText() !== ""
+    }
+
+    function readinessSummary() {
+        const ratio = Readiness.ratioText(readiness)
+        const dimension = Readiness.dimensionText(readiness)
+        if (ratio === "")
+            return qsTr("Prontidão: %1").arg(readinessValueText())
+        if (dimension === "")
+            return qsTr("Prontidão: %1 (%2)").arg(readinessValueText()).arg(ratio)
+        return qsTr("Prontidão: %1 (%2 — %3)").arg(readinessValueText())
+            .arg(ratio).arg(dimension)
     }
 
     function scopeId() {
@@ -1597,10 +1661,8 @@ Item {
                     Layout.preferredWidth: page.compactLayout ? 112 : 150
                     Layout.preferredHeight: page.compactLayout ? 62 : 72
                     radius: 10
-                    color: page.globalManagementActive ? page.raisedColor
-                        : page.readinessPercent() >= 80 ? "#0c2a21" : "#24180b"
-                    border.color: page.globalManagementActive ? page.cyanColor
-                        : page.readinessPercent() >= 80 ? page.greenColor : page.amberColor
+                    color: page.globalManagementActive ? page.raisedColor : page.readinessSurface()
+                    border.color: page.globalManagementActive ? page.cyanColor : page.readinessColor()
 
                     Column {
                         anchors.centerIn: parent
@@ -1608,9 +1670,9 @@ Item {
                         Label {
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: page.globalManagementActive
-                                ? page.globalManagement.technicalPlatformCount : page.readinessPercent() + "%"
-                            color: page.globalManagementActive ? page.cyanColor
-                                : page.readinessPercent() >= 80 ? page.greenColor : page.amberColor
+                                ? page.globalManagement.technicalPlatformCount
+                                : page.readinessValueText()
+                            color: page.globalManagementActive ? page.cyanColor : page.readinessColor()
                             font.pixelSize: page.scaledTextSize(page.compactLayout ? 20 : 24)
                             font.bold: true
                         }
@@ -2021,7 +2083,7 @@ Item {
                                             Layout.fillWidth: true
                                         }
                                         Label {
-                                            text: modelData.readiness.percent + "%"
+                                            text: Readiness.percentText(modelData.readiness, "—")
                                             color: page.stateColor(modelData.state)
                                             font.bold: true
                                         }
@@ -3235,25 +3297,28 @@ Item {
                         Layout.fillWidth: true
                         Layout.leftMargin: page.responsiveGutter
                         Layout.rightMargin: page.responsiveGutter
-                        Layout.preferredHeight: page.compactLayout ? 56 : 64
+                        // A altura acompanha o conteúdo: a linha de ação e a legenda da
+                        // dimensão aparecem e somam conforme o contrato publicado, e um
+                        // valor fixo cortaria a última.
+                        Layout.preferredHeight: Math.max(page.compactLayout ? 56 : 64,
+                            readinessRow.implicitHeight + 20)
                         Layout.minimumHeight: Layout.preferredHeight
-                        color: page.readinessPercent() >= 80 ? "#0c2a21" : "#24180b"
-                        border.color: page.readinessPercent() >= 80
-                            ? page.greenColor : page.amberColor
+                        color: page.readinessSurface()
+                        border.color: page.readinessColor()
                         radius: 10
 
                         RowLayout {
                             id: readinessRow
                             anchors.left: parent.left
                             anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.top: parent.top
+                            anchors.bottom: parent.bottom
                             anchors.margins: 10
                             spacing: 10
 
                             ModernIcon {
                                 iconName: page.stateIcon(page.selectedPlatform.state)
-                                iconColor: page.readinessPercent() >= 80
-                                    ? page.greenColor : page.amberColor
+                                iconColor: page.readinessColor()
                                 Layout.preferredWidth: 24
                                 Layout.preferredHeight: 24
                             }
@@ -3261,27 +3326,65 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: 2
                                 Label {
-                                    text: page.readiness.title || qsTr("Verificando plataforma")
-                                    color: page.readinessPercent() >= 80
-                                        ? page.greenColor : page.amberColor
+                                    objectName: "readinessHeadline"
+                                    text: Readiness.headline(page.readiness)
+                                        || qsTr("Verificando plataforma")
+                                    color: page.readinessColor()
                                     font.bold: true
                                     font.pixelSize: page.scaledTextSize(14)
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
                                 }
                                 Label {
-                                    text: page.readiness.detail || ""
+                                    objectName: "readinessCause"
+                                    text: Readiness.cause(page.readiness)
                                     color: page.mutedColor
-                                    elide: Text.ElideRight
-                                    maximumLineCount: 1
+                                    // A causa é o "porquê" da jornada estado → causa →
+                                    // ação. Cortada em uma linha, o cartão mostrava o
+                                    // estado e o número e escondia a explicação.
+                                    wrapMode: Text.WordWrap
+                                    Layout.fillWidth: true
+                                }
+                                Label {
+                                    objectName: "readinessAction"
+                                    visible: text !== ""
+                                    text: page.readinessActionVisible() ? page.readinessActionText() : ""
+                                    color: page.readinessColor()
+                                    font.pixelSize: page.scaledTextSize(11)
+                                    wrapMode: Text.WordWrap
                                     Layout.fillWidth: true
                                 }
                             }
-                            ProgressBar {
-                                from: 0
-                                to: 100
-                                value: page.readinessPercent()
-                                Layout.preferredWidth: contentScroll.width < 680 ? 90 : 130
-                                Accessible.name: qsTr("Prontidão da plataforma")
-                                Accessible.description: qsTr("%1 por cento").arg(page.readinessPercent())
+                            ColumnLayout {
+                                spacing: 3
+                                Label {
+                                    objectName: "readinessValue"
+                                    text: page.readinessValueText()
+                                    color: page.readinessColor()
+                                    font.bold: true
+                                    font.pixelSize: page.scaledTextSize(14)
+                                    horizontalAlignment: Text.AlignRight
+                                    Layout.fillWidth: true
+                                }
+                                ProgressBar {
+                                    visible: Readiness.showsProgress(page.readiness)
+                                    from: 0
+                                    to: 1
+                                    value: Readiness.progressValue(page.readiness)
+                                    Layout.preferredWidth: contentScroll.width < 680 ? 90 : 130
+                                    Accessible.name: qsTr("Prontidão da plataforma")
+                                    Accessible.description: page.readinessSummary()
+                                }
+                                Label {
+                                    objectName: "readinessDimension"
+                                    visible: text !== ""
+                                    text: Readiness.dimensionCaption(page.readiness)
+                                    color: page.mutedColor
+                                    font.pixelSize: page.scaledTextSize(10)
+                                    horizontalAlignment: Text.AlignRight
+                                    wrapMode: Text.WordWrap
+                                    Layout.maximumWidth: contentScroll.width < 680 ? 110 : 180
+                                }
                             }
                         }
                     }
@@ -3735,15 +3838,22 @@ Item {
                     }
                     RowLayout {
                         ModernIcon {
+                            objectName: "readinessContextHeadlineIcon"
                             iconName: page.stateIcon(page.selectedPlatform.state)
-                            iconColor: page.stateColor(page.selectedPlatform.state)
+                            iconColor: page.readinessColor()
                             Layout.preferredWidth: 22
                             Layout.preferredHeight: 22
                         }
                         Label {
+                            objectName: "readinessContextHeadline"
                             text: page.selectedPlatform.statusLabel
-                                || page.readiness.title || qsTr("Estado desconhecido")
-                            color: page.stateColor(page.selectedPlatform.state)
+                                || Readiness.headline(page.readiness)
+                                || qsTr("Estado desconhecido")
+                            // `statusLabel` vem do mesmo `compute_readiness` que publica
+                            // o estado, então isto é texto de prontidão. Pela paleta de
+                            // estado da plataforma, `blocked` é âmbar: o cartão ficava
+                            // vermelho e o cabeçalho âmbar na mesma tela.
+                            color: page.readinessColor()
                             font.bold: true
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
@@ -3761,11 +3871,13 @@ Item {
                     }
 
                     Rectangle {
-                        visible: page.readiness.blockers && page.readiness.blockers.length > 0
+                        objectName: "readinessBlockersBox"
+                        visible: Readiness.blockers(page.readiness).length > 0
+                            || page.readinessActionText() !== ""
                         Layout.fillWidth: true
                         Layout.minimumHeight: blockersColumn.implicitHeight + 24
-                        color: "#24180b"
-                        border.color: page.amberColor
+                        color: page.readinessBlockersSurface()
+                        border.color: page.readinessColor()
                         radius: 8
                         ColumnLayout {
                             id: blockersColumn
@@ -3774,11 +3886,21 @@ Item {
                             anchors.top: parent.top
                             anchors.margins: 12
                             spacing: 5
-                            Label { text: qsTr("Antes de continuar"); color: page.amberColor; font.bold: true }
+                            Label { text: qsTr("Antes de continuar"); color: page.readinessColor(); font.bold: true }
+                            Label {
+                                objectName: "readinessContextAction"
+                                visible: text !== ""
+                                text: page.readinessActionText()
+                                color: page.textColor
+                                font.pixelSize: page.scaledTextSize(12)
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
                             Repeater {
-                                model: page.readiness.blockers || []
+                                model: page.readinessBlockerRows()
                                 delegate: Label {
                                     required property string modelData
+                                    objectName: "readinessBlockerRow"
                                     text: "• " + modelData
                                     color: page.mutedColor
                                     wrapMode: Text.WordWrap

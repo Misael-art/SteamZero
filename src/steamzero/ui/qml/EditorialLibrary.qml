@@ -11,6 +11,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
+import "readiness.js" as Readiness
 
 Item {
     id: root
@@ -113,7 +114,13 @@ Item {
             "state": steam.length > 0 ? "ready" : "unavailable",
             "statusLabel": steam.length > 0 ? qsTr("Biblioteca disponível")
                 : qsTr("Nenhum jogo Steam instalado foi publicado"),
-            "readiness": {"percent": steam.length > 0 ? 100 : 0},
+            // UX-03: contar jogos não mede prontidão. `100/0` por existência
+            // pintava uma biblioteca vazia como falha e uma cheia como pronta, e
+            // nenhuma das duas alegações tinha requisito por trás.
+            "readiness": Readiness.notInspected(
+                qsTr("Prontidão não medida nesta vista"),
+                qsTr("A biblioteca inventaria jogos; a verificação de requisitos acontece ao abrir o jogo."),
+                null, []),
             "subsystems": [],
             "requirements": ({})
         })
@@ -128,7 +135,10 @@ Item {
                 "gameCount": platform.games ? platform.games.length : 0,
                 "state": String(platform.state || "unverified"),
                 "statusLabel": String(platform.statusLabel || qsTr("Não verificado")),
-                "readiness": platform.readiness || ({"percent": 0}),
+                "readiness": Readiness.normalize(platform.readiness,
+                    Readiness.notInspected(qsTr("Prontidão não publicada"),
+                        qsTr("O domínio não publicou a prontidão desta plataforma."),
+                        null, [])),
                 "subsystems": Array.isArray(platform.subsystems) ? platform.subsystems : [],
                 "requirements": platform.requirements || ({})
             })
