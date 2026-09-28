@@ -13737,3 +13737,55 @@ idênticas em KiB/MiB/GiB; `Emulation.qml:597` põe rótulo `GB`/`MB` sobre divi
 nascendo no produtor (`adapters/emulation.py:5410`, `:5422`, `:5429-5432`) sem um único
 pino em testes. Depois: primeira dobra da Home e RetroFE dentro do shell com respostas
 tardias dos importadores. RC-01 continua sem critérios obrigatórios completos.
+
+## Sessão de fechamento — rodada 16: o veredito terminal lido, e o corpo do PR revisado (2026-09-28)
+
+**CI terminal, no SHA que é a cabeça.** Run `36497630184` em `ba2ec0a8`:
+`conclusao=success`, oito jobs `completed success` — Gate visual QML (Linux) 21m30s,
+Python 3.11/3.12/3.14, Wheel limpo/smoke/supply chain, três smokes de plataforma.
+`gh pr checks 243` lido depois da conclusão: 8 `pass`, 1 `skipping`. `gh pr view 243`:
+`OPEN`, `MERGEABLE`, `mergeStateStatus=CLEAN`, base `main`. A espera foi pelo waiter
+limitado (120 s × 18, log único), 11 segmentos; o checkout ficou parado em `ba2ec0a8`
+com `git status --short` vazio durante todo o período. A pendência (a) da sessão
+anterior está fechada por leitura, não por promessa.
+
+**Empacotamento re-provado no wheel do mesmo run, não por transferência.** A rodada 13
+lera o artefato do run da cabeça anterior. Este run publicou
+`steamzero-wheel-55c0f07e…`: 624 entradas, um único `.js` =
+`steamzero/ui/qml/readiness.js`, 8614 B com o mesmo `sha256 7d76be27…` do blob em
+`ba2ec0a8`; `sha256sum -c` contra o `SHA256SUMS` do próprio CI e
+`release_provenance.py verify-wheel --wheel` ambos verdes, e o `subject.sha256` da
+proveniência concordando com o verificador. Nuance declarada: num run `pull_request` o
+nome do artefato usa o merge ref (`refs/pull/243/merge`, `55c0f07e`), não a cabeça
+enviada. Confesso dois erros da rodada: `verify-wheel` chamado como posicional (pede
+`--wheel`) e `git show` sem o prefixo `src/` no caminho (`exit 128`) — nenhum dos dois
+escreve na árvore.
+
+**Cobertura com a diferença atribuída, não reinterpretada.** `85,4881 %` no artefato do
+run terminal, acima do piso `85`. O run anterior dera `85,4897 %` com as mesmas 47 364
+declarações; a comparação arquivo por arquivo nos dois JSON mostra `linux_runtime.py`
++1 coberta e `scraping/cache.py` −2, saldo −1 — e **nenhum dos dois arquivos está no
+diff desta branch**. O que se alega é "acima do piso", nunca "igual ao run anterior":
+três linhas se movem entre dois runs de conteúdo funcional idêntico.
+
+**A lacuna visual continua aberta, e assim está escrita.** O `qml-visual-artifacts`
+deste run tem 59 arquivos / 41 PNG de três famílias (`esde-import`, `retrofe-import`,
+`shell-esde-import`); a dobra de prontidão é provada por harness offscreen, que não
+publica PNG. `GAP-UI-VISUAL-CAPTURE-NOT-CERTIFIED-IN-CI` permanece no cartão. O recorte
+onde esse mecanismo é exigido pela auditoria é a UX-04 — plano declarado, não feito.
+
+**Corpo do PR #243 revisado antes de publicar** (instrução do operador, item 2): três
+alegações estavam envelhecidas — "empacotamento PENDENTE" (agora provado em dois runs),
+"harness com 112 pinos" (são 125, e a causa da mudança está medida) e o número da
+integral do checkpoint 10 apresentado como o do lote (o checkpoint 13 é
+`1 failed, 6484 passed, 47 skipped` em 1966,18 s). Entraram no corpo a seção de testes
+de cor, a de geometria, a verificação dos consumidores do contrato v2 e o veredito
+terminal.
+
+**Depois do checkpoint 13, a árvore voltou a receber só documento** (item 4): evidências
+`16-*.md`/`16-*.log`, índice da pasta, cartão (3 evidências novas + `nextAction`),
+workstream, visões regeradas e o digest renovado do valor impresso pela ferramenta na
+árvore final. Conteúdo funcional intocado: `ec86c228` + harness `041139e9` continua
+sendo o que se testou. O run desta cabeça documental é lido antes de qualquer fecho, e
+nenhum merge foi executado ou presumido aqui — a ordem segue 239→240→241→242→243, com
+`Main.qml` tendo dois donos exclusivos ativos do lado de lá.

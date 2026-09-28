@@ -2,8 +2,11 @@
 
 Frente: `WS-2026-09-RC01-READINESS-SEMANTICS`, branch
 `codex/rc01-readiness-semantics-2026-09-28`, base `5d95034b` (ponta do PR #242),
-quinto elo da pilha #239 → #240 → #241 → #242, publicado como PR #243 na cabeça
-`ec86c228`. Item normativo: `SZ-UI-DESKTOP-AUDIT`.
+quinto elo da pilha #239 → #240 → #241 → #242, publicado como PR #243. CI
+terminal lido em `ba2ec0a8` (conteúdo funcional = `ec86c228` + harness
+`041139e9`); a passada documental desta rodada não muda conteúdo funcional, e o
+veredito do run correspondente à cabeça final é lido antes de qualquer fecho.
+Item normativo: `SZ-UI-DESKTOP-AUDIT`.
 
 Esta pasta é o único lugar onde os resultados deste lote existem fora do Git.
 Nada aqui foi resumido de chat: todo log abaixo foi gravado pelo comando que o
@@ -40,6 +43,7 @@ produziu, e os comandos estão impressos nos próprios arquivos.
 | `15-checkpoint-13-gates-integrais.md` | O checkpoint da árvore com o harness corrigido: suíte integral única (1 failed, 6484 passed, 47 skipped), gate visual do CI verde no runner real (356 passed), ruff/format/mypy/independence verdes, identidade reimpressa **depois de cada passo**, a única falha atribuída por inteiro (1 item, desta frente, por construção) e a declaração do que foi mudado depois (só documento). §7 verifica os consumidores do contrato v2 sub-item por sub-item do operador, com o teste citado pelo nome |
 | `15-comandos-e-saidas.log` | Saída crua dos sete passos acima, com o `real-state before/after` do executor isolado em cada suíte |
 | `15-gates-focados-pos-documental.log` | A reconfirmação depois da passada documental, com o comando impresso no arquivo: 70 passed (13 do gate de catálogo + os 57 harnesses parametrizados, soma conferida em `--collect-only`), ruff check, ruff format, mypy, independence e status-check verdes, e o `sha256` do harness inalterado — o conteúdo funcional testado é o conteúdo enviado |
+| `16-ci-terminal-e-wheel-no-sha-final.md` + `.log` | O veredito terminal lido, não prometido: run `36497630184` em `ba2ec0a8` com oito jobs `completed success` (gate visual 21m30s), PR `MERGEABLE`/`CLEAN`; o wheel **desse mesmo run** baixado e lido (`624` entradas, um único `.js` = `steamzero/ui/qml/readiness.js`, sha256 `7d76be27…` idêntico ao blob da cabeça, `verify-wheel` exit 0 concordando com `subject.sha256` da proveniência); cobertura do mesmo artefato (`85,4881 %`) com a diferença de 3 linhas em relação ao run anterior **atribuída por arquivo** a dois módulos que esta frente não toca; a lacuna de captura visual confirmada por contagem (59 arquivos / 41 PNG, só três famílias de diálogo) e mantida aberta; e as três alegações envelhecidas do corpo do PR corrigidas antes de publicar |
 | `captures/` | Sete PNGs inspecionados um a um, com `SHA256SUMS.txt` e as dimensões lógicas de cada viewport |
 
 ## O que este lote não prova
@@ -51,9 +55,12 @@ produziu, e os comandos estão impressos nos próprios arquivos.
   release do operador (AGENTS.md §4), e em run `pull_request` o artefato existe
   sob o merge ref, não sob a cabeça enviada.
 - **Física do gate visual.** O vermelho do PR #243 foi corrigido por medição de
-  harness, não por mudança de produto; a causa está em `14-…md` e a verificação
-  no runner em `15-…md`. O que continua sem prova é a aparência em escala de
-  texto real (100/125/150 %), fora do offscreen.
+  harness, não por mudança de produto; a causa está em `14-…md`, a verificação no
+  runner em `15-…md`, e o job verde no run terminal em `16-…md`. O que continua
+  sem prova é a aparência em escala de texto real (100/125/150 %), fora do
+  offscreen: `GAP-UI-VISUAL-CAPTURE-NOT-CERTIFIED-IN-CI` segue **aberto** — o
+  run terminal publica 41 PNG e nenhum deles é da dobra de prontidão
+  (`16-…md` §4).
 - **Release instalada.** Todo o verde QML aqui é offscreen no runtime Qt 6.11 do
   projeto. A release `2.0.0rc1-e2af2562ebba` no host não foi tocada: prova física
   segue autorização específica do operador.
