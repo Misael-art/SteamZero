@@ -519,3 +519,21 @@ def test_plataforma_editorial_sem_jogos_nao_recebe_zero_como_medido() -> None:
     assert readiness["measure"]["percent"] is None
     assert readiness["measure"]["counts"] == {"inventariados": 0}
     assert readiness["nextAction"]
+
+
+def test_fallback_do_shell_nao_fabrica_percentual_sem_medicao() -> None:
+    """Antes: ``"readiness": {"percent": 0, ...}`` no fallback do shell.
+
+    A bridge ainda não respondeu, então não houve contagem nenhuma: o ``0`` tinha
+    cara de medição e o painel pintaria "0% pronto" sobre um denominador que nunca
+    existiu. O shell não mede nada — quem mede são os produtores —, então o
+    fallback publica o estado não inspecionado do módulo compartilhado, com a
+    razão da ausência no lugar do número.
+    """
+    shell = Path("src/steamzero/ui/qml/Main.qml").read_text(encoding="utf-8")
+    assert '"percent"' not in shell
+
+    fallback = shell[
+        shell.index("property var fallbackSteamGameplay") : shell.index("property var fallbackCast")
+    ]
+    assert '"readiness": Readiness.notInspected(' in fallback

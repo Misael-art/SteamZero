@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
+import "readiness.js" as Readiness
 
 ApplicationWindow {
     id: root
@@ -241,7 +242,8 @@ ApplicationWindow {
             {"id": "vkbasalt", "name": "vkBasalt", "detail": "Pós-processamento Vulkan", "owner": "Sistema", "required": false, "state": "missing", "statusLabel": "ausente, opcional"},
             {"id": "lsfg", "name": "LSFG-VK", "detail": "Geração de quadros configurada por jogo", "owner": "Sistema", "required": false, "state": "missing", "statusLabel": "ausente, opcional"}
         ],
-        "readiness": {"percent": 0, "title": "Ambiente Steam indisponível", "detail": "Abra Sistema para diagnosticar"},
+        "readiness": Readiness.notInspected("Ambiente Steam indisponível",
+            "Abra Sistema para diagnosticar"),
         "hardware": {"deviceLabel": "Linux", "tdpMin": null, "tdpMax": null, "gpuMin": null, "gpuMax": null, "refreshHz": null, "memoryGb": null, "withinSafeLimits": false},
         "context": {"device": "Linux", "battery": null, "mode": "Modo Desktop"},
         "currentProfile": {"gameId": "", "scope": "global", "profile": "balanced", "fps": 40, "tdp": null, "gpuMode": "auto", "gpuClock": null, "gamescope": false, "gameMode": false, "mangoHud": "off", "vkBasalt": "off", "upscaling": "native", "frameGeneration": "off", "controllerLayout": "steam-recommended"},
