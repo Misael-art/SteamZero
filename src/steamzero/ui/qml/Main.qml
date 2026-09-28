@@ -722,13 +722,20 @@ ApplicationWindow {
         })
     }
 
+    /// Scroll mais próximo que uma revelação por foco ajustou. Existe porque a
+    /// revelação é, sozinha, um instantâneo: ver `revalidateFocusedReveal`.
+    property var focusedRevealScroll: null
+
     function ensureFocusedItemVisible(item) {
         if (!item)
             return
+        let revelado = null
         let ancestor = item.parent
         while (ancestor && ancestor !== root.contentItem) {
             if (ancestor.contentY !== undefined && ancestor.contentItem
                     && ancestor.height !== undefined) {
+                if (!revelado)
+                    revelado = ancestor
                 const point = item.mapToItem(ancestor.contentItem, 0, 0)
                 const top = point.y - 12
                 const bottom = point.y + item.height + 12
@@ -742,6 +749,41 @@ ApplicationWindow {
             }
             ancestor = ancestor.parent
         }
+        // Registrado sempre, mesmo quando não houve rolagem: o que tem de voltar a
+        // validar é o foco que está AQUI, e a banda dele pode mudar depois.
+        root.focusedRevealScroll = revelado
+    }
+
+    /// Revelar pelo foco é o mecanismo, e ele é um instantâneo:
+    /// `onActiveFocusItemChanged` só dispara quando o foco MUDA. Se a banda do
+    /// scroll muda com o foco já instalado — a faixa de atenção aparece quando o
+    /// `/status` chega (94 px medidos na janela do Deck), os cartões de diagnóstico
+    /// crescem a coluna, ou a janela é redimensionada no Modo Desktop, o controle
+    /// focado sai da área que clipa e nenhum sinal o traz de volta, com o `contentY`
+    /// ainda tendo folga para rolar. Medido: banda 337 → 217 px com o alvo inteiro
+    /// em 277..325, ou seja 108 px abaixo do pé da tela, e parado ali por 4 000 ms.
+    /// Quem segura o foco revalida, então; a banda é que avisa.
+    function revalidateFocusedReveal() {
+        if (!root.activeFocusItem)
+            return
+        Qt.callLater(function() {
+            root.ensureFocusedItemVisible(root.activeFocusItem)
+        })
+    }
+
+    /// Guarda de navegação do importador ES-DE: o passo do D-pad só anda entre
+    /// controles deste diálogo. São duas pontas porque o rodapé fixo não é
+    /// descendente do corpo rolável — percorrer só o corpo deixaria Cancelar e
+    /// Importar fora do alcance, e percorrer sem guarda atravessaria para a tela
+    /// atrás do modal.
+    function itemInEsdeImportDialog(item) {
+        let current = item
+        while (current) {
+            if (current === esdeImportScroll || current === esdeImportFooter)
+                return true
+            current = current.parent
+        }
+        return false
     }
 
     function rememberDialogInvoker() {
@@ -800,6 +842,19 @@ ApplicationWindow {
                 Qt.callLater(function() {
                     root.ensureFocusedItemVisible(item)
                 })
+        }
+    }
+
+    // A banda que clipa é o que muda debaixo do foco: altura do scroll (faixa de
+    // atenção, redimensionamento) e extento do conteúdo (cartões que chegam do
+    // `/status`). Os dois sinais revalidam o mesmo instantâneo.
+    Connections {
+        target: root.focusedRevealScroll
+        function onHeightChanged() {
+            root.revalidateFocusedReveal()
+        }
+        function onContentHeightChanged() {
+            root.revalidateFocusedReveal()
         }
     }
 
@@ -2821,6 +2876,7 @@ ApplicationWindow {
 
     Dialog {
         id: esdeImportDialog
+        objectName: "theme-import-esde-dialog"
         onAboutToShow: root.rememberDialogInvoker()
         onOpened: root.focusDialogContent(esdeImportDialog)
         onClosed: {
@@ -2834,137 +2890,199 @@ ApplicationWindow {
         }
         title: qsTr("Importar tema ES-DE")
         modal: true
+        closePolicy: Popup.CloseOnEscape
         width: Math.min(root.width - 48, 640)
+        // Teto de altura, não altura implícita. Sem ele o diálogo cresce até o pé
+        // do próprio conteúdo: medido em 949x593 com 24 esquemas, a moldura ficou
+        // em 640x593 enquanto as ações caíam em y=1646 — 1053 px abaixo do que
+        // existe na tela, inalcançáveis por tecla porque não havia o que rolar.
+        // O corpo passa a rolar; o rodapé, não.
+        height: Math.min(root.height - 32, 560)
         x: (root.width - width) / 2
         y: (root.height - height) / 2
         standardButtons: Dialog.NoButton
+        focus: true
 
-        ColumnLayout {
-            anchors.fill: parent
-            spacing: 10
+        /// Up/Down percorrem o modal inteiro, como no importador do painel. O
+        /// rodapé não é descendente do corpo rolável, então as duas pontas chamam
+        /// o mesmo passo. A guarda `itemInEsdeImportDialog` é o que impede um
+        /// único Down de atravessar para os controles atrás do diálogo, e pular o
+        /// que está desabilitado impede o D-pad de empacar no Importar antes de
+        /// ele ser liberado.
+        function moveVertical(event, forward) {
+            const active = root.activeFocusItem
+            let next = active
+            do {
+                next = next ? next.nextItemInFocusChain(forward) : null
+            } while (next && next !== active
+                     && (!root.itemInEsdeImportDialog(next) || next.enabled === false))
+            if (!next || next === active)
+                return
+            next.forceActiveFocus(Qt.TabFocusReason)
+            Qt.callLater(function() { root.ensureFocusedItemVisible(next) })
+            event.accepted = true
+        }
 
-            Label {
-                text: qsTr("Examine o tema antes de importar. Nada é gravado até você confirmar.")
-                color: root.mutedColor
-                wrapMode: Text.WordWrap
-                Layout.fillWidth: true
+        contentItem: ScrollView {
+            id: esdeImportScroll
+            objectName: "theme-import-esde-scroll"
+            clip: true
+            contentWidth: availableWidth
+            focus: true
+            // Setas verticais navegam o diálogo; as horizontais seguem editando.
+            Keys.onUpPressed: function(event) {
+                esdeImportDialog.moveVertical(event, false)
             }
-            TextField {
-                id: esdeImportSourceField
-                objectName: "theme-import-esde-source"
-                placeholderText: qsTr("Caminho do tema ES-DE")
-                Accessible.name: qsTr("Caminho do tema ES-DE")
-                Layout.fillWidth: true
-                Layout.minimumHeight: 48
+            Keys.onDownPressed: function(event) {
+                esdeImportDialog.moveVertical(event, true)
             }
-            Button {
-                id: esdeInspectButton
-                objectName: "theme-import-esde-inspect"
-                text: qsTr("Examinar")
-                icon.name: "search"
-                enabled: !root.esdeImportBusy && esdeImportSourceField.text.length > 0
-                Accessible.name: text
-                Accessible.description: enabled
-                    ? qsTr("Lê o tema e lista os esquemas disponíveis")
-                    : qsTr("Informe o caminho do tema para examinar")
-                Layout.minimumHeight: 48
-                onClicked: {
-                    root.esdeImportBusy = true
-                    root.esdeImportNotice = ""
-                    root.requestAction("theme.import.esde.inspect",
-                                       {"source": esdeImportSourceField.text},
-                        function(response) {
-                            root.esdeImportBusy = false
-                            const found = response && response.schemes
-                                ? response.schemes : []
-                            root.esdeImportSchemes = found
-                            root.esdeImportSchemeIndex = found.length > 0 ? 0 : -1
-                            if (found.length === 0)
-                                root.esdeImportNotice =
-                                    qsTr("O tema não declarou nenhum esquema importável.")
-                        },
-                        function(message) {
-                            root.esdeImportBusy = false
-                            root.esdeImportSchemes = []
-                            root.esdeImportSchemeIndex = -1
-                            root.esdeImportNotice = message
-                        })
+
+            ColumnLayout {
+                width: esdeImportScroll.availableWidth
+                spacing: 10
+
+                Label {
+                    text: qsTr("Examine o tema antes de importar. Nada é gravado até você confirmar.")
+                    color: root.mutedColor
+                    font.pixelSize: root.scaledTextSize(13)
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
                 }
-            }
-            Label {
-                text: root.esdeImportNotice
-                visible: root.esdeImportNotice !== ""
-                color: root.amberColor
-                wrapMode: Text.WordWrap
-                Layout.fillWidth: true
-            }
-            Label {
-                text: qsTr("Esquemas encontrados")
-                color: root.textColor
-                font.bold: true
-                visible: root.esdeImportSchemes.length > 0
-            }
-            Repeater {
-                model: root.esdeImportSchemes
-                delegate: RadioButton {
-                    required property int index
-                    required property var modelData
-                    text: modelData && modelData.name ? modelData.name : String(modelData)
-                    checked: root.esdeImportSchemeIndex === index
-                    Accessible.name: text
+                TextField {
+                    id: esdeImportSourceField
+                    objectName: "theme-import-esde-source"
+                    placeholderText: qsTr("Caminho do tema ES-DE")
+                    Accessible.name: qsTr("Caminho do tema ES-DE")
+                    font.pixelSize: root.scaledTextSize(13)
+                    Layout.fillWidth: true
                     Layout.minimumHeight: 48
-                    onClicked: root.esdeImportSchemeIndex = index
                 }
-            }
-            TextField {
-                id: esdeImportNameField
-                objectName: "theme-import-esde-name"
-                placeholderText: qsTr("Nome do tema importado")
-                Accessible.name: qsTr("Nome do tema importado")
-                visible: root.esdeImportSchemes.length > 0
-                Layout.fillWidth: true
-                Layout.minimumHeight: 48
-            }
-            RowLayout {
-                Layout.fillWidth: true
                 Button {
-                    text: qsTr("Cancelar")
-                    Accessible.name: text
-                    Layout.minimumHeight: 48
-                    onClicked: esdeImportDialog.close()
-                }
-                Item { Layout.fillWidth: true }
-                Button {
-                    id: esdeApplyButton
-                    objectName: "theme-import-esde-apply"
-                    text: qsTr("Importar")
-                    icon.name: "document-import"
-                    enabled: !root.esdeImportBusy
-                        && root.esdeImportSchemeIndex >= 0
-                        && esdeImportNameField.text.length > 0
+                    id: esdeInspectButton
+                    objectName: "theme-import-esde-inspect"
+                    text: qsTr("Examinar")
+                    icon.name: "search"
+                    enabled: !root.esdeImportBusy && esdeImportSourceField.text.length > 0
                     Accessible.name: text
                     Accessible.description: enabled
-                        ? qsTr("Importa o esquema escolhido com o nome informado")
-                        : qsTr("Examine o tema e escolha um esquema antes de importar")
+                        ? qsTr("Lê o tema e lista os esquemas disponíveis")
+                        : qsTr("Informe o caminho do tema para examinar")
                     Layout.minimumHeight: 48
                     onClicked: {
-                        const chosen = root.esdeImportSchemes[root.esdeImportSchemeIndex]
                         root.esdeImportBusy = true
-                        root.requestAction("theme.import.esde.apply", {
-                                "source": esdeImportSourceField.text,
-                                "scheme": chosen && chosen.id ? chosen.id : String(chosen),
-                                "name": esdeImportNameField.text
-                            },
+                        root.esdeImportNotice = ""
+                        root.requestAction("theme.import.esde.inspect",
+                                           {"source": esdeImportSourceField.text},
                             function(response) {
                                 root.esdeImportBusy = false
-                                root.notify(qsTr("Tema ES-DE importado."), false)
-                                esdeImportDialog.close()
+                                const found = response && response.schemes
+                                    ? response.schemes : []
+                                root.esdeImportSchemes = found
+                                root.esdeImportSchemeIndex = found.length > 0 ? 0 : -1
+                                if (found.length === 0)
+                                    root.esdeImportNotice =
+                                        qsTr("O tema não declarou nenhum esquema importável.")
                             },
                             function(message) {
                                 root.esdeImportBusy = false
+                                root.esdeImportSchemes = []
+                                root.esdeImportSchemeIndex = -1
                                 root.esdeImportNotice = message
                             })
                     }
+                }
+                Label {
+                    objectName: "theme-import-esde-notice"
+                    text: root.esdeImportNotice
+                    visible: root.esdeImportNotice !== ""
+                    color: root.amberColor
+                    font.pixelSize: root.scaledTextSize(13)
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+                Label {
+                    text: qsTr("Esquemas encontrados")
+                    color: root.textColor
+                    font.pixelSize: root.scaledTextSize(13)
+                    font.bold: true
+                    visible: root.esdeImportSchemes.length > 0
+                }
+                Repeater {
+                    model: root.esdeImportSchemes
+                    delegate: RadioButton {
+                        required property int index
+                        required property var modelData
+                        text: modelData && modelData.name ? modelData.name : String(modelData)
+                        checked: root.esdeImportSchemeIndex === index
+                        Accessible.name: text
+                        font.pixelSize: root.scaledTextSize(13)
+                        Layout.fillWidth: true
+                        Layout.minimumHeight: 48
+                        onClicked: root.esdeImportSchemeIndex = index
+                    }
+                }
+                TextField {
+                    id: esdeImportNameField
+                    objectName: "theme-import-esde-name"
+                    placeholderText: qsTr("Nome do tema importado")
+                    Accessible.name: qsTr("Nome do tema importado")
+                    font.pixelSize: root.scaledTextSize(13)
+                    visible: root.esdeImportSchemes.length > 0
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                }
+            }
+        }
+
+        footer: RowLayout {
+            id: esdeImportFooter
+            objectName: "theme-import-esde-footer"
+            Layout.fillWidth: true
+            Keys.onUpPressed: function(event) {
+                esdeImportDialog.moveVertical(event, false)
+            }
+            Keys.onDownPressed: function(event) {
+                esdeImportDialog.moveVertical(event, true)
+            }
+
+            Button {
+                objectName: "theme-import-esde-cancel"
+                text: qsTr("Cancelar")
+                Accessible.name: text
+                Layout.minimumHeight: 48
+                onClicked: esdeImportDialog.close()
+            }
+            Item { Layout.fillWidth: true }
+            Button {
+                id: esdeApplyButton
+                objectName: "theme-import-esde-apply"
+                text: qsTr("Importar")
+                icon.name: "document-import"
+                enabled: !root.esdeImportBusy
+                    && root.esdeImportSchemeIndex >= 0
+                    && esdeImportNameField.text.length > 0
+                Accessible.name: text
+                Accessible.description: enabled
+                    ? qsTr("Importa o esquema escolhido com o nome informado")
+                    : qsTr("Examine o tema e escolha um esquema antes de importar")
+                Layout.minimumHeight: 48
+                onClicked: {
+                    const chosen = root.esdeImportSchemes[root.esdeImportSchemeIndex]
+                    root.esdeImportBusy = true
+                    root.requestAction("theme.import.esde.apply", {
+                            "source": esdeImportSourceField.text,
+                            "scheme": chosen && chosen.id ? chosen.id : String(chosen),
+                            "name": esdeImportNameField.text
+                        },
+                        function(response) {
+                            root.esdeImportBusy = false
+                            root.notify(qsTr("Tema ES-DE importado."), false)
+                            esdeImportDialog.close()
+                        },
+                        function(message) {
+                            root.esdeImportBusy = false
+                            root.esdeImportNotice = message
+                        })
                 }
             }
         }
