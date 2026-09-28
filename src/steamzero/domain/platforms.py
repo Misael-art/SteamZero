@@ -15,6 +15,8 @@ from jsonschema import ValidationError
 
 from steamzero.api import contracts
 from steamzero.core.errors import SteamZeroError
+from steamzero.domain.readiness import not_measured
+from steamzero.domain.readiness import readiness as build_readiness
 
 _SCHEMA = "platform-manifest-v1.schema.json"
 _REQUIREMENT_KINDS = frozenset({"keys", "firmware"})
@@ -292,12 +294,17 @@ def platform_placeholder(manifest: PlatformManifest) -> dict[str, Any]:
         "iconKey": manifest.icon_key,
         "state": "planned",
         "statusLabel": "Integração planejada",
-        "readiness": {
-            "percent": 0,
-            "title": "Integração planejada",
-            "detail": blockers[0],
-            "blockers": blockers,
-        },
+        # Sem composição não há o que medir: ``percent=0`` parecia uma medição
+        # pessimista quando o que falta é a medição. O motivo está em cause.
+        "readiness": build_readiness(
+            state="planned",
+            label="Integração planejada",
+            cause=blockers[0],
+            blockers=blockers,
+            verification="not_performed",
+            basis="none",
+            measure=not_measured(),
+        ),
         "scopes": [
             {
                 "id": scope_id,

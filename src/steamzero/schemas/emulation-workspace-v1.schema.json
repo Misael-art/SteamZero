@@ -312,18 +312,7 @@
           "minLength": 1
         },
         "readiness": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "percent"
-          ],
-          "properties": {
-            "percent": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 100
-            }
-          }
+          "$ref": "#/$defs/readiness"
         },
         "requirements": {
           "type": "object",
@@ -549,13 +538,22 @@
       }
     },
     "readiness": {
+      "$comment": "Compatibilidade de contrato (UX-03): v1 é aceita apenas para não invalidar cache e fixtures anteriores; os produtores emitem v2. As duas formas são mutuamente exclusivas porque v1 exige percent e v2 exige contractVersion.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/readinessLegacy"
+        },
+        {
+          "$ref": "#/$defs/readinessV2"
+        }
+      ]
+    },
+    "readinessLegacy": {
+      "$comment": "Prontidão v1: publicava um percentual cuja dimensão nunca existiu no contrato. Tolerada para cache e fixtures anteriores; nenhum produtor a emite. normalize_readiness() lê o texto e esconde o número (absentReason legacy_contract).",
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "percent",
-        "title",
-        "detail",
-        "blockers"
+        "percent"
       ],
       "properties": {
         "percent": {
@@ -579,6 +577,245 @@
           }
         }
       }
+    },
+    "readinessV2": {
+      "$comment": "UX-03: estado, causa e próxima ação ficam em campos próprios; a proporção fica em measure, com a dimensão nomeada. Nenhum campo aqui é derivável de categoria.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "state",
+        "label",
+        "cause",
+        "nextAction",
+        "blockers",
+        "verification",
+        "basis",
+        "pendingRequired",
+        "pendingOptional",
+        "measure"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": 2
+        },
+        "state": {
+          "enum": [
+            "ready",
+            "attention",
+            "blocked",
+            "unverified",
+            "unavailable",
+            "planned",
+            "degraded"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cause": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nextAction": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "blockers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "verification": {
+          "enum": [
+            "verified",
+            "not_performed",
+            "not_applicable",
+            "unknown"
+          ]
+        },
+        "basis": {
+          "enum": [
+            "preflight",
+            "demonstrated_gameplay",
+            "inventory_existence",
+            "existence_only",
+            "none"
+          ]
+        },
+        "pendingRequired": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "pendingOptional": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "measure": {
+          "$ref": "#/$defs/readinessMeasure"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "ready"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "verification": {
+                "const": "verified"
+              },
+              "basis": {
+                "enum": [
+                  "preflight",
+                  "demonstrated_gameplay",
+                  "inventory_existence",
+                  "existence_only"
+                ]
+              },
+              "pendingRequired": {
+                "enum": [
+                  0,
+                  null
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "readinessMeasure": {
+      "$comment": "Uma proporção medida. percent é nulo sempre que não há denominador ou o dado falta, e nesse caso absentReason nomeia por quê — 0 e 100 são alegações, ausência é honestidade.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dimension",
+        "dimensionLabel",
+        "numerator",
+        "denominator",
+        "percent",
+        "absentReason",
+        "counts"
+      ],
+      "properties": {
+        "dimension": {
+          "enum": [
+            "required_requirements",
+            "optional_requirements",
+            "game_inventory",
+            "launch_preflight",
+            "not_measured"
+          ]
+        },
+        "dimensionLabel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "numerator": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "denominator": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "percent": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "absentReason": {
+          "enum": [
+            "zero_denominator",
+            "not_measured",
+            "missing_data",
+            "legacy_contract",
+            null
+          ]
+        },
+        "counts": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "percent": {
+                "type": "integer"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "numerator": {
+                "type": "integer"
+              },
+              "denominator": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "absentReason": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "percent": {
+                "type": "null"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absentReason": {
+                "enum": [
+                  "zero_denominator",
+                  "not_measured",
+                  "missing_data",
+                  "legacy_contract"
+                ]
+              }
+            }
+          }
+        }
+      ]
     },
     "scope": {
       "type": "object",

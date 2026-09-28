@@ -20,6 +20,7 @@ from steamzero.core import ids
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.domain.gamemode import GameModeTruth, build_truth
+from steamzero.domain.readiness import READINESS_CONTRACT_VERSION
 from steamzero.domain.saves import SavesStore
 from steamzero.domain.theme_editor import ThemeEditorManager
 from steamzero.ports import CaptureConsent
@@ -722,7 +723,8 @@ def test_gameplay_snapshot_reads_real_manifest_and_capabilities(tmp_path: Path) 
     assert snapshot["hardware"]["tdpMax"] == 15
     assert snapshot["hardware"]["memoryGb"] == 11.2
     assert snapshot["impact"]["resolution"] == "800x1280"
-    assert snapshot["readiness"]["percent"] == 100
+    assert snapshot["readiness"]["state"] == "ready"
+    assert snapshot["readiness"]["measure"]["percent"] == 100
     assert snapshot["lsfgInstaller"]["losslessScalingInstalled"] is True
 
 
@@ -746,6 +748,21 @@ def test_gameplay_failure_degrades_only_steam_section(tmp_path: Path) -> None:
     assert snapshot["steamGameplay"]["truthState"] == "degraded"
     assert snapshot["doctor"]["state"] == "healthy"
     assert len(snapshot["components"]) == 3
+
+    # "Indisponível" não é uma medição de 0%: sem dados, o número desaparece e a
+    # superfície diz o que aconteceu e o que fazer em seguida.
+    readiness = snapshot["steamGameplay"]["readiness"]
+    assert readiness["contractVersion"] == READINESS_CONTRACT_VERSION
+    assert readiness["state"] == "unavailable"
+    assert readiness["verification"] == "not_applicable"
+    assert readiness["basis"] == "none"
+    assert readiness["cause"]
+    assert readiness["nextAction"]
+    measure = readiness["measure"]
+    assert measure["percent"] is None
+    assert measure["absentReason"] == "missing_data"
+    assert measure["numerator"] is None
+    assert measure["denominator"] is None
 
 
 def test_emulation_builder_failure_degrades_only_emulation_section(tmp_path: Path) -> None:

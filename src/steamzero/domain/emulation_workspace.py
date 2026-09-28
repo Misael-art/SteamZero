@@ -21,6 +21,14 @@ from steamzero.domain.platforms import (
     PlatformRegistry,
     platform_placeholder,
 )
+from steamzero.domain.readiness import (
+    NOT_REQUIRED_STATUS,
+    PENDING_STATUSES,
+    SATISFIED_STATUS,
+    proportion_from_requirements,
+    requirement_in_force,
+)
+from steamzero.domain.readiness import readiness as build_readiness
 from steamzero.domain.retro_experience import preset_catalog
 from steamzero.domain.switch_emulators import SwitchEmulatorCatalog
 
@@ -31,6 +39,11 @@ _SCOPE_DEFS = (
     ("handheld", "Portátil", "handheld"),
     ("dock", "Dock", "dock"),
 )
+
+# Estados em que há um runtime capaz de abrir o jogo. ``degraded`` conta: os
+# arquivos existem e o drift tem correção, então isto é atenção, não bloqueio.
+_RUNNABLE_EMULATOR_STATES = frozenset({"installed", "degraded"})
+_REQUIREMENT_LABELS = {"keys": "Keys", "firmware": "Firmware"}
 
 
 def _not_applicable_requirement(kind: str) -> dict[str, Any]:
@@ -434,42 +447,127 @@ def compute_readiness(
 
     Pública porque o controller recomputa com as linhas observadas do host:
     o probe do catálogo só sabe "instalado ou não", e um emulador degradado
-    silencioso produziria 100% mesmo com drift.
-    """
-    blockers: list[str] = []
-    requirement_states = {str(value["status"]) for value in requirements.values()}
-    if "missing" in requirement_states:
-        blockers.append("Importe keys e firmware próprios antes de iniciar jogos que os exigem.")
-    if "outdated" in requirement_states:
-        blockers.append(
-            "Atualize keys ou firmware para atender aos requisitos do jogo selecionado."
-        )
-    if "unverified" in requirement_states:
-        blockers.append("Valide keys e firmware para concluir o diagnóstico de compatibilidade.")
-    if not any(item.get("installState") in {"installed", "degraded"} for item in emulators):
-        blockers.append("Nenhum emulador Switch foi confirmado como instalado.")
-    if any(item.get("installState") == "degraded" for item in emulators):
-        blockers.append("Repare emuladores degradados antes de iniciar jogos.")
+    silencioso produziria "pronto" mesmo com drift.
 
-    if "missing" in requirement_states:
-        state, label, percent = "blocked", "Ação necessária", 20
-    elif "outdated" in requirement_states or any(
-        item.get("installState") == "degraded" for item in emulators
-    ):
-        state, label, percent = "attention", "Atualização recomendada", 45
-    elif blockers:
-        state, label, percent = "unverified", "Verificação pendente", 35
+    UX-03: ``percent`` aqui é a proporção de **requisitos obrigatórios** atendidos —
+    opcional não entra no denominador, e sem denominador não há número. Estado,
+    causa e próxima ação são campos próprios: as categorias que este produtor
+    publicava (20/45/35/100) eram rótulos pintados como percentual, e a regra de
+    cor do QML tratava 20% e 45% como a mesma coisa.
+    """
+    rows = list(requirements.values())
+    measure = proportion_from_requirements(rows)
+    counts = measure["counts"] or {}
+    pending_required = int(counts["pending"]) + int(counts["unverified"])
+    # Opcional, aqui, é a pendência em vigor que não impede a jogatina
+    # (``outdated`` pede atualização, ``missing`` barra). O critério de vigor é
+    # o mesmo da proporção; com critérios diferentes a mesma linha contaria nos
+    # dois baldes e a superfície mostraria bloqueio e ajuste recomendado juntas.
+    pending_optional = sum(
+        1
+        for row in rows
+        if requirement_in_force(row)
+        and str(row.get("status")) != SATISFIED_STATUS
+        and not row.get("blocksPlay")
+    )
+
+    install_states = {str(row.get("installState")) for row in emulators}
+    # Estados de observação: ``not-installed`` é uma medição, ``unverified`` é a
+    # falta dela. Confundir os dois é o que transformava "não olhamos" em 0%.
+    emulator_observed = bool(install_states - {"unverified", "none"})
+    emulator_runnable = bool(install_states & _RUNNABLE_EMULATOR_STATES)
+    degraded_rows = [row for row in emulators if str(row.get("installState")) == "degraded"]
+    required_rows = [row for row in rows if requirement_in_force(row)]
+
+    # Uma causa e uma ação por achado. A ordem abaixo é a ordem da jornada: o
+    # usuário resolve primeiro o que impede de jogar.
+    findings: list[tuple[str, str]] = []
+    for row in rows:
+        status = str(row.get("status"))
+        if status == SATISFIED_STATUS:
+            continue
+        if status == NOT_REQUIRED_STATUS:
+            # O jogo não exige isto: não é impedimento, e virar causa seria
+            # inventar bloqueio sobre um estado pronto.
+            continue
+        kind = str(row.get("kind"))
+        label = _REQUIREMENT_LABELS.get(kind, kind)
+        if status == "missing":
+            findings.append(
+                (
+                    f"{label} ausente.",
+                    "Importe keys e firmware próprios antes de iniciar jogos que os exigem.",
+                )
+            )
+        elif status in PENDING_STATUSES:
+            findings.append(
+                (
+                    f"{label} desatualizado.",
+                    "Atualize keys ou firmware para atender aos requisitos do jogo selecionado.",
+                )
+            )
+        else:
+            findings.append(
+                (
+                    f"{label} ainda não foi verificado.",
+                    "Valide keys e firmware para concluir o diagnóstico de compatibilidade.",
+                )
+            )
+    if not emulator_runnable:
+        findings.append(
+            (
+                "Nenhum emulador Switch foi confirmado como instalado.",
+                "Instale um emulador Switch para tornar os jogos desta plataforma executáveis.",
+            )
+        )
+    for row in degraded_rows:
+        findings.append(
+            (
+                f"{row.get('displayName') or row.get('name') or 'Emulador'} está degradado.",
+                "Repare emuladores degradados antes de iniciar jogos.",
+            )
+        )
+
+    required_pending = [row for row in required_rows if str(row.get("status")) != SATISFIED_STATUS]
+    missing_required = any(str(row.get("status")) == "missing" for row in required_pending)
+    outdated_required = any(str(row.get("status")) in PENDING_STATUSES for row in required_pending)
+    unverified_required = any(
+        str(row.get("status")) not in {SATISFIED_STATUS, "missing", *PENDING_STATUSES}
+        for row in required_pending
+    )
+
+    if missing_required or (emulator_observed and not emulator_runnable):
+        # Algo *observado* impede o jogo: é bloqueio, não dúvida.
+        state, label = "blocked", "Ação necessária"
+    elif degraded_rows or outdated_required:
+        state, label = "attention", "Atualização recomendada"
+    elif unverified_required or not emulator_observed:
+        state, label = "unverified", "Verificação pendente"
     else:
-        state, label, percent = "ready", "Pronto", 100
+        state, label = "ready", "Pronto"
+
     return (
         state,
         label,
-        {
-            "percent": percent,
-            "title": label,
-            "detail": "Ambiente pronto para uso." if not blockers else blockers[0],
-            "blockers": blockers,
-        },
+        build_readiness(
+            state=state,
+            label=label,
+            cause=findings[0][0] if findings else None,
+            next_action=findings[0][1] if findings else None,
+            # Uma ação por tipo de impedimento: dois emuladores degradados têm um
+            # remédio só, e repeti-lo na lista é ruído que a superfície mostra como
+            # dois bloqueios. As causas individuais seguem no painel de emuladores.
+            blockers=list(dict.fromkeys(action for _cause, action in findings)),
+            # "verificado" aqui quer dizer uma coisa específica: os requisitos
+            # obrigatórios e ao menos um emulador foram observados neste host.
+            verification="verified"
+            if emulator_observed and not unverified_required
+            else "not_performed",
+            basis="preflight",
+            measure=measure,
+            pending_required=pending_required,
+            pending_optional=pending_optional,
+        ),
     )
 
 

@@ -16,7 +16,7 @@ import os
 import re
 import secrets
 import shutil
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -37,6 +37,11 @@ from steamzero.core.state import StateStore
 from steamzero.domain import vkbasalt
 from steamzero.domain.gamemode import GameModeTruth, build_admin_plan
 from steamzero.domain.hud import hud_catalog
+from steamzero.domain.readiness import (
+    SATISFIED_STATUS,
+    proportion_from_requirements,
+)
+from steamzero.domain.readiness import readiness as build_readiness
 
 Which = Callable[[str], str | None]
 StoreFactory = Callable[[], StateStore]
@@ -128,6 +133,77 @@ def _file_url(path: Path | None) -> str:
         return path.resolve().as_uri()
     except (OSError, ValueError):
         return ""
+
+
+def _environment_readiness(environment: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """Prontidão do ambiente: proporção sobre obrigatórios, evidência de preflight.
+
+    O contrato anterior publicava o percentual dos obrigatórios e um título que
+    contava também os opcionais pendentes — ``Pronto com 4 ajuste(s)`` a 67%. As
+    duas contagens continuam existindo, agora em campos próprios: ``measure``
+    mede requisitos obrigatórios, ``pendingOptional`` lista o que é ajuste e não
+    barra, e nada aqui demonstra gameplay.
+    """
+    measure = proportion_from_requirements(
+        (
+            {
+                "required": bool(row["required"]),
+                "status": SATISFIED_STATUS if row["state"] == "ready" else str(row["state"]),
+            }
+            for row in environment
+        ),
+        dimension_label="requisitos obrigatórios do ambiente de jogo",
+        # Este documentário declara a obrigatoriedade como booleano por
+        # capacidade; ``not-required`` não é um estado que ele saiba alegar,
+        # então o critério vem daqui e do mesmo lugar sai ``pendingOptional``.
+        in_force=lambda row: bool(row["required"]),
+    )
+    counts = measure["counts"] or {}
+    required_states = {str(row["state"]) for row in environment if row["required"]}
+
+    findings: list[tuple[str, str]] = []
+    for row in environment:
+        state = str(row["state"])
+        if state == "ready":
+            continue
+        name = str(row["name"])
+        owner = str(row["owner"])
+        if state == "missing":
+            default_cause = f"{name} não está disponível ({owner})."
+            default_action = f"Instale ou ative {name} ({owner})."
+        elif state == "degraded":
+            default_cause = f"{name} está degradado ({owner})."
+            default_action = f"Corrija {name} ({owner}) antes de jogar."
+        else:
+            default_cause = f"Não foi possível verificar {name} ({owner})."
+            default_action = f"Verifique {name} ({owner}) e recarregue a central."
+        findings.append(
+            (str(row.get("cause") or default_cause), str(row.get("remediation") or default_action))
+        )
+
+    if "missing" in required_states:
+        state, label = "blocked", "Ação necessária"
+    elif "degraded" in required_states:
+        state, label = "attention", "Requer atenção"
+    elif "unknown" in required_states:
+        state, label = "unverified", "Verificação pendente"
+    else:
+        state, label = "ready", "Pronto para configurar"
+
+    return build_readiness(
+        state=state,
+        label=label,
+        cause=findings[0][0] if findings else None,
+        next_action=findings[0][1] if findings else None,
+        blockers=[action for _cause, action in findings],
+        verification="not_performed" if "unknown" in required_states else "verified",
+        basis="preflight",
+        measure=measure,
+        pending_required=int(counts["pending"]) + int(counts["unverified"]),
+        pending_optional=sum(
+            1 for row in environment if not row["required"] and str(row["state"]) != "ready"
+        ),
+    )
 
 
 @dataclass(frozen=True)
@@ -236,23 +312,11 @@ class SteamGameplayController:
             launcher["configuration"] = self._launch_options.status(selected_id)
         gamemode = self._gamemode()
         environment = self._environment(capabilities, gamemode)
-        ready_count = sum(row["state"] == "ready" for row in environment if row["required"])
-        required_count = sum(row["required"] for row in environment)
-        readiness = round(100 * ready_count / required_count) if required_count else 100
-        missing = sum(row["state"] != "ready" for row in environment)
         return {
             "games": games,
             "selectedGameId": selected_id,
             "environment": environment,
-            "readiness": {
-                "percent": readiness,
-                "title": (
-                    "Pronto para configurar"
-                    if readiness == 100
-                    else f"Pronto com {missing} ajuste(s) recomendado(s)"
-                ),
-                "detail": "Hardware compatível · Perfil seguro disponível",
-            },
+            "readiness": _environment_readiness(environment),
             "hardware": {
                 "deviceLabel": "Deck LCD" if device_kind == "deck-lcd" else "Linux",
                 "tdpMin": 3 if device_kind.startswith("deck-") else None,

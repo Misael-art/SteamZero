@@ -21,6 +21,7 @@ from steamzero.adapters.ps5_runtime import Ps5RuntimeReadiness
 from steamzero.api.contracts import validate
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
+from steamzero.domain.readiness import READINESS_CONTRACT_VERSION
 from steamzero.ports import CheatCandidate, CheatIdentity, ModCandidate, ModIdentity
 
 
@@ -260,7 +261,7 @@ def test_degraded_emulator_never_crashes_snapshot(monkeypatch, tmp_path: Path) -
 
 
 def test_degraded_emulator_blocks_global_readiness(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
-    """G27: degradado presente nunca produz prontidão global de 100%."""
+    """G27: degradado presente nunca alega "pronto"."""
     controller = _controller(monkeypatch, tmp_path)
     _plant_portable_deployment(tmp_path, "eden", "1.0.0", b"#!/bin/sh\necho ok\n")
     _plant_degraded_deployment(tmp_path, "citron", "1.0.0")
@@ -285,8 +286,19 @@ def test_degraded_emulator_blocks_global_readiness(monkeypatch, tmp_path: Path) 
 
     platform = controller.snapshot({"context": {}})["platforms"][0]
     assert platform["state"] == "attention"
-    assert platform["readiness"]["percent"] == 45
-    assert any("Repare emuladores degradados" in item for item in platform["readiness"]["blockers"])
+    # UX-03: 45 era o código da categoria "attention", não uma medição. A
+    # proporção agora nomeia o que mede (requisitos obrigatórios: keys +
+    # firmware atendidos), e o que o emulador degradado realmente barra é a
+    # alegação de prontidão — não o número.
+    readiness = platform["readiness"]
+    assert readiness["contractVersion"] == READINESS_CONTRACT_VERSION
+    assert readiness["state"] == "attention"
+    measure = readiness["measure"]
+    assert measure["dimension"] == "required_requirements"
+    assert (measure["numerator"], measure["denominator"], measure["percent"]) == (2, 2, 100)
+    assert readiness["pendingRequired"] == 0
+    assert readiness["cause"] and readiness["nextAction"]
+    assert any("Repare emuladores degradados" in item for item in readiness["blockers"])
 
 
 def test_snapshot_owns_job_store_in_the_calling_thread(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]

@@ -277,7 +277,12 @@ class TestProbeContract:
         gamemode_row = next(row for row in result["environment"] if row["id"] == "gamemode")
         assert gamemode_row["state"] == "unknown"
         assert gamemode_row["statusLabel"] == "Não foi possível verificar"
-        assert result["readiness"]["percent"] < 100
+        # UX-03: o número passou a ser uma proporção nomeada de requisitos
+        # obrigatórios (Steam atendido / Steam + Gamescope + GameMode).
+        measure = result["readiness"]["measure"]
+        assert measure["dimension"] == "required_requirements"
+        assert (measure["numerator"], measure["denominator"], measure["percent"]) == (1, 3, 33)
+        assert result["readiness"]["state"] == "blocked"
 
     def test_controller_snapshot_ready_row_when_fully_observed(self, tmp_path: Path) -> None:
         root = tmp_path / "Steam"
@@ -294,7 +299,9 @@ class TestProbeContract:
         assert gamemode_row["state"] == "ready"
         assert gamemode_row["statusLabel"] == "Pronto para otimizações"
         assert gamemode_row["detail"] == "Ocioso — nenhum jogo usando GameMode"
-        assert result["readiness"]["percent"] == 67
+        # UX-03: 2 de 3 requisitos obrigatórios atendidos — Gamescope ausente.
+        assert result["readiness"]["measure"]["percent"] == 67
+        assert result["readiness"]["state"] == "blocked"
 
 
 class TestSharedState:

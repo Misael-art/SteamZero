@@ -10,6 +10,8 @@ from typing import Any, Protocol
 from steamzero.core import transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.domain.platforms import PlatformManifest, PlatformRegistry, platform_placeholder
+from steamzero.domain.readiness import not_measured
+from steamzero.domain.readiness import readiness as build_readiness
 
 Which = Callable[[str], str | None]
 Spawn = Callable[[Sequence[str]], int | None]
@@ -103,19 +105,30 @@ class CloudPlatformService:
                     if opener_available
                     else "Abridor local indisponível"
                 ),
-                "readiness": {
-                    "percent": 50 if opener_available else 0,
-                    "title": (
+                "readiness": build_readiness(
+                    state="attention" if opener_available else "unavailable",
+                    label=(
                         "Abertura local disponível"
                         if opener_available
                         else "Abridor local indisponível"
                     ),
-                    "detail": open_detail,
-                    "blockers": [
+                    cause=open_detail,
+                    next_action=(
+                        "Confirme conta, assinatura, região e catálogo no serviço: nada "
+                        "disso foi verificado aqui."
+                        if opener_available
+                        else "Disponibilize um abridor padrão (xdg-open) para abrir o serviço."
+                    ),
+                    blockers=[
                         "Disponibilidade do serviço, conta, assinatura, região, catálogo e "
                         "rede permanecem não verificadas."
                     ],
-                },
+                    # Um serviço de streaming nunca saiu do "não medido": havia
+                    # apenas um booleano (existe abridor?), e 50% dele era pintura.
+                    verification="not_performed",
+                    basis="existence_only" if opener_available else "none",
+                    measure=not_measured(),
+                ),
             }
         )
         for capability in platform["capabilities"]:

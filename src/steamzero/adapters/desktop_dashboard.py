@@ -59,6 +59,8 @@ from steamzero.domain.collections import CollectionManager
 from steamzero.domain.emulation_workspace import build_emulation_workspace
 from steamzero.domain.operation_history import OperationHistory
 from steamzero.domain.playtime import PlaytimeCatalog
+from steamzero.domain.readiness import not_measured
+from steamzero.domain.readiness import readiness as build_readiness
 from steamzero.domain.theme_editor import ThemeEditorManager
 from steamzero.domain.theme_install import ThemeInstaller
 from steamzero.domain.theme_preferences import ThemePreferenceManager
@@ -634,11 +636,15 @@ class DesktopDashboard:
             steam_gameplay = {
                 "games": [],
                 "environment": [],
-                "readiness": {
-                    "percent": 0,
-                    "title": "Gameplay Steam temporariamente indisponível",
-                    "detail": "O restante da central continua disponível.",
-                },
+                "readiness": build_readiness(
+                    state="unavailable",
+                    label="Gameplay Steam temporariamente indisponível",
+                    cause="A seção de gameplay não pôde ser lida nesta atualização.",
+                    next_action="Recarregue a central para tentar novamente.",
+                    verification="not_applicable",
+                    basis="none",
+                    measure=not_measured("missing_data"),
+                ),
                 "truthState": "degraded",
             }
 
