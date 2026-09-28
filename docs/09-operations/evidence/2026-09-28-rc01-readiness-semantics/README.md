@@ -31,6 +31,9 @@ produziu, e os comandos estão impressos nos próprios arquivos.
 | `10-gates.log` | ruff check, ruff format --check, mypy e `make independence boundaries` na mesma árvore, todos verdes |
 | `10-catalogo-status-check.log` | A única falha da integral, saída bruta do gate |
 | `10-atribuicao-digests.log` | Atribuição medida: 33 de 33 itens obsoletos contêm arquivo desta frente; 0 de 33 por obsolescência alheia |
+| `11-passada-documental.md` | A passada documental depois do checkpoint: cartão, 33 digests renovados com o valor impresso pela própria ferramenta, visões regeradas, sessão de WORKLOG acrescentada (e o incidente do `sed` global, corrigido e confessado no arquivo) |
+| `12-isolamento-mainqml.md` | Rodada de processo depois do checkpoint: `Main.qml` (claim exclusivo de outra frente) sai do commit das páginas e vai para commit próprio, com o pino que faltava no fallback do shell — vermelho e verde medidos, conteúdo da árvore provado idêntico |
+| `12-comandos-e-saidas.log` | Saídas cruas da rodada 12: pilha, identidade entre as duas pontas, vermelho/verde do pino, gates focados e os gates de §6 re-rodados na ponta reconstruída |
 | `captures/` | Sete PNGs inspecionados um a um, com `SHA256SUMS.txt` e as dimensões lógicas de cada viewport |
 
 ## O que este lote não prova

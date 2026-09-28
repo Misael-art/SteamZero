@@ -89,7 +89,7 @@
     "docs/06-api/JSON-SCHEMAS.md",
     "docs/09-operations/evidence/2026-09-28-rc01-readiness-semantics"
   ],
-  "scopeDigest": "c5be9199b1b21cbb7feb4fa460def3b3ca12ac42d068303947914f6f345a1dbf",
+  "scopeDigest": "5eec5ba5d84b9036a4940b8076f1c1cfd6c6aede13f4fae8a6ab191452e6e92b",
   "dependsOn": [],
   "knownGaps": [
     "GAP-UI-LIVE-LAUNCHER-ROUTING",
@@ -130,7 +130,8 @@
     "Prontidao 'ready' so sai com basis de evidencia de verificacao (preflight ou gameplay demonstrado); basis de mera existencia de acervo recusa o estado no proprio construtor.",
     "Bloqueios publicados pelo contrato chegam a lista da pagina mesmo quando a bridge os entrega como lista do Qt: um guard em Array.isArray nao vale como defesa.",
     "Todo elemento da dobra de prontidao — cabecalho, glifo, caixa e barra — toma a tinta do estado publicado pelo contrato, nunca da paleta de estado da plataforma.",
-    "A proxima acao nao e reimpressa como bloqueio na mesma dobra: quem lê ve a lista de impedimentos e a acao, nao a mesma frase duas vezes."
+    "A proxima acao nao e reimpressa como bloqueio na mesma dobra: quem lê ve a lista de impedimentos e a acao, nao a mesma frase duas vezes.",
+    "Nenhum produtor de prontidao publica percentual sem medicao — inclusive o que nao pergunta nada a ninguém: o fallback do shell declara nao-inspecao com a razao da ausencia, e nao existe literal de percentual em Main.qml."
   ],
   "evidence": [
     {
@@ -852,9 +853,21 @@
       "result": "failed",
       "reference": "docs/09-operations/evidence/2026-09-28-rc01-readiness-semantics/10-atribuicao-digests.log",
       "command": "2026-09-28 RC-01 (UX-03): `make status-check` reprovou 36 linhas na arvore congelada — 33 itens com scopeDigest obsoleto, `docs/06-api/JSON-SCHEMAS.md` alterado sem item responsavel e ACTIVE-WORK/COVERAGE desatualizados. Atribuida por intersecao de escopo: 33 de 33 reprovados contem ao menos um arquivo desta frente, e 0 de 33 reprovam por obsolescencia anterior; 19 dos 33 por `src/steamzero/adapters/emulation.py`, que esta no escopo de muitos itens. Consequencia registrada: renovar os 33 digests e atribuicao desta frente, nao limpeza alheia — a alternativa foi medida antes de descartada. JSON-SCHEMAS.md passou ao escopo de SZ-UI-DESKTOP-AUDIT, o item normativo desta entrega."
+    },
+    {
+      "kind": "test",
+      "result": "passed",
+      "reference": "tests/unit/test_readiness_producers.py",
+      "command": "2026-09-28 RC-01 (UX-03): pino do fallback do shell, escrito depois de medido que nenhum teste exercitava o literal (`grep -rn 'Ambiente Steam indispon' tests/` = zero arquivos). `test_fallback_do_shell_nao_fabrica_percentual_sem_medicao` exige que `\"percent\"` nao exista em Main.qml e que o bloco fallbackSteamGameplay publique por Readiness.notInspected(. Vermelho com o commit das paginas aplicado e o hunk de Main.qml ainda na base (1 failed em 0,61 s, apontando `\"percent\": 0`); verde com o hunk isolado (1 passed em 0,43 s). suite focada `test_readiness_producers.py + test_readiness_contract.py` = 51 passed em 0,94 s; ruff check e ruff format --check verdes no arquivo alterado."
+    },
+    {
+      "kind": "diagnostic",
+      "result": "recorded",
+      "reference": "docs/09-operations/evidence/2026-09-28-rc01-readiness-semantics/12-isolamento-mainqml.md",
+      "command": "2026-09-28 RC-01 (UX-03): rodada de processo depois do checkpoint 10, registrada sem maquiagem. Ao preparar os commits, `src/steamzero/ui/qml/Main.qml` — claim exclusivo de WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT — entrou misturado no commit das paginas QML, contra AGENTS.md §2 (mudanca em arquivo compartilhado em commit proprio, por ultimo) e contra o precedente da casa (`7cb4e3b7`). Com a pilha ainda local e sem PR, reconstruida por cherry-pick em cinco commits: 905b0af0, 9891fb40, 4c4d2b11 (paginas, sem Main.qml), a3304baa (Main.qml + o pino novo) e c65f6ebc (documental). Prova de que nada do conteudo mudou: `git diff --stat ed0b3601 c65f6ebc` = 18 insercoes em `tests/unit/test_readiness_producers.py` e mais nada. Por isso a integral NAO foi re-rodada — a do checkpoint 10 ja exercitava exatamente este conteudo de arvore, e repetir seria execucao sem ganho de informacao; a integral volta a valer como prova no SHA publicado, onde o CI a executa do zero. O que nao estava coberto antes era o literal do fallback, e passou a estar."
     }
   ],
-  "nextAction": "2026-09-28, 5a fatia de RC-01 (UX-03) entregue na branch codex/rc01-readiness-semantics-2026-09-28, base 5d95034b (ponta do PR 242), como quinto elo da pilha 239 -> 240 -> 241 -> 242. O que saiu do rotulo e entrou no contrato: src/steamzero/domain/readiness.py define o contrato v2 (estado, label, causa, proxima acao separados de uma proporcao mensuravel com dimension/numerator/denominator/percent nullable/absentReason, mais verification e basis), e READY_BASES recusa 'ready' sem evidencia de verificacao; nove produtores foram convertidos; o numero so aparece com medicao real (denominador zero e dado ausente dao traco, nunca 100 nem 0); Emulation/SteamGameplay/EditorialLibrary/Main leem do modulo compartilhado src/steamzero/ui/qml/readiness.js, sem regra de tom local. Restam, nesta ordem: (1) CI terminal no SHA final do lote e leitura do wheel steamzero-wheel-<sha> para fechar GAP-UI-QML-JS-NAO-PROVADO-DENTRO-DO-WHEEL-DO-CI — a ausencia de .js no wheel de 5704c813 e anterior ao arquivo e nao prova nada; (2) integracao: merge com o operador, na ordem 239, 240, 241, 242 e depois este, sem supor merge nenhum; (3) prova fisica na release instalada, que continua fora de escopo desta frente. O proximo recorte medido depois deste e UX-04 (armazenamento em unidades compreensiveis, valores exatos no contrato, ausencia distinta de zero).",
+  "nextAction": "2026-09-28, 5a fatia de RC-01 (UX-03) commitada nesta branch (base 5d95034b, ponta do PR 242) em cinco commits, com o arquivo compartilhado isolado: 905b0af0 contrato v2, 9891fb40 os nove produtores, 4c4d2b11 as paginas QML, a3304baa Main.qml em commit proprio com o pino do fallback, c65f6ebc a passada documental. O que saiu do rotulo e entrou no contrato: src/steamzero/domain/readiness.py define o contrato v2 (estado, label, causa, proxima acao separados de uma proporcao mensuravel com dimension/numerator/denominator/percent nullable/absentReason, mais verification e basis), e READY_BASES recusa 'ready' sem evidencia de verificacao; o numero so aparece com medicao real (denominador zero e dado ausente dao traco, nunca 100 nem 0); Emulation/SteamGameplay/EditorialLibrary/Main leem do modulo compartilhado src/steamzero/ui/qml/readiness.js, sem regra de tom local. Checkpoint 10 com arvore congelada: suíte integral unica = 1 failed, 6483 passed, 47 skipped em 2071,39 s; a unica falha e o gate de catalogo, com causa medida (33 digests envelhecidos por esta frente, 0 por obsolescencia alheia) e resolvida na passada documental; ruff check, ruff format --check, mypy e independence verdes na mesma arvore. Restam, nesta ordem: (1) push desta branch e PR como quinto elo da pilha 239 -> 240 -> 241 -> 242, sem squash e sem rebase; (2) CI terminal no SHA final e leitura do artefato steamzero-wheel-<sha> para fechar GAP-UI-QML-JS-NAO-PROVADO-DENTRO-DO-WHEEL-DO-CI — a ausencia de .js no wheel de 5704c813 e anterior ao arquivo e nao prova nada; (3) integracao: merge com o operador, na ordem 239, 240, 241, 242 e depois este, sem supor merge nenhum; (4) prova fisica na release instalada, que continua fora de escopo desta frente. O proximo recorte medido depois deste e UX-04 (armazenamento em unidades compreensiveis, valores exatos no contrato, ausencia distinta de zero).",
   "activeWorkstreams": [
     "WS-2026-09-RC01-CENTRAL-LOADING",
     "WS-2026-09-RC01-READINESS-FOCUS",

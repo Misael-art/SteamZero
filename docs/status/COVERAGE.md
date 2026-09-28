@@ -96,7 +96,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-THEME-IMPORT-RETROFE | 10 | 12 | 9 | hw |  |
 | SZ-THEME-IMPORT-SURFACE | 4 | 10 | 7 | unit |  |
 | SZ-THEME-STUDIO | 88 | 21 | 15 | hw |  |
-| SZ-UI-DESKTOP-AUDIT | 595 | 120 | 75 | dev |  |
+| SZ-UI-DESKTOP-AUDIT | 597 | 122 | 76 | dev |  |
 | SZ-UI-PACKAGED-ICONS | 57 | 4 | 2 | unit |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 
