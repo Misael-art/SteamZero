@@ -1,0 +1,173 @@
+F.                                                                       [100%]
+=================================== FAILURES ===================================
+________ test_a_resposta_tardia_do_importador_retrofe_nao_reabre_estado ________
+
+    @pytest.mark.visual
+    def test_a_resposta_tardia_do_importador_retrofe_nao_reabre_estado() -> None:
+        if RUNNER is None:
+            pytest.fail(
+                "QML-VISUAL-ENVIRONMENT-001: qmltestrunner ausente. A resposta tardia do "
+                "importador não pode ser verificada sem runtime QML; declarar verde sem "
+                "renderizar é o defeito que a RC-01 combate."
+            )
+        bridge, state = _start_bridge()
+        try:
+            completed = _run_qmltestrunner(bridge, "jornada")
+        finally:
+            bridge.shutdown()
+            bridge.server_close()
+            _gravar_eventos_da_ponte(state, "jornada")
+    
+        saida = completed.stdout + completed.stderr
+        observadas = _observacoes(saida)
+    
+        assert state.unauthorized == 0, (
+            f"a ponte devolveu 401 por token {state.unauthorized}x: a jornada não passou "
+            "pela rota autenticada de `Main.qml`"
+        )
+        assert state.status_calls >= 1, "a ponte nunca serviu /status"
+    
+        inspects = [evento for evento in state.eventos if evento[1].endswith("/inspect")]
+        applies = [evento for evento in state.eventos if evento[1].endswith("/apply")]
+        assert len(inspects) == ESPERADO_INSPECT, (
+            f"a rota de examine foi exercitada {len(inspects)}x, esperado "
+            f"{ESPERADO_INSPECT} (uma por cena que examina): {inspects}"
+        )
+        assert len(applies) == ESPERADO_APPLY, (
+            f"a rota de apply foi exercitada {len(applies)}x, esperado {ESPERADO_APPLY} "
+            f"(jornada e cena tardia): {applies}"
+        )
+        for testemunho in TESTEMUNHOS:
+            assert testemunho in observadas, (
+                f"a cena nunca publicou o testemunho {testemunho!r}; sem ele a asserção "
+                f"correspondente não foi medida. Lidos: {sorted(observadas)}"
+            )
+    
+        #: As duas recusas, lidas no log em vez de narração: cada cena registra o estado da
+        #: bandeira no instante imediatamente depois do clique recusado. É aqui que o
+        #: rollback errado fica visível para quem audita o artefato, sem depender de contar
+        #: falhas do `qmltestrunner`.
+        for testemunho, esperado in RECUSAS.items():
+            lido = observadas[testemunho]
+            assert lido["pendentes"] != "0", (
+                f"{testemunho}: não havia nenhum pedido em voo no momento da recusa "
+                f"(pendentes={lido['pendentes']}); sem voo não houve deduplicação, e a "
+                "cena exercisei outra coisa"
+            )
+            campo, valor = next(iter(esperado.items()))
+            assert lido[campo] == valor, (
+                f"{testemunho}: a bandeira no instante da recusa vale {lido[campo]!r}, "
+                f"esperado {valor!r} — {RECUSAS_DOC[testemunho]}"
+            )
+    
+        #: Não-vacuidade por origem: a segunda tentativa de cada cena de recusa foi
+        #: absorvida no cliente, então cada uma dessas origens chega UMA vez à ponte. Sem
+        #: esta leitura, "a recusa não travou nada" seria satisfeito por uma ponte que
+        #: respondeu duas vezes e por um `Main.qml` que simplesmente não deduplica.
+        contadas = [origem for _metodo, rota, origem in state.eventos if rota.endswith("/inspect")]
+        for alavanca, sufixo in RECUSAS_DE_PONTE.items():
+            origem = f"{ORIGENS[alavanca]['fonte']}-{sufixo}"
+            vezes = contadas.count(origem)
+            assert vezes == 1, (
+                f"a origem {origem!r} da cena de recusa apareceu {vezes}x em /inspect, "
+                "esperado 1: ou a repetição nunca foi clicada, ou ela chegou à ponte — e "
+                "nesse caso não houve recusa local nenhuma"
+            )
+    
+        #: A porta de teclado, medida do lado da ponte: uma tecla real no campo de origem
+        #: publicou a origem digitada e ela saiu UMA única vez. Sem esta leitura, a cena 07
+        #: poderia passar por um dispatch disparado por outra cena da suíte.
+        assert contadas.count(PORTA_TECLADO) == 1, (
+            f"a origem {PORTA_TECLADO!r} do Enter apareceu "
+            f"{contadas.count(PORTA_TECLADO)}x em /inspect, esperado 1 — o teclado não é "
+            "uma porta de exame no produto, e as cenas de recusa perdem a única entrada "
+            "dirigível por evento"
+        )
+    
+        #: Contrafactual da re-listagem: num apply cuja resposta chegou com a superfície
+        #: ABERTA (a jornada do `test_01`), o `GET /theme/list` TEM de aparecer depois do
+        #: `POST`. Sem esta leitura, "nenhum re-lista depois do apply tardio" poderia ser
+        #: satisfeito por uma ponte que nunca listou nada.
+        posicoes_list = [
+            indexo for indexo, evento in enumerate(state.eventos) if evento[1] == "/theme/list"
+        ]
+        posicoes_apply = [
+            indexo for indexo, evento in enumerate(state.eventos) if evento[1].endswith("/apply")
+        ]
+        assert posicoes_list, (
+            "nenhum GET /theme/list na ponte: o painel nem lista temas ao abrir "
+            "(`ThemeEditorPanel.qml:569`), então o produto não foi exercitado"
+        )
+        assert any(lista > aplica for aplica in posicoes_apply for lista in posicoes_list), (
+            "nenhum GET /theme/list Depois de nenhum POST de apply: o mecanismo de "
+            f"re-listagem não disparou em cena alguma (eventos={state.eventos}) — a "
+            "asserção seguinte seria uma alegação sobre ausência de medição"
+        )
+    
+        #: O contrato: depois do ÚLTIMO apply (cena `test_04`, resposta tardia), nenhum
+        #: re-lista. É o vermelho desta fatia.
+        ultimo = posicoes_apply[-1]
+        tardios = [evento for evento in state.eventos[ultimo + 1 :] if evento[1] == "/theme/list"]
+        assert not tardios, (
+            f"a resposta tardia do apply re-listou temas depois de a superfície fechar "
+            f"({len(tardios)} GET /theme_list após o último POST, "
+            f"posição {ultimo} de {len(state.eventos)}): {state.eventos[ultimo:]}"
+        )
+    
+>       assert completed.returncode == 0, (
+            f"a suíte reprovou (inspect={len(inspects)}, apply={len(applies)}, "
+            f"status={state.status_calls}):\n{completed.stdout}\n{completed.stderr}"
+        )
+E       AssertionError: a suíte reprovou (inspect=8, apply=2, status=9):
+E         ********* Start testing of qmltestrunner *********
+E         Config: Using QtTest library 6.11.2, Qt 6.11.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 16.2.1 20260810), biglinux unknown
+E         PASS   : qmltestrunner::ShellRetrofeImportLateResponse::initTestCase()
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_01_a_rota_real_do_shell_examina_e_publica_sem_ativar() debug|ESTABILIZOU 'aberto' em 60 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_01_a_rota_real_do_shell_examina_e_publica_sem_ativar() debug|ESTABILIZOU 'layouts-publicados' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=2
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_01_a_rota_real_do_shell_examina_e_publica_sem_ativar() debug|OBS|jornada-publicada|dialogo=aberto|pendentes=0|ocupado=0|layouts=2|indice=0|aviso=71|erro=0|origem=33
+E         PASS   : qmltestrunner::ShellRetrofeImportLateResponse::test_01_a_rota_real_do_shell_examina_e_publica_sem_ativar()
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia() debug|OBS|antes-do-escape|dialogo=aberto|pendentes=1|ocupado=1|layouts=0|indice=-1|aviso=0|erro=0|origem=32
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia() debug|OBS|depois-da-resposta-tardia|dialogo=fechado|pendentes=0|ocupado=0|layouts=0|indice=-1|aviso=0|erro=0|origem=0
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+E         PASS   : qmltestrunner::ShellRetrofeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia()
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() debug|OBS|depois-do-mais-novo|dialogo=aberto|pendentes=1|ocupado=0|layouts=1|indice=0|aviso=66|erro=0|origem=36
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() debug|OBS|depois-do-anterior-tardio|dialogo=aberto|pendentes=0|ocupado=0|layouts=1|indice=0|aviso=66|erro=0|origem=36
+E         PASS   : qmltestrunner::ShellRetrofeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior()
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_04_publicar_em_voo_e_fechar_nao_anuncia_sucesso_tardio() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_04_publicar_em_voo_e_fechar_nao_anuncia_sucesso_tardio() debug|OBS|depois-do-apply-tardio|dialogo=fechado|pendentes=0|ocupado=0|layouts=0|indice=-1|aviso=0|erro=0|origem=0
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_04_publicar_em_voo_e_fechar_nao_anuncia_sucesso_tardio() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+E         PASS   : qmltestrunner::ShellRetrofeImportLateResponse::test_04_publicar_em_voo_e_fechar_nao_anuncia_sucesso_tardio()
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_05_reabrir_mostra_o_estado_e_nao_o_ultimo_texto_editado() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_05_reabrir_mostra_o_estado_e_nao_o_ultimo_texto_editado() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+E         PASS   : qmltestrunner::ShellRetrofeImportLateResponse::test_05_reabrir_mostra_o_estado_e_nao_o_ultimo_texto_editado()
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_06_escrever_no_estado_alcanca_o_campo_com_o_dialogo_aberto() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_06_escrever_no_estado_alcanca_o_campo_com_o_dialogo_aberto() debug|OBS|campo-espelho-do-estado|dialogo=aberto|pendentes=0|ocupado=0|layouts=0|indice=-1|aviso=0|erro=0|origem=33
+E         PASS   : qmltestrunner::ShellRetrofeImportLateResponse::test_06_escrever_no_estado_alcanca_o_campo_com_o_dialogo_aberto()
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_07_a_tecla_enter_despacha_o_exame_pela_rota_real() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_07_a_tecla_enter_despacha_o_exame_pela_rota_real() debug|OBS|exame-por-teclado|dialogo=aberto|pendentes=1|ocupado=1|layouts=0|indice=-1|aviso=0|erro=0|origem=33
+E         PASS   : qmltestrunner::ShellRetrofeImportLateResponse::test_07_a_tecla_enter_despacha_o_exame_pela_rota_real()
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_08_a_repeticao_recusada_com_pedido_corrente_nao_desarma_a_bandeira() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_08_a_repeticao_recusada_com_pedido_corrente_nao_desarma_a_bandeira() debug|OBS|pedido-recusado-com-pedido-corrente|dialogo=aberto|pendentes=1|ocupado=1|layouts=0|indice=-1|aviso=0|erro=0|origem=34
+E         FAIL!  : qmltestrunner::ShellRetrofeImportLateResponse::test_08_a_repeticao_recusada_com_pedido_corrente_nao_desarma_a_bandeira() 'o resultado do pedido CORRENTE foi descartado pela geração do Enter recusado: layouts=0, esperado 3' returned FALSE. ()
+E            Loc: [/home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_shell_retrofe_import_late_response.qml(922)]
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_09_a_repeticao_recusada_com_pedido_revogado_nao_trava_o_dialogo() debug|ESTABILIZOU 'aberto' em 40 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_09_a_repeticao_recusada_com_pedido_revogado_nao_trava_o_dialogo() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+E         QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_09_a_repeticao_recusada_com_pedido_revogado_nao_trava_o_dialogo() debug|OBS|pedido-recusado-com-pedido-revogado|dialogo=aberto|pendentes=1|ocupado=0|layouts=0|indice=-1|aviso=0|erro=0|origem=37
+E         PASS   : qmltestrunner::ShellRetrofeImportLateResponse::test_09_a_repeticao_recusada_com_pedido_revogado_nao_trava_o_dialogo()
+E         PASS   : qmltestrunner::ShellRetrofeImportLateResponse::cleanupTestCase()
+E         Totals: 10 passed, 1 failed, 0 skipped, 0 blacklisted, 10208ms
+E         ********* Finished testing of qmltestrunner *********
+E         
+E         # log desta execucao: /home/misael/Projects/Steam Zero/Canonical/2026-09-21/build/qml-logs/shell-retrofe-late-jornada.txt
+E         
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/usr/lib/qt6/bin/qmltestrunner', '-input', '/home/misael/Projects/Steam Zero/Canonical/2026-09...cao: /home/misael/Projects/Steam Zero/Canonical/2026-09-21/build/qml-logs/shell-retrofe-late-jornada.txt\n", stderr='').returncode
+
+tests/integration/test_ui_shell_retrofe_import_late_response.py:992: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/test_ui_shell_retrofe_import_late_response.py::test_a_resposta_tardia_do_importador_retrofe_nao_reabre_estado
+1 failed, 1 passed, 7 deselected in 25.26s

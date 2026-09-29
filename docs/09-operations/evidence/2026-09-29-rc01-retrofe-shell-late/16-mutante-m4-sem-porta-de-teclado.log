@@ -1,0 +1,43 @@
+F.                                                                       [100%]
+=================================== FAILURES ===================================
+________ test_a_resposta_tardia_do_importador_retrofe_nao_reabre_estado ________
+
+    @pytest.mark.visual
+    def test_a_resposta_tardia_do_importador_retrofe_nao_reabre_estado() -> None:
+        if RUNNER is None:
+            pytest.fail(
+                "QML-VISUAL-ENVIRONMENT-001: qmltestrunner ausente. A resposta tardia do "
+                "importador não pode ser verificada sem runtime QML; declarar verde sem "
+                "renderizar é o defeito que a RC-01 combate."
+            )
+        bridge, state = _start_bridge()
+        try:
+            completed = _run_qmltestrunner(bridge, "jornada")
+        finally:
+            bridge.shutdown()
+            bridge.server_close()
+            _gravar_eventos_da_ponte(state, "jornada")
+    
+        saida = completed.stdout + completed.stderr
+        observadas = _observacoes(saida)
+    
+        assert state.unauthorized == 0, (
+            f"a ponte devolveu 401 por token {state.unauthorized}x: a jornada não passou "
+            "pela rota autenticada de `Main.qml`"
+        )
+        assert state.status_calls >= 1, "a ponte nunca serviu /status"
+    
+        inspects = [evento for evento in state.eventos if evento[1].endswith("/inspect")]
+        applies = [evento for evento in state.eventos if evento[1].endswith("/apply")]
+>       assert len(inspects) == ESPERADO_INSPECT, (
+            f"a rota de examine foi exercitada {len(inspects)}x, esperado "
+            f"{ESPERADO_INSPECT} (uma por cena que examina): {inspects}"
+        )
+E       AssertionError: a rota de examine foi exercitada 7x, esperado 8 (uma por cena que examina): [('POST', '/theme/import/retrofe/inspect', '/media/retrofe/cena-curta-jornada'), ('POST', '/theme/import/retrofe/inspect', '/media/retrofe/cena-lenta-tardia'), ('POST', '/theme/import/retrofe/inspect', '/media/retrofe/cena-lenta-anterior'), ('POST', '/theme/import/retrofe/inspect', '/media/retrofe/cena-rapida-mais-novo'), ('POST', '/theme/import/retrofe/inspect', '/media/retrofe/cena-curta-aplicar-tardio'), ('POST', '/theme/import/retrofe/inspect', '/media/retrofe/cena-lenta-corrente'), ('POST', '/theme/import/retrofe/inspect', '/media/retrofe/cena-revogada-revogada')]
+E       assert 7 == 8
+E        +  where 7 = len([('POST', '/theme/import/retrofe/inspect', '/media/retrofe/cena-curta-jornada'), ('POST', '/theme/import/retrofe/inspe...rofe/cena-curta-aplicar-tardio'), ('POST', '/theme/import/retrofe/inspect', '/media/retrofe/cena-lenta-corrente'), ...])
+
+tests/integration/test_ui_shell_retrofe_import_late_response.py:907: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/test_ui_shell_retrofe_import_late_response.py::test_a_resposta_tardia_do_importador_retrofe_nao_reabre_estado
+1 failed, 1 passed, 7 deselected in 31.04s

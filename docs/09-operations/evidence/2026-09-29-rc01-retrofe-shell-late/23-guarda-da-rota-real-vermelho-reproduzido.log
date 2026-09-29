@@ -1,0 +1,36 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+____________ test_o_harness_nao_pode_stubear_a_ponte_nem_a_callback ____________
+
+    def test_o_harness_nao_pode_stubear_a_ponte_nem_a_callback() -> None:
+        """O shell fala por XHR; stub de `requestAction` provava o stub, não o produto.
+    
+        É exatamente a diferença desta fatia para as três anteriores.
+        """
+        fonte = _harness_source()
+        for proibido in ("function requestAction", "function request(", "onClicked:"):
+            assert proibido not in fonte, (
+                f"o harness contém {proibido!r}: no shell a ação sai por XMLHttpRequest "
+                "pela rota publicada"
+            )
+        #: Responder a um pedido chamando a callback à mão recriaria a sincronia que
+        #: tornou as fatias anteriores incapazes de ver resposta tardia.
+>       assert "inspectRetrofeImport(" not in fonte, (
+            "o harness chama o importador direto: o pedido tem de sair pelo clique real"
+        )
+E       AssertionError: o harness chama o importador direto: o pedido tem de sair pelo clique real
+E       assert 'inspectRetrofeImport(' not in '// SPDX-Lic...\n    }\n}\n'
+E         
+E         'inspectRetrofeImport(' is contained here:
+E           ess.panel.inspectRetrofeImport()
+E                       observar("pedido-recusado-com-pedido-corrente")
+E                       verify(shell.pendingRequests >= 1,
+E                              "o POST corrente já tinha respondido antes da repetição (pendentes="
+E                              + shell.pendingRequests + "): sem voo não há recusa")...
+E         
+E         ...Full output truncated (80 lines hidden), use '-vv' to show
+
+tests/integration/test_ui_shell_retrofe_import_late_response.py:730: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/test_ui_shell_retrofe_import_late_response.py::test_o_harness_nao_pode_stubear_a_ponte_nem_a_callback
+1 failed, 8 deselected in 0.40s

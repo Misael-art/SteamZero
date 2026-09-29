@@ -1,0 +1,48 @@
+# ponte da resposta tardia — cena `ordem`
+# status_calls=9 unauthorized=0
+
+--- atendidos (ordem em que a ponte recebeu; 0-indexado) ---
+00 GET  /status                          
+01 POST /theme/import/retrofe/inspect    /media/retrofe/cena-curta-jornada
+02 POST /theme/import/retrofe/apply      /media/retrofe/cena-curta-jornada
+03 GET  /theme/list                      
+04 GET  /status                          
+05 POST /theme/import/retrofe/inspect    /media/retrofe/cena-lenta-tardia
+06 GET  /status                          
+07 POST /theme/import/retrofe/inspect    /media/retrofe/cena-lenta-anterior
+08 POST /theme/import/retrofe/inspect    /media/retrofe/cena-rapida-mais-novo
+09 GET  /status                          
+10 POST /theme/import/retrofe/inspect    /media/retrofe/cena-curta-aplicar-tardio
+11 POST /theme/import/retrofe/apply      /media/retrofe/cena-curta-aplicar-tardio
+12 GET  /status                          
+13 GET  /status                          
+14 GET  /status                          
+15 POST /theme/import/retrofe/inspect    /media/retrofe/cena-curta-teclado
+16 GET  /status                          
+17 POST /theme/import/retrofe/inspect    /media/retrofe/cena-lenta-corrente
+18 GET  /status                          
+19 POST /theme/import/retrofe/inspect    /media/retrofe/cena-revogada-revogada
+
+--- chegadas das origens em POST ---
+00 /media/retrofe/cena-curta-jornada
+01 /media/retrofe/cena-curta-jornada
+02 /media/retrofe/cena-lenta-tardia
+03 /media/retrofe/cena-lenta-anterior
+04 /media/retrofe/cena-rapida-mais-novo
+05 /media/retrofe/cena-curta-aplicar-tardio
+06 /media/retrofe/cena-curta-aplicar-tardio
+07 /media/retrofe/cena-curta-teclado
+08 /media/retrofe/cena-lenta-corrente
+09 /media/retrofe/cena-revogada-revogada
+
+--- saídas das origens em POST (depois do atraso) ---
+00 /media/retrofe/cena-curta-jornada
+01 /media/retrofe/cena-curta-jornada
+02 /media/retrofe/cena-lenta-tardia
+03 /media/retrofe/cena-rapida-mais-novo
+04 /media/retrofe/cena-lenta-anterior
+05 /media/retrofe/cena-curta-aplicar-tardio
+06 /media/retrofe/cena-curta-aplicar-tardio
+07 /media/retrofe/cena-curta-teclado
+08 /media/retrofe/cena-lenta-corrente
+09 /media/retrofe/cena-revogada-revogada

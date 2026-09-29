@@ -1,0 +1,46 @@
+# comando: /usr/lib/qt6/bin/qmltestrunner -input /home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_shell_retrofe_import_late_response.qml
+# returncode: 0
+
+--- stdout ---
+********* Start testing of qmltestrunner *********
+Config: Using QtTest library 6.11.2, Qt 6.11.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 16.2.1 20260810), biglinux unknown
+PASS   : qmltestrunner::ShellRetrofeImportLateResponse::initTestCase()
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_01_a_rota_real_do_shell_examina_e_publica_sem_ativar() debug|ESTABILIZOU 'aberto' em 60 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_01_a_rota_real_do_shell_examina_e_publica_sem_ativar() debug|ESTABILIZOU 'layouts-publicados' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=2
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_01_a_rota_real_do_shell_examina_e_publica_sem_ativar() debug|OBS|jornada-publicada|dialogo=aberto|pendentes=0|ocupado=0|layouts=2|indice=0|aviso=71|erro=0|origem=33
+PASS   : qmltestrunner::ShellRetrofeImportLateResponse::test_01_a_rota_real_do_shell_examina_e_publica_sem_ativar()
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia() debug|OBS|antes-do-escape|dialogo=aberto|pendentes=1|ocupado=1|layouts=0|indice=-1|aviso=0|erro=0|origem=32
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia() debug|OBS|depois-da-resposta-tardia|dialogo=fechado|pendentes=0|ocupado=0|layouts=0|indice=-1|aviso=0|erro=0|origem=0
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+PASS   : qmltestrunner::ShellRetrofeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia()
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() debug|OBS|depois-do-mais-novo|dialogo=aberto|pendentes=1|ocupado=0|layouts=1|indice=0|aviso=66|erro=0|origem=36
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() debug|OBS|depois-do-anterior-tardio|dialogo=aberto|pendentes=0|ocupado=0|layouts=1|indice=0|aviso=66|erro=0|origem=36
+PASS   : qmltestrunner::ShellRetrofeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior()
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_04_publicar_em_voo_e_fechar_nao_anuncia_sucesso_tardio() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_04_publicar_em_voo_e_fechar_nao_anuncia_sucesso_tardio() debug|OBS|depois-do-apply-tardio|dialogo=fechado|pendentes=0|ocupado=0|layouts=0|indice=-1|aviso=0|erro=0|origem=0
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_04_publicar_em_voo_e_fechar_nao_anuncia_sucesso_tardio() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+PASS   : qmltestrunner::ShellRetrofeImportLateResponse::test_04_publicar_em_voo_e_fechar_nao_anuncia_sucesso_tardio()
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_05_reabrir_mostra_o_estado_e_nao_o_ultimo_texto_editado() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_05_reabrir_mostra_o_estado_e_nao_o_ultimo_texto_editado() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+PASS   : qmltestrunner::ShellRetrofeImportLateResponse::test_05_reabrir_mostra_o_estado_e_nao_o_ultimo_texto_editado()
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_06_escrever_no_estado_alcanca_o_campo_com_o_dialogo_aberto() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_06_escrever_no_estado_alcanca_o_campo_com_o_dialogo_aberto() debug|OBS|campo-espelho-do-estado|dialogo=aberto|pendentes=0|ocupado=0|layouts=0|indice=-1|aviso=0|erro=0|origem=33
+PASS   : qmltestrunner::ShellRetrofeImportLateResponse::test_06_escrever_no_estado_alcanca_o_campo_com_o_dialogo_aberto()
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_07_a_tecla_enter_despacha_o_exame_pela_rota_real() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_07_a_tecla_enter_despacha_o_exame_pela_rota_real() debug|OBS|exame-por-teclado|dialogo=aberto|pendentes=1|ocupado=1|layouts=0|indice=-1|aviso=0|erro=0|origem=33
+PASS   : qmltestrunner::ShellRetrofeImportLateResponse::test_07_a_tecla_enter_despacha_o_exame_pela_rota_real()
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_08_a_repeticao_recusada_com_pedido_corrente_nao_desarma_a_bandeira() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_08_a_repeticao_recusada_com_pedido_corrente_nao_desarma_a_bandeira() debug|OBS|pedido-recusado-com-pedido-corrente|dialogo=aberto|pendentes=1|ocupado=1|layouts=0|indice=-1|aviso=0|erro=0|origem=34
+PASS   : qmltestrunner::ShellRetrofeImportLateResponse::test_08_a_repeticao_recusada_com_pedido_corrente_nao_desarma_a_bandeira()
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_09_a_repeticao_recusada_com_pedido_revogado_nao_trava_o_dialogo() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_09_a_repeticao_recusada_com_pedido_revogado_nao_trava_o_dialogo() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_09_a_repeticao_recusada_com_pedido_revogado_nao_trava_o_dialogo() debug|OBS|pedido-recusado-com-pedido-revogado|dialogo=aberto|pendentes=1|ocupado=0|layouts=0|indice=-1|aviso=0|erro=0|origem=37
+PASS   : qmltestrunner::ShellRetrofeImportLateResponse::test_09_a_repeticao_recusada_com_pedido_revogado_nao_trava_o_dialogo()
+PASS   : qmltestrunner::ShellRetrofeImportLateResponse::cleanupTestCase()
+Totals: 11 passed, 0 failed, 0 skipped, 0 blacklisted, 10197ms
+********* Finished testing of qmltestrunner *********
+
+--- stderr ---

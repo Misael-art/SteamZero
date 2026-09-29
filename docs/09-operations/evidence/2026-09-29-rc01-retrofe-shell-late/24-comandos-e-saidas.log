@@ -1,0 +1,473 @@
+CHECKPOINT — RetroFE na shell: gates rápidos + suíte integral única + gate visual na árvore congelada
+COMANDO-MAE: bash 24-gates-integrais.sh /home/misael/steamzero-retrofe-tmp/24-comandos-e-saidas.log
+INICIO 2026-09-29T11:26:05-03:00
+cwd=/home/misael/Projects/Steam Zero/Canonical/2026-09-21
+python=Python 3.14.7
+
+===== PASSO 1 :: .venv/bin/ruff format --check src tests tools
+INICIO 2026-09-29T11:26:05-03:00
+--- identidade 2026-09-29T11:26:05-03:00 ---
+branch=codex/rc01-retrofe-shell-late-response-2026-09-29
+HEAD=af6a5c6ed8523c04030d25b1d391e885a3b3b48e
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+ M docs/ACTIVE-WORK.md
+ M docs/STATUS.md
+ M docs/status/COVERAGE.md
+ M docs/status/items/theme-engine.json
+ M docs/status/items/theme-import-retrofe.json
+ M docs/status/items/theme-import-surface.json
+ M docs/status/items/theme-studio.json
+ M docs/status/items/ui-desktop-audit.json
+ M src/steamzero/ui/qml/ThemeEditorPanel.qml
+ M tests/qml/check_shell_esde_import_dialog_journey.qml
+?? docs/status/workstreams/rc01-retrofe-shell-late-2026-09-29.json
+?? tests/integration/test_ui_shell_retrofe_import_late_response.py
+?? tests/qml/check_shell_retrofe_import_late_response.qml
+sha256 src+tests+tools=f185438a112bc0b8
+sha256 produto=sha256sum src/steamzero/ui/qml/ThemeEditorPanel.qml -> bddd117ac33fcbcf
+sha256 harness=sha256sum tests/qml/check_shell_retrofe_import_late_response.qml -> bc9d76d646685e20
+sha256 gate=sha256sum tests/integration/test_ui_shell_retrofe_import_late_response.py -> 0cb7744eff344587
+679 files already formatted
+FIM 2026-09-29T11:26:05-03:00 rc=0
+--- identidade 2026-09-29T11:26:05-03:00 ---
+branch=codex/rc01-retrofe-shell-late-response-2026-09-29
+HEAD=af6a5c6ed8523c04030d25b1d391e885a3b3b48e
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+ M docs/ACTIVE-WORK.md
+ M docs/STATUS.md
+ M docs/status/COVERAGE.md
+ M docs/status/items/theme-engine.json
+ M docs/status/items/theme-import-retrofe.json
+ M docs/status/items/theme-import-surface.json
+ M docs/status/items/theme-studio.json
+ M docs/status/items/ui-desktop-audit.json
+ M src/steamzero/ui/qml/ThemeEditorPanel.qml
+ M tests/qml/check_shell_esde_import_dialog_journey.qml
+?? docs/status/workstreams/rc01-retrofe-shell-late-2026-09-29.json
+?? tests/integration/test_ui_shell_retrofe_import_late_response.py
+?? tests/qml/check_shell_retrofe_import_late_response.qml
+sha256 src+tests+tools=f185438a112bc0b8
+sha256 produto=sha256sum src/steamzero/ui/qml/ThemeEditorPanel.qml -> bddd117ac33fcbcf
+sha256 harness=sha256sum tests/qml/check_shell_retrofe_import_late_response.qml -> bc9d76d646685e20
+sha256 gate=sha256sum tests/integration/test_ui_shell_retrofe_import_late_response.py -> 0cb7744eff344587
+
+===== PASSO 2 :: .venv/bin/ruff check src tests tools
+INICIO 2026-09-29T11:26:05-03:00
+--- identidade 2026-09-29T11:26:05-03:00 ---
+branch=codex/rc01-retrofe-shell-late-response-2026-09-29
+HEAD=af6a5c6ed8523c04030d25b1d391e885a3b3b48e
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+ M docs/ACTIVE-WORK.md
+ M docs/STATUS.md
+ M docs/status/COVERAGE.md
+ M docs/status/items/theme-engine.json
+ M docs/status/items/theme-import-retrofe.json
+ M docs/status/items/theme-import-surface.json
+ M docs/status/items/theme-studio.json
+ M docs/status/items/ui-desktop-audit.json
+ M src/steamzero/ui/qml/ThemeEditorPanel.qml
+ M tests/qml/check_shell_esde_import_dialog_journey.qml
+?? docs/status/workstreams/rc01-retrofe-shell-late-2026-09-29.json
+?? tests/integration/test_ui_shell_retrofe_import_late_response.py
+?? tests/qml/check_shell_retrofe_import_late_response.qml
+sha256 src+tests+tools=f185438a112bc0b8
+sha256 produto=sha256sum src/steamzero/ui/qml/ThemeEditorPanel.qml -> bddd117ac33fcbcf
+sha256 harness=sha256sum tests/qml/check_shell_retrofe_import_late_response.qml -> bc9d76d646685e20
+sha256 gate=sha256sum tests/integration/test_ui_shell_retrofe_import_late_response.py -> 0cb7744eff344587
+All checks passed!
+FIM 2026-09-29T11:26:05-03:00 rc=0
+--- identidade 2026-09-29T11:26:05-03:00 ---
+branch=codex/rc01-retrofe-shell-late-response-2026-09-29
+HEAD=af6a5c6ed8523c04030d25b1d391e885a3b3b48e
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+ M docs/ACTIVE-WORK.md
+ M docs/STATUS.md
+ M docs/status/COVERAGE.md
+ M docs/status/items/theme-engine.json
+ M docs/status/items/theme-import-retrofe.json
+ M docs/status/items/theme-import-surface.json
+ M docs/status/items/theme-studio.json
+ M docs/status/items/ui-desktop-audit.json
+ M src/steamzero/ui/qml/ThemeEditorPanel.qml
+ M tests/qml/check_shell_esde_import_dialog_journey.qml
+?? docs/status/workstreams/rc01-retrofe-shell-late-2026-09-29.json
+?? tests/integration/test_ui_shell_retrofe_import_late_response.py
+?? tests/qml/check_shell_retrofe_import_late_response.qml
+sha256 src+tests+tools=f185438a112bc0b8
+sha256 produto=sha256sum src/steamzero/ui/qml/ThemeEditorPanel.qml -> bddd117ac33fcbcf
+sha256 harness=sha256sum tests/qml/check_shell_retrofe_import_late_response.qml -> bc9d76d646685e20
+sha256 gate=sha256sum tests/integration/test_ui_shell_retrofe_import_late_response.py -> 0cb7744eff344587
+
+===== PASSO 3 :: .venv/bin/mypy src
+INICIO 2026-09-29T11:26:05-03:00
+--- identidade 2026-09-29T11:26:05-03:00 ---
+branch=codex/rc01-retrofe-shell-late-response-2026-09-29
+HEAD=af6a5c6ed8523c04030d25b1d391e885a3b3b48e
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+ M docs/ACTIVE-WORK.md
+ M docs/STATUS.md
+ M docs/status/COVERAGE.md
+ M docs/status/items/theme-engine.json
+ M docs/status/items/theme-import-retrofe.json
+ M docs/status/items/theme-import-surface.json
+ M docs/status/items/theme-studio.json
+ M docs/status/items/ui-desktop-audit.json
+ M src/steamzero/ui/qml/ThemeEditorPanel.qml
+ M tests/qml/check_shell_esde_import_dialog_journey.qml
+?? docs/status/workstreams/rc01-retrofe-shell-late-2026-09-29.json
+?? tests/integration/test_ui_shell_retrofe_import_late_response.py
+?? tests/qml/check_shell_retrofe_import_late_response.qml
+sha256 src+tests+tools=f185438a112bc0b8
+sha256 produto=sha256sum src/steamzero/ui/qml/ThemeEditorPanel.qml -> bddd117ac33fcbcf
+sha256 harness=sha256sum tests/qml/check_shell_retrofe_import_late_response.qml -> bc9d76d646685e20
+sha256 gate=sha256sum tests/integration/test_ui_shell_retrofe_import_late_response.py -> 0cb7744eff344587
+Success: no issues found in 298 source files
+FIM 2026-09-29T11:26:06-03:00 rc=0
+--- identidade 2026-09-29T11:26:06-03:00 ---
+branch=codex/rc01-retrofe-shell-late-response-2026-09-29
+HEAD=af6a5c6ed8523c04030d25b1d391e885a3b3b48e
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+ M docs/ACTIVE-WORK.md
+ M docs/STATUS.md
+ M docs/status/COVERAGE.md
+ M docs/status/items/theme-engine.json
+ M docs/status/items/theme-import-retrofe.json
+ M docs/status/items/theme-import-surface.json
+ M docs/status/items/theme-studio.json
+ M docs/status/items/ui-desktop-audit.json
+ M src/steamzero/ui/qml/ThemeEditorPanel.qml
+ M tests/qml/check_shell_esde_import_dialog_journey.qml
+?? docs/status/workstreams/rc01-retrofe-shell-late-2026-09-29.json
+?? tests/integration/test_ui_shell_retrofe_import_late_response.py
+?? tests/qml/check_shell_retrofe_import_late_response.qml
+sha256 src+tests+tools=f185438a112bc0b8
+sha256 produto=sha256sum src/steamzero/ui/qml/ThemeEditorPanel.qml -> bddd117ac33fcbcf
+sha256 harness=sha256sum tests/qml/check_shell_retrofe_import_late_response.qml -> bc9d76d646685e20
+sha256 gate=sha256sum tests/integration/test_ui_shell_retrofe_import_late_response.py -> 0cb7744eff344587
+
+===== PASSO 4 :: make independence boundaries
+INICIO 2026-09-29T11:26:06-03:00
+--- identidade 2026-09-29T11:26:06-03:00 ---
+branch=codex/rc01-retrofe-shell-late-response-2026-09-29
+HEAD=af6a5c6ed8523c04030d25b1d391e885a3b3b48e
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+ M docs/ACTIVE-WORK.md
+ M docs/STATUS.md
+ M docs/status/COVERAGE.md
+ M docs/status/items/theme-engine.json
+ M docs/status/items/theme-import-retrofe.json
+ M docs/status/items/theme-import-surface.json
+ M docs/status/items/theme-studio.json
+ M docs/status/items/ui-desktop-audit.json
+ M src/steamzero/ui/qml/ThemeEditorPanel.qml
+ M tests/qml/check_shell_esde_import_dialog_journey.qml
+?? docs/status/workstreams/rc01-retrofe-shell-late-2026-09-29.json
+?? tests/integration/test_ui_shell_retrofe_import_late_response.py
+?? tests/qml/check_shell_retrofe_import_late_response.qml
+sha256 src+tests+tools=f185438a112bc0b8
+sha256 produto=sha256sum src/steamzero/ui/qml/ThemeEditorPanel.qml -> bddd117ac33fcbcf
+sha256 harness=sha256sum tests/qml/check_shell_retrofe_import_late_response.qml -> bc9d76d646685e20
+sha256 gate=sha256sum tests/integration/test_ui_shell_retrofe_import_late_response.py -> 0cb7744eff344587
+.venv/bin/python tools/check_independence.py
+independência de runtime: OK
+.venv/bin/python tools/lint_boundaries.py --root src
+lint de fronteiras: OK (0 violações)
+FIM 2026-09-29T11:26:10-03:00 rc=0
+--- identidade 2026-09-29T11:26:10-03:00 ---
+branch=codex/rc01-retrofe-shell-late-response-2026-09-29
+HEAD=af6a5c6ed8523c04030d25b1d391e885a3b3b48e
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+ M docs/ACTIVE-WORK.md
+ M docs/STATUS.md
+ M docs/status/COVERAGE.md
+ M docs/status/items/theme-engine.json
+ M docs/status/items/theme-import-retrofe.json
+ M docs/status/items/theme-import-surface.json
+ M docs/status/items/theme-studio.json
+ M docs/status/items/ui-desktop-audit.json
+ M src/steamzero/ui/qml/ThemeEditorPanel.qml
+ M tests/qml/check_shell_esde_import_dialog_journey.qml
+?? docs/status/workstreams/rc01-retrofe-shell-late-2026-09-29.json
+?? tests/integration/test_ui_shell_retrofe_import_late_response.py
+?? tests/qml/check_shell_retrofe_import_late_response.qml
+sha256 src+tests+tools=f185438a112bc0b8
+sha256 produto=sha256sum src/steamzero/ui/qml/ThemeEditorPanel.qml -> bddd117ac33fcbcf
+sha256 harness=sha256sum tests/qml/check_shell_retrofe_import_late_response.qml -> bc9d76d646685e20
+sha256 gate=sha256sum tests/integration/test_ui_shell_retrofe_import_late_response.py -> 0cb7744eff344587
+
+===== PASSO 5 :: make status-check
+INICIO 2026-09-29T11:26:10-03:00
+--- identidade 2026-09-29T11:26:10-03:00 ---
+branch=codex/rc01-retrofe-shell-late-response-2026-09-29
+HEAD=af6a5c6ed8523c04030d25b1d391e885a3b3b48e
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+ M docs/ACTIVE-WORK.md
+ M docs/STATUS.md
+ M docs/status/COVERAGE.md
+ M docs/status/items/theme-engine.json
+ M docs/status/items/theme-import-retrofe.json
+ M docs/status/items/theme-import-surface.json
+ M docs/status/items/theme-studio.json
+ M docs/status/items/ui-desktop-audit.json
+ M src/steamzero/ui/qml/ThemeEditorPanel.qml
+ M tests/qml/check_shell_esde_import_dialog_journey.qml
+?? docs/status/workstreams/rc01-retrofe-shell-late-2026-09-29.json
+?? tests/integration/test_ui_shell_retrofe_import_late_response.py
+?? tests/qml/check_shell_retrofe_import_late_response.qml
+sha256 src+tests+tools=f185438a112bc0b8
+sha256 produto=sha256sum src/steamzero/ui/qml/ThemeEditorPanel.qml -> bddd117ac33fcbcf
+sha256 harness=sha256sum tests/qml/check_shell_retrofe_import_late_response.qml -> bc9d76d646685e20
+sha256 gate=sha256sum tests/integration/test_ui_shell_retrofe_import_late_response.py -> 0cb7744eff344587
+.venv/bin/python tools/project_status.py check
+STATUS-CHECK: OK
+FIM 2026-09-29T11:26:12-03:00 rc=0
+--- identidade 2026-09-29T11:26:12-03:00 ---
+branch=codex/rc01-retrofe-shell-late-response-2026-09-29
+HEAD=af6a5c6ed8523c04030d25b1d391e885a3b3b48e
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+ M docs/ACTIVE-WORK.md
+ M docs/STATUS.md
+ M docs/status/COVERAGE.md
+ M docs/status/items/theme-engine.json
+ M docs/status/items/theme-import-retrofe.json
+ M docs/status/items/theme-import-surface.json
+ M docs/status/items/theme-studio.json
+ M docs/status/items/ui-desktop-audit.json
+ M src/steamzero/ui/qml/ThemeEditorPanel.qml
+ M tests/qml/check_shell_esde_import_dialog_journey.qml
+?? docs/status/workstreams/rc01-retrofe-shell-late-2026-09-29.json
+?? tests/integration/test_ui_shell_retrofe_import_late_response.py
+?? tests/qml/check_shell_retrofe_import_late_response.qml
+sha256 src+tests+tools=f185438a112bc0b8
+sha256 produto=sha256sum src/steamzero/ui/qml/ThemeEditorPanel.qml -> bddd117ac33fcbcf
+sha256 harness=sha256sum tests/qml/check_shell_retrofe_import_late_response.qml -> bc9d76d646685e20
+sha256 gate=sha256sum tests/integration/test_ui_shell_retrofe_import_late_response.py -> 0cb7744eff344587
+
+===== PASSO 6 :: .venv/bin/python tools/run_tests_isolated.py tests -q
+INICIO 2026-09-29T11:26:12-03:00
+--- identidade 2026-09-29T11:26:12-03:00 ---
+branch=codex/rc01-retrofe-shell-late-response-2026-09-29
+HEAD=af6a5c6ed8523c04030d25b1d391e885a3b3b48e
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+ M docs/ACTIVE-WORK.md
+ M docs/STATUS.md
+ M docs/status/COVERAGE.md
+ M docs/status/items/theme-engine.json
+ M docs/status/items/theme-import-retrofe.json
+ M docs/status/items/theme-import-surface.json
+ M docs/status/items/theme-studio.json
+ M docs/status/items/ui-desktop-audit.json
+ M src/steamzero/ui/qml/ThemeEditorPanel.qml
+ M tests/qml/check_shell_esde_import_dialog_journey.qml
+?? docs/status/workstreams/rc01-retrofe-shell-late-2026-09-29.json
+?? tests/integration/test_ui_shell_retrofe_import_late_response.py
+?? tests/qml/check_shell_retrofe_import_late_response.qml
+sha256 src+tests+tools=f185438a112bc0b8
+sha256 produto=sha256sum src/steamzero/ui/qml/ThemeEditorPanel.qml -> bddd117ac33fcbcf
+sha256 harness=sha256sum tests/qml/check_shell_retrofe_import_late_response.qml -> bc9d76d646685e20
+sha256 gate=sha256sum tests/integration/test_ui_shell_retrofe_import_late_response.py -> 0cb7744eff344587
+........................................................................ [  1%]
+........................................................................ [  2%]
+........................................................................ [  3%]
+........................................................................ [  4%]
+........................................................................ [  5%]
+........................................................................ [  6%]
+........................................................................ [  7%]
+........................................................................ [  8%]
+........................................................................ [  9%]
+........................................................................ [ 10%]
+.........................................ss.s..s.................sssss.. [ 12%]
+..s........sssssssssssssssss..................sssssssssssssssss......... [ 13%]
+........................................................................ [ 14%]
+........................................................................ [ 15%]
+........................................................................ [ 16%]
+............................s........................................... [ 17%]
+........................................................................ [ 18%]
+........................................................................ [ 19%]
+........................................................................ [ 20%]
+........................................................................ [ 21%]
+........................................................................ [ 23%]
+........................................................................ [ 24%]
+........................................................................ [ 25%]
+........................................................................ [ 26%]
+........................................................................ [ 27%]
+........................................................................ [ 28%]
+........................................................................ [ 29%]
+........................................................................ [ 30%]
+........................................................................ [ 31%]
+........................................................................ [ 32%]
+........................................................................ [ 34%]
+........................................................................ [ 35%]
+........................................................................ [ 36%]
+........................................................................ [ 37%]
+........................................................................ [ 38%]
+........................................................................ [ 39%]
+........................................................................ [ 40%]
+........................................................................ [ 41%]
+........................................................................ [ 42%]
+........................................................................ [ 43%]
+........................................................................ [ 45%]
+........................................................................ [ 46%]
+........................................................................ [ 47%]
+........................................................................ [ 48%]
+........................................................................ [ 49%]
+........................................................................ [ 50%]
+........................................................................ [ 51%]
+........................................................................ [ 52%]
+........................................................................ [ 53%]
+........................................................................ [ 54%]
+........................................................................ [ 56%]
+........................................................................ [ 57%]
+........................................................................ [ 58%]
+........................................................................ [ 59%]
+........................................................................ [ 60%]
+.....................................................................ss. [ 61%]
+........................................................................ [ 62%]
+........................................................................ [ 63%]
+........................................................................ [ 64%]
+........................................................................ [ 65%]
+........................................................................ [ 67%]
+........................................................................ [ 68%]
+........................................................................ [ 69%]
+........................................................................ [ 70%]
+........................................................................ [ 71%]
+........................................................................ [ 72%]
+........................................................................ [ 73%]
+........................................................................ [ 74%]
+........................................................................ [ 75%]
+........................................................................ [ 76%]
+........................................................................ [ 77%]
+........................................................................ [ 79%]
+........................................................................ [ 80%]
+........................................................................ [ 81%]
+........................................................................ [ 82%]
+........................................................................ [ 83%]
+........................................................................ [ 84%]
+........................................................................ [ 85%]
+........................................................................ [ 86%]
+........................................................................ [ 87%]
+........................................................................ [ 88%]
+........................................................................ [ 90%]
+........................................................................ [ 91%]
+........................................................................ [ 92%]
+........................................................................ [ 93%]
+........................................................................ [ 94%]
+........................................................................ [ 95%]
+........................................................................ [ 96%]
+........................................................................ [ 97%]
+........................................................................ [ 98%]
+........................................................................ [ 99%]
+..                                                                       [100%]
+=========================== short test summary info ============================
+SKIPPED [10] tests/integration/test_emulator_conformance.py:487: Flatpak fixa commit; o checksum é garantia do executor portátil
+SKIPPED [17] tests/integration/test_emulator_conformance.py:507: core não lança sozinho; quem lança é o RetroArch
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-bluemsx nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-fbneo nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-freeintv nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-fuse nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-genesis-plus-gx nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-ngp nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-pce nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-vb nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-wswan nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mesen nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mgba nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mupen64plus-next nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-opera nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-puae nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-snes9x nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-stella nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-vice-x64 nao declara capability `configure`
+SKIPPED [1] ../../../../../../mnt/sdcard/Projects/Port_Steam/tests/integration/test_metadata_to_catalog_pipeline.py:173: reference/ não versionado; checkout sem pesquisa
+SKIPPED [1] ../../../../../../mnt/sdcard/Projects/Port_Steam/tests/unit/test_metadata_import_pegasus.py:187: reference/ não versionado; checkout sem pesquisa
+SKIPPED [1] ../../../../../../mnt/sdcard/Projects/Port_Steam/tests/unit/test_metadata_import_pegasus.py:199: reference/ não versionado; checkout sem pesquisa
+6507 passed, 47 skipped in 2371.78s (0:39:31)
+real-state before: exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790607044829769561 source=HOME-default
+real-state after:  exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790607044829769561 source=HOME-default
+FIM 2026-09-29T12:05:48-03:00 rc=0
+--- identidade 2026-09-29T12:05:48-03:00 ---
+branch=codex/rc01-retrofe-shell-late-response-2026-09-29
+HEAD=af6a5c6ed8523c04030d25b1d391e885a3b3b48e
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+ M docs/ACTIVE-WORK.md
+ M docs/STATUS.md
+ M docs/status/COVERAGE.md
+ M docs/status/items/theme-engine.json
+ M docs/status/items/theme-import-retrofe.json
+ M docs/status/items/theme-import-surface.json
+ M docs/status/items/theme-studio.json
+ M docs/status/items/ui-desktop-audit.json
+ M src/steamzero/ui/qml/ThemeEditorPanel.qml
+ M tests/qml/check_shell_esde_import_dialog_journey.qml
+?? docs/status/workstreams/rc01-retrofe-shell-late-2026-09-29.json
+?? tests/integration/test_ui_shell_retrofe_import_late_response.py
+?? tests/qml/check_shell_retrofe_import_late_response.qml
+sha256 src+tests+tools=f185438a112bc0b8
+sha256 produto=sha256sum src/steamzero/ui/qml/ThemeEditorPanel.qml -> bddd117ac33fcbcf
+sha256 harness=sha256sum tests/qml/check_shell_retrofe_import_late_response.qml -> bc9d76d646685e20
+sha256 gate=sha256sum tests/integration/test_ui_shell_retrofe_import_late_response.py -> 0cb7744eff344587
+
+===== PASSO 7 :: .venv/bin/python tools/run_tests_isolated.py -m visual --tb=short -q
+INICIO 2026-09-29T12:05:48-03:00
+--- identidade 2026-09-29T12:05:48-03:00 ---
+branch=codex/rc01-retrofe-shell-late-response-2026-09-29
+HEAD=af6a5c6ed8523c04030d25b1d391e885a3b3b48e
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+ M docs/ACTIVE-WORK.md
+ M docs/STATUS.md
+ M docs/status/COVERAGE.md
+ M docs/status/items/theme-engine.json
+ M docs/status/items/theme-import-retrofe.json
+ M docs/status/items/theme-import-surface.json
+ M docs/status/items/theme-studio.json
+ M docs/status/items/ui-desktop-audit.json
+ M src/steamzero/ui/qml/ThemeEditorPanel.qml
+ M tests/qml/check_shell_esde_import_dialog_journey.qml
+?? docs/status/workstreams/rc01-retrofe-shell-late-2026-09-29.json
+?? tests/integration/test_ui_shell_retrofe_import_late_response.py
+?? tests/qml/check_shell_retrofe_import_late_response.qml
+sha256 src+tests+tools=f185438a112bc0b8
+sha256 produto=sha256sum src/steamzero/ui/qml/ThemeEditorPanel.qml -> bddd117ac33fcbcf
+sha256 harness=sha256sum tests/qml/check_shell_retrofe_import_late_response.qml -> bc9d76d646685e20
+sha256 gate=sha256sum tests/integration/test_ui_shell_retrofe_import_late_response.py -> 0cb7744eff344587
+........................................................................ [ 19%]
+........................................................................ [ 39%]
+........................................................................ [ 59%]
+........................................................................ [ 79%]
+........................................................................ [ 99%]
+..                                                                       [100%]
+362 passed, 6192 deselected in 1484.90s (0:24:44)
+real-state before: exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790607044829769561 source=HOME-default
+real-state after:  exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790607044829769561 source=HOME-default
+FIM 2026-09-29T12:30:37-03:00 rc=0
+--- identidade 2026-09-29T12:30:37-03:00 ---
+branch=codex/rc01-retrofe-shell-late-response-2026-09-29
+HEAD=af6a5c6ed8523c04030d25b1d391e885a3b3b48e
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+ M docs/ACTIVE-WORK.md
+ M docs/STATUS.md
+ M docs/status/COVERAGE.md
+ M docs/status/items/theme-engine.json
+ M docs/status/items/theme-import-retrofe.json
+ M docs/status/items/theme-import-surface.json
+ M docs/status/items/theme-studio.json
+ M docs/status/items/ui-desktop-audit.json
+ M src/steamzero/ui/qml/ThemeEditorPanel.qml
+ M tests/qml/check_shell_esde_import_dialog_journey.qml
+?? docs/status/workstreams/rc01-retrofe-shell-late-2026-09-29.json
+?? tests/integration/test_ui_shell_retrofe_import_late_response.py
+?? tests/qml/check_shell_retrofe_import_late_response.qml
+sha256 src+tests+tools=f185438a112bc0b8
+sha256 produto=sha256sum src/steamzero/ui/qml/ThemeEditorPanel.qml -> bddd117ac33fcbcf
+sha256 harness=sha256sum tests/qml/check_shell_retrofe_import_late_response.qml -> bc9d76d646685e20
+sha256 gate=sha256sum tests/integration/test_ui_shell_retrofe_import_late_response.py -> 0cb7744eff344587
+
+===== ROLLUP
+1 rc=0 :: .venv/bin/ruff format --check src tests tools
+2 rc=0 :: .venv/bin/ruff check src tests tools
+3 rc=0 :: .venv/bin/mypy src
+4 rc=0 :: make independence boundaries
+5 rc=0 :: make status-check
+6 rc=0 :: .venv/bin/python tools/run_tests_isolated.py tests -q
+7 rc=0 :: .venv/bin/python tools/run_tests_isolated.py -m visual --tb=short -q
+FIM TOTAL 2026-09-29T12:30:37-03:00
