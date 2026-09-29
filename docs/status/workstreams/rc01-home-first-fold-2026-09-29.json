@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-RC01-HOME-FIRST-FOLD",
+  "item": "SZ-UI-DESKTOP-AUDIT",
+  "branch": "codex/rc01-home-first-fold-2026-09-29",
+  "baseRef": "2d6a8957",
+  "owner": "qoder-continuation",
+  "state": "active",
+  "exclusivePaths": [
+    "tests/integration/test_ui_shell_home_first_fold.py",
+    "tests/qml/check_home_first_fold_attention.qml",
+    "docs/09-operations/evidence/2026-09-29-rc01-home-first-fold",
+    "docs/status/workstreams/rc01-home-first-fold-2026-09-29.json"
+  ],
+  "sharedPaths": [
+    "src/steamzero/ui/qml/ErrorCard.qml",
+    "src/steamzero/ui/qml/Main.qml",
+    "docs/status/items/ui-desktop-audit.json",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md",
+    "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+    "tests/integration/test_ui_shell_esde_import_dialog.py",
+    "tests/qml/check_shell_esde_import_dialog_journey.qml",
+    "tests/integration/test_ui_shell_retrofe_import_late_response.py",
+    "tests/qml/check_shell_retrofe_import_late_response.qml"
+  ],
+  "nextAction": "PRÓXIMA AÇÃO: checkpoint dos sete gates na árvore congelada, digest e views renovados por último a partir do valor impresso pela ferramenta, push e PR do oitavo elo sobre codex/rc01-retrofe-shell-late-response-2026-09-29, com o CI terminal lido no SHA efetivamente entregue e registrado no PR — não em commit. DEPENDÊNCIA: merge e ordem de integração são decisão do operador. CRITÉRIO DE SAÍDA: o workstream fecha no SHA mergeado em main, com a dobra conferida na release instalada; head da branch x ref de merge preservados na evidência. LIMITE: dobra aferida offscreen em 1280x800 sem captura PNG; no pior caso, Pendências continua abaixo da dobra; compactação é lida do estado do cartão, não presumida. CONFISSÃO: o commit c2bae146 tocou cinco arquivos de outras frentes só em prosa (56 números de citação). NARRATIVA COMPLETA: docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/README.md.",
+  "updatedAt": "2026-09-29"
+}
