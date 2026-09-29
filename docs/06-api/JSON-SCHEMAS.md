@@ -26,7 +26,7 @@ Schemas JSON (draft 2020-12) versionados em `schemas/` no repositório (Fase 1);
 | `state-export-v1.schema.json` | export do State Store | STATE-MODEL |
 | `config-platform-v1.schema.json` | config.toml (via taplo/JSON Schema) | CONFIGURATION-SCHEMAS |
 | `support-bundle-v1.schema.json` | índice do bundle | SUPPORT-BUNDLE |
-| `emulation-workspace-v1.schema.json` | catálogo de emulação publicado ao shell; `$defs/readiness` é o contrato de prontidão compartilhado | §Prontidão v2 abaixo |
+| `emulation-workspace-v1.schema.json` | catálogo de emulação publicado ao shell; `$defs/readiness` é o contrato de prontidão compartilhado e `$defs/card` carrega a medida de armazenamento | §Prontidão v2 e §Medida de armazenamento abaixo |
 
 ## Contrato de prontidão (`$defs/readiness`) — v2
 
@@ -91,6 +91,60 @@ Consumo no QML (`readiness.js`, `.pragma library`): a cor vem de `state`
 `percentText(readiness, "—")`; a barra de progresso só aparece com medição real
 (`showsProgress`). Página nenhuma reimplementa estas regras — o harness
 `tests/qml/check_readiness_surface.qml` trava a delegação por mutação.
+
+## Medida de armazenamento (`$defs/card`) — v1 aditivo
+
+Fonte de verdade do código: os produtores em `src/steamzero/adapters/emulation.py`
+e a tradução única em `src/steamzero/ui/qml/sizes.js`. Antes disto, a grandeza de
+armazenamento viajava **dentro do texto** de `detail` (`"4,00 MiB"`), e cada
+página escolhia unidade do próprio jeito — o mesmo `1073741824 B` era lido como
+`1.00 GiB`, `1.00 GB` ou `1024.0 MB` conforme a tela.
+
+Dois campos opcionais em `properties`, tipos fechados:
+
+| Campo | Tipo | O que carrega |
+|---|---|---|
+| `metricBytes` | `integer \| null`, `minimum: 0` | a massa medida, em bytes inteiros |
+| `capacityBytes` | `integer \| null`, `minimum: 0` | o todo a que a massa se refere (capacidade do volume) |
+
+Invariantes:
+
+1. **A grandeza viaja como número, nunca como texto.** `detail` explica o estado
+   e não reimprime a medida. Um cartão que publica bytes publica `metricBytes`;
+   o producer não decide unidade nem separador.
+2. **`null` ≠ `0`.** `None`/ausência significa "não medido" e é lido como traço
+   (`—`); `0` é zero medido e é lido como `0 B`. Confundi-los é o mesmo defeito
+   que a prontidão fechou em `percent`/`absentReason`.
+3. **Nada de fração de unidade.** O andar é escolhido pelo próprio número
+   (potências de 1024), de modo que a mantissa nunca caia abaixo de 1 — `1000000
+   B` é `0,95 MiB` no passo decimal com divisor binário, e isso é uma leitura
+   falsa. Rótulo binário exige divisor binário: `KiB/MiB/GiB/TiB/PiB/EiB`, nunca
+   `KB/MB/GB` sobre 1024 (afirma valor ~7 % menor que o medido).
+4. **Lista `required` inalterada.** Os campos são aditivos
+   (`additionalProperties: true` no `$defs/card`), então cartões anteriores continuam
+   válidos; a ausência de `metricBytes` significa "cartão sem massa de bytes"
+   (contagens, limites, diagnóstico), não um contrato quebrado.
+
+Consumo no QML (`sizes.bytes(valor)`, `.pragma library`): a unidade e a
+localização pertencem à superfície. `Number(v).toLocaleString(Qt.locale())` é o
+único recurso localizado do runtime (medido no Qt 6.11.2: `Qt.formatByteSize` e
+`QLocale.formatByteSize`/`formatDataSize` respondem "is not a function", e sem o
+argumento de locale `1048576` sai como `1,04858e+06`). Página nenhuma
+reimplementa a escolha de unidade — o harness `tests/qml/check_storage_units.qml`
+trava convergência entre superfícies, rótulo binário, ausência, zero medido,
+andar acima de GiB, localização e normalização, **e a grandeza contra um oráculo
+declarado no próprio teste** (potência de 1024 + separador do locale em vigor),
+porque a convergência entre páginas não vê divisor decimal sob rótulo IEC: quatro
+páginas concordando em erro continuam em erro. A expectativa de localização sai
+do `Qt.locale()` **em vigor**, nunca de um pino do autor: a imagem do gate fixa
+`LC_ALL=C.UTF-8` (`ci/qml-visual/Containerfile:58-59`,
+`environment.lock.json:26`), então pinar `pt_BR` deixa o gate verde na máquina de
+quem o escreveu e vermelho nas cabeças do CI — o guardião
+`tests/integration/test_storage_units_locale_matrix.py` roda o harness sob `C.UTF-8`
+e `pt_BR.UTF-8` e falha se o pino voltar ou se os dois contextos produzirem a
+mesma formatação (matriz vazia). A bateria de mutação
+(`docs/09-operations/evidence/2026-09-28-rc01-storage-units/25-bateria-de-mutacoes-rodada-2.md`)
+exige que cada requisito mate um produtor/formatador alterado.
 
 ## Exemplo: `event-v1.schema.json` (núcleo)
 
