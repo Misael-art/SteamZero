@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
+import "sizes.js" as Sizes
 
 Rectangle {
     id: panel
@@ -2418,9 +2419,9 @@ Rectangle {
             TextArea {
                 readOnly: true
                 text: panel.exportPlan
-                    ? qsTr("Arquivo: %1\nTamanho: %2 bytes\nGarantia: %3")
+                    ? qsTr("Arquivo: %1\nTamanho: %2\nGarantia: %3")
                         .arg(panel.exportPlan.filename || "tema.zip")
-                        .arg(panel.exportPlan.size || 0)
+                        .arg(Sizes.bytes(panel.exportPlan.size))
                         .arg(panel.exportPlan.rollbackGuarantee || "G-FULL")
                     : ""
                 color: panel.textColor

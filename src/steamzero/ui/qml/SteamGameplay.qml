@@ -5,6 +5,7 @@ import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Window
 import "readiness.js" as Readiness
+import "sizes.js" as Sizes
 
 Item {
     id: page
@@ -337,14 +338,7 @@ Item {
     }
 
     function formatBytes(value) {
-        const bytes = Number(value || 0)
-        if (bytes < 1024)
-            return bytes + " B"
-        if (bytes < 1024 * 1024)
-            return (bytes / 1024).toFixed(1) + " KiB"
-        if (bytes < 1024 * 1024 * 1024)
-            return (bytes / (1024 * 1024)).toFixed(1) + " MiB"
-        return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GiB"
+        return Sizes.bytes(value)
     }
 
     function selectedMaintenanceBytes() {

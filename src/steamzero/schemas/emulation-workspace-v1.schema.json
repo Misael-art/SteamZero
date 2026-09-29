@@ -1617,6 +1617,14 @@
           "type": "string",
           "minLength": 1
         },
+        "metricBytes": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "capacityBytes": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
         "action": {
           "$ref": "#/$defs/action"
         }

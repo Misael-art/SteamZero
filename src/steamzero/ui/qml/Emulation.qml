@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import QtQuick.Dialogs
 import QtQuick.Window
 import "readiness.js" as Readiness
+import "sizes.js" as Sizes
 
 Item {
     id: page
@@ -408,6 +409,15 @@ Item {
     }
 
     function cardMetric(card) {
+        // UX-04: a medida de bytes chega inteira do contrato (`metricBytes`,
+        // `capacityBytes`) e é lida pelo formatador compartilhado. Os cartões sem
+        // medida de bytes continuam na fonte textual própria deles.
+        if (card.metricBytes !== undefined && card.metricBytes !== null) {
+            const medida = Sizes.bytes(card.metricBytes)
+            if (card.capacityBytes !== undefined && card.capacityBytes !== null)
+                return medida + " / " + Sizes.bytes(card.capacityBytes)
+            return medida
+        }
         if (card.metric !== undefined && card.metric !== null)
             return String(card.metric)
         if (card.count !== undefined && card.count !== null)
@@ -595,14 +605,7 @@ Item {
     }
 
     function formatBytes(value) {
-        const bytes = Number(value || 0)
-        if (!isFinite(bytes) || bytes <= 0)
-            return qsTr("Tamanho não publicado")
-        const gib = bytes / (1024 * 1024 * 1024)
-        if (gib >= 1)
-            return qsTr("%1 GB").arg(gib.toFixed(gib >= 10 ? 1 : 2))
-        const mib = bytes / (1024 * 1024)
-        return qsTr("%1 MB").arg(mib.toFixed(mib >= 10 ? 0 : 1))
+        return Sizes.bytes(value)
     }
 
     function compatibilityState(game, emulatorId) {

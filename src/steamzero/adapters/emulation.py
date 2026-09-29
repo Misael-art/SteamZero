@@ -4892,7 +4892,6 @@ class EmulationController:
                     (
                         f"Destino {target.get('destination')} · "
                         f"{int(target.get('fileCount', 0))} arquivo(s) · "
-                        f"{int(target.get('size', 0)) / (1024 * 1024):.1f} MiB · "
                         f"emulador {target.get('emulatorVersion', 'unknown')}"
                         if confirmed
                         else str(target.get("reason", "destino seguro não confirmado"))
@@ -4901,6 +4900,7 @@ class EmulationController:
                     "Destino confirmado" if confirmed else "Indisponível",
                     actions=actions,
                 )
+                | ({"metricBytes": int(target.get("size", 0))} if confirmed else {})
             )
             for backup in backups if isinstance(backups, list) else []:
                 if not isinstance(backup, dict):
@@ -4932,13 +4932,13 @@ class EmulationController:
                         f"Backup de {game.get('name', 'jogo')}",
                         (
                             f"{backup.get('createdAt', 'sem horário')} · "
-                            f"{int(backup.get('size', 0)) / 1024:.1f} KiB · "
                             f"integridade {backup.get('integrity', 'unknown')}"
                         ),
                         "ready" if compatible else "attention",
                         "Compatível" if compatible else "Incompatível",
                         actions=[restore],
                     )
+                    | {"metricBytes": int(backup.get("size", 0))}
                 )
         if cards:
             return cards
@@ -5407,7 +5407,7 @@ class EmulationController:
                 "missing": "Não encontrado",
                 "degraded": "Leitura parcial",
             }.get(bucket_state, "Indisponível")
-            detail = f"{int(bucket['files'])} arquivo(s) · {int(bucket['bytes'])} byte(s)."
+            detail = f"{int(bucket['files'])} arquivo(s)."
             if bucket.get("error"):
                 detail += f" {bucket['error']}."
             storage_cards.append(
@@ -5419,17 +5419,16 @@ class EmulationController:
                     status_label,
                     actions=bucket_actions.get(str(bucket["id"])),
                 )
-                | {"metric": f"{int(bucket['bytes'])} B"}
+                | {"metricBytes": int(bucket["bytes"])}
             )
         volume = storage_summary["volume"]
         volume_detail = "Espaço do volume indisponível."
-        volume_metric = "—"
+        volume_free: int | None = None
+        volume_capacity: int | None = None
         if volume["capacityBytes"] is not None and volume["freeBytes"] is not None:
-            volume_detail = (
-                f"{int(volume['freeBytes'])} byte(s) livres de "
-                f"{int(volume['capacityBytes'])} byte(s)."
-            )
-            volume_metric = f"{int(volume['freeBytes'])} B livres"
+            volume_free = int(volume["freeBytes"])
+            volume_capacity = int(volume["capacityBytes"])
+            volume_detail = "Espaço livre do volume de dados."
         storage_cards.insert(
             0,
             self._card(
@@ -5439,7 +5438,7 @@ class EmulationController:
                 "ready" if volume["state"] == "ready" else "attention",
                 "Espaço disponível" if volume["state"] == "ready" else "Não verificado",
             )
-            | {"metric": volume_metric},
+            | {"metricBytes": volume_free, "capacityBytes": volume_capacity},
         )
         lifecycle_actions = [
             action
@@ -5563,8 +5562,7 @@ class EmulationController:
                         (
                             f"{game_names.get(str(record.title_id), 'Jogo não catalogado')} · "
                             f"Title ID {record.title_id} · versão "
-                            f"{record.version or 'não informada'} · "
-                            f"{record.size / (1024 * 1024):.1f} MiB"
+                            f"{record.version or 'não informada'}"
                         ),
                         (
                             "failed"
@@ -5603,6 +5601,7 @@ class EmulationController:
                             ),
                         ],
                     )
+                    | {"metricBytes": int(record.size)}
                     for record in (updates + dlcs)[:8]
                 ],
                 "primaryAction": self._action("library.scan", "Atualizar jogos"),
@@ -5789,7 +5788,6 @@ class EmulationController:
                         "media-cache",
                         "Cache canônico",
                         (
-                            f"{media_pipeline['cacheBytes']} byte(s); "
                             f"{media_pipeline['pendingCandidates']} candidato(s) pendente(s); "
                             f"último audit: {media_pipeline['lastAudit'] or 'nunca'}."
                         ),
@@ -5817,7 +5815,8 @@ class EmulationController:
                                 )
                             ),
                         ],
-                    ),
+                    )
+                    | {"metricBytes": int(media_pipeline["cacheBytes"])},
                     self._card(
                         "credential",
                         "SteamGridDB",
