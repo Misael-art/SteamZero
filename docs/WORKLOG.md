@@ -14155,3 +14155,94 @@ instalada, porque nada foi integrado nem empacotado. Cortes seguintes já nomead
 contrato de geração no importador ES-DE (`grep -c esdeImportGeneration` = 0 contra 12 no
 RetroFE), F-1/F-2 do contrato de prontidão, e a validação física do conjunto integrado — que só
 tem sentido depois de um merge.
+
+## 2026-09-29 — RC-01 / oitavo elo, adendo de consolidação: a cadeia vira entrega, e não há nono elo
+
+**Por que este adendo existe.** O operador nomeou o risco da rodada: "o principal risco agora é
+continuar acumulando elos sem consolidar a entrega". A resposta não é um nono elo — é fechar o
+oitavo e entregar juntos o checkpoint, a reconciliação da cadeia, o quadro de RC-01 e o plano
+físico. Nada aqui implementa comportamento novo; os commits deste adendo tocam evidência, cartão
+e views, e nada de `src/` nem de `tests/`.
+
+**O checkpoint pertence a `e7167080`, e só a ele (item 1).** A integral e o gate visual rodaram
+na árvore congelada daquela cabeça, sem suíte concorrente, com identidade impressa antes e depois
+de cada passo: agregado `src+tests+tools = 1149f29557440970` em todas as leituras, ou seja, a
+árvore não se moveu durante a corrida. Resultado: **6520 passed, 47 skipped em 2240,73 s** e, no
+`-m visual`, **375 passed, 6192 deselected em 1594,46 s**; rollup de sete passos `rc=0`
+(format, check, mypy, independence boundaries, status-check, integral, visual). Arquivado em
+`52-comandos-e-saidas.log` (+ `.rc` e o driver `52-gates-integrais.sh`). Estes números **não**
+são reatribuídos aos commits posteriores (`6d8034fa`, `034bde87`, `fab10fdd`, `73a3c117`,
+`22773047`, `92e1bf4c`, `7a8af0c1`); cada um desses traz a própria validação proporcional.
+
+**As quatro citações falsas, corrigidas por símbolo (item 2).** Conferido caminho, símbolo e
+conteúdo — não apenas o número de linha: a referência `desktop_ui.py:990-:1001` apontava para
+`stdin=`/`env=`/o laço de `poll()`, e o argv da produção está no `subprocess.Popen` de
+`launch_desktop_ui()` (`:963`, lista em `:979-:989`). Onde a linha é instável, ficou a
+referência ao símbolo, que é o que torna a documentação estável: duas em prosa de teste
+(`test_ui_shell_home_first_fold.py`, `check_home_first_fold_attention.qml`) e duas em documento
+do cartão. A explicação permanece em `53-auditoria-de-citacoes.md`, intacta. A diff foi
+inspecionada linha a linha: **as quatro são comentário/docstring**, zero em asserção executável
+— por isso não há revalidação de comportamento a fazer aqui, e é por isso também que a regra do
+contrário está declarada: se uma citação participasse de asserção, o trecho seria tratado como
+alteração de teste. Varredura residual: `grep -c 'desktop_ui\.py:990'` = 0 nos arquivos
+rastreados, exceto a própria auditoria, que precisa citar o endereço falso para explicá-lo.
+
+**Revalidação proporcional, não a integral (item 3).** `55-revalidacao-proporcional.sh` roda os
+cinco passos proporcionais a uma mudança textual: gate afetado, lint, formatação, tipos e
+status-check. Verificados: `ruff format --check` `rc=0`, `ruff check` "All checks passed!",
+`mypy src` "no issues found in 298 source files", `test_ui_shell_home_first_fold.py`
+**13 passed em 115,05 s**. O `make status-check` dessa rodada fechou `rc=2`, e a causa foi
+registrada em vez de escondida: os arquivos do próprio lote envelhecem o digest que certificam, e
+a COVERAGE ainda não renderizava as entradas novas. Resolvido por render + renovação na árvore
+congelada; a leitura final (cinco passos `rc=0`, status-check **OK**) foi tomada em
+`73a3c117` e vive fora do checkout, porque arquivá-la dentro do lote envelheceria de novo o
+digest que ela acaba de certificar — o ponto fixo é o que o oitavo elo já estabeleceu.
+
+**Elos novos: zero.** A reconciliação (item 5), o quadro de RC-01 (item 6) e o plano físico
+(item 7) entraram como documentos do lote existente — `61-reconcilio-rc01-oito-elos.md` e
+`62-preparacao-de-validacao-fisica.md` — e não como branch, PR ou HEAD adicional. O cartão
+`SZ-UI-DESKTOP-AUDIT` passa a 170 evidências e o `nextAction` cai a orientação operacional
+(909 → 821 caracteres), com a narrativa longa no README do lote.
+
+**O que a reconciliação mediu (item 5), com números que fecham sozinhos.** Oito PRs abertos,
+`#239`…`#246`, heads `069501ab`, `c959be13`, `190ea683`, `5d95034b`, `c0de54c9`, `af6a5c6e`,
+`2d6a8957`, `22773047`; bases encadeadas a partir do quinto; ancestralidade conferida com
+`git merge-base --is-ancestor`, linear. A soma dos diffs exclusivos (2+5+13+4+10+16+8+12) dá
+**70**, igual a `rev-list --count origin/main..22773047`: a cadeia não duplica commit. `origin/main`
+continua `3495c49d…`, então **nenhum** elo está integrado, e merge é decisão reservada ao
+operador — a sequência pronta vai no corpo do PR, e nenhuma branch foi criada para contorná-la.
+Os nove PRs mais antigos também foram classificados por medição, não por memória: nenhum é
+ancestral desta cabeça, oito estão `CONFLICTING`, e portanto não são substituídos nem bloqueios
+desta fileira.
+
+**O que o quadro de RC-01 mediu (item 6).** Treze critérios nas cinco camadas, re-medidos contra
+esta cabeça em vez de copiados do sétimo elo: a única linha que se moveu foi a da primeira dobra,
+e moveu-se em **I** e **C**; **G**, **P** e **H** seguem "não" nos treze, com o fundo medido
+(`git ls-tree` vazio para `sizes.js` e `readiness.js` tanto em `origin/main` quanto em
+`e2af2562`). Contraste continua travado por decisão de produto (4,5:1 versus ≥7:1), o seletor
+nativo por limitação de plataforma offscreen, e F-2 pela posse exclusiva de
+`WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT` — atribuída, não editada. Executáveis por esta frente:
+contrato de geração do importador ES-DE (`grep -c esdeImportGeneration` = 0 contra 12 no
+RetroFE, cinco escritas incondicionais de `esdeImportBusy = false` em `ThemeEditorPanel.qml`) e
+F-1 (`memoryGb` via o precedente de `sizes.js`).
+
+**O que o plano físico declara (item 7).** Preparado, **não executado**: quatro pré-condições
+externas em ordem, oito cenários com o que cada um prova e o que **não** prova, sanitização de
+capturas pelo precedente de 22/07, e os limites — nenhuma ROM, BIOS, save ou unidade de terceiros
+tocada, reinício é decisão do operador, instalação sujeita à autorização específica e ao fluxo
+governado de `tools/release_host.py`. O bloqueio concreto está escrito no documento: enquanto
+`origin/main` for `3495c49d…`, a coluna **H** é "não" para os treze critérios, e validar o
+conjunto integrado antes do merge seria medir uma árvore que não existe na release.
+
+**Append-only, com o gate.** `scope_digest` exclui `docs/WORKLOG.md` por construção, mas isso não
+dispensa `check_worklog_append_only`: este acréscimo passa por ele, o arquivo tinha 872.988 bytes
+/ 14.157 linhas (sha256 `08fd7958b8a82c01…`) antes de mim, e o `status-check` é relido depois do
+acréscimo. Redação AGENTS.md: nenhum caminho pessoal, nenhum segredo, nenhuma linha de resultado
+tocada — inclusive a frase de verificação do README do lote, que citava o prefixo literalmente e
+agora o descreve.
+
+**Cinco camadas, separadas.** Interface: sim (dobra). Contrato offscreen: sim, e agora com a
+integral do checkpoint na árvore certa. Integrado: **não**. Empacotado: **não** — a prova de
+wheel dos elos 7 e 8 ainda não foi varrida. Experiência na release instalada: **não** — continua
+`2.0.0rc1-e2af2562ebba` (26/09). RC-01 **não** está concluída, e este adendo não a declara
+concluída: ele fecha a entrega do que existe e marca precisamente o que falta.
