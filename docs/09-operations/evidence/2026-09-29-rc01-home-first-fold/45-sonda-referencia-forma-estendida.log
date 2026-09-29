@@ -1,0 +1,122 @@
+### atencao-maxima rc=0
+  _leituras = 2
+  _recusas = 1
+  alvos = 4
+  band = 1
+  banner = 1
+  cartao_alvo_h = 48
+  cartao_compacto = 1
+  cartao_detalhe = 1
+  cartao_diag = 1
+  cartao_expandido_h = 107
+  cartao_h = 76
+  cartoes = 1
+  compacto = 1
+  detalhado = 1
+  erros = 1
+  escala = 1
+  gatilho = clique
+  home_h = 1016
+  pend_h = 48
+  pend_y = 581
+  ponte = 0
+  primeiro = overview.open-library
+  primeiro_h = 48
+  primeiro_visivel = 1
+  primeiro_y = 401
+  prosa_caracteres = 231
+  prosa_caracteres_na_tela = 40
+  prosa_caracteres_na_tela_expandida = 198
+  prosa_itens = 8
+  prosa_na_tela = 2
+  prosa_na_tela_expandida = 6
+  scroll_h = 493
+  tick_clique = 24
+  tick_leitura = 26
+  ganho = 31 px (76 -> 107)
+   debug|PROSA|estagio=compacto|i=0|vis=1|h=17|w=833|fonte=15|chars=28
+   debug|PROSA|estagio=compacto|i=1|vis=1|h=11|w=77|fonte=10|chars=12
+   debug|PROSA|estagio=compacto|i=2|vis=0|h=14|w=217|fonte=12|chars=39
+   debug|PROSA|estagio=compacto|i=3|vis=0|h=12|w=236|fonte=11|chars=48
+   debug|PROSA|estagio=compacto|i=4|vis=0|h=12|w=87|fonte=11|chars=17
+   debug|PROSA|estagio=compacto|i=5|vis=0|h=12|w=147|fonte=11|chars=28
+   debug|PROSA|estagio=compacto|i=6|vis=0|h=12|w=216|fonte=11|chars=43
+   debug|PROSA|estagio=compacto|i=7|vis=0|h=11|w=78|fonte=10|chars=16
+   debug|PROSA|estagio=expandido|i=0|vis=1|h=17|w=812|fonte=15|chars=28
+   debug|PROSA|estagio=expandido|i=1|vis=1|h=11|w=77|fonte=10|chars=12
+   debug|PROSA|estagio=expandido|i=2|vis=1|h=14|w=894|fonte=12|chars=39
+   debug|PROSA|estagio=expandido|i=3|vis=1|h=12|w=894|fonte=11|chars=48
+   debug|PROSA|estagio=expandido|i=4|vis=0|h=12|w=87|fonte=11|chars=17
+   debug|PROSA|estagio=expandido|i=5|vis=1|h=12|w=894|fonte=11|chars=28
+   debug|PROSA|estagio=expandido|i=6|vis=1|h=12|w=1188|fonte=11|chars=43
+   debug|PROSA|estagio=expandido|i=7|vis=0|h=11|w=78|fonte=10|chars=16
+   debug|PROSA|estagio=referencia|i=0|vis=1|h=17|w=812|fonte=15|chars=28
+   debug|PROSA|estagio=referencia|i=1|vis=1|h=11|w=77|fonte=10|chars=12
+   debug|PROSA|estagio=referencia|i=2|vis=1|h=14|w=894|fonte=12|chars=39
+   debug|PROSA|estagio=referencia|i=3|vis=1|h=12|w=894|fonte=11|chars=48
+   debug|PROSA|estagio=referencia|i=4|vis=0|h=12|w=87|fonte=11|chars=17
+   debug|PROSA|estagio=referencia|i=5|vis=1|h=12|w=894|fonte=11|chars=28
+   debug|PROSA|estagio=referencia|i=6|vis=1|h=12|w=1188|fonte=11|chars=43
+   debug|PROSA|estagio=referencia|i=7|vis=0|h=11|w=78|fonte=10|chars=16
+   debug|TESTEMUNHO3|cartao_referencia_h=107|prosa_itens_ref=8|prosa_na_tela_ref=6|prosa_caracteres_ref=231|prosa_caracteres_na_tela_ref=198|tick_leitura=30
+### leitura-sem-dados rc=0
+  _leituras = 1
+  _recusas = 1
+  alvos = 4
+  band = 1
+  banner = 0
+  cartao_alvo_h = 48
+  cartao_compacto = 1
+  cartao_detalhe = 1
+  cartao_diag = 1
+  cartao_expandido_h = 107
+  cartao_h = 76
+  cartoes = 1
+  compacto = 1
+  detalhado = 1
+  erros = 1
+  escala = 1
+  gatilho = clique
+  home_h = 1016
+  pend_h = 48
+  pend_y = 581
+  ponte = 0
+  primeiro = overview.open-library
+  primeiro_h = 48
+  primeiro_visivel = 1
+  primeiro_y = 401
+  prosa_caracteres = 231
+  prosa_caracteres_na_tela = 40
+  prosa_caracteres_na_tela_expandida = 198
+  prosa_itens = 8
+  prosa_na_tela = 2
+  prosa_na_tela_expandida = 6
+  scroll_h = 560
+  tick_clique = 24
+  tick_leitura = 26
+  ganho = 31 px (76 -> 107)
+   debug|PROSA|estagio=compacto|i=0|vis=1|h=17|w=833|fonte=15|chars=28
+   debug|PROSA|estagio=compacto|i=1|vis=1|h=11|w=77|fonte=10|chars=12
+   debug|PROSA|estagio=compacto|i=2|vis=0|h=14|w=217|fonte=12|chars=39
+   debug|PROSA|estagio=compacto|i=3|vis=0|h=12|w=236|fonte=11|chars=48
+   debug|PROSA|estagio=compacto|i=4|vis=0|h=12|w=87|fonte=11|chars=17
+   debug|PROSA|estagio=compacto|i=5|vis=0|h=12|w=147|fonte=11|chars=28
+   debug|PROSA|estagio=compacto|i=6|vis=0|h=12|w=216|fonte=11|chars=43
+   debug|PROSA|estagio=compacto|i=7|vis=0|h=11|w=78|fonte=10|chars=16
+   debug|PROSA|estagio=expandido|i=0|vis=1|h=17|w=812|fonte=15|chars=28
+   debug|PROSA|estagio=expandido|i=1|vis=1|h=11|w=77|fonte=10|chars=12
+   debug|PROSA|estagio=expandido|i=2|vis=1|h=14|w=894|fonte=12|chars=39
+   debug|PROSA|estagio=expandido|i=3|vis=1|h=12|w=894|fonte=11|chars=48
+   debug|PROSA|estagio=expandido|i=4|vis=0|h=12|w=87|fonte=11|chars=17
+   debug|PROSA|estagio=expandido|i=5|vis=1|h=12|w=894|fonte=11|chars=28
+   debug|PROSA|estagio=expandido|i=6|vis=1|h=12|w=1188|fonte=11|chars=43
+   debug|PROSA|estagio=expandido|i=7|vis=0|h=11|w=78|fonte=10|chars=16
+   debug|PROSA|estagio=referencia|i=0|vis=1|h=17|w=812|fonte=15|chars=28
+   debug|PROSA|estagio=referencia|i=1|vis=1|h=11|w=77|fonte=10|chars=12
+   debug|PROSA|estagio=referencia|i=2|vis=1|h=14|w=894|fonte=12|chars=39
+   debug|PROSA|estagio=referencia|i=3|vis=1|h=12|w=894|fonte=11|chars=48
+   debug|PROSA|estagio=referencia|i=4|vis=0|h=12|w=87|fonte=11|chars=17
+   debug|PROSA|estagio=referencia|i=5|vis=1|h=12|w=894|fonte=11|chars=28
+   debug|PROSA|estagio=referencia|i=6|vis=1|h=12|w=1188|fonte=11|chars=43
+   debug|PROSA|estagio=referencia|i=7|vis=0|h=11|w=78|fonte=10|chars=16
+   debug|TESTEMUNHO3|cartao_referencia_h=107|prosa_itens_ref=8|prosa_na_tela_ref=6|prosa_caracteres_ref=231|prosa_caracteres_na_tela_ref=198|tick_leitura=30

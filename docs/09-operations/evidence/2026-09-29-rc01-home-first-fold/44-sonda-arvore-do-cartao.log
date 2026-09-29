@@ -1,0 +1,66 @@
+### atencao-maxima rc=0
+  _leituras = 2
+  _recusas = 1
+  alvos = 4
+  band = 1
+  banner = 1
+  cartao_alvo_h = 48
+  cartao_compacto = 1
+  cartao_detalhe = 1
+  cartao_diag = 1
+  cartao_expandido_h = 107
+  cartao_h = 76
+  cartoes = 1
+  compacto = 1
+  detalhado = 1
+  erros = 1
+  escala = 1
+  gatilho = clique
+  home_h = 1016
+  pend_h = 48
+  pend_y = 581
+  ponte = 0
+  primeiro = overview.open-library
+  primeiro_h = 48
+  primeiro_visivel = 1
+  primeiro_y = 401
+  prosa_caracteres = 0
+  prosa_caracteres_na_tela = 0
+  prosa_caracteres_na_tela_expandida = 0
+  prosa_itens = 0
+  prosa_na_tela = 0
+  prosa_na_tela_expandida = 0
+  scroll_h = 493
+  tick_clique = 24
+  tick_leitura = 26
+  ganho = 31 px (76 -> 107)
+   debug|SONDA|p=0|no=ErrorCard_QMLTYPE_190(0x55f5a97c4d30)|temTexto=0|temCI=0|temDown=0|temFonte=0|vis=1|h=76|chars=0|fim=
+   debug|SONDA|p=1|no=QQuickColumnLayout(0x7f3b40008110)|temTexto=0|temCI=0|temDown=0|temFonte=0|vis=1|h=48|chars=0|fim=
+   debug|SONDA|p=2|no=QQuickRowLayout(0x7f3b40007dc0)|temTexto=0|temCI=0|temDown=0|temFonte=0|vis=1|h=48|chars=0|fim=
+   debug|SONDA|p=3|no=ToolButton_QMLTYPE_9(0x55f5a97c3bf0)|temTexto=1|temCI=1|temDown=1|temFonte=1|vis=1|h=12|chars=0|fim=
+   debug|SONDA|p=4|no=QQuickItem(0x55f5a9260fb0)|temTexto=0|temCI=0|temDown=0|temFonte=0|vis=1|h=12|chars=0|fim=
+   debug|SONDA|p=4|no=QQuickIconLabel(0x55f5a9404d20)|temTexto=1|temCI=0|temDown=0|temFonte=1|vis=1|h=0|chars=0|fim=
+   debug|SONDA|p=5|no=QQuickIconImage(0x55f5a8a49670, "image")|temTexto=0|temCI=0|temDown=0|temFonte=0|vis=1|h=0|chars=0|fim=
+   debug|SONDA|p=3|no=QQuickColumnLayout(0x55f5a9796ad0)|temTexto=0|temCI=0|temDown=0|temFonte=0|vis=1|h=17|chars=0|fim=
+   debug|SONDA|p=4|no=QQuickRowLayout(0x7f3b40008020)|temTexto=0|temCI=0|temDown=0|temFonte=0|vis=1|h=17|chars=0|fim=
+   debug|SONDA|p=5|no=Label_QMLTYPE_17(0x7f3b400035a0)|temTexto=1|temCI=0|temDown=0|temFonte=1|vis=1|h=17|chars=28|fim=A renovação do estado falhou
+   debug|SONDA|p=5|no=Label_QMLTYPE_17(0x55f5aa5a02c0)|temTexto=1|temCI=0|temDown=0|temFonte=1|vis=1|h=11|chars=12|fim=E-DOBRA-CENA
+   debug|SONDA|p=4|no=Label_QMLTYPE_17(0x55f5a9227890)|temTexto=1|temCI=0|temDown=0|temFonte=1|vis=0|h=14|chars=39|fim=Leitura GET /status recusada
+   debug|SONDA|p=4|no=Label_QMLTYPE_17(0x55f5a864dc30)|temTexto=1|temCI=0|temDown=0|temFonte=1|vis=0|h=12|chars=48|fim=Impacto: O último estado lid
+   debug|SONDA|p=4|no=Label_QMLTYPE_17(0x55f5a980bd90)|temTexto=1|temCI=0|temDown=0|temFonte=1|vis=0|h=12|chars=17|fim=Ação automática: 
+   debug|SONDA|p=4|no=Label_QMLTYPE_17(0x55f5aa5a0850)|temTexto=1|temCI=0|temDown=0|temFonte=1|vis=0|h=12|chars=28|fim=Orientação: Tente novamente.
+   debug|SONDA|p=3|no=Button_QMLTYPE_14(0x55f5a916e130)|temTexto=1|temCI=1|temDown=1|temFonte=1|vis=1|h=48|chars=12|fim=Ver detalhes
+   debug|SONDA|p=4|no=QQuickRectangle(0x55f5aa366dc0)|temTexto=0|temCI=0|temDown=0|temFonte=0|vis=1|h=48|chars=0|fim=
+   debug|SONDA|p=4|no=QQuickIconLabel(0x55f5aa35c850)|temTexto=1|temCI=0|temDown=0|temFonte=1|vis=1|h=40|chars=12|fim=Ver detalhes
+   debug|SONDA|p=5|no=QQuickMnemonicLabel(0x55f5aa4b0cd0, "label")|temTexto=1|temCI=0|temDown=0|temFonte=1|vis=1|h=14|chars=12|fim=Ver detalhes
+   debug|SONDA|p=3|no=Button_QMLTYPE_14(0x55f5aa07e2f0)|temTexto=1|temCI=1|temDown=1|temFonte=1|vis=1|h=48|chars=20|fim=Exportar diagnóstico
+   debug|SONDA|p=4|no=QQuickRectangle(0x55f5aa374320)|temTexto=0|temCI=0|temDown=0|temFonte=0|vis=1|h=48|chars=0|fim=
+   debug|SONDA|p=4|no=QQuickIconLabel(0x55f5a8d10500)|temTexto=1|temCI=0|temDown=0|temFonte=1|vis=1|h=40|chars=20|fim=Exportar diagnóstico
+   debug|SONDA|p=5|no=QQuickMnemonicLabel(0x55f5aa4ac8b0, "label")|temTexto=1|temCI=0|temDown=0|temFonte=1|vis=1|h=14|chars=20|fim=Exportar diagnóstico
+   debug|SONDA|p=3|no=Button_QMLTYPE_14(0x55f5a97be2a0)|temTexto=1|temCI=1|temDown=1|temFonte=1|vis=1|h=48|chars=9|fim=Descartar
+   debug|SONDA|p=4|no=QQuickRectangle(0x55f5a93c7590)|temTexto=0|temCI=0|temDown=0|temFonte=0|vis=1|h=48|chars=0|fim=
+   debug|SONDA|p=4|no=QQuickIconLabel(0x55f5a80d2d20)|temTexto=1|temCI=0|temDown=0|temFonte=1|vis=1|h=40|chars=9|fim=Descartar
+   debug|SONDA|p=5|no=QQuickMnemonicLabel(0x55f5aa4b8590, "label")|temTexto=1|temCI=0|temDown=0|temFonte=1|vis=1|h=14|chars=9|fim=Descartar
+   debug|SONDA|p=2|no=QQuickColumnLayout(0x55f5aa082420)|temTexto=0|temCI=0|temDown=0|temFonte=0|vis=0|h=0|chars=0|fim=
+   debug|SONDA|p=3|no=Label_QMLTYPE_17(0x55f5a9485e10)|temTexto=1|temCI=0|temDown=0|temFonte=1|vis=0|h=12|chars=43|fim=Causa provável: Cena control
+   debug|SONDA|p=3|no=Label_QMLTYPE_17(0x55f5a9b5f3d0)|temTexto=1|temCI=0|temDown=0|temFonte=1|vis=0|h=11|chars=16|fim=ID da operação: 

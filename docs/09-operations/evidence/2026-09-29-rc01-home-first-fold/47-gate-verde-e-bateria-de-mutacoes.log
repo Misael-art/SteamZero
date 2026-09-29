@@ -1,0 +1,203 @@
+=== gate (harness com alvo apenas na tela) ===
+.............                                                            [100%]
+13 passed in 106.99s (0:01:46)
+=== bateria de mutacoes ===
+== SHA-256 da árvore antes da bateria ==
+  b682f286cca879d2  ErrorCard.qml
+  281215854ac35f4a  Main.qml
+
+== M1 — cardDuplicaAFaixa sempre falso (Main.qml): nenhuma compactação ==
+  aplicada em 1 ocorrencia(s); sha 281215854ac35f4a -> c5829c3674512f56
+    [gate] $ <checkout-canônico>/.venv/bin/python -m pytest tests/integration/test_ui_shell_home_first_fold.py -q -k primeiro_alvo or agregada or acoes or devolve or dobra_ja_fecha
+      assert _inteiro(alvo, "cartoes") == 0, "sem falha não há cartão de erro"
+      assert _inteiro(alvo, "primeiro_y") > 0, "a testemunha precisa de geometria real"
+      assert _inteiro(alvo, "scroll_h") > 0
+      assert _inteiro(alvo, "home_h") > _inteiro(alvo, "scroll_h"), (
+      assert fundo <= _inteiro(alvo, "scroll_h"), (
+      assert escala >= 1.49 or cena == "atencao-maxima", (
+      E       AssertionError: no pior caso alcançável (atencao-maxima-150) o primeiro alvo acionável da Home termina em 468 px, abaixo da banda visível de 451 px — ficam 17 px fora da dobra
+      tests/integration/test_ui_shell_home_first_fold.py:498: AssertionError
+      assert _inteiro(alvo, "primeiro_visivel") == 1
+      assert fundo <= visivel, (
+      E   AssertionError: as superfícies de atenção consomem 247 px da dobra na cena 'atencao-maxima-150' (teto 230 px): a Home ficou inutilizável porque o aviso virou três páginas
+      tests/integration/test_ui_shell_home_first_fold.py:519: AssertionError
+      assert _inteiro(alvo, "banner") == 0, "sem leitura bem-sucedida não há verdade a julgar"
+      assert _inteiro(alvo, "ponte") == 0
+      assert _inteiro(alvo, "cartoes") == 1, (
+      assert _inteiro(alvo, "cartao_diag") == 1
+      assert _inteiro(alvo, "cartao_detalhe") == 1
+      assert _inteiro(alvo, "cartao_alvo_h") >= ALVO_MINIMO, (
+      E       AssertionError: na cena 'atencao-maxima' a faixa reporta o MESMO código do cartão, mas o cartão continua na forma estendida — o chrome duplicado não foi tratado
+      tests/integration/test_ui_shell_home_first_fold.py:606: AssertionError
+      assert _inteiro(alvo, "banner") == 0, "sem leitura bem-sucedida não há verdade a julgar"
+      assert _inteiro(alvo, "ponte") == 0
+      assert _inteiro(alvo, "cartoes") == 1, (
+      assert _inteiro(alvo, "cartao_diag") == 1
+      assert _inteiro(alvo, "cartao_detalhe") == 1
+      assert _inteiro(alvo, "cartao_alvo_h") >= ALVO_MINIMO, (
+      E       AssertionError: na cena 'atencao-maxima-150' a faixa reporta o MESMO código do cartão, mas o cartão continua na forma estendida — o chrome duplicado não foi tratado
+      tests/integration/test_ui_shell_home_first_fold.py:606: AssertionError
+      assert _inteiro(alvo, "banner") == 0, "sem leitura bem-sucedida não há verdade a julgar"
+      assert _inteiro(alvo, "ponte") == 0
+      assert _inteiro(alvo, "cartoes") == 1, (
+      assert _inteiro(alvo, "cartao_diag") == 1
+      assert _inteiro(alvo, "cartao_detalhe") == 1
+      assert _inteiro(alvo, "cartao_alvo_h") >= ALVO_MINIMO, (
+      E       AssertionError: na cena 'leitura-sem-dados' a faixa reporta o MESMO código do cartão, mas o cartão continua na forma estendida — o chrome duplicado não foi tratado
+      tests/integration/test_ui_shell_home_first_fold.py:606: AssertionError
+      FAILED tests/integration/test_ui_shell_home_first_fold.py::test_no_pior_caso_alcancavel_o_primeiro_alvo_ainda_cabe_na_dobra[atencao-maxima-150]
+      FAILED tests/integration/test_ui_shell_home_first_fold.py::test_a_altura_agregada_das_superficies_de_atencao_tem_um_teto[atencao-maxima-150]
+      FAILED tests/integration/test_ui_shell_home_first_fold.py::test_o_cartao_que_duplica_a_faixa_dobra_a_orientacao_e_a_devolve[atencao-maxima]
+      FAILED tests/integration/test_ui_shell_home_first_fold.py::test_o_cartao_que_duplica_a_faixa_dobra_a_orientacao_e_a_devolve[atencao-maxima-150]
+      FAILED tests/integration/test_ui_shell_home_first_fold.py::test_o_cartao_que_duplica_a_faixa_dobra_a_orientacao_e_a_devolve[leitura-sem-dados]
+      5 failed, 6 passed, 2 deselected in 92.92s (0:01:32)
+      RESULTADO: vermelho rc=1 — mutação detectada
+    [sonda de atribuição] $ <checkout-canônico>/.venv/bin/python <tmp-fora-do-checkout>/drv_testemunha2.py
+      ### atencao-maxima rc=0
+      escala=1 band=1 banner=1 cartoes=1 scroll_h=480 primeiro=overview.open-library primeiro_y=401 primeiro_h=48 pend_y=581 cartao_h=89 cartao_alvo_h=48 cartao_compacto=0 gatilho=clique prosa_itens=8 prosa_na_tela=5 prosa_caracteres=231 cartao_expandido_h=107 prosa_na_tela_expandida=6 prosa_caracteres_na_tela_expandida=198 cartao_referencia_h=107 prosa_na_tela_ref=6 prosa_caracteres_na_tela_ref=198
+      ganho=18px compacto=89 expandido=107 referencia=107 dobra_fundo=449 banda_visivel=480 cabe=SIM
+      debug|PROSA|estagio=compacto|i=0|vis=1|h=17|w=833|fonte=15|chars=28
+      debug|PROSA|estagio=compacto|i=1|vis=1|h=11|w=77|fonte=10|chars=12
+      debug|PROSA|estagio=compacto|i=2|vis=1|h=14|w=915|fonte=12|chars=39
+      debug|PROSA|estagio=compacto|i=3|vis=1|h=12|w=915|fonte=11|chars=48
+      debug|PROSA|estagio=compacto|i=4|vis=0|h=12|w=87|fonte=11|chars=17
+      debug|PROSA|estagio=compacto|i=5|vis=1|h=12|w=915|fonte=11|chars=28
+      debug|PROSA|estagio=compacto|i=6|vis=0|h=12|w=216|fonte=11|chars=43
+      debug|PROSA|estagio=compacto|i=7|vis=0|h=11|w=78|fonte=10|chars=16
+      ### atencao-maxima-150 rc=0
+      escala=1.5 band=1 banner=1 cartoes=1 scroll_h=451 primeiro=overview.open-library primeiro_y=417 primeiro_h=51 pend_y=597 cartao_h=118 cartao_alvo_h=48 cartao_compacto=0 gatilho=clique prosa_itens=8 prosa_na_tela=5 prosa_caracteres=231 cartao_expandido_h=143 prosa_na_tela_expandida=6 prosa_caracteres_na_tela_expandida=198 cartao_referencia_h=143 prosa_na_tela_ref=6 prosa_caracteres_na_tela_ref=198
+      ganho=25px compacto=118 expandido=143 referencia=143 dobra_fundo=468 banda_visivel=451 cabe=NAO
+      debug|PROSA|estagio=compacto|i=0|vis=1|h=26|w=794|fonte=23|chars=28
+      debug|PROSA|estagio=compacto|i=1|vis=1|h=17|w=116|fonte=15|chars=12
+      debug|PROSA|estagio=compacto|i=2|vis=1|h=20|w=915|fonte=18|chars=39
+      debug|PROSA|estagio=compacto|i=3|vis=1|h=19|w=915|fonte=17|chars=48
+      debug|PROSA|estagio=compacto|i=4|vis=0|h=19|w=135|fonte=17|chars=17
+      debug|PROSA|estagio=compacto|i=5|vis=1|h=19|w=915|fonte=17|chars=28
+      debug|PROSA|estagio=compacto|i=6|vis=0|h=19|w=332|fonte=17|chars=43
+      debug|PROSA|estagio=compacto|i=7|vis=0|h=17|w=108|fonte=15|chars=16
+      ### leitura-sem-dados rc=0
+      escala=1 band=1 banner=0 cartoes=1 scroll_h=547 primeiro=overview.open-library primeiro_y=401 primeiro_h=48 pend_y=581 cartao_h=89 cartao_alvo_h=48 cartao_compacto=0 gatilho=clique prosa_itens=8 prosa_na_tela=5 prosa_caracteres=231 cartao_expandido_h=107 prosa_na_tela_expandida=6 prosa_caracteres_na_tela_expandida=198 cartao_referencia_h=107 prosa_na_tela_ref=6 prosa_caracteres_na_tela_ref=198
+      ganho=18px compacto=89 expandido=107 referencia=107 dobra_fundo=449 banda_visivel=547 cabe=SIM
+      debug|PROSA|estagio=compacto|i=0|vis=1|h=17|w=833|fonte=15|chars=28
+      debug|PROSA|estagio=compacto|i=1|vis=1|h=11|w=77|fonte=10|chars=12
+      debug|PROSA|estagio=compacto|i=2|vis=1|h=14|w=915|fonte=12|chars=39
+      debug|PROSA|estagio=compacto|i=3|vis=1|h=12|w=915|fonte=11|chars=48
+      debug|PROSA|estagio=compacto|i=4|vis=0|h=12|w=87|fonte=11|chars=17
+      debug|PROSA|estagio=compacto|i=5|vis=1|h=12|w=915|fonte=11|chars=28
+      debug|PROSA|estagio=compacto|i=6|vis=0|h=12|w=216|fonte=11|chars=43
+      debug|PROSA|estagio=compacto|i=7|vis=0|h=11|w=78|fonte=10|chars=16
+      RESULTADO: VERDE sob a mutação — a asserção NÃO morde
+  restaurado: sha 281215854ac35f4a (esperava 281215854ac35f4a) OK
+
+== M2 — prosa compacta nunca volta (ErrorCard.qml): 'Ver detalhes' não reexibe ==
+  aplicada em 4 ocorrencia(s); sha b682f286cca879d2 -> c084f9ad7f6a9952
+    [gate] $ <checkout-canônico>/.venv/bin/python -m pytest tests/integration/test_ui_shell_home_first_fold.py -q -k primeiro_alvo or agregada or acoes or devolve or dobra_ja_fecha
+      assert _inteiro(alvo, "band") == 1, "sem faixa anunciando a falha não há duplicação"
+      assert _inteiro(alvo, "cartoes") == 1, f"a cena {cena!r} perdeu o cartão de erro"
+      assert _inteiro(alvo, "cartao_compacto") == 1, (
+      assert alvo["gatilho"] == "clique", (
+      assert _inteiro(alvo, "prosa_na_tela") < _inteiro(alvo, "prosa_na_tela_ref"), (
+      assert _inteiro(alvo, "prosa_caracteres_na_tela") < _inteiro(
+      E       AssertionError: expandido, o cartão tem 3 rótulos de prosa na tela; estendido, tem 6 — um 'Ver detalhes' que re-oculta rótulo é supressão, não dobra
+      tests/integration/test_ui_shell_home_first_fold.py:638: AssertionError
+      assert _inteiro(alvo, "band") == 1, "sem faixa anunciando a falha não há duplicação"
+      assert _inteiro(alvo, "cartoes") == 1, f"a cena {cena!r} perdeu o cartão de erro"
+      assert _inteiro(alvo, "cartao_compacto") == 1, (
+      assert alvo["gatilho"] == "clique", (
+      assert _inteiro(alvo, "prosa_na_tela") < _inteiro(alvo, "prosa_na_tela_ref"), (
+      assert _inteiro(alvo, "prosa_caracteres_na_tela") < _inteiro(
+      E       AssertionError: expandido, o cartão tem 3 rótulos de prosa na tela; estendido, tem 6 — um 'Ver detalhes' que re-oculta rótulo é supressão, não dobra
+      tests/integration/test_ui_shell_home_first_fold.py:638: AssertionError
+      assert _inteiro(alvo, "band") == 1, "sem faixa anunciando a falha não há duplicação"
+      assert _inteiro(alvo, "cartoes") == 1, f"a cena {cena!r} perdeu o cartão de erro"
+      assert _inteiro(alvo, "cartao_compacto") == 1, (
+      assert alvo["gatilho"] == "clique", (
+      assert _inteiro(alvo, "prosa_na_tela") < _inteiro(alvo, "prosa_na_tela_ref"), (
+      assert _inteiro(alvo, "prosa_caracteres_na_tela") < _inteiro(
+      E       AssertionError: expandido, o cartão tem 3 rótulos de prosa na tela; estendido, tem 6 — um 'Ver detalhes' que re-oculta rótulo é supressão, não dobra
+      tests/integration/test_ui_shell_home_first_fold.py:638: AssertionError
+      FAILED tests/integration/test_ui_shell_home_first_fold.py::test_o_cartao_que_duplica_a_faixa_dobra_a_orientacao_e_a_devolve[atencao-maxima]
+      FAILED tests/integration/test_ui_shell_home_first_fold.py::test_o_cartao_que_duplica_a_faixa_dobra_a_orientacao_e_a_devolve[atencao-maxima-150]
+      FAILED tests/integration/test_ui_shell_home_first_fold.py::test_o_cartao_que_duplica_a_faixa_dobra_a_orientacao_e_a_devolve[leitura-sem-dados]
+      3 failed, 8 passed, 2 deselected in 93.09s (0:01:33)
+      RESULTADO: vermelho rc=1 — mutação detectada
+  restaurado: sha b682f286cca879d2 (esperava b682f286cca879d2) OK
+
+== M3 — alvo do cartão a 36 px (ErrorCard.qml): contrato de alcance ==
+  aplicada em 3 ocorrencia(s); sha b682f286cca879d2 -> cb9102448eaa6c5c
+    [gate] $ <checkout-canônico>/.venv/bin/python -m pytest tests/integration/test_ui_shell_home_first_fold.py -q -k primeiro_alvo or agregada or acoes or devolve or dobra_ja_fecha
+      assert _inteiro(alvo, "cartoes") >= 1, f"a cena {cena!r} perdeu o cartão de erro"
+      assert _inteiro(alvo, "cartao_diag") == 1, (
+      assert _inteiro(alvo, "cartao_detalhe") == 1, (
+      E       AssertionError: o alvo de diagnóstico do cartão mede 36 px, abaixo dos 48 px do contrato de alcance
+      tests/integration/test_ui_shell_home_first_fold.py:555: AssertionError
+      assert _inteiro(alvo, "cartoes") >= 1, f"a cena {cena!r} perdeu o cartão de erro"
+      assert _inteiro(alvo, "cartao_diag") == 1, (
+      assert _inteiro(alvo, "cartao_detalhe") == 1, (
+      E       AssertionError: o alvo de diagnóstico do cartão mede 36 px, abaixo dos 48 px do contrato de alcance
+      tests/integration/test_ui_shell_home_first_fold.py:555: AssertionError
+      Medido: com a primeira leitura recusada, `statusPhase` vira `error`
+      (`Main.qml:1231`), `statusBandIsError` (`:415`) põe a faixa na tela, e o
+      assert _inteiro(alvo, "band") == 1, (
+      assert _inteiro(alvo, "banner") == 0, "sem leitura bem-sucedida não há verdade a julgar"
+      assert _inteiro(alvo, "ponte") == 0
+      assert _inteiro(alvo, "cartoes") == 1, (
+      assert _inteiro(alvo, "cartao_diag") == 1
+      assert _inteiro(alvo, "cartao_detalhe") == 1
+      E       AssertionError: nessa jornada o alvo de diagnóstico é a única saída e mede 36 px, abaixo dos 48 px do contrato
+      tests/integration/test_ui_shell_home_first_fold.py:590: AssertionError
+      FAILED tests/integration/test_ui_shell_home_first_fold.py::test_a_correcao_nao_pode_esconder_as_acoes_do_cartao[atencao-maxima]
+      FAILED tests/integration/test_ui_shell_home_first_fold.py::test_a_correcao_nao_pode_esconder_as_acoes_do_cartao[atencao-maxima-150]
+      FAILED tests/integration/test_ui_shell_home_first_fold.py::test_sem_dados_preservados_a_faixa_e_de_erro_e_o_cartao_guarda_as_acoes
+      3 failed, 8 passed, 2 deselected in 92.63s (0:01:32)
+      RESULTADO: vermelho rc=1 — mutação detectada
+  restaurado: sha b682f286cca879d2 (esperava b682f286cca879d2) OK
+
+== M4 — 'Ver detalhes' some em compacto (ErrorCard.qml): corta o acesso ==
+  aplicada em 1 ocorrencia(s); sha b682f286cca879d2 -> d5d4831cec50a29b
+    [gate] $ <checkout-canônico>/.venv/bin/python -m pytest tests/integration/test_ui_shell_home_first_fold.py -q -k primeiro_alvo or agregada or acoes or devolve or dobra_ja_fecha
+      assert _inteiro(alvo, "cartoes") >= 1, f"a cena {cena!r} perdeu o cartão de erro"
+      assert _inteiro(alvo, "cartao_diag") == 1, (
+      E       AssertionError: o cartão perdeu o botão de detalhes: a correção cortou acesso à causa
+      tests/integration/test_ui_shell_home_first_fold.py:552: AssertionError
+      assert _inteiro(alvo, "cartoes") >= 1, f"a cena {cena!r} perdeu o cartão de erro"
+      assert _inteiro(alvo, "cartao_diag") == 1, (
+      E       AssertionError: o cartão perdeu o botão de detalhes: a correção cortou acesso à causa
+      tests/integration/test_ui_shell_home_first_fold.py:552: AssertionError
+      Medido: com a primeira leitura recusada, `statusPhase` vira `error`
+      (`Main.qml:1231`), `statusBandIsError` (`:415`) põe a faixa na tela, e o
+      assert _inteiro(alvo, "band") == 1, (
+      assert _inteiro(alvo, "banner") == 0, "sem leitura bem-sucedida não há verdade a julgar"
+      assert _inteiro(alvo, "ponte") == 0
+      assert _inteiro(alvo, "cartoes") == 1, (
+      assert _inteiro(alvo, "cartao_diag") == 1
+      E       AssertionError: assert 0 == 1
+      tests/integration/test_ui_shell_home_first_fold.py:589: AssertionError
+      assert _inteiro(alvo, "band") == 1, "sem faixa anunciando a falha não há duplicação"
+      assert _inteiro(alvo, "cartoes") == 1, f"a cena {cena!r} perdeu o cartão de erro"
+      assert _inteiro(alvo, "cartao_compacto") == 1, (
+      E       AssertionError: o 'Ver detalhes' do cartão compacto não foi encontrado para ser acionado: a forma compacta cortou o acesso à orientação
+      tests/integration/test_ui_shell_home_first_fold.py:623: AssertionError
+      assert _inteiro(alvo, "band") == 1, "sem faixa anunciando a falha não há duplicação"
+      assert _inteiro(alvo, "cartoes") == 1, f"a cena {cena!r} perdeu o cartão de erro"
+      assert _inteiro(alvo, "cartao_compacto") == 1, (
+      E       AssertionError: o 'Ver detalhes' do cartão compacto não foi encontrado para ser acionado: a forma compacta cortou o acesso à orientação
+      tests/integration/test_ui_shell_home_first_fold.py:623: AssertionError
+      assert _inteiro(alvo, "band") == 1, "sem faixa anunciando a falha não há duplicação"
+      assert _inteiro(alvo, "cartoes") == 1, f"a cena {cena!r} perdeu o cartão de erro"
+      assert _inteiro(alvo, "cartao_compacto") == 1, (
+      E       AssertionError: o 'Ver detalhes' do cartão compacto não foi encontrado para ser acionado: a forma compacta cortou o acesso à orientação
+      tests/integration/test_ui_shell_home_first_fold.py:623: AssertionError
+      FAILED tests/integration/test_ui_shell_home_first_fold.py::test_a_correcao_nao_pode_esconder_as_acoes_do_cartao[atencao-maxima]
+      FAILED tests/integration/test_ui_shell_home_first_fold.py::test_a_correcao_nao_pode_esconder_as_acoes_do_cartao[atencao-maxima-150]
+      FAILED tests/integration/test_ui_shell_home_first_fold.py::test_sem_dados_preservados_a_faixa_e_de_erro_e_o_cartao_guarda_as_acoes
+      FAILED tests/integration/test_ui_shell_home_first_fold.py::test_o_cartao_que_duplica_a_faixa_dobra_a_orientacao_e_a_devolve[atencao-maxima]
+      FAILED tests/integration/test_ui_shell_home_first_fold.py::test_o_cartao_que_duplica_a_faixa_dobra_a_orientacao_e_a_devolve[atencao-maxima-150]
+      FAILED tests/integration/test_ui_shell_home_first_fold.py::test_o_cartao_que_duplica_a_faixa_dobra_a_orientacao_e_a_devolve[leitura-sem-dados]
+      6 failed, 5 passed, 2 deselected in 96.86s (0:01:36)
+      RESULTADO: vermelho rc=1 — mutação detectada
+  restaurado: sha b682f286cca879d2 (esperava b682f286cca879d2) OK
+
+== SHA-256 da árvore depois da bateria ==
+  b682f286cca879d2  ErrorCard.qml  OK
+  281215854ac35f4a  Main.qml  OK

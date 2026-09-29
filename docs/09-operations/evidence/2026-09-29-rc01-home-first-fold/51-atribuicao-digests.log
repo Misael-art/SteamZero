@@ -1,0 +1,43 @@
+# comando: .venv/bin/python docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/51-atribuicao-digests.py
+# rodado em 2026-09-29T14:46:08-03:00, na arvore com os quatro commits desta frente + os arquivos documentais ainda nao commitados
+
+arquivos desta frente (base 2d6a8957 -> HEAD + não commitados): 12
+  - docs/09-operations/evidence/2026-09-29-rc01-home-first-fold
+  - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/32-ci-terminal-pr245-2d6a8957.log
+  - docs/status/workstreams/rc01-home-first-fold-2026-09-29.json
+  - src/steamzero/ui/qml/ErrorCard.qml
+  - src/steamzero/ui/qml/Main.qml
+  - src/steamzero/ui/qml/ThemeEditorPanel.qml
+  - tests/integration/test_ui_shell_esde_import_dialog.py
+  - tests/integration/test_ui_shell_home_first_fold.py
+  - tests/integration/test_ui_shell_retrofe_import_late_response.py
+  - tests/qml/check_home_first_fold_attention.qml
+  - tests/qml/check_shell_esde_import_dialog_journey.qml
+  - tests/qml/check_shell_retrofe_import_late_response.qml
+
+itens acusados pelo check: 11
+SZ-AURA-ESDE-ACTIVE-SURFACE        scopePaths=  8 causados por esta frente:  1  ['src/steamzero/ui/qml/Main.qml']
+  esperado bf56beb20072fa38…  atual 764e4c4f08e07bc3…
+SZ-GAMEMODE-READINESS              scopePaths=  9 causados por esta frente:  1  ['src/steamzero/ui/qml/Main.qml']
+  esperado 8d58045c688b6906…  atual d2c5507204967cfe…
+SZ-LIBRARY-CANONICAL               scopePaths= 28 causados por esta frente:  1  ['src/steamzero/ui/qml/Main.qml']
+  esperado 26ddf85184b327e2…  atual 0f92a5a850557f69…
+SZ-PS3-OFFICIAL-FIRMWARE-DOWNLOAD  scopePaths=  8 causados por esta frente:  1  ['src/steamzero/ui/qml/Main.qml']
+  esperado 90776b6b08da8979…  atual 82647f74182f4ce1…
+SZ-SYSTEM-DIAGNOSTICS-GUIDANCE     scopePaths=  5 causados por esta frente:  1  ['src/steamzero/ui/qml/Main.qml']
+  esperado e4153c1c1e6ce14b…  atual c88e37b0b54e3fbb…
+SZ-THEME-ENGINE                    scopePaths=102 causados por esta frente:  3  ['src/steamzero/ui/qml/ErrorCard.qml', 'src/steamzero/ui/qml/Main.qml', 'src/steamzero/ui/qml/ThemeEditorPanel.qml']
+  esperado 277f9d62811aaf4c…  atual d122700b80e46cc7…
+SZ-THEME-IMPORT-ESDE-LAYOUT        scopePaths= 32 causados por esta frente:  1  ['src/steamzero/ui/qml/Main.qml']
+  esperado 71ae00b2e8fc0c34…  atual 7f5d240819386ca8…
+SZ-THEME-IMPORT-RETROFE            scopePaths=  9 causados por esta frente:  1  ['src/steamzero/ui/qml/ThemeEditorPanel.qml']
+  esperado e78dbeb4d1360101…  atual 926f6dc38ddc5458…
+SZ-THEME-IMPORT-SURFACE            scopePaths=  4 causados por esta frente:  1  ['src/steamzero/ui/qml/ThemeEditorPanel.qml']
+  esperado d95783eab6673095…  atual 6d6c557c31fa483f…
+SZ-THEME-STUDIO                    scopePaths= 17 causados por esta frente:  1  ['src/steamzero/ui/qml/ThemeEditorPanel.qml']
+  esperado 027b901560dcbce8…  atual 77093999ba493d53…
+SZ-UI-DESKTOP-AUDIT                scopePaths= 89 causados por esta frente: 11  ['docs/09-operations/evidence/2026-09-29-rc01-home-first-fold', 'docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/32-ci-terminal-pr245-2d6a8957.log', 'src/steamzero/ui/qml/ErrorCard.qml', 'src/steamzero/ui/qml/Main.qml', 'src/steamzero/ui/qml/ThemeEditorPanel.qml', 'tests/integration/test_ui_shell_esde_import_dialog.py', 'tests/integration/test_ui_shell_home_first_fold.py', 'tests/integration/test_ui_shell_retrofe_import_late_response.py', 'tests/qml/check_home_first_fold_attention.qml', 'tests/qml/check_shell_esde_import_dialog_journey.qml', 'tests/qml/check_shell_retrofe_import_late_response.qml']
+  esperado df5508cd4c000fb7…  atual cf28c4e104bbb863…
+
+itens acusados SEM arquivo desta frente no escopo: 0
+rc=0
