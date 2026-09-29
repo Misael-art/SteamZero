@@ -247,6 +247,10 @@ def _error_server() -> tuple[int, threading.Thread, HTTPServer]:
         # próxima ação). A regra de cor vivia inteiramente no QML, e é ali que ela
         # voltaria a morar se alguém reimplementá-la por página.
         "check_readiness_surface.qml",
+        # UX-04: armazenamento em unidades compreensíveis. As quatro superfícies
+        # executadas lado a lado porque o defeito é justamente a divergência entre
+        # elas — o mesmo 1073741824 B lido como GiB, GB e MB conforme a tela.
+        "check_storage_units.qml",
         "check_main_handheld_sections.qml",
         "check_credentials.qml",
         "check_credential_dialog_responsive.qml",
