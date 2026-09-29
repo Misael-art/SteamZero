@@ -76,6 +76,8 @@ Duas outras falhas minhas ficaram registradas: altura lida no mesmo tick do cliq
 | `52-gates-integrais.sh`, `52-comandos-e-saidas.log`, `52-comandos-e-saidas.log.rc` | o checkpoint dos sete gates na árvore congelada `e7167080`: sete passos `rc=0`, integral `6520 passed, 47 skipped in 2240.73s`, gate visual `375 passed, 6192 deselected in 1594.46s`, identidade impressa antes e depois de **cada** passo |
 | `53-auditoria-de-citacoes.md` | a auditoria que achou as quatro citações falsas do `desktop_ui.py`, com o texto falso preservado na tabela e a linha real onde cada trecho do argv mora hoje |
 | `55-revalidacao-proporcional.sh`, `55-revalidacao-proporcional.log` | a revalidação proporcional pós-correção de citações: format/check/mypy `rc=0`, gate afetado `13 passed in 115.05s`, e o `status-check` **reprovando** porque os arquivos deste lote ainda não estavam no digest renovado — a causa, não um resultado escondido |
+| `61-reconcilio-rc01-oito-elos.md` | a RC-01 inteira reconciliada critério a critério nas cinco camadas, **re-medida** contra a cabeça deste elo, com o que mudou desde o sétimo elo declarado linha por linha e o que falta em ordem de dependência |
+| `62-preparacao-de-validacao-fisica.md` | o plano de validação física do conjunto integrado: pré-condições externas, o que cada cenário prova e o que **não** prova, sanitização de capturas pelo precedente de 22/07 e o bloqueio concreto de hoje |
 
 **Redação aplicada no arquivamento (AGENTS.md: não redistribuir caminhos pessoais):** o
 prefixo do checkout virou `<checkout-canônico>` e a pasta temporária de fora do checkout virou
@@ -90,8 +92,10 @@ Na segunda rodada de arquivamento (fechamento, já com o checkpoint rodado) a me
 atingiu 1 ocorrência no `52-gates-integrais.sh` (`d4a14bd972249450…` → `4c37963f8df4232a…`), 3 no
 `52-comandos-e-saidas.log` (`64af11708a0f6df2…` → `97cff6cf4c9bffec…`), 1 em cada arquivo do `55`
 (`7220f53856169f4f…` → `ed0461d437b6ed9a…` o driver; `8189a4e0c8c1f477…` → `d57a34323b332642…` o
-log) e zero em `52-comandos-e-saidas.log.rc` (`f4ff1f6a6aa5cad0…`) e `53-auditoria-de-citacoes.md`
-(`bd1c673ac83f5a23…`). Verificação: nenhum `/home/misael` residual nos sete arquivos arquivados.
+log) e zero em `52-comandos-e-saidas.log.rc` (`f4ff1f6a6aa5cad0…`)
+e `53-auditoria-de-citacoes.md` (`bd1c673ac83f5a23…`). Verificação: zero ocorrências residuais do
+prefixo do checkout nos **seis** arquivos arquivados nesta rodada (quatro no `52`/`53`, dois no
+`55`), confirmada por varredura sobre o conteúdo commitado.
 
 **Divergência conhecida entre driver e log:** o `47-drv-bateria-de-mutacoes.py` arquivado
 (sha256 `19c94a0a…`) difere da versão que produziu o `47-gate-verde-e-bateria-de-mutacoes.log`
