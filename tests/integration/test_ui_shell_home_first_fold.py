@@ -4,15 +4,15 @@
 A lacuna existe desde 26/09 (`2026-09-26-rc01-central-loading/README.md`
 §"Ressalva de experiência"), mas foi registrada **forçando** `bridgeUnavailable`.
 Medido antes deste gate: essa combinação não existe pelos bindings de produção —
-`apiUrl`/`apiToken` vêm de argumento na inicialização (`Main.qml:886`-`:893`) e,
+`apiUrl`/`apiToken` vêm de argumento na inicialização (`Main.qml:901`-`:908`) e,
 sem eles, não há leitura bem-sucedida, logo `desktopTruthNeedsAttention`
 (`:339`) e `hasConflicts` (`:334`) ficam falsos e o banner não acende. O que a
 produção **sim** empilha, numa única jornada real, é: faixa de fase + banner de
 atenção (verdade degradada com conflito) + cartão de erro pelo MESMO código da
-renovação recusada (`pushError` `:481`).
+renovação recusada (`pushError` `:496`).
 
 A faixa não é só "carregando": `statusBandVisible` é `statusIsLoading ||
-statusStale || statusBandIsError` (`Main.qml:415`-`:417`), com
+statusStale || statusBandIsError` (`Main.qml:421`-`:422`), com
 `statusBandIsError = statusPhase === "error" && !bridgeUnavailable`. Ou seja,
 **toda** falha de leitura acende a faixa — inclusive a primeira leitura recusada,
 sem nada preservado. Corrigir isto aqui é correção de leitura própria: a nota de
@@ -290,7 +290,7 @@ def _handler(cena: _Cena) -> type[BaseHTTPRequestHandler]:
                 return
             numero = cena.proxima()
             # `leitura-sem-dados`: a PRIMEIRA leitura já recusa. Sem nada
-            # preservado a fase vira `error`, `statusBandIsError` (`Main.qml:415`)
+            # preservado a fase vira `error`, `statusBandIsError` (`Main.qml:420`)
             # acende a faixa na variante de erro e o banner não existe — ficam
             # dois anúncios do mesmo fato, mas só o cartão carrega as ações.
             if cena.cena == "leitura-sem-dados":
@@ -562,7 +562,7 @@ def test_sem_dados_preservados_a_faixa_e_de_erro_e_o_cartao_guarda_as_acoes() ->
     """Sem dados, a faixa acende pela variante de erro — e o cartão não sobra.
 
     Medido: com a primeira leitura recusada, `statusPhase` vira `error`
-    (`Main.qml:1231`), `statusBandIsError` (`:415`) põe a faixa na tela, e o
+    (`Main.qml:1248`-`:1249`), `statusBandIsError` (`:420`) põe a faixa na tela, e o
     mesmo código empilha um cartão. Diferente da cena de atenção, aqui **não há
     verdade preservada** e o banner não existe: a faixa anuncia o fato, mas só o
     cartão tem detalhes e exportação. Uma correção que colapsasse o cartão
