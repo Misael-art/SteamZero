@@ -91,9 +91,7 @@ def _separador_diagnosticado(saida: str) -> Iterator[str]:
     """O separador que o harness informou, se informou."""
     for linha in _linhas(saida, MARCADOR_LOCALE):
         trecho = linha.split(MARCADOR_LOCALE, 1)[1]
-        campos = dict(
-            par.split("=", 1) for par in trecho.split() if "=" in par
-        )
+        campos = dict(par.split("=", 1) for par in trecho.split() if "=" in par)
         if "decimal" in campos:
             yield campos["decimal"].strip('"')
 
@@ -128,7 +126,9 @@ def test_a_matriz_exerce_dois_contextos_de_formatacao_distintos() -> None:
     for locale_nome, esperado in LOCAIS:
         completed = _executar(locale_nome)
         saida = completed.stdout + completed.stderr
-        assert completed.returncode == 0, f"LC_ALL={locale_nome}: gate reprovado antes da comparação"
+        assert completed.returncode == 0, (
+            f"LC_ALL={locale_nome}: o gate reprovou antes da comparação"
+        )
         locale_reportado = _linhas(saida, MARCADOR_LOCALE)
         assert locale_reportado and f"locale={esperado}" in locale_reportado[0], (
             f"LC_ALL={locale_nome}: harness reportou {locale_reportado!r}, esperado {esperado!r}"
