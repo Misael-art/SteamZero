@@ -10,8 +10,9 @@
 // renovação recusada com dados preservados acende a faixa E empilha um cartão de
 // erro pelo mesmo código (`request` → `notify(..., errObj)` → `pushError`).
 //
-// Este harness não recebe a cena por argumento. O argv é o da produção
-// (`adapters/desktop_ui.py:990`-`:1001`: `qml6 Main.qml -- --steamzero-api … --steamzero-token …`),
+// Este harness não recebe a cena por argumento. O argv é o da produção (o
+// `subprocess.Popen` de `launch_desktop_ui()` em `adapters/desktop_ui.py`:
+// `qml6 Main.qml -- --steamzero-api … --steamzero-token …`),
 // e o que distingue uma jornada da outra é apenas o comportamento da ponte. Assim
 // a dobra nunca é medida numa janela aberta de modo diferente do modo real.
 //

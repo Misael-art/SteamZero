@@ -1112,7 +1112,7 @@
       "kind": "test",
       "result": "passed",
       "reference": "docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/README.md",
-      "command": "Gate da primeira dobra da Home: tests/integration/test_ui_shell_home_first_fold.py dirigido por tests/qml/check_home_first_fold_attention.qml sob qml6 + QT_QPA_PLATFORM=offscreen, com o argv da producao (adapters/desktop_ui.py:990-:1001) e testemunhas impressas pelo harness e lidas pelo gate independentemente do veredito do Qt. 13 passed em 107,76 s (46-pytest-verde.log). Vermelho do produto medido antes da correcao: 5 failed, 3 passed com alvos de 36 px e banda de 434/405 px (38-gate-dobra-vermelho-real.log, 39-matriz-dobra-argv-producao.log). Depois: banda 493/560, cartao 76 px, alvo 48 px, primeiro alvo terminando em 449/468 px dentro da dobra (40-matriz-dobra-pos-correcao.log). Nenhuma captura PNG."
+      "command": "Gate da primeira dobra da Home: tests/integration/test_ui_shell_home_first_fold.py dirigido por tests/qml/check_home_first_fold_attention.qml sob qml6 + QT_QPA_PLATFORM=offscreen, com o argv da producao (o subprocess.Popen de launch_desktop_ui() em adapters/desktop_ui.py) e testemunhas impressas pelo harness e lidas pelo gate independentemente do veredito do Qt. 13 passed em 107,76 s (46-pytest-verde.log). Vermelho do produto medido antes da correcao: 5 failed, 3 passed com alvos de 36 px e banda de 434/405 px (38-gate-dobra-vermelho-real.log, 39-matriz-dobra-argv-producao.log). Depois: banda 493/560, cartao 76 px, alvo 48 px, primeiro alvo terminando em 449/468 px dentro da dobra (40-matriz-dobra-pos-correcao.log). Nenhuma captura PNG."
     },
     {
       "kind": "test",

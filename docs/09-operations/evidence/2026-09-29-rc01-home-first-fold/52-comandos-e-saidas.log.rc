@@ -1,0 +1,7 @@
+1 rc=0 :: .venv/bin/ruff format --check src tests tools
+2 rc=0 :: .venv/bin/ruff check src tests tools
+3 rc=0 :: .venv/bin/mypy src
+4 rc=0 :: make independence boundaries
+5 rc=0 :: make status-check
+6 rc=0 :: .venv/bin/python tools/run_tests_isolated.py tests -q
+7 rc=0 :: .venv/bin/python tools/run_tests_isolated.py -m visual --tb=short -q

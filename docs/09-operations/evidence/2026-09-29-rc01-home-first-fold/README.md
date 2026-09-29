@@ -60,7 +60,7 @@ Duas outras falhas minhas ficaram registradas: altura lida no mesmo tick do cliq
 | `36-gate-primeiro-vermelho-harness-com-defeito.log` | `FFFFFFF.` — o vermelho era do harness (árvore de walk errada e altura no tick errado) |
 | `37-matriz-dobra-medida.log` | matriz das quatro cenas no argv errado |
 | `38-gate-dobra-vermelho-real.log` | `5 failed, 3 passed` — o defeito do produto medido: alvos de 36 px e banda de 434/405 px |
-| `39-matriz-dobra-argv-producao.log` | a mesma matriz com o argv da produção (`adapters/desktop_ui.py:990`-`:1001`): 264 px de chrome, `cabe=NÃO (+15)` e `(+63)` |
+| `39-matriz-dobra-argv-producao.log` | a mesma matriz com o argv da produção (o `subprocess.Popen` de `launch_desktop_ui()` em `adapters/desktop_ui.py`): 264 px de chrome, `cabe=NÃO (+15)` e `(+63)` |
 | `40-matriz-dobra-pos-correcao.log` | depois da correção: `scroll_h` 493/560, cartão 76 px, alvo 48 px, `cabe=SIM` nas quatro cenas |
 | `41-gate-modelo-de-altura-reprovou.log` | `........F.F..` — o falso vermelho do meu modelo de 33 px |
 | `42-sonda-alturas-expansao.log` | alturas compacta/expandida por cena |

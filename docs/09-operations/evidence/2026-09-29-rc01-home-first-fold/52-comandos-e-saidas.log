@@ -1,0 +1,319 @@
+CHECKPOINT — primeira dobra da Home: gates rápidos + suíte integral única + gate visual na árvore congelada
+COMANDO-MAE: bash <tmp-fora-do-checkout>/52-gates-integrais.sh <tmp-fora-do-checkout>/52-comandos-e-saidas.log
+INICIO 2026-09-29T14:57:10-03:00
+cwd=<checkout-canônico>
+python=Python 3.14.7
+
+===== PASSO 1 :: .venv/bin/ruff format --check src tests tools
+INICIO 2026-09-29T14:57:10-03:00
+--- identidade 2026-09-29T14:57:10-03:00 ---
+branch=codex/rc01-home-first-fold-2026-09-29
+HEAD=e7167080797a518aab376b289f7d821a10f28108
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+sha256 por conteudo (leitura da arvore de trabalho):
+  281215854ac35f4a  src/steamzero/ui/qml/Main.qml
+  b682f286cca879d2  src/steamzero/ui/qml/ErrorCard.qml
+  065d0a51454f81c0  tests/qml/check_home_first_fold_attention.qml
+  276a0ccea7de26fd  tests/integration/test_ui_shell_home_first_fold.py
+agregado (leitura do INDICE, nao da arvore de trabalho): sha256 src+tests+tools=1149f29557440970
+680 files already formatted
+FIM 2026-09-29T14:57:11-03:00 rc=0
+--- identidade 2026-09-29T14:57:11-03:00 ---
+branch=codex/rc01-home-first-fold-2026-09-29
+HEAD=e7167080797a518aab376b289f7d821a10f28108
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+sha256 por conteudo (leitura da arvore de trabalho):
+  281215854ac35f4a  src/steamzero/ui/qml/Main.qml
+  b682f286cca879d2  src/steamzero/ui/qml/ErrorCard.qml
+  065d0a51454f81c0  tests/qml/check_home_first_fold_attention.qml
+  276a0ccea7de26fd  tests/integration/test_ui_shell_home_first_fold.py
+agregado (leitura do INDICE, nao da arvore de trabalho): sha256 src+tests+tools=1149f29557440970
+
+===== PASSO 2 :: .venv/bin/ruff check src tests tools
+INICIO 2026-09-29T14:57:11-03:00
+--- identidade 2026-09-29T14:57:11-03:00 ---
+branch=codex/rc01-home-first-fold-2026-09-29
+HEAD=e7167080797a518aab376b289f7d821a10f28108
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+sha256 por conteudo (leitura da arvore de trabalho):
+  281215854ac35f4a  src/steamzero/ui/qml/Main.qml
+  b682f286cca879d2  src/steamzero/ui/qml/ErrorCard.qml
+  065d0a51454f81c0  tests/qml/check_home_first_fold_attention.qml
+  276a0ccea7de26fd  tests/integration/test_ui_shell_home_first_fold.py
+agregado (leitura do INDICE, nao da arvore de trabalho): sha256 src+tests+tools=1149f29557440970
+All checks passed!
+FIM 2026-09-29T14:57:11-03:00 rc=0
+--- identidade 2026-09-29T14:57:11-03:00 ---
+branch=codex/rc01-home-first-fold-2026-09-29
+HEAD=e7167080797a518aab376b289f7d821a10f28108
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+sha256 por conteudo (leitura da arvore de trabalho):
+  281215854ac35f4a  src/steamzero/ui/qml/Main.qml
+  b682f286cca879d2  src/steamzero/ui/qml/ErrorCard.qml
+  065d0a51454f81c0  tests/qml/check_home_first_fold_attention.qml
+  276a0ccea7de26fd  tests/integration/test_ui_shell_home_first_fold.py
+agregado (leitura do INDICE, nao da arvore de trabalho): sha256 src+tests+tools=1149f29557440970
+
+===== PASSO 3 :: .venv/bin/mypy src
+INICIO 2026-09-29T14:57:11-03:00
+--- identidade 2026-09-29T14:57:11-03:00 ---
+branch=codex/rc01-home-first-fold-2026-09-29
+HEAD=e7167080797a518aab376b289f7d821a10f28108
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+sha256 por conteudo (leitura da arvore de trabalho):
+  281215854ac35f4a  src/steamzero/ui/qml/Main.qml
+  b682f286cca879d2  src/steamzero/ui/qml/ErrorCard.qml
+  065d0a51454f81c0  tests/qml/check_home_first_fold_attention.qml
+  276a0ccea7de26fd  tests/integration/test_ui_shell_home_first_fold.py
+agregado (leitura do INDICE, nao da arvore de trabalho): sha256 src+tests+tools=1149f29557440970
+Success: no issues found in 298 source files
+FIM 2026-09-29T14:57:11-03:00 rc=0
+--- identidade 2026-09-29T14:57:11-03:00 ---
+branch=codex/rc01-home-first-fold-2026-09-29
+HEAD=e7167080797a518aab376b289f7d821a10f28108
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+sha256 por conteudo (leitura da arvore de trabalho):
+  281215854ac35f4a  src/steamzero/ui/qml/Main.qml
+  b682f286cca879d2  src/steamzero/ui/qml/ErrorCard.qml
+  065d0a51454f81c0  tests/qml/check_home_first_fold_attention.qml
+  276a0ccea7de26fd  tests/integration/test_ui_shell_home_first_fold.py
+agregado (leitura do INDICE, nao da arvore de trabalho): sha256 src+tests+tools=1149f29557440970
+
+===== PASSO 4 :: make independence boundaries
+INICIO 2026-09-29T14:57:11-03:00
+--- identidade 2026-09-29T14:57:11-03:00 ---
+branch=codex/rc01-home-first-fold-2026-09-29
+HEAD=e7167080797a518aab376b289f7d821a10f28108
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+sha256 por conteudo (leitura da arvore de trabalho):
+  281215854ac35f4a  src/steamzero/ui/qml/Main.qml
+  b682f286cca879d2  src/steamzero/ui/qml/ErrorCard.qml
+  065d0a51454f81c0  tests/qml/check_home_first_fold_attention.qml
+  276a0ccea7de26fd  tests/integration/test_ui_shell_home_first_fold.py
+agregado (leitura do INDICE, nao da arvore de trabalho): sha256 src+tests+tools=1149f29557440970
+.venv/bin/python tools/check_independence.py
+independência de runtime: OK
+.venv/bin/python tools/lint_boundaries.py --root src
+lint de fronteiras: OK (0 violações)
+FIM 2026-09-29T14:57:15-03:00 rc=0
+--- identidade 2026-09-29T14:57:15-03:00 ---
+branch=codex/rc01-home-first-fold-2026-09-29
+HEAD=e7167080797a518aab376b289f7d821a10f28108
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+sha256 por conteudo (leitura da arvore de trabalho):
+  281215854ac35f4a  src/steamzero/ui/qml/Main.qml
+  b682f286cca879d2  src/steamzero/ui/qml/ErrorCard.qml
+  065d0a51454f81c0  tests/qml/check_home_first_fold_attention.qml
+  276a0ccea7de26fd  tests/integration/test_ui_shell_home_first_fold.py
+agregado (leitura do INDICE, nao da arvore de trabalho): sha256 src+tests+tools=1149f29557440970
+
+===== PASSO 5 :: make status-check
+INICIO 2026-09-29T14:57:15-03:00
+--- identidade 2026-09-29T14:57:15-03:00 ---
+branch=codex/rc01-home-first-fold-2026-09-29
+HEAD=e7167080797a518aab376b289f7d821a10f28108
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+sha256 por conteudo (leitura da arvore de trabalho):
+  281215854ac35f4a  src/steamzero/ui/qml/Main.qml
+  b682f286cca879d2  src/steamzero/ui/qml/ErrorCard.qml
+  065d0a51454f81c0  tests/qml/check_home_first_fold_attention.qml
+  276a0ccea7de26fd  tests/integration/test_ui_shell_home_first_fold.py
+agregado (leitura do INDICE, nao da arvore de trabalho): sha256 src+tests+tools=1149f29557440970
+.venv/bin/python tools/project_status.py check
+STATUS-CHECK: OK
+FIM 2026-09-29T14:57:16-03:00 rc=0
+--- identidade 2026-09-29T14:57:16-03:00 ---
+branch=codex/rc01-home-first-fold-2026-09-29
+HEAD=e7167080797a518aab376b289f7d821a10f28108
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+sha256 por conteudo (leitura da arvore de trabalho):
+  281215854ac35f4a  src/steamzero/ui/qml/Main.qml
+  b682f286cca879d2  src/steamzero/ui/qml/ErrorCard.qml
+  065d0a51454f81c0  tests/qml/check_home_first_fold_attention.qml
+  276a0ccea7de26fd  tests/integration/test_ui_shell_home_first_fold.py
+agregado (leitura do INDICE, nao da arvore de trabalho): sha256 src+tests+tools=1149f29557440970
+
+===== PASSO 6 :: .venv/bin/python tools/run_tests_isolated.py tests -q
+INICIO 2026-09-29T14:57:16-03:00
+--- identidade 2026-09-29T14:57:16-03:00 ---
+branch=codex/rc01-home-first-fold-2026-09-29
+HEAD=e7167080797a518aab376b289f7d821a10f28108
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+sha256 por conteudo (leitura da arvore de trabalho):
+  281215854ac35f4a  src/steamzero/ui/qml/Main.qml
+  b682f286cca879d2  src/steamzero/ui/qml/ErrorCard.qml
+  065d0a51454f81c0  tests/qml/check_home_first_fold_attention.qml
+  276a0ccea7de26fd  tests/integration/test_ui_shell_home_first_fold.py
+agregado (leitura do INDICE, nao da arvore de trabalho): sha256 src+tests+tools=1149f29557440970
+........................................................................ [  1%]
+........................................................................ [  2%]
+........................................................................ [  3%]
+........................................................................ [  4%]
+........................................................................ [  5%]
+........................................................................ [  6%]
+........................................................................ [  7%]
+........................................................................ [  8%]
+........................................................................ [  9%]
+........................................................................ [ 10%]
+.........................................ss.s..s.................sssss.. [ 12%]
+..s........sssssssssssssssss..................sssssssssssssssss......... [ 13%]
+........................................................................ [ 14%]
+........................................................................ [ 15%]
+........................................................................ [ 16%]
+............................s........................................... [ 17%]
+........................................................................ [ 18%]
+........................................................................ [ 19%]
+........................................................................ [ 20%]
+........................................................................ [ 21%]
+........................................................................ [ 23%]
+........................................................................ [ 24%]
+........................................................................ [ 25%]
+........................................................................ [ 26%]
+........................................................................ [ 27%]
+........................................................................ [ 28%]
+........................................................................ [ 29%]
+........................................................................ [ 30%]
+........................................................................ [ 31%]
+........................................................................ [ 32%]
+........................................................................ [ 33%]
+........................................................................ [ 35%]
+........................................................................ [ 36%]
+........................................................................ [ 37%]
+........................................................................ [ 38%]
+........................................................................ [ 39%]
+........................................................................ [ 40%]
+........................................................................ [ 41%]
+........................................................................ [ 42%]
+........................................................................ [ 43%]
+........................................................................ [ 44%]
+........................................................................ [ 46%]
+........................................................................ [ 47%]
+........................................................................ [ 48%]
+........................................................................ [ 49%]
+........................................................................ [ 50%]
+........................................................................ [ 51%]
+........................................................................ [ 52%]
+........................................................................ [ 53%]
+........................................................................ [ 54%]
+........................................................................ [ 55%]
+........................................................................ [ 57%]
+........................................................................ [ 58%]
+........................................................................ [ 59%]
+........................................................................ [ 60%]
+........................................................................ [ 61%]
+..........ss............................................................ [ 62%]
+........................................................................ [ 63%]
+........................................................................ [ 64%]
+........................................................................ [ 65%]
+........................................................................ [ 66%]
+........................................................................ [ 67%]
+........................................................................ [ 69%]
+........................................................................ [ 70%]
+........................................................................ [ 71%]
+........................................................................ [ 72%]
+........................................................................ [ 73%]
+........................................................................ [ 74%]
+........................................................................ [ 75%]
+........................................................................ [ 76%]
+........................................................................ [ 77%]
+........................................................................ [ 78%]
+........................................................................ [ 80%]
+........................................................................ [ 81%]
+........................................................................ [ 82%]
+........................................................................ [ 83%]
+........................................................................ [ 84%]
+........................................................................ [ 85%]
+........................................................................ [ 86%]
+........................................................................ [ 87%]
+........................................................................ [ 88%]
+........................................................................ [ 89%]
+........................................................................ [ 91%]
+........................................................................ [ 92%]
+........................................................................ [ 93%]
+........................................................................ [ 94%]
+........................................................................ [ 95%]
+........................................................................ [ 96%]
+........................................................................ [ 97%]
+........................................................................ [ 98%]
+........................................................................ [ 99%]
+...............                                                          [100%]
+=========================== short test summary info ============================
+SKIPPED [10] tests/integration/test_emulator_conformance.py:487: Flatpak fixa commit; o checksum é garantia do executor portátil
+SKIPPED [17] tests/integration/test_emulator_conformance.py:507: core não lança sozinho; quem lança é o RetroArch
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-bluemsx nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-fbneo nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-freeintv nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-fuse nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-genesis-plus-gx nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-ngp nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-pce nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-vb nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-wswan nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mesen nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mgba nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mupen64plus-next nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-opera nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-puae nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-snes9x nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-stella nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-vice-x64 nao declara capability `configure`
+SKIPPED [1] ../../../../../../mnt/sdcard/Projects/Port_Steam/tests/integration/test_metadata_to_catalog_pipeline.py:173: reference/ não versionado; checkout sem pesquisa
+SKIPPED [1] ../../../../../../mnt/sdcard/Projects/Port_Steam/tests/unit/test_metadata_import_pegasus.py:187: reference/ não versionado; checkout sem pesquisa
+SKIPPED [1] ../../../../../../mnt/sdcard/Projects/Port_Steam/tests/unit/test_metadata_import_pegasus.py:199: reference/ não versionado; checkout sem pesquisa
+6520 passed, 47 skipped in 2240.73s (0:37:20)
+real-state before: exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790607044829769561 source=HOME-default
+real-state after:  exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790607044829769561 source=HOME-default
+FIM 2026-09-29T15:34:41-03:00 rc=0
+--- identidade 2026-09-29T15:34:41-03:00 ---
+branch=codex/rc01-home-first-fold-2026-09-29
+HEAD=e7167080797a518aab376b289f7d821a10f28108
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+sha256 por conteudo (leitura da arvore de trabalho):
+  281215854ac35f4a  src/steamzero/ui/qml/Main.qml
+  b682f286cca879d2  src/steamzero/ui/qml/ErrorCard.qml
+  065d0a51454f81c0  tests/qml/check_home_first_fold_attention.qml
+  276a0ccea7de26fd  tests/integration/test_ui_shell_home_first_fold.py
+agregado (leitura do INDICE, nao da arvore de trabalho): sha256 src+tests+tools=1149f29557440970
+
+===== PASSO 7 :: .venv/bin/python tools/run_tests_isolated.py -m visual --tb=short -q
+INICIO 2026-09-29T15:34:41-03:00
+--- identidade 2026-09-29T15:34:41-03:00 ---
+branch=codex/rc01-home-first-fold-2026-09-29
+HEAD=e7167080797a518aab376b289f7d821a10f28108
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+sha256 por conteudo (leitura da arvore de trabalho):
+  281215854ac35f4a  src/steamzero/ui/qml/Main.qml
+  b682f286cca879d2  src/steamzero/ui/qml/ErrorCard.qml
+  065d0a51454f81c0  tests/qml/check_home_first_fold_attention.qml
+  276a0ccea7de26fd  tests/integration/test_ui_shell_home_first_fold.py
+agregado (leitura do INDICE, nao da arvore de trabalho): sha256 src+tests+tools=1149f29557440970
+........................................................................ [ 19%]
+........................................................................ [ 38%]
+........................................................................ [ 57%]
+........................................................................ [ 76%]
+........................................................................ [ 96%]
+...............                                                          [100%]
+375 passed, 6192 deselected in 1594.46s (0:26:34)
+real-state before: exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790607044829769561 source=HOME-default
+real-state after:  exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790607044829769561 source=HOME-default
+FIM 2026-09-29T16:01:20-03:00 rc=0
+--- identidade 2026-09-29T16:01:20-03:00 ---
+branch=codex/rc01-home-first-fold-2026-09-29
+HEAD=e7167080797a518aab376b289f7d821a10f28108
+git status --short (esta pasta de evidência excluída: o log cresce durante a execução):
+sha256 por conteudo (leitura da arvore de trabalho):
+  281215854ac35f4a  src/steamzero/ui/qml/Main.qml
+  b682f286cca879d2  src/steamzero/ui/qml/ErrorCard.qml
+  065d0a51454f81c0  tests/qml/check_home_first_fold_attention.qml
+  276a0ccea7de26fd  tests/integration/test_ui_shell_home_first_fold.py
+agregado (leitura do INDICE, nao da arvore de trabalho): sha256 src+tests+tools=1149f29557440970
+
+===== ROLLUP
+1 rc=0 :: .venv/bin/ruff format --check src tests tools
+2 rc=0 :: .venv/bin/ruff check src tests tools
+3 rc=0 :: .venv/bin/mypy src
+4 rc=0 :: make independence boundaries
+5 rc=0 :: make status-check
+6 rc=0 :: .venv/bin/python tools/run_tests_isolated.py tests -q
+7 rc=0 :: .venv/bin/python tools/run_tests_isolated.py -m visual --tb=short -q
+FIM TOTAL 2026-09-29T16:01:20-03:00

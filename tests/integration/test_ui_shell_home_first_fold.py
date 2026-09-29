@@ -339,8 +339,9 @@ def _subir_ponte(cena: _Cena) -> tuple[int, ThreadingHTTPServer]:
 def _rodar(cena: str) -> tuple[dict[str, str] | None, subprocess.CompletedProcess[str]]:
     """Roda a ponte da cena e devolve a testemunha do harness.
 
-    O argv é o da produção (`adapters/desktop_ui.py:990`-`:1001`): `qml6`, o
-    caminho do `Main.qml`, `--`, `--steamzero-api`, `--steamzero-token`. Não há
+    O argv é o da produção: o `subprocess.Popen` de `launch_desktop_ui()` em
+    `adapters/desktop_ui.py`, que passa `qml6`, o caminho do `Main.qml`, `--`,
+    `--steamzero-api` e `--steamzero-token`. Não há
     marcador de cena: quem decide a jornada é só o comportamento da ponte, e a
     testemunha é indexada pelo chamador, que sabe qual ponte subiu.
     """
