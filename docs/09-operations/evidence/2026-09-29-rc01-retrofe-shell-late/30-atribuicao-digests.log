@@ -1,0 +1,96 @@
+# 30-atribuicao-digests.log — atribuição por arquivo do item acusado
+#
+# Comando exato (no checkout, com o venv da casa):
+#   rtk proxy env TMPDIR=/tmp .venv/bin/python \
+#       docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/30-atribuicao-digests.py \
+#       > ~/steamzero-retrofe-tmp/30-atribuicao-digests.log 2>&1 ; rc=0
+# Gravado nesta pasta em 2026-09-29 (leitura do relógio no momento da cópia).
+#
+# Correção registrada antes da atribuição, porque ela é a causa real da primeira
+# reprovação: as duas entradas de evidência acrescentadas no lote (kind `gate`)
+# violam o enum de docs/status/project-item-v1.schema.json ($defs/evidence/kind =
+# test|vm|hardware|diagnostic|release|design). Medido: 420 test / 211 diagnostic /
+# 177 hardware / 16 design / 12 release / 1 vm / 2 gate no repo inteiro, e os 2
+# `gate` eram os meus. Os 148 registros de gate pré-existentes usam kind `test`
+# (precedente lido em docs/status/items/aura-launcher.json:33-*-gates.md). Corrigi
+# o DADO para o precedente, não o schema para o meu dado: nenhuma asserção, teste
+# ou veredito foi enfraquecido (AGENTS.md §6).
+#
+# Estado da árvore na leitura: HEAD 46fa4b29efb7, 6 caminhos sujos
+# (todos em docs/), sha256 das árvores src+tests+tools do commit = 980bc2bb0d02d3a0
+# (o valor da ÁRVORE DE TRABALHO congelada no checkpoint é f185438a112bc0b8,
+# medido em 24-comandos-e-saidas.log; aqui é o hash das árvores do commit,
+# leitura diferente e não comparável — declarada para não virar coincidência).
+#
+# Ponto fixo: o escopo deste item contém a própria pasta de evidência, então o
+# digest computado abaixo (826eb1ae…) é o valor ANTES deste arquivo existir. O
+# valor renovado na tarjeta é medido DEPOIS de todas as escritas na pasta e
+# registrado na evidencia seguinte e no WORKLOG (este arquivo, uma vez escrito,
+# não pode registrar o próprio efeito sobre o digest).
+#
+base desta frente: af6a5c6e
+arquivos desta frente (diff + working tree): 56
+  por área: {'docs': 42, 'docs/status': 10, 'tests': 3, 'src': 1}
+
+acusações do check (todas):
+  STATUS-CHECK: FALHOU
+  - SZ-UI-DESKTOP-AUDIT: evidencia obsoleta; scopeDigest esperado 2cb9855a63a679f9ff2bbe8c6ff573badc3cb744d084c6233b9bd6b41a60442d, atual 826eb1ae0946422449f3e221813f8582fb080efcfe90
+  - docs/STATUS.md esta desatualizado; execute tools/project_status.py render --write
+  - docs/ACTIVE-WORK.md esta desatualizado; execute tools/project_status.py render --write
+  - docs/status/COVERAGE.md esta desatualizado; execute tools/project_status.py render --write
+
+itens acusados de qualquer coisa: 1
+itens com digest obsoleto: 1
+
+### SZ-UI-DESKTOP-AUDIT
+    scopeDigest na tarjeta: 2cb9855a63a679f9ff2bbe8c6ff573badc3cb744d084c6233b9bd6b41a60442d
+    computado pela ferramenta: 826eb1ae0946422449f3e221813f8582fb080efcfe90022b2f3b8016040b1189
+    recomputado agora neste processo: 826eb1ae0946422449f3e221813f8582fb080efcfe90022b2f3b8016040b1189
+    44 arquivo(s) desta frente em scopePaths:
+      - docs/09-operations/evidence/2026-09-27-shell-esde-dialog <- docs/09-operations/evidence/2026-09-27-shell-esde-dialog/10-nextaction-verbatim-ws-2026-09-rc01-shell-esde-dialog.md
+      - docs/09-operations/evidence/2026-09-28-rc01-readiness-semantics <- docs/09-operations/evidence/2026-09-28-rc01-readiness-semantics/18-nextaction-verbatim-ws-2026-09-rc01-readiness-semantics.md
+      - docs/09-operations/evidence/2026-09-28-rc01-storage-units <- docs/09-operations/evidence/2026-09-28-rc01-storage-units/31-varredura-wheel-x-head.log
+      - docs/09-operations/evidence/2026-09-28-rc01-storage-units <- docs/09-operations/evidence/2026-09-28-rc01-storage-units/31-varredura-wheel-x-head.md
+      - docs/09-operations/evidence/2026-09-28-rc01-storage-units <- docs/09-operations/evidence/2026-09-28-rc01-storage-units/31-varredura-wheel-x-head.py
+      - docs/09-operations/evidence/2026-09-28-rc01-storage-units <- docs/09-operations/evidence/2026-09-28-rc01-storage-units/32-nextaction-verbatim-ws-2026-09-rc01-storage-units.md
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/00-vermelho-reproduzido.md
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/01-pytest-arquivo-novo.log
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/02-runner-jornada.log
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/03-ponte-jornada.log
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/04-runner-ordem.log
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/05-ponte-ordem.log
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/06-medida-seletor-nativo-offscreen.md
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/07-vermelho-rollback-do-dedup.md
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/08-bateria-de-mutacoes.md
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/09-verde-medido.md
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/11-pytest-vermelho-rollback.log
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/12-pytest-verde.log
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/13-gates-retrofe-mais-esde-pos-citacoes.log
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/14-mutante-m2-sem-rollback-de-geracao.log
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/15-mutante-m3-sem-bump-no-fechamento.log
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/16-mutante-m4-sem-porta-de-teclado.log
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/17-sonda-qmltestrunner-dialogo-nativo.log
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/18-sonda-dialogo-nativo-fonte.qml
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/19-runner-verde-jornada.txt
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/20-ponte-verde-jornada.txt
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/21-runner-verde-ordem.txt
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/22-ponte-verde-ordem.txt
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/23-guarda-da-rota-real-vermelho-reproduzido.log
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/24-comandos-e-saidas.log
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/24-comandos-e-saidas.log.concluido
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/24-comandos-e-saidas.log.rc
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/24-gates-integrais.sh
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/25-checkpoint-integral-e-gates.md
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/26-nextaction-verbatim-sz-ui-desktop-audit.md
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/27-nextaction-verbatim-ws-2026-09-rc01-retrofe-shell-late.md
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/28-fora-de-escopo-esde-geracao.md
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/29-reconcilio-rc01-cinco-camadas.md
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/30-atribuicao-digests.py
+      - docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late <- docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/README.md
+      - src/steamzero/ui <- src/steamzero/ui/qml/ThemeEditorPanel.qml
+      - tests/integration/test_ui_shell_retrofe_import_late_response.py <- tests/integration/test_ui_shell_retrofe_import_late_response.py
+      - tests/qml/check_shell_esde_import_dialog_journey.qml <- tests/qml/check_shell_esde_import_dialog_journey.qml
+      - tests/qml/check_shell_retrofe_import_late_response.qml <- tests/qml/check_shell_retrofe_import_late_response.qml
+
+com ao menos um arquivo desta frente no escopo: 1
+SEM nenhum arquivo desta frente: 0 []

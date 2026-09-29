@@ -97,7 +97,7 @@
     "tests/qml/check_shell_retrofe_import_late_response.qml",
     "docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late"
   ],
-  "scopeDigest": "2cb9855a63a679f9ff2bbe8c6ff573badc3cb744d084c6233b9bd6b41a60442d",
+  "scopeDigest": "d8ad776bdaea5edbcd1784e4d46500cd7d4046639075ecb3c7cda16734020a99",
   "dependsOn": [],
   "knownGaps": [
     "GAP-UI-LIVE-LAUNCHER-ROUTING",
@@ -1069,7 +1069,7 @@
       "command": "Limite medido, nao narrado: sob QT_QPA_PLATFORM=offscreen o FileDialog/FolderDialog fica visible=true com contentItem nulo e nenhum nos na varredura de children, e nem onAccepted nem onRejected disparam (sonda fora da arvore em 17-/18-*). Consequencia registrada em vez de passar como detalhe: nenhuma cena de recusa pode nascer de seletor nativo, e a assercao de recusa da cena 08 so discrimina dedup em par com a cena 07 e com a contagem da ponte."
     },
     {
-      "kind": "gate",
+      "kind": "test",
       "result": "passed",
       "reference": "docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/25-checkpoint-integral-e-gates.md",
       "command": "Checkpoint único na árvore congelada (24-gates-integrais.sh, log bruto 24-comandos-e-saidas.log e .rc na mesma pasta). Sete passos, rc=0 em todos: ruff format --check (679 files already formatted), ruff check (All checks passed!), mypy src (Success: no issues found in 298 source files), make independence boundaries, make status-check (STATUS-CHECK: OK), `.venv/bin/python tools/run_tests_isolated.py tests -q` (6507 passed, 47 skipped = 6554 coletados, reconciliado com o lote anterior 6545 + 9 funções deste corte) e `.venv/bin/python tools/run_tests_isolated.py -m visual --tb=short -q` (362 passed, 6192 deselected = os 360 do lote anterior mais as 2 funções novas marcadas visual). Identidade da árvore lida antes e depois de cada passo: 14 leituras, branch, HEAD af6a5c6e, sha256 src+tests+tools=f185438a112bc0b8, produto bddd117ac33fcbcf, harness bc9d76d646685e20, gate 0cb7744eff344587, todas idênticas. Guarda de estado real do isolador com before/after campo a campo iguais (files=12816 directories=2068 bytes=1372712391 source=HOME-default), exit 0 e não 86."
@@ -1091,6 +1091,20 @@
       "result": "passed",
       "reference": "docs/09-operations/evidence/2026-09-28-rc01-storage-units/31-varredura-wheel-x-head.md",
       "command": "Prova de artefato, não de configuração: cada entrada do wheel do CI conferida byte a byte contra os blobs do head af6a5c6e (31-varredura-wheel-x-head.py, log 31-varredura-wheel-x-head.log, git somente leitura com GIT_OPTIONAL_LOCKS=0 e GIT_INDEX_FILE descartável fora do checkout). 625 entradas no wheel, 619 pareadas com blob do head, 619 idênticas, 0 diferentes; so_no_wheel=['steamzero/_build_info.py (gerado no build)'], so_no_head=[] com o denominador medido à parte (git ls-tree -r af6a5c6e -- src/steamzero = 619). Sujeito steamzero-2.0.0rc1-py3-none-any.whl, 3.781.401 bytes, sha256 1579bda1..., igual ao SHA256SUMS e ao subject.sha256 de build/provenance.json. Distinção preservada: o build saiu de refs/pull/244/merge (1ce5763f), a varredura compara com os blobs do head (af6a5c6e)."
+    }
+,
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/30-atribuicao-digests.log",
+      "command": "tools/project_status.py check lido com o log na pasta e atribuição por arquivo executada (30-atribuicao-digests.py, rc=0). Causa da primeira reprovação medida antes de qualquer renovação: as duas entradas de evidência deste lote tinham kind 'gate', que não está no enum de docs/status/project-item-v1.schema.json ($defs/evidence/kind = test|vm|hardware|diagnostic|release|design); os 148 registros de gate pré-existentes no catálogo usam kind 'test' (precedente em docs/status/items/aura-launcher.json), e o repo inteiro tinha exatamente 2 ocorrências de 'gate' — as minhas. O dado foi corrigido para o precedente; schema, teste e veredito intactos. Depois disso sobrou 1 item com digest obsoleto (SZ-UI-DESKTOP-AUDIT, o único) e 44 dos 56 arquivos desta frente caem dentro dos 86 scopePaths dele: src/steamzero/ui/qml/ThemeEditorPanel.qml, os dois arquivos novos de teste desta fileira, o harness ES-DE citado, a pasta deste lote e as evidências 31/32 de storage-units e 18 de readiness-semantics escritas em pastas que este item já claims. Nenhum item acusado sem arquivo desta frente no escopo, então a frente não contaminou terceiros. Ponto fixo declarado: o escopo deste item contém a própria pasta de evidência, então o valor impresso pelo check nesse momento é o digest ANTES do arquivo de log existir; a renovação foi lida da ferramenta depois da última escrita na pasta.",
+      "result": "recorded"
+    }
+,
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/31-identidade-da-arvore.md",
+      "command": "Correção de alcance de alegação sobre o checkpoint 24/25, medida depois do voo e com causa reproduzida. A linha agregada da identidade (git ls-files -s src tests tools | sha256sum) lê o ÍNDICE: no voo, ThemeEditorPanel.qml estava ' M' e os dois arquivos de teste deste corte estavam '??', então f185438a112bc0b8 provava que nada fora indexado, não qual conteúdo foi executado. Os dois valores agregados foram reproduzidos (f185438a112bc0b8 no índice lido de af6a5c6e com GIT_INDEX_FILE descartável fora do checkout e GIT_OPTIONAL_LOCKS=0; 6955ced9b824e33f no índice da cabeça 46fa4b29) e o delta entre eles coincide caminho a caminho com git diff --name-only af6a5c6e HEAD -- src tests tools: dois arquivos adicionados, dois com blob trocado, zero removidos, zero fora dessa lista. O conteúdo testado continua provado pelas três leituras por arquivo, que são da árvore de trabalho e não se moveram (produto bddd117ac33fcbcf, harness bc9d76d646685e20, gate 0cb7744eff344587), com git status vazio sob src/tests/tools. Resultado, contagens e vereditos do checkpoint não mudam; muda o que a leitura agregada alegava. Fica declarada a leitura por conteúdo que entra no próximo checkpoint, com a sensibilidade dela medida em repositório descartável, e uma divergência de leitura da própria bateria cuja causa não foi estabelecida (duas candidatas testadas e recusadas).",
+      "result": "recorded"
     }
   ],
   "nextAction": "PRÓXIMA AÇÃO: publicar o sétimo elo (RetroFE dentro da shell, resposta tardia do importador) com o checkpoint já lido na árvore congelada (7 passos, rc=0 em todos), depois escolher com o operador o corte seguinte da RC-01: primeira dobra da Home, ou F-1/F-2 do contrato de prontidão, ou o contrato de geração no importador ES-DE. DEPENDÊNCIA: os seis PRs abertos (239 a 244) aguardam decisão de merge do operador; nenhuma fatia desta fileira se declara integrada, e a release instalada continua a de 26/09. CRITÉRIO DE SAÍDA: checklist da RC-01 critério a critério com as cinco camadas separadas (interface implementada, contrato testado offscreen, código integrado, artefato empacotado, experiência comprovada na release instalada), nenhuma camada promovida pelo verde da camada anterior. NARRATIVA COMPLETA DESTA RODADA: docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/ (25-checkpoint-integral-e-gates.md e 29-reconcilio-rc01-cinco-camadas.md); o texto integral que estava aqui foi movido para 26-nextaction-verbatim-sz-ui-desktop-audit.md sem cortes. LIMITE: nenhum screenshot é alegado por esta frente (GAP-UI-VISUAL-CAPTURE-NOT-CERTIFIED-IN-CI); o seletor nativo de diretório continua sem porta de evento sob offscreen, então aquela entrada permanece pendente mesmo com a porta por Enter funcionando.",
