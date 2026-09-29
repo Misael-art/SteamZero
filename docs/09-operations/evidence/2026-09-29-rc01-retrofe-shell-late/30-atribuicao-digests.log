@@ -11,8 +11,9 @@
 # violam o enum de docs/status/project-item-v1.schema.json ($defs/evidence/kind =
 # test|vm|hardware|diagnostic|release|design). Medido: 420 test / 211 diagnostic /
 # 177 hardware / 16 design / 12 release / 1 vm / 2 gate no repo inteiro, e os 2
-# `gate` eram os meus. Os 148 registros de gate pré-existentes usam kind `test`
-# (precedente lido em docs/status/items/aura-launcher.json:33-*-gates.md). Corrigi
+# `gate` eram os meus. Medido: das 841 entradas do catálogo, 101 mencionam gate (51 `diagnostic`, 47 `test`,
+# 2 `hardware`, 1 `design`) e nenhuma usava `gate`. Para registro de gates em .md com suítes
+# executadas e rc=0 o precedente lido é `test` (aura-launcher.json, 33-*-gates.md). Corrigi
 # o DADO para o precedente, não o schema para o meu dado: nenhuma asserção, teste
 # ou veredito foi enfraquecido (AGENTS.md §6).
 #
