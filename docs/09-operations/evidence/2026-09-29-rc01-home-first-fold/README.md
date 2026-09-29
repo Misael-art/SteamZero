@@ -73,6 +73,9 @@ Duas outras falhas minhas ficaram registradas: altura lida no mesmo tick do cliq
 | `49-tres-portas-pos-citacoes.log` | `42 passed in 194.61s` nos três gates envolvidos pela reconfrontação de citações, com `real-state` antes/depois idêntico |
 | `50-nextaction-verbatim-sz-ui-desktop-audit.md` | o texto integral que estava no cartão normativo antes de encurtá-lo (909 caracteres agora, 1 341 preservados), conferido byte a byte contra `git show HEAD:…` na cabeça `c2bae146` |
 | `51-atribuicao-digests.py`, `51-atribuicao-digests.log` | `make status-check` reprovou 11 itens; a atribuição por arquivo mostra que **todos os 11** têm arquivo desta frente no escopo — 9 com um só (`Main.qml` ou `ThemeEditorPanel.qml`), o `SZ-THEME-ENGINE` com 3 e o `SZ-UI-DESKTOP-AUDIT` com 11 — e **0** itens acusados sem causa desta frente. `rc=0` |
+| `52-gates-integrais.sh`, `52-comandos-e-saidas.log`, `52-comandos-e-saidas.log.rc` | o checkpoint dos sete gates na árvore congelada `e7167080`: sete passos `rc=0`, integral `6520 passed, 47 skipped in 2240.73s`, gate visual `375 passed, 6192 deselected in 1594.46s`, identidade impressa antes e depois de **cada** passo |
+| `53-auditoria-de-citacoes.md` | a auditoria que achou as quatro citações falsas do `desktop_ui.py`, com o texto falso preservado na tabela e a linha real onde cada trecho do argv mora hoje |
+| `55-revalidacao-proporcional.sh`, `55-revalidacao-proporcional.log` | a revalidação proporcional pós-correção de citações: format/check/mypy `rc=0`, gate afetado `13 passed in 115.05s`, e o `status-check` **reprovando** porque os arquivos deste lote ainda não estavam no digest renovado — a causa, não um resultado escondido |
 
 **Redação aplicada no arquivamento (AGENTS.md: não redistribuir caminhos pessoais):** o
 prefixo do checkout virou `<checkout-canônico>` e a pasta temporária de fora do checkout virou
@@ -82,6 +85,13 @@ de resultado, contagem ou veredito foi tocada. Antes da redação os dois arquiv
 sha256 `1f0f365f…` (driver) e `9a8ae855…` (log); depois, `19c94a0a1f81f1ba…` e
 `35df52cf41f6c620…`. Os hashes citados abaixo são os **pós-redação**, que são os que um leitor
 reproduz sobre o que está commitado.
+
+Na segunda rodada de arquivamento (fechamento, já com o checkpoint rodado) a mesma redação
+atingiu 1 ocorrência no `52-gates-integrais.sh` (`d4a14bd972249450…` → `4c37963f8df4232a…`), 3 no
+`52-comandos-e-saidas.log` (`64af11708a0f6df2…` → `97cff6cf4c9bffec…`), 1 em cada arquivo do `55`
+(`7220f53856169f4f…` → `ed0461d437b6ed9a…` o driver; `8189a4e0c8c1f477…` → `d57a34323b332642…` o
+log) e zero em `52-comandos-e-saidas.log.rc` (`f4ff1f6a6aa5cad0…`) e `53-auditoria-de-citacoes.md`
+(`bd1c673ac83f5a23…`). Verificação: nenhum `/home/misael` residual nos sete arquivos arquivados.
 
 **Divergência conhecida entre driver e log:** o `47-drv-bateria-de-mutacoes.py` arquivado
 (sha256 `19c94a0a…`) difere da versão que produziu o `47-gate-verde-e-bateria-de-mutacoes.log`
@@ -116,6 +126,42 @@ Também neste push, na pasta do lote anterior:
 `2026-09-29-rc01-retrofe-shell-late/32-ci-terminal-pr245-2d6a8957.log` — o CI terminal do PR #245
 lido no SHA efetivamente entregue (`2d6a8957`), quatro segmentos de 90 s, `CLEAN` no segmento 4
 com `Gate visual QML (Linux)=COMPLETED/SUCCESS`.
+
+## O checkpoint integral (52) e a que árvore ele pertence
+
+Os sete gates de AGENTS §6 rodaram **uma** vez, na árvore congelada `e7167080` com
+`git status` vazio sob `src`/`tests`/`tools`; o invólucro imprime branch, HEAD e o sha256 por
+conteúdo dos quatro arquivos do corte antes e depois de **cada** passo. Resultado: sete passos
+`rc=0`, com `make independence boundaries` e `make status-check` verdes, a integral
+`6520 passed, 47 skipped in 2240.73s (0:37:20)` e o gate visual `375 passed, 6192 deselected in
+1594.46s (0:26:34)`. As contagens fecham com o sétimo elo (`6507 → 6520` e `362 → 375`): as
+**13** verificações a mais são exatamente as deste gate, nenhuma outra apareceu nem sumiu.
+
+**Estes números pertencem a `e7167080` e a mais nada.** Depois do checkpoint este lote ainda
+acrescentou arquivos nesta pasta e corrigiu quatro citações; essa segunda árvore **não** é
+revalidada pela integral acima, e não é a ela que o commit `6d8034fa…` deve ser atribuído. A
+revalidação proporcional da segunda árvore é o `55`, e seu resultado é o que se lê ali — com o
+`status-check` reprovando por digest envelhecido **pelos próprios arquivos deste lote**, que é
+por que a renovação do digest vem depois e o `make status-check` final é relido na árvore
+congelada posterior (registrado no PR, não aqui: escrever aqui envelheceria o digest que ele
+certifica).
+
+## A correção das quatro citações falsas
+
+`53-auditoria-de-citacoes.md` registra o achado: as quatro ocorrências de
+`adapters/desktop_ui.py:990-:1001` descreviam "o argv da produção", mas esse intervalo é
+`stdin=subprocess.DEVNULL`, `env={…}`, o laço de `process.poll()` e `server.server_close()`. O
+argv sai do `subprocess.Popen` de `launch_desktop_ui()`. Não é deriva de número de linha causada
+pelo `Main.qml` deste elo: a citação já era falsa na base `2d6a8957`, ou seja, foi erro de
+escrita meu.
+
+Corrigidas as quatro sedes — docstring de `_rodar()` no gate, cabeçalho do harness QML, linha do
+README e texto de evidência do cartão — por **referência ao símbolo** (`o subprocess.Popen de
+launch_desktop_ui() em adapters/desktop_ui.py`) em vez de número de linha, que é o endereço que
+não envelhece quando o arquivo cresce. A diff dos dois arquivos de teste tem só comentário e
+docstring: nenhuma asserção executável foi tocada, então o trecho não é alteração de teste e não
+pede revalidação de comportamento além da porta afetada. O `55` roda essa porta: `13 passed in
+115.05s`, com format/check/mypy verdes.
 
 ## Pendências declaradas (não escondidas)
 
