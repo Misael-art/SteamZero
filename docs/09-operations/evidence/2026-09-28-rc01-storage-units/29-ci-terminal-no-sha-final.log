@@ -14,6 +14,7 @@ Comandos (executados no checkout canônico, árvore limpa fora da própria pasta
   .venv/bin/python tools/release_provenance.py verify-wheel --wheel <dir>/dist/steamzero-2.0.0rc1-py3-none-any.whl
   git fetch --no-tags origin refs/pull/244/merge    # só objeto; não toca a árvore de trabalho
   .venv/bin/python docs/09-operations/evidence/2026-09-28-rc01-storage-units/29-verificacao-wheel-no-sha-final.py <dir> <lista>
+  find <dir>/qml-visual-artifacts -type f | sed 's/.*\.//' | sort | uniq -c   # composicao do artefato de capturas
 
 === 1. pr view (cabeca final) ===
 {"baseRefName":"main","headRefOid":"2d04ac96c56e0b7921cad98dbcf5183a7a78391f","mergeStateStatus":"CLEAN","mergeable":"MERGEABLE","number":244,"state":"OPEN"}
@@ -170,6 +171,16 @@ arquivos_total=59
        16 retrofe-import
         5 shell-esde-import
 png_com_nome_de_unidades=0
+--- reconcilio dos 59 com os 41 (comando: find por extensao no artefato baixado) ---
+total=59
+     15 json
+     41 png
+      3 txt
+por diretorio, todos os arquivos:  28 esde-import/  23 retrofe-import/  8 shell-esde-import/
+por diretorio, so PNG:             20 esde-import/  16 retrofe-import/  5 shell-esde-import/
+nao-PNG (18): metrics.json por cenario, ambiente.json, geometria.json e saida do runner/cena
+=> as duas contagens sao do mesmo artefato com escopos diferentes: a evidencia 28 contava
+   ARQUIVOS por familia (28/23/8 = 59) e esta conta PNG por familia (20/16/5 = 41).
 
 === 11. por que o delta de cobertura não vem do código ===
 diff 37f0add4 (cabeça da evidência 28) -> 2d04ac96 (cabeça final):

@@ -153,8 +153,13 @@ a guarda de árvore que ele registrou.
 
 `qml-visual-artifacts` (2 004 711 B, 59 arquivos) tem três famílias — `esde-import`
 (20 PNG), `retrofe-import` (16), `shell-esde-import` (5) — e **0** PNG cujo nome mencione
-`storage|unidade|sizes|emulation`. A superfície de unidades é provada no CI pelo harness
-offscreen e pela matriz de locales, mas não publica PNG em 100/125/150 % de escala de
+`storage|unidade|sizes|emulation`. As contagens de família são de PNG e não somam 59 por
+uma razão medida, não presumida: o artefato contém 41 PNG, 15 JSON (`metrics.json` por
+cenário, `ambiente.json`, `geometria.json`) e 3 TXT (saída do runner/cena). Por arquivo, as
+mesmas três famílias dão 28/23/8 = 59, que é o número que a evidência 28 registrou — os dois
+números são do mesmo artefato com escopos diferentes, e a reconciliação está na seção 10 do
+log. A superfície de unidades é provada no CI pelo harness offscreen e pela matriz de
+locales, mas não publica PNG em 100/125/150 % de escala de
 texto. `GAP-UI-VISUAL-CAPTURE-NOT-CERTIFIED-IN-CI` permanece aberto e continua critério
 da RC-01; o mecanismo que falta está registrado na frente de prontidão, e é lá que se
 fecha.
