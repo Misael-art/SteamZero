@@ -1,0 +1,428 @@
+=== 0. cabeçalho de reprodução ===
+PR=244  branch=codex/rc01-storage-units-2026-09-28  cabeca_final=ee09dbccdaaf897a0b3f8adb03389711c886e848
+run_ci=36554123223  merge_ref=8bdbb42a52a64d2a3cd8e2a74b9a26b8756d5527
+cabeça documental anterior=2d04ac96 (evidência 29)  checkpoint integral local=f9ec2815 (evidência 27)
+
+Comandos (executados no checkout canônico — a raiz deste repositório,
+árvore limpa fora da própria pasta de evidência; temporários próprios em `~/steamzero-retrofe-tmp`):
+  gh pr view 244 -R Misael-art/SteamZero --json number,state,baseRefName,headRefName,headRefOid,mergeable,mergeStateStatus
+  gh run view 36554123223 -R Misael-art/SteamZero --json databaseId,headSha,status,conclusion,event,workflowName,url,startedAt,updatedAt
+  gh run view 36554123223 -R Misael-art/SteamZero --json databaseId,jobs
+  gh run view 36554123223 -R Misael-art/SteamZero --json jobs --jq '.jobs[]|[.databaseId,.name,.conclusion]|@tsv'
+  gh api repos/Misael-art/SteamZero/commits/ee09dbccdaaf897a0b3f8adb03389711c886e848/check-runs --jq '.check_runs[]|[.name,.status,.conclusion]|@tsv'
+  gh pr view 244 -R Misael-art/SteamZero --json statusCheckRollup
+  <waiter> ~/steamzero-ux04-tmp/wait_ci_244_run3.sh          # identidade da árvore + rollup por ciclo
+  gh api repos/Misael-art/SteamZero/actions/runs/36554123223/artifacts --jq '.artifacts[]|[.id,.name,.size_in_bytes,.digest]|@tsv'
+  gh run download 36554123223 -R Misael-art/SteamZero -n <arte> -D <dir>   # 6 artefatos
+  python3 ~/steamzero-retrofe-tmp/arts30_reconcile.py         # bytes do zip x size_in_bytes e SHA-256 x digest
+  cd <dir> && sha256sum -c build/SHA256SUMS
+  .venv/bin/python tools/release_provenance.py verify-wheel --wheel <dir>/dist/steamzero-2.0.0rc1-py3-none-any.whl
+  git fetch --no-tags origin refs/pull/244/merge              # só objeto; não toca a árvore de trabalho
+  .venv/bin/python docs/09-operations/evidence/2026-09-28-rc01-storage-units/30-verificacao-wheel-na-cabeca-ee09dbcc.py <dir> <lista>
+  gh api 'repos/Misael-art/SteamZero/pulls/244/files?per_page=100' --paginate --jq '.[].filename'
+  git diff --name-only origin/main...HEAD                     # cross-check local da footprint
+  git diff --numstat 2d04ac96..HEAD                           # o que a cabeça final recebeu da anterior
+  git merge-base --is-ancestor <head anterior> <head seguinte>   # cadeia, seção 14
+  python3 -                                                     # parse dos junit/coverage publicados (seções 10 e 11)
+
+=== 1. pr view (cabeça final) ===
+{"baseRefName":"main","headRefName":"codex/rc01-storage-units-2026-09-28","headRefOid":"ee09dbccdaaf897a0b3f8adb03389711c886e848","mergeStateStatus":"CLEAN","mergeable":"MERGEABLE","number":244,"state":"OPEN"}
+
+=== 2. run terminal do SHA final ===
+{"conclusion":"success","databaseId":36554123223,"event":"pull_request","headSha":"ee09dbccdaaf897a0b3f8adb03389711c886e848","startedAt":"2026-09-29T10:12:33Z","status":"completed","updatedAt":"2026-09-29T10:33:27Z","url":"https://github.com/Misael-art/SteamZero/actions/runs/36554123223","workflowName":"ci"}
+
+headSha do run == headRefOid do PR == HEAD local: coincidência afirmada, não presumida.
+
+=== 3. jobs (início/fim, com duração medida dos timestamps) ===
+Gate visual QML (Linux)	success	2026-09-29T10:12:36Z	2026-09-29T10:33:26Z	1250 s
+Python 3.12	success	2026-09-29T10:12:38Z	2026-09-29T10:25:22Z	764 s
+Python 3.11	success	2026-09-29T10:12:36Z	2026-09-29T10:24:40Z	724 s
+Python 3.14	success	2026-09-29T10:12:37Z	2026-09-29T10:22:51Z	614 s
+Wheel limpo, smoke e supply chain	success	2026-09-29T10:12:36Z	2026-09-29T10:13:15Z	39 s
+Smoke Ubuntu 24.04	success	2026-09-29T10:12:36Z	2026-09-29T10:13:07Z	31 s
+Smoke Manjaro	success	2026-09-29T10:12:36Z	2026-09-29T10:13:14Z	38 s
+Smoke Arch Linux	success	2026-09-29T10:12:37Z	2026-09-29T10:13:18Z	41 s
+
+oito jobs, oito `success`. IDs usados para puxar o log cru de cada job:
+109359077030	Gate visual QML (Linux)	success
+109359077174	Python 3.12	success
+109359077185	Smoke Ubuntu 24.04	success
+109359077218	Smoke Manjaro	success
+109359077225	Python 3.11	success
+109359077256	Wheel limpo, smoke e supply chain	success
+109359077348	Smoke Arch Linux	success
+109359077684	Python 3.14	success
+
+=== 4. checks no head (gh api commits/…/check-runs) ===
+Python 3.14	completed	success
+Smoke Arch Linux	completed	success
+Wheel limpo, smoke e supply chain	completed	success
+Python 3.11	completed	success
+Smoke Manjaro	completed	success
+Smoke Ubuntu 24.04	completed	success
+Python 3.12	completed	success
+Gate visual QML (Linux)	completed	success
+Sourcery review	completed	skipped
+
+rollup do PR (`gh pr view --json statusCheckRollup`) acrescenta o 10º check, CodeRabbit,
+também concluído. Nove `SUCCESS` + um `SKIPPED` (Sourcery); zero falha, zero pendente.
+
+=== 5. waiter por ciclo (identidade da árvore + rollup) ===
+~/steamzero-ux04-tmp/ci_244_run3.log — 11 ciclos, `pendentes` lido do rollup, HEAD local impresso por ciclo.
+O log cru por ciclo está em anexo ao final desta seção; os 11 ciclos abaixo são o resumo
+que o waiter escreveu, com as linhas de job preservadas.
+
+waiter iniciado 2026-09-29T10:13:28Z :: SHA=ee09dbccdaaf897a0b3f8adb03389711c886e848
+== ciclo 1  2026-09-29T10:13:28Z :: pendentes=4 :: head_local=ee09dbcc…e848
+== ciclo 2  2026-09-29T10:15:30Z :: pendentes=4 :: head_local=ee09dbcc…e848
+== ciclo 3  2026-09-29T10:17:31Z :: pendentes=4 :: head_local=ee09dbcc…e848
+== ciclo 4  2026-09-29T10:19:34Z :: pendentes=4 :: head_local=ee09dbcc…e848
+== ciclo 5  2026-09-29T10:21:37Z :: pendentes=4 :: head_local=ee09dbcc…e848
+== ciclo 6  2026-09-29T10:23:39Z :: pendentes=3 :: head_local=ee09dbcc…e848
+== ciclo 7  2026-09-29T10:25:41Z :: pendentes=1 :: head_local=ee09dbcc…e848
+== ciclo 8  2026-09-29T10:27:46Z :: pendentes=1 :: head_local=ee09dbcc…e848
+== ciclo 9  2026-09-29T10:29:49Z :: pendentes=ERRO :: head_local=ee09dbcc…e848
+   parse falhou Expecting value: line 1 column 1 (char 0)
+== ciclo 10 2026-09-29T10:31:56Z :: pendentes=1 :: head_local=ee09dbcc…e848
+== ciclo 11 2026-09-29T10:33:58Z :: pendentes=0 :: head_local=ee09dbcc…e848
+TERMINAL no ciclo 11 (2026-09-29T10:33:58Z)
+
+Dois fatos lidos, não suavizados:
+* O ciclo 9 teve um `ERRO` de transitório da API do GitHub (corpo vazio → `json.load`
+  reprova). O waiter não aborta: registra e segue. O ciclo 10 voltou a ler o rollup e o
+  ciclo 11 confirmou terminal. O veredito desta evidência não usa o ciclo 9.
+* O `head_local` é idêntico nos 11 ciclos: a árvore não se moveu enquanto o CI rodava,
+  então o rollup terminal é do SHA lido, não de um SHA que mudou no meio.
+No ciclo 11 as dez linhas do rollup são exatamente as da seção 4 (nove `pass` + Sourcery
+`skipping`).
+
+=== 6. reconciliação dos seis artefatos publicados ===
+comando: gh api repos/Misael-art/SteamZero/actions/runs/36554123223/artifacts
+comando: python3 ~/steamzero-retrofe-tmp/arts30_reconcile.py   # bytes do zip x tamanho declarado, SHA-256 do zip x digest
+
+id=11028115841 test-results-3.11               api_size=111266   disco=111266   ok_tamanho=True  api_digest=875f2e6b7336981d2da05010656eb13d864e77af94cdaea31ef84954da71a6d7  ok_digest=True
+id=11027311726 coverage-python-3.14            api_size=598451   disco=598451   ok_tamanho=True  api_digest=c54bb1e82e333586ac93e1294694fe762f9054632d5e0fb9b61ab47fac9ff53e  ok_digest=True
+id=11027211864 test-results-3.14               api_size=110675   disco=110675   ok_tamanho=True  api_digest=5b2a9f203b34e9ce5229ee39d5f0305c27644f34b9b3093e624ecd64754e9215  ok_digest=True
+id=11027148348 qml-visual-artifacts            api_size=2004707  disco=2004707  ok_tamanho=True  api_digest=30aac2a6b811aea44bfa9c5b2a7abf05ea55c8c5091c7de233ac55bbde0e828e  ok_digest=True
+id=11027012222 test-results-3.12               api_size=111796   disco=111796   ok_tamanho=True  api_digest=6ee5068937c7689ba84ae7a8c30e4ca7ea67d064e60ae34e6fe0f45ebfb221ae  ok_digest=True
+id=11026970538 steamzero-wheel-8bdbb42a52a64d2a3cd8e2a74b9a26b8756d5527  api_size=11187804  disco=11187804  ok_tamanho=True  api_digest=5a49f064300247a07f3a1df51e669227a3f3c7c224bfa7be971792232fd86205  ok_digest=True
+reconciliacao_artefatos=OK (6/6 em tamanho e em digest)
+
+Correção de um temporário meu, registrada porque é um defeito de prova: o diretório e o
+zip locais do artefato do wheel estavam com o nome truncado em dois caracteres
+(`…-8bdbb42a52a64` + `a3cd8…`, 38 hex em vez de 40). O conteúdo nunca dependeu do nome —
+a proveniência é lida de `build/provenance.json` de dentro do artefato —, mas a alegação
+"o artefato chamado X é o artefato X do run" exige o nome exato. O script renomeou para o
+nome da API (linha `RENOMEADO de '…' (nome local truncado'`) e o varredor foi re-executado
+depois do renomeio: mesma saída, mesmo veredito (seção 8).
+
+O digest declarado no log do próprio runner bate com o da API:
+  Uploaded bytes 11187804 … SHA256 digest of uploaded artifact is
+  5a49f064300247a07f3a1df51e669227a3f3c7c224bfa7be971792232fd86205
+  Artifact … Artifact ID 11026970538   (gh run view --log --job 109359077256)
+e o runner anunciou `there will be 8 files uploaded`; `find <dir> -type f | wc -l` = 8.
+
+Reprodutibilidade independentemente do caminho truncado: o artefato foi baixado de novo
+com o comando canônico, e o wheel é o mesmo byte a byte.
+  gh run download 36554123223 -R Misael-art/SteamZero -n steamzero-wheel-8bdbb42a52a64d2a3cd8e2a74b9a26b8756d5527 -D ~/steamzero-retrofe-tmp/redl30
+  find ~/steamzero-retrofe-tmp/redl30 -type f | wc -l = 8
+  sha256sum redl30/dist/steamzero-2.0.0rc1-py3-none-any.whl
+    60fc3973ebf88416872e9a136c1e085f0c9d951e898f93a82f088a9ba9b8052c   (== seção 7 e 8)
+
+=== 7. sha256sum -c do SHA256SUMS publicado ===
+dist/steamzero-2.0.0rc1-py3-none-any.whl: SUCESSO
+build/sbom.cdx.json: SUCESSO
+build/provenance.json: SUCESSO
+build/pip-audit.json: SUCESSO
+dist/runtime-wheelhouse.tar.zst: SUCESSO
+dist/runtime-wheelhouse/WHEELHOUSE-MANIFEST.json: SUCESSO
+
+Seis linhas, seis SUCESSO, rc=0. O `SHA256SUMS` cobre 6 dos 8 arquivos do artefato: os
+outros dois são ele próprio e `requirements-runtime.lock`, e este segundo não fica solto —
+o SHA-256 dele está pinado na proveniência:
+  declarado (materials.runtimeLock.sha256) = 33c7f069591207278a82da262ecbe7a54f161b9d047774c8776f1cb9ab251da0
+  no disco                                = 33c7f069591207278a82da262ecbe7a54f161b9d047774c8776f1cb9ab251da0  coincide=True
+
+=== 8. verify-wheel governado ===
+comando: .venv/bin/python tools/release_provenance.py verify-wheel --wheel <dir>/dist/steamzero-2.0.0rc1-py3-none-any.whl
+saída:   {"project": "steamzero", "sha256": "60fc3973ebf88416872e9a136c1e085f0c9d951e898f93a82f088a9ba9b8052c", "version": "2.0.0rc1"}
+rc=0     (medido com redirecionamento para arquivo; `echo rc=$?` depois de `| tail` leria o status do pager, não o do verificador)
+
+Cadeia de checksum do sujeito, três leituras independentes do mesmo valor:
+  proveniência (subject.sha256)  = 60fc3973ebf88416872e9a136c1e085f0c9d951e898f93a82f088a9ba9b8052c
+  SHA-256 do arquivo no disco    = 60fc3973ebf88416872e9a136c1e085f0c9d951e898f93a82f088a9ba9b8052c
+  linha 1 do SHA256SUMS          = 60fc3973ebf88416872e9a136c1e085f0c9d951e898f93a82f088a9ba9b8052c  (confirmada por `sha256sum -c`)
+
+=== 9. wheel × árvore: varredura total + os 19 arquivos `src/` do PR ===
+comando: .venv/bin/python docs/09-operations/evidence/2026-09-28-rc01-storage-units/30-verificacao-wheel-na-cabeca-ee09dbcc.py <dir-do-artefato> <lista>
+
+head_local=ee09dbccdaaf897a0b3f8adb03389711c886e848
+=== A. proveniência lida do próprio artefato ===
+repository=Misael-art/SteamZero
+ref=refs/pull/244/merge
+merge_ref=8bdbb42a52a64d2a3cd8e2a74b9a26b8756d5527
+run=36554123223 builder=github-actions
+sourceTreeState=clean
+sujeito_arquivo=steamzero-2.0.0rc1-py3-none-any.whl bytes=3781400
+sujeito_sha256_publicado=60fc3973ebf88416872e9a136c1e085f0c9d951e898f93a82f088a9ba9b8052c
+sujeito_sha256_no_disco=60fc3973ebf88416872e9a136c1e085f0c9d951e898f93a82f088a9ba9b8052c
+sujeito_coincide=True
+
+=== B. varredura total do pacote (wheel x árvore) ===
+entradas_no_wheel=620 arquivos_no_HEAD=619
+arquivos_no_merge_ref=619
+sem_par_no_wheel=['steamzero/_build_info.py'] (total=1)
+sem_par_no_HEAD=[] (total=0)
+steamzero/_build_info.py: SOURCE_COMMIT=8bdbb42a52a64d2a3cd8e2a74b9a26b8756d5527 SOURCE_DIRTY=False
+gerado_em_build_conferido=True
+pareados=619 identicos_HEAD=619 diferentes_HEAD=0
+pareados_merge=619 identicos_merge=619 diferentes_merge=0
+
+=== C. os 19 arquivos src/ deste PR, por SHA-256 ===
+src/steamzero/adapters/desktop_dashboard.py	96269	OK	sha256=09d2cb9e28e914be73047411ed0fa58dfe790640597ce25875dbb038b314103e
+src/steamzero/adapters/emulation.py	459186	OK	sha256=91652738030626676edf86236331c62a1b761166e54a45718c031ef44b10ec23
+src/steamzero/adapters/steam_gameplay.py	42658	OK	sha256=f1b781887832c9bb0429b65385c5190cbed42711b94354b9a77328b068ad5699
+src/steamzero/adapters/theme_catalog.py	16064	OK	sha256=e1775b4c12666375b0b6f4eb72dcd4442a27d3e863d05f9683430954afaba758
+src/steamzero/domain/cloud_platforms.py	8151	OK	sha256=2552f82afd928a72d21b155c074c9a652e93a772d9feafbb66441f61e74c133a
+src/steamzero/domain/emulation_workspace.py	31253	OK	sha256=15c8d8c3e3f1697d43036b9171b1f638a17bfbb04995d05d97273b3925a7ab20
+src/steamzero/domain/platform_composer.py	17031	OK	sha256=525c3fef3a4861333476ae381e794e38bb45d5342af9c96534f9c27dd61e96e8
+src/steamzero/domain/platforms.py	13839	OK	sha256=ec07a08e2d4afcb9ce1d75f4b71093a6b9609985d7d6e41698f5d77834e385cc
+src/steamzero/domain/readiness.py	11653	OK	sha256=0eb9656d2c80e2866e56da83797b12dae2300d19768e89c8266cf36c675b8e96
+src/steamzero/schemas/emulation-workspace-v1.schema.json	45390	OK	sha256=631a6e99c2f58ca0dbd7c6503fd2d854f6759d5be5ce29dc32c17a6c143a9417
+src/steamzero/ui/qml/EditorialHome.qml	29856	OK	sha256=ee80c0b9e050ab32b092b7dc2d2f3f28c3c4a16b1287d8eafc9d1ee07f5a4f25
+src/steamzero/ui/qml/EditorialLibrary.qml	89950	OK	sha256=c8c51c570ddd9dd84f8062d0e1f06d9a1c2b751e7e160b5d404734d15a8e1eeb
+src/steamzero/ui/qml/Emulation.qml	263271	OK	sha256=b426dd71eaac5e6c001740047816485f9a2787099859947cb9eec4397eaaa10a
+src/steamzero/ui/qml/Main.qml	380240	OK	sha256=391be85dd31e0b38eb2607efb44e3e7e3db38ce057e9368c4e92c07bc3e03a66
+src/steamzero/ui/qml/SteamGameplay.qml	106260	OK	sha256=9891374321b3ce7e24e24b2497f7618cd00b8f9f80f10c74c0d335a4d5112a20
+src/steamzero/ui/qml/ThemeCatalogPanel.qml	29838	OK	sha256=532cc4ad8e5e4fb130ee1c681fa6b6fd9968c412a627b07d33d9da6fbb2ad08a
+src/steamzero/ui/qml/ThemeEditorPanel.qml	135745	OK	sha256=a3ebf574842cd4fddc0585221a4ee0a9b0dde4379be8616c9284d047feebdf96
+src/steamzero/ui/qml/readiness.js	8614	OK	sha256=7d76be27ab727d3f0ae7630e11fa3a2f68cafbdc5d633727429b89cd799e29f5
+src/steamzero/ui/qml/sizes.js	2377	OK	sha256=6d5ca418e514258fe6e55d1e9e5c2011fc9e306b6eb023bda77ee6be315a4829
+total=19 identicos_head=19 identicos_merge=19
+
+veredito=sujeito=True varredura_total=True arquivos_do_pr=True APROVADO
+
+Não-vacuidade da varredura (o ponto que separa "0 diferentes" de "nada comparado"):
+619 entradas pareadas contra o HEAD e 619 contra o merge ref; a única entrada sem par é
+`steamzero/_build_info.py`, gerada em build, e ela é conferida por conteúdo — declara o
+merge ref exato e `SOURCE_DIRTY=False`. O prefixo `src/` é desfeito pelo wheel, e o
+varredor casa no espaço de nomes do artefato; com o prefixo o conjunto pareado seria
+vazio e a alegação seria falsa por construção.
+
+Reexecução do varredor depois de torná-lo portátil: a constante do checkout era um
+literal absoluto da máquina do autor (`/home/…/Canonical/2026-09-21`), que não pode ser
+publicado num repositório público (AGENTS.md — "não redistribua caminhos pessoais em logs
+públicos"). Ela passou a derivar da localização do próprio arquivo (`parents[4]`), com
+sobrescrita opcional por `STEAMZERO_CHECKOUT`; em seguida o arquivo foi formatado por
+`ruff format`. O bloco acima é reexecutável tal qual: `diff` entre a saída gravada e a saída
+das duas execuções pós-edição é vazio — mesma cabeça local, mesmo merge ref, `619/619` nos
+dois refs, `19/19`, rc=0, byte a byte. A única diferença entre as execuções é de onde o
+`git` é chamado, e essa é justamente a mudança que se quis provar inócua.
+
+=== 10. footprint real do PR — a correção do claim de "oito arquivos" ===
+comando: gh api 'repos/Misael-art/SteamZero/pulls/244/files?per_page=100' --paginate --jq '.[].filename'
+comando: git diff --name-only origin/main...HEAD
+
+arquivos_no_PR_api=359
+arquivos_no_PR_git=359
+em_src=19
+por_diretorio:
+    295 docs
+     40 tests
+     19 src
+      3 tools
+      1 IMPLEMENTATION-PROMPT.md
+      1 .github
+
+A lista `src/` medida pela API e a medida por `git diff origin/main...HEAD` são as mesmas
+19 linhas (diff vazio). A evidência 29, seção C, escreveu "os oito arquivos deste PR" e
+rodou o bloco C sobre 8 caminhos. Os 8 são o subconjunto das duas últimas fatias
+(readiness UX-03 + unidades UX-04); a footprint do PR em `src/` é 19. A alegação
+rotulada estava errada; a medição, não — o bloco C da evidência 29 foi lido sobre a lista
+que ele mesmo usou, e o que ele afirmou daqueles 8 continua verdadeiro. O que era
+insuficiente é o rótulo, e é por isso que a correção é uma evidência nova (esta) e não
+uma edição da 29: evidência publicada não se reescreve.
+
+=== 11. suíte, cobertura e gate lidos dos artefatos do próprio run ===
+--- junit das três pernas Python (parse dos XML publicados) ---
+python=3.11 tests=6185 failures=0 errors=0 skipped=47 tempo=678.537 s
+python=3.12 tests=6185 failures=0 errors=0 skipped=47 tempo=718.292 s
+python=3.14 tests=6185 failures=0 errors=0 skipped=47 tempo=557.578 s
+
+--- rollup da suíte no log do job (mesmo run, não do junit) ---
+Python 3.11  6138 passed, 47 skipped, 360 deselected in 678.75s (0:11:18)
+Python 3.12  6138 passed, 47 skipped, 360 deselected in 718.53s (0:11:58)
+Python 3.14  6138 passed, 47 skipped, 360 deselected, 25 warnings in 557.77s (0:09:17)
+
+Reconciliação das duas leituras, por perna: 6138 + 47 = 6185 = `tests` do junit; e
+6185 + 360 = 6545 = coleção total da suíte. As três pernas batem, sem exceção.
+
+--- cobertura ---
+Python 3.11  TOTAL 47366 stmts / 5607 missing / 15550 branches / 2797 partial / 85.49 %
+Python 3.12  TOTAL 47366 stmts / 5609 missing / 15550 branches / 2798 partial / 85.48 %
+Python 3.14  TOTAL 47366 stmts / 5604 missing / 15550 branches / 2798 partial / 85.49 %
+Python 3.14  "Required test coverage of 85.0% reached. Total coverage: 85.49%"
+coverage-3.14.json  percent_covered=85.48858795854791  covered_lines=41762  missing_lines=5604
+                    num_statements=47366  num_branches=15550  num_partial_branches=2798
+fail_under declarado em pyproject.toml:
+129:fail_under = 85
+
+--- gate visual no log do próprio job (id 109359077030) ---
+2026-09-29T10:13:48.6805804Z real-state before: exists=False files=0 directories=0 bytes=0 max_mtime_ns=0 source=HOME-default
+2026-09-29T10:33:21.4967186Z 348 passed, 12 skipped, 6185 deselected in 1172.59s (0:19:32)
+2026-09-29T10:33:22.1721466Z real-state after:  exists=False files=0 directories=0 bytes=0 max_mtime_ns=0 source=HOME-default
+
+--- linhas SKIPPED do gate (as 4 linhas cobrem os 12 skips) ---
+SKIPPED [1] tests/integration/test_qml_asset_recipes.py:100: QML-RHI-ENVIRONMENT-001: goldens MultiEffect exigem RHI; o gate software cobre o contrato QML separadamente
+SKIPPED [1] tests/integration/test_qml_asset_recipes.py:111: QML-RHI-ENVIRONMENT-001: goldens MultiEffect exigem RHI; o gate software cobre o contrato QML separadamente
+SKIPPED [1] tests/integration/test_qml_asset_recipes.py:120: QML-RHI-ENVIRONMENT-001: goldens MultiEffect exigem RHI; o gate software cobre o contrato QML separadamente
+SKIPPED [9] tests/integration/test_qml_asset_recipes.py:131: QML-RHI-ENVIRONMENT-001: goldens MultiEffect exigem RHI; o gate software cobre o contrato QML separadamente
+
+Partição da suíte, reconciliada nesta cabeça:
+  integral  6138 passed + 47 skipped + 360 deselected = 6545
+  visual     348 passed + 12 skipped + 6185 deselected = 6545
+Os dois denominadores são o mesmo 6545; o gate visual pula exatamente os 12 testes de
+golden que exigem RHI, todos em `test_qml_asset_recipes.py`, e nenhuma linha de skip
+menciona armazenamento, prontidão ou importador.
+
+=== 12. por que o delta de cobertura não vem do código ===
+Comparação arquivo por arquivo entre os `coverage-3.14.json` dos dois runs do PR:
+  run 36544698400 (cabeça 2d04ac96): num_statements=47366 missing_lines=5605 percent_covered=85.4854091169178
+  run 36554123223 (cabeça ee09dbcc): num_statements=47366 missing_lines=5604 percent_covered=85.48858795854791
+  arquivos no relatório: 298 em ambos
+  arquivos com delta de `missing_lines`: 1
+    src/steamzero/adapters/linux_runtime.py: 25 -> 24 (delta -1)
+
+`linux_runtime.py` não está entre os 19 arquivos `src/` do PR, e o delta entre as duas
+cabeças não toca `src/` (seção 13). A linha que virou coberta é o fallback de nome de
+partição — caminho cujo alcance depende do que o host do runner monta, não do código.
+Logo: o `+1` de cobertura é variância de execução, não melhoria nem regressão deste lote.
+A alegação "cobertura não regride" fica assim medida: total de afirmações idêntico
+(47 366), uma linha a menos faltando, atribuída a um arquivo que o lote não edita.
+
+=== 13. o que a cabeça final recebeu da cabeça documental anterior ===
+commits em 2d04ac96..ee09dbcc:
+ee09dbcc docs(status): registra a evidencia 29 no cartao e renova digest e visoes na cabeca final
+8809f17b docs(RC-01): reconcilia as duas contagens de capturas e fecha a rodada 5 no workstream
+f9d9c2b4 docs(RC-01): evidencia 29 rel no CI terminal do SHA final e fecha o pacote
+
+numstat (240-0 / 195-0 / 203-0 / 30-14 / 2-12 / 1-3 / 1-1 / 20-2 / 1-1):
+docs/09-operations/evidence/2026-09-28-rc01-storage-units/29-ci-terminal-no-sha-final.log
+docs/09-operations/evidence/2026-09-28-rc01-storage-units/29-ci-terminal-no-sha-final.md
+docs/09-operations/evidence/2026-09-28-rc01-storage-units/29-verificacao-wheel-no-sha-final.py
+docs/09-operations/evidence/2026-09-28-rc01-storage-units/README.md
+docs/ACTIVE-WORK.md
+docs/STATUS.md
+docs/status/COVERAGE.md
+docs/status/items/ui-desktop-audit.json
+docs/status/workstreams/rc01-storage-units-2026-09-28.json
+
+por_diretorio: 9 docs   |   src=0  tools=0  tests=0
+
+Diferente do intervalo anterior (evidência 29, seção 9), que tinha 1 arquivo de teste
+entre 71 docs: aqui são 9 arquivos e nenhum é de código ou de teste. A frase correta
+para este span é a estrita — "a árvore testada só recebeu documento depois do verde" —
+e é verdade porque `src/`, `tools/` e `tests/` estão vazios no delta, não porque alguém
+declarou congelamento. A prova material correspondente está na seção 14: o pacote do run
+terminal desta cabeça é o mesmo do run anterior, entrada por entrada, salvo o carimbo de
+proveniência.
+
+=== 14. os dois wheels do CI lado a lado (run 36544698400 × run 36554123223) ===
+wheel do run anterior: sha256=232414d7865eb2a878676c112a56af6305c6611effa162823b33212736c718b7
+wheel deste run:       sha256=60fc3973ebf88416872e9a136c1e085f0c9d951e898f93a82f088a9ba9b8052c
+
+Diferem. Comparação entrada por entrada dos dois zip:
+entradas_a=625 entradas_b=625 so_no_a=[] so_no_b=[]
+pareadas=625 identicas=623 diferentes=2
+-- steamzero-2.0.0rc1.dist-info/RECORD
+   36544698400: steamzero/_build_info.py,sha256=wenbQtVs0H2pvemCXuwKfyt2msTjiIokgFnfIfgXEEI,353
+   36554123223: steamzero/_build_info.py,sha256=AgZk6rs-EH_8lKAn4wWYWWeaj2zSNNZIRITSe6EM66E,353
+-- steamzero/_build_info.py
+   36544698400: SOURCE_COMMIT = "51442579a0d6dd0c66070c084be298de3d716bc7"
+   36554123223: SOURCE_COMMIT = "8bdbb42a52a64d2a3cd8e2a74b9a26b8756d5527"
+
+623 das 625 entradas são byte a byte iguais. As duas que mudam são o carimbo de
+proveniência e o hash dele no `RECORD` — consequência necessária do merge ref novo, que o
+CI cria a cada re-base. Nenhum `.py`, nenhum `.qml`, nenhum `.js`, nenhum schema mudou. É
+esta a forma verificável de "o produto desta cabeça é o produto que a suíte integral
+exercitou": comparado no artefato, não afirmado pela história do branch.
+
+=== 15. cadeia de integração re-medida nesta passada (2026-09-29) ===
+origin/main = 3495c49d5d7c3244267e8292beee34475f70236b
+
+PR	state	base	headBranch				head	mergeable
+239	OPEN	main	codex/project-design-audit-2026-09-26	069501ab	MERGEABLE
+240	OPEN	main	codex/rc01-central-loading-2026-09-26	c959be13	MERGEABLE
+241	OPEN	main	codex/rc01-readiness-focus-2026-09-27	190ea683	MERGEABLE
+242	OPEN	main	codex/rc01-shell-esde-dialog-2026-09-27	5d95034b	MERGEABLE
+243	OPEN	main	codex/rc01-readiness-semantics-2026-09-28	c0de54c9	MERGEABLE
+244	OPEN	main	codex/rc01-storage-units-2026-09-28	ee09dbcc	MERGEABLE
+
+ancestralidade real entre as cabeças (não a base declarada, que é `main` nos seis):
+069501ab -> c959be13 ancestor=SIM
+c959be13 -> 190ea683 ancestor=SIM
+190ea683 -> 5d95034b ancestor=SIM
+5d95034b -> c0de54c9 ancestor=SIM
+c0de54c9 -> ee09dbcc ancestor=SIM
+
+posição de cada cabeça contra `origin/main` (esq=só no main, dir=só na cabeça):
+PR 239  0	2
+PR 240  0	7
+PR 241  0	20
+PR 242  0	24
+PR 243  0	34
+PR 244  0	48
+
+Leitura: seis aberturas, todas `MERGEABLE`, nenhuma atrás do `main` (coluna esquerda = 0
+em todas). A pilha é linear na ordem #239 → #240 → #241 → #242 → #243 → #244: mesclar
+fora dessa ordem faria o PR seguinte perder base. Nenhum merge foi executado nem
+presumido — a autorização é do operador.
+
+=== 16. composição do artefato de capturas (o que a leitura NÃO cobre) ===
+comando: find <dir>/qml-visual-artifacts -type f | sed … | sort | uniq -c
+total=59
+     15 json
+     41 png
+      3 txt
+por diretório, todos os arquivos: 28 esde-import/  23 retrofe-import/  8 shell-esde-import/
+por diretório, só PNG:             20 esde-import/  16 retrofe-import/   5 shell-esde-import/   (20+16+5 = 41)
+nao-PNG (18): metrics.json por cenário, ambiente.json, geometria.json e saída do runner/cena
+capturas de armazenamento (storage|sizes|armazenamento): 0
+
+As duas contagens coexistem no mesmo artefato com escopos diferentes: 59 é ARQUIVOS por
+família (28/23/8) e 41 é PNG por família (20/16/5). A evidência 28 usou a primeira, a 29
+reconciliou as duas, esta replica a reconciliação com o comando na cabeça `ee09dbcc`.
+
+O run terminal publica 41 PNG em três famílias de importador. Zero capturas de
+armazenamento em escala de texto 100/125/150 %. A leitura de artefato prova o pacote, não
+o critério físico de RC-01; `GAP-UI-VISUAL-CAPTURE-NOT-CERTIFIED-IN-CI` continua aberto.
+
+=== 17. estado da árvore no momento desta leitura ===
+git -C <checkout> rev-parse HEAD          = ee09dbccdaaf897a0b3f8adb03389711c886e848
+git -C <checkout> status --short          = ?? docs/09-operations/evidence/2026-09-28-rc01-storage-units/30-verificacao-wheel-na-cabeca-ee09dbcc.py
+git -C <checkout> rev-parse --abbrev-ref  = codex/rc01-storage-units-2026-09-28
+
+CORREÇÃO DESTA SEÇÃO POR REMEDIÇÃO (não do texto original, que era verdadeiro no instante
+em que foi rodado): a linha `status --short` acima foi capturada quando só o varredor
+existia. Ao fechar a evidência, a árvore está assim — 9 caminhos, todos em `docs/`, nenhum
+em `src/`, `tests/` ou `tools/`:
+
+    AM docs/09-operations/evidence/2026-09-28-rc01-storage-units/30-ci-terminal-na-cabeca-ee09dbcc.log
+    AM docs/09-operations/evidence/2026-09-28-rc01-storage-units/30-ci-terminal-na-cabeca-ee09dbcc.md
+    AM docs/09-operations/evidence/2026-09-28-rc01-storage-units/30-verificacao-wheel-na-cabeca-ee09dbcc.py
+    M  docs/09-operations/evidence/2026-09-28-rc01-storage-units/README.md
+     M docs/ACTIVE-WORK.md
+     M docs/STATUS.md
+     M docs/status/COVERAGE.md
+     M docs/status/items/ui-desktop-audit.json
+     M docs/status/workstreams/rc01-storage-units-2026-09-28.json
+
+O `AM` nos três arquivos novos é o rastro das edições feitas depois do primeiro `git add`
+— tornar o varredor portátil, formatá-lo, reexecutá-lo e registrar as duas coisas aqui e no
+`diff` vazio de §9. `HEAD` segue `ee09dbcc` e o ramo segue
+`codex/rc01-storage-units-2026-09-28`.
+
+Fora a própria pasta de evidência, nada foi alterado: nem `src/`, nem `tests/`, nem
+`tools/`, nem configuração. Nenhuma suíte foi re-executada localmente para produzir esta
+evidência — as três pernas Python e o gate visual vêm dos artefatos do run, que rodaram
+sobre `refs/pull/244/merge` com `sourceTreeState=clean`.
