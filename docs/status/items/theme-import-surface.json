@@ -15,7 +15,7 @@
     "tests/unit/test_theme_import_esde.py",
     "tests/qml/check_theme_editor_import.qml"
   ],
-  "scopeDigest": "f7b24db7abd74903a890ecf24bac33c004de084b3156f02c8e53deb5d95196bd",
+  "scopeDigest": "d95783eab6673095049658a49d1ac589256f989030b1befabc8675eac9f86d3b",
   "dependsOn": [
     "SZ-THEME-STUDIO"
   ],
@@ -89,6 +89,18 @@
       "reference": "docs/09-operations/evidence/2026-09-27-esde-import-dialog-compact/03-verde-medido-com-correcao.log",
       "command": "2026-09-27 renovação de escopo pela frente WS-2026-09-RC01-READINESS-FOCUS (3ª fatia de RC-01, item SZ-UI-DESKTOP-AUDIT). Mudança visível na superfície de importação: o diálogo Importar tema ES-DE passou a ter corpo rolável com as ações no rodapé, e a lista de esquemas deixou de ser um ScrollView aninhado. Nenhum contrato deste item foi reexecutado; a prova própria anterior continua a do lote de 2026-09-03. O digest foi regenerado pela ferramenta porque o escopo compartilhado (src/steamzero/ui) mudou; as capacidades deste item NÃO foram reatestadas, nenhuma evidência foi carimbada e nenhum eixo dele mudou de estado neste lote.",
       "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/09-verde-medido.md",
+      "command": "2026-09-29 renovação de escopo compartilhado pela frente WS-2026-09-RC01-RETROFE-SHELL-LATE (corte 'RetroFE na shell' de RC-01; dono da mudança: item SZ-UI-DESKTOP-AUDIT). Este lote TOCOU src/steamzero/ui/qml/ThemeEditorPanel.qml, que está no escopo deste item, e isso é registrado em vez de passar como renovação muda. O delta é confinado ao bloco do importador RetroFE, medido por `git diff -U0`: 13 blocos, todos entre 96-103 (declarador `retrofeImportGeneration`), 333-443 (`resetRetrofeImport`, `inspectRetrofeImport`, `applyRetrofeImport`) e 1271-1290, dentro de `retrofeImportDialog` (abre em :1203). Nenhum eixo deste item mudou de estado e NENHUMA verificação nova deste item foi executada neste lote: a renovação afirma só que o conjunto de arquivos do escopo foi re-digerido pela ferramenta, no precedente de 2026-09-27 (mesmo arquivo, mesma situação, evidência registrada em theme-import-retrofe.json). Capítulos deste item que a mudança não toca: o motor de temas em si, a superfície de importação e o estúdio.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "result": "recorded",
+      "reference": "docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/28-fora-de-escopo-esde-geracao.md",
+      "command": "Fora de escopo do sétimo elo, medido e com dono: o importador ES-DE continua sem contrato de geração. grep -c esdeImportGeneration src/steamzero/ui/qml/ThemeEditorPanel.qml = 0 contra retrofeImportGeneration = 12; cinco escritas incondicionais de `panel.esdeImportBusy = false` nas linhas 215 (resetEsdeImport), 229 e 239 (callbacks de inspectEsdeImport) e 263 e 271 (callbacks de applyEsdeImport), com as propriedades esdeImport* declaradas em :72-:78. Não foi corrigido aqui por serialização: os gates ES-DE pertencem a WS-2026-09-RC01-SHELL-ESDE-DIALOG e o corte exige vermelho próprio mais a mesma bateria de mutantes (M1-M4 + guarda) que fechou o RetroFE."
     }
   ],
   "nextAction": "Validar na release 2.0.0rc1-504d10b14485 com fontes ES-DE e pacote SteamZero reais; manter ausência explícita enquanto ES-DE/SRM não estiverem instalados e RetroFE não tiver pacote lançável.",

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-RC01-RETROFE-SHELL-LATE",
+  "item": "SZ-UI-DESKTOP-AUDIT",
+  "branch": "codex/rc01-retrofe-shell-late-response-2026-09-29",
+  "baseRef": "af6a5c6e",
+  "owner": "qoder-continuation",
+  "state": "active",
+  "exclusivePaths": [
+    "tests/integration/test_ui_shell_retrofe_import_late_response.py",
+    "tests/qml/check_shell_retrofe_import_late_response.qml",
+    "docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late",
+    "docs/status/workstreams/rc01-retrofe-shell-late-2026-09-29.json"
+  ],
+  "sharedPaths": [
+    "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+    "src/steamzero/ui/qml/Main.qml",
+    "docs/status/items/ui-desktop-audit.json",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "PRÓXIMA AÇÃO: push e PR do sétimo elo sobre codex/rc01-storage-units-2026-09-28, com CI terminal lido no SHA efetivamente entregue; depois fechar o corpo do 244 com o veredito de empacotamento medido no artefato. DEPENDÊNCIA: checkpoint já lido na árvore congelada (24-comandos-e-saidas.log, sete passos rc=0: integral 6507 aprovados mais 47 ignorados = 6554 coletados, visual 362 aprovados, identidade idêntica em 14 leituras e real-state do guarda inalterado); merge e ordem são decisão do operador. CRITÉRIO DE SAÍDA: o workstream só fecha com o SHA mergeado em main e com a distinção head da branch x ref de merge preservada na evidência. LIMITE: resposta em voo é descartada, não cancelada; nenhuma captura PNG; o mesmo contrato ainda não existe no importador ES-DE (28-fora-de-escopo-esde-geracao.md). NARRATIVA COMPLETA: docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/ (27-nextaction-verbatim-ws-2026-09-rc01-retrofe-shell-late.md).",
+  "updatedAt": "2026-09-29"
+}
