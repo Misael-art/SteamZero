@@ -13910,3 +13910,113 @@ cada uma com CI terminal verde na própria cabeça, esta cabeça a 5 commits de 
 39 de `origin/main`. Nenhum merge foi executado ou presumido: integração é decisão de
 ordem do operador, e nenhum item desta frente se declara fechado sem o SHA realmente
 integrado.
+
+## 2026-09-29 — RC-01 / RetroFE na shell, sétimo elo: a resposta tardia perdeu o efeito, não a superfície — e a prova de árvore congelada voltou ao tamanho do que ela mede
+
+**O corte, escolhido pelo operador entre cortes** ("RetroFE na shell"), saiu da cabeça do
+PR #244 (`af6a5c6e`) e não presume a dependência: os símbolos que o harness lê
+(`themeImportRetrofeButton`, `resetRetrofeImport`) não existem em `main`. Vermelho
+primeiro, com gate QML e ponte de atraso escritos antes de qualquer linha de produto, e
+o produto conferido intocado pelo diff (`git diff --stat -- src/steamzero/ui/qml/` vazio
+em `af6a5c6e`). Quatro defeitos reproduzidos com eventos reais de teclado e rota
+autenticada (`unauthorized=0`): a resposta tardia do `inspect` reescrevia três layouts
+num diálogo já fechado; o pedido ANTERIOR vencia o mais novo (`layouts=3`, esperado 1);
+a resposta tardia do `apply` anunciava sucesso com a superfície fechada e re-listava
+temas (`GET /theme/list` na posição 12, depois do último `apply` na 11); reabrir mostrava
+o último texto editado contra estado vazio. Medido em `00-vermelho-reproduzido.md`.
+
+**A correção é um contrato de geração, não um cancelamento.** `inspect` e `apply`
+registram `retrofeImportGeneration` ao despachar e só escrevem na superfície se a geração
+bater; o fechamento (`onClosed` → `resetRetrofeImport()`) incrementa e revoga o efeito.
+Nada é abortado em voo — o que chega tarde é descartado, porque abortar um `XMLHttpRequest`
+da ponte não era o que o defeito pedia. Sexta classe de defeito achada no caminho, com
+vermelho lido ANTES da correção e nas duas camadas: o rollback do dedup escrevia
+`retrofeImportBusy = false` incondicional, então um clique recusado por payload idêntico
+desarmava a bandeira do pedido que ainda é corrente — "Importando…" sumia e "Publicar
+cena" habilitava sobre um importador que ainda não respondeu. A correção devolve a
+bandeira ao valor que ela tinha antes do clique, e a cena 09 (pedido revogado pelo
+fechamento) é o pino que impede a correção de reintroduzir o diálogo preso. Bateria de
+mutações com a cena que matou cada uma medida: M1 mata `test_08` nas duas camadas; M2
+(sem rollback de geração) mata `test_08` em `layouts=0, esperado 3`; M3 (sem o bump do
+fechamento) mata `test_02`, `test_04`, `test_09` e o contrafactual de re-listagem no log
+da ponte; M4 (sem a porta de Enter) mata `test_07` e a contagem da ponte (7 contra 8).
+
+**Dois falsos vermelhos foram meus, e ficam registrados como culpa do teste:** o harness
+navegava para a seção Sistema (índice 6) quando o botão mora em Temas
+(`navigationSections[7]`, aba "Editar aparência"), e a contagem de opções somava a
+`CheckBox themeImportRetrofeOverwrite`. Também trocado o proxy de abort: o
+`qmltestrunner` devolve a contagem de falhas (4), não 0/1.
+
+**Limite medido, não narrado.** Sob `QT_QPA_PLATFORM=offscreen`, `FileDialog.open()` e
+`FolderDialog.open()` ficam `visible=true` com `contentItem` sem filhos — não há árvore
+QML dirigível, então nenhuma cena de recusa pode nascer do seletor nativo (`06`, `17`,
+`18`). A segunda entrada é `onAccepted` (Enter) no campo de origem, que é tecla real e não
+stub. Consequência honesta: o seletor nativo continua **PENDENTE**, e a porta por Enter
+não é prova dele — caminho alternativo não promove caminho não testado.
+
+**Checkpoint único na árvore congelada** (`24-gates-integrais.sh`, sete passos, `rc=0`
+em todos, log cru com identidade impressa antes e depois de cada passo): ruff format
+`679 files already formatted`, ruff check `All checks passed!`, mypy `Success: no issues
+found in 298 source files`, `make independence boundaries`, `make status-check` OK,
+integral `6507 passed, 47 skipped` = **6554 coletados**, reconciliado com o lote anterior
+(6545 + 9 funções deste corte), e gate visual `362 passed, 6192 deselected` = 360 + as 2
+funções novas marcadas `visual`, conferidas por `grep` estático antes do voo. Guarda de
+estado real do isolador com `before`/`after` campo a campo iguais
+(`files=12816 directories=2068 bytes=1372712391 source=HOME-default`), exit 0 e não 86.
+Duas divergências de leitura registradas COM CAUSA: a banda de ritmo (~26 s por 1 %
+contra ~31 testes/s) atribuída a `load average` 9,35 com um `bfs` varrendo `/` de outra
+frente, e o log parado sete minutos no passo 7, que é bufferização de 8 KiB do stdout do
+Python para arquivo — não a suíte parada.
+
+**A prova de árvore congelada foi reduzida ao que ela mede** (`31-identidade-da-arvore.md`).
+A linha agregada `sha256 src+tests+tools` é `git ls-files -s`, que lê o **índice**. No voo,
+`ThemeEditorPanel.qml` estava ` M` e os dois arquivos de teste deste corte estavam `??`,
+então `f185438a112bc0b8` provava "nada foi indexado", não "este conteúdo foi executado" —
+a alegação estava maior que a leitura. Os dois agregados foram reproduzidos com índice
+descartável fora do checkout (`f185438a112bc0b8` lido de `af6a5c6e`,
+`6955ced9b824e33f` na cabeça atual), o delta entre eles coincide caminho a caminho com
+`git diff --name-only af6a5c6e HEAD -- src tests tools` (2 adicionados, 2 com blob
+trocado, zero removidos, nenhum caminho fora da lista), e o conteúdo testado continua
+provado pelas três leituras por arquivo, que são da árvore de trabalho e não se moveram
+(`bddd117ac33fcbcf`, `bc9d76d646685e20`, `0cb7744eff344587`). Contagens, códigos de saída
+e vereditos do checkpoint não mudam; mudou o alcance do que a identidade alegava. Para o
+próximo checkpoint a leitura agregada passa a ser por conteúdo, com a sensibilidade
+dela medida em repositório descartável — e uma divergência de leitura da própria bateria
+ficou registrada sem causa estabelecida, depois de duas candidatas testadas e recusadas.
+
+**Governança (itens 9, 10 e 11 do operador).** `nextAction` reduzido a próxima ação,
+dependência e critério de saída em cinco registros — 17231 → 1320, 11941 → 795,
+5036 → 726, 4271 → 955, 3090 → 808 caracteres — com o texto integral movido para
+`26-*`/`27-*`/`32-*`/`18-*`/`10-*` e a preservação verbatim conferida **independentemente**
+contra extrato tirado antes da mudança (cinco comprimentos exatos, `True` nos cinco). O
+reconcílio da RC-01 em cinco camadas ficou em `29-reconcilio-rc01-cinco-camadas.md`, com
+três lacunas funcionais nomeadas e com dono: dobra da Home (medida: a primeira dobra não
+fecha em 209 px), contrato de geração no ES-DE (`grep -c esdeImportGeneration` = 0 contra
+12 no RetroFE) e F-1/F-2 da prontidão. O `status-check` reprovou por duas causas, ambas
+medidas antes de mexer. A primeira: `kind: "gate"` não está no enum do schema. Havia
+exatamente 2 ocorrências no repo inteiro, as minhas, e a frase que escrevi sobre o
+precedente estava errada — re-medida: das 841 entradas do catálogo, 101 mencionam gate e
+**nenhuma** usava `gate` (51 `diagnostic`, 47 `test`, 2 `hardware`, 1 `design`). Para um
+registro de gates em `.md` com suítes executadas e `rc=0`, o precedente lido é
+`kind: "test"` (`aura-launcher.json`, `33-*-gates.md`) — corrigi o dado ao precedente, e
+nenhum teste ou veredito foi tocado. A segunda causa: o digest de `SZ-UI-DESKTOP-AUDIT`,
+cuja atribuição por
+arquivo mostra 44 dos 56 caminhos desta frente dentro dos 86 `scopePaths` do item e
+**zero** itens acusados sem arquivo desta frente no escopo. Renovação por último, na
+árvore congelada, do valor impresso pela ferramenta (`d8ad776bdaea5edb…`, e depois
+`df5508cd4c0000b7…` quando a frase do precedente acima foi re-medida e corrigiu o log e o
+índice da pasta — a própria pasta de evidência está no `scopePaths` do item, então toda
+escrita ali envelhece o digest, que por isso é sempre o último a ser escrito). As três
+visões foram re-renderizadas sem diff: o que o renderizador consome são `title` e
+`nextAction`, e nenhum dos dois se moveu nesta passada (no commit anterior, sim — as
+três mudaram). `make status-check` verde no tip e revalidação proporcional:
+`tests/unit/test_project_status.py` 13 passed com `real-state` idêntico.
+
+**O que esta sessão NÃO declara.** Nenhum merge foi executado nem presumido: `origin/main`
+continua `3495c49d…` e nenhum elo da fileira é ancestral dele — integração e ordem são
+decisão do operador, e a tabela com a situação re-medida dos seis PRs vai no corpo do PR.
+O CI terminal desta cabeça é lido depois do push e registrado no PR, não em commit
+dedicado. `GAP-UI-VISUAL-CAPTURE-NOT-CERTIFIED-IN-CI` segue aberto: nenhuma captura PNG é
+alegada por esta fatia. A release instalada `2.0.0rc1-e2af2562ebba` não contém `sizes.js`,
+`readiness.js` nem o contrato de geração deste lote, então "experiência comprovada na
+release" é zero para a fileira inteira. RC-01 não se declara concluída.
