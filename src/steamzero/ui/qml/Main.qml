@@ -397,6 +397,10 @@ ApplicationWindow {
     /// porta ao empilhamento que o guarda de sobreposição existe para evitar.
     property bool statusRefreshQueued: false
     property bool statusStale: false
+    /// RC-01 (oitava fatia): o código que a faixa de fase reporta. Através do voo
+    /// de uma renovação o cartão correspondente mantém a forma compacta — sem
+    /// isto ele respiraria expandir-e-colapsar a cada renovação da mesma falha.
+    property string statusBandFailureCode: ""
     property int statusAttempt: 0
     property real statusStartedAt: 0
     property real statusElapsedMs: 0
@@ -416,6 +420,17 @@ ApplicationWindow {
     readonly property bool statusBandIsError: statusPhase === "error" && !bridgeUnavailable
     readonly property bool statusBandVisible: statusIsLoading || statusStale
         || statusBandIsError
+    // Oitavo elo: `request` anuncia uma falha de /status em duas superfícies — a
+    // faixa de fase e o cartão de erro. Medido: com as três ativas, o chrome fixo
+    // consome 264 px da dobra e nenhum alvo acionável da Home cabe. A faixa é a
+    // superfície persistente; o cartão duplicado entra em forma compacta e leva a
+    // orientação para dentro do "Ver detalhes", que já existia.
+    function cardDuplicaAFaixa(errorObj) {
+        if (!statusBandVisible || statusBandFailureCode === "")
+            return false
+        const code = errorObj && errorObj.code ? String(errorObj.code) : ""
+        return code !== "" && code === statusBandFailureCode
+    }
     readonly property bool statusBandRetry: statusNeedsRetry && apiUrl !== ""
         && apiToken !== ""
     readonly property color statusBandBackground: statusBandIsError ? "#352020"
@@ -1206,6 +1221,7 @@ ApplicationWindow {
             statusPhase = "ready"
             statusStale = false
             statusFailure = null
+            statusBandFailureCode = ""
             desktopStatus = response
             liveTasks = null
             currentPlan = null
@@ -1222,6 +1238,7 @@ ApplicationWindow {
             statusElapsedMs = Date.now() - statusStartedAt
             statusFailure = failure && typeof failure === "object"
                 ? failure : {"code": "", "detail": String(failure)}
+            statusBandFailureCode = String(statusFailure.code || "")
             // Uma falha depois de já ter dados reais não apaga a última verdade:
             // o shell continua mostrando o estado medido, agora marcado como
             // desatualizado. Sem resposta bem-sucedida anterior não há o que
@@ -4137,6 +4154,7 @@ ApplicationWindow {
                                     Layout.fillWidth: true
                                     errorObject: modelData
                                     visualScale: root.visualScale
+                                    compact: root.cardDuplicaAFaixa(modelData)
                                     onDismiss: root.dismissError(errorObject ? errorObject.code : "")
                                     onShowDiagnostics: root.beginDiagnosticsExport("support")
                                     Component.onCompleted: resolve(modelData)
