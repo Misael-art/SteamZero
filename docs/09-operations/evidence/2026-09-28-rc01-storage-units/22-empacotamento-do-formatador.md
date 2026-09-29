@@ -40,3 +40,13 @@ unzip -l /tmp/ux04_wheel/*.whl | grep 'ui/qml/sizes\.js'
 
 Enquanto isso não rodar, a entrega afirma: **configuração inclui, artefato ainda não
 conferido**. Não se registra como provado.
+
+## Fechamento (2026-09-29, lido do run terminal do PR #244)
+
+A pendência acima foi executada e está provada por artefato, não por configuração: run
+`36521236686` (cabeça `37f0add4`), wheel `steamzero-wheel-a555999c856a18a711a251f23708c0270355ad27`
+(11 187 782 B) — os oito caminhos `src/` desta frente estão no `.whl` com bytes
+idênticos aos blobs da cabeça e do merge ref, `sizes.js` com
+`sha256=6d5ca418e514258f…315a4829`. Leitura completa, verificador governado e limite
+do merge ref em `28-ci-terminal-e-wheel-no-sha-final.md` (seção 3) e no log da mesma
+evidência. O texto acima fica como foi escrito na rodada, inclusive o "PENDENTE".

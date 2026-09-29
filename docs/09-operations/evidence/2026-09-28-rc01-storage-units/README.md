@@ -36,7 +36,7 @@ arquivo compartilhado isolado em commit próprio, AGENTS.md §2).
 | `20-bateria-de-mutacoes.md` | 8 mutações, como cada uma foi morta e os dois falsos resultados corrigidos |
 | `20-bateria-de-mutacoes.log` | saída corrida da bateria |
 | `21-varredura-do-produtor.log` | varredura dos 303 cartões do workspace: 3 ofensas antes, 0 depois |
-| `22-empacotamento-do-formatador.md` | o que a configuração prova e o que fica **pendente** sobre o wheel |
+| `22-empacotamento-do-formatador.md` | o que a configuração prova, o que ficou **pendente** sobre o wheel na rodada e o fechamento por leitura de artefato em `28` |
 | `23-congelamento-*.txt`, `23-suite-integral.log` | guarda de estado da árvore e a suite integral **interrompida** — substituída pelo re-congelamento e pela suite do checkpoint final, sem valor de veredito |
 | `24-matriz-de-locales.md` (+ `.py`, `-antes.log`, `-depois.log`) | o defeito da rodada 2: o gate pinava `pt_BR`; medido em cinco contextos, 6/109 em `C`/`C.UTF-8`/`en_US` antes, 145 ok nos dois fusos depois |
 | `25-bateria-de-mutacoes-rodada-2.md` (+ `.py`, `.log`) | 8 mutantes sob dois locales, os dois verdes falsos da rodada 1 corrigidos e o gap real (divisor decimal sob rótulo IEC) fechado por oráculo |
@@ -44,6 +44,8 @@ arquivo compartilhado isolado em commit próprio, AGENTS.md §2).
 | `27-checkpoint-integral-e-gates.md` | os sete gates na árvore congelada (14 leituras de identidade, `real-state` idêntico), os dois vermelhos com causa lida, o `EEEEEE` da execução anterior desfeito por medição e o que a árvore recebeu depois do veredito |
 | `27-gates-integrais.sh`, `27-comandos-e-saidas.log{,.rc,.concluido}` | invólucro dos sete passos e a saída crua com os códigos de saída (`1,0,1,1,0,0,2`) |
 | `27-congelamento-*.txt`, `27-atribuicao-digests.{py,log}`, `27-pos-execucao-sha256.txt` | guarda da árvore sob teste, atribuição por arquivo dos 31 digests obsoletos (lendo stderr) e o estado re-verificado depois da execução |
+| `28-ci-terminal-e-wheel-no-sha-final.md` | o veredito terminal da cabeça `37f0add4` (run `36521236686`, oito jobs `success`), a matriz de locales exercida dentro da imagem do CI por reconciliação de contagem, o wheel lido arquivo por arquivo, a cobertura do mesmo run e o que a leitura **não** cobre (captura física) |
+| `28-ci-terminal-e-wheel-no-sha-final.log`, `28-verificacao-wheel.py` | as 14 seções cruas (`gh`, log do job, `sha256sum -c`, verificador governado, coleção do host) e o comparador wheel × blobs, reproduzível por argumento |
 
 ## Pendências declaradas (não escondidas)
 
@@ -77,3 +79,16 @@ arquivo compartilhado isolado em commit próprio, AGENTS.md §2).
   alto com a dupla `LC_ALL=… / harness rodou sob …` no corpo da asserção — vermelho
   ruidoso, não verde silencioso. É esta a escolha: preferimos o gate que se queixa a
   verificar a mesma formatação duas vezes.
+* **Como ficou a perna `pt_BR` na imagem do CI (28)**: o gate visual terminou verde na
+  cabeça `37f0add4`, e a coleção do host (`360` testes) bate com o rollup do runner
+  (`348 passed + 12 skipped`), com os 12 skips atribuídos por linha a
+  `test_qml_asset_recipes.py` — os três testes da matriz não estão entre eles. A
+  resolução de nome do Qt na imagem foi portanto exercida, não presumida. O limite é o
+  do log: o job roda `-q` e não imprime nomes, então a prova é reconciliação de
+  contagem sobre o rollup do CI, e isso está escrito na evidência 28 em vez de virar
+  alegação de "linha por linha".
+* **Empacotamento**: a pendência 2a do lote está fechada por leitura de artefato (28,
+  seção 3). O que continua aberto é o `GAP-UI-VISUAL-CAPTURE-NOT-CERTIFIED-IN-CI`: o
+  run terminal publica PNG apenas das famílias `esde-import`, `retrofe-import` e
+  `shell-esde-import` — zero capturas de armazenamento em 100/125/150 % de escala de
+  texto, critério da RC-01.
