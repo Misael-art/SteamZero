@@ -100,7 +100,7 @@
     "tests/qml/check_home_first_fold_attention.qml",
     "docs/09-operations/evidence/2026-09-29-rc01-home-first-fold"
   ],
-  "scopeDigest": "d42706c4da34e9c144b59198b3f06dea1e1ce63c12b267d4ce5070048a7debff",
+  "scopeDigest": "efab54f0f130ff8e7437e10a855fbd0a84b5ba7dbb4736031797af6032da9ed6",
   "dependsOn": [],
   "knownGaps": [
     "GAP-UI-LIVE-LAUNCHER-ROUTING",
