@@ -6,10 +6,18 @@
 // formatador compartilhado) está na pasta de evidência
 // docs/09-operations/evidence/2026-09-28-rc01-storage-units/.
 //
-// Coberto aqui: convergência entre as quatro páginas, rótulo IEC para divisor
-// 1024, ausência ≠ zero, zero ≠ "não publicado", nada some abaixo da menor
-// unidade, andar acima de GiB, separador decimal do locale e o cartão medido
-// que chega do contrato como inteiro (`metricBytes`/`capacityBytes`).
+// Coberto aqui: convergência entre as quatro páginas, a grandeza contra um
+// oráculo declarado neste arquivo, rótulo IEC para divisor 1024, ausência ≠
+// zero, zero ≠ "não publicado", nada some abaixo da menor unidade, andar acima
+// de GiB, separador decimal do locale e o cartão medido que chega do contrato
+// como inteiro (`metricBytes`/`capacityBytes`).
+//
+// A expectativa de localização sai do locale EM VIGOR, nunca de um pino do
+// autor: pinar `Qt.locale("pt_BR")` deixou o gate verde na máquina local e
+// vermelho nas cabeças do CI, cuja imagem fixa `LC_ALL=C.UTF-8`
+// (ci/qml-visual/Containerfile:58-59, environment.lock.json:26). A matriz que
+// prova as duas leituras está em
+// tests/integration/test_storage_units_locale_matrix.py.
 import QtQuick
 import QtQuick.Window
 import "../../src/steamzero/ui/qml"
@@ -24,8 +32,22 @@ Window {
     property int failures: 0
     property int firstFailure: 0
 
-    property var locale: Qt.locale("pt_BR")
+    property var locale: Qt.locale()
     property var valores: [0, 512, 1000000, 1048576, 1073741824, 1500000000, 5368709120, 1099511627776]
+
+    // Oráculo da grandeza, declarado aqui e não lido da produção: divisor 1024,
+    // rótulo IEC na mesma ordem e duas casas em qualquer andar. Ele existe para
+    // o mutante que troca o divisor por 1000 mantendo o rótulo IEC — leitura 7 %
+    // maior que a medida real, que nenhum pino de rótulo, andar ou convergência
+    // vê. O contrato está documentado em docs/06-api/JSON-SCHEMAS.md (UX-04) e no
+    // comentário de `src/steamzero/ui/qml/sizes.js`.
+    property var unidadeIec: ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"]
+
+    // Referência independente do formatador de armazenamento: um número decimal
+    // puro impresso pelo próprio Qt no locale em vigor. `sizes.js` e esta
+    // referência só coincidem se o production delegar ao locale ativo — fixar um
+    // locale ou usar `toFixed()` diverge e o gate nomeia o defeito.
+    property var separador: String((1.5).toLocaleString(locale)).replace(/[0-9]/g, "")
 
     property var cores: {
         "backgroundColor": "#071019",
@@ -86,6 +108,39 @@ Window {
             return "SEM OBJETO"
         const fn = objeto.formatBytes !== undefined ? "formatBytes" : "humanBytes"
         return String(objeto[fn](valor))
+    }
+
+    // Leitura esperada, computada aqui sem chamar a produção.
+    function referencia(valor) {
+        if (valor === undefined || valor === null)
+            return "—"
+        if (valor < 1024)
+            return valor.toFixed(0) + " " + unidadeIec[0]
+        let expoente = 1
+        while (expoente < unidadeIec.length - 1 && valor >= Math.pow(1024, expoente + 1))
+            expoente += 1
+        return (valor / Math.pow(1024, expoente)).toLocaleString(locale) + " " + unidadeIec[expoente]
+    }
+
+    // Requisito 3 do contrato (JSON-SCHEMAS.md): o andar vem do número e o
+    // divisor é binário, então a leitura diz a grandeza medida — não 7 % acima
+    // ou abaixo dela por um divisor trocado debaixo de um rótulo IEC intacto.
+    function testGrandeza() {
+        const nomes = ["Emulation", "Main", "SteamGameplay", "ThemeCatalogPanel"]
+        const componentes = [emuComp, mainComp, gameplayComp, themeComp]
+        const extras = [{"emulation": {}, "sidebarColor": "#09131d"}, undefined, {"gameplay": {}}, undefined]
+        for (let i = 0; i < nomes.length; ++i) {
+            const paginaObj = pagina(nomes[i], componentes[i], extras[i])
+            for (let j = 0; j < valores.length; ++j) {
+                const esperado = referencia(valores[j])
+                const saida = formatar(paginaObj, valores[j])
+                check(saida === esperado,
+                      nomes[i] + " lê " + valores[j] + " B como \"" + saida + "\", e a leitura "
+                      + "referenciada é \"" + esperado + "\": a mantissa vem do divisor 1024 e "
+                      + "o separador, do locale em vigor — qualquer dos dois fora do contrato "
+                      + "afirma uma medida que não é a do disco")
+            }
+        }
     }
 
     // Requisito: o mesmo número produz o mesmo texto em qualquer superfície.
@@ -163,7 +218,8 @@ Window {
         const extras = [{"emulation": {}, "sidebarColor": "#09131d"}, undefined, {"gameplay": {}}, undefined]
         for (let i = 0; i < nomes.length; ++i) {
             const saida = formatar(pagina(nomes[i], componentes[i], extras[i]), 512)
-            check(saida.indexOf("0 ") !== 0 && saida !== "0 B" && saida.indexOf("0.0") !== 0 && saida !== "0",
+            check(saida.indexOf("0 ") !== 0 && saida !== "0 B"
+                  && saida.indexOf("0" + separador) !== 0 && saida !== "0",
                   nomes[i] + " mostra 512 B como \"" + saida
                   + "\": um arquivo pequeno não pode desaparecer da tela")
         }
@@ -183,17 +239,18 @@ Window {
         }
     }
 
-    // Requisito do auditor: unidades LOCALIZADAS — separador decimal do locale.
+    // Requisito do auditor: unidades LOCALIZADAS — o separador decimal é o do
+    // locale em vigor, não o do fuso onde o teste foi escrito.
     function testLocalizado() {
         const nomes = ["Emulation", "Main", "SteamGameplay", "ThemeCatalogPanel"]
         const componentes = [emuComp, mainComp, gameplayComp, themeComp]
         const extras = [{"emulation": {}, "sidebarColor": "#09131d"}, undefined, {"gameplay": {}}, undefined]
         for (let i = 0; i < nomes.length; ++i) {
             const saida = formatar(pagina(nomes[i], componentes[i], extras[i]), 1500000000)
-            check(saida.indexOf(locale.decimalPoint) >= 0,
-                  nomes[i] + " imprime " + saida + " com separador de milhar/decimal "
-                  + "estrangeiro: o locale medido é " + locale.name
-                  + " e usa \"" + locale.decimalPoint + "\" como separador decimal")
+            check(saida.indexOf(separador) >= 0,
+                  nomes[i] + " imprime \"" + saida + "\" fora do locale em vigor: a referência "
+                  + "(" + locale.name + ") separa a mantissa com \"" + separador
+                  + "\"; unidade localizada é a leitura que o aparelho do usuário dita")
         }
     }
 
@@ -273,7 +330,10 @@ Window {
     }
 
     // Requisito: onde a frase é necessária, a grandeza dentro dela continua
-    // localizada. Dois textos do shell imprimiam o número cru do contrato.
+    // localizada E vem do mesmo formatador que o cartão. Dois textos do shell
+    // imprimiam o número cru do contrato. A expectativa é composta a partir da
+    // leitura compartilhada — pifar aqui significa prosa e cartão dizendo jeitos
+    // diferentes a mesma medida.
     function testProsaLocalizada() {
         const main = pagina("Main", mainComp, undefined)
         const resumo = main.taskResultSummary({
@@ -284,9 +344,11 @@ Window {
         check(resumo.indexOf("byte") < 0,
               "o resumo da varredura saiu como \"" + resumo + "\": byte cru na tela não tem "
               + "separador decimal nem andar, e é a grandeza que o usuário compara com o volume")
-        check(resumo === "12 arquivo(s), 1,00 GiB, 1 suspeito(s)",
-              "o resumo da varredura saiu como \"" + resumo
-              + "\": a contagem de arquivos e suspeitos é do jeito que está, só a medida muda")
+        const leituraBitrot = formatar(main, 1073741824)
+        check(resumo === "12 arquivo(s), " + leituraBitrot + ", 1 suspeito(s)",
+              "o resumo da varredura saiu como \"" + resumo + "\": a medida esperada é a do "
+              + "formatador único (" + leituraBitrot + "); as contagens de arquivos e "
+              + "suspeitos não mudam")
 
         const rotulo = main.auditItemLabel({
             "category": "duplicate",
@@ -296,11 +358,13 @@ Window {
         check(rotulo.indexOf("bytes") < 0,
               "a linha da quarentena saiu como \"" + rotulo
                       + "\": o caminho e a categoria continuam legíveis; o que muda é a medida")
-        check(rotulo === "duplicate · steamapps/common/Jogo · 1,40 GiB",
-              "a linha da quarentena saiu como \"" + rotulo
-              + "\": categoria e caminho continuam legíveis, a medida sai do formatador")
+        const leituraQuarentena = formatar(main, 1500000000)
+        check(rotulo === "duplicate · steamapps/common/Jogo · " + leituraQuarentena,
+              "a linha da quarentena saiu como \"" + rotulo + "\": categoria e caminho são os "
+              + "de sempre, a medida tem de sair do formatador único (" + leituraQuarentena
+              + ")")
         check(main.auditItemLabel({"category": "update", "relativePath": "x", "sizeBytes": 0})
-              === "update · x · 0 B",
+              === "update · x · " + formatar(main, 0),
               "a linha da quarentena perdeu o zero medido")
     }
 
@@ -316,7 +380,7 @@ Window {
             const paginaObj = pagina(nomes[i], componentes[i], extras[i])
             for (let j = 0; j < casos.length; ++j) {
                 const saida = formatar(paginaObj, casos[j])
-                check(saida.indexOf("0" + locale.decimalPoint) !== 0,
+                check(saida.indexOf("0" + separador) !== 0,
                       nomes[i] + " lê " + casos[j] + " B como \"" + saida
                       + "\": a mantissa abaixo de 1 significa que o andar escolhido não é "
                       + "o andar do divisor usado")
@@ -335,6 +399,9 @@ Window {
     }
 
     function encerrar() {
+        // Linha de contexto para a matriz de locales: sem ela, dois runs podem
+        // estar verificando o mesmo contexto e o gate ficaria verde por inércia.
+        console.log("check_storage_units locale=" + locale.name + " decimal=\"" + separador + "\"")
         if (failures === 0)
             console.log("check_storage_units: " + checks + " verificação(ões) ok")
         else
@@ -349,6 +416,7 @@ Window {
         repeat: false
         onTriggered: {
             grupo("convergência", testConvergencia)
+            grupo("grandeza referenciada", testGrandeza)
             grupo("rótulo binário", testRotuloBinaRio)
             grupo("ausência", testAusencia)
             grupo("zero medido", testZeroReal)
