@@ -46,11 +46,15 @@ arquivo compartilhado isolado em commit próprio, AGENTS.md §2).
 | `27-congelamento-*.txt`, `27-atribuicao-digests.{py,log}`, `27-pos-execucao-sha256.txt` | guarda da árvore sob teste, atribuição por arquivo dos 31 digests obsoletos (lendo stderr) e o estado re-verificado depois da execução |
 | `28-ci-terminal-e-wheel-no-sha-final.md` | o veredito terminal da cabeça `37f0add4` (run `36521236686`, oito jobs `success`), a matriz de locales exercida dentro da imagem do CI por reconciliação de contagem, o wheel lido arquivo por arquivo, a cobertura do mesmo run e o que a leitura **não** cobre (captura física) |
 | `28-ci-terminal-e-wheel-no-sha-final.log`, `28-verificacao-wheel.py` | as 14 seções cruas (`gh`, log do job, `sha256sum -c`, verificador governado, coleção do host) e o comparador wheel × blobs, reproduzível por argumento |
+| `29-ci-terminal-no-sha-final.md` | o veredito terminal na cabeça **final** `2d04ac96` (run `36544698400`) com identidade da árvore pinada nos 12 ciclos de espera; suíte lida dos junit publicados (3 × 6185, 0 falhas), rollup do gate do log do job e cobertura; a prova de empacotamento elevada a **pacote inteiro** (619/619 byte a byte) e a correção honesta de que a árvore **não** recebeu só documento depois do checkpoint |
+| `29-ci-terminal-no-sha-final.log`, `29-verificacao-wheel-no-sha-final.py` | as 13 seções cruas (inclusive a comparação dos dois wheels do CI, entrada a entrada, e a cadeia de seis PRs re-medida) e o varredor reproduzível: recebe o diretório do artefato e a lista do PR, lê o merge ref da própria proveniência |
 
 ## Pendências declaradas (não escondidas)
 
-* **Empacotamento de `sizes.js`**: configuração inclui, artefato da CI ainda não
-  lido para esta branch (22).
+* **Empacotamento de `sizes.js`**: lido no artefato — `28` sobre a cabeça funcional
+  `37f0add4` (8 caminhos do lote) e `29` sobre a cabeça final `2d04ac96`, agora o pacote
+  inteiro (619 arquivos de `src/steamzero` iguais aos blobs, +`_build_info.py` conferido
+  por conteúdo).
 * **Grandezas fora do cartão**: `adapters/emulation.py:2898` (texto de limite de
   verificação) e as mensagens de erro de teto de arquivo (`:434`, `:5942`) ainda
   escrevem `GiB`/`MiB`/`bytes` em prosa. Não são cartões: são descrições de política
@@ -79,16 +83,28 @@ arquivo compartilhado isolado em commit próprio, AGENTS.md §2).
   alto com a dupla `LC_ALL=… / harness rodou sob …` no corpo da asserção — vermelho
   ruidoso, não verde silencioso. É esta a escolha: preferimos o gate que se queixa a
   verificar a mesma formatação duas vezes.
-* **Como ficou a perna `pt_BR` na imagem do CI (28)**: o gate visual terminou verde na
-  cabeça `37f0add4`, e a coleção do host (`360` testes) bate com o rollup do runner
-  (`348 passed + 12 skipped`), com os 12 skips atribuídos por linha a
-  `test_qml_asset_recipes.py` — os três testes da matriz não estão entre eles. A
-  resolução de nome do Qt na imagem foi portanto exercida, não presumida. O limite é o
-  do log: o job roda `-q` e não imprime nomes, então a prova é reconciliação de
-  contagem sobre o rollup do CI, e isso está escrito na evidência 28 em vez de virar
-  alegação de "linha por linha".
+* **Como ficou a perna `pt_BR` na imagem do CI (28, re-medida em 29)**: o gate visual
+  terminou verde na cabeça `37f0add4`, e a coleção do host (`360` testes) bate com o
+  rollup do runner (`348 passed + 12 skipped`), com os 12 skips atribuídos por linha a
+  `test_qml_asset_recipes.py` — os três testes da matriz não estão entre eles. Na cabeça
+  final `2d04ac96` o rollup do próprio job é `348 passed, 12 skipped, 6185 deselected in
+  1222.86s` com as mesmas quatro linhas de skip (29 §2), e o `real-state before/after`
+  do isolador segue `exists=False`. A resolução de nome do Qt na imagem foi portanto
+  exercida, não presumida. O limite é o do log: o job roda `-q` e não imprime nomes,
+  então a prova é reconciliação de contagem sobre o rollup do CI, e isso está escrito na
+  evidência em vez de virar alegação de "linha por linha".
 * **Empacotamento**: a pendência 2a do lote está fechada por leitura de artefato (28,
-  seção 3). O que continua aberto é o `GAP-UI-VISUAL-CAPTURE-NOT-CERTIFIED-IN-CI`: o
-  run terminal publica PNG apenas das famílias `esde-import`, `retrofe-import` e
-  `shell-esde-import` — zero capturas de armazenamento em 100/125/150 % de escala de
-  texto, critério da RC-01.
+  seção 3; 29, seção 3 — pacote inteiro na cabeça final). O que continua aberto é o
+  `GAP-UI-VISUAL-CAPTURE-NOT-CERTIFIED-IN-CI`: o run terminal publica PNG apenas das
+  famílias `esde-import`, `retrofe-import` e `shell-esde-import` — zero capturas de
+  armazenamento em 100/125/150 % de escala de texto, critério da RC-01.
+* **O que a árvore testada recebeu depois do checkpoint (29, seção 4)**: **não** foi só
+  documento. Entre `f9ec2815` (checkpoint integral da evidência 27) e `2d04ac96` há 6
+  commits — `src/` 0, `tools/` 0, `docs/` 71 e **1 arquivo de teste**
+  (`tests/integration/test_storage_units_locale_matrix.py`, `1eae804c`). Medido
+  estruturalmente: 9 unidades de código com sequências de opcodes idênticas e uma única
+  constante diferente, a mensagem de uma asserção. A revalidação proporcional existe: o
+  arquivo re-rodou verde local nesta cabeça (`3 passed`) e os três jobs Python do run
+  `36544698400` executaram a suíte inteira sobre ela. O produto, esse, é byte a byte o
+  do checkpoint — `src/` inalterado (29 §9) e os 619 arquivos do pacote iguais aos blobs
+  da cabeça final (29 §8). A frase "a árvore estava congelada" não é usada aqui.
