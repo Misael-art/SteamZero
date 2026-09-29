@@ -1,0 +1,9 @@
+# matriz de locales do harness check_storage_units.qml — DEPOIS do conserto
+# executado em 2026-09-28 23:25:26 -0300
+# script: sha256 df1ebf558213032c (copia em 24-matriz-de-locales.py)
+
+LC_ALL=C: rc=0 falhas=0 veredito=qml: check_storage_units: 145 verificação(ões) ok
+LC_ALL=C.UTF-8: rc=0 falhas=0 veredito=qml: check_storage_units: 145 verificação(ões) ok
+LC_ALL=(sem): rc=0 falhas=0 veredito=qml: check_storage_units: 145 verificação(ões) ok
+LC_ALL=en_US.UTF-8: rc=0 falhas=0 veredito=qml: check_storage_units: 145 verificação(ões) ok
+LC_ALL=pt_BR.UTF-8: rc=0 falhas=0 veredito=qml: check_storage_units: 145 verificação(ões) ok

@@ -1,0 +1,52 @@
+qml=/usr/sbin/qml6 harness=tests/qml/check_storage_units.qml
+baseline (árvore real):
+   C.UTF-8      rc=0 falhas=0 check_storage_units: 145 verificação(ões) ok
+   pt_BR.UTF-8  rc=0 falhas=0 check_storage_units: 145 verificação(ões) ok
+   anchors: sizes.js sha=6d5ca418e514258f Main.qml sha=391be85dd31e0b38
+M1 locale em PIN no formatador  [delegação ao locale em vigor]
+   C.UTF-8      rc=0 falhas=0   VERDE esperado=verde -> OK
+      check_storage_units: 145 verificação(ões) ok
+   pt_BR.UTF-8  rc=1 falhas=28  REPROVADO esperado=reprovar -> OK
+      Emulation lê 1000000 B como "976.56 KiB", e a leitura referenciada é "976,56 KiB": a mantissa vem do divisor 1024 e o se
+M2 formatador sem locale (toFixed)  [o separador vem do aparelho, não do autor]
+   C.UTF-8      rc=0 falhas=0   VERDE esperado=verde -> OK
+      check_storage_units: 145 verificação(ões) ok
+   pt_BR.UTF-8  rc=1 falhas=28  REPROVADO esperado=reprovar -> OK
+      Emulation lê 1000000 B como "976.56 KiB", e a leitura referenciada é "976,56 KiB": a mantissa vem do divisor 1024 e o se
+M3 divisor decimal sob rótulo IEC  [oráculo de grandeza (novo pino desta rodada)]
+   C.UTF-8      rc=1 falhas=24  REPROVADO esperado=reprovar -> OK
+      Emulation lê 1000000 B como "1000.00 KiB", e a leitura referenciada é "976.56 KiB": a mantissa vem do divisor 1024 e o s
+   pt_BR.UTF-8  rc=1 falhas=24  REPROVADO esperado=reprovar -> OK
+      Emulation lê 1000000 B como "1.000,00 KiB", e a leitura referenciada é "976,56 KiB": a mantissa vem do divisor 1024 e o 
+M4 rótulo GB sobre divisor 1024  [rótulo binário + oráculo]
+   C.UTF-8      rc=1 falhas=14  REPROVADO esperado=reprovar -> OK
+      Emulation lê 1073741824 B como "1.00 GB", e a leitura referenciada é "1.00 GiB": a mantissa vem do divisor 1024 e o sepa
+   pt_BR.UTF-8  rc=1 falhas=14  REPROVADO esperado=reprovar -> OK
+      Emulation lê 1073741824 B como "1,00 GB", e a leitura referenciada é "1,00 GiB": a mantissa vem do divisor 1024 e o sepa
+M5 ausência vira zero  [não medido ≠ medido como zero]
+   C.UTF-8      rc=1 falhas=4   REPROVADO esperado=reprovar -> OK
+      Emulation lê ausência como "0 B": dado não medido tem representação própria (traço), não 0 B nem prosa
+   pt_BR.UTF-8  rc=1 falhas=4   REPROVADO esperado=reprovar -> OK
+      Emulation lê ausência como "0 B": dado não medido tem representação própria (traço), não 0 B nem prosa
+M6 andar sem normalizar (mantissa < 1)  [nada some abaixo da menor unidade]
+   C.UTF-8      rc=1 falhas=14  REPROVADO esperado=reprovar -> OK
+      Emulation lê 0 B como "0.00 KiB", e a leitura referenciada é "0 B": a mantissa vem do divisor 1024 e o separador, do loc
+   pt_BR.UTF-8  rc=1 falhas=14  REPROVADO esperado=reprovar -> OK
+      Emulation lê 0 B como "0,00 KiB", e a leitura referenciada é "0 B": a mantissa vem do divisor 1024 e o separador, do loc
+M7 prosa do shell com texto pronto  [prosa roteia pelo formatador único; em pt_BR o texto pronto é a leitura correta, então o caso é verde por definição]
+   C.UTF-8      rc=1 falhas=1   REPROVADO esperado=reprovar -> OK
+      o resumo da varredura saiu como "12 arquivo(s), 1,00 GiB, 1 suspeito(s)": a medida esperada é a do formatador único (1.0
+   pt_BR.UTF-8  rc=0 falhas=0   VERDE esperado=verde -> OK
+      check_storage_units: 145 verificação(ões) ok
+H1 o gate volta a pinar um locale  [defeito original da rodada: verde no fuso do autor, vermelho no CI (LC_ALL=C.UTF-8 fixado pela imagem do gate visual)]
+   pytest rc=1 :: 2 failed, 1 passed in 22.11s
+
+restauração:
+   sizes.js: 6d5ca418e514258f vs baseline 6d5ca418e514258f -> identico
+   Main.qml: 391be85dd31e0b38 vs baseline 391be85dd31e0b38 -> identico
+   git:  M docs/06-api/JSON-SCHEMAS.md
+   git:  M docs/status/items/ui-desktop-audit.json
+   git:  M tests/qml/check_storage_units.qml
+   git: ?? docs/09-operations/evidence/2026-09-28-rc01-storage-units/
+   git: ?? docs/status/workstreams/rc01-storage-units-2026-09-28.json
+   git: ?? tests/integration/test_storage_units_locale_matrix.py

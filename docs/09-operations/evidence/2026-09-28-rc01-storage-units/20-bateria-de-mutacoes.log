@@ -1,0 +1,53 @@
+# bateria de mutacoes UX-04 — 2026-09-28T21:56:38-03:00 — head c0de54c9 — script /tmp/ux04_mutation_battery.py (sha256 716c153bec2877f2)
+
+### M1 unidade decimal (MB em vez de MiB) — código 1
+    E         qml: FAIL: valor 1073741824 saiu como "1,00 GB": divisor 1024 com rótulo decimal afirma uma grandeza 7 % menor que a real; o rótulo tem de dizer IEC (GiB)
+    E         qml: FAIL: valor 1048576 saiu como "1,00 MB": divisor 1024 com rótulo decimal afirma uma grandeza que não é a medida; o rótulo tem de dizer IEC (MiB)
+    E         qml: FAIL: valor 1073741824 saiu como "1,00 GB": divisor 1024 com rótulo decimal afirma uma grandeza 7 % menor que a real; o rótulo tem de dizer IEC (GiB)
+    E         qml: FAIL: valor 1048576 saiu como "1,00 MB": divisor 1024 com rótulo decimal afirma uma grandeza que não é a medida; o rótulo tem de dizer IEC (MiB)
+
+### M2 divisor decimal (1000 em vez de 1024) — código 1
+    E         qml: FAIL: Emulation lê 1000000 B como "0,95 MiB": a mantissa abaixo de 1 significa que o andar escolhido não é o andar do divisor usado
+    E         qml: FAIL: Main lê 1000000 B como "0,95 MiB": a mantissa abaixo de 1 significa que o andar escolhido não é o andar do divisor usado
+    E         qml: FAIL: SteamGameplay lê 1000000 B como "0,95 MiB": a mantissa abaixo de 1 significa que o andar escolhido não é o andar do divisor usado
+    E         qml: FAIL: ThemeCatalogPanel lê 1000000 B como "0,95 MiB": a mantissa abaixo de 1 significa que o andar escolhido não é o andar do divisor usado
+
+### M3 locale abandonado (sem Qt.locale()) — código 1
+    E         qml: FAIL: Emulation imprime 1.40 GiB com separador de milhar/decimal estrangeiro: o locale medido é pt_BR e usa "," como separador decimal
+    E         qml: FAIL: Main imprime 1.40 GiB com separador de milhar/decimal estrangeiro: o locale medido é pt_BR e usa "," como separador decimal
+    E         qml: FAIL: SteamGameplay imprime 1.40 GiB com separador de milhar/decimal estrangeiro: o locale medido é pt_BR e usa "," como separador decimal
+    E         qml: FAIL: ThemeCatalogPanel imprime 1.40 GiB com separador de milhar/decimal estrangeiro: o locale medido é pt_BR e usa "," como separador decimal
+
+### M4 ausência vira zero — código 1
+    E         qml: FAIL: Emulation lê ausência como "0 B": dado não medido tem representação própria (traço), não 0 B nem prosa
+    E         qml: FAIL: Main lê ausência como "0 B": dado não medido tem representação própria (traço), não 0 B nem prosa
+    E         qml: FAIL: SteamGameplay lê ausência como "0 B": dado não medido tem representação própria (traço), não 0 B nem prosa
+    E         qml: FAIL: ThemeCatalogPanel lê ausência como "0 B": dado não medido tem representação própria (traço), não 0 B nem prosa
+
+### M5 uma página volta a formatar sozinha — código 1
+    E         qml: FAIL: o valor 0 B lê 0.0 MB em Emulation e 0 B em Main — uma única grandeza não pode ter várias leituras
+    E         qml: FAIL: o valor 512 B lê 0.0 MB em Emulation e 512 B em Main — uma única grandeza não pode ter várias leituras
+    E         qml: FAIL: o valor 1000000 B lê 1.0 MB em Emulation e 976,56 KiB em Main — uma única grandeza não pode ter várias leituras
+    E         qml: FAIL: o valor 1048576 B lê 1.0 MB em Emulation e 1,00 MiB em Main — uma única grandeza não pode ter várias leituras
+
+### M6 cartão para de publicar a medida — código 1
+    FAILED tests/unit/test_emulation_storage_cards.py::test_grandeza_do_bucket_viaja_como_inteiro_e_nao_como_texto
+    FAILED tests/unit/test_emulation_storage_cards.py::test_zero_medido_e_zero_e_ausencia_e_nenhum
+
+### M7 contrato aceita texto — código 1
+    FAILED tests/unit/test_emulation_storage_cards.py::test_capacidade_do_volume_viaja_como_inteiro
+    FAILED tests/unit/test_emulation_storage_cards.py::test_nenhum_cartao_escreve_grandeza_na_prosa
+
+### M8 schema perde o tipo da medida — código 1
+    FAILED tests/unit/test_emulation_storage_cards.py::test_schema_valida_o_tipo_da_grandeza
+MORTA M1 unidade decimal (MB em vez de MiB) -> código 1, citou 'IEC': sim
+MORTA M2 divisor decimal (1000 em vez de 1024) -> código 1, citou 'mantissa abaixo de 1': sim
+MORTA M3 locale abandonado (sem Qt.locale()) -> código 1, citou 'estrangeiro': sim
+MORTA M4 ausência vira zero -> código 1, citou 'traço': sim
+MORTA M5 uma página volta a formatar sozinha -> código 1, citou 'várias leituras': sim
+MORTA M6 cartão para de publicar a medida -> código 1, citou 'test_grandeza_do_bucket_viaja_como_inteiro': sim
+MORTA M7 contrato aceita texto -> código 1, citou 'test_nenhum_cartao_escreve_grandeza_na_prosa': sim
+MORTA M8 schema perde o tipo da medida -> código 1, citou 'test_schema_valida_o_tipo_da_grandeza': sim
+árvore restaurada: True (4 arquivos conferidos por sha256)
+veredito: 8/8 mutações mortas
+CODIGO_DE_SAIDA=0

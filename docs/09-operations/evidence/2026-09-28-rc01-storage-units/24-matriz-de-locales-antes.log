@@ -1,0 +1,23 @@
+LC_ALL=C: rc=1 falhas=6 veredito=qml: check_storage_units: 6 falha(s) de 109 (primeira em #70)
+   qml: FAIL: Emulation imprime 1.40 GiB com separador de milhar/decimal estrangeiro: o locale medido é pt_BR e usa "," como separador decimal
+   qml: FAIL: Main imprime 1.40 GiB com separador de milhar/decimal estrangeiro: o locale medido é pt_BR e usa "," como separador decimal
+   qml: FAIL: SteamGameplay imprime 1.40 GiB com separador de milhar/decimal estrangeiro: o locale medido é pt_BR e usa "," como separador decimal
+   qml: FAIL: ThemeCatalogPanel imprime 1.40 GiB com separador de milhar/decimal estrangeiro: o locale medido é pt_BR e usa "," como separador decimal
+   qml: FAIL: o resumo da varredura saiu como "12 arquivo(s), 1.00 GiB, 1 suspeito(s)": a contagem de arquivos e suspeitos é do jeito que está, só a medi
+   qml: FAIL: a linha da quarentena saiu como "duplicate · steamapps/common/Jogo · 1.40 GiB": categoria e caminho continuam legíveis, a medida sai do for
+LC_ALL=C.UTF-8: rc=1 falhas=6 veredito=qml: check_storage_units: 6 falha(s) de 109 (primeira em #70)
+   qml: FAIL: Emulation imprime 1.40 GiB com separador de milhar/decimal estrangeiro: o locale medido é pt_BR e usa "," como separador decimal
+   qml: FAIL: Main imprime 1.40 GiB com separador de milhar/decimal estrangeiro: o locale medido é pt_BR e usa "," como separador decimal
+   qml: FAIL: SteamGameplay imprime 1.40 GiB com separador de milhar/decimal estrangeiro: o locale medido é pt_BR e usa "," como separador decimal
+   qml: FAIL: ThemeCatalogPanel imprime 1.40 GiB com separador de milhar/decimal estrangeiro: o locale medido é pt_BR e usa "," como separador decimal
+   qml: FAIL: o resumo da varredura saiu como "12 arquivo(s), 1.00 GiB, 1 suspeito(s)": a contagem de arquivos e suspeitos é do jeito que está, só a medi
+   qml: FAIL: a linha da quarentena saiu como "duplicate · steamapps/common/Jogo · 1.40 GiB": categoria e caminho continuam legíveis, a medida sai do for
+LC_ALL=(sem): rc=0 falhas=0 veredito=qml: check_storage_units: 109 verificação(ões) ok
+LC_ALL=en_US.UTF-8: rc=1 falhas=6 veredito=qml: check_storage_units: 6 falha(s) de 109 (primeira em #70)
+   qml: FAIL: Emulation imprime 1.40 GiB com separador de milhar/decimal estrangeiro: o locale medido é pt_BR e usa "," como separador decimal
+   qml: FAIL: Main imprime 1.40 GiB com separador de milhar/decimal estrangeiro: o locale medido é pt_BR e usa "," como separador decimal
+   qml: FAIL: SteamGameplay imprime 1.40 GiB com separador de milhar/decimal estrangeiro: o locale medido é pt_BR e usa "," como separador decimal
+   qml: FAIL: ThemeCatalogPanel imprime 1.40 GiB com separador de milhar/decimal estrangeiro: o locale medido é pt_BR e usa "," como separador decimal
+   qml: FAIL: o resumo da varredura saiu como "12 arquivo(s), 1.00 GiB, 1 suspeito(s)": a contagem de arquivos e suspeitos é do jeito que está, só a medi
+   qml: FAIL: a linha da quarentena saiu como "duplicate · steamapps/common/Jogo · 1.40 GiB": categoria e caminho continuam legíveis, a medida sai do for
+LC_ALL=pt_BR.UTF-8: rc=0 falhas=0 veredito=qml: check_storage_units: 109 verificação(ões) ok

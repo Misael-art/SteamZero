@@ -1,0 +1,9 @@
+CHECKPOINT UX-04 — congelamento da árvore sob teste
+INICIO 2026-09-28T22:09:46-03:00
+BRANCO codex/rc01-storage-units-2026-09-28
+HEAD 360c59a96542f7de22b1c2b9f153c8805381a62f
+HEAD-CURTO 360c59a9
+ARVORE-GIT 4e2f70dbda73571f0e3d7387eb14a2b8ae112656
+ARQUIVOS 3
+Escopo: git ls-files -m -o --exclude-standard, excluindo a pasta de evidência deste lote, que é escrita durante a execução.
+Nenhum arquivo de src/, tests/ ou tools/ mudou desde 360c59a9: a diferença tracked é só docs/06-api/JSON-SCHEMAS.md e docs/status/items/ui-desktop-audit.json.

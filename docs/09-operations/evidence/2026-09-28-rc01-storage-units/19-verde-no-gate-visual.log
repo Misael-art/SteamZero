@@ -1,0 +1,11 @@
+# gate visual UX-04 VERDE — execucao 2026-09-28T21:58:56-03:00 — branch codex/rc01-storage-units-2026-09-28 — head 360c59a96542f7de22b1c2b9f153c8805381a62f
+# harness tests/qml/check_storage_units.qml sha256=bf437d2bc270735873f6919f83ff8debfcf5ffd71030609b65befcca9f967e67
+# sizes.js sha256=6d5ca418e514258fe6e55d1e9e5c2011fc9e306b6eb023bda77ee6be315a4829
+# comando: pytest tests/integration/test_qml_handheld_offscreen.py -q -k check_storage_units (qml6 offscreen, sufixo rtk proxy env)
+.                                                                        [100%]
+1 passed, 57 deselected in 6.60s
+CODIGO_DE_SAIDA_DO_PYTEST=0
+
+# contagem declarada pelo proprio harness (execucao direta de qml6 com o mesmo ambiente do gate; saida capturada por subprocess porque o pipe do rtk retém o stderr do Qt)
+codigo_de_saida: 0
+qml: check_storage_units: 109 verificação(ões) ok

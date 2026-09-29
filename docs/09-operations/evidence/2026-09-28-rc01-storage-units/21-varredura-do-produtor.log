@@ -1,0 +1,22 @@
+# varredura do produtor — 2026-09-28T22:01:02-03:00 — head 360c59a96542f7de22b1c2b9f153c8805381a62f
+# script /tmp/ux04_varredura_probe.py; regex do teste: (?<![\w.])\d+(?:[.,]\d+)?\s*(?:bytes?|B\b|KiB|MiB|GiB|TiB|KB|MB|GB)
+
+## ANTES da correcao (saida capturada na execucao RED do mesmo probe, nesta rodada)
+total cartoes varridos: 303
+ofensas: ['preservation-save-switch-1: Destino /dados/saves/switch-1 · 4 arquivo(s) · 50.0 MiB · emulador 1.2.3',
+          'backup-abcdef012345: 2026-09-28T10:00:00Z · 5120.0 KiB · integridade ok',
+          'media-cache: 0 byte(s); 0 candidato(s) pendente(s); ultimo audit: nunca.']
+
+## DEPOIS (execucao agora)
+>> content-d64edb97ce1f | Jogo Salvo · Title ID 0100ABCDEF123000 · versão 1.2.0 | metricBytes= 2097152
+>> preservation-save-switch-1 | Destino /dados/saves/switch-1 · 4 arquivo(s) · emulador 1.2.3 | metricBytes= 52428800
+>> backup-abcdef012345 | 2026-09-28T10:00:00Z · integridade ok | metricBytes= 5242880
+>> media-cache | 0 candidato(s) pendente(s); último audit: nunca. | metricBytes= 0
+>> storage-volume | Espaço livre do volume de dados. | metricBytes= 150000000000
+>> storage-roms | 3 arquivo(s). | metricBytes= 1073741824
+>> storage-saves | 0 arquivo(s). | metricBytes= 0
+ofensas: []
+
+## teste que sustenta a norma
+.........                                                                [100%]
+9 passed in 11.24s
