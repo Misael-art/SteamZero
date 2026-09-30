@@ -529,6 +529,14 @@ ApplicationWindow {
     property int esdeImportSchemeIndex: -1
     property bool esdeImportBusy: false
     property string esdeImportNotice: ""
+    /// Geração do pedido no diálogo RAIZ de importação ES-DE. O painel tem a sua
+    /// (`ThemeEditorPanel.qml`), e o vínculo é o mesmo: cada disparo e cada
+    /// fechamento incrementam, e a resposta só escreve se carregar a geração
+    /// corrente. O pedido em voo não é cancelado — o que se descarta é o efeito
+    /// dele. Sem isto o `notify` do apply, em `esdeApplyButton`, anuncia sucesso
+    /// numa superfície que o usuário já fechou, e o `onClosed` de
+    /// `esdeImportDialog` vê seu estado reescrito.
+    property int esdeImportGeneration: 0
     property bool recoveryPromptShown: false
     property bool keyboardVisible: false
 
@@ -2896,6 +2904,10 @@ ApplicationWindow {
         onAboutToShow: root.rememberDialogInvoker()
         onOpened: root.focusDialogContent(esdeImportDialog)
         onClosed: {
+            // Fechar revoga o pedido em voo: a resposta que chegar depois daqui não
+            // tem mais superfície a que pertencer. Molde: `resetEsdeImport()` no
+            // painel (`ThemeEditorPanel.qml`).
+            root.esdeImportGeneration += 1
             // Fechar por Escape, por Cancelar ou pelo botão B tem de deixar o
             // estado igualmente limpo: nada de esquema escolhido sobrando.
             root.esdeImportSchemes = []
@@ -2985,11 +2997,16 @@ ApplicationWindow {
                         : qsTr("Informe o caminho do tema para examinar")
                     Layout.minimumHeight: 48
                     onClicked: {
+                        const ocupadoAntes = root.esdeImportBusy
+                        const geracao = root.esdeImportGeneration + 1
+                        root.esdeImportGeneration = geracao
                         root.esdeImportBusy = true
                         root.esdeImportNotice = ""
-                        root.requestAction("theme.import.esde.inspect",
+                        const despachado = root.requestAction("theme.import.esde.inspect",
                                            {"source": esdeImportSourceField.text},
                             function(response) {
+                                if (geracao !== root.esdeImportGeneration)
+                                    return
                                 root.esdeImportBusy = false
                                 const found = response && response.schemes
                                     ? response.schemes : []
@@ -3000,11 +3017,20 @@ ApplicationWindow {
                                         qsTr("O tema não declarou nenhum esquema importável.")
                             },
                             function(message) {
+                                if (geracao !== root.esdeImportGeneration)
+                                    return
                                 root.esdeImportBusy = false
                                 root.esdeImportSchemes = []
                                 root.esdeImportSchemeIndex = -1
                                 root.esdeImportNotice = message
                             })
+                        // ver `inspectEsdeImport` no painel: payload idêntico já em
+                        // voo é recusado por `actionIsPending` sem callback nenhum, e
+                        // a recusa devolve a bandeira ao que ela era antes do clique.
+                        if (!despachado) {
+                            root.esdeImportGeneration = geracao - 1
+                            root.esdeImportBusy = ocupadoAntes
+                        }
                     }
                 }
                 Label {
@@ -3084,21 +3110,36 @@ ApplicationWindow {
                 Layout.minimumHeight: 48
                 onClicked: {
                     const chosen = root.esdeImportSchemes[root.esdeImportSchemeIndex]
+                    const ocupadoAntes = root.esdeImportBusy
+                    const geracao = root.esdeImportGeneration + 1
+                    root.esdeImportGeneration = geracao
                     root.esdeImportBusy = true
-                    root.requestAction("theme.import.esde.apply", {
+                    const despachado = root.requestAction("theme.import.esde.apply", {
                             "source": esdeImportSourceField.text,
                             "scheme": chosen && chosen.id ? chosen.id : String(chosen),
                             "name": esdeImportNameField.text
                         },
                         function(response) {
+                            if (geracao !== root.esdeImportGeneration)
+                                return
                             root.esdeImportBusy = false
                             root.notify(qsTr("Tema ES-DE importado."), false)
                             esdeImportDialog.close()
                         },
                         function(message) {
+                            if (geracao !== root.esdeImportGeneration)
+                                return
                             root.esdeImportBusy = false
                             root.esdeImportNotice = message
                         })
+                    // ver `inspectEsdeImport` acima, e o comentário do painel: a
+                    // recusa por payload idêntico tem de devolver a bandeira ao
+                    // `ocupadoAntes`, senão o diálogo reaberto congela em "Importando…"
+                    // sem nenhum pedido que a abaixe.
+                    if (!despachado) {
+                        root.esdeImportGeneration = geracao - 1
+                        root.esdeImportBusy = ocupadoAntes
+                    }
                 }
             }
         }
