@@ -1,0 +1,232 @@
+CHECKPOINT INTEGRAL — nono elo (contrato de geracao do importador ES-DE na shell)
+Comando base: AGENTS.md 6, execucao unica nesta arvore antes do commit de fechamento.
+
+### IDENTIDADE ANTES — 2026-09-29T22:23:18-0300
+$ git rev-parse --abbrev-ref HEAD
+codex/rc01-esde-import-generation-2026-09-29
+[rc=0]
+$ git rev-parse HEAD
+c4975979b93a03e661294b6854146e76f22fa8c3
+[rc=0]
+$ git status --porcelain=v1 (contagem e lista completa)
+ M docs/WORKLOG.md
+ M docs/status/items/ui-desktop-audit.json
+ M src/steamzero/ui/qml/Main.qml
+ M src/steamzero/ui/qml/ThemeEditorPanel.qml
+ M tests/integration/test_ui_shell_esde_import_dialog.py
+ M tests/integration/test_ui_shell_home_first_fold.py
+ M tests/integration/test_ui_shell_retrofe_import_late_response.py
+ M tests/qml/check_shell_esde_import_dialog_journey.qml
+ M tests/qml/check_shell_retrofe_import_late_response.qml
+?? docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/
+?? docs/status/workstreams/rc01-esde-import-generation-2026-09-29.json
+?? tests/integration/test_ui_shell_esde_import_late_response.py
+?? tests/qml/check_shell_esde_import_late_response.qml
+[rc=0]
+  entradas: 14
+  sha256 2cb3ad81efae0c32603021f0e5a6ffc0c47d2c0578e777a64646975e66460497  src/steamzero/ui/qml/Main.qml  (384077 bytes)
+  sha256 92fdd22248dfe72be4591c92ba3577ad7dffce635e0d93c16eaf0f51ca1894a0  src/steamzero/ui/qml/ThemeEditorPanel.qml  (142305 bytes)
+  sha256 c91ddc77bfc2adb2ff12dc80a797dc08313b3eecd4c7dda5e804841b18ac84e1  tests/integration/test_ui_shell_esde_import_late_response.py  (51647 bytes)
+  sha256 f353f94b31dc5806489c51834221198a2d8b00b08b5b4cea95b41a7e86f1d0cb  tests/qml/check_shell_esde_import_late_response.qml  (68645 bytes)
+  sha256 f3c9cff5ccaf479af053b8125737c319dc9bb1bdfb05aa9aa10060ea7969b208  tests/integration/test_ui_shell_esde_import_dialog.py  (48715 bytes)
+  sha256 e76383857ce5ac33ea07545de3364b2960d8f0a9807f9e0e0e30ba7729813bfc  tests/qml/check_shell_esde_import_dialog_journey.qml  (57709 bytes)
+  sha256 2d9016ec183a7e5fb1427d12286ec041824e2e77b34843d4dc7ca2d10b858f91  tests/integration/test_ui_shell_home_first_fold.py  (30580 bytes)
+  sha256 7c165db0aec74b5819f30a348c5f96b1e333c1b7a1234f2556281da41a1ab29b  tests/integration/test_ui_shell_retrofe_import_late_response.py  (44586 bytes)
+  sha256 94240d03017c2fe82e540f29fe86b75e00afa3ad9305dac0e31d90400e059f12  tests/qml/check_shell_retrofe_import_late_response.qml  (55269 bytes)
+  sha256 09766ff2935338f17c2060b41b297da2726582bf5750b70f579fe1dad958d457  docs/status/items/ui-desktop-audit.json  (173082 bytes)
+  sha256 e00133cdc6939959d082ece50a866160487694edf30511d396ea0cd8f86ae7cc  docs/status/workstreams/rc01-esde-import-generation-2026-09-29.json  (1934 bytes)
+
+### ruff check
+$ .venv/bin/ruff check src tools tests
+All checks passed!
+[rc=0]
+
+### ruff format --check
+$ .venv/bin/ruff format --check src tools tests
+681 files already formatted
+[rc=0]
+
+### mypy src
+$ .venv/bin/mypy
+Success: no issues found in 298 source files
+[rc=0]
+
+### independence
+$ make independence boundaries
+.venv/bin/python tools/check_independence.py
+independência de runtime: OK
+.venv/bin/python tools/lint_boundaries.py --root src
+lint de fronteiras: OK (0 violações)
+[rc=0]
+
+### suite integral
+$ .venv/bin/python tools/run_tests_isolated.py tests -q
+........................................................................ [  1%]
+........................................................................ [  2%]
+........................................................................ [  3%]
+........................................................................ [  4%]
+........................................................................ [  5%]
+........................................................................ [  6%]
+........................................................................ [  7%]
+........................................................................ [  8%]
+........................................................................ [  9%]
+........................................................................ [ 10%]
+.........................................ss.s..s.................sssss.. [ 12%]
+..s........sssssssssssssssss..................sssssssssssssssss......... [ 13%]
+........................................................................ [ 14%]
+........................................................................ [ 15%]
+........................................................................ [ 16%]
+............................s........................................... [ 17%]
+........................................................................ [ 18%]
+........................................................................ [ 19%]
+........................................................................ [ 20%]
+........................................................................ [ 21%]
+........................................................................ [ 22%]
+........................................................................ [ 24%]
+........................................................................ [ 25%]
+........................................................................ [ 26%]
+........................................................................ [ 27%]
+........................................................................ [ 28%]
+........................................................................ [ 29%]
+........................................................................ [ 30%]
+........................................................................ [ 31%]
+........................................................................ [ 32%]
+........................................................................ [ 33%]
+........................................................................ [ 35%]
+........................................................................ [ 36%]
+........................................................................ [ 37%]
+........................................................................ [ 38%]
+........................................................................ [ 39%]
+........................................................................ [ 40%]
+........................................................................ [ 41%]
+........................................................................ [ 42%]
+........................................................................ [ 43%]
+........................................................................ [ 44%]
+........................................................................ [ 45%]
+........................................................................ [ 47%]
+........................................................................ [ 48%]
+........................................................................ [ 49%]
+........................................................................ [ 50%]
+........................................................................ [ 51%]
+........................................................................ [ 52%]
+........................................................................ [ 53%]
+........................................................................ [ 54%]
+........................................................................ [ 55%]
+........................................................................ [ 56%]
+........................................................................ [ 58%]
+........................................................................ [ 59%]
+........................................................................ [ 60%]
+........................................................................ [ 61%]
+...................ss................................................... [ 62%]
+........................................................................ [ 63%]
+........................................................................ [ 64%]
+........................................................................ [ 65%]
+..........................................F............................. [ 66%]
+........................................................................ [ 67%]
+........................................................................ [ 68%]
+........................................................................ [ 70%]
+........................................................................ [ 71%]
+........................................................................ [ 72%]
+........................................................................ [ 73%]
+........................................................................ [ 74%]
+........................................................................ [ 75%]
+........................................................................ [ 76%]
+........................................................................ [ 77%]
+........................................................................ [ 78%]
+........................................................................ [ 79%]
+........................................................................ [ 81%]
+........................................................................ [ 82%]
+........................................................................ [ 83%]
+........................................................................ [ 84%]
+........................................................................ [ 85%]
+........................................................................ [ 86%]
+........................................................................ [ 87%]
+........................................................................ [ 88%]
+........................................................................ [ 89%]
+........................................................................ [ 90%]
+........................................................................ [ 91%]
+........................................................................ [ 93%]
+........................................................................ [ 94%]
+........................................................................ [ 95%]
+........................................................................ [ 96%]
+........................................................................ [ 97%]
+........................................................................ [ 98%]
+........................................................................ [ 99%]
+........................                                                 [100%]
+=================================== FAILURES ===================================
+__________ test_committed_catalog_and_generated_views_are_consistent ___________
+
+    def test_committed_catalog_and_generated_views_are_consistent() -> None:
+>       assert project_status.check_catalog() == []
+E       AssertionError: assert ['SZ-AURA-ESD...47dbbd4', ...] == []
+E         
+E         Left contains 14 more items, first extra item: 'SZ-AURA-ESDE-ACTIVE-SURFACE: evidencia obsoleta; scopeDigest esperado 764e4c4f08e07bc3843f273227f42cc878c22484dc5fedf99f9e26341ce4ec8c, atual 42a06317d6b5da36a290621b6fefdcb9bb4d1af7791a50eb75d36e8038705fea'
+E         Use -v to get more diff
+
+tests/unit/test_project_status.py:15: AssertionError
+=========================== short test summary info ============================
+SKIPPED [10] tests/integration/test_emulator_conformance.py:487: Flatpak fixa commit; o checksum é garantia do executor portátil
+SKIPPED [17] tests/integration/test_emulator_conformance.py:507: core não lança sozinho; quem lança é o RetroArch
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-bluemsx nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-fbneo nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-freeintv nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-fuse nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-genesis-plus-gx nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-ngp nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-pce nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-vb nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-wswan nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mesen nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mgba nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mupen64plus-next nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-opera nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-puae nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-snes9x nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-stella nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-vice-x64 nao declara capability `configure`
+SKIPPED [1] ../../../../../../mnt/sdcard/Projects/Port_Steam/tests/integration/test_metadata_to_catalog_pipeline.py:173: reference/ não versionado; checkout sem pesquisa
+SKIPPED [1] ../../../../../../mnt/sdcard/Projects/Port_Steam/tests/unit/test_metadata_import_pegasus.py:187: reference/ não versionado; checkout sem pesquisa
+SKIPPED [1] ../../../../../../mnt/sdcard/Projects/Port_Steam/tests/unit/test_metadata_import_pegasus.py:199: reference/ não versionado; checkout sem pesquisa
+FAILED tests/unit/test_project_status.py::test_committed_catalog_and_generated_views_are_consistent
+1 failed, 6528 passed, 47 skipped in 2529.34s (0:42:09)
+real-state before: exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790607044829769561 source=HOME-default
+real-state after:  exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790607044829769561 source=HOME-default
+[rc=1]
+
+### PARADA: suite integral nao voltou rc=0; a suite integral nao roda em arvore que ja reprovou um gate leve.
+### IDENTIDADE DEPOIS — 2026-09-29T23:05:46-0300
+$ git rev-parse --abbrev-ref HEAD
+codex/rc01-esde-import-generation-2026-09-29
+[rc=0]
+$ git rev-parse HEAD
+c4975979b93a03e661294b6854146e76f22fa8c3
+[rc=0]
+$ git status --porcelain=v1 (contagem e lista completa)
+ M docs/WORKLOG.md
+ M docs/status/items/ui-desktop-audit.json
+ M src/steamzero/ui/qml/Main.qml
+ M src/steamzero/ui/qml/ThemeEditorPanel.qml
+ M tests/integration/test_ui_shell_esde_import_dialog.py
+ M tests/integration/test_ui_shell_home_first_fold.py
+ M tests/integration/test_ui_shell_retrofe_import_late_response.py
+ M tests/qml/check_shell_esde_import_dialog_journey.qml
+ M tests/qml/check_shell_retrofe_import_late_response.qml
+?? docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/
+?? docs/status/workstreams/rc01-esde-import-generation-2026-09-29.json
+?? tests/integration/test_ui_shell_esde_import_late_response.py
+?? tests/qml/check_shell_esde_import_late_response.qml
+[rc=0]
+  entradas: 14
+  sha256 2cb3ad81efae0c32603021f0e5a6ffc0c47d2c0578e777a64646975e66460497  src/steamzero/ui/qml/Main.qml  (384077 bytes)
+  sha256 92fdd22248dfe72be4591c92ba3577ad7dffce635e0d93c16eaf0f51ca1894a0  src/steamzero/ui/qml/ThemeEditorPanel.qml  (142305 bytes)
+  sha256 c91ddc77bfc2adb2ff12dc80a797dc08313b3eecd4c7dda5e804841b18ac84e1  tests/integration/test_ui_shell_esde_import_late_response.py  (51647 bytes)
+  sha256 f353f94b31dc5806489c51834221198a2d8b00b08b5b4cea95b41a7e86f1d0cb  tests/qml/check_shell_esde_import_late_response.qml  (68645 bytes)
+  sha256 f3c9cff5ccaf479af053b8125737c319dc9bb1bdfb05aa9aa10060ea7969b208  tests/integration/test_ui_shell_esde_import_dialog.py  (48715 bytes)
+  sha256 e76383857ce5ac33ea07545de3364b2960d8f0a9807f9e0e0e30ba7729813bfc  tests/qml/check_shell_esde_import_dialog_journey.qml  (57709 bytes)
+  sha256 2d9016ec183a7e5fb1427d12286ec041824e2e77b34843d4dc7ca2d10b858f91  tests/integration/test_ui_shell_home_first_fold.py  (30580 bytes)
+  sha256 7c165db0aec74b5819f30a348c5f96b1e333c1b7a1234f2556281da41a1ab29b  tests/integration/test_ui_shell_retrofe_import_late_response.py  (44586 bytes)
+  sha256 94240d03017c2fe82e540f29fe86b75e00afa3ad9305dac0e31d90400e059f12  tests/qml/check_shell_retrofe_import_late_response.qml  (55269 bytes)
+  sha256 09766ff2935338f17c2060b41b297da2726582bf5750b70f579fe1dad958d457  docs/status/items/ui-desktop-audit.json  (173082 bytes)
+  sha256 e00133cdc6939959d082ece50a866160487694edf30511d396ea0cd8f86ae7cc  docs/status/workstreams/rc01-esde-import-generation-2026-09-29.json  (1934 bytes)
+
+VEREDITO: VERMELHO

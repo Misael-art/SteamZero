@@ -1,0 +1,5 @@
+== arquivos novos deste corte (HEAD c4975979) ==
+  tests/qml/check_shell_esde_import_late_response.qml: linhas=1247 prosa(//)=248 citacao-fora-de-prosa=0
+  tests/integration/test_ui_shell_esde_import_late_response.py: linhas=1178 comentario=119 docstring=139 mensagem=159 condicao=17
+
+== CITACAO EM LINHA EXECUTAVEL: 0 ==

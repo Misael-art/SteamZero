@@ -1,0 +1,82 @@
+origin/main = 3495c49d5d7c3244267e8292beee34475f70236b
+comando de tudo: git -C '/home/misael/Projects/Steam Zero/Canonical/2026-09-21' ...
+
+#239  codex/project-design-audit-2026-09-26
+   cabeca=069501ab954c42118b5aaf91c450b58800e90219  base=main@3495c49d  state=OPEN mergeable=MERGEABLE
+   acima_da_base              = 2   `git rev-list --count 3495c49d..069501ab`
+   acima_de_main              = 2   `git rev-list --count origin/main..069501ab`
+   incremento_do_elo_anterior = 2   `git rev-list --count 3495c49d..069501ab`
+   diff exclusivo vs a base: 51 files changed, 16057 insertions(+), 433 deletions(-)
+   elo anterior eh ancestral deste (merge-base --is-ancestor): SIM
+   base == cabeca do elo anterior? SIM  (base==main => a coluna por base conta de novo o trecho ja somado no elo anterior)
+#240  codex/rc01-central-loading-2026-09-26
+   cabeca=c959be139f95c673dc258b9d8b8011313d5c97f6  base=main@3495c49d  state=OPEN mergeable=MERGEABLE
+   acima_da_base              = 7   `git rev-list --count 3495c49d..c959be13`
+   acima_de_main              = 7   `git rev-list --count origin/main..c959be13`
+   incremento_do_elo_anterior = 5   `git rev-list --count 069501ab..c959be13`
+   diff exclusivo vs a base: 98 files changed, 21585 insertions(+), 574 deletions(-)
+   elo anterior eh ancestral deste (merge-base --is-ancestor): SIM
+   base == cabeca do elo anterior? NAO  (base==main => a coluna por base conta de novo o trecho ja somado no elo anterior)
+#241  codex/rc01-readiness-focus-2026-09-27
+   cabeca=190ea683a941f8dc37036ef6402ffabaf7843799  base=main@3495c49d  state=OPEN mergeable=MERGEABLE
+   acima_da_base              = 20   `git rev-list --count 3495c49d..190ea683`
+   acima_de_main              = 20   `git rev-list --count origin/main..190ea683`
+   incremento_do_elo_anterior = 13   `git rev-list --count c959be13..190ea683`
+   diff exclusivo vs a base: 181 files changed, 29934 insertions(+), 836 deletions(-)
+   elo anterior eh ancestral deste (merge-base --is-ancestor): SIM
+   base == cabeca do elo anterior? NAO  (base==main => a coluna por base conta de novo o trecho ja somado no elo anterior)
+#242  codex/rc01-shell-esde-dialog-2026-09-27
+   cabeca=5d95034b67fb50fd1218f267afbfe189d4444bd2  base=main@3495c49d  state=OPEN mergeable=MERGEABLE
+   acima_da_base              = 24   `git rev-list --count 3495c49d..5d95034b`
+   acima_de_main              = 24   `git rev-list --count origin/main..5d95034b`
+   incremento_do_elo_anterior = 4   `git rev-list --count 190ea683..5d95034b`
+   diff exclusivo vs a base: 231 files changed, 36958 insertions(+), 942 deletions(-)
+   elo anterior eh ancestral deste (merge-base --is-ancestor): SIM
+   base == cabeca do elo anterior? NAO  (base==main => a coluna por base conta de novo o trecho ja somado no elo anterior)
+#243  codex/rc01-readiness-semantics-2026-09-28
+   cabeca=c0de54c9f10c480693ce495a0533acb524fe53ad  base=main@3495c49d  state=OPEN mergeable=MERGEABLE
+   acima_da_base              = 34   `git rev-list --count 3495c49d..c0de54c9`
+   acima_de_main              = 34   `git rev-list --count origin/main..c0de54c9`
+   incremento_do_elo_anterior = 10   `git rev-list --count 5d95034b..c0de54c9`
+   diff exclusivo vs a base: 316 files changed, 45137 insertions(+), 1138 deletions(-)
+   elo anterior eh ancestral deste (merge-base --is-ancestor): SIM
+   base == cabeca do elo anterior? NAO  (base==main => a coluna por base conta de novo o trecho ja somado no elo anterior)
+#244  codex/rc01-storage-units-2026-09-28
+   cabeca=af6a5c6ed8523c04030d25b1d391e885a3b3b48e  base=main@3495c49d  state=OPEN mergeable=MERGEABLE
+   acima_da_base              = 50   `git rev-list --count 3495c49d..af6a5c6e`
+   acima_de_main              = 50   `git rev-list --count origin/main..af6a5c6e`
+   incremento_do_elo_anterior = 16   `git rev-list --count c0de54c9..af6a5c6e`
+   diff exclusivo vs a base: 362 files changed, 50323 insertions(+), 1194 deletions(-)
+   elo anterior eh ancestral deste (merge-base --is-ancestor): SIM
+   base == cabeca do elo anterior? NAO  (base==main => a coluna por base conta de novo o trecho ja somado no elo anterior)
+#245  codex/rc01-retrofe-shell-late-response-2026-09-29
+   cabeca=2d6a895760ef55bf3cbdf742808e6798946da9d5  base=codex/rc01-storage-units-2026-09-28@af6a5c6e  state=OPEN mergeable=MERGEABLE
+   acima_da_base              = 8   `git rev-list --count af6a5c6e..2d6a8957`
+   acima_de_main              = 58   `git rev-list --count origin/main..2d6a8957`
+   incremento_do_elo_anterior = 8   `git rev-list --count af6a5c6e..2d6a8957`
+   diff exclusivo vs a base: 59 files changed, 5268 insertions(+), 27 deletions(-)
+   elo anterior eh ancestral deste (merge-base --is-ancestor): SIM
+   base == cabeca do elo anterior? SIM  (base==main => a coluna por base conta de novo o trecho ja somado no elo anterior)
+#246  codex/rc01-home-first-fold-2026-09-29
+   cabeca=c4975979b93a03e661294b6854146e76f22fa8c3  base=codex/rc01-retrofe-shell-late-response-2026-09-29@2d6a8957  state=OPEN mergeable=MERGEABLE
+   acima_da_base              = 16   `git rev-list --count 2d6a8957..c4975979`
+   acima_de_main              = 74   `git rev-list --count origin/main..c4975979`
+   incremento_do_elo_anterior = 16   `git rev-list --count 2d6a8957..c4975979`
+   diff exclusivo vs a base: 56 files changed, 4210 insertions(+), 96 deletions(-)
+   elo anterior eh ancestral deste (merge-base --is-ancestor): SIM
+   base == cabeca do elo anterior? SIM  (base==main => a coluna por base conta de novo o trecho ja somado no elo anterior)
+
+soma de acima_da_base              = 161   (nao e tamanho de fileira: #239..#244 contam todos a partir de main, entao a coluna se aninha)
+soma de incremento_do_elo_anterior = 74   (esta e a conta da fileira)
+acima_de_main na ultima cabeca     = 74   `git rev-list --count origin/main..c4975979`
+
+### derivacao do 70 que `61-reconcilio-rc01-oito-elos.md` media
+   `git rev-list --count origin/main..22773047` = 70   <- o numero que o documento de 61 registrou, na cabeza daquela rodada
+   `git rev-list --count 2d6a8957..22773047`   = 12   <- commits proprios de #246 naquela cabeca
+   `git rev-list --count 22773047..c4975979` = 4   <- rodada de reconcilio posterior, so `docs/`: ['docs']
+      c4975979 docs(status): SZ-UI-DESKTOP-AUDIT scopeDigest renovado na arvore congelada
+      71c49beb docs(WORKLOG): adendo de consolidacao do oitavo elo, apenas acrescentado
+      7a8af0c1 chore(status): registra 61 e 62 no cartao e reduz o nextAction a orientacao operacional
+      92e1bf4c docs(rc01): reconcilio de oito elos em cinco camadas e plano de validacao fisica
+
+VEREDITO: CONFERIDA — tamanho da fileira = 74 = 2 + 5 + 13 + 4 + 10 + 16 + 8 + 16 (incrementos por elo, cada um contra a cabeca anterior), igual ao 74 medido direto contra origin/main. A coluna por base somaria 161 e nao e tamanho de nada.

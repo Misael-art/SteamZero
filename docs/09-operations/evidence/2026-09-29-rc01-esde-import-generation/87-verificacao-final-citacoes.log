@@ -1,0 +1,21 @@
+== 1 e 2: citacoes numericas, hoje x HEAD ==
+
+  conferidas: 20 | iguais a HEAD: 20 | deslocaram: 0 | fora do repositorio (qrc/Qt): 2 | alvo sem HEAD (arquivo deste corte): 0
+
+== 2: citacoes cruas `:NNN` ==
+  restantes: 0
+
+== 3: largamento de comentario/docstring, hoje x antes-do-corte ==
+  OK  tests/qml/check_shell_esde_import_late_response.qml: hoje=6 antes=6 (limite 88)
+  OK  tests/integration/test_ui_shell_esde_import_late_response.py: hoje=0 antes=0 (limite 100)
+  OK  tests/qml/check_shell_retrofe_import_late_response.qml: hoje=3 antes=4 (limite 88)
+  OK  tests/integration/test_ui_shell_retrofe_import_late_response.py: hoje=0 antes=0 (limite 100)
+  OK  tests/qml/check_shell_esde_import_dialog_journey.qml: hoje=0 antes=2 (limite 88)
+  OK  tests/integration/test_ui_shell_esde_import_dialog.py: hoje=0 antes=1 (limite 100)
+  OK  tests/integration/test_ui_shell_home_first_fold.py: hoje=0 antes=0 (limite 100)
+
+== 4: afirmações de presente sobre o estado antes do corte ==
+  tests/integration/test_ui_shell_esde_import_late_response.py:834: mudar, a equivalência cai e esta guarda quebra, exigindo a cena que hoje seria
+  lidas: 1 (julgamento humano; nenhuma deve afirmar o pre-corte)
+
+== VEREDITO == PASSO (HEAD c4975979 | citacoes 20/20 estaveis, cruas 0, largura 0)

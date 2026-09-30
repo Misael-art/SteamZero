@@ -1,0 +1,365 @@
+
+######## src/steamzero/ui/qml/Main.qml
+   2908  ThemeEditorPanel.qml:215-215
+          215|function resetEsdeImport() {
+
+######## src/steamzero/ui/qml/ThemeEditorPanel.qml
+    105  Main.qml:1134-1134
+          1134|recordActionFailure(actionId, message)
+    419  Main.qml:1134-1134
+          1134|recordActionFailure(actionId, message)
+
+######## tests/qml/check_shell_esde_import_late_response.qml
+     10  ThemeEditorPanel.qml:210-275
+          210|panel.request("GET", "/theme/list", {}, function(resp) {
+          211|panel.editorThemeList = resp.themes || []
+          212|})
+          213|}
+          214|
+          215|function resetEsdeImport() {
+          216|// Fechar revoga o pedido em voo: a resposta que chegar depois daqui não tem
+          217|// mais superfície a que pertencer. Molde: `resetRetrofeImport()`, abaixo.
+          218|panel.esdeImportGeneration += 1
+          219|panel.esdeImportSource = ""
+          220|panel.esdeImportSchemes = []
+          221|panel.esdeImportSchemeIndex = -1
+          222|panel.esdeImportName = ""
+          223|panel.esdeImportBusy = false
+          224|panel.esdeImportNotice = ""
+          225|panel.esdeImportNoticeIsError = false
+          226|}
+          227|
+          228|function inspectEsdeImport() {
+          229|const source = panel.esdeImportSource.trim()
+          230|if (source === "")
+          231|return
+          232|const ocupadoAntes = panel.esdeImportBusy
+          233|const geracao = panel.esdeImportGeneration + 1
+          234|panel.esdeImportGeneration = geracao
+          235|panel.esdeImportBusy = true
+          236|panel.esdeImportNotice = ""
+          237|panel.esdeImportNoticeIsError = false
+          238|const despachado = panel.requestAction("theme.import.esde.inspect", {source: source},
+          239|function(response) {
+          240|if (geracao !== panel.esdeImportGeneration)
+          241|return
+          242|panel.esdeImportBusy = false
+          243|panel.esdeImportSchemes = response && response.schemes
+          244|? response.schemes : []
+          245|panel.esdeImportSchemeIndex = panel.esdeImportSchemes.length > 0 ? 0 : -1
+          246|panel.esdeImportNotice = panel.esdeImportSchemes.length > 0
+          247|? qsTr("Escolha um esquema e dê um nome ao tema editável.")
+          248|: qsTr("Nenhum esquema de cor importável foi encontrado.")
+          249|panel.esdeImportNoticeIsError = panel.esdeImportSchemes.length === 0
+          250|},
+          251|function(message) {
+          252|if (geracao !== panel.esdeImportGeneration)
+          253|return
+          254|panel.esdeImportBusy = false
+          255|panel.esdeImportSchemes = []
+          256|panel.esdeImportSchemeIndex = -1
+          257|panel.esdeImportNotice = String(message || qsTr("Não foi possível examinar o tema."))
+          258|panel.esdeImportNoticeIsError = true
+          259|})
+          260|// Mesmo vínculo do molde RetroFE: `requestAction` devolve `false` sem callback
+          261|// quando `actionIsPending` já conhece aquele payload, e a recusa é um
+          262|// não-acontecimento — devolve a superfície ao que ela era antes do clique.
+          263|// Ver `inspectRetrofeImport`.
+          264|if (!despachado) {
+          265|panel.esdeImportGeneration = geracao - 1
+          266|panel.esdeImportBusy = ocupadoAntes
+          267|}
+          268|}
+          269|
+          270|function applyEsdeImport() {
+          271|if (panel.esdeImportSchemeIndex < 0 || panel.esdeImportName.trim() === "")
+          272|return
+          273|const selected = panel.esdeImportSchemes[panel.esdeImportSchemeIndex]
+          274|const scheme = selected && selected.scheme
+          275|? String(selected.scheme) : String(selected || "")
+     11  ThemeEditorPanel.qml:349-395
+          349|function applyPackageImport() {
+          350|if (!panel.packageImportPreview || panel.packageImportSource.trim() === "")
+          351|return
+          352|panel.packageImportBusy = true
+          353|panel.packageImportNotice = ""
+          354|panel.packageImportNoticeIsError = false
+          355|panel.requestAction("theme.import.package.apply", {
+          356|source: panel.packageImportSource.trim(),
+          357|overwrite: panel.packageImportOverwrite
+          358|}, function(_response) {
+          359|panel.packageImportBusy = false
+          360|panel.refreshThemeList()
+          361|panel.packageImportNotice = qsTr("Pacote importado. O tema ativo não foi alterado.")
+          362|panel.packageImportNoticeIsError = false
+          363|}, function(message) {
+          364|panel.packageImportBusy = false
+          365|panel.packageImportNotice = String(message || qsTr("Não foi possível importar o pacote."))
+          366|panel.packageImportNoticeIsError = true
+          367|})
+          368|}
+          369|
+          370|function resetRetrofeImport() {
+          371|// Fechar revoga o pedido em voo: a resposta que chegar depois daqui não tem
+          372|// mais superfície a que pertencer.
+          373|panel.retrofeImportGeneration += 1
+          374|panel.retrofeImportSource = ""
+          375|panel.retrofeImportLayouts = []
+          376|panel.retrofeImportLayoutIndex = -1
+          377|panel.retrofeImportSceneId = ""
+          378|panel.retrofeImportName = ""
+          379|panel.retrofeImportAuthor = ""
+          380|panel.retrofeImportLicense = ""
+          381|panel.retrofeImportOverwrite = false
+          382|panel.retrofeImportBusy = false
+          383|panel.retrofeImportNotice = ""
+          384|panel.retrofeImportNoticeIsError = false
+          385|}
+          386|
+          387|function inspectRetrofeImport() {
+          388|const source = panel.retrofeImportSource.trim()
+          389|if (source === "")
+          390|return
+          391|const ocupadoAntes = panel.retrofeImportBusy
+          392|const geracao = panel.retrofeImportGeneration + 1
+          393|panel.retrofeImportGeneration = geracao
+          394|panel.retrofeImportBusy = true
+          395|panel.retrofeImportNotice = ""
+     17  Main.qml:2894-2894
+          2894|})
+     20  Main.qml:1001-1001
+          1001|bridgeUnavailable = true
+     26  ThemeEditorPanel.qml:265-265
+          265|panel.esdeImportGeneration = geracao - 1
+     30  ThemeEditorPanel.qml:1028-1028
+          1028|onClicked: panel.duplicateAndEdit(modelData.id, modelData.name)
+     34  Main.qml:1134-1134
+          1134|recordActionFailure(actionId, message)
+     38  Main.qml:1134-1134
+          1134|recordActionFailure(actionId, message)
+     40  ThemeEditorPanel.qml:353-353
+          353|panel.packageImportNotice = ""
+     49  ThemeEditorPanel.qml:1075-1084
+          1075|const active = hostWindow ? hostWindow.activeFocusItem : null
+          1076|let next = active
+          1077|do {
+          1078|next = next ? next.nextItemInFocusChain(forward) : null
+          1079|} while (next && next !== active
+          1080|&& (!panel.itemInEsdeImportDialog(next) || next.enabled === false))
+          1081|if (!next || next === active)
+          1082|return
+          1083|next.forceActiveFocus(Qt.TabFocusReason)
+          1084|Qt.callLater(function() { panel.revealEsdeImportItem(next) })
+     59  Main.qml:382-382
+          382|property int pendingRequests: 0
+     74  check_shell_esde_import_dialog_journey.qml:77-77
+          77|Main {
+    323  Main.qml:6562-6562
+          6562|id: themeCatalogScroll
+    339  ThemeEditorPanel.qml:55-55
+          55|property alias esdeImportDialogControl: esdeImportDialog
+    347  ThemeEditorPanel.qml:1028-1028
+          1028|onClicked: panel.duplicateAndEdit(modelData.id, modelData.name)
+    424  Main.qml:107-107
+          107|{"id": "themes", "label": qsTr("Temas"), "icon": "preferences-desktop-theme"},
+    464  ThemeEditorPanel.qml:221-221
+          221|panel.esdeImportSchemeIndex = -1
+    518  Main.qml:528-531
+          528|property var esdeImportSchemes: []
+          529|property int esdeImportSchemeIndex: -1
+          530|property bool esdeImportBusy: false
+          531|property string esdeImportNotice: ""
+    543  check_shell_esde_import_dialog_journey.qml:456-468
+          456|function triggerButton() {
+          457|var found = null
+          458|until(function() {
+          459|found = findInShell(shell.contentItem, function(node) {
+          460|return node instanceof Button
+          461|&& String(node.text) === "Importar tema ES-DE"
+          462|&& node.width > 0 && node.height > 0
+          463|&& effectivelyVisible(node)
+          464|})
+          465|return found !== null
+          466|}, 5000, "o botão real do importador ES-DE não apareceu na seção Sistema")
+          467|return found
+          468|}
+    569  Main.qml:2991-2991
+          2991|icon.name: "search"
+    656  ThemeEditorPanel.qml:1126-1139
+          1126|Accessible.name: text
+          1127|Layout.minimumHeight: 48
+          1128|onClicked: esdeImportFolderDialog.open()
+          1129|}
+          1130|Button {
+          1131|objectName: "themeImportEsdeInspect"
+          1132|text: qsTr("Examinar")
+          1133|enabled: !panel.esdeImportBusy && panel.esdeImportSource.trim() !== ""
+          1134|Accessible.name: text
+          1135|Accessible.description: enabled
+          1136|? qsTr("Lê os esquemas sem gravar arquivos")
+          1137|: qsTr("Informe a pasta do tema antes de examinar")
+          1138|Layout.minimumHeight: 48
+          1139|onClicked: panel.inspectEsdeImport()
+    763  ThemeEditorPanel.qml:229-229
+          229|const source = panel.esdeImportSource.trim()
+    815  ThemeEditorPanel.qml:1028-1028
+          1028|onClicked: panel.duplicateAndEdit(modelData.id, modelData.name)
+    817  Main.qml:1134-1134
+          1134|recordActionFailure(actionId, message)
+    907  ThemeEditorPanel.qml:264-264
+          264|if (!despachado) {
+    923  Main.qml:1134-1134
+          1134|recordActionFailure(actionId, message)
+    926  ThemeEditorPanel.qml:220-245
+          220|panel.esdeImportSchemes = []
+          221|panel.esdeImportSchemeIndex = -1
+          222|panel.esdeImportName = ""
+          223|panel.esdeImportBusy = false
+          224|panel.esdeImportNotice = ""
+          225|panel.esdeImportNoticeIsError = false
+          226|}
+          227|
+          228|function inspectEsdeImport() {
+          229|const source = panel.esdeImportSource.trim()
+          230|if (source === "")
+          231|return
+          232|const ocupadoAntes = panel.esdeImportBusy
+          233|const geracao = panel.esdeImportGeneration + 1
+          234|panel.esdeImportGeneration = geracao
+          235|panel.esdeImportBusy = true
+          236|panel.esdeImportNotice = ""
+          237|panel.esdeImportNoticeIsError = false
+          238|const despachado = panel.requestAction("theme.import.esde.inspect", {source: source},
+          239|function(response) {
+          240|if (geracao !== panel.esdeImportGeneration)
+          241|return
+          242|panel.esdeImportBusy = false
+          243|panel.esdeImportSchemes = response && response.schemes
+          244|? response.schemes : []
+          245|panel.esdeImportSchemeIndex = panel.esdeImportSchemes.length > 0 ? 0 : -1
+    968  ThemeEditorPanel.qml:393-393
+          393|panel.retrofeImportGeneration = geracao
+   1068  Main.qml:3096-3096
+          3096|Item { Layout.fillWidth: true }
+   1073  Main.qml:3096-3096
+          3096|Item { Layout.fillWidth: true }
+   1083  Main.qml:2898-2906
+          2898|}
+          2899|
+          2900|Dialog {
+          2901|id: esdeImportDialog
+          2902|objectName: "theme-import-esde-dialog"
+          2903|onAboutToShow: root.rememberDialogInvoker()
+          2904|onOpened: root.focusDialogContent(esdeImportDialog)
+          2905|onClosed: {
+          2906|// Fechar revoga o pedido em voo: a resposta que chegar depois daqui não
+   1137  Main.qml:3095-3095
+          3095|}
+
+######## tests/integration/test_ui_shell_esde_import_late_response.py
+      5  ThemeEditorPanel.qml:210-275
+          210|panel.request("GET", "/theme/list", {}, function(resp) {
+          211|panel.editorThemeList = resp.themes || []
+          212|})
+          213|}
+          214|
+          215|function resetEsdeImport() {
+          216|// Fechar revoga o pedido em voo: a resposta que chegar depois daqui não tem
+          217|// mais superfície a que pertencer. Molde: `resetRetrofeImport()`, abaixo.
+          218|panel.esdeImportGeneration += 1
+          219|panel.esdeImportSource = ""
+          220|panel.esdeImportSchemes = []
+          221|panel.esdeImportSchemeIndex = -1
+          222|panel.esdeImportName = ""
+          223|panel.esdeImportBusy = false
+          224|panel.esdeImportNotice = ""
+          225|panel.esdeImportNoticeIsError = false
+          226|}
+          227|
+          228|function inspectEsdeImport() {
+          229|const source = panel.esdeImportSource.trim()
+          230|if (source === "")
+          231|return
+          232|const ocupadoAntes = panel.esdeImportBusy
+          233|const geracao = panel.esdeImportGeneration + 1
+          234|panel.esdeImportGeneration = geracao
+          235|panel.esdeImportBusy = true
+          236|panel.esdeImportNotice = ""
+          237|panel.esdeImportNoticeIsError = false
+          238|const despachado = panel.requestAction("theme.import.esde.inspect", {source: source},
+          239|function(response) {
+          240|if (geracao !== panel.esdeImportGeneration)
+          241|return
+          242|panel.esdeImportBusy = false
+          243|panel.esdeImportSchemes = response && response.schemes
+          244|? response.schemes : []
+          245|panel.esdeImportSchemeIndex = panel.esdeImportSchemes.length > 0 ? 0 : -1
+          246|panel.esdeImportNotice = panel.esdeImportSchemes.length > 0
+          247|? qsTr("Escolha um esquema e dê um nome ao tema editável.")
+          248|: qsTr("Nenhum esquema de cor importável foi encontrado.")
+          249|panel.esdeImportNoticeIsError = panel.esdeImportSchemes.length === 0
+          250|},
+          251|function(message) {
+          252|if (geracao !== panel.esdeImportGeneration)
+          253|return
+          254|panel.esdeImportBusy = false
+          255|panel.esdeImportSchemes = []
+          256|panel.esdeImportSchemeIndex = -1
+          257|panel.esdeImportNotice = String(message || qsTr("Não foi possível examinar o tema."))
+          258|panel.esdeImportNoticeIsError = true
+          259|})
+          260|// Mesmo vínculo do molde RetroFE: `requestAction` devolve `false` sem callback
+          261|// quando `actionIsPending` já conhece aquele payload, e a recusa é um
+          262|// não-acontecimento — devolve a superfície ao que ela era antes do clique.
+          263|// Ver `inspectRetrofeImport`.
+          264|if (!despachado) {
+          265|panel.esdeImportGeneration = geracao - 1
+          266|panel.esdeImportBusy = ocupadoAntes
+          267|}
+          268|}
+          269|
+          270|function applyEsdeImport() {
+          271|if (panel.esdeImportSchemeIndex < 0 || panel.esdeImportName.trim() === "")
+          272|return
+          273|const selected = panel.esdeImportSchemes[panel.esdeImportSchemeIndex]
+          274|const scheme = selected && selected.scheme
+          275|? String(selected.scheme) : String(selected || "")
+     17  Main.qml:1001-1001
+          1001|bridgeUnavailable = true
+     27  ThemeEditorPanel.qml:204-204
+          204|
+    131  Main.qml:1134-1134
+          1134|recordActionFailure(actionId, message)
+    216  desktop_dashboard.py:1857  ALVO AUSENTE
+    217  ThemeEditorPanel.qml:1134-1134
+          1134|Accessible.name: text
+    338  desktop_dashboard.py:1872  ALVO AUSENTE
+    339  theme_import_esde.py:195  ALVO AUSENTE
+    353  desktop_dashboard.py:1908  ALVO AUSENTE
+    354  ThemeEditorPanel.qml:262-269
+          262|// não-acontecimento — devolve a superfície ao que ela era antes do clique.
+          263|// Ver `inspectRetrofeImport`.
+          264|if (!despachado) {
+          265|panel.esdeImportGeneration = geracao - 1
+          266|panel.esdeImportBusy = ocupadoAntes
+          267|}
+          268|}
+          269|
+    372  Main.qml:1011-1011
+          1011|// GET não carrega corpo: o payload vira query string codificada. Sem
+    715  Main.qml:2988-2988
+          2988|id: esdeInspectButton
+    871  Main.qml:853-859
+          853|const found = firstFocusableIn(kids[i], depth + 1)
+          854|if (found)
+          855|return found
+          856|}
+          857|return null
+          858|}
+          859|
+    919  Main.qml:1076-1076
+          1076|continue
+   1015  Main.qml:1134-1134
+          1134|recordActionFailure(actionId, message)
+   1084  ThemeEditorPanel.qml:616-616
+          616|panel.applyPlan = null

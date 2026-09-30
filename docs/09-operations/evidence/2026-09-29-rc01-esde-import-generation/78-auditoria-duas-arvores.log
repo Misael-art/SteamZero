@@ -1,0 +1,570 @@
+
+################ tests/qml/check_shell_esde_import_late_response.qml  (32 citacoes)
+
+  linha 10:  cita ThemeEditorPanel.qml:210-275
+    ALEGA | // (`ThemeEditorPanel.qml:210-275`), que NÃO tem o contrato de geração que a fatia
+    HOJE  210-275 (len 3194): panel.request("GET", "/theme/list", {}, function(resp) { / panel.editorThemeList = resp.themes || [] / }) / } /  / function resetEsdeImport() { / // F
+    HEAD  210-275 (len 3154): function resetEsdeImport() { / panel.esdeImportSource = "" / panel.esdeImportSchemes = [] / panel.esdeImportSchemeIndex = -1 / panel.esdeImportName = 
+
+  linha 11:  cita ThemeEditorPanel.qml:349-395
+    ALEGA | // RetroFE estabeleceu (`ThemeEditorPanel.qml:349-395`). Medido em `c4975979`:
+    HOJE  349-395 (len 3194): function applyPackageImport() { / if (!panel.packageImportPreview || panel.packageImportSource.trim() == / return / panel.packageImportBusy = true / p
+    HEAD  349-395 (len 3154): function inspectRetrofeImport() { / const source = panel.retrofeImportSource.trim() / if (source === "") / return / const ocupadoAntes = panel.retrofe
+
+  linha 17:  cita Main.qml:2894-2894
+    ALEGA | // `Main.qml:2894`, ou injetam `requestAction` e chamam as callbacks dentro do stub.
+    HOJE  2894-2894 (len 6750): root.refreshStatus(qsTr("Verificação anti-bitrot concluída"))
+    HEAD  2894-2894 (len 6709): id: esdeImportDialog
+
+  linha 20:  cita Main.qml:1001-1001
+    ALEGA | // importador é o `XMLHttpRequest` do produto (`Main.qml:1001`, `timeout` `:1012`)
+    HOJE  1001-1001 (len 6750): var msg = qsTr("Bridge local indisponível; nenhuma mudança foi feita")
+    HEAD  1001-1001 (len 6709): const xhr = new XMLHttpRequest()
+
+  linha 26:  cita ThemeEditorPanel.qml:265-265
+    ALEGA | //      `ThemeEditorPanel.qml:265`) — e a ponte TEM de registrar `GET /theme/list`
+    HOJE  265-265 (len 3194): panel.esdeImportGeneration = geracao - 1
+    HEAD  265-265 (len 3154): panel.esdeImportNotice = qsTr("Tema importado como editável; ele ainda
+
+  linha 30:  cita ThemeEditorPanel.qml:1028-1028
+    ALEGA | //      chega depois do `onClosed` (`ThemeEditorPanel.qml:1028`) encontra esquemas,
+    HOJE  1028-1028 (len 3194): Accessible.name: qsTr("Duplicar e editar %1").arg(panel.themeLabel(mod
+    HEAD  1028-1028 (len 3154): onClosed: panel.resetEsdeImport()
+
+  linha 34:  cita Main.qml:1134-1134
+    ALEGA | //      diferentes, os dois estão em voo juntos (`Main.qml:1134` só deduplica payload
+    HOJE  1134-1134 (len 6750): : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita
+    HEAD  1134-1134 (len 6709): if (mutation && actionIsPending(actionId, payload))
+
+  linha 38:  cita Main.qml:1134-1134
+    ALEGA | //   5. a recusa por dedup: um clique recusado por `Main.qml:1134` tem de devolver a
+    HOJE  1134-1134 (len 6750): : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita
+    HEAD  1134-1134 (len 6709): if (mutation && actionIsPending(actionId, payload))
+
+  linha 40:  cita ThemeEditorPanel.qml:353-353
+    ALEGA | //      `ThemeEditorPanel.qml:353/393`), e a resposta do pedido recusado não pode
+    HOJE  353-353 (len 3194): panel.packageImportNotice = ""
+    HEAD  353-353 (len 3154): const ocupadoAntes = panel.retrofeImportBusy
+
+  linha 49:  cita ThemeEditorPanel.qml:1075-1084
+    ALEGA | // (`ThemeEditorPanel.qml:1075-1084`) não tem `onAccepted` — ao contrário do campo
+    HOJE  1075-1084 (len 3194): const hostWindow = panel.Window.window / const active = hostWindow ? hostWindow.activeFocusItem : null / let next = active / do { / next = next ? next
+    HEAD  1075-1084 (len 3154): TextField { / id: importSourceField / objectName: "themeImportEsdeSource" / text: panel.esdeImportSource / placeholderText: qsTr("Pasta do tema ES-DE"
+
+  linha 59:  cita Main.qml:382-382
+    ALEGA | // O oráculo de "a resposta chegou" é `shell.pendingRequests` (`Main.qml:382`,
+    HOJE  382-382 (len 6750): property int pendingRequests: 0
+    HEAD  382-382 (len 6709): property int pendingRequests: 0
+
+  linha 74:  cita check_shell_esde_import_dialog_journey.qml:77-77
+    ALEGA | //     `Item { Main {} }`, como em `check_shell_esde_import_dialog_journey.qml:77`;
+    HOJE  77-77 (len 1148): Main {
+    HEAD  77-77 (len 1148): Main {
+
+  linha 323:  cita Main.qml:6562-6562
+    ALEGA | /// por id: `Main.qml:6562` dá `id: themeEditorPanel`, mas id não é
+    HOJE  6562-6562 (len 6750): ScrollView {
+    HEAD  6562-6562 (len 6709): ThemeEditorPanel {
+
+  linha 339:  cita ThemeEditorPanel.qml:55-55
+    ALEGA | + "expõe `esdeImportDialogControl` em `ThemeEditorPanel.qml:55`")
+    HOJE  55-55 (len 3194): property alias esdeImportDialogControl: esdeImportDialog
+    HEAD  55-55 (len 3154): property alias esdeImportDialogControl: esdeImportDialog
+
+  linha 347:  cita ThemeEditorPanel.qml:1028-1028
+    ALEGA | /// (`ThemeEditorPanel.qml:1028`) executa, invocado aqui para que o vermelho
+    HOJE  1028-1028 (len 3194): Accessible.name: qsTr("Duplicar e editar %1").arg(panel.themeLabel(mod
+    HEAD  1028-1028 (len 3154): onClosed: panel.resetEsdeImport()
+
+  linha 424:  cita Main.qml:107-107
+    ALEGA | /// seção é Temas (`Main.qml:107`), e o botão mora na aba "Editar aparência"
+    HOJE  107-107 (len 6750): {"id": "themes", "label": qsTr("Temas"), "icon": "preferences-desktop-
+    HEAD  107-107 (len 6709): {"id": "themes", "label": qsTr("Temas"), "icon": "preferences-desktop-
+
+  linha 464:  cita ThemeEditorPanel.qml:221-221
+    ALEGA | /// estado do painel (`ThemeEditorPanel.qml:221`), não o pixel do campo. Por
+    HOJE  221-221 (len 3194): panel.esdeImportSchemeIndex = -1
+    HEAD  221-221 (len 3154): const source = panel.esdeImportSource.trim()
+
+  linha 518:  cita Main.qml:528-531
+    ALEGA | /// estado próprio (`shell.esdeImport*`, `Main.qml:528-531`) e despacho inline
+    HOJE  528-531 (len 6750): property var esdeImportSchemes: [] / property int esdeImportSchemeIndex: -1 / property bool esdeImportBusy: false / property string esdeImportNotice: 
+    HEAD  528-531 (len 6709): property var esdeImportSchemes: [] / property int esdeImportSchemeIndex: -1 / property bool esdeImportBusy: false / property string esdeImportNotice: 
+
+  linha 543:  cita check_shell_esde_import_dialog_journey.qml:456-468
+    ALEGA | /// (`check_shell_esde_import_dialog_journey.qml:456-468`) percorre: a seção é
+    HOJE  456-468 (len 1148): function triggerButton() { / var found = null / until(function() { / found = findInShell(shell.contentItem, function(node) { / return node instanceof 
+    HEAD  456-468 (len 1148): function triggerButton() { / var found = null / until(function() { / found = findInShell(shell.contentItem, function(node) { / return node instanceof 
+
+  linha 569:  cita Main.qml:2991-2991
+    ALEGA | /// No diálogo raiz o campo É o estado (`Main.qml:2991` lê
+    HOJE  2991-2991 (len 6750): text: qsTr("Examinar")
+    HEAD  2991-2991 (len 6709): {"source": esdeImportSourceField.text},
+
+  linha 656:  cita ThemeEditorPanel.qml:1126-1139
+    ALEGA | /// `Repeater` (`ThemeEditorPanel.qml:1126-1139`): é o texto `modelData.scheme`
+    HOJE  1126-1139 (len 3194): text: qsTr("Escolher") / Accessible.name: text / Layout.minimumHeight: 48 / onClicked: esdeImportFolderDialog.open() / } / Button { / objectName: "the
+    HEAD  1126-1139 (len 3154): Repeater { / model: panel.esdeImportSchemes / delegate: RowLayout { / required property int index / required property var modelData / Layout.fillWidth
+
+  linha 763:  cita ThemeEditorPanel.qml:229-229
+    ALEGA | /// hoje o callback (`ThemeEditorPanel.qml:229`) escreve em cima de uma
+    HOJE  229-229 (len 3194): const source = panel.esdeImportSource.trim()
+    HEAD  229-229 (len 3154): panel.esdeImportBusy = false
+
+  linha 815:  cita ThemeEditorPanel.qml:1028-1028
+    ALEGA | /// `resetEsdeImport()`, `ThemeEditorPanel.qml:1028`, que limpa a bandeira em
+    HOJE  1028-1028 (len 3194): Accessible.name: qsTr("Duplicar e editar %1").arg(panel.themeLabel(mod
+    HEAD  1028-1028 (len 3154): onClosed: panel.resetEsdeImport()
+
+  linha 817:  cita Main.qml:1134-1134
+    ALEGA | /// juntos (`Main.qml:1134` só deduplica payload IDÊNTICO) e o anterior
+    HOJE  1134-1134 (len 6750): : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita
+    HEAD  1134-1134 (len 6709): if (mutation && actionIsPending(actionId, payload))
+
+  linha 907:  cita ThemeEditorPanel.qml:264-264
+    ALEGA | // re-listagem de temas (`ThemeEditorPanel.qml:264`, `refreshThemeList()`
+    HOJE  264-264 (len 3194): if (!despachado) {
+    HEAD  264-264 (len 3154): panel.refreshThemeList()
+
+  linha 923:  cita Main.qml:1134-1134
+    ALEGA | /// `Main.qml:1134` recusa payload idêntico já em voo devolvendo `false` sem
+    HOJE  1134-1134 (len 6750): : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita
+    HEAD  1134-1134 (len 6709): if (mutation && actionIsPending(actionId, payload))
+
+  linha 926:  cita ThemeEditorPanel.qml:220-245
+    ALEGA | /// (`ThemeEditorPanel.qml:220-245`) arma a bandeira em `:224` ANTES de
+    HOJE  220-245 (len 3194): panel.esdeImportSchemes = [] / panel.esdeImportSchemeIndex = -1 / panel.esdeImportName = "" / panel.esdeImportBusy = false / panel.esdeImportNotice = 
+    HEAD  220-245 (len 3154): function inspectEsdeImport() { / const source = panel.esdeImportSource.trim() / if (source === "") / return / panel.esdeImportBusy = true / panel.esde
+
+  linha 968:  cita ThemeEditorPanel.qml:393-393
+    ALEGA | + "`ThemeEditorPanel.qml:393`), não deixá-la no `true` que o "
+    HOJE  393-393 (len 3194): panel.retrofeImportGeneration = geracao
+    HEAD  393-393 (len 3154): panel.retrofeImportBusy = ocupadoAntes
+
+  linha 1068:  cita Main.qml:3096-3096
+    ALEGA | /// O oráculo de "o callback rodou" é o FECHAMENTO (`Main.qml:3096`), não
+    HOJE  3096-3096 (len 6750): }
+    HEAD  3096-3096 (len 6709): esdeImportDialog.close()
+
+  linha 1073:  cita Main.qml:3096-3096
+    ALEGA | }, 10000, "o apply bem-sucedido fecha o diálogo raiz (`Main.qml:3096`)")
+    HOJE  3096-3096 (len 6750): }
+    HEAD  3096-3096 (len 6709): esdeImportDialog.close()
+
+  linha 1083:  cita Main.qml:2898-2906
+    ALEGA | /// do `onClosed` (`Main.qml:2898-2906`) encontra `shell.esdeImport*` limpos e
+    HOJE  2898-2906 (len 6750): } / } /  / Dialog { / id: esdeImportDialog / objectName: "theme-import-esde-dialog" / onAboutToShow: root.rememberDialogInvoker() / onOpened: root.foc
+    HEAD  2898-2906 (len 6709): onClosed: { / // Fechar por Escape, por Cancelar ou pelo botão B tem de deixar o / // estado igualmente limpo: nada de esquema escolhido sobrando. / r
+
+  linha 1137:  cita Main.qml:3095-3095
+    ALEGA | /// (`Main.qml:3095`) e o reabrir de estado. A cena 07 acabou de mostrar que
+    HOJE  3095-3095 (len 6750): onClicked: esdeImportDialog.close()
+    HEAD  3095-3095 (len 6709): root.notify(qsTr("Tema ES-DE importado."), false)
+
+################ tests/integration/test_ui_shell_esde_import_late_response.py  (16 citacoes)
+
+  linha 5:  cita ThemeEditorPanel.qml:210-275
+    ALEGA | ES-DE do painel de edição (`ThemeEditorPanel.qml:210-275`), que em `c4975979` NÃO tem
+    HOJE  210-275 (len 3194): panel.request("GET", "/theme/list", {}, function(resp) { / panel.editorThemeList = resp.themes || [] / }) / } /  / function resetEsdeImport() { / // F
+    HEAD  210-275 (len 3154): function resetEsdeImport() { / panel.esdeImportSource = "" / panel.esdeImportSchemes = [] / panel.esdeImportSchemeIndex = -1 / panel.esdeImportName = 
+
+  linha 17:  cita Main.qml:1001-1001
+    ALEGA | responder, e o cliente é o `XMLHttpRequest` do produto (`Main.qml:1001`, `timeout`
+    HOJE  1001-1001 (len 6750): var msg = qsTr("Bridge local indisponível; nenhuma mudança foi feita")
+    HEAD  1001-1001 (len 6709): const xhr = new XMLHttpRequest()
+
+  linha 27:  cita ThemeEditorPanel.qml:204-204
+    ALEGA | (`ThemeEditorPanel.qml:204`) dispara `GET /theme/list` na callback de sucesso do
+    HOJE  204-204 (len 3194): 
+    HEAD  204-204 (len 3154): function refreshThemeList() {
+
+  linha 131:  cita Main.qml:1134-1134
+    ALEGA | #: `Main.qml:1134` devolve `false` antes de construir o `XMLHttpRequest`. A conta sobe
+    HOJE  1134-1134 (len 6750): : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita
+    HEAD  1134-1134 (len 6709): if (mutation && actionIsPending(actionId, payload))
+
+  linha 216:  cita desktop_dashboard.py:1857-1873
+    ALEGA | derived, colors, assets, fidelity}` (`desktop_dashboard.py:1857-1873`); `scheme`
+    HOJE  1857-1873 (len 2233): # que tratam cada opção como uma entidade selecionável. / "id": name, / "name": name, / "scheme": name, / "isMonochrome": imported.is_monochrome, / "s
+    HEAD  1857-1873 (len 2233): # que tratam cada opção como uma entidade selecionável. / "id": name, / "name": name, / "scheme": name, / "isMonochrome": imported.is_monochrome, / "s
+
+  linha 217:  cita ThemeEditorPanel.qml:1134-1134
+    ALEGA | é o campo canônico que o `Repeater` mostra (`ThemeEditorPanel.qml:1134`) e que o
+    HOJE  1134-1134 (len 3194): enabled: !panel.esdeImportBusy && panel.esdeImportSource.trim() !== ""
+    HEAD  1134-1134 (len 3154): text: modelData && modelData.scheme
+
+  linha 338:  cita desktop_dashboard.py:1872-1872
+    ALEGA | #: Espelha `desktop_dashboard.py:1872`: `unsupported_slots()` devolve um
+    HOJE  1872-1872 (len 2233): "unsupportedSlots": theme_import_esde.unsupported_slots(),
+    HEAD  1872-1872 (len 2233): "unsupportedSlots": theme_import_esde.unsupported_slots(),
+
+  linha 339:  cita theme_import_esde.py:195-204
+    ALEGA | #: dicionário slot→motivo (`theme_import_esde.py:195-204`). O QML não o
+    HOJE  195-204 (len 406): def unsupported_slots() -> dict[str, str]: / """Slots que ficam vazios, com a razão — para a UI não sugerir que fal / return { / "logo": ( / "temas ES
+    HEAD  195-204 (len 406): def unsupported_slots() -> dict[str, str]: / """Slots que ficam vazios, com a razão — para a UI não sugerir que fal / return { / "logo": ( / "temas ES
+
+  linha 353:  cita desktop_dashboard.py:1908-1916
+    ALEGA | #: (`desktop_dashboard.py:1908-1916`). O callback de sucesso do QML
+    HOJE  1908-1916 (len 2233): self._theme_editor.cancel(session_id) / raise / return { / "themeId": saved["themeId"], / "path": saved["path"], / "scheme": scheme, / "isMonochrome":
+    HEAD  1908-1916 (len 2233): self._theme_editor.cancel(session_id) / raise / return { / "themeId": saved["themeId"], / "path": saved["path"], / "scheme": scheme, / "isMonochrome":
+
+  linha 354:  cita ThemeEditorPanel.qml:262-269
+    ALEGA | #: (`ThemeEditorPanel.qml:262-269`) não lê nenhuma delas; a ponte as
+    HOJE  262-269 (len 3194): // não-acontecimento — devolve a superfície ao que ela era antes do cl / // Ver `inspectRetrofeImport`. / if (!despachado) { / panel.esdeImportGenerat
+    HEAD  262-269 (len 3154): }, function(response) { / panel.esdeImportBusy = false / panel.refreshThemeList() / panel.esdeImportNotice = qsTr("Tema importado como editável; ele a
+
+  linha 372:  cita Main.qml:1011-1011
+    ALEGA | # `Main.qml:1011` envia `X-SteamZero-Token` em toda requisição.
+    HOJE  1011-1011 (len 6750): pendingRequests += 1
+    HEAD  1011-1011 (len 6709): xhr.setRequestHeader("X-SteamZero-Token", apiToken)
+
+  linha 715:  cita Main.qml:2988-2988
+    ALEGA | "despachar (`Main.qml:2988`) e o fechamento já baixou a bandeira no `onClosed` "
+    HOJE  2988-2988 (len 6750): Button {
+    HEAD  2988-2988 (len 6709): root.esdeImportBusy = true
+
+  linha 871:  cita Main.qml:853-859
+    ALEGA | "quem revela o foco é o produto (`Main.qml:853-859`); o teste espera o efeito"
+    HOJE  853-859 (len 6750): for (let i = 0; i < kids.length; i++) { / const found = firstFocusableIn(kids[i], depth + 1) / if (found) / return found / } / return null / }
+    HEAD  853-859 (len 6709): function restoreDialogFocus() { / const invoker = dialogInvoker / Qt.callLater(function() { / if (invoker && invoker.visible && invoker.enabled) / inv
+
+  linha 919:  cita Main.qml:1076-1076
+    ALEGA | `Main.qml:1076` resolve a ação por `uiContracts.byId`, e o catálogo é o que
+    HOJE  1076-1076 (len 6750): if (value === undefined || value === null)
+    HEAD  1076-1076 (len 6709): const actions = uiContracts && uiContracts.byId ? uiContracts.byId : {
+
+  linha 1015:  cita Main.qml:1134-1134
+    ALEGA | f"{ESPERADO_INSPECT} (as recusas NÃO contam — `Main.qml:1134` devolve antes "
+    HOJE  1134-1134 (len 6750): : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita
+    HEAD  1134-1134 (len 6709): if (mutation && actionIsPending(actionId, payload))
+
+  linha 1084:  cita ThemeEditorPanel.qml:616-616
+    ALEGA | "(`ThemeEditorPanel.qml:616`), então o produto não foi exercitado"
+    HOJE  616-616 (len 3194): }, function(_r) {
+    HEAD  616-616 (len 3154): Component.onCompleted: refreshThemeList()
+
+################ tests/qml/check_shell_retrofe_import_late_response.qml  (24 citacoes)
+
+  linha 8:  cita Main.qml:6509-6509
+    ALEGA | // aparência", `Main.qml:6509`/`:6562`), pela rota real, com o importador
+    HOJE  6509-6509 (len 6750): onClicked: root.refreshStatus(qsTr("Diagnóstico atualizado"))
+    HEAD  6509-6509 (len 6709): objectName: "themeEditorTab"
+
+  linha 17:  cita Main.qml:1001-1001
+    ALEGA | // cliente é o `XMLHttpRequest` do produto (`Main.qml:1001`, `timeout` `:1012`).
+    HOJE  1001-1001 (len 6750): var msg = qsTr("Bridge local indisponível; nenhuma mudança foi feita")
+    HEAD  1001-1001 (len 6709): const xhr = new XMLHttpRequest()
+
+  linha 22:  cita theme_import_retrofe.py:340-340
+    ALEGA | //      `theme_import_retrofe.py:340`) — sem
+    HOJE  340-340 (len 341): "activated": False,
+    HEAD  340-340 (len 341): "activated": False,
+
+  linha 25:  cita ThemeEditorPanel.qml:1215-1215
+    ALEGA | //      chega depois do `onClosed` (`ThemeEditorPanel.qml:1215`) encontra layouts,
+    HOJE  1215-1215 (len 3194): }
+    HEAD  1215-1215 (len 3154): onClosed: panel.resetRetrofeImport()
+
+  linha 28:  cita Main.qml:1134-1134
+    ALEGA | //      diferentes, os dois estão em voo juntos (`Main.qml:1134` só deduplica payload
+    HOJE  1134-1134 (len 6750): : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita
+    HEAD  1134-1134 (len 6709): if (mutation && actionIsPending(actionId, payload))
+
+  linha 46:  cita Main.qml:1134-1134
+    ALEGA | //   9. o clique RECUSADO por payload idêntico (`Main.qml:1134`), com o único pedido em
+    HOJE  1134-1134 (len 6750): : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita
+    HEAD  1134-1134 (len 6709): if (mutation && actionIsPending(actionId, payload))
+
+  linha 52:  cita Main.qml:382-382
+    ALEGA | // O oráculo de "a resposta chegou" é `shell.pendingRequests` (`Main.qml:382`,
+    HOJE  382-382 (len 6750): property int pendingRequests: 0
+    HEAD  382-382 (len 6709): property int pendingRequests: 0
+
+  linha 68:  cita check_shell_esde_import_dialog_journey.qml:77-77
+    ALEGA | //     `Item { Main {} }`, como em `check_shell_esde_import_dialog_journey.qml:77`;
+    HOJE  77-77 (len 1148): Main {
+    HEAD  77-77 (len 1148): Main {
+
+  linha 77:  cita Main.qml:853-859
+    ALEGA | //   • revelar pelo foco é o mecanismo do produto (`Main.qml:853-859` liga
+    HOJE  853-859 (len 6750): for (let i = 0; i < kids.length; i++) { / const found = firstFocusableIn(kids[i], depth + 1) / if (found) / return found / } / return null / }
+    HEAD  853-859 (len 6709): function restoreDialogFocus() { / const invoker = dialogInvoker / Qt.callLater(function() { / if (invoker && invoker.visible && invoker.enabled) / inv
+
+  linha 320:  cita Main.qml:6563-6563
+    ALEGA | /// por id: `Main.qml:6563` dá `id: themeEditorPanel`, mas id não é
+    HOJE  6563-6563 (len 6750): id: themeCatalogScroll
+    HEAD  6563-6563 (len 6709): id: themeEditorPanel
+
+  linha 336:  cita ThemeEditorPanel.qml:53-53
+    ALEGA | + "expõe `retrofeImportDialogControl` em `ThemeEditorPanel.qml:53`")
+    HOJE  53-53 (len 3194): property alias retrofeImportDialogControl: retrofeImportDialog
+    HEAD  53-53 (len 3154): property alias retrofeImportDialogControl: retrofeImportDialog
+
+  linha 340:  cita check_shell_esde_import_dialog_journey.qml:405-405
+    ALEGA | /// em `check_shell_esde_import_dialog_journey.qml:405`): QUIESCER antes de
+    HOJE  405-405 (len 1148): function resetSurface() {
+    HEAD  405-405 (len 1148): function resetSurface() {
+
+  linha 345:  cita ThemeEditorPanel.qml:1215-1215
+    ALEGA | /// (`ThemeEditorPanel.qml:1215`) executa, invocado aqui para que o vermelho
+    HOJE  1215-1215 (len 3194): }
+    HEAD  1215-1215 (len 3154): onClosed: panel.resetRetrofeImport()
+
+  linha 408:  cita Main.qml:107-107
+    ALEGA | /// a seção é **Temas** (`navigationSections[7]`, `Main.qml:107`), não Sistema
+    HOJE  107-107 (len 6750): {"id": "themes", "label": qsTr("Temas"), "icon": "preferences-desktop-
+    HEAD  107-107 (len 6709): {"id": "themes", "label": qsTr("Temas"), "icon": "preferences-desktop-
+
+  linha 451:  cita ThemeEditorPanel.qml:350-350
+    ALEGA | /// estado do painel (`ThemeEditorPanel.qml:350`), não o pixel do campo: uma
+    HOJE  350-350 (len 3194): if (!panel.packageImportPreview || panel.packageImportSource.trim() ==
+    HEAD  350-350 (len 3154): const source = panel.retrofeImportSource.trim()
+
+  linha 543:  cita ThemeEditorPanel.qml:1340-1340
+    ALEGA | /// diálogo: o `Repeater` (`ThemeEditorPanel.qml:1340`) monta um `RadioButton`
+    HOJE  1340-1340 (len 3194): objectName: "themeImportRetrofeBrowseFile"
+    HEAD  1340-1340 (len 3154): Repeater {
+
+  linha 652:  cita ThemeEditorPanel.qml:1309-1309
+    ALEGA | /// há pedido em voo (`ThemeEditorPanel.qml:1309`). O que é alcançável é
+    HOJE  1309-1309 (len 3194): onTextChanged: panel.retrofeImportSource = text
+    HEAD  1309-1309 (len 3154): enabled: !panel.retrofeImportBusy && panel.retrofeImportSource.trim() 
+
+  linha 655:  cita Main.qml:1134-1134
+    ALEGA | /// pedidos estão em voo ao mesmo tempo, `Main.qml:1134` só deduplica payload
+    HOJE  1134-1134 (len 6750): : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita
+    HEAD  1134-1134 (len 6709): if (mutation && actionIsPending(actionId, payload))
+
+  linha 764:  cita ThemeEditorPanel.qml:427-427
+    ALEGA | // de temas (`ThemeEditorPanel.qml:427`, `panel.refreshThemeList()`). A prova
+    HOJE  427-427 (len 3194): //   - pedido revogado pelo fechamento: o `onClosed` já baixou a bande
+    HEAD  427-427 (len 3154): panel.retrofeImportNoticeIsError = false
+
+  linha 781:  cita ThemeEditorPanel.qml:1265-1265
+    ALEGA | /// (`ThemeEditorPanel.qml:1265`/`:1287`). A primeira edição pelo teclado ou por
+    HOJE  1265-1265 (len 3194): do {
+    HEAD  1265-1265 (len 3154): text: panel.retrofeImportSource
+
+  linha 819:  cita ThemeEditorPanel.qml:1506-1506
+    ALEGA | /// ESTADO (`ThemeEditorPanel.qml:1506`/`:1531`, `panel.retrofeImportSource =
+    HOJE  1506-1506 (len 3194): enabled: !panel.retrofeImportBusy
+    HEAD  1506-1506 (len 3154): onAccepted: panel.retrofeImportSource = panel.localPath(selectedFolder
+
+  linha 886:  cita ThemeEditorPanel.qml:1466-1466
+    ALEGA | /// "Importando…" sumir e "Publicar cena" (`ThemeEditorPanel.qml:1466`) habilitar
+    HOJE  1466-1466 (len 3194): placeholderText: qsTr("SPDX, por exemplo CC0-1.0")
+    HEAD  1466-1466 (len 3154): enabled: !panel.retrofeImportBusy
+
+  linha 942:  cita ThemeEditorPanel.qml:1309-1309
+    ALEGA | /// fechamento. `ThemeEditorPanel.qml:1309` desabilita "Examinar" enquanto
+    HOJE  1309-1309 (len 3194): onTextChanged: panel.retrofeImportSource = text
+    HEAD  1309-1309 (len 3154): enabled: !panel.retrofeImportBusy && panel.retrofeImportSource.trim() 
+
+  linha 945:  cita Main.qml:1134-1134
+    ALEGA | /// MESMA origem é alcançável por clique real, e `Main.qml:1134` recusa payload
+    HOJE  1134-1134 (len 6750): : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita
+    HEAD  1134-1134 (len 6709): if (mutation && actionIsPending(actionId, payload))
+
+################ tests/integration/test_ui_shell_retrofe_import_late_response.py  (9 citacoes)
+
+  linha 10:  cita Main.qml:1001-1001
+    ALEGA | produto (`Main.qml:1001`, `timeout` `:1012`).
+    HOJE  1001-1001 (len 6750): var msg = qsTr("Bridge local indisponível; nenhuma mudança foi feita")
+    HEAD  1001-1001 (len 6709): const xhr = new XMLHttpRequest()
+
+  linha 19:  cita ThemeEditorPanel.qml:204-204
+    ALEGA | (`ThemeEditorPanel.qml:204`) dispara `GET /theme/list` na callback de sucesso do
+    HOJE  204-204 (len 3194): 
+    HEAD  204-204 (len 3154): function refreshThemeList() {
+
+  linha 119:  cita Main.qml:1134-1134
+    ALEGA | #: `Main.qml:1134` devolve `false` antes de construir o `XMLHttpRequest`. A conta sobe
+    HOJE  1134-1134 (len 6750): : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita
+    HEAD  1134-1134 (len 6709): if (mutation && actionIsPending(actionId, payload))
+
+  linha 202:  cita theme_import_retrofe.py:39-44
+    ALEGA | O produto devolve `{id, path, name}` (`theme_import_retrofe.py:39-44`) mais
+    HOJE  39-44 (len 341): def to_dict(self) -> dict[str, str]: / return { / "id": self.layout_id, / "path": self.relative_path, / "name": self.path.stem, / }
+    HEAD  39-44 (len 341): def to_dict(self) -> dict[str, str]: / return { / "id": self.layout_id, / "path": self.relative_path, / "name": self.path.stem, / }
+
+  linha 345:  cita theme_import_retrofe.py:340-340
+    ALEGA | #: `activated: False` (`theme_import_retrofe.py:340`). Uma ponte que
+    HOJE  340-340 (len 341): "activated": False,
+    HEAD  340-340 (len 341): "activated": False,
+
+  linha 355:  cita Main.qml:1011-1011
+    ALEGA | # `Main.qml:1011` envia `X-SteamZero-Token` em toda requisição.
+    HOJE  1011-1011 (len 6750): pendingRequests += 1
+    HEAD  1011-1011 (len 6709): xhr.setRequestHeader("X-SteamZero-Token", apiToken)
+
+  linha 743:  cita Main.qml:853-859
+    ALEGA | "quem revela o foco é o produto (`Main.qml:853-859`); o teste espera o efeito"
+    HOJE  853-859 (len 6750): for (let i = 0; i < kids.length; i++) { / const found = firstFocusableIn(kids[i], depth + 1) / if (found) / return found / } / return null / }
+    HEAD  853-859 (len 6709): function restoreDialogFocus() { / const invoker = dialogInvoker / Qt.callLater(function() { / if (invoker && invoker.visible && invoker.enabled) / inv
+
+  linha 791:  cita Main.qml:1076-1076
+    ALEGA | `Main.qml:1076` resolve a ação por `uiContracts.byId`, e o catálogo é o que
+    HOJE  1076-1076 (len 6750): if (value === undefined || value === null)
+    HEAD  1076-1076 (len 6709): const actions = uiContracts && uiContracts.byId ? uiContracts.byId : {
+
+  linha 974:  cita ThemeEditorPanel.qml:616-616
+    ALEGA | "(`ThemeEditorPanel.qml:616`), então o produto não foi exercitado"
+    HOJE  616-616 (len 3194): }, function(_r) {
+    HEAD  616-616 (len 3154): Component.onCompleted: refreshThemeList()
+
+################ tests/qml/check_shell_esde_import_dialog_journey.qml  (9 citacoes)
+
+  linha 20:  cita Main.qml:2896-2896
+    ALEGA | // Por que este diálogo e não outro: `Main.qml:2896` é o segundo exemplar do
+    HOJE  2896-2896 (len 6750): }
+    HEAD  2896-2896 (len 6709): onAboutToShow: root.rememberDialogInvoker()
+
+  linha 22:  cita ThemeEditorPanel.qml:1016-1016
+    ALEGA | // `ThemeEditorPanel.qml:1016`). Aqui o corpo é um `ColumnLayout` com
+    HOJE  1016-1016 (len 3194): horizontalAlignment: Text.AlignHCenter
+    HEAD  1016-1016 (len 3154): Dialog {
+
+  linha 31:  cita Main.qml:982-982
+    ALEGA | // puderam stubear a ponte. `Main.qml` não — `request()` (Main.qml:982) fala por
+    HOJE  982-982 (len 6750): function errorObject(response) {
+    HEAD  982-982 (len 6709): function errorMessage(response, fallback) {
+
+  linha 41:  cita check_credential_journey_e2e.qml:14-14
+    ALEGA | //     `check_credential_journey_e2e.qml:14`;
+    HOJE  14-14 (len 279): Item {
+    HEAD  14-14 (len 279): Item {
+
+  linha 55:  cita Main.qml:6445-6445
+    ALEGA | //     Sistema (`Main.qml:6445`), muitas vezes abaixo da dobra. Revelar por
+    HOJE  6445-6445 (len 6750): border.color: root.borderColor
+    HEAD  6445-6445 (len 6709): icon.name: "document-import"
+
+  linha 56:  cita Main.qml:852-860
+    ALEGA | //     `forceActiveFocus()` é o mecanismo do produto (`Main.qml:852-860` liga
+    HOJE  852-860 (len 6750): return null / for (let i = 0; i < kids.length; i++) { / const found = firstFocusableIn(kids[i], depth + 1) / if (found) / return found / } / return nu
+    HEAD  852-860 (len 6709):  / function restoreDialogFocus() { / const invoker = dialogInvoker / Qt.callLater(function() { / if (invoker && invoker.visible && invoker.enabled) / 
+
+  linha 470:  cita Main.qml:852-860
+    ALEGA | /// Revelar pelo FOCO é o mecanismo do produto: `Main.qml:852-860` liga
+    HOJE  852-860 (len 6750): return null / for (let i = 0; i < kids.length; i++) { / const found = firstFocusableIn(kids[i], depth + 1) / if (found) / return found / } / return nu
+    HEAD  852-860 (len 6709):  / function restoreDialogFocus() { / const invoker = dialogInvoker / Qt.callLater(function() { / if (invoker && invoker.visible && invoker.enabled) / 
+
+  linha 616:  cita Main.qml:3000-3000
+    ALEGA | /// não há esquema nenhum (`Main.qml:3000`) ou a lista, com a requisição
+    HOJE  3000-3000 (len 6750): const ocupadoAntes = root.esdeImportBusy
+    HEAD  3000-3000 (len 6709): qsTr("O tema não declarou nenhum esquema importável.")
+
+  linha 1110:  cita Main.qml:341-341
+    ALEGA | /// faixa de atenção aparece (`Main.qml:341`, guiada pelo `/status`) e a
+    HOJE  341-341 (len 6750): // Banner de atenção: o utilizador pode reconhecer na sessão sem menti
+    HEAD  341-341 (len 6709): // Banner de atenção: o utilizador pode reconhecer na sessão sem menti
+
+################ tests/integration/test_ui_shell_esde_import_dialog.py  (10 citacoes)
+
+  linha 5:  cita Main.qml:2896-2896
+    ALEGA | `ThemeEditorPanel.qml` (corrigido na 3ª fatia); este vive em `Main.qml:2896`, aberto
+    HOJE  2896-2896 (len 6750): }
+    HEAD  2896-2896 (len 6709): onAboutToShow: root.rememberDialogInvoker()
+
+  linha 6:  cita Main.qml:6445-6445
+    ALEGA | por um botão da área de diagnósticos da seção Sistema (`Main.qml:6445`). Nada testava
+    HOJE  6445-6445 (len 6750): border.color: root.borderColor
+    HEAD  6445-6445 (len 6709): icon.name: "document-import"
+
+  linha 12:  cita Main.qml:982-982
+    ALEGA | ponte. O shell não — `Main.qml:982` fala por `XMLHttpRequest` com `shell.apiUrl`.
+    HOJE  982-982 (len 6750): function errorObject(response) {
+    HEAD  982-982 (len 6709): function errorMessage(response, fallback) {
+
+  linha 281:  cita desktop_dashboard.py:1848-1861
+    ALEGA | `desktop_dashboard.py:1848-1861`). O `name` longo é o caminho honesto para
+    HOJE  1848-1861 (len 2233): detail="nenhum esquema de cor encontrado; o arquivo é um colors.xml do / ) / entries: list[dict[str, Any]] = [] / for name in sorted(schemes): / impor
+    HEAD  1848-1861 (len 2233): detail="nenhum esquema de cor encontrado; o arquivo é um colors.xml do / ) / entries: list[dict[str, Any]] = [] / for name in sorted(schemes): / impor
+
+  linha 352:  cita Main.qml:38-40
+    ALEGA | #: A alavanca de escala do produto: `Main.qml:38-40` liga
+    HOJE  38-40 (len 6750): && desktopStatus.dashboard.theme / ? desktopStatus.dashboard.theme : null / _fallbackAccessibility: desktopStatus.dashboard
+    HEAD  38-40 (len 6709): && desktopStatus.dashboard.theme / ? desktopStatus.dashboard.theme : null / _fallbackAccessibility: desktopStatus.dashboard
+
+  linha 353:  cita ThemeBridge.qml:31-34
+    ALEGA | #: `_fallbackAccessibility` a este bloco, `ThemeBridge.qml:31-34`
+    HOJE  31-34 (len 202): readonly property real hostVisualScale: _fallbackAccessibility / && Number(_fallbackAccessibility.visualScale) > 0 / ? Math.max(1.0, Math.min(Number(_
+    HEAD  31-34 (len 202): readonly property real hostVisualScale: _fallbackAccessibility / && Number(_fallbackAccessibility.visualScale) > 0 / ? Math.max(1.0, Math.min(Number(_
+
+  linha 355:  cita Main.qml:83-83
+    ALEGA | #: `Main.qml:83` a expõe como `scaledTextSize()`. Escala medida
+    HOJE  83-83 (len 6750): // normalizados pelo ThemeBridge e nunca podem encolher a fonte abaixo
+    HEAD  83-83 (len 6709): // normalizados pelo ThemeBridge e nunca podem encolher a fonte abaixo
+
+  linha 411:  cita Main.qml:1002-1002
+    ALEGA | # `Main.qml:1002` envia `X-SteamZero-Token` em toda requisição. Exigir aqui
+    HOJE  1002-1002 (len 6750): bridgeUnavailable = true
+    HEAD  1002-1002 (len 6709): let completed = false
+
+  linha 771:  cita Main.qml:852-860
+    ALEGA | "(`Main.qml:852-860`), e o teste só pode ESPERAR o efeito dele"
+    HOJE  852-860 (len 6750): return null / for (let i = 0; i < kids.length; i++) { / const found = firstFocusableIn(kids[i], depth + 1) / if (found) / return found / } / return nu
+    HEAD  852-860 (len 6709):  / function restoreDialogFocus() { / const invoker = dialogInvoker / Qt.callLater(function() { / if (invoker && invoker.visible && invoker.enabled) / 
+
+  linha 830:  cita Main.qml:2896-2896
+    ALEGA | O vermelho desta fatia é medido aqui. No `Main.qml:2896` atual o diálogo não
+    HOJE  2896-2896 (len 6750): }
+    HEAD  2896-2896 (len 6709): onAboutToShow: root.rememberDialogInvoker()
+
+################ tests/integration/test_ui_shell_home_first_fold.py  (5 citacoes)
+
+  linha 7:  cita Main.qml:901-908
+    ALEGA | `apiUrl`/`apiToken` vêm de argumento na inicialização (`Main.qml:901`-`:908`) e,
+    HOJE  901-908 (len 6750): if (marker >= 0 && marker + 1 < args.length) { / try { / desktopStatus = JSON.parse(args[marker + 1]) / seeded = true / } catch (error) { / notify(qsT
+    HEAD  901-908 (len 6709): const apiMarker = args.indexOf("--steamzero-api") / const tokenMarker = args.indexOf("--steamzero-token") / const sectionMarker = args.indexOf("--stea
+
+  linha 15:  cita Main.qml:421-422
+    ALEGA | statusStale || statusBandIsError` (`Main.qml:421`-`:422`), com
+    HOJE  421-422 (len 6750): readonly property bool statusBandVisible: statusIsLoading || statusSta / || statusBandIsError
+    HEAD  421-422 (len 6709): readonly property bool statusBandVisible: statusIsLoading || statusSta / || statusBandIsError
+
+  linha 38:  cita test_ui_shell_esde_import_dialog.py:925-925
+    ALEGA | UX-07 (`test_ui_shell_esde_import_dialog.py:925`).
+    HOJE  925-925 (len 1166): assert largura >= 48 and altura >= 48, (
+    HEAD  925-925 (len 1166): assert largura >= 48 and altura >= 48, (
+
+  linha 293:  cita Main.qml:420-420
+    ALEGA | # preservado a fase vira `error`, `statusBandIsError` (`Main.qml:420`)
+    HOJE  420-420 (len 6750): readonly property bool statusBandIsError: statusPhase === "error" && !
+    HEAD  420-420 (len 6709): readonly property bool statusBandIsError: statusPhase === "error" && !
+
+  linha 566:  cita Main.qml:1248-1249
+    ALEGA | (`Main.qml:1248`-`:1249`), `statusBandIsError` (`:420`) põe a faixa na tela, e o
+    HOJE  1248-1249 (len 6750): ? failure : {"code": "", "detail": String(failure)} / statusBandFailureCode = String(statusFailure.code || "")
+    HEAD  1248-1249 (len 6709): else / statusPhase = "error"
+
+################ tests/qml/check_readiness_surface.qml  (3 citacoes)
+
+  linha 649:  cita Main.qml:12-12
+    ALEGA | // `Main.qml:12` fixa minimumWidth: 720. Medido em sonda, nessa largura a
+    HOJE  12-12 (len 6750): height: Math.min(1000, Screen.desktopAvailableHeight)
+    HEAD  12-12 (len 6709): height: Math.min(1000, Screen.desktopAvailableHeight)
+
+  linha 754:  cita adapters/emulation.py:792-795
+    ALEGA | // `compute_readiness` que publica o estado (adapters/emulation.py:792-795).
+    HOJE  792-795 (len 10108): truth_state, truth_label, readiness = compute_readiness( / {"keys": key_status, "firmware": firmware_status}, emulator_rows / ) / platform["state"] = 
+    HEAD  792-795 (len 10108): truth_state, truth_label, readiness = compute_readiness( / {"keys": key_status, "firmware": firmware_status}, emulator_rows / ) / platform["state"] = 
+
+  linha 839:  cita domain/emulation_workspace.py:553-558
+    ALEGA | // `nextAction` com a primeira delas (domain/emulation_workspace.py:553-558).
+    HOJE  553-558 (len 786): state=state, / label=label, / cause=findings[0][0] if findings else None, / next_action=findings[0][1] if findings else None, / # Uma ação por tipo de
+    HEAD  553-558 (len 786): state=state, / label=label, / cause=findings[0][0] if findings else None, / next_action=findings[0][1] if findings else None, / # Uma ação por tipo de
+
+################ tests/unit/test_ui_audit_runner.py  (2 citacoes)
+
+  linha 52:  cita /qt-project.org/imports/QtQuick/Controls/Breeze/Button.qml:12-12
+    ALEGA | "qrc:/qt-project.org/imports/QtQuick/Controls/Breeze/Button.qml:12:5: "
+    HOJE  alvo ausente
+    HEAD  alvo ausente
+
+  linha 54:  cita ///home/user/src/steamzero/ui/qml/Main.qml:88-88
+    ALEGA | "file:///home/user/src/steamzero/ui/qml/Main.qml:88:9: "
+    HOJE  88-88 (len 6750): 
+    HEAD  88-88 (len 6709): 
+
+TOTAL CITACOES RESOLVIDAS: 110  (HEAD c4975979)

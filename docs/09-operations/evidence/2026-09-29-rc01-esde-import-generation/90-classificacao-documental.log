@@ -1,0 +1,37 @@
+== A) linhas adicionadas no diff (arquivos rastreados) ==
+== A) linhas somadas no diff, por papel ==
+     tests/integration/test_ui_shell_esde_import_dialog.py: comentario=2, docstring=5, mensagem=1
+     tests/integration/test_ui_shell_home_first_fold.py: docstring=10
+     tests/integration/test_ui_shell_retrofe_import_late_response.py: comentario=2, docstring=5, mensagem=3
+     tests/qml/check_shell_esde_import_dialog_journey.qml: comentario=11
+     tests/qml/check_shell_retrofe_import_late_response.qml: comentario=54
+
+== B) textos-novo declarados nos scripts (arquivos novos deste corte) ==
+== B) textos-novo dos arquivos novos, por papel ==
+  !! tests/integration/test_ui_shell_esde_import_late_response.py: codigo=1, comentario=1, docstring=11, mensagem=4
+       EXECUTAVEL tests/integration/test_ui_shell_esde_import_late_response.py:775: "themeImportEsdeInspect",
+  !! tests/qml/check_shell_esde_import_late_response.qml: branco=1, codigo=3, comentario=11, mensagem=8
+       EXECUTAVEL tests/qml/check_shell_esde_import_late_response.qml:963: return harness.panel.esdeImportBusy === false
+       EXECUTAVEL tests/qml/check_shell_esde_import_late_response.qml:822: verificarCadaEsquemaNaoReaparece()
+       EXECUTAVEL tests/qml/check_shell_esde_import_late_response.qml:845: until(function() { return harness.dialog.visible === false }, 3000,
+  TRECHO-AUSENTE (18):
+    tests/qml/check_shell_esde_import_late_response.qml: '`ThemeEditorPanel.qml`, trio `*EsdeImport()`'
+    tests/qml/check_shell_esde_import_late_response.qml: '`ThemeEditorPanel.qml`, trio `*RetrofeImport()`'
+    tests/qml/check_shell_esde_import_late_response.qml: '`Main.qml`, `esdeImportDialog`'
+    tests/qml/check_shell_esde_import_late_response.qml: '(o `request()` de `Main.qml`, `xhr.timeout`)'
+    tests/qml/check_shell_esde_import_late_response.qml: 'o par `*RetrofeImport()`'
+    tests/qml/check_shell_esde_import_late_response.qml: 'callback de `inspectEsdeImport`'
+    tests/qml/check_shell_esde_import_late_response.qml: 'o `*RetrofeImport()`'
+    tests/qml/check_shell_esde_import_late_response.qml: '        /// O examine pela rota real. Sem `onAccepted` no ca'
+    tests/qml/check_shell_esde_import_late_response.qml: '        /// estado próprio (`shell.esdeImport*`) e despacho '
+    tests/qml/check_shell_esde_import_late_response.qml: '        /// = 0, e o `esdeImportDialog.onClosed` limpa o est'
+    tests/qml/check_shell_esde_import_late_response.qml: '        /// (idêntica ao molde RetroFE): examinar, FECHAR (o'
+    tests/qml/check_shell_esde_import_late_response.qml: '        /// (`inspectEsdeImport()`) arma a bandeira ANTES de'
+    tests/qml/check_shell_esde_import_late_response.qml: '        /// o clique em `esdeInspectButton` já armou `esdeIm'
+    tests/integration/test_ui_shell_esde_import_late_response.py: '#: de o fechamento ter baixado a bandeira (`resetEsdeImport('
+    tests/qml/check_shell_esde_import_late_response.qml: '        /// (`check_shell_esde_import_dialog_journey.qml`, e'
+    tests/qml/check_shell_esde_import_late_response.qml: '        /// 2 — a resposta chega depois do fechamento. Este '
+    tests/qml/check_shell_esde_import_late_response.qml: '        /// (`inspectEsdeImport()`) arma a bandeira ANTES de'
+    tests/qml/check_shell_esde_import_late_response.qml: '        /// assim os deve deixar. Em `c4975979` o callback d'
+
+HEAD c4975979 | somadas no diff dos rastreados: 93 | declaracoes localizadas nos novos: 40 | ausentes: 18

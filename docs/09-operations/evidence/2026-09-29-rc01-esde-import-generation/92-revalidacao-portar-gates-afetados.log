@@ -1,0 +1,87 @@
+### tests/integration/test_ui_shell_esde_import_late_response.py
+.F.......                                                                [100%]
+=================================== FAILURES ===================================
+____________ test_o_harness_nao_pode_stubear_a_ponte_nem_a_callback ____________
+
+    def test_o_harness_nao_pode_stubear_a_ponte_nem_a_callback() -> None:
+        """O shell fala por XHR; stub de `requestAction` provava o stub, não o produto.
+    
+        É exatamente a diferença desta fatia para as anteriores de ES-DE, que stubavam
+        `requestAction` ou exercitavam o diálogo raiz de `Main.qml`.
+        """
+        fonte = _harness_source()
+        for proibido in ("function requestAction", "function request(", "onClicked:"):
+            assert proibido not in fonte, (
+                f"o harness contém {proibido!r}: no shell a ação sai por XMLHttpRequest "
+                "pela rota publicada"
+            )
+        #: Responder a um pedido chamando a callback à mão recriaria a sincronia que
+        #: tornou as fatias anteriores incapazes de ver resposta tardia.
+>       assert "inspectEsdeImport(" not in fonte, (
+            "o harness chama o importador direto: o pedido tem de sair pelo clique real"
+        )
+E       AssertionError: o harness chama o importador direto: o pedido tem de sair pelo clique real
+E       assert 'inspectEsdeImport(' not in '// SPDX-Lic...\n    }\n}\n'
+E         
+E         'inspectEsdeImport(' is contained here:
+E           da, como `inspectEsdeImport()`
+E           // fazia em `c4975979`) sem deixar o pedido recusado reescrever o resultado corrente
+E           // quando ele aterrassar.
+E           //
+E           // O oráculo de "a resposta chegou" é `shell.pendingRequests` (`Main.qml`, somado e...
+E         
+E         ...Full output truncated (1174 lines hidden), use '-vv' to show
+
+tests/integration/test_ui_shell_esde_import_late_response.py:808: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/test_ui_shell_esde_import_late_response.py::test_o_harness_nao_pode_stubear_a_ponte_nem_a_callback
+1 failed, 8 passed in 60.59s (0:01:00)
+rc=1
+### tests/integration/test_ui_shell_retrofe_import_late_response.py
+.F.......                                                                [100%]
+=================================== FAILURES ===================================
+____________ test_o_harness_nao_pode_stubear_a_ponte_nem_a_callback ____________
+
+    def test_o_harness_nao_pode_stubear_a_ponte_nem_a_callback() -> None:
+        """O shell fala por XHR; stub de `requestAction` provava o stub, não o produto.
+    
+        É exatamente a diferença desta fatia para as três anteriores.
+        """
+        fonte = _harness_source()
+        for proibido in ("function requestAction", "function request(", "onClicked:"):
+            assert proibido not in fonte, (
+                f"o harness contém {proibido!r}: no shell a ação sai por XMLHttpRequest "
+                "pela rota publicada"
+            )
+        #: Responder a um pedido chamando a callback à mão recriaria a sincronia que
+        #: tornou as fatias anteriores incapazes de ver resposta tardia.
+        assert "inspectRetrofeImport(" not in fonte, (
+            "o harness chama o importador direto: o pedido tem de sair pelo clique real"
+        )
+>       assert "applyRetrofeImport(" not in fonte, "mesmo motivo: publicar por clique real"
+E       AssertionError: mesmo motivo: publicar por clique real
+E       assert 'applyRetrofeImport(' not in '// SPDX-Lic...\n    }\n}\n'
+E         
+E         'applyRetrofeImport(' is contained here:
+E           e temas (`applyRetrofeImport()`, `panel.refreshThemeList()`). A prova
+E         ?           +++++++++++++++++++
+E                       // é a LOG ORDENADA DA PONTE lida pelo gate Python — nenhum GET /theme/list
+E                       // depois daquele POST — com a jornada do test_01 como contrafactual.
+E                       abrirDialogo()...
+E         
+E         ...Full output truncated (232 lines hidden), use '-vv' to show
+
+tests/integration/test_ui_shell_retrofe_import_late_response.py:734: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/test_ui_shell_retrofe_import_late_response.py::test_o_harness_nao_pode_stubear_a_ponte_nem_a_callback
+1 failed, 8 passed in 27.03s
+rc=1
+### tests/integration/test_ui_shell_esde_import_dialog.py
+....................                                                     [100%]
+20 passed in 70.87s (0:01:10)
+rc=0
+### tests/integration/test_ui_shell_home_first_fold.py
+.............                                                            [100%]
+13 passed in 120.36s (0:02:00)
+rc=0
+PORTA=feita

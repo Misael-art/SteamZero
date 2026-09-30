@@ -1,0 +1,5 @@
+OK: adendos gerados a partir de rc=0 em 5 passos
+  suite  : 1 failed, 6528 passed, 47 skipped in 2529.34s (0:42:09)
+  visual : 377 passed, 6199 deselected in 1711.56s (0:28:31)
+  cabeca : c4975979b93a03e661294b6854146e76f22fa8c3
+  103-adendo-readme.md, 103-adendo-worklog.md

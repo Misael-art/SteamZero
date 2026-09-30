@@ -1,0 +1,145 @@
+== SHA-256 da árvore antes da bateria ==
+  4c0547b9e51406e9  ThemeEditorPanel.qml
+
+== M1 — callback de sucesso do inspect sem guarda (resposta tardia reabre estado) ==
+  aplicada em 1 ocorrencia; sha 4c0547b9e51406e9 -> a4bcab70e8231df7
+    [gate] $ cd /home/misael/Projects/Steam Zero/Canonical/2026-09-21 && /home/misael/Projects/Steam Zero/Canonical/2026-09-21/.venv/bin/python -m pytest tests/integration/test_ui_shell_esde_import_late_response.py -q
+      assert state.unauthorized == 0, (
+      assert state.status_calls >= 1, "a ponte nunca serviu /status"
+      assert len(inspects) == ESPERADO_INSPECT, (
+      assert len(applies) == ESPERADO_APPLY, (
+      assert testemunho in observadas, (
+      assert lido["pendentes"] != "0", (
+      assert lido[campo] == valor, (
+      assert vezes == 1, (
+      assert contadas.count(JORNADA_INSPECT) == 1, (
+      assert posicoes_list, (
+      assert any(lista > aplica for aplica in posicoes_apply for lista in posicoes_list), (
+      assert not tardios, (
+      E       AssertionError: a suíte reprovou (inspect=8, apply=2, status=6):
+      E         ********* Start testing of qmltestrunner *********
+      E         Config: Using QtTest library 6.11.2, Qt 6.11.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 16.2.1 20260810), biglinux unknown
+      E         PASS   : qmltestrunner::ShellEsdeImportLateResponse::initTestCase()
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_01_a_rota_real_do_shell_examina_e_importa_como_editavel() debug|ESTABILIZOU 'aberto' em 60 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_01_a_rota_real_do_shell_examina_e_importa_como_editavel() debug|ESTABILIZOU 'esquemas-publicados' em 20 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=2
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_01_a_rota_real_do_shell_examina_e_importa_como_editavel() debug|OBS|jornada-importada|dialogo=aberto|pendentes=0|ocupado=0|esquemas=0|indice=-1|aviso=57|erro=0|origem=30|nome=0
+      E         PASS   : qmltestrunner::ShellEsdeImportLateResponse::test_01_a_rota_real_do_shell_examina_e_importa_como_editavel()
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia() debug|OBS|antes-do-escape|dialogo=aberto|pendentes=1|ocupado=1|esquemas=0|indice=-1|aviso=0|erro=0|origem=29|nome=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia() debug|OBS|depois-da-resposta-tardia|dialogo=fechado|pendentes=0|ocupado=0|esquemas=3|indice=0|aviso=49|erro=0|origem=0|nome=0
+      E         FAIL!  : qmltestrunner::ShellEsdeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia() 'a resposta tardia reescreveu 3 esquemas num diálogo fechado — o aviso e a seleção renascem na reabertura com dados que ninguém pediu' returned FALSE. ()
+      E            Loc: [/home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_shell_esde_import_late_response.qml(640)]
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() debug|OBS|depois-do-mais-novo|dialogo=aberto|pendentes=1|ocupado=0|esquemas=1|indice=0|aviso=49|erro=0|origem=33|nome=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() debug|OBS|depois-do-anterior-tardio|dialogo=aberto|pendentes=0|ocupado=0|esquemas=3|indice=0|aviso=49|erro=0|origem=33|nome=0
+      E         FAIL!  : qmltestrunner::ShellEsdeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() 'a resposta do pedido ANTERIOR substituiu o resultado do pedido mais novo: esquemas=3, esperado 1' returned FALSE. ()
+      E            Loc: [/home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_shell_esde_import_late_response.qml(701)]
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_04_publicar_em_voo_e_fechar_nao_anuncia_sucesso_tardio() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_04_publicar_em_voo_e_fechar_nao_anuncia_sucesso_tardio() debug|OBS|depois-do-apply-tardio|dialogo=fechado|pendentes=0|ocupado=0|esquemas=0|indice=-1|aviso=0|erro=0|origem=0|nome=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_04_publicar_em_voo_e_fechar_nao_anuncia_sucesso_tardio() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=0
+      E         PASS   : qmltestrunner::ShellEsdeImportLateResponse::test_04_publicar_em_voo_e_fechar_nao_anuncia_sucesso_tardio()
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_05_a_recusa_devolve_a_bandeira_e_nao_descarta_o_resultado_corrente() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_05_a_recusa_devolve_a_bandeira_e_nao_descarta_o_resultado_corrente() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_05_a_recusa_devolve_a_bandeira_e_nao_descarta_o_resultado_corrente() debug|OBS|instante-da-recusa-com-outro-pedido-resolvido|dialogo=aberto|pendentes=1|ocupado=0|esquemas=1|indice=0|aviso=0|erro=0|origem=34|nome=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_05_a_recusa_devolve_a_bandeira_e_nao_descarta_o_resultado_corrente() debug|OBS|depois-da-resposta-do-recusado|dialogo=aberto|pendentes=0|ocupado=0|esquemas=2|indice=0|aviso=49|erro=0|origem=34|nome=0
+      E         FAIL!  : qmltestrunner::ShellEsdeImportLateResponse::test_05_a_recusa_devolve_a_bandeira_e_nao_descarta_o_resultado_corrente() 'a resposta do pedido que apenas foi REPETIDO (e recusado) substituiu o resultado do pedido corrente: esquemas=2, esperado 1' returned FALSE. ()
+      E            Loc: [/home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_shell_esde_import_late_response.qml(820)]
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_06_a_repeticao_recusada_com_pedido_revogado_nao_trava_o_dialogo() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_06_a_repeticao_recusada_com_pedido_revogado_nao_trava_o_dialogo() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_06_a_repeticao_recusada_com_pedido_revogado_nao_trava_o_dialogo() debug|OBS|instante-da-recusa-com-pedido-revogado|dialogo=aberto|pendentes=1|ocupado=0|esquemas=0|indice=-1|aviso=0|erro=0|origem=34|nome=0
+      E         FAIL!  : qmltestrunner::ShellEsdeImportLateResponse::test_06_a_repeticao_recusada_com_pedido_revogado_nao_trava_o_dialogo() 'a reabertura mostrou 2 opções de esquema vindas de um pedido já encerrado' returned FALSE. ()
+      E            Loc: [/home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_shell_esde_import_late_response.qml(543)]
+      E         PASS   : qmltestrunner::ShellEsdeImportLateResponse::cleanupTestCase()
+      E         Totals: 4 passed, 4 failed, 0 skipped, 0 blacklisted, 15080ms
+      E         ********* Finished testing of qmltestrunner *********
+      E         # log desta execucao: /home/misael/Projects/Steam Zero/Canonical/2026-09-21/build/qml-logs/shell-esde-late-jornada.txt
+      E       assert 4 == 0
+      E        +  where 4 = CompletedProcess(args=['/usr/lib/qt6/bin/qmltestrunner', '-input', '/home/misael/Projects/Steam Zero/Canonical/2026-09...ecucao: /home/misael/Projects/Steam Zero/Canonical/2026-09-21/build/qml-logs/shell-esde-late-jornada.txt\n", stderr='').returncode
+      FAILED tests/integration/test_ui_shell_esde_import_late_response.py::test_a_resposta_tardia_do_importador_esde_nao_reabre_estado
+      1 failed, 7 passed in 35.96s
+      RESULTADO: vermelho rc=1 — mutação detectada
+  restaurado: sha 4c0547b9e51406e9 (esperava 4c0547b9e51406e9) OK
+
+== M2 — resetEsdeImport sem revoke (fechar deixa de revogar o pedido em voo) ==
+  aplicada em 1 ocorrencia; sha 4c0547b9e51406e9 -> a9322689afcc3695
+    [gate] $ cd /home/misael/Projects/Steam Zero/Canonical/2026-09-21 && /home/misael/Projects/Steam Zero/Canonical/2026-09-21/.venv/bin/python -m pytest tests/integration/test_ui_shell_esde_import_late_response.py -q
+      assert state.unauthorized == 0, (
+      assert state.status_calls >= 1, "a ponte nunca serviu /status"
+      assert len(inspects) == ESPERADO_INSPECT, (
+      assert len(applies) == ESPERADO_APPLY, (
+      assert testemunho in observadas, (
+      assert lido["pendentes"] != "0", (
+      assert lido[campo] == valor, (
+      assert vezes == 1, (
+      assert contadas.count(JORNADA_INSPECT) == 1, (
+      assert posicoes_list, (
+      assert any(lista > aplica for aplica in posicoes_apply for lista in posicoes_list), (
+      E       AssertionError: a resposta tardia do apply re-listou temas depois de a superfície fechar (1 GET /theme/list após o último POST, posição 11 de 18): [('POST', '/theme/import/esde/apply', '/media/esde/tema-lenta-aplicar-tardio'), ('GET', '/theme/list', ''), ('GET', '/status', ''), ('POST', '/theme/import/esde/inspect', '/media/esde/tema-revogada-recusada'), ('POST', '/theme/import/esde/inspect', '/media/esde/tema-rapida-recusa-nova'), ('GET', '/status', ''), ('POST', '/theme/import/esde/inspect', '/media/esde/tema-revogada-revogada')]
+      E       assert not [('GET', '/theme/list', '')]
+      FAILED tests/integration/test_ui_shell_esde_import_late_response.py::test_a_resposta_tardia_do_importador_esde_nao_reabre_estado
+      1 failed, 7 passed in 36.85s
+      RESULTADO: vermelho rc=1 — mutação detectada
+  restaurado: sha 4c0547b9e51406e9 (esperava 4c0547b9e51406e9) OK
+
+== M3 — inspectEsdeImport sem rollback da recusa (clique recusado rearma a bandeira) ==
+  aplicada em 1 ocorrencia; sha 4c0547b9e51406e9 -> eb27a2faef425ba3
+    [gate] $ cd /home/misael/Projects/Steam Zero/Canonical/2026-09-21 && /home/misael/Projects/Steam Zero/Canonical/2026-09-21/.venv/bin/python -m pytest tests/integration/test_ui_shell_esde_import_late_response.py -q
+      assert state.unauthorized == 0, (
+      assert state.status_calls >= 1, "a ponte nunca serviu /status"
+      assert len(inspects) == ESPERADO_INSPECT, (
+      assert len(applies) == ESPERADO_APPLY, (
+      assert testemunho in observadas, (
+      assert lido["pendentes"] != "0", (
+      E           AssertionError: instante-da-recusa-com-outro-pedido-resolvido: a bandeira no instante da recusa vale '1', esperado '0' — o examine de payload diferente já respondeu e a bandeira vale `0` antes do clique; a recusa não pode armá-la sobre um pedido que a ponte nunca viu
+      E           assert '1' == '0'
+      E             - 0
+      E             + 1
+      FAILED tests/integration/test_ui_shell_esde_import_late_response.py::test_a_resposta_tardia_do_importador_esde_nao_reabre_estado
+      1 failed, 7 passed in 35.93s
+      RESULTADO: vermelho rc=1 — mutação detectada
+  restaurado: sha 4c0547b9e51406e9 (esperava 4c0547b9e51406e9) OK
+
+== M4 — rollback escrevendo true em vez de ocupadoAntes (pino da cena 06) ==
+  aplicada em 1 ocorrencia; sha 4c0547b9e51406e9 -> 0c7d3f0db9bcff5b
+    [gate] $ cd /home/misael/Projects/Steam Zero/Canonical/2026-09-21 && /home/misael/Projects/Steam Zero/Canonical/2026-09-21/.venv/bin/python -m pytest tests/integration/test_ui_shell_esde_import_late_response.py -q
+      assert state.unauthorized == 0, (
+      assert state.status_calls >= 1, "a ponte nunca serviu /status"
+      assert len(inspects) == ESPERADO_INSPECT, (
+      assert len(applies) == ESPERADO_APPLY, (
+      assert testemunho in observadas, (
+      assert lido["pendentes"] != "0", (
+      E           AssertionError: instante-da-recusa-com-outro-pedido-resolvido: a bandeira no instante da recusa vale '1', esperado '0' — o examine de payload diferente já respondeu e a bandeira vale `0` antes do clique; a recusa não pode armá-la sobre um pedido que a ponte nunca viu
+      E           assert '1' == '0'
+      E             - 0
+      E             + 1
+      FAILED tests/integration/test_ui_shell_esde_import_late_response.py::test_a_resposta_tardia_do_importador_esde_nao_reabre_estado
+      1 failed, 7 passed in 39.20s
+      RESULTADO: vermelho rc=1 — mutação detectada
+  restaurado: sha 4c0547b9e51406e9 (esperava 4c0547b9e51406e9) OK
+
+== M5 — callback de sucesso do apply sem guarda (apply tardio anuncia e re-lista) ==
+  aplicada em 1 ocorrencia; sha 4c0547b9e51406e9 -> dc5a426f98f4fa71
+    [gate] $ cd /home/misael/Projects/Steam Zero/Canonical/2026-09-21 && /home/misael/Projects/Steam Zero/Canonical/2026-09-21/.venv/bin/python -m pytest tests/integration/test_ui_shell_esde_import_late_response.py -q
+      assert state.unauthorized == 0, (
+      assert state.status_calls >= 1, "a ponte nunca serviu /status"
+      assert len(inspects) == ESPERADO_INSPECT, (
+      assert len(applies) == ESPERADO_APPLY, (
+      assert testemunho in observadas, (
+      assert lido["pendentes"] != "0", (
+      assert lido[campo] == valor, (
+      assert vezes == 1, (
+      assert contadas.count(JORNADA_INSPECT) == 1, (
+      assert posicoes_list, (
+      assert any(lista > aplica for aplica in posicoes_apply for lista in posicoes_list), (
+      E       AssertionError: a resposta tardia do apply re-listou temas depois de a superfície fechar (1 GET /theme/list após o último POST, posição 11 de 18): [('POST', '/theme/import/esde/apply', '/media/esde/tema-lenta-aplicar-tardio'), ('GET', '/theme/list', ''), ('GET', '/status', ''), ('POST', '/theme/import/esde/inspect', '/media/esde/tema-revogada-recusada'), ('POST', '/theme/import/esde/inspect', '/media/esde/tema-rapida-recusa-nova'), ('GET', '/status', ''), ('POST', '/theme/import/esde/inspect', '/media/esde/tema-revogada-revogada')]
+      E       assert not [('GET', '/theme/list', '')]
+      FAILED tests/integration/test_ui_shell_esde_import_late_response.py::test_a_resposta_tardia_do_importador_esde_nao_reabre_estado
+      1 failed, 7 passed in 36.14s
+      RESULTADO: vermelho rc=1 — mutação detectada
+  restaurado: sha 4c0547b9e51406e9 (esperava 4c0547b9e51406e9) OK
+
+== SHA-256 da árvore depois da bateria ==
+  4c0547b9e51406e9  ThemeEditorPanel.qml  OK
+
+== veredito == 5/5 mutações detectadas pelo gate; 0 sobreviveram

@@ -1,0 +1,52 @@
+GATE VISUAL — nono elo, apos a renovacao de governanca (105)
+
+1) suites em execucao: 0 — ok, arvore quieta
+2) 100: veredito=['VEREDITO: VERMELHO']
+   resumo bruto: 1 failed, 6528 passed, 47 skipped in 2529.34s (0:42:09)
+   FAILED (1): ['tests/unit/test_project_status.py::test_committed_catalog_and_generated_views_are_consistent']
+3) `make status-check` rc=0: ['STATUS-CHECK: OK']
+   (este gate integra a lista de AGENTS 6 e o driver 100 nao o incluiu; roda aqui, e o limite fica declarado no lote)
+4) teste que caiu no 100, agora: rc=0 ['13 passed in 5.55s']
+5) arquivos funcionais medidos no 100: 9 de 9 (com ANTES==DEPOIS iguais)
+### IDENTIDADE ANTES 2026-09-29T23:11:07-0300
+branch=codex/rc01-esde-import-generation-2026-09-29 HEAD=c4975979b93a03e661294b6854146e76f22fa8c3
+  sha256 2cb3ad81efae0c32603021f0e5a6ffc0c47d2c0578e777a64646975e66460497  src/steamzero/ui/qml/Main.qml  (384077 bytes)
+  sha256 92fdd22248dfe72be4591c92ba3577ad7dffce635e0d93c16eaf0f51ca1894a0  src/steamzero/ui/qml/ThemeEditorPanel.qml  (142305 bytes)
+  sha256 c91ddc77bfc2adb2ff12dc80a797dc08313b3eecd4c7dda5e804841b18ac84e1  tests/integration/test_ui_shell_esde_import_late_response.py  (51647 bytes)
+  sha256 f353f94b31dc5806489c51834221198a2d8b00b08b5b4cea95b41a7e86f1d0cb  tests/qml/check_shell_esde_import_late_response.qml  (68645 bytes)
+  sha256 f3c9cff5ccaf479af053b8125737c319dc9bb1bdfb05aa9aa10060ea7969b208  tests/integration/test_ui_shell_esde_import_dialog.py  (48715 bytes)
+  sha256 e76383857ce5ac33ea07545de3364b2960d8f0a9807f9e0e0e30ba7729813bfc  tests/qml/check_shell_esde_import_dialog_journey.qml  (57709 bytes)
+  sha256 2d9016ec183a7e5fb1427d12286ec041824e2e77b34843d4dc7ca2d10b858f91  tests/integration/test_ui_shell_home_first_fold.py  (30580 bytes)
+  sha256 7c165db0aec74b5819f30a348c5f96b1e333c1b7a1234f2556281da41a1ab29b  tests/integration/test_ui_shell_retrofe_import_late_response.py  (44586 bytes)
+  sha256 94240d03017c2fe82e540f29fe86b75e00afa3ad9305dac0e31d90400e059f12  tests/qml/check_shell_retrofe_import_late_response.qml  (55269 bytes)
+
+   os nove hashes coincidem com os do checkpoint 100 — a superficie testada aqui e a mesma dos 6 528 testes verdes.
+
+6) renovacao aplicada (105): 11 digest, dupla leitura em todos; check pos-renovacao rc=0
+
+INICIO 2026-09-29T23:11:07-0300
+$ .venv/bin/python tools/run_tests_isolated.py -m visual --tb=short -q
+........................................................................ [ 19%]
+........................................................................ [ 38%]
+........................................................................ [ 57%]
+........................................................................ [ 76%]
+........................................................................ [ 95%]
+.................                                                        [100%]
+377 passed, 6199 deselected in 1711.56s (0:28:31)
+real-state before: exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790607044829769561 source=HOME-default
+real-state after:  exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790607044829769561 source=HOME-default
+FIM 2026-09-29T23:39:42-0300 rc=0
+### IDENTIDADE DEPOIS 2026-09-29T23:39:42-0300
+branch=codex/rc01-esde-import-generation-2026-09-29 HEAD=c4975979b93a03e661294b6854146e76f22fa8c3
+  sha256 2cb3ad81efae0c32603021f0e5a6ffc0c47d2c0578e777a64646975e66460497  src/steamzero/ui/qml/Main.qml  (384077 bytes)
+  sha256 92fdd22248dfe72be4591c92ba3577ad7dffce635e0d93c16eaf0f51ca1894a0  src/steamzero/ui/qml/ThemeEditorPanel.qml  (142305 bytes)
+  sha256 c91ddc77bfc2adb2ff12dc80a797dc08313b3eecd4c7dda5e804841b18ac84e1  tests/integration/test_ui_shell_esde_import_late_response.py  (51647 bytes)
+  sha256 f353f94b31dc5806489c51834221198a2d8b00b08b5b4cea95b41a7e86f1d0cb  tests/qml/check_shell_esde_import_late_response.qml  (68645 bytes)
+  sha256 f3c9cff5ccaf479af053b8125737c319dc9bb1bdfb05aa9aa10060ea7969b208  tests/integration/test_ui_shell_esde_import_dialog.py  (48715 bytes)
+  sha256 e76383857ce5ac33ea07545de3364b2960d8f0a9807f9e0e0e30ba7729813bfc  tests/qml/check_shell_esde_import_dialog_journey.qml  (57709 bytes)
+  sha256 2d9016ec183a7e5fb1427d12286ec041824e2e77b34843d4dc7ca2d10b858f91  tests/integration/test_ui_shell_home_first_fold.py  (30580 bytes)
+  sha256 7c165db0aec74b5819f30a348c5f96b1e333c1b7a1234f2556281da41a1ab29b  tests/integration/test_ui_shell_retrofe_import_late_response.py  (44586 bytes)
+  sha256 94240d03017c2fe82e540f29fe86b75e00afa3ad9305dac0e31d90400e059f12  tests/qml/check_shell_retrofe_import_late_response.qml  (55269 bytes)
+
+arquivos funcionais que se moveram durante a corrida: nenhum
+VEREDITO: PASSOU rc=0

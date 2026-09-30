@@ -1,0 +1,504 @@
+
+######## src/steamzero/ui/qml/Main.qml
+
+  -- Main.qml:2908  cita  ThemeEditorPanel.qml:215-215
+     ALEGA: // painel (`ThemeEditorPanel.qml:215`).
+     HOJE   215| function resetEsdeImport() {
+
+######## src/steamzero/ui/qml/ThemeEditorPanel.qml
+
+  -- ThemeEditorPanel.qml:105  cita  Main.qml:1134-1134
+     ALEGA: /// perde para o anterior, porque os dois voam juntos (`Main.qml:1134` só
+     HOJE  1134| recordActionFailure(actionId, message)
+
+  -- ThemeEditorPanel.qml:419  cita  Main.qml:1134-1134
+     ALEGA: // `Main.qml:1134` recusa payload idêntico já em voo sem disparar nenhuma
+     HOJE  1134| recordActionFailure(actionId, message)
+
+######## tests/qml/check_shell_esde_import_late_response.qml
+
+  -- check_shell_esde_import_late_response.qml:10  cita  ThemeEditorPanel.qml:210-275
+     ALEGA: // (`ThemeEditorPanel.qml:210-275`), que NÃO tem o contrato de geração que a fatia
+     HOJE   210| panel.request("GET", "/theme/list", {}, function(resp) {
+     HOJE   211| panel.editorThemeList = resp.themes || []
+     HOJE   212| })
+     HOJE   213| }
+     HOJE   214| 
+     HOJE   215| function resetEsdeImport() {
+     HOJE   216| // Fechar revoga o pedido em voo: a resposta que chegar depois daqui não tem
+     HOJE   217| // mais superfície a que pertencer. Molde: `resetRetrofeImport()`, abaixo.
+     HOJE   218| panel.esdeImportGeneration += 1
+     HOJE   219| panel.esdeImportSource = ""
+     HOJE   220| panel.esdeImportSchemes = []
+     HOJE   221| panel.esdeImportSchemeIndex = -1
+     HOJE   222| panel.esdeImportName = ""
+     HOJE   223| panel.esdeImportBusy = false
+     HOJE   224| panel.esdeImportNotice = ""
+     HOJE   225| panel.esdeImportNoticeIsError = false
+     HOJE   226| }
+     HOJE   227| 
+     HOJE   228| function inspectEsdeImport() {
+     HOJE   229| const source = panel.esdeImportSource.trim()
+     HOJE   230| if (source === "")
+     HOJE   231| return
+     HOJE   232| const ocupadoAntes = panel.esdeImportBusy
+     HOJE   233| const geracao = panel.esdeImportGeneration + 1
+     HOJE   234| panel.esdeImportGeneration = geracao
+     HOJE   235| panel.esdeImportBusy = true
+     HOJE   236| panel.esdeImportNotice = ""
+     HOJE   237| panel.esdeImportNoticeIsError = false
+     HOJE   238| const despachado = panel.requestAction("theme.import.esde.inspect", {source: source},
+     HOJE   239| function(response) {
+     HOJE   240| if (geracao !== panel.esdeImportGeneration)
+     HOJE   241| return
+     HOJE   242| panel.esdeImportBusy = false
+     HOJE   243| panel.esdeImportSchemes = response && response.schemes
+     HOJE   244| ? response.schemes : []
+     HOJE   245| panel.esdeImportSchemeIndex = panel.esdeImportSchemes.length > 0 ? 0 : -1
+     HOJE   246| panel.esdeImportNotice = panel.esdeImportSchemes.length > 0
+     HOJE   247| ? qsTr("Escolha um esquema e dê um nome ao tema editável.")
+     HOJE   248| : qsTr("Nenhum esquema de cor importável foi encontrado.")
+     HOJE   249| panel.esdeImportNoticeIsError = panel.esdeImportSchemes.length === 0
+     HOJE   250| },
+     HOJE   251| function(message) {
+     HOJE   252| if (geracao !== panel.esdeImportGeneration)
+     HOJE   253| return
+     HOJE   254| panel.esdeImportBusy = false
+     HOJE   255| panel.esdeImportSchemes = []
+     HOJE   256| panel.esdeImportSchemeIndex = -1
+     HOJE   257| panel.esdeImportNotice = String(message || qsTr("Não foi possível examinar o tema."))
+     HOJE   258| panel.esdeImportNoticeIsError = true
+     HOJE   259| })
+     HOJE   260| // Mesmo vínculo do molde RetroFE: `requestAction` devolve `false` sem callback
+     HOJE   261| // quando `actionIsPending` já conhece aquele payload, e a recusa é um
+     HOJE   262| // não-acontecimento — devolve a superfície ao que ela era antes do clique.
+     HOJE   263| // Ver `inspectRetrofeImport`.
+     HOJE   264| if (!despachado) {
+     HOJE   265| panel.esdeImportGeneration = geracao - 1
+     HOJE   266| panel.esdeImportBusy = ocupadoAntes
+     HOJE   267| }
+     HOJE   268| }
+     HOJE   269| 
+     HOJE   270| function applyEsdeImport() {
+     HOJE   271| if (panel.esdeImportSchemeIndex < 0 || panel.esdeImportName.trim() === "")
+     HOJE   272| return
+     HOJE   273| const selected = panel.esdeImportSchemes[panel.esdeImportSchemeIndex]
+     HOJE   274| const scheme = selected && selected.scheme
+     HOJE   275| ? String(selected.scheme) : String(selected || "")
+
+  -- check_shell_esde_import_late_response.qml:11  cita  ThemeEditorPanel.qml:349-395
+     ALEGA: // RetroFE estabeleceu (`ThemeEditorPanel.qml:349-395`). Medido em `c4975979`:
+     HOJE   349| function applyPackageImport() {
+     HOJE   350| if (!panel.packageImportPreview || panel.packageImportSource.trim() === "")
+     HOJE   351| return
+     HOJE   352| panel.packageImportBusy = true
+     HOJE   353| panel.packageImportNotice = ""
+     HOJE   354| panel.packageImportNoticeIsError = false
+     HOJE   355| panel.requestAction("theme.import.package.apply", {
+     HOJE   356| source: panel.packageImportSource.trim(),
+     HOJE   357| overwrite: panel.packageImportOverwrite
+     HOJE   358| }, function(_response) {
+     HOJE   359| panel.packageImportBusy = false
+     HOJE   360| panel.refreshThemeList()
+     HOJE   361| panel.packageImportNotice = qsTr("Pacote importado. O tema ativo não foi alterado.")
+     HOJE   362| panel.packageImportNoticeIsError = false
+     HOJE   363| }, function(message) {
+     HOJE   364| panel.packageImportBusy = false
+     HOJE   365| panel.packageImportNotice = String(message || qsTr("Não foi possível importar o pacote."))
+     HOJE   366| panel.packageImportNoticeIsError = true
+     HOJE   367| })
+     HOJE   368| }
+     HOJE   369| 
+     HOJE   370| function resetRetrofeImport() {
+     HOJE   371| // Fechar revoga o pedido em voo: a resposta que chegar depois daqui não tem
+     HOJE   372| // mais superfície a que pertencer.
+     HOJE   373| panel.retrofeImportGeneration += 1
+     HOJE   374| panel.retrofeImportSource = ""
+     HOJE   375| panel.retrofeImportLayouts = []
+     HOJE   376| panel.retrofeImportLayoutIndex = -1
+     HOJE   377| panel.retrofeImportSceneId = ""
+     HOJE   378| panel.retrofeImportName = ""
+     HOJE   379| panel.retrofeImportAuthor = ""
+     HOJE   380| panel.retrofeImportLicense = ""
+     HOJE   381| panel.retrofeImportOverwrite = false
+     HOJE   382| panel.retrofeImportBusy = false
+     HOJE   383| panel.retrofeImportNotice = ""
+     HOJE   384| panel.retrofeImportNoticeIsError = false
+     HOJE   385| }
+     HOJE   386| 
+     HOJE   387| function inspectRetrofeImport() {
+     HOJE   388| const source = panel.retrofeImportSource.trim()
+     HOJE   389| if (source === "")
+     HOJE   390| return
+     HOJE   391| const ocupadoAntes = panel.retrofeImportBusy
+     HOJE   392| const geracao = panel.retrofeImportGeneration + 1
+     HOJE   393| panel.retrofeImportGeneration = geracao
+     HOJE   394| panel.retrofeImportBusy = true
+     HOJE   395| panel.retrofeImportNotice = ""
+
+  -- check_shell_esde_import_late_response.qml:17  cita  Main.qml:2894-2894
+     ALEGA: // `Main.qml:2894`, ou injetam `requestAction` e chamam as callbacks dentro do stub.
+     HOJE  2894| })
+
+  -- check_shell_esde_import_late_response.qml:20  cita  Main.qml:1001-1001
+     ALEGA: // importador é o `XMLHttpRequest` do produto (`Main.qml:1001`, `timeout` `:1012`)
+     HOJE  1001| bridgeUnavailable = true
+
+  -- check_shell_esde_import_late_response.qml:26  cita  ThemeEditorPanel.qml:265-265
+     ALEGA: //      `ThemeEditorPanel.qml:265`) — e a ponte TEM de registrar `GET /theme/list`
+     HOJE   265| panel.esdeImportGeneration = geracao - 1
+
+  -- check_shell_esde_import_late_response.qml:30  cita  ThemeEditorPanel.qml:1028-1028
+     ALEGA: //      chega depois do `onClosed` (`ThemeEditorPanel.qml:1028`) encontra esquemas,
+     HOJE  1028| onClicked: panel.duplicateAndEdit(modelData.id, modelData.name)
+
+  -- check_shell_esde_import_late_response.qml:34  cita  Main.qml:1134-1134
+     ALEGA: //      diferentes, os dois estão em voo juntos (`Main.qml:1134` só deduplica payload
+     HOJE  1134| recordActionFailure(actionId, message)
+
+  -- check_shell_esde_import_late_response.qml:38  cita  Main.qml:1134-1134
+     ALEGA: //   5. a recusa por dedup: um clique recusado por `Main.qml:1134` tem de devolver a
+     HOJE  1134| recordActionFailure(actionId, message)
+
+  -- check_shell_esde_import_late_response.qml:40  cita  ThemeEditorPanel.qml:353-353
+     ALEGA: //      `ThemeEditorPanel.qml:353/393`), e a resposta do pedido recusado não pode
+     HOJE   353| panel.packageImportNotice = ""
+
+  -- check_shell_esde_import_late_response.qml:49  cita  ThemeEditorPanel.qml:1075-1084
+     ALEGA: // (`ThemeEditorPanel.qml:1075-1084`) não tem `onAccepted` — ao contrário do campo
+     HOJE  1075| const active = hostWindow ? hostWindow.activeFocusItem : null
+     HOJE  1076| let next = active
+     HOJE  1077| do {
+     HOJE  1078| next = next ? next.nextItemInFocusChain(forward) : null
+     HOJE  1079| } while (next && next !== active
+     HOJE  1080| && (!panel.itemInEsdeImportDialog(next) || next.enabled === false))
+     HOJE  1081| if (!next || next === active)
+     HOJE  1082| return
+     HOJE  1083| next.forceActiveFocus(Qt.TabFocusReason)
+     HOJE  1084| Qt.callLater(function() { panel.revealEsdeImportItem(next) })
+
+  -- check_shell_esde_import_late_response.qml:59  cita  Main.qml:382-382
+     ALEGA: // O oráculo de "a resposta chegou" é `shell.pendingRequests` (`Main.qml:382`,
+     HOJE   382| property int pendingRequests: 0
+
+  -- check_shell_esde_import_late_response.qml:74  cita  check_shell_esde_import_dialog_journey.qml:77-77
+     ALEGA: //     `Item { Main {} }`, como em `check_shell_esde_import_dialog_journey.qml:77`;
+     HOJE    77| Main {
+
+  -- check_shell_esde_import_late_response.qml:323  cita  Main.qml:6562-6562
+     ALEGA: /// por id: `Main.qml:6562` dá `id: themeEditorPanel`, mas id não é
+     HOJE  6562| id: themeCatalogScroll
+
+  -- check_shell_esde_import_late_response.qml:339  cita  ThemeEditorPanel.qml:55-55
+     ALEGA: + "expõe `esdeImportDialogControl` em `ThemeEditorPanel.qml:55`")
+     HOJE    55| property alias esdeImportDialogControl: esdeImportDialog
+
+  -- check_shell_esde_import_late_response.qml:347  cita  ThemeEditorPanel.qml:1028-1028
+     ALEGA: /// (`ThemeEditorPanel.qml:1028`) executa, invocado aqui para que o vermelho
+     HOJE  1028| onClicked: panel.duplicateAndEdit(modelData.id, modelData.name)
+
+  -- check_shell_esde_import_late_response.qml:424  cita  Main.qml:107-107
+     ALEGA: /// seção é Temas (`Main.qml:107`), e o botão mora na aba "Editar aparência"
+     HOJE   107| {"id": "themes", "label": qsTr("Temas"), "icon": "preferences-desktop-theme"},
+
+  -- check_shell_esde_import_late_response.qml:464  cita  ThemeEditorPanel.qml:221-221
+     ALEGA: /// estado do painel (`ThemeEditorPanel.qml:221`), não o pixel do campo. Por
+     HOJE   221| panel.esdeImportSchemeIndex = -1
+
+  -- check_shell_esde_import_late_response.qml:518  cita  Main.qml:528-531
+     ALEGA: /// estado próprio (`shell.esdeImport*`, `Main.qml:528-531`) e despacho inline
+     HOJE   528| property var esdeImportSchemes: []
+     HOJE   529| property int esdeImportSchemeIndex: -1
+     HOJE   530| property bool esdeImportBusy: false
+     HOJE   531| property string esdeImportNotice: ""
+
+  -- check_shell_esde_import_late_response.qml:543  cita  check_shell_esde_import_dialog_journey.qml:456-468
+     ALEGA: /// (`check_shell_esde_import_dialog_journey.qml:456-468`) percorre: a seção é
+     HOJE   456| function triggerButton() {
+     HOJE   457| var found = null
+     HOJE   458| until(function() {
+     HOJE   459| found = findInShell(shell.contentItem, function(node) {
+     HOJE   460| return node instanceof Button
+     HOJE   461| && String(node.text) === "Importar tema ES-DE"
+     HOJE   462| && node.width > 0 && node.height > 0
+     HOJE   463| && effectivelyVisible(node)
+     HOJE   464| })
+     HOJE   465| return found !== null
+     HOJE   466| }, 5000, "o botão real do importador ES-DE não apareceu na seção Sistema")
+     HOJE   467| return found
+     HOJE   468| }
+
+  -- check_shell_esde_import_late_response.qml:569  cita  Main.qml:2991-2991
+     ALEGA: /// No diálogo raiz o campo É o estado (`Main.qml:2991` lê
+     HOJE  2991| icon.name: "search"
+
+  -- check_shell_esde_import_late_response.qml:656  cita  ThemeEditorPanel.qml:1126-1139
+     ALEGA: /// `Repeater` (`ThemeEditorPanel.qml:1126-1139`): é o texto `modelData.scheme`
+     HOJE  1126| Accessible.name: text
+     HOJE  1127| Layout.minimumHeight: 48
+     HOJE  1128| onClicked: esdeImportFolderDialog.open()
+     HOJE  1129| }
+     HOJE  1130| Button {
+     HOJE  1131| objectName: "themeImportEsdeInspect"
+     HOJE  1132| text: qsTr("Examinar")
+     HOJE  1133| enabled: !panel.esdeImportBusy && panel.esdeImportSource.trim() !== ""
+     HOJE  1134| Accessible.name: text
+     HOJE  1135| Accessible.description: enabled
+     HOJE  1136| ? qsTr("Lê os esquemas sem gravar arquivos")
+     HOJE  1137| : qsTr("Informe a pasta do tema antes de examinar")
+     HOJE  1138| Layout.minimumHeight: 48
+     HOJE  1139| onClicked: panel.inspectEsdeImport()
+
+  -- check_shell_esde_import_late_response.qml:763  cita  ThemeEditorPanel.qml:229-229
+     ALEGA: /// hoje o callback (`ThemeEditorPanel.qml:229`) escreve em cima de uma
+     HOJE   229| const source = panel.esdeImportSource.trim()
+
+  -- check_shell_esde_import_late_response.qml:815  cita  ThemeEditorPanel.qml:1028-1028
+     ALEGA: /// `resetEsdeImport()`, `ThemeEditorPanel.qml:1028`, que limpa a bandeira em
+     HOJE  1028| onClicked: panel.duplicateAndEdit(modelData.id, modelData.name)
+
+  -- check_shell_esde_import_late_response.qml:817  cita  Main.qml:1134-1134
+     ALEGA: /// juntos (`Main.qml:1134` só deduplica payload IDÊNTICO) e o anterior
+     HOJE  1134| recordActionFailure(actionId, message)
+
+  -- check_shell_esde_import_late_response.qml:907  cita  ThemeEditorPanel.qml:264-264
+     ALEGA: // re-listagem de temas (`ThemeEditorPanel.qml:264`, `refreshThemeList()`
+     HOJE   264| if (!despachado) {
+
+  -- check_shell_esde_import_late_response.qml:923  cita  Main.qml:1134-1134
+     ALEGA: /// `Main.qml:1134` recusa payload idêntico já em voo devolvendo `false` sem
+     HOJE  1134| recordActionFailure(actionId, message)
+
+  -- check_shell_esde_import_late_response.qml:926  cita  ThemeEditorPanel.qml:220-245
+     ALEGA: /// (`ThemeEditorPanel.qml:220-245`) arma a bandeira em `:224` ANTES de
+     HOJE   220| panel.esdeImportSchemes = []
+     HOJE   221| panel.esdeImportSchemeIndex = -1
+     HOJE   222| panel.esdeImportName = ""
+     HOJE   223| panel.esdeImportBusy = false
+     HOJE   224| panel.esdeImportNotice = ""
+     HOJE   225| panel.esdeImportNoticeIsError = false
+     HOJE   226| }
+     HOJE   227| 
+     HOJE   228| function inspectEsdeImport() {
+     HOJE   229| const source = panel.esdeImportSource.trim()
+     HOJE   230| if (source === "")
+     HOJE   231| return
+     HOJE   232| const ocupadoAntes = panel.esdeImportBusy
+     HOJE   233| const geracao = panel.esdeImportGeneration + 1
+     HOJE   234| panel.esdeImportGeneration = geracao
+     HOJE   235| panel.esdeImportBusy = true
+     HOJE   236| panel.esdeImportNotice = ""
+     HOJE   237| panel.esdeImportNoticeIsError = false
+     HOJE   238| const despachado = panel.requestAction("theme.import.esde.inspect", {source: source},
+     HOJE   239| function(response) {
+     HOJE   240| if (geracao !== panel.esdeImportGeneration)
+     HOJE   241| return
+     HOJE   242| panel.esdeImportBusy = false
+     HOJE   243| panel.esdeImportSchemes = response && response.schemes
+     HOJE   244| ? response.schemes : []
+     HOJE   245| panel.esdeImportSchemeIndex = panel.esdeImportSchemes.length > 0 ? 0 : -1
+
+  -- check_shell_esde_import_late_response.qml:968  cita  ThemeEditorPanel.qml:393-393
+     ALEGA: + "`ThemeEditorPanel.qml:393`), não deixá-la no `true` que o "
+     HOJE   393| panel.retrofeImportGeneration = geracao
+
+  -- check_shell_esde_import_late_response.qml:1068  cita  Main.qml:3096-3096
+     ALEGA: /// O oráculo de "o callback rodou" é o FECHAMENTO (`Main.qml:3096`), não
+     HOJE  3096| Item { Layout.fillWidth: true }
+
+  -- check_shell_esde_import_late_response.qml:1073  cita  Main.qml:3096-3096
+     ALEGA: }, 10000, "o apply bem-sucedido fecha o diálogo raiz (`Main.qml:3096`)")
+     HOJE  3096| Item { Layout.fillWidth: true }
+
+  -- check_shell_esde_import_late_response.qml:1083  cita  Main.qml:2898-2906
+     ALEGA: /// do `onClosed` (`Main.qml:2898-2906`) encontra `shell.esdeImport*` limpos e
+     HOJE  2898| }
+     HOJE  2899| 
+     HOJE  2900| Dialog {
+     HOJE  2901| id: esdeImportDialog
+     HOJE  2902| objectName: "theme-import-esde-dialog"
+     HOJE  2903| onAboutToShow: root.rememberDialogInvoker()
+     HOJE  2904| onOpened: root.focusDialogContent(esdeImportDialog)
+     HOJE  2905| onClosed: {
+     HOJE  2906| // Fechar revoga o pedido em voo: a resposta que chegar depois daqui não
+
+  -- check_shell_esde_import_late_response.qml:1137  cita  Main.qml:3095-3095
+     ALEGA: /// (`Main.qml:3095`) e o reabrir de estado. A cena 07 acabou de mostrar que
+     HOJE  3095| }
+
+######## tests/integration/test_ui_shell_esde_import_late_response.py
+
+  -- test_ui_shell_esde_import_late_response.py:5  cita  ThemeEditorPanel.qml:210-275
+     ALEGA: ES-DE do painel de edição (`ThemeEditorPanel.qml:210-275`), que em `c4975979` NÃO tem
+     HOJE   210| panel.request("GET", "/theme/list", {}, function(resp) {
+     HOJE   211| panel.editorThemeList = resp.themes || []
+     HOJE   212| })
+     HOJE   213| }
+     HOJE   214| 
+     HOJE   215| function resetEsdeImport() {
+     HOJE   216| // Fechar revoga o pedido em voo: a resposta que chegar depois daqui não tem
+     HOJE   217| // mais superfície a que pertencer. Molde: `resetRetrofeImport()`, abaixo.
+     HOJE   218| panel.esdeImportGeneration += 1
+     HOJE   219| panel.esdeImportSource = ""
+     HOJE   220| panel.esdeImportSchemes = []
+     HOJE   221| panel.esdeImportSchemeIndex = -1
+     HOJE   222| panel.esdeImportName = ""
+     HOJE   223| panel.esdeImportBusy = false
+     HOJE   224| panel.esdeImportNotice = ""
+     HOJE   225| panel.esdeImportNoticeIsError = false
+     HOJE   226| }
+     HOJE   227| 
+     HOJE   228| function inspectEsdeImport() {
+     HOJE   229| const source = panel.esdeImportSource.trim()
+     HOJE   230| if (source === "")
+     HOJE   231| return
+     HOJE   232| const ocupadoAntes = panel.esdeImportBusy
+     HOJE   233| const geracao = panel.esdeImportGeneration + 1
+     HOJE   234| panel.esdeImportGeneration = geracao
+     HOJE   235| panel.esdeImportBusy = true
+     HOJE   236| panel.esdeImportNotice = ""
+     HOJE   237| panel.esdeImportNoticeIsError = false
+     HOJE   238| const despachado = panel.requestAction("theme.import.esde.inspect", {source: source},
+     HOJE   239| function(response) {
+     HOJE   240| if (geracao !== panel.esdeImportGeneration)
+     HOJE   241| return
+     HOJE   242| panel.esdeImportBusy = false
+     HOJE   243| panel.esdeImportSchemes = response && response.schemes
+     HOJE   244| ? response.schemes : []
+     HOJE   245| panel.esdeImportSchemeIndex = panel.esdeImportSchemes.length > 0 ? 0 : -1
+     HOJE   246| panel.esdeImportNotice = panel.esdeImportSchemes.length > 0
+     HOJE   247| ? qsTr("Escolha um esquema e dê um nome ao tema editável.")
+     HOJE   248| : qsTr("Nenhum esquema de cor importável foi encontrado.")
+     HOJE   249| panel.esdeImportNoticeIsError = panel.esdeImportSchemes.length === 0
+     HOJE   250| },
+     HOJE   251| function(message) {
+     HOJE   252| if (geracao !== panel.esdeImportGeneration)
+     HOJE   253| return
+     HOJE   254| panel.esdeImportBusy = false
+     HOJE   255| panel.esdeImportSchemes = []
+     HOJE   256| panel.esdeImportSchemeIndex = -1
+     HOJE   257| panel.esdeImportNotice = String(message || qsTr("Não foi possível examinar o tema."))
+     HOJE   258| panel.esdeImportNoticeIsError = true
+     HOJE   259| })
+     HOJE   260| // Mesmo vínculo do molde RetroFE: `requestAction` devolve `false` sem callback
+     HOJE   261| // quando `actionIsPending` já conhece aquele payload, e a recusa é um
+     HOJE   262| // não-acontecimento — devolve a superfície ao que ela era antes do clique.
+     HOJE   263| // Ver `inspectRetrofeImport`.
+     HOJE   264| if (!despachado) {
+     HOJE   265| panel.esdeImportGeneration = geracao - 1
+     HOJE   266| panel.esdeImportBusy = ocupadoAntes
+     HOJE   267| }
+     HOJE   268| }
+     HOJE   269| 
+     HOJE   270| function applyEsdeImport() {
+     HOJE   271| if (panel.esdeImportSchemeIndex < 0 || panel.esdeImportName.trim() === "")
+     HOJE   272| return
+     HOJE   273| const selected = panel.esdeImportSchemes[panel.esdeImportSchemeIndex]
+     HOJE   274| const scheme = selected && selected.scheme
+     HOJE   275| ? String(selected.scheme) : String(selected || "")
+
+  -- test_ui_shell_esde_import_late_response.py:17  cita  Main.qml:1001-1001
+     ALEGA: responder, e o cliente é o `XMLHttpRequest` do produto (`Main.qml:1001`, `timeout`
+     HOJE  1001| bridgeUnavailable = true
+
+  -- test_ui_shell_esde_import_late_response.py:27  cita  ThemeEditorPanel.qml:204-204
+     ALEGA: (`ThemeEditorPanel.qml:204`) dispara `GET /theme/list` na callback de sucesso do
+     HOJE   204| 
+
+  -- test_ui_shell_esde_import_late_response.py:131  cita  Main.qml:1134-1134
+     ALEGA: #: `Main.qml:1134` devolve `false` antes de construir o `XMLHttpRequest`. A conta sobe
+     HOJE  1134| recordActionFailure(actionId, message)
+
+  -- test_ui_shell_esde_import_late_response.py:216  cita  desktop_dashboard.py:1857-1873
+     ALEGA: derived, colors, assets, fidelity}` (`desktop_dashboard.py:1857-1873`); `scheme`
+     HOJE  1857| # que tratam cada opção como uma entidade selecionável.
+     HOJE  1858| "id": name,
+     HOJE  1859| "name": name,
+     HOJE  1860| "scheme": name,
+     HOJE  1861| "isMonochrome": imported.is_monochrome,
+     HOJE  1862| "sourceTags": imported.source_tags,
+     HOJE  1863| "derived": list(imported.derived),
+     HOJE  1864| "colors": dict(imported.color),
+     HOJE  1865| "assets": [asset.to_dict() for asset in imported.assets],
+     HOJE  1866| "fidelity": "palette+background" if imported.assets else "palette-only",
+     HOJE  1867| }
+     HOJE  1868| )
+     HOJE  1869| return {
+     HOJE  1870| "source": str(Path(source).expanduser().resolve()),
+     HOJE  1871| "schemes": entries,
+     HOJE  1872| "unsupportedSlots": theme_import_esde.unsupported_slots(),
+     HOJE  1873| }
+
+  -- test_ui_shell_esde_import_late_response.py:217  cita  ThemeEditorPanel.qml:1134-1134
+     ALEGA: é o campo canônico que o `Repeater` mostra (`ThemeEditorPanel.qml:1134`) e que o
+     HOJE  1134| Accessible.name: text
+
+  -- test_ui_shell_esde_import_late_response.py:338  cita  desktop_dashboard.py:1872-1872
+     ALEGA: #: Espelha `desktop_dashboard.py:1872`: `unsupported_slots()` devolve um
+     HOJE  1872| "unsupportedSlots": theme_import_esde.unsupported_slots(),
+
+  -- test_ui_shell_esde_import_late_response.py:339  cita  theme_import_esde.py:195-204
+     ALEGA: #: dicionário slot→motivo (`theme_import_esde.py:195-204`). O QML não o
+     HOJE   195| def unsupported_slots() -> dict[str, str]:
+     HOJE   196| """Slots que ficam vazios, com a razão — para a UI não sugerir que faltou algo."""
+     HOJE   197| return {
+     HOJE   198| "logo": (
+     HOJE   199| "temas ES-DE não declaram marca própria; o que eles chamam de logo é arte por sistema"
+     HOJE   200| ),
+     HOJE   201| "sidebar": "temas ES-DE não têm equivalente de barra lateral",
+     HOJE   202| }
+     HOJE   203| 
+     HOJE   204| 
+
+  -- test_ui_shell_esde_import_late_response.py:353  cita  desktop_dashboard.py:1908-1916
+     ALEGA: #: (`desktop_dashboard.py:1908-1916`). O callback de sucesso do QML
+     HOJE  1908| self._theme_editor.cancel(session_id)
+     HOJE  1909| raise
+     HOJE  1910| return {
+     HOJE  1911| "themeId": saved["themeId"],
+     HOJE  1912| "path": saved["path"],
+     HOJE  1913| "scheme": scheme,
+     HOJE  1914| "isMonochrome": imported.is_monochrome,
+     HOJE  1915| "derived": list(imported.derived),
+     HOJE  1916| "assets": [asset.to_dict() for asset in imported.assets],
+
+  -- test_ui_shell_esde_import_late_response.py:354  cita  ThemeEditorPanel.qml:262-269
+     ALEGA: #: (`ThemeEditorPanel.qml:262-269`) não lê nenhuma delas; a ponte as
+     HOJE   262| // não-acontecimento — devolve a superfície ao que ela era antes do clique.
+     HOJE   263| // Ver `inspectRetrofeImport`.
+     HOJE   264| if (!despachado) {
+     HOJE   265| panel.esdeImportGeneration = geracao - 1
+     HOJE   266| panel.esdeImportBusy = ocupadoAntes
+     HOJE   267| }
+     HOJE   268| }
+     HOJE   269| 
+
+  -- test_ui_shell_esde_import_late_response.py:372  cita  Main.qml:1011-1011
+     ALEGA: # `Main.qml:1011` envia `X-SteamZero-Token` em toda requisição.
+     HOJE  1011| // GET não carrega corpo: o payload vira query string codificada. Sem
+
+  -- test_ui_shell_esde_import_late_response.py:715  cita  Main.qml:2988-2988
+     ALEGA: "despachar (`Main.qml:2988`) e o fechamento já baixou a bandeira no `onClosed` "
+     HOJE  2988| id: esdeInspectButton
+
+  -- test_ui_shell_esde_import_late_response.py:871  cita  Main.qml:853-859
+     ALEGA: "quem revela o foco é o produto (`Main.qml:853-859`); o teste espera o efeito"
+     HOJE   853| const found = firstFocusableIn(kids[i], depth + 1)
+     HOJE   854| if (found)
+     HOJE   855| return found
+     HOJE   856| }
+     HOJE   857| return null
+     HOJE   858| }
+     HOJE   859| 
+
+  -- test_ui_shell_esde_import_late_response.py:919  cita  Main.qml:1076-1076
+     ALEGA: `Main.qml:1076` resolve a ação por `uiContracts.byId`, e o catálogo é o que
+     HOJE  1076| continue
+
+  -- test_ui_shell_esde_import_late_response.py:1015  cita  Main.qml:1134-1134
+     ALEGA: f"{ESPERADO_INSPECT} (as recusas NÃO contam — `Main.qml:1134` devolve antes "
+     HOJE  1134| recordActionFailure(actionId, message)
+
+  -- test_ui_shell_esde_import_late_response.py:1084  cita  ThemeEditorPanel.qml:616-616
+     ALEGA: "(`ThemeEditorPanel.qml:616`), então o produto não foi exercitado"
+     HOJE   616| panel.applyPlan = null

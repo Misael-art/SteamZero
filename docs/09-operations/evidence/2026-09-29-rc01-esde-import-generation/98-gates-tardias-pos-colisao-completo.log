@@ -1,0 +1,9 @@
+### tests/integration/test_ui_shell_esde_import_late_response.py
+.........                                                                [100%]
+9 passed in 58.58s
+rc=0
+### tests/integration/test_ui_shell_retrofe_import_late_response.py
+.........                                                                [100%]
+9 passed in 27.15s
+rc=0
+PORTA=revalidada
