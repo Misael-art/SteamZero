@@ -12626,3 +12626,88 @@ As sete frentes foram reconciliadas seletivamente, as decisões visuais de 029 e
 038 ficaram documentadas, os snapshots e o bundle seguem como recuperação, e o
 checkout único foi avançado para `main` no SHA integrado. As lacunas físicas e
 de cobertura permanecem nos itens próprios; este workstream está fechado.
+
+## 2026-09-26 — auditoria de produto, telas e experiência
+
+Concluída a varredura persistente do host: 1.163 registros reconhecidos em 27
+plataformas, 1.145 itens lançáveis publicados, 18 arquivos compactados retidos
+por validação e 15 conjuntos multidisco ainda sem resolução. As 18.666 entradas
+das raízes de conteúdo mantiveram a mesma assinatura antes/depois; houve apenas
+a atualização esperada do cache de scan, sem alteração de ROM, BIOS, save,
+perfil, tema ou banco de estado.
+
+O relatório cobre as superfícies da Central, 55 capturas live em cinco
+resoluções, 211 contratos de ações dos read models, 341 controles em árvore
+QML fallback e os 78 itens de capacidade mais 12 agregadores. Os PNGs que
+contêm títulos ou caminhos privados ficaram fora do repositório. Theme Studio,
+AURA Launcher, alguns overlays, uso físico de gamepad e lançamento de jogo
+continuam marcados como lacunas de evidência.
+
+A suíte integral local terminou com 1 falha documental, 6.293 aprovados e 47
+ignorados: as views de status ainda não incluíam o novo item. Depois da
+renderização, a checagem focal de status passou 13/13, `make status-check`,
+ruff, format, mypy e os gates de independência/fronteiras passaram. A suíte
+integral não foi repetida; o relatório mantém esse resultado como não verde.
+Nenhum código do produto foi alterado nem houve commit, push ou merge. Priorizar
+UX-01 (contraste), UX-02 (carregamento da Home) e DATA-01 (pendências de
+arquivos compactados/multidisco).
+
+### Retificação — evidências visuais anteriores
+
+Uma revisão posterior do histórico encontrou provas físicas que a primeira
+versão deste diagnóstico não tinha citado. Abri e revisei as capturas: Theme
+Studio (canvas, árvore e inspector, 09-07), importação RetroFE (09-08), cena
+ES-DE fullscreen (09-10), AURA Cinema (carousel/detalhes, 09-11/16) e a
+Central AURA UI (09-21). Elas são evidência real de releases anteriores, não
+recertificação da release instalada em 09-26. O inspector do Theme Studio teve
+contraste aprovado, mas a mutação por input físico segue sem prova; a imagem
+RetroFE corta o fim do formulário; a cena ES-DE não recebeu read model de jogo
+e expõe bindings sem valor; a Central AURA mostra aviso/rodapé com contraste
+fraco; o Cinema tem boa hierarquia visual, mas a medição aprovada foi 948×593,
+não 1280×800. Os links, limites e critérios estão no AUDIT.md e no item de
+status. A recaptura da release atual permanece pendente.
+
+Os testes focados de Theme Studio, importação RetroFE/ES-DE, cenas e AURA Cinema
+foram registrados em `theme-focused-tests.log`: 183 passaram em 6,48 s. A guarda
+do host retornou 12.816 arquivos, 2.068 diretórios e 1.372.682.661 bytes,
+incluindo o mesmo `max_mtime_ns`, antes e depois. `make status-check` e os 13
+testes de `test_project_status.py` passaram após atualizar digest e views. A
+suíte integral permanece com o resultado não verde já registrado; não foi
+repetida por esta retificação documental. Nenhum código do produto mudou.
+
+## 2026-09-26 — ampliação da auditoria: sessão de emulação
+
+Revisei a cobertura de OSD, pausa/retomada, save-state, saves/checkpoints,
+bezel, fade, troca de disco e retorno ao Launcher. O AUDIT agora separa os
+níveis de contrato/teste QML, prova física do adapter e jornada na release
+instalada, com critérios e achados UX-08/09, CAP-03/04/05 e EVID-06.
+
+As provas mostram pausa/retomada em release instalada e save-state/galeria com
+fallback honesto. Capturas pausadas de 09-13 e 09-16 têm bleed e texto
+duplicado do conteúdo inferior; há OSD limpo em `running` em 09-17, sem captura
+limpa equivalente no estado `suspended`. AURA bezel default apareceu em jogo
+real na release a71. A troca 1→2→1 foi executada por RetroArch/PUAE real pelo
+adapter, mas a release instalada não continha o commit e o Launcher não fez o
+ciclo. Fade aparece no código e read model, porém não foi isolado numa captura
+física. Parte de AC-SV-02 (flush/checkpoint/timeout) foi coberta com fake e os
+testes de timeline passaram; não houve simulação de power-loss nem mutação de
+save pessoal. A tela do OSD mistura rótulos
+ingleses e deixa a razão das ações indisponíveis somente na descrição acessível.
+
+Testes focados adicionais: 208 passaram (sessão/OSD/periféricos/Launcher), 3
+passaram e 46 foram deselecionados no recorte QML, e 36 passaram em saves,
+checkpoint e ciclo de sessão. Durante a janela longa de 208 testes, o guard
+detectou escrita concorrente do daemon de sistema previamente ativo em logs e
+metadados de `state.db`; a atribuição fica degradada e não afirmo imutabilidade
+global nessa janela. Os recortes menores tiveram estado igual antes/depois.
+Nenhum jogo foi lançado e nenhum ROM/save pessoal foi tocado nesta revisão.
+
+
+## 2026-09-26 — Fechamento documental do roadmap de continuidade
+
+- Item `SZ-ROADMAP-CONTINUATION`, workstream `WS-2026-09-ROADMAP-CONTINUATION`: revisão de IMPLEMENTATION-ROADMAP, MILESTONES, AGENT-HANDOFF e prompt raiz, mantendo os arquivos canônicos existentes.
+- Ordem RC-00–08 por dependência/impacto; rastreabilidade de todos os achados UX/DATA/CAP/EVID; fatias de Theme Studio/Engine, sessão, conteúdo, runtimes, integrações e qualificação com critérios explícitos.
+- Prompt obsoleto de bootstrap substituído por continuidade do código existente em um único checkout; preservação de alterações, evidências e backups; gates por lote e autorização própria para host.
+- Nenhum código de produto alterado, nenhuma instalação, commit, push ou merge nesta revisão. Estágios das capacidades de produto não foram promovidos. A integral anterior permanece registrada como não verde; validação desta entrega é documental/status.
+
+Validação do fechamento: links locais e os 21 IDs de achados conferidos; 13 testes de status aprovados em 5.34s, guard antes/depois idêntico. A primeira execução intermediária teve 2 falhas de catálogo em atualização (digests e verificação prematura), corrigidas antes da reexecução.

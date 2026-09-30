@@ -6,7 +6,7 @@
   "branch": "codex/temas-esde-2026-09-03",
   "baseRef": "8a6bb071b8ba2f5199eb55ce8e2aeab46b135059",
   "owner": "temas-esde-agent",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/domain/scene_esde.py",
     "src/steamzero/domain/theme_assets.py",
@@ -23,6 +23,6 @@
     "src/steamzero/adapters/desktop_ui.py",
     "src/steamzero/core/paths.py"
   ],
-  "nextAction": "Fechada a compilacao e o store. Faltam: catalogo curado dos cinco temas licenciados, aquisicao com extracao seletiva, instalacao transacional com rollback e ingestao da arte por sistema no store. Nenhum tema foi baixado nem instalado ate aqui.",
-  "updatedAt": "2026-09-03"
+  "nextAction": "Fechada a compilacao e o store. Faltam: catalogo curado dos cinco temas licenciados, aquisicao com extracao seletiva, instalacao transacional com rollback e ingestao da arte por sistema no store. Nenhum tema foi baixado nem instalado ate aqui. RC-00 (2026-09-26): claim encerrado — tip e571577faeda (\"docs(status): registra a fiacao do catalogo de temas e revalida os itens vizinhos\") do branch codex/temas-esde-2026-09-03 está integrado em origin/main (ancestralidade conferida em 3495c49d). Pendências de prova continuam registradas no item; fechar o claim não promove estágio.",
+  "updatedAt": "2026-09-26"
 }

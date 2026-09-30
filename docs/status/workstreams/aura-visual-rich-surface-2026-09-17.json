@@ -6,7 +6,7 @@
   "branch": "codex/aura-visual-complete-2026-09-17",
   "baseRef": "7dcceb1c7ff791d41feaf0435e3608c190b65e7a",
   "owner": "codex-aura-visual-complete",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/launcher/cinema.py",
     "src/steamzero/ui/qml/launcher/LauncherCinema.qml",
@@ -21,6 +21,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Validar a superfície rica na release instalada; anexar captura, métricas Wayland e estados de fallback sem promover save-state/disco sem adapter físico.",
-  "updatedAt": "2026-09-17"
+  "nextAction": "Validar a superfície rica na release instalada; anexar captura, métricas Wayland e estados de fallback sem promover save-state/disco sem adapter físico. RC-00 (2026-09-26): claim encerrado — tip 5778b627386c (\"docs(aura): register rich visual surface workstream\") do branch codex/aura-visual-complete-2026-09-17 está integrado em origin/main (ancestralidade conferida em 3495c49d). Pendências de prova continuam registradas no item; fechar o claim não promove estágio.",
+  "updatedAt": "2026-09-26"
 }

@@ -6,7 +6,7 @@
   "branch": "codex/aura-platform-media-scope-2026-09-20",
   "baseRef": "bd9831f1",
   "owner": "codex-aura-platform-media-scope",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/adapters/launcher_media.py",
     "tests/unit/test_launcher_media.py",
@@ -19,6 +19,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Integrar a projeção escopada na release governada e repetir a captura física.",
-  "updatedAt": "2026-09-20"
+  "nextAction": "Integrar a projeção escopada na release governada e repetir a captura física. RC-00 (2026-09-26): claim encerrado — tip 5fae1cad75ff (\"merge main: preserve platform media scope\") do branch codex/aura-platform-media-scope-2026-09-20 está integrado em origin/main (ancestralidade conferida em 3495c49d). Pendências de prova continuam registradas no item; fechar o claim não promove estágio.",
+  "updatedAt": "2026-09-26"
 }

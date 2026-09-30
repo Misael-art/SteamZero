@@ -6,7 +6,7 @@
   "branch": "codex/controls-autoconfig-prova-fisica",
   "baseRef": "65cdc16",
   "owner": "codex-controls-autoconfig",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig",
     "docs/adr/0027-autoconfig-base-do-steam-deck.md",
@@ -18,6 +18,6 @@
   "sharedPaths": [
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Materializacao do autoconfig gerenciado concluida (marcador de ownership, recusa de arquivo de terceiro e chegada do perfil ao lancamento real provados). Restam duas provas fisicas do operador, ambas com o host na mao: (1) confirmar o cartao em verde com o botao sumido (central > Emulacao > jogo > cartao de controles); (2) abrir um jogo da plataforma e confirmar a chegada do perfil no lancamento real.",
-  "updatedAt": "2026-08-26"
+  "nextAction": "Materializacao do autoconfig gerenciado concluida (marcador de ownership, recusa de arquivo de terceiro e chegada do perfil ao lancamento real provados). Restam duas provas fisicas do operador, ambas com o host na mao: (1) confirmar o cartao em verde com o botao sumido (central > Emulacao > jogo > cartao de controles); (2) abrir um jogo da plataforma e confirmar a chegada do perfil no lancamento real. RC-00 (2026-09-26): claim encerrado — tip dc8e17cc9ba7 (\"docs(controls): restaura evidência órfã do autoconfig e prova a descoberta física\") do branch codex/controls-autoconfig-prova-fisica está integrado em origin/main (ancestralidade conferida em 3495c49d). Pendências de prova continuam registradas no item; fechar o claim não promove estágio.",
+  "updatedAt": "2026-09-26"
 }

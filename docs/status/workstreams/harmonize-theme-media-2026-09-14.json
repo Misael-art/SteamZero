@@ -6,7 +6,7 @@
   "branch": "codex/harmonize-theme-media-2026-09-14",
   "baseRef": "2605bc87",
   "owner": "codex-harmonize",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "tests/unit/test_media_global_scope.py",
     "tests/unit/test_theme_display_name.py",
@@ -23,6 +23,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Escopo global de midia generalizado (aceita qualquer plataforma declarada; ausente e 'all' significam todos os sistemas) e contrato de nome de tema separado do ID tecnico, com activeName chegando a apresentacao. Falta prova fisica: nenhuma das duas cadeias foi capturada em release instalada.",
-  "updatedAt": "2026-09-14"
+  "nextAction": "Escopo global de midia generalizado (aceita qualquer plataforma declarada; ausente e 'all' significam todos os sistemas) e contrato de nome de tema separado do ID tecnico, com activeName chegando a apresentacao. Falta prova fisica: nenhuma das duas cadeias foi capturada em release instalada. RC-00 (2026-09-26): claim encerrado — tip ea635408bc33 (\"docs(status): fecha workstreams obsoletos e regenera o estado\") do branch codex/harmonize-theme-media-2026-09-14 está integrado em origin/main (ancestralidade conferida em 3495c49d). Pendências de prova continuam registradas no item; fechar o claim não promove estágio.",
+  "updatedAt": "2026-09-26"
 }

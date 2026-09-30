@@ -6,7 +6,7 @@
   "branch": "codex/aura-jit-component-handoff-2026-09-15",
   "baseRef": "0260e53065aec4d85aaa842d8fd0f2bd8f02cb91",
   "owner": "codex-aura-jit-component-handoff",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "docs/09-operations/evidence/2026-09-15-aura-visual-completion",
     "docs/status/items/aura-visual-completion-2026-09-15.json",
@@ -22,6 +22,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Aguardar CI/merge de 3ad4066, preparar release governada, repetir o apply/verify do shadPS4 e capturar a janela física; manter abertos os gaps que exigem jogo/adapter real.",
-  "updatedAt": "2026-09-15"
+  "nextAction": "Aguardar CI/merge de 3ad4066, preparar release governada, repetir o apply/verify do shadPS4 e capturar a janela física; manter abertos os gaps que exigem jogo/adapter real. RC-00 (2026-09-26): claim encerrado — branch codex/aura-jit-component-handoff-2026-09-15 não existe mais local/remoto; conteúdo exclusivo confirmado em main por 3ad40664 (\"fix: run JIT emulators in hardened transient units\"). Pendências de prova continuam registradas no item; fechar o claim não promove estágio.",
+  "updatedAt": "2026-09-26"
 }

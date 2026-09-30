@@ -6,7 +6,7 @@
   "branch": "codex/ps5-component-tar-path",
   "baseRef": "c3b14a04",
   "owner": "codex-ps5-component-smoke",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "tests/unit/test_sharpemu_verify_contract.py",
     "docs/status/items/sharpemu-component-smoke-contract.json",
@@ -20,6 +20,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Executar teste focado e gates; publicar a correção para a release governada e repetir component plan/apply/verify sem reiniciar o KDE.",
-  "updatedAt": "2026-09-20"
+  "nextAction": "Executar teste focado e gates; publicar a correção para a release governada e repetir component plan/apply/verify sem reiniciar o KDE. RC-00 (2026-09-26): claim encerrado — tip f21445594ea3 (\"fix: accept SharpEmu documented help exit\") do branch codex/ps5-component-tar-path está integrado em origin/main (ancestralidade conferida em 3495c49d). Pendências de prova continuam registradas no item; fechar o claim não promove estágio.",
+  "updatedAt": "2026-09-26"
 }

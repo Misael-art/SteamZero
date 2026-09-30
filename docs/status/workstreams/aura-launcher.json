@@ -6,13 +6,13 @@
   "branch": "codex/aura-launcher-evidencia-fisica",
   "baseRef": "835a057",
   "owner": "codex-aura-launcher",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "docs/09-operations/evidence/2026-08-26-aura-launcher-fisico"
   ],
   "sharedPaths": [
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Publicar release com a rota de lancamento corrigida (emulation launch --game-id) e provar controle-jogo-retorno no host. A parte tecnica da rota e do contexto foi corrigida; a prova end-to-end depende da interacao humana do operador.",
-  "updatedAt": "2026-08-30"
+  "nextAction": "Publicar release com a rota de lancamento corrigida (emulation launch --game-id) e provar controle-jogo-retorno no host. A parte tecnica da rota e do contexto foi corrigida; a prova end-to-end depende da interacao humana do operador. RC-00 (2026-09-26): claim encerrado — tip 00459c756de8 (\"fix(launcher): home mostrava o hash do id no lugar do título\") do branch codex/aura-launcher-evidencia-fisica está integrado em origin/main (ancestralidade conferida em 3495c49d). Pendências de prova continuam registradas no item; fechar o claim não promove estágio.",
+  "updatedAt": "2026-09-26"
 }

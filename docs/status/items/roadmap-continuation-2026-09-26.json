@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-ROADMAP-CONTINUATION",
+  "title": "Roadmap de continuidade após auditoria integral",
+  "domain": "governance",
+  "implementation": "complete",
+  "integration": "feature-branch",
+  "verification": "dev",
+  "operation": "ready",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "IMPLEMENTATION-PROMPT.md",
+    "docs/12-roadmap/IMPLEMENTATION-ROADMAP.md",
+    "docs/12-roadmap/MILESTONES.md",
+    "docs/09-operations/AGENT-HANDOFF.md"
+  ],
+  "scopeDigest": "7ace66b2a6198c648ffebfb79eb665c8fd46fd45f98449ea7dc0d35decec2f69",
+  "dependsOn": [
+    "SZ-PROJECT-DESIGN-AUDIT"
+  ],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "Todos os achados da auditoria têm lote, dependência e critério de saída.",
+    "O agente continua a implementação existente em um único checkout, preservando dados e evidências.",
+    "Plano, marcos e prompt distinguem implementação, integração e certificação física."
+  ],
+  "evidence": [
+    {
+      "kind": "design",
+      "reference": "docs/12-roadmap/IMPLEMENTATION-ROADMAP.md",
+      "command": "Revisão da auditoria de 26/09; todos os achados UX/DATA/CAP/EVID mapeados a lotes, dependências e critérios de saída.",
+      "result": "recorded"
+    },
+    {
+      "kind": "design",
+      "reference": "IMPLEMENTATION-PROMPT.md",
+      "command": "Prompt de continuidade com checkout único, preservação de trabalho, ciclo de entrega, gates e limites de autorização do host.",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_project_status.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_project_status.py -q: 13 passed em 5.34s; guard de estado idêntico antes/depois. Primeira execução intermediária: 2 failed/11 passed por digests/declaracao de verificação ainda em atualização; corrigidos antes desta reexecução.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/12-roadmap/IMPLEMENTATION-ROADMAP.md",
+      "command": "RC-00 (2026-09-26): conferência da base — origin/main == HEAD da branch de trabalho == 3495c49d5d7c; um único worktree registrado; nenhum processo de teste ativo; release instalada confirmada read-only em /opt/steamzero/current -> 2.0.0rc1-e2af2562ebba. Claims ativos obsoletos reconciliados contra git: 21 encerrados citando o tip integrado em main (por ancestralidade em 3495c49d; 2 por conteúdo: 3ad40664 e f32c5922); 5 permanecem abertos com trabalho realmente não integrado (2652ff96 launcher-exit ahead=1; cad58bb4 library-management ahead=2 com sobreposição em Main.qml/desktop_contracts.py conciliada por diff vazio; 4 frentes compartilham codex/emulation-system-validation-2026-09-19 ahead=47). Mapeamento matriz→lote já está na tabela de rastreabilidade do roadmap; nenhum item ficou sem destino.",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "RC-00 concluído na base 3495c49d. Executar RC-01: central legível e utilizável durante carregamento (UX-01/UX-02), com medição antes/depois, erro/retry e navegação acessível.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-09-26",
+  "notes": "Planejamento concluído localmente; nenhuma implementação do produto ou certificação física promovida. Um checkout confirmado. Roadmap, marcos, handoff e prompt foram harmonizados; 13 testes de status passaram após corrigir digests compartilhados e a declaração prematura de verificação; links locais e 21 IDs de achados conferidos. RC-00 executado em 2026-09-26: base/release/worktree conferidos; 21 claims obsoletos encerrados com evidência de integração e 5 mantidos abertos; a suíte integral da auditoria permanece registrada como não verde (1 falha documental histórica)."
+}

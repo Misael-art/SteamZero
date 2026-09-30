@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-ROADMAP-CONTINUATION",
+  "item": "SZ-ROADMAP-CONTINUATION",
+  "branch": "codex/project-design-audit-2026-09-26",
+  "baseRef": "3495c49d5d7c3244267e8292beee34475f70236b",
+  "owner": "codex-roadmap-continuation",
+  "state": "closed",
+  "exclusivePaths": [
+    "IMPLEMENTATION-PROMPT.md",
+    "docs/12-roadmap/MILESTONES.md",
+    "docs/status/items/roadmap-continuation-2026-09-26.json",
+    "docs/status/workstreams/roadmap-continuation-2026-09-26.json"
+  ],
+  "sharedPaths": [
+    "docs/12-roadmap/IMPLEMENTATION-ROADMAP.md",
+    "docs/09-operations/AGENT-HANDOFF.md",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Integrar a auditoria e o plano preservados no checkout; executar RC-00 curto e iniciar RC-01 com entrega funcional de contraste/loading da central.",
+  "updatedAt": "2026-09-26"
+}

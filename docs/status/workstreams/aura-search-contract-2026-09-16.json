@@ -6,7 +6,7 @@
   "branch": "codex/aura-search-bridge-integration-2026-09-16",
   "baseRef": "df1758de",
   "owner": "codex-aura-search-bridge-integration",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/domain/catalog_search.py",
     "src/steamzero/adapters/launcher_ui.py",
@@ -22,6 +22,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Publicar a integração bridge→catálogo→render; depois executar a prova física na release instalada.",
-  "updatedAt": "2026-09-16"
+  "nextAction": "Publicar a integração bridge→catálogo→render; depois executar a prova física na release instalada. RC-00 (2026-09-26): claim encerrado — tip 01a1b3c4022d (\"feat(aura): integrate canonical catalog search bridge\") do branch codex/aura-search-bridge-integration-2026-09-16 está integrado em origin/main (ancestralidade conferida em 3495c49d). Pendências de prova continuam registradas no item; fechar o claim não promove estágio.",
+  "updatedAt": "2026-09-26"
 }

@@ -1,0 +1,19 @@
+........................................................................ [ 34%]
+........................................................................ [ 69%]
+................................................................         [100%]
+208 passed in 131.10s (0:02:11)
+W-TEST-REAL-STATE-EXTERNAL-WRITER: o state home real mudou durante a janela do pytest, mas a suíte NÃO é a autora
+state home: $HOST_STATE_HOME
+before: exists=True files=12816 directories=2068 bytes=1372682661 max_mtime_ns=1790431561167447527
+after:  exists=True files=12816 directories=2068 bytes=1372682842 max_mtime_ns=1790436730413945389
+changed: logs, logs/core.jsonl, state.db
+donos externos ativos (já existiam antes da janela):
+  - pid=2510868 (anterior à janela) cmd=/opt/steamzero/releases/2.0.0rc1-e2af2562ebba/venv/bin/python3 /opt/steamzero/current/venv/bin/steamzero-core --systemd
+Esses processos são donos legítimos do state home real e escrevem por conta
+própria (ex.: o reconciliador do daemon registra session.environment.changed
+a cada mudança de rede/energia). O gate não reprova por isso.
+Atenção: enquanto um dono externo está ativo, a atribuição fica degradada —
+uma escrita da própria suíte ficaria encoberta. Para rigor total, rode o gate
+com o daemon parado.
+real-state before: exists=True files=12816 directories=2068 bytes=1372682661 max_mtime_ns=1790431561167447527 source=HOME-default
+real-state after:  exists=True files=12816 directories=2068 bytes=1372682842 max_mtime_ns=1790436730413945389 source=HOME-default

@@ -6,7 +6,7 @@
   "branch": "codex/aura-rich-media-global-2026-09-16",
   "baseRef": "8580817a",
   "owner": "codex-aura-rich-media-global",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "tools/launcher_perf_probe.py",
     "tests/unit/test_launcher_perf_probe.py",
@@ -20,6 +20,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Repetir a sonda na release com o ciclo visual final e fechar a lacuna de superfície 1280x800 sem substituir medição física por offscreen.",
-  "updatedAt": "2026-09-16"
+  "nextAction": "Repetir a sonda na release com o ciclo visual final e fechar a lacuna de superfície 1280x800 sem substituir medição física por offscreen. RC-00 (2026-09-26): claim encerrado — tip 385a59eadc4b (\"docs(aura): correct physical capture claims\") do branch codex/aura-rich-media-global-2026-09-16 está integrado em origin/main (ancestralidade conferida em 3495c49d). Pendências de prova continuam registradas no item; fechar o claim não promove estágio.",
+  "updatedAt": "2026-09-26"
 }

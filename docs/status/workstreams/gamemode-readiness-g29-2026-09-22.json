@@ -6,11 +6,13 @@
   "branch": "codex/canonical-main-2026-09-21",
   "baseRef": "f5a0a3d",
   "owner": "codex-continuation",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "docs/09-operations/evidence/2026-09-22-gamemode-readonly"
   ],
-  "sharedPaths": ["docs/WORKLOG.md"],
-  "nextAction": "Aguardar validação autorizada de daemon, autorização e efeitos em uma sessão real; manter o probe read-only e não aplicar o plano administrativo.",
-  "updatedAt": "2026-09-22"
+  "sharedPaths": [
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Aguardar validação autorizada de daemon, autorização e efeitos em uma sessão real; manter o probe read-only e não aplicar o plano administrativo. RC-00 (2026-09-26): claim encerrado — tip 14995dfb7382 (\"fix: bound governed privilege authorization preflight\") do branch codex/canonical-main-2026-09-21 está integrado em origin/main (ancestralidade conferida em 3495c49d). Pendências de prova continuam registradas no item; fechar o claim não promove estágio.",
+  "updatedAt": "2026-09-26"
 }
