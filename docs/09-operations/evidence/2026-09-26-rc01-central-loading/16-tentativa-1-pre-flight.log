@@ -1,0 +1,13 @@
+# RC-01 checkpoint integral — 2026-09-27
+# ramo: codex/rc01-central-loading-2026-09-26 @ d215e320f7f2363ae0e73ee31eb8138b487b8534
+# pré-lançamento (lição de 2026-09-26: conferir processos antes de rodar)
+$ pgrep -af 'pytest|run_tests_isolated|qml6'
+309947 /bin/bash -c { source '/home/misael/.qoder/shell-snapshots/snapshot-bash-1790478140274-kppyqu.sh' 2>/dev/null || true; } && export PATH="${__QODER_BASH_PATH_PREFIX:+$__QODER_BASH_PATH_PREFIX:}$PATH" && { shopt -u extglob 2>/dev/null || true; } && { source /home/misael/.qoder/shell-snapshots/pkill-guard-22859-1a2393969f6c78ff.sh 2>/dev/null || true; } && eval 'mkdir -p ~/evidence-logs/2026-09-27-rc01 && cat > ~/evidence-logs/2026-09-27-rc01/run_checkpoint.sh <<'"'"'SH'"'"' #!/usr/bin/bash set -uo pipefail cd "/home/misael/Projects/Steam Zero/Canonical/2026-09-21" D=~/evidence-logs/2026-09-27-rc01 {   echo "# RC-01 checkpoint integral — 2026-09-27"   echo "# ramo: $(git rev-parse --abbrev-ref HEAD) @ $(git rev-parse HEAD)"   echo "# pré-lançamento (lição de 2026-09-26: conferir processos antes de rodar)"   echo "\$ pgrep -af '"'"'pytest|run_tests_isolated|qml6'"'"'"   pgrep -af '"'"'pytest|run_tests_isolated|qml6'"'"' || echo "(nenhum processo de teste ativo)"   echo "# impressão da árvore (só nomes+conteúdo, para identidade do que foi testado)"   git status --porcelain=v1 | sort | md5sum   date -Is } >> "$D/checkpoint-integral.log" /usr/bin/time -v .venv/bin/python tools/run_tests_isolated.py tests -q >> "$D/checkpoint-integral.log" 2>&1 RC=$? {   echo "rc=$RC"   echo "# pós-término"   git status --porcelain=v1 | sort | md5sum   date -Is } >> "$D/checkpoint-integral.log" echo "checkpoint terminado rc=$RC" SH chmod +x ~/evidence-logs/2026-09-27-rc01/run_checkpoint.sh && ~/evidence-logs/2026-09-27-rc01/run_checkpoint.sh' && pwd -P >| /tmp/qoder-8951-cwd
+# impressão da árvore (só nomes+conteúdo, para identidade do que foi testado)
+47a6a2aa5902d5a02a9d8e8b28548b26  -
+2026-09-27T00:49:02-03:00
+/home/misael/evidence-logs/2026-09-27-rc01/run_checkpoint.sh: linha 15: /usr/bin/time: Arquivo ou diretório inexistente
+rc=127
+# pós-término
+47a6a2aa5902d5a02a9d8e8b28548b26  -
+2026-09-27T00:49:02-03:00

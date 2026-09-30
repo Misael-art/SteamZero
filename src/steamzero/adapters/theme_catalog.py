@@ -3,10 +3,12 @@ from __future__ import annotations
 import contextlib
 import importlib.resources
 import json
+from functools import cache
 from pathlib import Path
 from typing import Any
 
 import jsonschema
+from jsonschema import Draft202012Validator
 
 from steamzero.core.errors import SteamZeroError
 from steamzero.domain.asset_recipes import validate_asset_source
@@ -21,6 +23,7 @@ from steamzero.domain.themes import (
 
 _THEME_PACKAGE = "steamzero.themes"
 _MAX_MANIFEST_BYTES = 256 * 1024
+_MAX_VALIDATION_DETAIL = 400
 _MAX_FILES = 128
 _MAX_TOTAL_BYTES = 64 * 1024 * 1024
 _MAX_ASSET_BYTES = 16 * 1024 * 1024
@@ -158,11 +161,37 @@ def read_user_manifest_from(source_path: Path) -> ThemeManifest:
     return ThemeManifest.from_dict(raw)
 
 
+@cache
+def _manifest_validator() -> Draft202012Validator:
+    """Validador do manifesto de tema, compilado uma vez por processo.
+
+    ``jsonschema.validate`` recheca o proprio schema empacotado a cada chamada:
+    medido em 305 ms por manifesto na ponte do produto, o que dominava o bloco
+    ``theme`` do /status (4,1 s de 8,9 s na baseline RC-01). Validar o schema
+    que nos empacotamos nao e a checagem de seguranca do lote; a validacao da
+    instancia do manifesto permanece identica, inclusive a primeira ordem de
+    erro e a mensagem.
+    """
+    return Draft202012Validator(_MANIFEST_SCHEMA)
+
+
+def _validation_detail(exc: jsonschema.ValidationError) -> str:
+    """Descrição curta e estável da falha: caminho JSON + mensagem, sem despejo.
+
+    ``str(exc)`` faz pprint do schema *e* da instância. Com quatro pacotes ES-DE
+    malformados no diretório de temas do host, isso custava 1,2 s de CPU por
+    composição do ``theme`` no /status, e o ``theme.list`` publicava os 1,1 MB
+    resultantes na UI do Estúdio de Temas, onde ninguém consegue ler um dump de
+    schema. O caminho e a mensagem preservam o diagnóstico.
+    """
+    return f"{exc.json_path}: {exc.message}"[:_MAX_VALIDATION_DETAIL]
+
+
 def _validate_manifest(raw: dict[str, Any]) -> None:
     try:
-        jsonschema.validate(raw, _MANIFEST_SCHEMA)
+        _manifest_validator().validate(raw)
     except jsonschema.ValidationError as exc:
-        raise SteamZeroError("E-THEME-MANIFEST", detail=str(exc)) from exc
+        raise SteamZeroError("E-THEME-MANIFEST", detail=_validation_detail(exc)) from exc
     api = raw.get("compatibility", {}).get("themeApi", 0)
     if api != THEME_API_VERSION:
         raise SteamZeroError(

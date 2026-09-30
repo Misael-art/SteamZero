@@ -1,0 +1,23 @@
+/status 5x: p50 6432 ms | p95 11409 ms | max 11409 ms | corpo p50 3131 KiB
+estado intacto: sim (arquivos 12818, bytes 1372739007)
+  emulation                 5106.6 ms/consulta
+  resources                  690.4 ms/consulta
+  themeState                 413.3 ms/consulta
+  componentRow               238.6 ms/consulta
+  domainStatus               231.6 ms/consulta
+  doctor                     194.4 ms/consulta
+  steamGameplay              115.5 ms/consulta
+  inputMethod                 94.6 ms/consulta
+  probeReducedMotion          32.5 ms/consulta
+  probeHighContrast           25.6 ms/consulta
+  steamRows                   17.8 ms/consulta
+  diagnostics                 17.3 ms/consulta
+  probeVisualScale            12.9 ms/consulta
+  registryFactory             12.1 ms/consulta
+  libraryHealth                8.7 ms/consulta
+  playtime                     7.0 ms/consulta
+  collections                  3.8 ms/consulta
+  uiContracts                  0.5 ms/consulta
+  castOrchestrator             0.2 ms/consulta
+  -- nao atribuido            38.4 ms/consulta
+evidência: docs/09-operations/evidence/2026-09-26-rc01-central-loading/status-probe-final.json

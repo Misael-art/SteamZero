@@ -1,0 +1,125 @@
+# RC-01 — checkpoint integral da fatia (2026-09-27, passo 5 da revisão do operador)
+
+Uma execução integral, uma árvore, um intervalo. Nada de arquivos do lote foi tocado
+durante a corrida; os logs desta pasta escritos depois dela estão nomeados e têm mtime
+posterior, e é exatamente o que a §6 discrimina.
+
+## 1. O que rodou
+
+```
+$ ps -eo pid,args | grep -E '[r]un_tests_isolated|[p]ytest|[q]ml6'   # pré-lançamento
+$ SECONDS=0; .venv/bin/python tools/run_tests_isolated.py tests -q   # suíte integral
+```
+
+* saída bruta, verbatim: `15-checkpoint-integral-bruto.log` (md5
+  `1f24cd7d3146754b27a42b83490f8108`);
+* árvore: `codex/rc01-central-loading-2026-09-26 @ d215e320f7f2363ae0e73ee31eb8138b487b8534`
+  + alterações de trabalho; a impressão `git status --porcelain | sort | md5sum` no
+  instante do lançamento foi `47a6a2aa5902d5a02a9d8e8b28548b26`. O script do checkpoint
+  não reimprimiu a impressão no fim (falha minha de roteiro, registrada em §5), então a
+  identidade do que foi testado é provada por mtimes: rodado agora,
+  `find . -type f -newermt "2026-09-27 00:49:24" ! -newermt "2026-09-27 01:19:45"`,
+  descontando `.git`, `.venv`, `__pycache__`, caches e `.pytest_cache`, **não devolve
+  arquivo nenhum** — nada dentro do checkout foi escrito durante a corrida;
+* janela: 00:49:24 → 01:19:44 -0300, 1820 s de parede (o pytest anuncia 1815,74 s);
+* log bruto gravado **fora** do checkout (`~/evidence-logs/2026-09-27-rc01/`) e copiado
+  para cá depois de fechado, para que nenhum byte escrito durante a corrida pertencesse
+  a um escopo de item — foi assim que a corrida anterior, em 2026-09-26, produziu o
+  problema narrado em `08-duas-suites-concorrentes.log`.
+
+## 2. Resultado
+
+```
+1 failed, 6397 passed, 47 skipped in 1815.74s (0:30:15)      rc=1
+real-state before: exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790477787953832614
+real-state after:  exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790477787953832614
+```
+
+O `run_tests_isolated.py` saiu sem mutação: os dois fingerprints do state home real do
+operador são idênticos byte a byte, inclusive o `max_mtime_ns`. As 47 linhas de skip são
+as mesmas de 2026-09-26 (conformance de Flatpak/cores que não lançam sozinhos, e três
+linhas que apontam para `/mnt/sdcard/Projects/Port_Steam` — caminho de um checkout
+irmão, carregado por `.pyc` antigos; mantido no log verbatim porque removê-lo tiraria a
+prova de que é ruído de ambiente, não acervo nem segredo).
+
+## 3. A falha é minha, reproduzida, e não virou flake
+
+`tests/unit/test_project_status.py::test_committed_catalog_and_generated_views_are_consistent`
+reprovou com `check_catalog()` listando **seis** digests obsoletos. Causa, na ordem em
+que eu executei as coisas:
+
+1. renovei os `scopeDigest` dos 12 itens envelhecidos pela frente e renderizei as visões
+   → `STATUS-CHECK: OK`;
+2. **depois** disso, os gates rápidos acharam duas violações de lint no meu código novo e
+   `ruff format` reescreveu `tests/integration/test_qml_handheld_offscreen.py` — arquivo
+   que está no escopo justamente desses seis itens
+   (`SZ-AURA-CINEMA-COMPLETION`, `SZ-AURA-SAVE-STATE-GALLERY`, `SZ-AURA-SESSION-OSD`,
+   `SZ-AURA-UI`, `SZ-LIBRARY-CANONICAL`, `SZ-UI-DESKTOP-AUDIT`), que ficaram obsoletos de
+   novo;
+3. a suíte integral rodou nessa árvore e o teste de consistência do catálogo fez o que
+   deve fazer: reprovar.
+
+A atribuição foi conferida, não presumida: `check_catalog` reprova hoje exatamente os
+mesmos seis IDs, todos com o mesmo arquivo em escopo. Regenerados os digests e as visões,
+a validação aplicável foi reexecutada e passou — `69 passed em 61,20 s` para
+`tests/unit/test_project_status.py` + o arquivo QML offscreen inteiro, com `STATUS-CHECK:
+OK` (`17-gates-rapidos-bruto.log`, §"2ª passada"). É o caminho que `AGENTS.md` §6 abre
+para "só visão/digest gerado ficou obsoleto"; não foi aplicado a nenhuma outra falha,
+porque não havia outra.
+
+## 4. Gates rápidos, com a primeira passada incluída
+
+`17-gates-rapidos-bruto.log` guarda as duas passadas. A 1ª reprova (`rc=1`) em
+`ruff check` (dois `RUF100`: `# noqa: N802` que não são necessários neste config) no
+código que **este lote** escreveu, e em `ruff format --check` no mesmo arquivo; mypy
+(297 arquivos), `make independence boundaries` e `make status-check` já estavam verdes.
+A correção foi conferida por `git diff -U0`: os `do_GET`/`do_POST` tocados são só os do
+meu handler novo (todas as linhas do diff são `+`), nenhum invólucro pré-existente. Na 2ª
+passada, os cinco gates passam.
+
+## 5. A tentativa que não chegou a rodar
+
+`16-tentativa-1-pre-flight.log` (md5 `c05cffe02fba3ce796035908fbcb6081`) é o lançamento
+anterior, que falhou em 0 s: `/usr/bin/time` não existe neste host (`rc=127`) e a linha
+de pré-lançamento não provava nada. Dois defeitos registrados:
+
+* o envoltório usou `/usr/bin/time -v` (GNU time não instalado aqui — Manjaro traz só o
+  *keyword* do bash); troquei por `SECONDS` + os timestamps do próprio log;
+* o `pgrep -af 'pytest|run_tests_isolated|qml6'` casou **o próprio comando** que o
+  continha, e o `ps … | grep '[p]ytest'` idem, porque a linha de comando do invólucro
+  contém o texto do padrão. Por isso a linha 5 de `15-…bruto.log` mostra o wrapper, não
+  um concorrente — e essa linha, sozinha, não prova isolamento nenhum. O que prova é o
+  que é verificável aqui: nenhuma escrita no checkout durante a janela (§1), o
+  fingerprint idêntico do state home real do operador (§2), e a suíte ter sido lançada
+  uma vez, por um único roteiro, com `rc` registrado. Uma checagem manual de `ps` feita
+  ~2 min antes do lançamento não estava gravada em log e por isso **não** é contada como
+  prova aqui; fica como limite declarado;
+* o roteiro final esqueceu de reimprimir a identidade da árvore no fim da corrida, o que
+  me fez provar a identidade por mtimes em §1 em vez de por duas impressões. Fica como
+  correção a fazer no próximo checkpoint.
+
+## 6. O que a corrida integral cobre, e o que ela não cobre
+
+Cobriu a árvore funcional final: `Main.qml` com a coerção de refresh, os três harnesses
+QML (`check_status_refresh_coalesced.qml`, `check_central_loading.qml` reestruturado,
+`check_warning_surface_contrast.qml`) e o gate de integração com a ponte de três cenas —
+todos verdes dentro dos 6397.
+
+Não cobriu o que foi escrito **depois** dela: os logs 15/16/17/18 desta pasta, os seis
+`scopeDigest` regenerados e as três visões geradas (`docs/STATUS.md`,
+`docs/ACTIVE-WORK.md`, `docs/status/COVERAGE.md`). São exatamente os arquivos cuja
+impressão de árvore passa de `47a6a2aa5902d5a02a9d8e8b28548b26` (lançamento) para
+`22c0b5a98f64e56a65458112c35288de` (01:22, tirada fora do log). A validação que os
+cobre é a reexecutada em §3.
+
+## 7. Limites
+
+* nada aqui é prova de release instalada nem de gesto físico: `2.0.0rc1-e2af2562ebba`
+  continua sendo o que está no host, e as mudanças deste lote não foram empacotadas;
+* os tempos desta suíte (1815,74 s) não são comparáveis aos de 2026-09-26 (2118,42 s):
+  cargas de host diferentes, e o host rodou outra suíte minutos antes;
+* `test_project_status` é a única falha do checkpoint e ela é de consistência de
+  catálogo, não de comportamento; a correção foi regeneração pela ferramenta, então
+  nenhum teste foi enfraquecido, alterado ou pulado para chegar aqui;
+* as cinco amostras de latência continuam exploratórias (`README.md`, §"Latência") e a
+  cauda de ~11,4 s continua em aberto — nada neste checkpoint a promoveu.

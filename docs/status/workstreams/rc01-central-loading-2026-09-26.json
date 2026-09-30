@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-RC01-CENTRAL-LOADING",
+  "item": "SZ-UI-DESKTOP-AUDIT",
+  "branch": "codex/rc01-central-loading-2026-09-26",
+  "baseRef": "069501ab",
+  "owner": "qoder-continuation",
+  "state": "active",
+  "exclusivePaths": [
+    "docs/09-operations/evidence/2026-09-26-rc01-central-loading",
+    "docs/status/items/ui-desktop-audit.json",
+    "docs/status/workstreams/rc01-central-loading-2026-09-26.json",
+    "tools/central_status_probe.py",
+    "tests/unit/test_central_status_probe.py",
+    "tests/qml/check_status_refresh_coalesced.qml",
+    "tests/qml/check_central_loading.qml",
+    "tests/qml/check_warning_surface_contrast.qml",
+    "tests/unit/test_ui_attention_surface_contrast.py"
+  ],
+  "sharedPaths": [
+    "src/steamzero/ui/qml/Main.qml",
+    "src/steamzero/ui/qml/EditorialHome.qml",
+    "src/steamzero/adapters/theme_catalog.py",
+    "tests/integration/test_qml_handheld_offscreen.py",
+    "tests/unit/test_themes.py",
+    "src/steamzero/adapters/desktop_dashboard.py",
+    "src/steamzero/adapters/desktop_ui.py",
+    "tests/unit/test_desktop_dashboard.py",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "2026-09-27: checkpoint integral rodado (uma execucao; 1 falha de consistencia de catalogo atribuida, regenerada e revalidada; 6397 passed, estado real do operador intocado) e gates rapidos verdes na 2a passada. Falta: commits funcional e documental, push, atualizacao do PR 240 (OPEN em d215e320, sem a correção da renovação coerada), CI terminal no SHA final e merge do operador. O workstream segue 'active' e so fecha como 'integrated' com o SHA em main; os eixos do item SZ-UI-DESKTOP-AUDIT nao promovem sem prova de host fisico e release instalada.",
+  "updatedAt": "2026-09-27"
+}

@@ -1,0 +1,231 @@
+{
+  "attribution": {
+    "attributedMsPerQuery": 7223.4,
+    "unattributedMsPerQuery": 38.4
+  },
+  "blocks": {
+    "castOrchestrator": {
+      "calls": 5,
+      "maxPerCallMs": 1.0,
+      "medianPerCallMs": 0.0,
+      "perQueryMs": 0.2
+    },
+    "collections": {
+      "calls": 5,
+      "maxPerCallMs": 4.7,
+      "medianPerCallMs": 3.6,
+      "perQueryMs": 3.8
+    },
+    "componentRow": {
+      "calls": 15,
+      "maxPerCallMs": 184.7,
+      "medianPerCallMs": 68.5,
+      "perQueryMs": 238.6
+    },
+    "diagnostics": {
+      "calls": 5,
+      "maxPerCallMs": 24.7,
+      "medianPerCallMs": 15.9,
+      "perQueryMs": 17.3
+    },
+    "doctor": {
+      "calls": 5,
+      "maxPerCallMs": 393.1,
+      "medianPerCallMs": 141.3,
+      "perQueryMs": 194.4
+    },
+    "domainStatus": {
+      "calls": 5,
+      "maxPerCallMs": 367.9,
+      "medianPerCallMs": 203.9,
+      "perQueryMs": 231.6
+    },
+    "emulation": {
+      "calls": 5,
+      "maxPerCallMs": 8630.4,
+      "medianPerCallMs": 4169.7,
+      "perQueryMs": 5106.6
+    },
+    "inputMethod": {
+      "calls": 5,
+      "maxPerCallMs": 114.8,
+      "medianPerCallMs": 90.1,
+      "perQueryMs": 94.6
+    },
+    "libraryHealth": {
+      "calls": 5,
+      "maxPerCallMs": 10.7,
+      "medianPerCallMs": 9.1,
+      "perQueryMs": 8.7
+    },
+    "playtime": {
+      "calls": 5,
+      "maxPerCallMs": 8.8,
+      "medianPerCallMs": 7.4,
+      "perQueryMs": 7.0
+    },
+    "probeHighContrast": {
+      "calls": 10,
+      "maxPerCallMs": 18.5,
+      "medianPerCallMs": 13.3,
+      "perQueryMs": 25.6
+    },
+    "probeReducedMotion": {
+      "calls": 10,
+      "maxPerCallMs": 46.3,
+      "medianPerCallMs": 12.6,
+      "perQueryMs": 32.5
+    },
+    "probeVisualScale": {
+      "calls": 5,
+      "maxPerCallMs": 17.0,
+      "medianPerCallMs": 12.4,
+      "perQueryMs": 12.9
+    },
+    "registryFactory": {
+      "calls": 5,
+      "maxPerCallMs": 60.6,
+      "medianPerCallMs": 0.0,
+      "perQueryMs": 12.1
+    },
+    "resources": {
+      "calls": 5,
+      "maxPerCallMs": 752.0,
+      "medianPerCallMs": 728.6,
+      "perQueryMs": 690.4
+    },
+    "steamGameplay": {
+      "calls": 5,
+      "maxPerCallMs": 147.3,
+      "medianPerCallMs": 116.0,
+      "perQueryMs": 115.5
+    },
+    "steamRows": {
+      "calls": 5,
+      "maxPerCallMs": 20.5,
+      "medianPerCallMs": 18.1,
+      "perQueryMs": 17.8
+    },
+    "themeState": {
+      "calls": 5,
+      "maxPerCallMs": 487.9,
+      "medianPerCallMs": 405.3,
+      "perQueryMs": 413.3
+    },
+    "uiContracts": {
+      "calls": 5,
+      "maxPerCallMs": 0.5,
+      "medianPerCallMs": 0.5,
+      "perQueryMs": 0.5
+    }
+  },
+  "generatedAt": "2026-09-26T23:30:13+00:00",
+  "kind": "central-status-probe",
+  "method": {
+    "bridge": "bridge do produto sobre o estado real do host, somente GET",
+    "endpoint": "/status",
+    "qmlBackend": null,
+    "repeats": 5
+  },
+  "payloadKeyBytes": {
+    "appliedProfile": 18,
+    "conflictActions": 2,
+    "context": 436,
+    "current": 580,
+    "dashboard": 3204162,
+    "dashboard.accessibility": 62,
+    "dashboard.cast": 69,
+    "dashboard.collections": 299,
+    "dashboard.components": 1322,
+    "dashboard.diagnostics": 13981,
+    "dashboard.doctor": 5978,
+    "dashboard.emulation": 2882222,
+    "dashboard.inputMethod": 302,
+    "dashboard.libraryHealth": 688,
+    "dashboard.playtime": 9258,
+    "dashboard.resources": 104139,
+    "dashboard.steam": 1932,
+    "dashboard.steamGameplay": 8924,
+    "dashboard.sync": 421,
+    "dashboard.theme": 5133,
+    "dashboard.touchMode": 4,
+    "dashboard.uiContracts": 169207,
+    "desiredProfile": 18,
+    "effectiveProfile": 4,
+    "independentRuntime": 4,
+    "manualOverride": 4,
+    "observation": 180,
+    "observedProfile": 4,
+    "recommendedProfile": 18,
+    "recoveryRequired": 5,
+    "statusReasons": 148,
+    "truthState": 7
+  },
+  "repository": {
+    "branch": "codex/rc01-central-loading-2026-09-26",
+    "clean": false,
+    "commit": "64932141a27678c616a3f7b786e54661388cbfb1",
+    "describe": "v2.0.0rc1-423-g64932141-dirty"
+  },
+  "role": "final",
+  "schemaVersion": 1,
+  "stateSurvey": {
+    "after": {
+      "config": {
+        "bytes": 32875,
+        "dirs": 7,
+        "files": 13,
+        "maxMtimeNs": 1790078793257653403,
+        "present": 1
+      },
+      "data": {
+        "bytes": 2057367930,
+        "dirs": 580,
+        "files": 6603,
+        "maxMtimeNs": 1790429797270875658,
+        "present": 1
+      },
+      "state": {
+        "bytes": 1372739007,
+        "dirs": 2068,
+        "files": 12818,
+        "maxMtimeNs": 1790465375004654440,
+        "present": 1
+      }
+    },
+    "before": {
+      "config": {
+        "bytes": 32875,
+        "dirs": 7,
+        "files": 13,
+        "maxMtimeNs": 1790078793257653403,
+        "present": 1
+      },
+      "data": {
+        "bytes": 2057367930,
+        "dirs": 580,
+        "files": 6603,
+        "maxMtimeNs": 1790429797270875658,
+        "present": 1
+      },
+      "state": {
+        "bytes": 1372739007,
+        "dirs": 2068,
+        "files": 12818,
+        "maxMtimeNs": 1790465375004654440,
+        "present": 1
+      }
+    },
+    "unchanged": true
+  },
+  "status": {
+    "maxMs": 11409.1,
+    "meanMs": 7261.8,
+    "minMs": 5544.8,
+    "p50Ms": 6432.5,
+    "p95Ms": 11409.1,
+    "payloadBytesMax": 3206147,
+    "payloadBytesP50": 3205848,
+    "samples": 5
+  }
+}

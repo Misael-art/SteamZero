@@ -26,7 +26,7 @@
     "docs/09-operations/evidence/2026-09-20-aura-session-osd-installed",
     "tests/qml/launcher/check_launcher_save_state_gallery.qml"
   ],
-    "scopeDigest": "5390832196d975e00f6ce4cefbce72c640dbb20f67ecbbda79e9a20af65de3ee",
+  "scopeDigest": "a168125a601d7d7edc38918c30d791a826d20ec2cea3e6c1c85a54a76b9715c0",
   "dependsOn": [
     "SZ-AURA-SESSION-OSD",
     "SZ-AURA-LAUNCHER"
@@ -93,12 +93,24 @@
       "reference": "docs/09-operations/evidence/2026-09-20-aura-session-osd-installed/03-save-gallery-empty-fallback.png",
       "command": "release 2.0.0rc1-3acc2104dd5a; galeria aberta sobre jogo real pelo Launcher, com fallback legível para sessão sem save-state",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/README.md",
+      "command": "2026-09-26 renovacao de escopo pela frente WS-2026-09-RC01-CENTRAL-LOADING: tests/integration/test_qml_handheld_offscreen.py recebeu as portas da cena de fases da Central (ponte local servindo tres GET /status: um atrasado, um com E-STATUS-SCENE, um de recuperacao) e dois quadros capturaveis marcados 'visual'. Nenhuma evidencia deste item foi reatestada: o que existe e o arquivo compartilhado do harness verde com o Main.qml modificado (gate '-k central_loading' 3 passed em 11,98 s; lote focado da frente 207 passed em 64,53 s). Os criterios proprios seguem com as provas anteriores.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/09-refresh-coercido.log",
+      "command": "2026-09-27 renovacao de escopo pela frente WS-2026-09-RC01-CENTRAL-LOADING (fatia UX-01/UX-02 de RC-01). Arquivos deste escopo alterados: tests/integration/test_qml_handheld_offscreen.py: o gate offscreen compartilhado ganhou a ponte de tres cenas do refresh coerado (leituras com atraso controlado, POST /emulation/library/scan e a sequencia bruta de chamadas como prova). Nada aqui e arquivo deste item alterado por comportamento deste item; e o invólucro de teste comum. O digest foi regenerado pela ferramenta porque o escopo mudou; as capacidades deste item NAO foram reatestadas, nenhuma evidencia deste item foi carimbada, e nenhum eixo dele mudou de estado neste lote.",
+      "result": "recorded"
     }
   ],
   "nextAction": "Preservar save/load como capacidade instalada; fechar a troca de disco somente com um jogo multi-disc real e adapter comprovado.",
   "activeWorkstreams": [
     "WS-2026-09-AURA-SAVE-STATE-GALLERY"
   ],
-  "updatedAt": "2026-09-20",
+  "updatedAt": "2026-09-26",
   "notes": "O adapter RetroArch alinha o cursor ao state_slot persistido pelo conteúdo e à hierarquia states/<core>/<content>. A galeria, save/load e pausa foram exercitados em jogo real nas releases d70 e b396; a release 3acc adiciona captura pelo Launcher instalado com fallback vazio legível. A ausência de thumbnail permanece fallback explícito, não erro."
 }

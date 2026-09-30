@@ -1,0 +1,41 @@
+# UX-02 — medição DEPOIS, árvore da entrega (fases de carregamento + tinta calculada).
+# Gate: pytest tests/integration/test_qml_handheld_offscreen.py -k central_loading -q
+#   → 3 passed em 11,98 s (a cena de fases + os dois quadros capturáveis).
+#   * test_central_loading_phases_are_observable_offscreen — loading → ready → stale → ready,
+#     com a ponte servindo 3 GET /status (1 atrasado, 1 com E-STATUS-SCENE, 1 de recuperação).
+#   * test_central_loading_frames_are_capturable[loading|stale] — o quadro da fase aferida é
+#     gravado, abre como PNG 1280x800 e tem centenas de cores (não é superfície vazia).
+# Comando de captura (mesmo argv do teste, saída abaixo):
+#   qml6 tests/qml/check_central_loading.qml -- --steamzero-api http://127.0.0.1:<porta> \
+#     --steamzero-token cena-rc01 --capture-phase=<loading|stale> --capture-output=<arquivo>
+#
+# --- quadro-carregando.png (md5 af6caba22c18d3486fb8bd61bbb0a210) ---
+qml: HARNESS-CAPTURED <tmp>/central-loading.png
+qml: check_central_loading: 43 contratos verificados
+# ponte serviu 3 GET /status; png 1280x800 mode=RGB cores=2043
+# O que a imagem mostra (lido no frame, não inferido):
+#   faixa: "Consultando a central local / Os cartões abaixo ainda são valores de referência,
+#     não medições." com BusyIndicator;
+#   herói: "Consultando as fontes gerenciadas / A primeira leitura da central ainda não foi
+#     concluída";
+#   Favoritos e Coleções: "A central ainda não publicou os favoritos/coleções desta sessão.";
+#   Pendências: rótulo "Consultando" + "nada foi atestado, nem a ausência de pendências.";
+#   Recentes: "As sessões gerenciadas aparecerão aqui quando existirem."
+# Nenhuma linha afirma "Não instalado" nem "Nenhum jogo publicado ainda" antes da medição.
+#
+# --- quadro-nao-renovado.png (md5 a0b7ee716f9ade76665aa40d98026309) ---
+qml: HARNESS-CAPTURED <tmp>/central-stale.png
+qml: check_central_loading: 42 contratos verificados
+# ponte serviu 3 GET /status; png 1280x800 mode=RGB cores=3153
+# O que a imagem mostra:
+#   faixa: "Última leitura preservada; a renovação falhou / A central não pôde reler o host
+#     nesta tentativa." + botão "Tentar novamente" legível;
+#   banner de atenção do perfil e o cartão de falha E-STATUS-SCENE com impacto e orientação;
+#   o conteúdo medido (herói, Favoritos, Coleções) permanece na tela — não voltou a pending.
+# O rótulo do botão de retry foi medido em 1,06:1 antes da correção (`palette.buttonText`
+#   herdava o texto escuro do tema claro sobre a faixa escura) e a asserção que o trava está
+#   em check_central_loading.qml, fase stale — reprovada ao remover a linha, aprovada com ela.
+# Ressalva registrada: nesta cena a faixa, o banner e o cartão de falha empilham três
+#   superfícies escuras e empurram "Pendências"/"Recentes" para baixo da dobra em 800 px.
+#   É o cenário máximo de atenção simultânea, não o caminho comum; fica como pendência de
+#   revisão de experiência, sem mudança de comportamento nesta batch.

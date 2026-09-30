@@ -19,7 +19,7 @@
     "tests/unit/test_ps3_firmware.py",
     "tests/unit/test_emulation_controller.py"
   ],
-  "scopeDigest": "c8921546a3ace54f317fbcbc5238808f44ba7dc4eba25191504372e1ef9ea174",
+  "scopeDigest": "5d6f0864f6ec087e1dc48b2aa5c932c7663e31d77d741c068f497e0001551524",
   "dependsOn": [
     "SZ-PLATFORM-REQUIREMENT-SCOPE",
     "SZ-EMULATION-REAL-DUMP-VALIDATION"
@@ -49,12 +49,24 @@
       "reference": "src/steamzero/domain/ps3_firmware.py",
       "command": "Fonte oficial consultada; versão recomendada 4.93 e nome PS3/UPDATE/PS3UPDAT.PUP conferidos; a página não publica SHA-256.",
       "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/README.md",
+      "command": "2026-09-26 renovacao de escopo pela frente WS-2026-09-RC01-CENTRAL-LOADING: src/steamzero/ui/qml/Main.qml mudou por trabalho de outro item (RC-01, SZ-UI-DESKTOP-AUDIT): propriedades de fase do bootstrap (statusPhase, statusInFlight, statusStale), a faixa de fase inline com oferta de retry, cartoes em 'pending' em vez de afirmar ausencia nao medida, e tinta dos avisos escolhida por contraste. A mudanca e aditiva no shell e nao toca as rotas nem as cenas deste item, mas o arquivo esta no escopo declarado, entao o digest envelheceria em silencio sem registro. Nenhuma evidencia deste item foi reexecutada nem reatestada.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/09-refresh-coercido.log",
+      "command": "2026-09-27 renovacao de escopo pela frente WS-2026-09-RC01-CENTRAL-LOADING (fatia UX-01/UX-02 de RC-01). Arquivos deste escopo alterados: src/steamzero/ui/qml/Main.qml: Main.qml ganhou a coercao de renovacao de status (statusRefreshQueued + drainStatusRefresh nos dois callbacks da leitura): uma renovacao pedida durante uma leitura em andamento deixa de ser descartada. E mudanca visivel no shell, nao neste item; nenhum contrato deste item foi reexecutado. O digest foi regenerado pela ferramenta porque o escopo mudou; as capacidades deste item NAO foram reatestadas, nenhuma evidencia deste item foi carimbada, e nenhum eixo dele mudou de estado neste lote.",
+      "result": "recorded"
     }
   ],
   "nextAction": "Publicar a branch, instalar uma release governada e executar a prova física do assistente com download oficial, erro controlado, cancelamento/rollback e lançamento posterior do RPCS3.",
   "activeWorkstreams": [
     "WS-2026-09-PS3-OFFICIAL-FIRMWARE-DOWNLOAD"
   ],
-  "updatedAt": "2026-09-20",
+  "updatedAt": "2026-09-26",
   "notes": "O fluxo de importação local continua disponível para firmware fornecido pelo usuário. A automação é deliberadamente limitada ao artefato oficial da Sony e não altera um console PS3 físico."
 }

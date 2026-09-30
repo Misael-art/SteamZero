@@ -1,0 +1,23 @@
+/status 5x: p50 8944 ms | p95 11709 ms | max 11709 ms | corpo p50 3131 KiB
+estado intacto: sim (arquivos 12818, bytes 1372737639)
+  themeState                4100.2 ms/consulta
+  emulation                 3867.1 ms/consulta
+  resources                  548.3 ms/consulta
+  componentRow               206.4 ms/consulta
+  domainStatus               174.7 ms/consulta
+  doctor                     155.6 ms/consulta
+  steamGameplay              101.8 ms/consulta
+  inputMethod                 75.6 ms/consulta
+  probeHighContrast           18.7 ms/consulta
+  probeReducedMotion          18.2 ms/consulta
+  steamRows                   15.8 ms/consulta
+  diagnostics                 12.3 ms/consulta
+  probeVisualScale             9.0 ms/consulta
+  registryFactory              8.7 ms/consulta
+  libraryHealth                7.1 ms/consulta
+  playtime                     5.7 ms/consulta
+  collections                  2.9 ms/consulta
+  castOrchestrator             0.5 ms/consulta
+  uiContracts                  0.4 ms/consulta
+  -- nao atribuido          -385.2 ms/consulta
+evidência: docs/09-operations/evidence/2026-09-26-rc01-central-loading/status-probe-baseline.json

@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-    "scopeDigest": "136289eb28e4c752e9c289a64d0fbf595577d453faea598bc5aed3652f2910c9",
+  "scopeDigest": "b5d0db609363634b605d9a5449125968ff9662169b1788690fc42f456b3e07ea",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -420,10 +420,22 @@
       "reference": "docs/09-operations/RELEASE-LEDGER.md",
       "command": "2026-09-22: release governada 2.0.0rc1-504d10b14485 instalada do commit 504d10b144851b70eab99d1fad7110ae34e88f84; CI run 35712683583 verde; wheel SHA256 d55ea7a2ae97accc2aaf8a98abbbcf67468f648ae486dd9712054489d3fe2476; rollback 2.0.0rc1-13c933c30ace; convergencia inicial 1 restart e convergencia idempotente 0 restart; sourceTreeState clean; hashes de retrofe_text_slice.py, scene_serialization.py, cast_engine.py e screencast_web.py coincidem entre src/ e /opt/steamzero/current; doctor ok=true degraded somente por deck.input.keys=false e bootDirect=unknown, sem blockers/pending/stale/orphan",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/README.md",
+      "command": "2026-09-26 renovacao de escopo pela frente WS-2026-09-RC01-CENTRAL-LOADING: src/steamzero/adapters/theme_catalog.py mudou por trabalho da RC-01 (SZ-UI-DESKTOP-AUDIT), e aqui a mudanca e de comportamento visivel: o validador do manifesto passou a ser compilado uma vez por processo (jsonschema.validate rechecava o schema empacotado a cada manifesto: 305 ms medidos na ponte) e o detalhe de E-THEME-MANIFEST deixou de despejar schema e instancia, passando a 'json_path: mensagem' limitado a 400 caracteres. A validacao da instancia nao mudou, e isso esta preso em tests/unit/test_themes.py (a primeira falha literal dos quatro pacotes ES-DE malformados do host, mais a identidade do cache). O arquivo esta no escopo deste item, entao o digest foi renovado; as evidencias propriamente dizem, e nao foram reexecutadas: nada do Theme Engine foi provado no host fis ou na release instalada neste lote.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/09-refresh-coercido.log",
+      "command": "2026-09-27 renovacao de escopo pela frente WS-2026-09-RC01-CENTRAL-LOADING (fatia UX-01/UX-02 de RC-01). Arquivos deste escopo alterados: src/steamzero/ui/qml/Main.qml: Main.qml ganhou a coercao de renovacao de status (statusRefreshQueued + drainStatusRefresh nos dois callbacks da leitura): uma renovacao pedida durante uma leitura em andamento deixa de ser descartada. E mudanca visivel no shell, nao neste item; nenhum contrato deste item foi reexecutado. O digest foi regenerado pela ferramenta porque o escopo mudou; as capacidades deste item NAO foram reatestadas, nenhuma evidencia deste item foi carimbada, e nenhum eixo dele mudou de estado neste lote.",
+      "result": "recorded"
     }
   ],
   "nextAction": "Reconciliar a cena ativa com o catálogo: o tema AURA ES-DE Physical resolve tokens fixos, efeitos e mediaRecipes, mas dynamicPalette/glass/sceneMotion/sceneSurfaces/sceneContainers permanecem nulos no tema ativo. Repetir bridge→catálogo→render na release atual e separar fixture asset-recipes de capacidade promovida.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-22",
+  "updatedAt": "2026-09-26",
   "notes": "Estado permanece parcial, com tres capacidades agora provadas fisicamente na release instalada. GAP-THEME-ASSET-INVERT-HUE e GAP-THEME-FALLBACK-SIGNAL fechados: invert e hue rotate sao aplicados pelo node builtin AssetColorTransform, com variantes pixel-distintas e alpha preservado. DEBT-HOST-INSTALL-DAEMON-RESTART FECHADO: a release 0.1.0a46-862fe3aa6837 convergiu sozinha (restarted=true) na primeira instalacao em que ativacao e convergencia rodaram ambas com o codigo corrigido. O defeito levou tres diagnosticos: nao era falta de restart nem o smoke em si, e sim _verify_release rodando 'doctor --json' com check=True, enquanto o doctor real sai com EXIT_FAILURE em status=failed; os testes escondiam isso porque o fake saia com codigo 0. GAP-THEME-PERF-BUDGET-UNMEASURED fechado. Eu havia afirmado que VRAM nao era mensuravel; isso valia para uma API portatil e por processo, mas nao para este host: o amdgpu expoe drm-memory-vram no fdinfo do processo. A sonda passou a medir, agrupando por drm-client-id porque o driver repete o mesmo cliente em varios fds. Na release instalada: p95 13,882 ms, startup 147 ms, 46,6 MB de VRAM — dentro dos tres limites. O criterio foi reescrito para excluir FPS apresentado, que exige instrumentacao do compositor inexistente na plataforma; o ritmo do render loop nao serve de substituto. Reconciliacao 2026-08-24: o porte v2 alterou MediaEffectLayer.qml e ReflectionLayer.qml (degradacao segura de efeitos no Qt 6.4) e tests/unit/test_theme_effects.py dentro deste escopo. As provas automatizadas foram re-executadas e estao verdes, mas as medicoes de desempenho no host (p95, startup, RSS, VRAM) sao ANTERIORES a essa mudanca de QML e precisam ser refeitas na proxima release instalada antes de sustentar o eixo hw.LOD de capas: MediaEffectLayer passou a aceitar um teto de decode declarado (CoverLod) e a decodificar fora da thread de render. A textura intermediaria e a mascara gradiente agora acompanham o renderer avancado em vez de custar por capa sem consumidor; sem esse gate a mascara ainda ficava visivel sobre a midia quando QtQuick.Effects estava ausente. Nao ha medicao de FPS ou memoria neste ciclo: o ganho declarado e a remocao de trabalho sem consumidor, nao um numero de desempenho. O teto de decode passou a ser required no MediaEffectLayer: um padrao permitiria que uma superficie nova voltasse ao decode integral em silencio. Medido que o teto so reduz (arte 320x180 com teto 4096 mantem implicitWidth 320), entao exigi-lo nao infla capas pequenas em tela grande."
 }

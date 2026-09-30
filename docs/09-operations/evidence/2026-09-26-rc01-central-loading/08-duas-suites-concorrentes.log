@@ -1,0 +1,124 @@
+# RC-01 — Reconciliação das duas suítes integrais concorrentes no mesmo checkout
+# Registrado em 2026-09-27, ~00:05 -0300, por qoder-continuation, a pedido do operador
+# ("Reconcilie as duas execuções integrais encontradas no mesmo checkout").
+# Este arquivo é evidência de processo, não de resultado funcional.
+
+## 1. As duas corridas (proveniência)
+
+Ambas as corridas foram lançadas por MIM, na mesma sessão (id de sessão
+05ca6781-bbcb-4078-bb06-ec0f56daf3ec), como tarefas de segundo plano do mesmo tipo.
+Horários convertidos para -0300 (a transcrição grava em UTC).
+
+| | Corrida A | Corrida B |
+|---|---|---|
+| id da tarefa | `b0skgdk8p` | `b5q2i47bm` |
+| comando exato | `rtk bash -c 'timeout 5400 .venv/bin/python tools/run_tests_isolated.py tests -q > /tmp/rc01-full-suite.log 2>&1; echo "rc=$?" >> /tmp/rc01-full-suite.log'; rtk tail -4 /tmp/rc01-full-suite.log` | `cd ".../Canonical/2026-09-21" && nohup .venv/bin/python tools/run_tests_isolated.py tests -q > /tmp/rc01_suite_integral.log 2>&1; echo "RC=$?" \| tee -a /tmp/rc01_suite_integral.log` |
+| lançamento | 2026-09-26 21:40:37 | 2026-09-26 21:57:52 |
+| término | 2026-09-26 22:15:45 (notificação de conclusão 22:15:53) | 2026-09-26 22:33:10 |
+| duração reportada | 2108,36 s (35 min 08 s) | 2118,42 s (35 min 18 s) |
+| resultado | `6395 passed, 47 skipped`, rc=0 | `6395 passed, 47 skipped`, RC=0 |
+| log bruto | `/tmp/rc01-full-suite.log` (10 325 bytes, mtime 22:15) | `/tmp/rc01_suite_integral.log` |
+| fotografia do estado real | antes/depois idênticas: files=12816 dirs=2068 bytes=1372712391 max_mtime_ns=1790468657040383066 source=HOME-default | idêntica, byte a byte |
+
+HEAD no lançamento de ambas: `64932141` (o registro do workstream RC-01). Os dois
+commits do lote — `6df5afde` (funcional) e `d215e320` (documental) — só foram criados
+às 22:38:20 e 22:39:02, depois de qualquer das duas corridas.
+
+## 2. Concorrência: janela, direção e o que ela fez com o veredito
+
+* Sobreposição: **21:57:52 → 22:15:45 = 17 min 53 s** com duas suítes integrais no
+  mesmo checkout, compartilhando `tests/`, `.pytest_cache/` e os `__pycache__` dos
+  módulos importados.
+* Nenhuma das duas foi interrompida por mim: nenhuma tinha processo vivo quando este
+  registro foi feito (`ps -eo pid,lstart,etime,args | grep -E 'run_tests_isolated|pytest'`
+  vazio às 00:05 do dia 27). Nenhuma suíte terceira foi iniciada depois da revisão do
+  operador, e nenhum arquivo do checkout foi alterado entre a revisão e este registro.
+* As duas convergiram para o mesmo total (6395/47) e o mesmo rc=0. Isso é um ponto a
+  favor da estabilidade do resultado, não uma prova: a concordância pode vir do fato
+  de as duas terem visto o mesmo código.
+* Direção da interferência: **CPU/IO sob contenção**, não corrupção de estado. O runner
+  (`tools/run_tests_isolated.py`) abre cinco homes XDG isolados por processo e fotografa
+  o state home real do operador antes e depois; as duas fotografias saíram idênticas,
+  então nenhuma das duas mutou o estado real — inclusive a segunda, que rodou 18 min
+  em paralelo com a primeira.
+* Custo real da concorrência: **medição de tempo**. Os ~35 min de cada corrida são
+  sob contenção; as duas também competiram com os gates focais da frente. Portanto
+  nenhuma duração de teste obtida nessa janela é comparável com uma corrida isolada, e
+  o log 06 (harness de carregamento) foi gerado antes dela, não sob ela.
+
+## 3. Árvore que cada corrida testou (por mtime, não por suposição)
+
+Código da entrega, todo anterior a ambas: `theme_catalog.py` 19:11:27,
+`central_status_probe.py` 20:23:20, `check_warning_surface_contrast.qml` 21:00:45,
+`EditorialHome.qml` 21:33:54, `Main.qml` 21:36:53, `check_central_loading.qml` 21:36:18.
+
+Governança, escrito DURANTE ou DEPOIS das corridas:
+
+* 21:51:28 — `docs/status/workstreams/rc01-central-loading-2026-09-26.json` (durante A, antes de B).
+* 21:57:06 — os 11 itens de terceiros com digest renovado + nota "renovação de escopo,
+  não carimbo" (46 s antes do lançamento de B).
+* 22:37:04 — `docs/status/items/ui-desktop-audit.json` (entrada de evidência deste
+  registro de suíte + reescrita de `nextAction`).
+* 22:37:13 — `docs/WORKLOG.md` (sessão de fechamento, append-only).
+* 22:37:14 — `docs/STATUS.md`, `docs/ACTIVE-WORK.md`, `docs/status/COVERAGE.md`
+  (render regenerado).
+
+Consequência, correta do que o log 07 afirmava: **nenhuma das duas suítes cobriu a
+escrita final de governança.** A A testou código final com governança parcial; a B
+testou código final com governança de trabalho registrada, mas 4 min antes do último
+`scopeDigest` e do último render. O que cobriu o estado final foi `make status-check`
+depois das 22:37, e a checagem agora reproduzida pelo operador — o caminho que a
+AGENTS.md §6 prevê quando só uma visão/digest gerado ficou obsoleto. A suíte integral
+não foi repetida para "cobrir" isso, e este registro não faz essa cobertura parecer
+maior do que é.
+
+## 4. Os dois logs brutos foram perdidos — e por quê
+
+O host reiniciou em **sáb 2026-09-26 23:55 -0300** (`last -x reboot`; uptime de
+9 min às 00:05). `/tmp` é `tmpfs` (`findmnt /tmp` → tmpfs), então os dois logs brutos,
+os scripts de scratch `/tmp/rc01_*.py` e o diretório `/tmp/qmlprobe` deixaram de existir
+junto com o reinício. A ordem do pedido do operador era "preservar os logs"; isso não
+foi feito antes do reboot, e não é recuperável. Registrar a perda é a única ação
+honestamente disponível agora; nada neste lote depende de negar o fato.
+
+O que sobrevive, literalmente, copiado da transcrição da sessão (prova de segunda mão,
+não do disco):
+
+* Corrida A — cabeçalho de progresso e a linha de contagem, lidos às 22:16:
+  12 primeiras linhas `[  1%]`…`[ 13%]`, `6395 passed, 47 skipped in 2108.36s (0:35:08)`
+  na linha 114 do arquivo, `grep "failed|FAILED|ERROR|project_status|scopeDigest"` sem
+  nenhuma ocorrência.
+* Corrida B — cauda, lida às 22:33: as últimas linhas de `SKIPPED`, a contagem
+  `6395 passed, 47 skipped in 2118.42s (0:35:18)`, as duas linhas `real-state before/after`
+  e `RC=0`, mais a checagem de que exatamente 3 linhas de skip apontavam para o caminho
+  inexistente `/mnt/sdcard/Projects/Port_Steam/...` (artefato de `.pyc`, explicado no log 07).
+
+A prova primária remanescente do resultado é, portanto, o log 07 deste lote (resumo
+minha) somado a estes trechos. Um leitor que exija o stdout integral não o encontrará;
+a forma de reobter esse stdout é rodar o gate de novo (`make gates`/a seção 6), o que
+não foi feito aqui por orientação explícita do operador ("não inicie uma terceira
+suíte").
+
+## 5. Causa da duplicação, escrita sem eufemismo
+
+A corrida A foi lançada às 21:40:37. Às 21:43:09 o contexto desta sessão foi compactado,
+e a summarização não registrou a suíte como viva. Às 21:57:52 reli o gate como pendente e
+o lancei de novo. **Não fiz o preflight de processos de teste** — que a missão desta
+entrega exige antes de editar — nem `ps`/`ls` no alvo do redirecionamento antes de
+sobrescrever a janela. Não houve corrida "morta a 5%": A estava viva e progredindo
+(13% visíveis às 21:41–21:56, quando eu a consultei). A falha é minha, é de processo, e
+o remédio é o protocolo, não a explicação: antes de qualquer gate integral, conferir
+processos ativos e o mtime/tamanho do log-alvo.
+
+## 6. Limites desta reconciliação
+
+* Não alego isolamento global do host. O que verifiquei é: nenhum processo de suíte da
+  MINHA autoria ativo agora, e as duas corridas listadas acima. Outros processos de
+  terceiros (índices, antivírus, KDE, jogos) não foram inventariados e podiam estar
+  rodando.
+* Não alego que o verde é imune à concorrência. Alego que ambas as corridas, sob
+  contenção mútua, deram o mesmo total sem falhas, e que o único tipo de evidência que
+  a contenção invalida é o de tempos de execução.
+* Não alego que a suíte validou a árvore final de governança — ver seção 3.
+* As 47 linhas de skip não foram reconfirmadas nesta janela (o stdout se perdeu com o
+  reboot); a análise anterior delas continua registrada no log 07 e não foi refeita.
