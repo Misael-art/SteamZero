@@ -98,9 +98,13 @@
     "docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late",
     "tests/integration/test_ui_shell_home_first_fold.py",
     "tests/qml/check_home_first_fold_attention.qml",
-    "docs/09-operations/evidence/2026-09-29-rc01-home-first-fold"
+    "docs/09-operations/evidence/2026-09-29-rc01-home-first-fold",
+    "tests/integration/test_ui_shell_esde_import_late_response.py",
+    "tests/qml/check_shell_esde_import_late_response.qml",
+    "docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation",
+    "docs/status/workstreams/rc01-esde-import-generation-2026-09-29.json"
   ],
-  "scopeDigest": "e1a97f0a5325c7e2ad989be0033abc1d087657f7add1895e4dcbe36e8703d4eb",
+  "scopeDigest": "007f2eb46cb242b6bb1567061e3133d141653018f25f0ca2bbb27dbd8b3ab27c",
   "dependsOn": [],
   "knownGaps": [
     "GAP-UI-LIVE-LAUNCHER-ROUTING",
@@ -1167,9 +1171,45 @@
       "result": "recorded",
       "reference": "docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/62-preparacao-de-validacao-fisica.md",
       "command": "Plano de validação física do conjunto integrado PREPARADO, não executado: quatro pré-condições externas em ordem (fileira integrada, release pelo fluxo governado, autorização específica de instalação com token, rollback conhecido), oito cenários com coluna do que cada um PROVA e do que NÃO prova, sanitização de capturas pelo precedente de 22/07 (HOME e XDG temporários, captura sem acervo, conta ou caminho pessoal) e os limites declarados antes de rodar - entrada humana não simulável, seletor nativo exige ambiente não-offscreen, contraste é decisão de política, nada de ROM/BIOS/saves/units de terceiros. Bloqueio concreto: enquanto origin/main for 3495c49d a coluna H é não para os treze critérios."
+    },
+    {
+      "kind": "test",
+      "result": "passed",
+      "reference": "docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/74-gate-esde-raiz-green3.log",
+      "command": "Porta nova do ES-DE na shell, dez cenas de resposta tardia (cinco no painel, cinco na rota raiz) sobre ThreadingHTTPServer com atraso real, sem stub de requestAction: 8 passed em 58,39 s. O nono teste (pino de reachability do mutante M9) veio depois."
+    },
+    {
+      "kind": "test",
+      "result": "passed",
+      "reference": "docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/70-bateria-mutacoes-esde.log",
+      "command": "Bateria de mutacoes na rota do painel (M1 a M5): cinco mutantes aplicados um a um em ThemeEditorPanel.qml, cinco vermelhos, sha-256 da arvore conferido antes e depois."
+    },
+    {
+      "kind": "test",
+      "result": "passed",
+      "reference": "docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/73-bateria-mutacoes-esde-raiz.log",
+      "command": "Bateria de mutacoes na rota raiz (M6 a M10) em Main.qml: quatro vermelhos e M9 SOBREVIVEU por ser mutante equivalente (a janela que o distingue exige um segundo clique que o produto proíbe). O gate não foi afrouxado; o limite ficou pinado por teste de reachability."
+    },
+    {
+      "kind": "diagnostic",
+      "result": "recorded",
+      "reference": "docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/92-revalidacao-portar-gates-afetados.log",
+      "command": "Revalidacao proporcional do corte de citacoes: as duas portas de resposta tardia chegaram 1 failed / 8 passed. Causa: guardas de intencao conferem o fonte do harness por substring e o corte citou o simbolo do produto em comentario. 93/94/98 fecham o ciclo; nenhuma condicao de assercao foi tocada."
+    },
+    {
+      "kind": "test",
+      "result": "passed",
+      "reference": "docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/98-gates-tardias-pos-colisao-completo.log",
+      "command": "Depois da correção pelo lado da prosa: 9 passed rc=0 nas duas portas afetadas, mais 97 (20/20 citações conferindo com HEAD, zero cruas, zero estouros de largura), 93-depois (zero tokens proibidos), ruff check/format, mypy 298 arquivos e lint_boundaries com zero violações."
+    },
+    {
+      "kind": "diagnostic",
+      "result": "recorded",
+      "reference": "docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/README.md",
+      "command": "Narrativa do nono elo: contrato de geracao nas duas rotas, as dez cenas, as dez mutacoes com M9 declarado sobrevivente, a colisao entre citacao de simbolo e guarda de substring com a atribuicao corrigida, e o que nao esta provado (seletor nativo, empacotamento, release instalada, host)."
     }
   ],
-  "nextAction": "PR\u00d3XIMA A\u00c7\u00c3O: ler o CI terminal do oitavo elo no SHA final entregue e registrar o resultado no corpo do PR #246, n\u00e3o em commit. DEPEND\u00caNCIA: merge \u00e9 decis\u00e3o do operador; sequ\u00eancia pronta e bloqueios reais em docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/61-reconcilio-rc01-oito-elos.md. CRIT\u00c9RIO DE SA\u00cdDA: o elo fecha com o SHA em main, o wheel varrido entrada por entrada e a dobra conferida na release instalada; o verde offscreen prova contrato, n\u00e3o experi\u00eancia. CORTES EXECUT\u00c1VEIS SEGUINTES: contrato de gera\u00e7\u00e3o do importador ES-DE e F-1 (memoria em bytes via sizes.js); F-2 pertence a WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT. LIMITE: nenhuma captura PNG \u00e9 alegada e Pend\u00eancias segue abaixo da dobra no pior caso. NARRATIVA COMPLETA: docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/README.md.",
+  "nextAction": "PRÓXIMA AÇÃO: um push do nono elo e o PR aberto sobre codex/rc01-home-first-fold-2026-09-29, com o CI terminal lido no SHA efetivamente entregue e registrado no corpo do PR, não em commit. DEPENDÊNCIA: merge é decisão do operador; fileira #239→#246 com cabeças, bases, ancestralidade e bloqueios reais em docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/61-reconcilio-rc01-oito-elos.md. CRITÉRIO DE SAÍDA: o elo fecha com o SHA em main, o wheel varrido entrada por entrada e a experiência conferida na release instalada; contrato offscreen verde prova contrato, não experiência. LIMITE: o seletor nativo de diretório segue não comprovado e nenhuma captura PNG é alegada. NARRATIVA COMPLETA: docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/README.md.",
   "activeWorkstreams": [
     "WS-2026-09-RC01-CENTRAL-LOADING",
     "WS-2026-09-RC01-READINESS-FOCUS",
@@ -1177,7 +1217,8 @@
     "WS-2026-09-RC01-READINESS-SEMANTICS",
     "WS-2026-09-RC01-STORAGE-UNITS",
     "WS-2026-09-RC01-RETROFE-SHELL-LATE",
-    "WS-2026-09-RC01-HOME-FIRST-FOLD"
+    "WS-2026-09-RC01-HOME-FIRST-FOLD",
+    "WS-2026-09-RC01-ESDE-IMPORT-GENERATION"
   ],
   "updatedAt": "2026-09-29",
   "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45 e reconciliada em codex/v2-harmonized-functional-release: a limpeza automatica dos marcadores de conflito havia descartado escopo, criterios e seis evidencias do lado f92734b, todos restaurados aqui. QML-KEY-INJECTION-001 esta FECHADO: o commit ff0b80e trocou o qmltestrunner do qt5-declarative pelo executor Qt 6 (/usr/lib/qt6/bin/qmltestrunner) com raiz Item, e tests/integration/test_ui_dialog_keys.py exige o runner (sem skip), returncode 0 e ausencia de FAIL. Por isso o criterio de Escape/Tab deixou de ser PENDENTE — a troca foi verificada re-executando o harness em 2026-08-24 (Qt 6.11.1, 7 passed / 0 skipped). Continua fora de prova: confirmacao com bridge alem da abertura, clique repetido, drawers e P0 visuais na release instalada. 2026-08-24: o CI (run 32726720427) reprovou em 3.11/3.12/3.14 porque tres provas portadas que exigem qmltestrunner Qt 6 estavam no job 'Testes e cobertura', que nao provisiona Qt. Elas foram marcadas 'visual', que ROTEIA para o job qml-visual-linux e nao dispensa — o gate visual reprova quando o Qt falta. A guarda de codigo de test_ui_dialog_keys.py ficou SEM marcador de proposito: ela existe para rodar justamente onde o runtime nao esta. 2026-08-24, ampliacao do denominador: a sonda de jornadas percorria 6 dos 15 modais do shell e NADA apontava a diferenca. Ao registrar os 8 restantes (o 15o e um FileDialog nativo, excluido com motivo), a auditoria encontrou um defeito real de acessibilidade: os OITO abriam sem receber o foco, deixando quem navega por teclado ou controle do lado de fora. Faltava a linha onOpened: root.focusDialogContent(...) que os seis ja sondados tinham desde 1bcb564 — a correcao anterior so alcancou o que estava no denominador. Um gate estatico novo impede o denominador de encolher de novo. 2026-08-24, ComboBox: a sonda de controles so clica, e clicar num ComboBox nao seleciona nada — por isso todos ficavam not-probed. A prova foi para um harness QuickTest com tecla REAL, nao para uma emissao de activated() na mao, que seria a mesma troca ja rejeitada quando close() fazia as vezes de Escape. O harness exige as duas coisas: que o indice mude E que activated seja emitido com o indice novo, porque currentIndex tambem muda por atribuicao. Percorrer as quatro areas da tela Steam revelou 10 ComboBox visiveis, nao os 5 que a matriz via, e DOIS deles estavam desabilitados SEM motivo (controllerLayoutPicker e mediaAccountPicker): cinzas e mudos, indistinguiveis de defeito para leitor de tela. Ambos ganharam Accessible.description condicional. 2026-08-24, decoracao: a sonda declarava 'icone decorativo' pela FORMA — sem rotulo, sem nome acessivel e desabilitado. Isso e hipotese, e classificar acao por forma ja produziu falso positivo neste projeto. O candidato passou a ser ATIVADO: inercia medida vira 'decorative', e qualquer efeito vira 'unnamed-actionable', que entra em FAILING_VERDICTS porque o controle existiria para quem enxerga e nao para quem usa leitor de tela. Resultado: os 31 provaram inercia, ZERO unnamed-actionable, e not-probed caiu de 38 para 7. Dois gates novos impedem a volta do atalho. 2026-08-24, contraste: medi e NAO entreguei. A sonda de tentativa acusaria varios textos abaixo de 4,5:1, mas o mesmo rotulo aparecia duas vezes — uma com 13,69 e outra com exatamente 1,0 — o que denuncia erro do heuristico, nao defeito do produto. Publicar essa contagem repetiria o padrao de falso positivo que esta sonda ja teve. Fica como GAP-UI-CONTRAST-MEASUREMENT com o caminho certo escrito: medir pixel renderizado. 2026-08-24, contraste (segunda tentativa): a sonda por PIXEL foi construida e captura as 9 secoes, com alinhamento de caixa conferido a olho. Tres vieses meus foram encontrados e corrigidos no caminho — adivinhar fundo pelo ancestral opaco, cortar candidatos por FRACAO de pixels (vies de largura em Label com fillWidth) e compor alpha sobre preto. O bloqueio que sobrou nao e vies e sim nao-determinismo da captura, e por isso a ferramenta fica registrada como medicao, NAO como gate: nenhuma contagem foi publicada como acusacao. 2026-08-24, superficie do shell: nenhum Item do Main pintava o fundo — quem pintava era a `color` da ApplicationWindow, que grabToImage de Item nenhum captura. O appShell passou a ficar dentro de um Rectangle que pinta root.backgroundColor, exposto como shellSurfaceControl. Isso torna o conteudo do shell capturavel e embutivel e serve a qualquer auditoria visual futura, nao so ao contraste. 2026-08-24, contraste do item selecionado CORRIGIDO: medi os dois temas com o resolvedor real e nenhuma cor fixa servia — no claro `text` da 1,95 e `background` da 7,02; no escuro e o inverso (4,53 contra 3,53). O QML passou a escolher entre as duas a que contrasta mais com o fundo selecionado, em seis delegates. Um teste prova a regra contra os tokens reais de cada tema empacotado, e um segundo reprova se algum dia UMA cor fixa passar em todos, para que simplificar nao reintroduza o defeito. Biblioteca e home editoriais passaram a declarar o tamanho de desenho das capas (LOD) em vez de decodificar a arte inteira, com decode assincrono. O harness check_editorial_library deixou de assumir Image.Ready no mesmo tick e passou a esperar pelo carregamento com orcamento limitado, de modo que uma capa que nunca carrega continua reprovando. Sem certificacao visual neste ciclo: o efeito foi verificado por gate offscreen, nao por captura no host. Varredura dos quatro usos do MediaEffectLayer: o backdrop contextual da biblioteca nao declarava teto e foi corrigido. Era exatamente o caso que o required existe para pegar. 2026-09-03: scopeDigest renovado por mudanca da frente WS-2026-09-CENA-ESDE (rota theme.scene.render e o botao de previa). A evidencia NAO foi carimbada: foi reexecutada e passou (matriz de controles 21 passed e gestos de ComboBox 13 passed, com os 5 seletores novos da previa). 2026-09-03: scopeDigest renovado por WS-2026-09-CENA-ESDE (SceneEsdeView ganhou os renderizadores de carousel, video e helpSystem). A evidencia NAO foi carimbada: foi reexecutada e passou (matriz de controles e gestos de ComboBox, 23 testes). 2026-09-04: scopeDigest renovado pela correcao do video em SceneEsdeView. A matriz NAO foi carimbada: foi reexecutada e passou (21 testes). 2026-09-27 (rotulo da entrega): esta frente e uma FATIA de RC-01, nao RC-01 inteiro. Fecha UX-01 na parte calculavel (tinta dos avisos sobre as seis superficies fixas, medida contra a norma >=7:1 em 14-contraste-politica-normativa.log) e UX-02 (primeiro frame sem afirmar ausencia, faixa de fase com retry, estado preservado quando a renovacao falha) mais a regra de que uma renovacao pedida durante uma leitura nao pode ser descartada. O que fica aberto e nao foi promovido: a cauda de latencia (~11,4 s; as cinco amostras do probe sao exploratorias — com n=5 o 'p95' e o maximo ordenado, nao um percentil), a experiencia dos alertas empilhados na dobra de 800 px, a prova fisica na release instalada e UX-03/04/05/07. Duas suites integrais rodaram sobrepostas no mesmo checkout em 2026-09-26 e isso esta conciliado em 08-duas-suites-concorrentes.log, com os limites: a concorrencia invalida tempo medido, nao a correcao dos contratos; nenhuma das duas cobriu as escritas finais de governanca; nao se alega isolamento global do host."
