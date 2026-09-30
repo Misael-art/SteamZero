@@ -1,0 +1,326 @@
+
+===== tests/qml/check_shell_esde_import_late_response.qml  (26)
+L10  ThemeEditorPanel.qml:210-275
+   TEXTO | // (`ThemeEditorPanel.qml:210-275`), que NÃO tem o contrato de geração que a fatia
+   HEAD  | function resetEsdeImport() { / panel.esdeImportSource = "" / panel.esdeImportSchemes = [] / panel.esdeImportSc
+   HOJE  | panel.request("GET", "/theme/list", {}, function(resp) { / panel.editorThemeList = resp.themes || [] / }) / } 
+L11  ThemeEditorPanel.qml:349-395
+   TEXTO | // RetroFE estabeleceu (`ThemeEditorPanel.qml:349-395`). Medido em `c4975979`:
+   HEAD  | function inspectRetrofeImport() { / const source = panel.retrofeImportSource.trim() / if (source === "") / ret
+   HOJE  | function applyPackageImport() { / if (!panel.packageImportPreview || panel.packageImportSource.trim() === "") 
+L17  Main.qml:2894-2894
+   TEXTO | // `Main.qml:2894`, ou injetam `requestAction` e chamam as callbacks dentro do stub.
+   HEAD  | id: esdeImportDialog
+   HOJE  | root.refreshStatus(qsTr("Verificação anti-bitrot concluída"))
+L20  Main.qml:1001-1001
+   TEXTO | // importador é o `XMLHttpRequest` do produto (`Main.qml:1001`, `timeout` `:1012`)
+   HEAD  | const xhr = new XMLHttpRequest()
+   HOJE  | var msg = qsTr("Bridge local indisponível; nenhuma mudança foi feita")
+L26  ThemeEditorPanel.qml:265-265
+   TEXTO | //      `ThemeEditorPanel.qml:265`) — e a ponte TEM de registrar `GET /theme/list`
+   HEAD  | panel.esdeImportNotice = qsTr("Tema importado como editável; ele ainda não foi aplicado.")
+   HOJE  | panel.esdeImportGeneration = geracao - 1
+L30  ThemeEditorPanel.qml:1028-1028
+   TEXTO | //      chega depois do `onClosed` (`ThemeEditorPanel.qml:1028`) encontra esquemas,
+   HEAD  | onClosed: panel.resetEsdeImport()
+   HOJE  | Accessible.name: qsTr("Duplicar e editar %1").arg(panel.themeLabel(modelData))
+L34  Main.qml:1134-1134
+   TEXTO | //      diferentes, os dois estão em voo juntos (`Main.qml:1134` só deduplica payload
+   HEAD  | if (mutation && actionIsPending(actionId, payload))
+   HOJE  | : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita.").arg(actionId)
+L38  Main.qml:1134-1134
+   TEXTO | //   5. a recusa por dedup: um clique recusado por `Main.qml:1134` tem de devolver a
+   HEAD  | if (mutation && actionIsPending(actionId, payload))
+   HOJE  | : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita.").arg(actionId)
+L40  ThemeEditorPanel.qml:353-353
+   TEXTO | //      `ThemeEditorPanel.qml:353/393`), e a resposta do pedido recusado não pode
+   HEAD  | const ocupadoAntes = panel.retrofeImportBusy
+   HOJE  | panel.packageImportNotice = ""
+L49  ThemeEditorPanel.qml:1075-1084
+   TEXTO | // (`ThemeEditorPanel.qml:1075-1084`) não tem `onAccepted` — ao contrário do campo
+   HEAD  | TextField { / id: importSourceField / objectName: "themeImportEsdeSource" / text: panel.esdeImportSource / pla
+   HOJE  | const hostWindow = panel.Window.window / const active = hostWindow ? hostWindow.activeFocusItem : null / let n
+L323  Main.qml:6562-6562
+   TEXTO | /// por id: `Main.qml:6562` dá `id: themeEditorPanel`, mas id não é
+   HEAD  | ThemeEditorPanel {
+   HOJE  | ScrollView {
+L347  ThemeEditorPanel.qml:1028-1028
+   TEXTO | /// (`ThemeEditorPanel.qml:1028`) executa, invocado aqui para que o vermelho
+   HEAD  | onClosed: panel.resetEsdeImport()
+   HOJE  | Accessible.name: qsTr("Duplicar e editar %1").arg(panel.themeLabel(modelData))
+L464  ThemeEditorPanel.qml:221-221
+   TEXTO | /// estado do painel (`ThemeEditorPanel.qml:221`), não o pixel do campo. Por
+   HEAD  | const source = panel.esdeImportSource.trim()
+   HOJE  | panel.esdeImportSchemeIndex = -1
+L569  Main.qml:2991-2991
+   TEXTO | /// No diálogo raiz o campo É o estado (`Main.qml:2991` lê
+   HEAD  | {"source": esdeImportSourceField.text},
+   HOJE  | text: qsTr("Examinar")
+L656  ThemeEditorPanel.qml:1126-1139
+   TEXTO | /// `Repeater` (`ThemeEditorPanel.qml:1126-1139`): é o texto `modelData.scheme`
+   HEAD  | Repeater { / model: panel.esdeImportSchemes / delegate: RowLayout { / required property int index / required p
+   HOJE  | text: qsTr("Escolher") / Accessible.name: text / Layout.minimumHeight: 48 / onClicked: esdeImportFolderDialog.
+L763  ThemeEditorPanel.qml:229-229
+   TEXTO | /// hoje o callback (`ThemeEditorPanel.qml:229`) escreve em cima de uma
+   HEAD  | panel.esdeImportBusy = false
+   HOJE  | const source = panel.esdeImportSource.trim()
+L815  ThemeEditorPanel.qml:1028-1028
+   TEXTO | /// `resetEsdeImport()`, `ThemeEditorPanel.qml:1028`, que limpa a bandeira em
+   HEAD  | onClosed: panel.resetEsdeImport()
+   HOJE  | Accessible.name: qsTr("Duplicar e editar %1").arg(panel.themeLabel(modelData))
+L817  Main.qml:1134-1134
+   TEXTO | /// juntos (`Main.qml:1134` só deduplica payload IDÊNTICO) e o anterior
+   HEAD  | if (mutation && actionIsPending(actionId, payload))
+   HOJE  | : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita.").arg(actionId)
+L907  ThemeEditorPanel.qml:264-264
+   TEXTO | // re-listagem de temas (`ThemeEditorPanel.qml:264`, `refreshThemeList()`
+   HEAD  | panel.refreshThemeList()
+   HOJE  | if (!despachado) {
+L923  Main.qml:1134-1134
+   TEXTO | /// `Main.qml:1134` recusa payload idêntico já em voo devolvendo `false` sem
+   HEAD  | if (mutation && actionIsPending(actionId, payload))
+   HOJE  | : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita.").arg(actionId)
+L926  ThemeEditorPanel.qml:220-245
+   TEXTO | /// (`ThemeEditorPanel.qml:220-245`) arma a bandeira em `:224` ANTES de
+   HEAD  | function inspectEsdeImport() { / const source = panel.esdeImportSource.trim() / if (source === "") / return / 
+   HOJE  | panel.esdeImportSchemes = [] / panel.esdeImportSchemeIndex = -1 / panel.esdeImportName = "" / panel.esdeImport
+L968  ThemeEditorPanel.qml:393-393
+   TEXTO | + "`ThemeEditorPanel.qml:393`), não deixá-la no `true` que o "
+   HEAD  | panel.retrofeImportBusy = ocupadoAntes
+   HOJE  | panel.retrofeImportGeneration = geracao
+L1068  Main.qml:3096-3096
+   TEXTO | /// O oráculo de "o callback rodou" é o FECHAMENTO (`Main.qml:3096`), não
+   HEAD  | esdeImportDialog.close()
+   HOJE  | }
+L1073  Main.qml:3096-3096
+   TEXTO | }, 10000, "o apply bem-sucedido fecha o diálogo raiz (`Main.qml:3096`)")
+   HEAD  | esdeImportDialog.close()
+   HOJE  | }
+L1083  Main.qml:2898-2906
+   TEXTO | /// do `onClosed` (`Main.qml:2898-2906`) encontra `shell.esdeImport*` limpos e
+   HEAD  | onClosed: { / // Fechar por Escape, por Cancelar ou pelo botão B tem de deixar o / // estado igualmente limpo:
+   HOJE  | } / } /  / Dialog { / id: esdeImportDialog / objectName: "theme-import-esde-dialog" / onAboutToShow: root.reme
+L1137  Main.qml:3095-3095
+   TEXTO | /// (`Main.qml:3095`) e o reabrir de estado. A cena 07 acabou de mostrar que
+   HEAD  | root.notify(qsTr("Tema ES-DE importado."), false)
+   HOJE  | onClicked: esdeImportDialog.close()
+
+===== tests/integration/test_ui_shell_esde_import_late_response.py  (12)
+L5  ThemeEditorPanel.qml:210-275
+   TEXTO | ES-DE do painel de edição (`ThemeEditorPanel.qml:210-275`), que em `c4975979` NÃO tem
+   HEAD  | function resetEsdeImport() { / panel.esdeImportSource = "" / panel.esdeImportSchemes = [] / panel.esdeImportSc
+   HOJE  | panel.request("GET", "/theme/list", {}, function(resp) { / panel.editorThemeList = resp.themes || [] / }) / } 
+L17  Main.qml:1001-1001
+   TEXTO | responder, e o cliente é o `XMLHttpRequest` do produto (`Main.qml:1001`, `timeout`
+   HEAD  | const xhr = new XMLHttpRequest()
+   HOJE  | var msg = qsTr("Bridge local indisponível; nenhuma mudança foi feita")
+L27  ThemeEditorPanel.qml:204-204
+   TEXTO | (`ThemeEditorPanel.qml:204`) dispara `GET /theme/list` na callback de sucesso do
+   HEAD  | function refreshThemeList() {
+   HOJE  | 
+L131  Main.qml:1134-1134
+   TEXTO | #: `Main.qml:1134` devolve `false` antes de construir o `XMLHttpRequest`. A conta sobe
+   HEAD  | if (mutation && actionIsPending(actionId, payload))
+   HOJE  | : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita.").arg(actionId)
+L217  ThemeEditorPanel.qml:1134-1134
+   TEXTO | é o campo canônico que o `Repeater` mostra (`ThemeEditorPanel.qml:1134`) e que o
+   HEAD  | text: modelData && modelData.scheme
+   HOJE  | enabled: !panel.esdeImportBusy && panel.esdeImportSource.trim() !== ""
+L354  ThemeEditorPanel.qml:262-269
+   TEXTO | #: (`ThemeEditorPanel.qml:262-269`) não lê nenhuma delas; a ponte as
+   HEAD  | }, function(response) { / panel.esdeImportBusy = false / panel.refreshThemeList() / panel.esdeImportNotice = q
+   HOJE  | // não-acontecimento — devolve a superfície ao que ela era antes do clique. / // Ver `inspectRetrofeImport`. /
+L372  Main.qml:1011-1011
+   TEXTO | # `Main.qml:1011` envia `X-SteamZero-Token` em toda requisição.
+   HEAD  | xhr.setRequestHeader("X-SteamZero-Token", apiToken)
+   HOJE  | pendingRequests += 1
+L715  Main.qml:2988-2988
+   TEXTO | "despachar (`Main.qml:2988`) e o fechamento já baixou a bandeira no `onClosed` "
+   HEAD  | root.esdeImportBusy = true
+   HOJE  | Button {
+L871  Main.qml:853-859
+   TEXTO | "quem revela o foco é o produto (`Main.qml:853-859`); o teste espera o efeito"
+   HEAD  | function restoreDialogFocus() { / const invoker = dialogInvoker / Qt.callLater(function() { / if (invoker && i
+   HOJE  | for (let i = 0; i < kids.length; i++) { / const found = firstFocusableIn(kids[i], depth + 1) / if (found) / re
+L919  Main.qml:1076-1076
+   TEXTO | `Main.qml:1076` resolve a ação por `uiContracts.byId`, e o catálogo é o que
+   HEAD  | const actions = uiContracts && uiContracts.byId ? uiContracts.byId : {}
+   HOJE  | if (value === undefined || value === null)
+L1015  Main.qml:1134-1134
+   TEXTO | f"{ESPERADO_INSPECT} (as recusas NÃO contam — `Main.qml:1134` devolve antes "
+   HEAD  | if (mutation && actionIsPending(actionId, payload))
+   HOJE  | : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita.").arg(actionId)
+L1084  ThemeEditorPanel.qml:616-616
+   TEXTO | "(`ThemeEditorPanel.qml:616`), então o produto não foi exercitado"
+   HEAD  | Component.onCompleted: refreshThemeList()
+   HOJE  | }, function(_r) {
+
+===== tests/qml/check_shell_retrofe_import_late_response.qml  (18)
+L8  Main.qml:6509-6509
+   TEXTO | // aparência", `Main.qml:6509`/`:6562`), pela rota real, com o importador
+   HEAD  | objectName: "themeEditorTab"
+   HOJE  | onClicked: root.refreshStatus(qsTr("Diagnóstico atualizado"))
+L17  Main.qml:1001-1001
+   TEXTO | // cliente é o `XMLHttpRequest` do produto (`Main.qml:1001`, `timeout` `:1012`).
+   HEAD  | const xhr = new XMLHttpRequest()
+   HOJE  | var msg = qsTr("Bridge local indisponível; nenhuma mudança foi feita")
+L25  ThemeEditorPanel.qml:1215-1215
+   TEXTO | //      chega depois do `onClosed` (`ThemeEditorPanel.qml:1215`) encontra layouts,
+   HEAD  | onClosed: panel.resetRetrofeImport()
+   HOJE  | }
+L28  Main.qml:1134-1134
+   TEXTO | //      diferentes, os dois estão em voo juntos (`Main.qml:1134` só deduplica payload
+   HEAD  | if (mutation && actionIsPending(actionId, payload))
+   HOJE  | : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita.").arg(actionId)
+L46  Main.qml:1134-1134
+   TEXTO | //   9. o clique RECUSADO por payload idêntico (`Main.qml:1134`), com o único pedido em
+   HEAD  | if (mutation && actionIsPending(actionId, payload))
+   HOJE  | : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita.").arg(actionId)
+L77  Main.qml:853-859
+   TEXTO | //   • revelar pelo foco é o mecanismo do produto (`Main.qml:853-859` liga
+   HEAD  | function restoreDialogFocus() { / const invoker = dialogInvoker / Qt.callLater(function() { / if (invoker && i
+   HOJE  | for (let i = 0; i < kids.length; i++) { / const found = firstFocusableIn(kids[i], depth + 1) / if (found) / re
+L320  Main.qml:6563-6563
+   TEXTO | /// por id: `Main.qml:6563` dá `id: themeEditorPanel`, mas id não é
+   HEAD  | id: themeEditorPanel
+   HOJE  | id: themeCatalogScroll
+L345  ThemeEditorPanel.qml:1215-1215
+   TEXTO | /// (`ThemeEditorPanel.qml:1215`) executa, invocado aqui para que o vermelho
+   HEAD  | onClosed: panel.resetRetrofeImport()
+   HOJE  | }
+L451  ThemeEditorPanel.qml:350-350
+   TEXTO | /// estado do painel (`ThemeEditorPanel.qml:350`), não o pixel do campo: uma
+   HEAD  | const source = panel.retrofeImportSource.trim()
+   HOJE  | if (!panel.packageImportPreview || panel.packageImportSource.trim() === "")
+L543  ThemeEditorPanel.qml:1340-1340
+   TEXTO | /// diálogo: o `Repeater` (`ThemeEditorPanel.qml:1340`) monta um `RadioButton`
+   HEAD  | Repeater {
+   HOJE  | objectName: "themeImportRetrofeBrowseFile"
+L652  ThemeEditorPanel.qml:1309-1309
+   TEXTO | /// há pedido em voo (`ThemeEditorPanel.qml:1309`). O que é alcançável é
+   HEAD  | enabled: !panel.retrofeImportBusy && panel.retrofeImportSource.trim() !== ""
+   HOJE  | onTextChanged: panel.retrofeImportSource = text
+L655  Main.qml:1134-1134
+   TEXTO | /// pedidos estão em voo ao mesmo tempo, `Main.qml:1134` só deduplica payload
+   HEAD  | if (mutation && actionIsPending(actionId, payload))
+   HOJE  | : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita.").arg(actionId)
+L764  ThemeEditorPanel.qml:427-427
+   TEXTO | // de temas (`ThemeEditorPanel.qml:427`, `panel.refreshThemeList()`). A prova
+   HEAD  | panel.retrofeImportNoticeIsError = false
+   HOJE  | //   - pedido revogado pelo fechamento: o `onClosed` já baixou a bandeira, então
+L781  ThemeEditorPanel.qml:1265-1265
+   TEXTO | /// (`ThemeEditorPanel.qml:1265`/`:1287`). A primeira edição pelo teclado ou por
+   HEAD  | text: panel.retrofeImportSource
+   HOJE  | do {
+L819  ThemeEditorPanel.qml:1506-1506
+   TEXTO | /// ESTADO (`ThemeEditorPanel.qml:1506`/`:1531`, `panel.retrofeImportSource =
+   HEAD  | onAccepted: panel.retrofeImportSource = panel.localPath(selectedFolder)
+   HOJE  | enabled: !panel.retrofeImportBusy
+L886  ThemeEditorPanel.qml:1466-1466
+   TEXTO | /// "Importando…" sumir e "Publicar cena" (`ThemeEditorPanel.qml:1466`) habilitar
+   HEAD  | enabled: !panel.retrofeImportBusy
+   HOJE  | placeholderText: qsTr("SPDX, por exemplo CC0-1.0")
+L942  ThemeEditorPanel.qml:1309-1309
+   TEXTO | /// fechamento. `ThemeEditorPanel.qml:1309` desabilita "Examinar" enquanto
+   HEAD  | enabled: !panel.retrofeImportBusy && panel.retrofeImportSource.trim() !== ""
+   HOJE  | onTextChanged: panel.retrofeImportSource = text
+L945  Main.qml:1134-1134
+   TEXTO | /// MESMA origem é alcançável por clique real, e `Main.qml:1134` recusa payload
+   HEAD  | if (mutation && actionIsPending(actionId, payload))
+   HOJE  | : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita.").arg(actionId)
+
+===== tests/integration/test_ui_shell_retrofe_import_late_response.py  (7)
+L10  Main.qml:1001-1001
+   TEXTO | produto (`Main.qml:1001`, `timeout` `:1012`).
+   HEAD  | const xhr = new XMLHttpRequest()
+   HOJE  | var msg = qsTr("Bridge local indisponível; nenhuma mudança foi feita")
+L19  ThemeEditorPanel.qml:204-204
+   TEXTO | (`ThemeEditorPanel.qml:204`) dispara `GET /theme/list` na callback de sucesso do
+   HEAD  | function refreshThemeList() {
+   HOJE  | 
+L119  Main.qml:1134-1134
+   TEXTO | #: `Main.qml:1134` devolve `false` antes de construir o `XMLHttpRequest`. A conta sobe
+   HEAD  | if (mutation && actionIsPending(actionId, payload))
+   HOJE  | : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita.").arg(actionId)
+L355  Main.qml:1011-1011
+   TEXTO | # `Main.qml:1011` envia `X-SteamZero-Token` em toda requisição.
+   HEAD  | xhr.setRequestHeader("X-SteamZero-Token", apiToken)
+   HOJE  | pendingRequests += 1
+L743  Main.qml:853-859
+   TEXTO | "quem revela o foco é o produto (`Main.qml:853-859`); o teste espera o efeito"
+   HEAD  | function restoreDialogFocus() { / const invoker = dialogInvoker / Qt.callLater(function() { / if (invoker && i
+   HOJE  | for (let i = 0; i < kids.length; i++) { / const found = firstFocusableIn(kids[i], depth + 1) / if (found) / re
+L791  Main.qml:1076-1076
+   TEXTO | `Main.qml:1076` resolve a ação por `uiContracts.byId`, e o catálogo é o que
+   HEAD  | const actions = uiContracts && uiContracts.byId ? uiContracts.byId : {}
+   HOJE  | if (value === undefined || value === null)
+L974  ThemeEditorPanel.qml:616-616
+   TEXTO | "(`ThemeEditorPanel.qml:616`), então o produto não foi exercitado"
+   HEAD  | Component.onCompleted: refreshThemeList()
+   HOJE  | }, function(_r) {
+
+===== tests/qml/check_shell_esde_import_dialog_journey.qml  (7)
+L20  Main.qml:2896-2896
+   TEXTO | // Por que este diálogo e não outro: `Main.qml:2896` é o segundo exemplar do
+   HEAD  | onAboutToShow: root.rememberDialogInvoker()
+   HOJE  | }
+L22  ThemeEditorPanel.qml:1016-1016
+   TEXTO | // `ThemeEditorPanel.qml:1016`). Aqui o corpo é um `ColumnLayout` com
+   HEAD  | Dialog {
+   HOJE  | horizontalAlignment: Text.AlignHCenter
+L31  Main.qml:982-982
+   TEXTO | // puderam stubear a ponte. `Main.qml` não — `request()` (Main.qml:982) fala por
+   HEAD  | function errorMessage(response, fallback) {
+   HOJE  | function errorObject(response) {
+L55  Main.qml:6445-6445
+   TEXTO | //     Sistema (`Main.qml:6445`), muitas vezes abaixo da dobra. Revelar por
+   HEAD  | icon.name: "document-import"
+   HOJE  | border.color: root.borderColor
+L56  Main.qml:852-860
+   TEXTO | //     `forceActiveFocus()` é o mecanismo do produto (`Main.qml:852-860` liga
+   HEAD  |  / function restoreDialogFocus() { / const invoker = dialogInvoker / Qt.callLater(function() { / if (invoker &
+   HOJE  | return null / for (let i = 0; i < kids.length; i++) { / const found = firstFocusableIn(kids[i], depth + 1) / i
+L470  Main.qml:852-860
+   TEXTO | /// Revelar pelo FOCO é o mecanismo do produto: `Main.qml:852-860` liga
+   HEAD  |  / function restoreDialogFocus() { / const invoker = dialogInvoker / Qt.callLater(function() { / if (invoker &
+   HOJE  | return null / for (let i = 0; i < kids.length; i++) { / const found = firstFocusableIn(kids[i], depth + 1) / i
+L616  Main.qml:3000-3000
+   TEXTO | /// não há esquema nenhum (`Main.qml:3000`) ou a lista, com a requisição
+   HEAD  | qsTr("O tema não declarou nenhum esquema importável.")
+   HOJE  | const ocupadoAntes = root.esdeImportBusy
+
+===== tests/integration/test_ui_shell_esde_import_dialog.py  (6)
+L5  Main.qml:2896-2896
+   TEXTO | `ThemeEditorPanel.qml` (corrigido na 3ª fatia); este vive em `Main.qml:2896`, aberto
+   HEAD  | onAboutToShow: root.rememberDialogInvoker()
+   HOJE  | }
+L6  Main.qml:6445-6445
+   TEXTO | por um botão da área de diagnósticos da seção Sistema (`Main.qml:6445`). Nada testava
+   HEAD  | icon.name: "document-import"
+   HOJE  | border.color: root.borderColor
+L12  Main.qml:982-982
+   TEXTO | ponte. O shell não — `Main.qml:982` fala por `XMLHttpRequest` com `shell.apiUrl`.
+   HEAD  | function errorMessage(response, fallback) {
+   HOJE  | function errorObject(response) {
+L411  Main.qml:1002-1002
+   TEXTO | # `Main.qml:1002` envia `X-SteamZero-Token` em toda requisição. Exigir aqui
+   HEAD  | let completed = false
+   HOJE  | bridgeUnavailable = true
+L771  Main.qml:852-860
+   TEXTO | "(`Main.qml:852-860`), e o teste só pode ESPERAR o efeito dele"
+   HEAD  |  / function restoreDialogFocus() { / const invoker = dialogInvoker / Qt.callLater(function() { / if (invoker &
+   HOJE  | return null / for (let i = 0; i < kids.length; i++) { / const found = firstFocusableIn(kids[i], depth + 1) / i
+L830  Main.qml:2896-2896
+   TEXTO | O vermelho desta fatia é medido aqui. No `Main.qml:2896` atual o diálogo não
+   HEAD  | onAboutToShow: root.rememberDialogInvoker()
+   HOJE  | }
+
+===== tests/integration/test_ui_shell_home_first_fold.py  (2)
+L7  Main.qml:901-908
+   TEXTO | `apiUrl`/`apiToken` vêm de argumento na inicialização (`Main.qml:901`-`:908`) e,
+   HEAD  | const apiMarker = args.indexOf("--steamzero-api") / const tokenMarker = args.indexOf("--steamzero-token") / co
+   HOJE  | if (marker >= 0 && marker + 1 < args.length) { / try { / desktopStatus = JSON.parse(args[marker + 1]) / seeded
+L566  Main.qml:1248-1249
+   TEXTO | (`Main.qml:1248`-`:1249`), `statusBandIsError` (`:420`) põe a faixa na tela, e o
+   HEAD  | else / statusPhase = "error"
+   HOJE  | ? failure : {"code": "", "detail": String(failure)} / statusBandFailureCode = String(statusFailure.code || "")

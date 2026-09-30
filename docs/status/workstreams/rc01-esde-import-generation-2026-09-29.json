@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-09-RC01-ESDE-IMPORT-GENERATION",
+  "item": "SZ-UI-DESKTOP-AUDIT",
+  "branch": "codex/rc01-esde-import-generation-2026-09-29",
+  "baseRef": "c4975979",
+  "owner": "qoder-continuation",
+  "state": "active",
+  "exclusivePaths": [
+    "tests/integration/test_ui_shell_esde_import_late_response.py",
+    "tests/qml/check_shell_esde_import_late_response.qml",
+    "docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation",
+    "docs/status/workstreams/rc01-esde-import-generation-2026-09-29.json"
+  ],
+  "sharedPaths": [
+    "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+    "src/steamzero/ui/qml/Main.qml",
+    "tests/integration/test_ui_shell_esde_import_dialog.py",
+    "tests/integration/test_ui_shell_home_first_fold.py",
+    "tests/integration/test_ui_shell_retrofe_import_late_response.py",
+    "tests/qml/check_shell_esde_import_dialog_journey.qml",
+    "tests/qml/check_shell_retrofe_import_late_response.qml",
+    "docs/status/items/ui-desktop-audit.json",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "PRÓXIMA AÇÃO: abrir o PR do nono elo sobre codex/rc01-home-first-fold-2026-09-29 e ler o CI terminal no SHA efetivamente entregue, registrando-o no PR e não em commit. DEPENDÊNCIA: merge e ordem de integração são decisão do operador; a pilha é linear (#239→#246, cada cabeça desce da anterior). CRITÉRIO DE SAÍDA: o workstream fecha no SHA mergeado em main, com a resposta tardia do ES-DE comprovada na release instalada; head da branch x ref de merge preservados na evidência. LIMITE: contrato aferido offscreen; o seletor nativo de diretório continua pendente e uma rota alternativa por Enter não prova a rota não testada. NARRATIVA COMPLETA: docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/README.md.",
+  "updatedAt": "2026-09-29"
+}

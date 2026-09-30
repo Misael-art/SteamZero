@@ -4,15 +4,16 @@
 A lacuna existe desde 26/09 (`2026-09-26-rc01-central-loading/README.md`
 §"Ressalva de experiência"), mas foi registrada **forçando** `bridgeUnavailable`.
 Medido antes deste gate: essa combinação não existe pelos bindings de produção —
-`apiUrl`/`apiToken` vêm de argumento na inicialização (`Main.qml:901`-`:908`) e,
+`apiUrl`/`apiToken` vêm de argumento na inicialização (os marcadores
+`--steamzero-api`/`--steamzero-token`) e,
 sem eles, não há leitura bem-sucedida, logo `desktopTruthNeedsAttention`
-(`:339`) e `hasConflicts` (`:334`) ficam falsos e o banner não acende. O que a
+e `hasConflicts` ficam falsos e o banner não acende. O que a
 produção **sim** empilha, numa única jornada real, é: faixa de fase + banner de
 atenção (verdade degradada com conflito) + cartão de erro pelo MESMO código da
-renovação recusada (`pushError` `:496`).
+renovação recusada (`pushError()`).
 
 A faixa não é só "carregando": `statusBandVisible` é `statusIsLoading ||
-statusStale || statusBandIsError` (`Main.qml:421`-`:422`), com
+statusStale || statusBandIsError`, com
 `statusBandIsError = statusPhase === "error" && !bridgeUnavailable`. Ou seja,
 **toda** falha de leitura acende a faixa — inclusive a primeira leitura recusada,
 sem nada preservado. Corrigir isto aqui é correção de leitura própria: a nota de
@@ -20,7 +21,7 @@ bancada anterior deste gate modelava a faixa como `loading || stale` e por isso
 descrevia a cena sem-dados como "cartão é o único anúncio". Não é: são dois
 anúncios do mesmo fato, e o cartão é o único dos dois com detalhes e exportação.
 
-Medido nesta bancada (qml6, 1280x800, janela em `compactLayout` por `:71`), com
+Medido nesta bancada (qml6, 1280x800, janela em `compactLayout`), com
 a cena vindo da ponte, antes de qualquer mudança de produto:
 
 | cena | faixa | banner | cartões | `scroll_h` | 1º alvo (y,h) | fim | `Pendências` (y) |
@@ -35,7 +36,8 @@ No pior caso alcançável o chrome fixo fora do `ScrollView` consome 264 px dos
 150 % ainda leva o cartão a 164 px. O corte é mais pesado que os 209 px da nota
 original de 26/09. Medido junto: os alvos do cartão ("Exportar diagnóstico")
 têm **36 px** — abaixo dos 48 px já exigidos dentro do shell pelos lotes UX-05/
-UX-07 (`test_ui_shell_esde_import_dialog.py:925`).
+UX-07 (`test_a_jornada_esde_do_shell_cabe_no_viewport_dado`, em
+`test_ui_shell_esde_import_dialog.py`).
 
 Depois da correção, nas mesmas janelas e na mesma ponte (`40-matriz-dobra-pos-correcao.log`
 no lote de evidência): a banda visível passa a **493 px** nas duas cenas de atenção e
@@ -563,7 +565,8 @@ def test_sem_dados_preservados_a_faixa_e_de_erro_e_o_cartao_guarda_as_acoes() ->
     """Sem dados, a faixa acende pela variante de erro — e o cartão não sobra.
 
     Medido: com a primeira leitura recusada, `statusPhase` vira `error`
-    (`Main.qml:1248`-`:1249`), `statusBandIsError` (`:420`) põe a faixa na tela, e o
+    (o `else` do callback de recusa), `statusBandIsError` põe a faixa
+    na tela, e o
     mesmo código empilha um cartão. Diferente da cena de atenção, aqui **não há
     verdade preservada** e o banner não existe: a faixa anuncia o fato, mas só o
     cartão tem detalhes e exportação. Uma correção que colapsasse o cartão

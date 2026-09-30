@@ -1,0 +1,73 @@
+......FF                                                                 [100%]
+=================================== FAILURES ===================================
+_________ test_a_resposta_tardia_do_importador_esde_nao_reabre_estado __________
+
+    @pytest.mark.visual
+    def test_a_resposta_tardia_do_importador_esde_nao_reabre_estado() -> None:
+        if RUNNER is None:
+            pytest.fail(
+                "QML-VISUAL-ENVIRONMENT-001: qmltestrunner ausente. A resposta tardia do "
+                "importador ES-DE não pode ser verificada sem runtime QML; declarar verde "
+                "sem renderizar é o defeito que a RC-01 combate."
+            )
+        bridge, state = _start_bridge()
+        try:
+            completed = _run_qmltestrunner(bridge, "jornada")
+        finally:
+            bridge.shutdown()
+            bridge.server_close()
+            _gravar_eventos_da_ponte(state, "jornada")
+    
+        saida = completed.stdout + completed.stderr
+        observadas = _observacoes(saida)
+    
+        assert state.unauthorized == 0, (
+            f"a ponte devolveu 401 por token {state.unauthorized}x: a jornada não passou "
+            "pela rota autenticada de `Main.qml`"
+        )
+>       assert state.status_calls >= 1, "a ponte nunca serviu /status"
+E       AssertionError: a ponte nunca serviu /status
+E       assert 0 >= 1
+E        +  where 0 = <test_ui_shell_esde_import_late_response._LateResponseState object at 0x7fc0c26438c0>.status_calls
+
+tests/integration/test_ui_shell_esde_import_late_response.py:956: AssertionError
+_______________________ test_a_ordem_de_resposta_inverte _______________________
+
+    @pytest.mark.visual
+    def test_a_ordem_de_resposta_inverte() -> None:
+        """A ponte serviu o lento DEPOIS do rápido, embora o lento tenha chegado antes.
+    
+        Sem esta leitura, o `test_03` poderia passar porque a ordem nunca se inverteu —
+        a cena exercitaria atraso nenhum. É a testemunha de não-vacuidade do atraso,
+        medida fora do QML.
+        """
+        if RUNNER is None:
+            pytest.fail("QML-VISUAL-ENVIRONMENT-001: qmltestrunner ausente")
+        bridge, state = _start_bridge()
+        try:
+            completed = _run_qmltestrunner(bridge, "ordem")
+        finally:
+            bridge.shutdown()
+            bridge.server_close()
+            _gravar_eventos_da_ponte(state, "ordem")
+    
+        lenta = CORRIDA["lenta"]
+        rapida = CORRIDA["rapida"]
+        chegadas = [origem for origem in state.recebidas if origem in (lenta, rapida)]
+        saidas = [origem for origem in state.respondidas if origem in (lenta, rapida)]
+>       assert sorted(chegadas) == sorted([lenta, rapida]), (
+            f"a corrida da ponte viu {chegadas!r}, esperado exatamente {lenta!r} e "
+            f"{rapida!r} — ou o test_03 mudou de origem, ou a filtragem está medindo "
+            "outra cena"
+        )
+E       AssertionError: a corrida da ponte viu [], esperado exatamente '/media/esde/tema-lenta-anterior' e '/media/esde/tema-rapida-mais-novo' — ou o test_03 mudou de origem, ou a filtragem está medindo outra cena
+E       assert [] == ['/media/esde...da-mais-novo']
+E         
+E         Right contains 2 more items, first extra item: '/media/esde/tema-lenta-anterior'
+E         Use -v to get more diff
+
+tests/integration/test_ui_shell_esde_import_late_response.py:1090: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/test_ui_shell_esde_import_late_response.py::test_a_resposta_tardia_do_importador_esde_nao_reabre_estado
+FAILED tests/integration/test_ui_shell_esde_import_late_response.py::test_a_ordem_de_resposta_inverte
+2 failed, 6 passed in 1.63s

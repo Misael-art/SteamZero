@@ -1,0 +1,144 @@
+== SHA-256 da árvore antes da bateria (raiz) ==
+  7c8439eab27a6623  Main.qml
+
+== M6 — examine raiz sem guarda no sucesso (resposta tardia reabre o diálogo) ==
+  aplicada em 1 ocorrencia; sha 7c8439eab27a6623 -> da885e06ef4d8df3
+    [gate] $ cd /home/misael/Projects/Steam Zero/Canonical/2026-09-21 && /home/misael/Projects/Steam Zero/Canonical/2026-09-21/.venv/bin/python -m pytest tests/integration/test_ui_shell_esde_import_late_response.py -q
+      assert state.unauthorized == 0, (
+      assert state.status_calls >= 1, "a ponte nunca serviu /status"
+      assert len(inspects) == ESPERADO_INSPECT, (
+      assert len(applies) == ESPERADO_APPLY, (
+      assert testemunho in observadas, (
+      assert observadas[testemunho]["toast"] == esperado, (
+      assert lido["pendentes"] != "0", (
+      assert lido[campo] == valor, (
+      assert vezes == 1, (
+      assert contadas.count(JORNADA_INSPECT) == 1, (
+      assert posicoes_list, (
+      assert any(lista > aplica for aplica in posicoes_apply for lista in posicoes_list), (
+      assert len(posicoes_tardio) == 1, (
+      assert not tardios, (
+      E       AssertionError: a suíte reprovou (inspect=12, apply=4, status=10):
+      E         ********* Start testing of qmltestrunner *********
+      E         Config: Using QtTest library 6.11.2, Qt 6.11.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 16.2.1 20260810), biglinux unknown
+      E         PASS   : qmltestrunner::ShellEsdeImportLateResponse::initTestCase()
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_01_a_rota_real_do_shell_examina_e_importa_como_editavel() debug|ESTABILIZOU 'aberto' em 60 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_01_a_rota_real_do_shell_examina_e_importa_como_editavel() debug|ESTABILIZOU 'esquemas-publicados' em 20 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=2
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_01_a_rota_real_do_shell_examina_e_importa_como_editavel() debug|OBS|jornada-importada|dialogo=aberto|pendentes=0|ocupado=0|esquemas=0|indice=-1|aviso=57|erro=0|origem=30|nome=0
+      E         PASS   : qmltestrunner::ShellEsdeImportLateResponse::test_01_a_rota_real_do_shell_examina_e_importa_como_editavel()
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia() debug|OBS|antes-do-escape|dialogo=aberto|pendentes=1|ocupado=1|esquemas=0|indice=-1|aviso=0|erro=0|origem=29|nome=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia() debug|OBS|depois-da-resposta-tardia|dialogo=fechado|pendentes=0|ocupado=0|esquemas=0|indice=-1|aviso=0|erro=0|origem=0|nome=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=0
+      E         PASS   : qmltestrunner::ShellEsdeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia()
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() debug|OBS|depois-do-mais-novo|dialogo=aberto|pendentes=1|ocupado=0|esquemas=1|indice=0|aviso=49|erro=0|origem=33|nome=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() debug|OBS|depois-do-anterior-tardio|dialogo=aberto|pendentes=0|ocupado=0|esquemas=1|indice=0|aviso=49|erro=0|origem=33|nome=0
+      E         PASS   : qmltestrunner::ShellEsdeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior()
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_04_publicar_em_voo_e_fechar_nao_anuncia_sucesso_tardio() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_04_publicar_em_voo_e_fechar_nao_anuncia_sucesso_tardio() debug|OBS|depois-do-apply-tardio|dialogo=fechado|pendentes=0|ocupado=0|esquemas=0|indice=-1|aviso=0|erro=0|origem=0|nome=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_04_publicar_em_voo_e_fechar_nao_anuncia_sucesso_tardio() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=0
+      E         PASS   : qmltestrunner::ShellEsdeImportLateResponse::test_04_publicar_em_voo_e_fechar_nao_anuncia_sucesso_tardio()
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_05_a_recusa_devolve_a_bandeira_e_nao_descarta_o_resultado_corrente() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_05_a_recusa_devolve_a_bandeira_e_nao_descarta_o_resultado_corrente() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_05_a_recusa_devolve_a_bandeira_e_nao_descarta_o_resultado_corrente() debug|OBS|instante-da-recusa-com-outro-pedido-resolvido|dialogo=aberto|pendentes=1|ocupado=0|esquemas=1|indice=0|aviso=0|erro=0|origem=34|nome=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_05_a_recusa_devolve_a_bandeira_e_nao_descarta_o_resultado_corrente() debug|OBS|depois-da-resposta-do-recusado|dialogo=aberto|pendentes=0|ocupado=0|esquemas=1|indice=0|aviso=0|erro=0|origem=34|nome=0
+      E         PASS   : qmltestrunner::ShellEsdeImportLateResponse::test_05_a_recusa_devolve_a_bandeira_e_nao_descarta_o_resultado_corrente()
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_06_a_repeticao_recusada_com_pedido_revogado_nao_trava_o_dialogo() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_06_a_repeticao_recusada_com_pedido_revogado_nao_trava_o_dialogo() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x536|origem=(6,56)-(464,104)|importar=(508,488)-(640,536)|esquemas=0
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_06_a_repeticao_recusada_com_pedido_revogado_nao_trava_o_dialogo() debug|OBS|instante-da-recusa-com-pedido-revogado|dialogo=aberto|pendentes=1|ocupado=0|esquemas=0|indice=-1|aviso=0|erro=0|origem=34|nome=0
+      E         PASS   : qmltestrunner::ShellEsdeImportLateResponse::test_06_a_repeticao_recusada_com_pedido_revogado_nao_trava_o_dialogo()
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_07_a_rota_raiz_examina_e_importa_com_o_aviso_de_sucesso() debug|OBS|raiz-antes-do-apply-da-jornada|dialogo=aberto|pendentes=0|ocupado=0|esquemas=2|indice=0|aviso=0|toast=0|origem=35
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_07_a_rota_raiz_examina_e_importa_com_o_aviso_de_sucesso() debug|OBS|raiz-jornada|dialogo=fechado|pendentes=0|ocupado=0|esquemas=0|indice=-1|aviso=0|toast=1|origem=35
+      E         PASS   : qmltestrunner::ShellEsdeImportLateResponse::test_07_a_rota_raiz_examina_e_importa_com_o_aviso_de_sucesso()
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_08_fechar_a_rota_raiz_com_pedido_em_voo_nao_recebe_a_resposta_tardia() debug|OBS|raiz-antes-do-escape|dialogo=aberto|pendentes=1|ocupado=1|esquemas=0|indice=-1|aviso=0|toast=1|origem=34
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_08_fechar_a_rota_raiz_com_pedido_em_voo_nao_recebe_a_resposta_tardia() debug|OBS|raiz-depois-da-resposta-tardia|dialogo=fechado|pendentes=0|ocupado=0|esquemas=3|indice=0|aviso=0|toast=1|origem=34
+      E         FAIL!  : qmltestrunner::ShellEsdeImportLateResponse::test_08_fechar_a_rota_raiz_com_pedido_em_voo_nao_recebe_a_resposta_tardia() 'a resposta tardia reescreveu 3 esquemas num diálogo raiz fechado: a reabertura mostraria dados que ninguém pediu' returned FALSE. ()
+      E            Loc: [/home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_shell_esde_import_late_response.qml(1109)]
+      E         FAIL!  : qmltestrunner::ShellEsdeImportLateResponse::test_08_fechar_a_rota_raiz_com_pedido_em_voo_nao_recebe_a_resposta_tardia() 'limpeza: o estado do importador ES-DE raiz não voltou ao neutro (expirou o limite de 3000 ms após 3000 ms)' returned FALSE. ()
+      E            Loc: [/home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_shell_esde_import_late_response.qml(226)]
+      E         FAIL!  : qmltestrunner::ShellEsdeImportLateResponse::test_09_aplicar_na_rota_raiz_em_voo_e_fechar_nao_anuncia_sucesso_tardio() 'limpeza: o estado do importador ES-DE raiz não voltou ao neutro (expirou o limite de 3000 ms após 3000 ms)' returned FALSE. ()
+      E            Loc: [/home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_shell_esde_import_late_response.qml(226)]
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_09_aplicar_na_rota_raiz_em_voo_e_fechar_nao_anuncia_sucesso_tardio() debug|OBS|raiz-antes-do-apply-tardio|dialogo=aberto|pendentes=0|ocupado=0|esquemas=3|indice=0|aviso=0|toast=0|origem=35
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_09_aplicar_na_rota_raiz_em_voo_e_fechar_nao_anuncia_sucesso_tardio() debug|OBS|raiz-antes-do-escape-do-apply|dialogo=aberto|pendentes=1|ocupado=1|esquemas=3|indice=0|aviso=0|toast=0|origem=35
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_09_aplicar_na_rota_raiz_em_voo_e_fechar_nao_anuncia_sucesso_tardio() debug|OBS|raiz-depois-do-apply-tardio|dialogo=fechado|pendentes=0|ocupado=0|esquemas=0|indice=-1|aviso=0|toast=0|origem=35
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_10_a_recusa_na_rota_raiz_devolve_a_bandeira_e_nao_trava_o_dialogo() debug|OBS|instante-da-recusa-na-raiz|dialogo=aberto|pendentes=1|ocupado=0|esquemas=0|indice=-1|aviso=0|toast=0|origem=39
+      E         QDEBUG : qmltestrunner::ShellEsdeImportLateResponse::test_10_a_recusa_na_rota_raiz_devolve_a_bandeira_e_nao_trava_o_dialogo() debug|OBS|depois-da-resposta-do-recusado-na-raiz|dialogo=aberto|pendentes=0|ocupado=0|esquemas=2|indice=0|aviso=0|toast=0|origem=39
+      E         FAIL!  : qmltestrunner::ShellEsdeImportLateResponse::test_10_a_recusa_na_rota_raiz_devolve_a_bandeira_e_nao_trava_o_dialogo() 'a rota raiz guardou 2 esquemas de um pedido encerrado' returned FALSE. ()
+      E            Loc: [/home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_shell_esde_import_late_response.qml(609)]
+      E         PASS   : qmltestrunner::ShellEsdeImportLateResponse::cleanupTestCase()
+      E         Totals: 9 passed, 3 failed, 0 skipped, 0 blacklisted, 30391ms
+      E         ********* Finished testing of qmltestrunner *********
+      E         # log desta execucao: /home/misael/Projects/Steam Zero/Canonical/2026-09-21/build/qml-logs/shell-esde-late-jornada.txt
+      E       assert 3 == 0
+      E        +  where 3 = CompletedProcess(args=['/usr/lib/qt6/bin/qmltestrunner', '-input', '/home/misael/Projects/Steam Zero/Canonical/2026-09...ecucao: /home/misael/Projects/Steam Zero/Canonical/2026-09-21/build/qml-logs/shell-esde-late-jornada.txt\n", stderr='').returncode
+      FAILED tests/integration/test_ui_shell_esde_import_late_response.py::test_a_resposta_tardia_do_importador_esde_nao_reabre_estado
+      1 failed, 7 passed in 67.65s (0:01:07)
+      RESULTADO: vermelho rc=1 — mutação detectada
+  restaurado: sha 7c8439eab27a6623 (esperava 7c8439eab27a6623) OK
+
+== M7 — onClosed da raiz sem revoke (fechar deixa de revogar o pedido) ==
+  aplicada em 1 ocorrencia; sha 7c8439eab27a6623 -> f17d1e50573f68e0
+    [gate] $ cd /home/misael/Projects/Steam Zero/Canonical/2026-09-21 && /home/misael/Projects/Steam Zero/Canonical/2026-09-21/.venv/bin/python -m pytest tests/integration/test_ui_shell_esde_import_late_response.py -q
+      assert state.unauthorized == 0, (
+      assert state.status_calls >= 1, "a ponte nunca serviu /status"
+      assert len(inspects) == ESPERADO_INSPECT, (
+      assert len(applies) == ESPERADO_APPLY, (
+      assert testemunho in observadas, (
+      E           AssertionError: raiz-depois-do-apply-tardio: o aviso de sucesso do apply raiz vale '1', esperado '0' — na cena 07 o apply aterrassa com a superfície ABERTA e o `notify` é o desfecho correto; na 09 a superfície fechou antes da resposta e o mesmo texto seria o defeito
+      E           assert '1' == '0'
+      E             - 0
+      E             + 1
+      FAILED tests/integration/test_ui_shell_esde_import_late_response.py::test_a_resposta_tardia_do_importador_esde_nao_reabre_estado
+      1 failed, 7 passed in 67.21s (0:01:07)
+      RESULTADO: vermelho rc=1 — mutação detectada
+  restaurado: sha 7c8439eab27a6623 (esperava 7c8439eab27a6623) OK
+
+== M8 — examine raiz sem rollback da recusa (clique recusado rearma a bandeira) ==
+  aplicada em 1 ocorrencia; sha 7c8439eab27a6623 -> 21e1fa25df42b6a8
+    [gate] $ cd /home/misael/Projects/Steam Zero/Canonical/2026-09-21 && /home/misael/Projects/Steam Zero/Canonical/2026-09-21/.venv/bin/python -m pytest tests/integration/test_ui_shell_esde_import_late_response.py -q
+      assert state.unauthorized == 0, (
+      assert state.status_calls >= 1, "a ponte nunca serviu /status"
+      assert len(inspects) == ESPERADO_INSPECT, (
+      assert len(applies) == ESPERADO_APPLY, (
+      assert testemunho in observadas, (
+      assert observadas[testemunho]["toast"] == esperado, (
+      assert lido["pendentes"] != "0", (
+      E           AssertionError: instante-da-recusa-na-raiz: a bandeira no instante da recusa vale '1', esperado '0' — a rota raiz arma `esdeImportBusy = true` antes de despachar (`Main.qml:2988`) e o fechamento já baixou a bandeira no `onClosed` (`:2903`); sem rollback o clique recusado a rearma sobre um pedido que a ponte nunca viu, e nada mais a abaixa
+      E           assert '1' == '0'
+      E             - 0
+      E             + 1
+      FAILED tests/integration/test_ui_shell_esde_import_late_response.py::test_a_resposta_tardia_do_importador_esde_nao_reabre_estado
+      1 failed, 7 passed in 58.79s
+      RESULTADO: vermelho rc=1 — mutação detectada
+  restaurado: sha 7c8439eab27a6623 (esperava 7c8439eab27a6623) OK
+
+== M9 — rollback do apply raiz escrevendo true em vez de ocupadoAntes ==
+  aplicada em 1 ocorrencia; sha 7c8439eab27a6623 -> 21e69fb877b05b3a
+    [gate] $ cd /home/misael/Projects/Steam Zero/Canonical/2026-09-21 && /home/misael/Projects/Steam Zero/Canonical/2026-09-21/.venv/bin/python -m pytest tests/integration/test_ui_shell_esde_import_late_response.py -q
+      8 passed in 58.89s
+      RESULTADO: VERDE sob a mutação — a asserção NÃO morde
+  restaurado: sha 7c8439eab27a6623 (esperava 7c8439eab27a6623) OK
+
+== M10 — apply raiz sem guarda no sucesso (anuncia sucesso em superfície fechada) ==
+  aplicada em 1 ocorrencia; sha 7c8439eab27a6623 -> 2978ce98a29f9161
+    [gate] $ cd /home/misael/Projects/Steam Zero/Canonical/2026-09-21 && /home/misael/Projects/Steam Zero/Canonical/2026-09-21/.venv/bin/python -m pytest tests/integration/test_ui_shell_esde_import_late_response.py -q
+      assert state.unauthorized == 0, (
+      assert state.status_calls >= 1, "a ponte nunca serviu /status"
+      assert len(inspects) == ESPERADO_INSPECT, (
+      assert len(applies) == ESPERADO_APPLY, (
+      assert testemunho in observadas, (
+      E           AssertionError: raiz-depois-do-apply-tardio: o aviso de sucesso do apply raiz vale '1', esperado '0' — na cena 07 o apply aterrassa com a superfície ABERTA e o `notify` é o desfecho correto; na 09 a superfície fechou antes da resposta e o mesmo texto seria o defeito
+      E           assert '1' == '0'
+      E             - 0
+      E             + 1
+      FAILED tests/integration/test_ui_shell_esde_import_late_response.py::test_a_resposta_tardia_do_importador_esde_nao_reabre_estado
+      1 failed, 7 passed in 59.65s
+      RESULTADO: vermelho rc=1 — mutação detectada
+  restaurado: sha 7c8439eab27a6623 (esperava 7c8439eab27a6623) OK
+
+== SHA-256 da árvore depois da bateria (raiz) ==
+  7c8439eab27a6623  Main.qml  OK
+
+== veredito == 4/5 mutações detectadas pelo gate; 1 sobreviveram

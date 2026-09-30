@@ -76,6 +76,11 @@ Rectangle {
     property bool esdeImportBusy: false
     property string esdeImportNotice: ""
     property bool esdeImportNoticeIsError: false
+    /// Geração do pedido de importação ES-DE: cada disparo e cada fechamento
+    /// incrementam, e a resposta só escreve na superfície se carregar a geração
+    /// corrente. O pedido em voo não é cancelado — o que se descarta é o efeito
+    /// dele. Molde: `retrofeImportGeneration`, abaixo.
+    property int esdeImportGeneration: 0
     property string packageImportSource: ""
     property var packageImportPreview: null
     property bool packageImportOverwrite: false
@@ -97,9 +102,9 @@ Rectangle {
     /// incrementam; a resposta só escreve na superfície se carregar a geração
     /// corrente. Sem isto, um `inspect`/`apply` que chega depois de a superfície
     /// ter mudado reabre estado que o usuário já abandonou — e o pedido mais novo
-    /// perde para o anterior, porque os dois voam juntos (`Main.qml:1134` só
-    /// deduplica payload idêntico). O pedido em voo NÃO é cancelado: o que se
-    /// descarta é o efeito dele.
+    /// perde para o anterior, porque os dois voam juntos (o `requestAction` de
+    /// `Main.qml`, via `actionIsPending`, só deduplica payload idêntico). O pedido
+    /// em voo NÃO é cancelado: o que se descarta é o efeito dele.
     property int retrofeImportGeneration: 0
     // Objeto QML completo do tema (themeId/themeVersion/resolved/effects), na
     // forma exata de ``to_theme_qml_object``. O ThemeBridge espera esse formato
@@ -208,6 +213,9 @@ Rectangle {
     }
 
     function resetEsdeImport() {
+        // Fechar revoga o pedido em voo: a resposta que chegar depois daqui não tem
+        // mais superfície a que pertencer. Molde: `resetRetrofeImport()`, abaixo.
+        panel.esdeImportGeneration += 1
         panel.esdeImportSource = ""
         panel.esdeImportSchemes = []
         panel.esdeImportSchemeIndex = -1
@@ -221,11 +229,16 @@ Rectangle {
         const source = panel.esdeImportSource.trim()
         if (source === "")
             return
+        const ocupadoAntes = panel.esdeImportBusy
+        const geracao = panel.esdeImportGeneration + 1
+        panel.esdeImportGeneration = geracao
         panel.esdeImportBusy = true
         panel.esdeImportNotice = ""
         panel.esdeImportNoticeIsError = false
-        panel.requestAction("theme.import.esde.inspect", {source: source},
+        const despachado = panel.requestAction("theme.import.esde.inspect", {source: source},
             function(response) {
+                if (geracao !== panel.esdeImportGeneration)
+                    return
                 panel.esdeImportBusy = false
                 panel.esdeImportSchemes = response && response.schemes
                     ? response.schemes : []
@@ -236,12 +249,22 @@ Rectangle {
                 panel.esdeImportNoticeIsError = panel.esdeImportSchemes.length === 0
             },
             function(message) {
+                if (geracao !== panel.esdeImportGeneration)
+                    return
                 panel.esdeImportBusy = false
                 panel.esdeImportSchemes = []
                 panel.esdeImportSchemeIndex = -1
                 panel.esdeImportNotice = String(message || qsTr("Não foi possível examinar o tema."))
                 panel.esdeImportNoticeIsError = true
             })
+        // Mesmo vínculo do molde RetroFE: `requestAction` devolve `false` sem callback
+        // quando `actionIsPending` já conhece aquele payload, e a recusa é um
+        // não-acontecimento — devolve a superfície ao que ela era antes do clique.
+        // Ver `inspectRetrofeImport`.
+        if (!despachado) {
+            panel.esdeImportGeneration = geracao - 1
+            panel.esdeImportBusy = ocupadoAntes
+        }
     }
 
     function applyEsdeImport() {
@@ -252,14 +275,19 @@ Rectangle {
             ? String(selected.scheme) : String(selected || "")
         if (scheme === "")
             return
+        const ocupadoAntes = panel.esdeImportBusy
+        const geracao = panel.esdeImportGeneration + 1
+        panel.esdeImportGeneration = geracao
         panel.esdeImportBusy = true
         panel.esdeImportNotice = ""
         panel.esdeImportNoticeIsError = false
-        panel.requestAction("theme.import.esde.apply", {
+        const despachado = panel.requestAction("theme.import.esde.apply", {
             source: panel.esdeImportSource.trim(),
             scheme: scheme,
             name: panel.esdeImportName.trim()
         }, function(response) {
+            if (geracao !== panel.esdeImportGeneration)
+                return
             panel.esdeImportBusy = false
             panel.refreshThemeList()
             panel.esdeImportNotice = qsTr("Tema importado como editável; ele ainda não foi aplicado.")
@@ -268,10 +296,20 @@ Rectangle {
             panel.esdeImportSchemeIndex = -1
             panel.esdeImportName = ""
         }, function(message) {
+            if (geracao !== panel.esdeImportGeneration)
+                return
             panel.esdeImportBusy = false
             panel.esdeImportNotice = String(message || qsTr("Não foi possível importar o tema."))
             panel.esdeImportNoticeIsError = true
         })
+        // ver `inspectEsdeImport`, acima: a recusa por payload idêntico tem de devolver
+        // a bandeira ao que ela era antes do clique, senão "Importar" habilita sobre um
+        // importador que ainda vai responder — ou prende o diálogo se o pedido já tiver
+        // sido revogado pelo fechamento.
+        if (!despachado) {
+            panel.esdeImportGeneration = geracao - 1
+            panel.esdeImportBusy = ocupadoAntes
+        }
     }
 
     function resetPackageImport() {
@@ -378,7 +416,8 @@ Rectangle {
                 panel.retrofeImportNotice = String(message || qsTr("Não foi possível examinar a cena RetroFE."))
                 panel.retrofeImportNoticeIsError = true
             })
-        // `Main.qml:1134` recusa payload idêntico já em voo sem disparar nenhuma
+        // O `requestAction` de `Main.qml` recusa payload idêntico já em voo (via
+        // `actionIsPending`) sem disparar nenhuma
         // callback. A recusa é um não-acontecimento: ela devolve a superfície ao que
         // ela era antes do clique, e só `ocupadoAntes` diz a verdade sobre isso.
         //   - pedido ainda corrente (`ocupadoAntes` verdadeiro): baixá-la aqui deixaria
@@ -1279,7 +1318,8 @@ Rectangle {
                         /// `resetRetrofeImport()` do `onClosed`, os dois seletores que
                         /// gravam `panel.localPath(...)`) não alcançaria mais o pixel.
                         /// Campo e botão leriam verdades diferentes — o "Examinar"
-                        /// decide por `panel.retrofeImportSource` (`:1326`). Este
+                        /// decide por `panel.retrofeImportSource` no `enabled` de
+                        /// `themeImportRetrofeInspect`). Este
                         /// `Binding` é o espelho de mão única que sobrevive à edição;
                         /// escrever o valor que já está lá não emite `textChanged`,
                         /// então não há loop com o `onTextChanged` acima.

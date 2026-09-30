@@ -1,0 +1,100 @@
+diff --git a/tests/integration/test_ui_shell_esde_import_dialog.py b/tests/integration/test_ui_shell_esde_import_dialog.py
+index e4610b95..0c0ce4d2 100644
+--- a/tests/integration/test_ui_shell_esde_import_dialog.py
++++ b/tests/integration/test_ui_shell_esde_import_dialog.py
+@@ -5 +5 @@
+-`ThemeEditorPanel.qml` (corrigido na 3ª fatia); este vive em `Main.qml:2896`, aberto
++`ThemeEditorPanel.qml` (corrigido na 3ª fatia); este vive em outro `esdeImportDialog`, em `Main.qml`, aberto
+@@ -771 +771 @@ def test_a_espera_e_observavel_com_limite_e_falha() -> None:
+-        "(`Main.qml:852-860`), e o teste só pode ESPERAR o efeito dele"
++        "(`restoreDialogFocus()`), e o teste só pode ESPERAR o efeito dele"
+@@ -830 +830 @@ def test_a_jornada_esde_do_shell_cabe_no_viewport_dado(viewport: str, cenario: s
+-    O vermelho desta fatia é medido aqui. No `Main.qml:2896` atual o diálogo não
++    O vermelho desta fatia é medido aqui. No `Main.qml` atual o diálogo não
+diff --git a/tests/integration/test_ui_shell_retrofe_import_late_response.py b/tests/integration/test_ui_shell_retrofe_import_late_response.py
+index b4c55378..1822f537 100644
+--- a/tests/integration/test_ui_shell_retrofe_import_late_response.py
++++ b/tests/integration/test_ui_shell_retrofe_import_late_response.py
+@@ -10 +10 @@ real em loopback que DORME antes de responder, e o cliente é o `XMLHttpRequest`
+-produto (`Main.qml:1001`, `timeout` `:1012`).
++produto (o `request()` de `Main.qml`, `xhr.timeout`).
+@@ -19 +19 @@ duas leituras que nenhum `verify()` do QML pode fazer sozinho:
+-  (`ThemeEditorPanel.qml:204`) dispara `GET /theme/list` na callback de sucesso do
++  (`refreshThemeList()`) dispara `GET /theme/list` na callback de sucesso do
+@@ -119 +119 @@ ORIGENS: dict[str, dict[str, object]] = {
+-#: `Main.qml:1134` devolve `false` antes de construir o `XMLHttpRequest`. A conta sobe
++#: O `requestAction` devolve `false` antes de construir o `XMLHttpRequest`. A conta sobe
+@@ -355 +355 @@ class _LateResponseHandler(BaseHTTPRequestHandler):
+-        # `Main.qml:1011` envia `X-SteamZero-Token` em toda requisição.
++        # `request()` envia `X-SteamZero-Token` em toda requisição.
+@@ -743 +743 @@ def test_a_espera_e_observavel_e_a_limpeza_testa_quiescencia() -> None:
+-        "quem revela o foco é o produto (`Main.qml:853-859`); o teste espera o efeito"
++        "quem revela o foco é o produto (`restoreDialogFocus()`); o teste espera o efeito"
+@@ -791 +791 @@ def test_o_contrato_da_ponte_bate_com_a_leitura_do_produto() -> None:
+-    `Main.qml:1076` resolve a ação por `uiContracts.byId`, e o catálogo é o que
++    `backendAction()` resolve a ação por `uiContracts.byId`, e o catálogo é o que
+diff --git a/tests/qml/check_shell_esde_import_dialog_journey.qml b/tests/qml/check_shell_esde_import_dialog_journey.qml
+index a3adce52..ca6c1064 100644
+--- a/tests/qml/check_shell_esde_import_dialog_journey.qml
++++ b/tests/qml/check_shell_esde_import_dialog_journey.qml
+@@ -20 +20 @@
+-// Por que este diálogo e não outro: `Main.qml:2896` é o segundo exemplar do
++// Por que este diálogo e não outro: `Main.qml`, `esdeImportDialog` é o segundo exemplar do
+@@ -56 +56 @@
+-//     `forceActiveFocus()` é o mecanismo do produto (`Main.qml:852-860` liga
++//     `forceActiveFocus()` é o mecanismo do produto (`restoreDialogFocus()` liga
+@@ -470 +470 @@ Item {
+-        /// Revelar pelo FOCO é o mecanismo do produto: `Main.qml:852-860` liga
++        /// Revelar pelo FOCO é o mecanismo do produto: `restoreDialogFocus()` liga
+@@ -616 +616 @@ Item {
+-            /// não há esquema nenhum (`Main.qml:3000`) ou a lista, com a requisição
++            /// não há esquema nenhum (o aviso `theme-import-esde-notice`) ou a lista, com a requisição
+diff --git a/tests/qml/check_shell_retrofe_import_late_response.qml b/tests/qml/check_shell_retrofe_import_late_response.qml
+index b603fd89..57057dd0 100644
+--- a/tests/qml/check_shell_retrofe_import_late_response.qml
++++ b/tests/qml/check_shell_retrofe_import_late_response.qml
+@@ -17 +17 @@
+-// cliente é o `XMLHttpRequest` do produto (`Main.qml:1001`, `timeout` `:1012`).
++// cliente é o `XMLHttpRequest` do produto (o `request()` de `Main.qml`, `xhr.timeout`).
+@@ -25 +25 @@
+-//      chega depois do `onClosed` (`ThemeEditorPanel.qml:1215`) encontra layouts,
++//      chega depois do `onClosed` (`retrofeImportDialog.onClosed`) encontra layouts,
+@@ -28 +28 @@
+-//      diferentes, os dois estão em voo juntos (`Main.qml:1134` só deduplica payload
++//      diferentes, os dois estão em voo juntos (o `requestAction` só deduplica payload
+@@ -46 +46 @@
+-//   9. o clique RECUSADO por payload idêntico (`Main.qml:1134`), com o único pedido em
++//   9. o clique RECUSADO por payload idêntico (`requestAction`), com o único pedido em
+@@ -77 +77 @@
+-//   • revelar pelo foco é o mecanismo do produto (`Main.qml:853-859` liga
++//   • revelar pelo foco é o mecanismo do produto (`restoreDialogFocus()` liga
+@@ -320 +320 @@ Item {
+-        /// por id: `Main.qml:6563` dá `id: themeEditorPanel`, mas id não é
++        /// por id: `Main.qml` dá `id: themeEditorPanel`, mas id não é
+@@ -345 +345 @@ Item {
+-        /// (`ThemeEditorPanel.qml:1215`) executa, invocado aqui para que o vermelho
++        /// (`retrofeImportDialog.onClosed`) executa, invocado aqui para que o vermelho
+@@ -451 +451 @@ Item {
+-        /// estado do painel (`ThemeEditorPanel.qml:350`), não o pixel do campo: uma
++        /// estado do painel (`panel.retrofeImportSource`), não o pixel do campo: uma
+@@ -543 +543 @@ Item {
+-        /// diálogo: o `Repeater` (`ThemeEditorPanel.qml:1340`) monta um `RadioButton`
++        /// diálogo: o `Repeater` (o `Repeater` de `retrofeImportLayouts`) monta um `RadioButton`
+@@ -652 +652 @@ Item {
+-        /// há pedido em voo (`ThemeEditorPanel.qml:1309`). O que é alcançável é
++        /// há pedido em voo (`themeImportRetrofeInspect`). O que é alcançável é
+@@ -655 +655 @@ Item {
+-        /// pedidos estão em voo ao mesmo tempo, `Main.qml:1134` só deduplica payload
++        /// pedidos estão em voo ao mesmo tempo, o `requestAction` só deduplica payload
+@@ -764 +764 @@ Item {
+-            // de temas (`ThemeEditorPanel.qml:427`, `panel.refreshThemeList()`). A prova
++            // de temas (`applyRetrofeImport()`, `panel.refreshThemeList()`). A prova
+@@ -886 +886 @@ Item {
+-        /// "Importando…" sumir e "Publicar cena" (`ThemeEditorPanel.qml:1466`) habilitar
++        /// "Importando…" sumir e "Publicar cena" (`themeImportRetrofeApply`) habilitar
+@@ -942 +942 @@ Item {
+-        /// fechamento. `ThemeEditorPanel.qml:1309` desabilita "Examinar" enquanto
++        /// fechamento. `themeImportRetrofeInspect` desabilita "Examinar" enquanto
+@@ -945 +945 @@ Item {
+-        /// MESMA origem é alcançável por clique real, e `Main.qml:1134` recusa payload
++        /// MESMA origem é alcançável por clique real, e `requestAction` recusa payload

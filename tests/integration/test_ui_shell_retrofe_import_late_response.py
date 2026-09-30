@@ -7,7 +7,7 @@ real. As três anteriores (`check_retrofe_import_dialog_compact_viewport.qml`,
 callbacks DENTRO do stub: sincronia não exercita atraso, e por construção a resposta
 nunca chega depois de a superfície ter mudado. Aqui a ponte é um `ThreadingHTTPServer`
 real em loopback que DORME antes de responder, e o cliente é o `XMLHttpRequest` do
-produto (`Main.qml:1001`, `timeout` `:1012`).
+produto (o `request()` de `Main.qml`, `xhr.timeout`).
 
 O que se prova, cena por cena, está no cabeçalho de
 `tests/qml/check_shell_retrofe_import_late_response.qml`. Este arquivo acrescenta as
@@ -16,7 +16,7 @@ duas leituras que nenhum `verify()` do QML pode fazer sozinho:
 * **a ordem em que a ponte SERVIRAM as respostas** — sem ela, "o pedido mais novo
   venceu" pode ser apenas a sorte de o lento ter respondido primeiro;
 * **a re-listagem de temas como evento da ponte** — `refreshThemeList()`
-  (`ThemeEditorPanel.qml:204`) dispara `GET /theme/list` na callback de sucesso do
+  (`refreshThemeList()`) dispara `GET /theme/list` na callback de sucesso do
   `apply`. Num diálogo já fechado isso é invisível na superfície; a asserção é
   "nenhum `GET /theme/list` depois do último `POST /theme/import/retrofe/apply`", e
   o contrafactual é a jornada do `test_01`, onde o `GET /theme/list` TEM de aparecer
@@ -116,7 +116,7 @@ ORIGENS: dict[str, dict[str, object]] = {
 #: log da ponte, e a cena de captura do `test_01` depende disso para ser real.
 #:
 #: Os dois cliques recusados (`test_08`, `test_09`) NÃO entram nesta conta:
-#: `Main.qml:1134` devolve `false` antes de construir o `XMLHttpRequest`. A conta sobe
+#: O `requestAction` devolve `false` antes de construir o `XMLHttpRequest`. A conta sobe
 #: só com os examines reais, e é exatamente isso que `test_o_clique_recusado_nao_chegou_
 #: a_ponte` reconcilia — se a recusa fosse muda apenas no cliente, a origem apareceria
 #: duas vezes no log e a cena estaria provando outra coisa.
@@ -200,7 +200,8 @@ def _layout(alavanca: str, index: int) -> dict[str, object]:
     """Entrada fiel ao payload de `theme_import_retrofe.inspect`.
 
     O produto devolve `{id, path, name}` (`theme_import_retrofe.py:39-44`) mais
-    `report`, `assets`, `degraded` e `scene` (`:209-217`). O `name` carrega o prefixo
+    `report`, `assets`, `degraded` e `scene` (o `layouts.append` de `inspect()` de
+    `theme_import_retrofe.py`). O `name` carrega o prefixo
     da alavanca porque é por ele que o harness distingue, na superfície, de qual
     pedido veio cada opção listada.
     """
@@ -352,7 +353,7 @@ class _LateResponseHandler(BaseHTTPRequestHandler):
     state: _LateResponseState
 
     def _autorizado(self) -> bool:
-        # `Main.qml:1011` envia `X-SteamZero-Token` em toda requisição.
+        # `request()` envia `X-SteamZero-Token` em toda requisição.
         return self.headers.get("X-SteamZero-Token") == self.state.token
 
     def do_GET(self) -> None:
@@ -727,8 +728,11 @@ def test_o_harness_nao_pode_stubear_a_ponte_nem_a_callback() -> None:
         )
     #: Responder a um pedido chamando a callback à mão recriaria a sincronia que
     #: tornou as fatias anteriores incapazes de ver resposta tardia.
+    #: A conferência é por substring do fonte inteiro, comentário incluído: citar
+    #: o símbolo do produto numa nota do harness se faz sem o parêntese de chamada.
     assert "inspectRetrofeImport(" not in fonte, (
-        "o harness chama o importador direto: o pedido tem de sair pelo clique real"
+        "o harness chama o importador direto: o pedido tem de sair pelo clique real "
+        "(a guarda é substring e vale para comentário — cite o símbolo sem parêntese)"
     )
     assert "applyRetrofeImport(" not in fonte, "mesmo motivo: publicar por clique real"
     assert "resetRetrofeImport()" in fonte, (
@@ -740,7 +744,7 @@ def test_o_harness_nao_pode_stubear_a_ponte_nem_a_callback() -> None:
 def test_a_espera_e_observavel_e_a_limpeza_testa_quiescencia() -> None:
     fonte = _harness_source()
     assert "Qt.callLater" not in fonte, (
-        "quem revela o foco é o produto (`Main.qml:853-859`); o teste espera o efeito"
+        "quem revela o foco é o produto (`restoreDialogFocus()`); o teste espera o efeito"
     )
     assert not re.search(r"wait\(\s*(?:[3-9]\d\d|\d{4,})\s*\)", fonte), (
         "o harness usa intervalo fixo grande em vez de condição observável"
@@ -788,7 +792,7 @@ def test_a_ponte_publica_o_contrato_verdadeiro_e_atrasa_de_verdade() -> None:
 def test_o_contrato_da_ponte_bate_com_a_leitura_do_produto() -> None:
     """A ponte não pode servir um contrato que o produto não publica.
 
-    `Main.qml:1076` resolve a ação por `uiContracts.byId`, e o catálogo é o que
+    `backendAction()` resolve a ação por `uiContracts.byId`, e o catálogo é o que
     `handheld_ui_contracts()` publica em `/status`. Se o id, o método ou o endpoint
     divergir do produto, a jornada exercita a ponte e não o shell.
     """
@@ -971,7 +975,8 @@ def test_a_resposta_tardia_do_importador_retrofe_nao_reabre_estado() -> None:
     ]
     assert posicoes_list, (
         "nenhum GET /theme/list na ponte: o painel nem lista temas ao abrir "
-        "(`ThemeEditorPanel.qml:616`), então o produto não foi exercitado"
+        "(`Component.onCompleted: refreshThemeList()`), então o produto não foi "
+        "exercitado"
     )
     assert any(lista > aplica for aplica in posicoes_apply for lista in posicoes_list), (
         "nenhum GET /theme/list Depois de nenhum POST de apply: o mecanismo de "

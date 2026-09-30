@@ -1,0 +1,18 @@
+
+== citacoes numericas por arquivo (HOJE) ==
+     2  tests/qml/check_shell_esde_import_late_response.qml
+     4  tests/integration/test_ui_shell_esde_import_late_response.py
+     3  tests/qml/check_shell_retrofe_import_late_response.qml
+     2  tests/integration/test_ui_shell_retrofe_import_late_response.py
+     2  tests/qml/check_shell_esde_import_dialog_journey.qml
+     4  tests/integration/test_ui_shell_esde_import_dialog.py
+     1  tests/integration/test_ui_shell_home_first_fold.py
+     0  tests/qml/check_esde_import_dialog_compact_viewport.qml
+     3  tests/qml/check_readiness_surface.qml
+     2  tests/unit/test_ui_audit_runner.py
+
+FORA DO REPOSITORIO (caminho qrc/Qt): 1
+
+TOTAL: 23 citacoes | 22 apontam o mesmo conteudo de HEAD | 0 deslocaram
+HEAD = c4975979b93a03e661294b6854146e76f22fa8c3
+rc=0

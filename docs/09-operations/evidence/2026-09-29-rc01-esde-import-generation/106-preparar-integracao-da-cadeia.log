@@ -1,0 +1,146 @@
+origin/main = 3495c49d5d7c3244267e8292beee34475f70236b
+comandos desta medicao: gh pr view / gh api / git merge-base --is-ancestor / git diff --shortstat / git rev-list
+
+### checks obrigatorios declarados na protecao de main
+  leitura indisponivel pela API de protecao (sem admin ou sem protecao por contexto). A lista abaixo usa os oito checks que a politica deste repo exercita em todo PR: Python 3.11, Python 3.12, Python 3.14, Wheel limpo/smoke/supply chain, Smoke Ubuntu 24.04, Smoke Arch Linux, Smoke Manjaro, Gate visual QML (Linux).
+
+### tabela por elo (medido nesta execucao)
+#239  ramo=codex/project-design-audit-2026-09-26
+  cabeca=069501ab  base=main@3495c49d  state=OPEN  draft=False
+  dependencia: nenhuma (primeiro elo da fileira; base = main@3495c49d)
+  proprios (rev-list 3495c49d..069501ab) = 2   acumulados (origin/main..069501ab) = 2
+  diff exclusivo vs a base: 51 files changed, 16057 insertions(+), 433 deletions(-)
+  checks obrigatorios: 8/8 SUCCESS; nao-SUCCESS=nenhum; ausentes=nenhum
+  checks fora da lista obrigatoria: {'Sourcery review': 'SKIPPED', 'CodeRabbit': '-'}
+  mergeable=MERGEABLE  mergeStateStatus=CLEAN  reviewDecision=nenhum
+#240  ramo=codex/rc01-central-loading-2026-09-26
+  cabeca=c959be13  base=main@3495c49d  state=OPEN  draft=False
+  dependencia (cabeca do elo anterior) = 069501ab  ancestral desta cabeca: SIM
+  proprios (rev-list 3495c49d..c959be13) = 7   acumulados (origin/main..c959be13) = 7
+  diff exclusivo vs a base: 98 files changed, 21585 insertions(+), 574 deletions(-)
+  checks obrigatorios: 8/8 SUCCESS; nao-SUCCESS=nenhum; ausentes=nenhum
+  checks fora da lista obrigatoria: {'Sourcery review': 'SKIPPED', 'CodeRabbit': '-'}
+  mergeable=MERGEABLE  mergeStateStatus=CLEAN  reviewDecision=nenhum
+#241  ramo=codex/rc01-readiness-focus-2026-09-27
+  cabeca=190ea683  base=main@3495c49d  state=OPEN  draft=False
+  dependencia (cabeca do elo anterior) = c959be13  ancestral desta cabeca: SIM
+  proprios (rev-list 3495c49d..190ea683) = 20   acumulados (origin/main..190ea683) = 20
+  diff exclusivo vs a base: 181 files changed, 29934 insertions(+), 836 deletions(-)
+  checks obrigatorios: 8/8 SUCCESS; nao-SUCCESS=nenhum; ausentes=nenhum
+  checks fora da lista obrigatoria: {'Sourcery review': 'SKIPPED', 'CodeRabbit': '-'}
+  mergeable=MERGEABLE  mergeStateStatus=CLEAN  reviewDecision=nenhum
+#242  ramo=codex/rc01-shell-esde-dialog-2026-09-27
+  cabeca=5d95034b  base=main@3495c49d  state=OPEN  draft=False
+  dependencia (cabeca do elo anterior) = 190ea683  ancestral desta cabeca: SIM
+  proprios (rev-list 3495c49d..5d95034b) = 24   acumulados (origin/main..5d95034b) = 24
+  diff exclusivo vs a base: 231 files changed, 36958 insertions(+), 942 deletions(-)
+  checks obrigatorios: 8/8 SUCCESS; nao-SUCCESS=nenhum; ausentes=nenhum
+  checks fora da lista obrigatoria: {'Sourcery review': 'SKIPPED', 'CodeRabbit': '-'}
+  mergeable=MERGEABLE  mergeStateStatus=CLEAN  reviewDecision=nenhum
+#243  ramo=codex/rc01-readiness-semantics-2026-09-28
+  cabeca=c0de54c9  base=main@3495c49d  state=OPEN  draft=False
+  dependencia (cabeca do elo anterior) = 5d95034b  ancestral desta cabeca: SIM
+  proprios (rev-list 3495c49d..c0de54c9) = 34   acumulados (origin/main..c0de54c9) = 34
+  diff exclusivo vs a base: 316 files changed, 45137 insertions(+), 1138 deletions(-)
+  checks obrigatorios: 8/8 SUCCESS; nao-SUCCESS=nenhum; ausentes=nenhum
+  checks fora da lista obrigatoria: {'Sourcery review': 'SKIPPED', 'CodeRabbit': '-'}
+  mergeable=MERGEABLE  mergeStateStatus=CLEAN  reviewDecision=nenhum
+#244  ramo=codex/rc01-storage-units-2026-09-28
+  cabeca=af6a5c6e  base=main@3495c49d  state=OPEN  draft=False
+  dependencia (cabeca do elo anterior) = c0de54c9  ancestral desta cabeca: SIM
+  proprios (rev-list 3495c49d..af6a5c6e) = 50   acumulados (origin/main..af6a5c6e) = 50
+  diff exclusivo vs a base: 362 files changed, 50323 insertions(+), 1194 deletions(-)
+  checks obrigatorios: 8/8 SUCCESS; nao-SUCCESS=nenhum; ausentes=nenhum
+  checks fora da lista obrigatoria: {'Sourcery review': 'SKIPPED'}
+  mergeable=MERGEABLE  mergeStateStatus=CLEAN  reviewDecision=nenhum
+#245  ramo=codex/rc01-retrofe-shell-late-response-2026-09-29
+  cabeca=2d6a8957  base=codex/rc01-storage-units-2026-09-28@af6a5c6e  state=OPEN  draft=False
+  dependencia (cabeca do elo anterior) = af6a5c6e  ancestral desta cabeca: SIM
+  proprios (rev-list af6a5c6e..2d6a8957) = 8   acumulados (origin/main..2d6a8957) = 58
+  diff exclusivo vs a base: 59 files changed, 5268 insertions(+), 27 deletions(-)
+  checks obrigatorios: 8/8 SUCCESS; nao-SUCCESS=nenhum; ausentes=nenhum
+  checks fora da lista obrigatoria: {'Sourcery review': 'SKIPPED', 'CodeRabbit': '-'}
+  mergeable=MERGEABLE  mergeStateStatus=CLEAN  reviewDecision=nenhum
+#246  ramo=codex/rc01-home-first-fold-2026-09-29
+  cabeca=c4975979  base=codex/rc01-retrofe-shell-late-response-2026-09-29@2d6a8957  state=OPEN  draft=False
+  dependencia (cabeca do elo anterior) = 2d6a8957  ancestral desta cabeca: SIM
+  proprios (rev-list 2d6a8957..c4975979) = 16   acumulados (origin/main..c4975979) = 74
+  diff exclusivo vs a base: 56 files changed, 4210 insertions(+), 96 deletions(-)
+  checks obrigatorios: 8/8 SUCCESS; nao-SUCCESS=nenhum; ausentes=nenhum
+  checks fora da lista obrigatoria: {'Sourcery review': 'SKIPPED', 'CodeRabbit': '-'}
+  mergeable=MERGEABLE  mergeStateStatus=CLEAN  reviewDecision=nenhum
+
+### leitura da tabela
+- MERGEABLE/CLEAN significa 'o GitHub consegue calcular o merge', nao
+  'esta aprovado'. Nenhum dos oito elos tem review pendente exigido pela
+  API; decisao de merge segue sendo do operador.
+- A coluna 'proprios' usa a BASE de cada PR como raiz de contagem. Para
+  #239..#244, cuja base e main, esse numero JAI E acumulado: somar as
+  oito colunas nao da o tamanho da fileira. O total da fileira e o
+  acumulado da ultima cabeca.
+- Orden de integracao ascendente pela ancestralidade medida acima.
+
+### sequencia concreta (nao executada aqui; decisao do operador)
+Bloqueio real, medido nesta execucao: #245 tem base no RAMO de #244 e
+#246 no RAMO de #245. Um `gh pr merge` nesses dois entregaria no ramo de
+base, NAO em main. Antes de cada um deles, a base precisa ser recolocada
+em main (`gh pr edit N --base main`), o que so e seguro depois que o elo
+anterior estiver integrado — a ancestralidade medida acima garante que o
+diff passa a ser apenas o delta daquele elo.
+Ordem ascendente: #239, #240, #241, #242, #243, #244, #245, #246.
+Estrategia: merge commit por elo (squash/rebase re-infla o diff dos
+seguintes e pode criar conflito onde hoje nao ha).
+
+```
+# --- elo #239 (cabeca 069501ab, base atual main) ---
+gh pr merge 239 --merge
+git -C <checkout> fetch origin main && git -C <checkout> rev-parse origin/main  # SHA efetivamente integrado de #239
+# conflito possivel em arquivos compartilhados (Main.qml, cartao, WORKLOG): resolver preservando intencao e testes, jamais descartando o lado alheio
+# --- elo #240 (cabeca c959be13, base atual main) ---
+gh pr merge 240 --merge
+git -C <checkout> fetch origin main && git -C <checkout> rev-parse origin/main  # SHA efetivamente integrado de #240
+# conflito possivel em arquivos compartilhados (Main.qml, cartao, WORKLOG): resolver preservando intencao e testes, jamais descartando o lado alheio
+# --- elo #241 (cabeca 190ea683, base atual main) ---
+gh pr merge 241 --merge
+git -C <checkout> fetch origin main && git -C <checkout> rev-parse origin/main  # SHA efetivamente integrado de #241
+# conflito possivel em arquivos compartilhados (Main.qml, cartao, WORKLOG): resolver preservando intencao e testes, jamais descartando o lado alheio
+# --- elo #242 (cabeca 5d95034b, base atual main) ---
+gh pr merge 242 --merge
+git -C <checkout> fetch origin main && git -C <checkout> rev-parse origin/main  # SHA efetivamente integrado de #242
+# conflito possivel em arquivos compartilhados (Main.qml, cartao, WORKLOG): resolver preservando intencao e testes, jamais descartando o lado alheio
+# --- elo #243 (cabeca c0de54c9, base atual main) ---
+gh pr merge 243 --merge
+git -C <checkout> fetch origin main && git -C <checkout> rev-parse origin/main  # SHA efetivamente integrado de #243
+# conflito possivel em arquivos compartilhados (Main.qml, cartao, WORKLOG): resolver preservando intencao e testes, jamais descartando o lado alheio
+# --- elo #244 (cabeca af6a5c6e, base atual main) ---
+gh pr merge 244 --merge
+git -C <checkout> fetch origin main && git -C <checkout> rev-parse origin/main  # SHA efetivamente integrado de #244
+# conflito possivel em arquivos compartilhados (Main.qml, cartao, WORKLOG): resolver preservando intencao e testes, jamais descartando o lado alheio
+# --- elo #245 (cabeca 2d6a8957, base atual codex/rc01-storage-units-2026-09-28) ---
+gh pr edit 245 --base main          # recolocar na cabeza do que ja foi integrado
+gh pr view 245 --json baseRefOid,mergeable,mergeStateStatus,statusCheckRollup
+git -C <checkout> fetch origin main && git -C <checkout> diff --shortstat origin/main...2d6a895760ef55bf3cbdf742808e6798946da9d5  # diff exclusivo esperado
+gh pr merge 245 --merge
+git -C <checkout> fetch origin main && git -C <checkout> rev-parse origin/main  # SHA efetivamente integrado de #245
+# conflito possivel em arquivos compartilhados (Main.qml, cartao, WORKLOG): resolver preservando intencao e testes, jamais descartando o lado alheio
+# --- elo #246 (cabeca c4975979, base atual codex/rc01-retrofe-shell-late-response-2026-09-29) ---
+gh pr edit 246 --base main          # recolocar na cabeza do que ja foi integrado
+gh pr view 246 --json baseRefOid,mergeable,mergeStateStatus,statusCheckRollup
+git -C <checkout> fetch origin main && git -C <checkout> diff --shortstat origin/main...c4975979b93a03e661294b6854146e76f22fa8c3  # diff exclusivo esperado
+gh pr merge 246 --merge
+git -C <checkout> fetch origin main && git -C <checkout> rev-parse origin/main  # SHA efetivamente integrado de #246
+```
+
+### revalidacao proporcional apos o oitavo elo
+- O verde registrado em cada cabeca foi produzido contra a base daquela
+  cabeca naquele momento. Composicao nova (main consolidado + arquivo
+  compartilhado) nao herdam esse verde por decreto.
+- Custo: uma suíte integral + o gate visual sobre o main consolidado, e
+  um `make status-check`. Isso e proporcional e suficiente; re-rodar as
+  oito suítes seria repetir a mesma árvore.
+
+### depois de consolidar
+Conferir em main a presenca de
+  src/steamzero/ui/qml/sizes.js, src/steamzero/ui/qml/readiness.js,
+e dos demais arquivos alegados; revarrer o artefato; so entonces fechar
+workstreams citando o SHA efetivamente integrado.

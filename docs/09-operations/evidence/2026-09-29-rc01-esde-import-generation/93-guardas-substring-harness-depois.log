@@ -1,0 +1,8 @@
+HEAD c4975979 | snapshot pré-corte cit-backup-83
+
+### tests/qml/check_shell_esde_import_late_response.qml  (proibidos=8 exigidos=20)
+### tests/qml/check_shell_retrofe_import_late_response.qml  (proibidos=7 exigidos=16)
+### tests/qml/check_shell_esde_import_dialog_journey.qml  (proibidos=6 exigidos=15)
+### tests/qml/check_home_first_fold_attention.qml  (proibidos=0 exigidos=0)
+
+PROBLEMAS: 0

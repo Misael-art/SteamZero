@@ -1,0 +1,28 @@
+  PR estado base                                         cabeça      checks mergeável
+#239   OPEN main                                         069501ab       9/9 MERGEABLE
+#240   OPEN main                                         c959be13       9/9 MERGEABLE
+#241   OPEN main                                         190ea683       9/9 MERGEABLE
+#242   OPEN main                                         5d95034b       9/9 MERGEABLE
+#243   OPEN main                                         c0de54c9       9/9 MERGEABLE
+#244   OPEN main                                         af6a5c6e       9/9 MERGEABLE
+#245   OPEN codex/rc01-storage-units-2026-09-28          2d6a8957       9/9 MERGEABLE
+#246   OPEN codex/rc01-retrofe-shell-late-response-2026-09-29 c4975979       9/9 MERGEABLE
+
+### ancestralidade (git merge-base --is-ancestor)
+#239 (069501ab) eh ancestral de #240 (c959be13): SIM
+#240 (c959be13) eh ancestral de #241 (190ea683): SIM
+#241 (190ea683) eh ancestral de #242 (5d95034b): SIM
+#242 (5d95034b) eh ancestral de #243 (c0de54c9): SIM
+#243 (c0de54c9) eh ancestral de #244 (af6a5c6e): SIM
+#244 (af6a5c6e) eh ancestral de #245 (2d6a8957): SIM
+#245 (2d6a8957) eh ancestral de #246 (c4975979): SIM
+
+origin/main = 3495c49d5d7c3244267e8292beee34475f70236b
+#239: main eh ancestral da cabeca: SIM; commits acima de main: 2
+#240: main eh ancestral da cabeca: SIM; commits acima de main: 7
+#241: main eh ancestral da cabeca: SIM; commits acima de main: 20
+#242: main eh ancestral da cabeca: SIM; commits acima de main: 24
+#243: main eh ancestral da cabeca: SIM; commits acima de main: 34
+#244: main eh ancestral da cabeca: SIM; commits acima de main: 50
+#245: main eh ancestral da cabeca: SIM; commits acima de main: 58
+#246: main eh ancestral da cabeca: SIM; commits acima de main: 74

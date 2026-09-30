@@ -14246,3 +14246,171 @@ integral do checkpoint na árvore certa. Integrado: **não**. Empacotado: **não
 wheel dos elos 7 e 8 ainda não foi varrida. Experiência na release instalada: **não** — continua
 `2.0.0rc1-e2af2562ebba` (26/09). RC-01 **não** está concluída, e este adendo não a declara
 concluída: ele fecha a entrega do que existe e marca precisamente o que falta.
+
+## 2026-09-29 — RC-01 / nono elo: o contrato de geração chega ao ES-DE, e o corte de citações acende duas portas
+
+**Por que existe um nono elo depois de o adendo anterior ter escrito "não há nono elo".**
+A frase descrevia a intenção de parar de acumular elos, não um impedimento técnico, e o
+registro agora é este: o trabalho abaixo fecha uma pendência **nomeada** por uma frente
+anterior — o cartão do sétimo elo (`rc01-retrofe-shell-late-2026-09-29.json`,
+`nextAction`) lista "contrato de geração no importador ES-DE" entre o que falta. Não é um
+corte aberto para continuar avançando; é o item que a pilha deixou pendurado, e é o último
+corte funcional antes da consolidação. O adendo de 8º elo permanece íntegro, como está.
+
+**O que mudou no produto.** `ThemeEditorPanel.qml` (+47/−7) e `Main.qml` (+43/−2) passam a
+tratar a resposta tardia do importador ES-DE pelo mesmo contrato já estabelecido para
+RetroFE: `esdeImportGeneration` (painel `:83`, raiz `:539`) é capturada no despacho e o
+callback de sucesso e o de erro só escrevem na superfície enquanto a geração bater; fechar
+o diálogo revoga o pedido em voo (`Main.qml:2910` no `onClosed`, `resetEsdeImport()` no
+painel `:218`); e a recusa por dedup devolve a bandeira ao valor anterior ao clique
+(`ocupadoAntes`; rollback em `:265`/`:310` no painel e `:3031`/`:3131` na raiz), em vez de
+deixá-la armada e travar o diálogo. Gate novo:
+`tests/integration/test_ui_shell_esde_import_late_response.py` (1181 linhas) com
+`tests/qml/check_shell_esde_import_late_response.qml` (1247 linhas, dez cenas — cinco na
+rota do painel, cinco na rota raiz), sobre `ThreadingHTTPServer` em loopback que dorme de
+verdade; nenhum `requestAction` stubado, nenhuma callback chamada à mão.
+
+**Vermelho, verde e a bateria.** `71`/`72` registram o vermelho que não era do produto:
+sob carga, a cena do apply na raiz reprovava porque o `notify` de sucesso é desfecho
+correto com a superfície aberta e defeito depois de fechar — a distinção virou asserção
+nomeada (`raiz-depois-do-apply-tardio`), não um `wait()` maior. `74`: **8 passed**.
+Bateria de mutações em duas frentes (`70`, `73`, `rc=0`, árvore restaurada por SHA-256):
+M1–M5 no painel e M6–M10 na raiz, **9 de 10 detectadas**. M9 (rollback do apply raiz
+escrevendo `true` em vez de `ocupadoAntes`) **sobreviveu — mutante equivalente**, porque a
+janela que o distingue exige um segundo clique que o produto proíbe; em vez de afrouxar a
+asserção, o limite foi pinado por teste de reachability.
+
+**O corte de citações quebrou duas portas, e o classificador de papel de linha não viu.**
+Converter `ThemeEditorPanel.qml:265` em `` `applyEsdeImport()` `` é o que torna a
+documentação estável, mas as guardas de intenção conferem o fonte do harness por substring
+(`assert "applyEsdeImport(" not in fonte`), e substring não sabe o que é comentário. A
+revalidação proporcional (`92`) chegou com **1 failed / 8 passed** nas duas portas de
+resposta tardia; diálogo ES-DE e primeira dobra ficaram verdes. `90`/`91` provaram "nenhuma
+linha adicionada é executável" e "nenhuma citação em linha executável" — as duas afirmativas
+seguem verdadeiras e as duas são insuficientes, porque o critério da guarda é o arquivo
+inteiro. `93-guardas-substring-harness.py` reproduz as guardas por AST, sem Qt, escopando
+por função o que `fonte` lê (harness, o próprio `.py` ou o produto), e casa exatamente com
+o pytest: sete ocorrências, nos dois arquivos que falharam. A correção foi pelo lado da
+prosa (`` `applyEsdeImport` ``, sem parêntese de chamada — chamada real continua tendo
+parêntese e continua acendendo a guarda); **nenhuma condição de asserção foi tocada**, e
+estreitar a guarda foi recusado porque ela é conservadora por desenho. O texto de falha das
+duas guardas ganhou a convenção, senão o próximo autor vê "o harness chama o importador
+direto" sem saber que estava num comentário.
+
+**Atribuição corrigida uma vez no meio da rodada, e a lacuna que sobrou.** A primeira
+leitura chamou a colisão de pré-corte porque `cit-backup-83` já a continha; o snapshot é de
+21:29, **depois** do `80-corrigir-citacoes.py` (21:16) que escreve os quatro símbolos — as
+sete colisões são do corte. Não existe artefato de corrida da porta ES-DE entre 21:16 e
+21:57: o verde arquivado (`74`, 20:50) é anterior às conversões e o primeiro verde
+posterior é `98`. Isso é lacuna de evidência desta sessão, registrada como tal.
+
+**Revalidação proporcional (mudança textual não repete a integral).** `98`: **9 passed,
+rc=0** nas duas portas afetadas. `97` repete o veredito do corte: 20/20 citações conferindo
+com HEAD, zero cruas `:NNN`, zero estouros de largamento. `93-…-depois.log`: zero tokens
+proibidos. `ruff check` "All checks passed!", `ruff format --check` 681 arquivos formados,
+`mypy` 298 arquivos sem issue, `lint_boundaries.py --root src` 0 violações.
+`95-identidade-arquivos-antes-94.txt` traz o SHA-256 dos quatro arquivos antes da correção;
+`96-….parcial-sigterm` é o log descartado porque um `pkill` meu matou a primeira porta no
+meio da corrida — preservado com esse nome, não reciclado como evidência.
+
+**Cinco camadas, depois deste corte.** Interface: sim, contratada e testada offscreen nas
+duas rotas. Contrato testado offscreen: sim (dez cenas com atraso real + dez mutantes).
+Integrado: **não** — aguarda o PR e a decisão de merge, que é do operador. Empacotado:
+**não**. Experiência na release instalada: **não**. O seletor nativo de diretório continua
+pendente: uma rota alternativa funcional por Enter não é prova da rota não testada.
+Narrativa completa em
+`docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/README.md`.
+
+
+## 2026-09-29 — RC-01 / nono elo, adendo: o checkpoint integral único e a fileira re-medida
+
+**A dívida que a própria sessão declarou, paga — e o que ela cobrou.** A entrada
+anterior registrou que a suíte integral arquivada era anterior ao trabalho
+funcional do elo. Ela foi rodada uma única vez, com a árvore congelada em
+`c4975979` e sem nada disputando CPU com as portas de atraso real:
+`.venv/bin/python tools/run_tests_isolated.py tests -q` → **1 failed, 6528 passed, 47 skipped in 2529.34s (0:42:09)**
+(rc=1), precedido dos gates leves de AGENTS §6 (`ruff check`, `ruff
+format --check`, `mypy`, `make independence boundaries`), todos rc=0. Identidade
+antes e depois do mesmo relatório: mesma cabeça e um único SHA-256 por arquivo do
+corte — a árvore não se moveu durante a corrida. O comportamento passou inteiro; o
+único falho foi o gate de catálogo gerado, e a causa é deste lote: 11
+`scopeDigest` envelheceram. Lido dos JSONs dos cartões pelo próprio `103`: `Main.qml`
+está no escopo de 8 deles, `ThemeEditorPanel.qml` no de 5, os
+dois em `SZ-THEME-ENGINE`, `SZ-UI-DESKTOP-AUDIT`, e a união fecha 8 + 5 − 2 =
+11, que é exatamente o conjunto renovado. O cartão desta frente
+(`SZ-UI-DESKTOP-AUDIT`) já está entre os 2 que cobrem os dois, porque nomeia o
+diretório `src/steamzero/ui`; a conta desta sessão escrita antes da medição
+(`7 + 4 − 1 + 1 = 11`) acertou o total por acaso e errou as parcelas, e é a versão
+medida que fica registrada. Na cabeça `c4975979` o mesmo teste
+passou no CI — o job obrigatório "Python 3.11/3.12/3.14" roda
+`python tools/project_status.py check` (`.github/workflows/ci.yml:72`) —, então
+nenhum dos 11 estava envelhecido antes daqui. O remédio é o prescrito em AGENTS §6
+para "só uma visão ou digest gerado obsoleto": `105-renovar-digests.py` renovou no
+valor impresso pela ferramenta (dupla leitura `check` + `digest --item`), `render
+--write` atualizou as três visões geradas (`docs/STATUS.md`, `docs/ACTIVE-WORK.md`,
+`docs/status/COVERAGE.md`) e o `check` final fechou `rc=0`. Três coisas ficam
+declaradas, não escondidas: o `100` omitiu `make status-check` dos seis gates de §6
+(roda à parte, agora `OK`); a linha de parada que ele imprimiu — *suite integral nao voltou rc=0; a suite integral nao roda em arvore que ja reprovou um gate leve.* — é
+template genérico e afirma uma razão falsa neste caso, já que nenhum gate leve havia
+reprovado (o `103` a confere byte a byte justamente para registrá-la em vez de
+repeti-la; o driver foi corrigido **depois** da corrida, então o script arquivado e o
+log não voltam a dizer a mesma coisa, e é de propósito — o log é a medição, não o
+texto); e renovação de digest não é prova de comportamento — é prova de que o
+catálogo bate com a árvore. Saída completa em
+`docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/100-checkpoint-integral-nono-elo.log`;
+os números desta entrada foram lidos desse arquivo por script, não transcritos à
+mão.
+
+**Gate visual na mesma árvore**, pelo precedente do oitavo elo (PASSO 7 de `52`), e
+só depois de o `110` verificar que os 9 arquivos funcionais são
+byte a byte os mesmos que o `100` testou: **377 passed, 6199 deselected in 1711.56s (0:28:31)**
+(`110-gate-visual-apos-governanca.log`), janela `2026-09-29T23:11:07-0300 → 2026-09-29T23:39:42-0300`. O `102` se recusou a
+rodar com o checkpoint aberto, e a recusa está arquivada como está.
+
+**Fileira re-medida, não presumida** (`101-reconcilio-entrega-acumulada.py`,
+`106-preparar-integracao-da-cadeia.py`, `107-conta-de-commits-da-fileira.py`): os
+oito PRs `#239`…`#246` seguem abertos e os oito checks obrigatórios estão em
+`SUCCESS` nas oito cabeças (8/8 com `mergeStateStatus=CLEAN` e
+nenhum review pendente exigido). `#246` está a **74**
+commits acima de `origin/main` (`3495c49d`), lido com
+`git rev-list --count origin/main..c4975979`; a mesma grandeza elo a elo é
+`2 + 5 + 13 + 4 + 10 + 16 + 8 + 16` = **74**, com cada parcela medida contra a cabeça do elo
+anterior e o `merge-base --is-ancestor` par a par conferido antes de somar.
+
+**A conta que não fechava, e o que estava errado era o rótulo.** "74, quatro a mais
+que 61" misturou um documento com um número e escondia o lado esquerdo do `rev-list`.
+Re-medido: `61-reconcilio-rc01-oito-elos.md` media **70** e estava certo na
+rodada em que foi escrito — `#246` estava em `22773047`, com **12**
+commits sobre a base `2d6a8957`. A diferença de **4** é a rodada de
+reconcílio posterior (`c4975979`, `71c49beb`, `7a8af0c1`, `92e1bf4c`), que toca apenas `docs/` e levou aquela
+cabeça aos 16 commits próprios de hoje. O que precisava
+de correção era o nome, e ele foi conferido célula a célula em vez de lido do jeito:
+o `103` relê o corpo publicado de `#246` (`gh pr view 246 --json body`), recorta as
+oito linhas da tabela de fileira e confronta cada célula com as três colunas medidas
+pelo `107`, abortando se alguma ficar sem par. A coluna **"commits próprios"** é
+`rev-list --count <cabeça do elo anterior>..<cabeça>` — **0**
+linhas em desacordo com ela, contra 7 de `acima_de_main`
+(`#240`, `#241`, `#242`, `#243`, `#244`, `#245`, `#246`) e 5 de `acima_da_base` (`#240`, `#241`, `#242`, `#243`, `#244`), então
+a identificação é por exclusão e ela nunca esteve errada, soma incluída. A coluna
+**"commits"** é que não segue um ref só: vale `acima_de_main` em sete linhas e
+`acima_da_base` em `#245`, que publica `8` onde
+`git rev-list --count origin/main..2d6a8957` dá `58` — soma
+**161** se a tratarmos como por base, e nada que seja tamanho de
+fileira. Os dois números convivem sem contradição desde que cada um declare seu ref;
+o corpo publicado de `#246` não foi reescrito (é artefato da cabeça `c4975979`, e a
+decisão sobre ele é de integração, não de prosa), e o `107` desta entrada imprime as
+três colunas com o comando de cada uma. O documento de `61` também não foi tocado: a
+releitura é esta entrada.
+
+**O bloqueio passou a ser a integração, e a medição achou um bloqueio dentro do
+bloqueio:** #245 sobre o ramo `codex/rc01-storage-units-2026-09-28`, #246 sobre o ramo `codex/rc01-retrofe-shell-late-response-2026-09-29` — os dois têm base em **ramo**, não em `main`, e mergear
+neles entregaria no ramo de base. A sequência com o `gh pr edit N --base main` no ponto
+seguro de cada um está registrada em
+`106-preparar-integracao-da-cadeia.log`; nada foi mesclado e a decisão é do
+operador.
+
+**Camadas, depois do checkpoint.** Contrato testado offscreen: sim, agora com
+suíte integral e gate visual na árvore do elo. Integrado: **não** — merge é
+decisão do operador e a fileira está pronta, sequenciada. Empacotado: **não**.
+Experiência na release instalada: **não**. Seletor nativo de diretório: **não
+comprovado**.

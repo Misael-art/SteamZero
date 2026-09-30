@@ -1,0 +1,25 @@
+APLICADAS por arquivo:
+    1  tests/qml/check_shell_esde_import_late_response.qml
+    6  tests/integration/test_ui_shell_esde_import_late_response.py
+   12  tests/qml/check_shell_retrofe_import_late_response.qml
+    1  tests/integration/test_ui_shell_retrofe_import_late_response.py
+    3  tests/qml/check_shell_esde_import_dialog_journey.qml
+    3  tests/integration/test_ui_shell_esde_import_dialog.py
+    6  tests/integration/test_ui_shell_home_first_fold.py
+TOTAL: 32 de 41 substituicoes
+
+JA APLICADAS (reentrada): 9
+  tests/qml/check_shell_esde_import_late_response.qml: '        /// O examine pela rota real. Sem `onAccep'
+  tests/qml/check_shell_esde_import_late_response.qml: '        /// estado próprio (`shell.esdeImport*`, `'
+  tests/qml/check_shell_esde_import_late_response.qml: '        /// = 0, e o `onClosed` (`:2898-2906`) lim'
+  tests/qml/check_shell_esde_import_late_response.qml: '        /// (idêntica ao molde RetroFE): examinar,'
+  tests/qml/check_shell_esde_import_late_response.qml: '        /// (`inspectEsdeImport()`) arma a bandeir'
+  tests/qml/check_shell_esde_import_late_response.qml: '+ "valor de antes do clique (`ocupadoAntes`, como '
+  tests/qml/check_shell_esde_import_late_response.qml: '+ "o `*RetrofeImport()`), não deixá-la no `true` q'
+  tests/qml/check_shell_esde_import_late_response.qml: '+ "`:224` armou")'
+  tests/qml/check_shell_esde_import_late_response.qml: '        /// OCIOSA e utilizável: o clique recusado'
+
+PROBLEMAS (0):
+
+ESTOURAM O LARGAMENTO (0):
+rc=0

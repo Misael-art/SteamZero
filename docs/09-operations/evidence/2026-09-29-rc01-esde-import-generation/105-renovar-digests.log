@@ -1,0 +1,15 @@
+check rc=1; digest envelhecidos=11; outras linhas=0
+  SZ-AURA-ESDE-ACTIVE-SURFACE: 764e4c4f08e0 -> 42a06317d6b5 (dupla leitura ok)
+  SZ-GAMEMODE-READINESS: d2c550720496 -> d95881d9b973 (dupla leitura ok)
+  SZ-LIBRARY-CANONICAL: 0f92a5a85055 -> f03610236eb8 (dupla leitura ok)
+  SZ-PS3-OFFICIAL-FIRMWARE-DOWNLOAD: 82647f74182f -> 8bd3325c50f7 (dupla leitura ok)
+  SZ-SYSTEM-DIAGNOSTICS-GUIDANCE: c88e37b0b54e -> 83ed5ee8a549 (dupla leitura ok)
+  SZ-THEME-ENGINE: d122700b80e4 -> ed5541ad9419 (dupla leitura ok)
+  SZ-THEME-IMPORT-ESDE-LAYOUT: 7f5d24081938 -> eabfb0d8d59a (dupla leitura ok)
+  SZ-THEME-IMPORT-RETROFE: 926f6dc38ddc -> 8eff89d18e86 (dupla leitura ok)
+  SZ-THEME-IMPORT-SURFACE: 6d6c557c31fa -> 52c6ebe56155 (dupla leitura ok)
+  SZ-THEME-STUDIO: 77093999ba49 -> 106ce85d64a6 (dupla leitura ok)
+  SZ-UI-DESKTOP-AUDIT: e1a97f0a5325 -> a13e8e723d35 (dupla leitura ok)
+render rc=0: 
+check pos-renovacao rc=0
+OK: 11 digest renovados no valor impresso pela ferramenta

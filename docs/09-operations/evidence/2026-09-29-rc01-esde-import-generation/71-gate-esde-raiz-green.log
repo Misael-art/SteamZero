@@ -1,0 +1,67 @@
+......F.                                                                 [100%]
+=================================== FAILURES ===================================
+_________ test_a_resposta_tardia_do_importador_esde_nao_reabre_estado __________
+
+    @pytest.mark.visual
+    def test_a_resposta_tardia_do_importador_esde_nao_reabre_estado() -> None:
+        if RUNNER is None:
+            pytest.fail(
+                "QML-VISUAL-ENVIRONMENT-001: qmltestrunner ausente. A resposta tardia do "
+                "importador ES-DE não pode ser verificada sem runtime QML; declarar verde "
+                "sem renderizar é o defeito que a RC-01 combate."
+            )
+        bridge, state = _start_bridge()
+        try:
+            completed = _run_qmltestrunner(bridge, "jornada")
+        finally:
+            bridge.shutdown()
+            bridge.server_close()
+            _gravar_eventos_da_ponte(state, "jornada")
+    
+        saida = completed.stdout + completed.stderr
+        observadas = _observacoes(saida)
+    
+        assert state.unauthorized == 0, (
+            f"a ponte devolveu 401 por token {state.unauthorized}x: a jornada não passou "
+            "pela rota autenticada de `Main.qml`"
+        )
+        assert state.status_calls >= 1, "a ponte nunca serviu /status"
+    
+        inspects = [evento for evento in state.eventos if evento[1].endswith("/inspect")]
+        applies = [evento for evento in state.eventos if evento[1].endswith("/apply")]
+        assert len(inspects) == ESPERADO_INSPECT, (
+            f"a rota de examine foi exercitada {len(inspects)}x, esperado "
+            f"{ESPERADO_INSPECT} (as recusas NÃO contam — `Main.qml:1134` devolve antes "
+            f"do XHR): {inspects}"
+        )
+        assert len(applies) == ESPERADO_APPLY, (
+            f"a rota de apply foi exercitada {len(applies)}x, esperado {ESPERADO_APPLY} "
+            f"(jornada e cena tardia): {applies}"
+        )
+        for testemunho in TESTEMUNHOS:
+            assert testemunho in observadas, (
+                f"a cena nunca publicou o testemunho {testemunho!r}; sem ele a asserção "
+                f"correspondente não foi medida. Lidos: {sorted(observadas)}"
+            )
+    
+        #: As duas recusas, lidas no log em vez de narração: cada cena registra o estado
+        #: da bandeira no instante imediatamente depois do clique recusado. É aqui que o
+        #: rollback errado fica visível para quem audita o artefato, sem depender de
+        #: contar falhas do `qmltestrunner`.
+        for testemunho, esperado in TOAST.items():
+>           assert observadas[testemunho]["toast"] == esperado, (
+                f"{testemunho}: o aviso de sucesso do apply raiz vale "
+                f"{observadas[testemunho]['toast']!r}, esperado {esperado!r} — na cena 07 o "
+                "apply aterrassa com a superfície ABERTA e o `notify` é o desfecho correto; "
+                "na 09 a superfície fechou antes da resposta e o mesmo texto seria o defeito"
+            )
+E           AssertionError: raiz-depois-do-apply-tardio: o aviso de sucesso do apply raiz vale '1', esperado '0' — na cena 07 o apply aterrassa com a superfície ABERTA e o `notify` é o desfecho correto; na 09 a superfície fechou antes da resposta e o mesmo texto seria o defeito
+E           assert '1' == '0'
+E             
+E             - 0
+E             + 1
+
+tests/integration/test_ui_shell_esde_import_late_response.py:968: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/test_ui_shell_esde_import_late_response.py::test_a_resposta_tardia_do_importador_esde_nao_reabre_estado
+1 failed, 7 passed in 53.32s
