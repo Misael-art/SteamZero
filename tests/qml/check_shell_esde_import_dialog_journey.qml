@@ -17,9 +17,10 @@
 //        (24 esquemas), rótulo que não cabe no controle (72 caracteres), recusa
 //        com aviso, rede caída e esquema nenhum. Viewports 949x593 e 1280x800.
 //
-// Por que este diálogo e não outro: `Main.qml:2896` é o segundo exemplar do
-// importador ES-DE no produto (o primeiro, corrigido na 3ª fatia, vive em
-// `ThemeEditorPanel.qml:1016`). Aqui o corpo é um `ColumnLayout` com
+// Por que este diálogo e não outro: `Main.qml`, `esdeImportDialog` é o segundo
+// exemplar do importador ES-DE no produto (o primeiro, corrigido na 3ª fatia,
+// vive em `ThemeEditorPanel.qml`, `esdeImportDialog`). Aqui o corpo é um
+// `ColumnLayout` com
 // `anchors.fill: parent` dentro de um `Dialog` sem `height` declarado, as ações
 // ficam no FIM desse fluxo e não há rodapé nem corpo rolável — com 24 esquemas de
 // 48 px o "Importar" cai ~1 000 px abaixo do pé da moldura e nenhuma tecla o
@@ -28,7 +29,7 @@
 //
 // Diferença de bancada em relação às fatias de painel, e ela é o ponto:
 // `ThemeEditorPanel` recebe `requestAction` injetado, então aqueles harnesses
-// puderam stubear a ponte. `Main.qml` não — `request()` (Main.qml:982) fala por
+// puderam stubear a ponte. `Main.qml` não — o `request()` fala por
 // `XMLHttpRequest` com `shell.apiUrl`. Aqui a ponte é um servidor HTTP real em
 // loopback, iniciado pelo teste Python, e os contratos que `requestAction`
 // resolve são os que a ponte publica a partir de
@@ -52,8 +53,9 @@
 //     e o conteúdo entra pela propriedade do próprio campo — que é exatamente o
 //     que a digitação produziria;
 //   • o botão que abre este diálogo vive dentro do `ScrollView` da seção
-//     Sistema (`Main.qml:6445`), muitas vezes abaixo da dobra. Revelar por
-//     `forceActiveFocus()` é o mecanismo do produto (`Main.qml:852-860` liga
+//     Sistema (o botão "Importar tema ES-DE"), muitas vezes abaixo da dobra.
+//     Revelar por
+//     `forceActiveFocus()` é o mecanismo do produto (`restoreDialogFocus()` liga
 //     `onActiveFocusItemChanged` a `ensureFocusedItemVisible`), e é por isso que
 //     o passo abaixo espera o botão ficar na banda em vez de escrever `contentY`.
 
@@ -467,7 +469,7 @@ Item {
             return found
         }
 
-        /// Revelar pelo FOCO é o mecanismo do produto: `Main.qml:852-860` liga
+        /// Revelar pelo FOCO é o mecanismo do produto: `restoreDialogFocus()` liga
         /// `onActiveFocusItemChanged` a `ensureFocusedItemVisible`, que rola o
         /// ancestral até o item focado. O teste só espera o resultado — escrever
         /// `contentY` aqui seria rolagem manual.
@@ -613,8 +615,8 @@ Item {
             /// estado pré-resposta. Medido sob carga (16 processos em 8 núcleos), era
             /// exatamente aí que o cenário `sem-esquema` reprova e arrastava o resto
             /// da suíte. O que prova a chegada é o aviso que o produto escreve quando
-            /// não há esquema nenhum (`Main.qml:3000`) ou a lista, com a requisição
-            /// fora de voo.
+            /// não há esquema nenhum (o aviso `theme-import-esde-notice`) ou a
+            /// lista, com a requisição fora de voo.
             until(function() {
                 return shell.esdeImportBusy === false
                     && (shell.esdeImportSchemes.length > 0 || shell.esdeImportNotice !== "")

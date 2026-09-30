@@ -5,8 +5,8 @@
 //
 // O que aqui se prova é o que as três fatias anteriores não alcançaram: o diálogo
 // "Importar cena RetroFE" exercitado DENTRO DO SHELL (seção Temas, aba "Editar
-// aparência", `Main.qml:6509`/`:6562`), pela rota real, com o importador
-// respondendo DEPOIS de a superfície ter mudado.
+// aparência", `themeEditorTab` e `themeEditorPanel`), pela rota real, com o
+// importador respondendo DEPOIS de a superfície ter mudado.
 //
 // Por que o shell e não o painel: as provas anteriores de RetroFE (`check_retrofe
 // _import_dialog_compact_viewport.qml`, `check_theme_editor_import.qml`) injetam
@@ -14,7 +14,7 @@
 // Sincronia não exercita atraso: no painel stubado a resposta chega antes de
 // qualquer mudança de superfície, e por construção não pode ser tardia. Aqui o
 // importador é um servidor HTTP real em loopback que dorme ANTES de responder, e o
-// cliente é o `XMLHttpRequest` do produto (`Main.qml:1001`, `timeout` `:1012`).
+// cliente é o `XMLHttpRequest` do produto (o `request()` de `Main.qml`, `xhr.timeout`).
 //
 // O contrato, uma frase por cena (o número da cena é o número do teste):
 //   1. a rota real do shell anda: aba → botão → examinar → publicar, e publica sem
@@ -22,18 +22,19 @@
 //      `theme_import_retrofe.py:340`) — sem
 //      esta as três seguintes provariam apenas que um atraso chegou;
 //   2. fechar o diálogo com um pedido em voo não pode reabrir estado: a resposta que
-//      chega depois do `onClosed` (`ThemeEditorPanel.qml:1215`) encontra layouts,
+//      chega depois do `onClosed` (`retrofeImportDialog.onClosed`) encontra layouts,
 //      aviso e bandeira de ocupado vazios e assim os deixa;
 //   3. um pedido mais novo não pode perder para o anterior: examinaram-se origens
-//      diferentes, os dois estão em voo juntos (`Main.qml:1134` só deduplica payload
+//      diferentes, os dois estão em voo juntos (o `requestAction` só deduplica payload
 //      IDÊNTICO) e o que responde por último não é o que o usuário pediu por último;
 //   4. publicar com resposta tardia não pode anunciar sucesso nem re-listar temas
 //      depois de a superfície ter fechado;
 //   5. reabrir mostra o ESTADO, não o último texto editado — eixo distinto, com outra
-//      raiz (a binding `text:`/`onTextChanged:` de `:1282`/`:1287` se interrompe na
-//      primeira edição), declarado separado para não ser confundido com atraso;
+//      raiz (a binding `text:`/`onTextChanged:` de `themeImportRetrofeSource` se
+//      interrompe na primeira edição), declarado separado para não ser confundido com atraso;
 //   6. a segunda porta de entrada do mesmo vínculo: quem escreve no ESTADO com o
-//      diálogo aberto (são os seletores, `:1523`/`:1531`) tem de alcançar o campo.
+//      diálogo aberto (`retrofeImportFolderDialog`, `retrofeImportFileDialog`) tem
+//      de alcançar o campo.
 //      Cena própria porque a `test_05` morre na primeira asserção e `verify()` do
 //      QtTest interrompe a função — somada à 05 ela seria verde sem nunca ter medido.
 //   7. Enter no campo de origem examina: é a porta que as cenas 08 e 09 usam para
@@ -43,15 +44,16 @@
 //   8. o MESMO clique recusado, agora com o pedido em voo ainda CORRENTE: a recusa tem
 //      de devolver a bandeira armada que estava antes do clique, senão "Publicar cena"
 //      habilita sobre um importador que ainda não respondeu;
-//   9. o clique RECUSADO por payload idêntico (`Main.qml:1134`), com o único pedido em
+//   9. o clique RECUSADO por payload idêntico (`requestAction`), com o único pedido em
 //      voo já REVOCADO pelo fechamento: a superfície acaba ociosa e utilizável, porque
 //      nada mais vai abaixar a bandeira — é o pino que impede a correção da 08 de
 //      resolver os dois casos escrevendo `true` sempre.
 
 //
-// O oráculo de "a resposta chegou" é `shell.pendingRequests` (`Main.qml:382`,
-// incrementado em `:1003` e decrementado em `:1018` dentro do próprio
-// `onreadystatechange`). Não há margem fixa depois dele: `finish()` decrementa e a
+// O oráculo de "a resposta chegou" é `shell.pendingRequests`, o contador do
+// `request()` de `Main.qml` — incrementado no despacho e decrementado no
+// `finish()` dentro do próprio `onreadystatechange`. Não há margem fixa depois
+// dele: `finish()` decrementa e a
 // callback escreve no MESMO turno, então quando o contador lê 0 a escrita já
 // aconteceu — se ela existir. Por isso a asserção vem imediatamente após a espera,
 // e o vermelho desta fatia é lido ali.
@@ -65,7 +67,7 @@
 //
 // Fatos de bancada reutilizados das fatias anteriores (não redescobertos):
 //   • `qmltestrunner` hospeda a raiz em QQuickView, que REJEITA raiz Window — daí
-//     `Item { Main {} }`, como em `check_shell_esde_import_dialog_journey.qml:77`;
+//     `Item { Main {} }`, como em `check_shell_esde_import_dialog_journey.qml`;
 //   • `Item.childItems` é undefined neste runtime: a varredura une `children` e
 //     `childItems`;
 //   • Popup não é Item: o corpo do diálogo é varrido a partir de
@@ -74,7 +76,7 @@
 //   • `keyPress` de letra chega sem `text` neste runtime, então o conteúdo entra
 //     pela propriedade do próprio campo — e a navegação/ativação/edição são medidas
 //     com tecla real;
-//   • revelar pelo foco é o mecanismo do produto (`Main.qml:853-859` liga
+//   • revelar pelo foco é o mecanismo do produto (`restoreDialogFocus()` liga
 //     `onActiveFocusItemChanged` a `ensureFocusedItemVisible`); o teste ESPERA o
 //     efeito, nunca escreve `contentY`.
 
@@ -317,7 +319,7 @@ Item {
         }
 
         /// O painel instanciado dentro do shell — procurado pela propriedade, não
-        /// por id: `Main.qml:6563` dá `id: themeEditorPanel`, mas id não é
+        /// por id: `Main.qml` dá `id: themeEditorPanel`, mas id não é
         /// alcançável de fora do arquivo. A propriedade só existe no painel, então
         /// a sonda não pode achar outra coisa.
         function panelDoShell() {
@@ -336,13 +338,14 @@ Item {
                    + "expõe `retrofeImportDialogControl` em `ThemeEditorPanel.qml:53`")
         }
 
-        /// Limpeza controlada, não prova. A ordem é a da 4ª fatia (`resetSurface`
-        /// em `check_shell_esde_import_dialog_journey.qml:405`): QUIESCER antes de
+        /// Limpeza controlada, não prova. A ordem é a da 4ª fatia (o
+        /// `resetSurface` de `check_shell_esde_import_dialog_journey.qml`): QUIESCER
+        /// antes de
         /// fechar — com o contrato atual uma resposta que chega depois do `onClosed`
         /// repõe layouts e aviso, e a cena seguinte nasceria suja por culpa da
         /// ordem do teste, não do produto. Depois de fechar, o neutralizador é
         /// chamado direto: é o mesmo `resetRetrofeImport()` que o `onClosed`
-        /// (`ThemeEditorPanel.qml:1215`) executa, invocado aqui para que o vermelho
+        /// (`retrofeImportDialog.onClosed`) executa, invocado aqui para que o vermelho
         /// apareça nas asserções das cenas e não na limpeza.
         function resetSurface() {
             until(function() { return shell.pendingRequests === 0 }, 12000,
@@ -448,7 +451,7 @@ Item {
         }
 
         /// Escrever o MESMO texto não dispara `onTextChanged`, e o importador lê o
-        /// estado do painel (`ThemeEditorPanel.qml:350`), não o pixel do campo: uma
+        /// estado do painel (`panel.retrofeImportSource`), não o pixel do campo: uma
         /// atribuição que não muda nada deixaria a origem vazia no estado e a cena
         /// seguinte falharia por culpa da ordem do teste, não do produto. Por isso o
         /// valor é limpo antes quando preciso, e a propagação ao estado é conferida —
@@ -540,12 +543,12 @@ Item {
         }
 
         /// Cada layout que a ponte publicou precisa aparecer como opção real do
-        /// diálogo: o `Repeater` (`ThemeEditorPanel.qml:1340`) monta um `RadioButton`
-        /// por entrada, e é isso que torna a contagem visível — não o `length` de um
-        /// array que ninguém vê.
+        /// diálogo: o `Repeater` de `retrofeImportLayouts` monta um
+        /// `RadioButton` por entrada, e é isso que torna a contagem visível — não o
+        /// `length` de um array que ninguém vê.
         ///
         /// `checkable` sozinho NÃO basta: a caixa de sobrescrita
-        /// (`themeImportRetrofeOverwrite`, `:1451`) também é marcável, e contá-la como
+        /// (`themeImportRetrofeOverwrite`) também é marcável, e contá-la como
         /// opção deu `opções=3, layouts=2` na primeira execução desta fatia. O que
         /// distingue a opção de layout é o texto vir do `modelData.name` — isto é,
         /// carregar o prefixo da alavanca que a ponte publicou.
@@ -584,8 +587,8 @@ Item {
         }
 
         /// 2 — a resposta chega depois do fechamento. Este é o vermelho da fatia:
-        /// hoje o callback escreve em cima de uma superfície fechada, e o estado
-        /// renasce sujo quando o usuário reabre.
+        /// antes desta fatia o callback escrevia em cima de uma superfície fechada,
+        /// e o estado renascia sujo quando o usuário reabre.
         function test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia() {
             abrirAbaEditor()
             abrirDialogo()
@@ -649,10 +652,11 @@ Item {
 
         /// 3 — a corrida fora de ordem, do jeito que o usuário realmente a produz.
         /// Dois cliques seguidos NÃO são a cena: "Examinar" está desabilitado enquanto
-        /// há pedido em voo (`ThemeEditorPanel.qml:1309`). O que é alcançável é
-        /// examinar, FECHAR (o `onClosed` roda `resetRetrofeImport()`, `:1231`, que
-        /// limpa a bandeira em `:344`), reabrir e examinar outra origem — e aí os dois
-        /// pedidos estão em voo ao mesmo tempo, `Main.qml:1134` só deduplica payload
+        /// há pedido em voo (`themeImportRetrofeInspect`). O que é alcançável é
+        /// examinar, FECHAR (o `retrofeImportDialog.onClosed` roda
+        /// `resetRetrofeImport()`, que limpa a bandeira), reabrir e examinar outra
+        /// origem — e aí os dois
+        /// pedidos estão em voo ao mesmo tempo, o `requestAction` só deduplica payload
         /// idêntico, e o que responde por último não é o que foi pedido por último.
         function test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() {
             abrirAbaEditor()
@@ -761,7 +765,7 @@ Item {
                    "o estado do importador guarda " + harness.panel.retrofeImportLayouts.length
                    + " layouts depois de fechar o pedido")
             // O terceiro efeito do apply tardio é invisível na superfície: a re-listagem
-            // de temas (`ThemeEditorPanel.qml:427`, `panel.refreshThemeList()`). A prova
+            // de temas (`applyRetrofeImport`, `panel.refreshThemeList()`). A prova
             // é a LOG ORDENADA DA PONTE lida pelo gate Python — nenhum GET /theme/list
             // depois daquele POST — com a jornada do test_01 como contrafactual.
             abrirDialogo()
@@ -778,12 +782,13 @@ Item {
         /// V — outro eixo, outra raiz, declarado separado: o campo de origem é ligado
         /// ao estado por `text: panel.retrofeImportSource` +
         /// `onTextChanged: panel.retrofeImportSource = text`
-        /// (`ThemeEditorPanel.qml:1265`/`:1287`). A primeira edição pelo teclado ou por
-        /// atribuição INTERROMPE a binding, então o `resetRetrofeImport()` do `onClosed`
-        /// limpa o estado e o pixel do campo continua mostrando a última origem. O
-        /// botão "Examinar" lê o ESTADO (`:1326`): o usuário reabre, vê um caminho no
-        /// campo e um botão desabilitado que ele não sabe explicar. Não é a resposta
-        /// tardia — é a superfície mentindo sobre o próprio estado.
+        /// (`themeImportRetrofeSource` e o `Binding` que o espelha). A primeira
+        /// edição pelo teclado ou por atribuição INTERROMPE a binding, então o
+        /// `resetRetrofeImport()` do `onClosed` limpa o estado e o pixel do campo
+        /// continua mostrando a última origem. O botão "Examinar" lê o ESTADO
+        /// (`enabled` de `themeImportRetrofeInspect`): o usuário reabre, vê um
+        /// caminho no campo e um botão desabilitado que ele não sabe explicar. Não é
+        /// a resposta tardia — é a superfície mentindo sobre o próprio estado.
         function test_05_reabrir_mostra_o_estado_e_nao_o_ultimo_texto_editado() {
             abrirAbaEditor()
             abrirDialogo()
@@ -816,11 +821,13 @@ Item {
 
         /// VI — o mesmo vínculo, a segunda porta de entrada, medida à parte porque a
         /// cena anterior morre na primeira asserção: os dois seletores gravam no
-        /// ESTADO (`ThemeEditorPanel.qml:1506`/`:1531`, `panel.retrofeImportSource =
-        /// panel.localPath(...)`), nunca no campo. Morto o espelho pela digitação, quem
+        /// ESTADO (`retrofeImportFolderDialog`/`retrofeImportFileDialog`,
+        /// `panel.retrofeImportSource = panel.localPath(...)`), nunca no campo. Morto o
+        /// espelho pela digitação, quem
         /// digita algo e depois escolhe a pasta vê o texto antigo enquanto o painel tem
         /// uma origem válida — e é o ESTADO que habilita e despacha o "Examinar"
-        /// (`:1326`). Não se abre seletor nativo aqui: escreve-se o caminho exato que
+        /// (`enabled` de `themeImportRetrofeInspect`). Não se abre seletor nativo
+        /// aqui: escreve-se o caminho exato que
         /// o seletor escreveria.
         function test_06_escrever_no_estado_alcanca_o_campo_com_o_dialogo_aberto() {
             abrirAbaEditor()
@@ -883,12 +890,13 @@ Item {
         /// `retrofeImportBusy` diz se há algo em voo que ainda vai escrever. Quando o
         /// `onClosed` já revogou aquele pedido (cena 09) nada em voo resta e a bandeira
         /// tem de estar baixada; quando ele ainda é corrente, baixá-la faz o
-        /// "Importando…" sumir e "Publicar cena" (`ThemeEditorPanel.qml:1466`) habilitar
+        /// "Importando…" sumir e "Publicar cena" (`themeImportRetrofeApply`) habilitar
         /// sobre um importador que ainda não respondeu — e o usuário publica uma cena
         /// cuja origem ele não sabe se foi examinada.
         ///
-        /// Por que o Enter e não o seletor: dos dois botões de seleção (`:1310`,
-        /// `:1317`) só o de arquivo despacha exame no `onAccepted` (`:1533`), mas a
+        /// Por que o Enter e não o seletor: dos dois botões de seleção
+        /// (`themeImportRetrofeBrowseFolder`, `themeImportRetrofeBrowseFile`) só o de
+        /// arquivo despacha exame no `onAccepted`, mas a
         /// sonda medida nesta bancada mostra que, sob `offscreen`, o `FileDialog` abre
         /// SEM NENHUMA árvore QML dirigida (`contentItem` sem filhos) — não há botão a
         /// clicar, e um harness que o abrisse dependeria do tema de desktop da máquina.
@@ -939,10 +947,10 @@ Item {
         }
 
         /// IX — a MESMA origem pedida duas vezes, com a primeira já REVOGADA pelo
-        /// fechamento. `ThemeEditorPanel.qml:1309` desabilita "Examinar" enquanto
-        /// `retrofeImportBusy`, mas o `onClosed` (`:1231`) roda
-        /// `resetRetrofeImport()` e a bandeira cai (`:344`): fechar, reabrir e pedir a
-        /// MESMA origem é alcançável por clique real, e `Main.qml:1134` recusa payload
+        /// fechamento. `themeImportRetrofeInspect` desabilita "Examinar" enquanto
+        /// `retrofeImportBusy`, mas o `retrofeImportDialog.onClosed` roda
+        /// `resetRetrofeImport()` e a bandeira cai: fechar, reabrir e pedir a
+        /// MESMA origem é alcançável por clique real, e `requestAction` recusa payload
         /// IDÊNTICO devolvendo `false` sem disparar nenhuma callback. O pedido recusado
         /// é um não-acontecimento: tem de acabar com a superfície ociosa e utilizável,
         /// porque o POST em voo foi revogado pelo fechamento e nada mais vai abaixar a
