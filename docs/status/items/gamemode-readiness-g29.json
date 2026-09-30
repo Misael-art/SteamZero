@@ -20,7 +20,7 @@
     "tests/unit/test_desktop_dashboard.py",
     "docs/09-operations/evidence/2026-09-22-gamemode-readonly"
   ],
-  "scopeDigest": "d2c5507204967cfe75fb92f7ddcdd5c387f3a93716e7d65711777cfa0833e672",
+  "scopeDigest": "d95881d9b97314338c39b0536c7a6f39cc0e5b2f1e3ff9079090e07c41ca7910",
   "dependsOn": [
     "SZ-JOB-RECOVERY-DOCTOR"
   ],
