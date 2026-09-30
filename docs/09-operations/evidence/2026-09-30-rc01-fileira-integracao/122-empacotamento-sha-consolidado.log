@@ -1,0 +1,94 @@
+# 122 — Empacotamento no SHA consolidado (passo 6: "o artefato correspondente ao SHA consolidado")
+
+Data: 2026-09-30. SHA examinado: 7808374257db3059c1934cb4be6007d8a749346e (main consolidado da fileira #239–#247).
+Escopo: leitura do artefato já publicado pelo CI. Nenhuma instalação no host, nenhuma release, nenhuma tag.
+
+## 1. Run e artefato
+
+`gh api repos/Misael-art/SteamZero/actions/runs?head_sha=7808374…`
+→ run_number 878, run id 36689372443, workflow `ci`, no SHA consolidado (push direto ao main após o nono merge).
+
+`gh api repos/Misael-art/SteamZero/actions/runs/36689372443/artifacts`
+```
+test-results-3.11                        111536  false
+coverage-python-3.14                    598451  false
+test-results-3.14                        110951  false
+steamzero-wheel-7808374257db3059c1934cb4be6007d8a749346e  11190739  false
+test-results-3.12                        111164  false
+```
+O artefato do wheel é nomeado pelo próprio SHA consolidado — não há ambiguidade de procedência.
+
+## 2. Conteúdo do artefato
+
+`gh api -X GET repos/Misael-art/SteamZero/actions/artifacts/11084972928/zip > artifact.zip` (11 190 739 bytes)
+```
+18507   requirements-runtime.lock
+7479149 dist/runtime-wheelhouse.tar.zst
+ 3159   dist/runtime-wheelhouse/WHEELHOUSE-MANIFEST.json
+3784410 dist/steamzero-2.0.0rc1-py3-none-any.whl
+  498   build/pip-audit.json
+ 1677   build/sbom.cdx.json
+  973   build/provenance.json
+  581   build/SHA256SUMS
+```
+
+`build/provenance.json`:
+- `source.commit` = 7808374257db3059c1934cb4be6007d8a749346e
+- `source.ref` = refs/heads/main, `repository` = Misael-art/SteamZero
+- `build.runId` = 36689372443, `builder` = github-actions, `sourceTreeState` = clean
+- `subject.sha256` = a1cd3709b73f151fd261370fa2ff13dcef564224ecf1efa20c253de6aa00eb5e (version 2.0.0rc1)
+
+Conferência do hash: `sha256sum dist/steamzero-…whl` = a1cd3709b73f… — **igual** ao `subject.sha256` da proveniência e à linha de `build/SHA256SUMS`.
+
+`build/pip-audit.json`: 9 dependências auditadas (attrs, jsonschema, jsonschema-specifications, pillow, pip, referencing, rpds-py, steamzero 2.0.0rc1) — `"vulns": []` em todas, `"fixes": []`.
+
+## 3. sizes.js e readiness.js estão DENTRO do pacote (existência de arquivo não era a prova)
+
+`unzip -l dist/steamzero-…whl | grep -E '\.js$|readiness|sizes'`
+```
+ 4146  steamzero/adapters/console_runtime_readiness.py
+11653  steamzero/domain/readiness.py
+ 8614  steamzero/ui/qml/readiness.js
+ 2377  steamzero/ui/qml/sizes.js
+```
+
+Diff byte a byte roda × main (roda descompactada em `pk78/whl`, main em `src/`):
+```
+steamzero/ui/qml/sizes.js                       roda=6d5ca418e514  src=6d5ca418e514  IDENTICO
+steamzero/ui/qml/readiness.js                   roda=7d76be27ab72  src=7d76be27ab72  IDENTICO
+steamzero/domain/readiness.py                   roda=0eb9656d2c80  src=0eb9656d2c80  IDENTICO
+steamzero/adapters/console_runtime_readiness.py roda=1ccea3bf70f7  src=1ccea3bf70f7  IDENTICO
+```
+
+Consumidores citados no lote, todos presentes no wheel:
+Main.qml, Emulation.qml, SteamGameplay.qml, EditorialLibrary.qml, ThemeCatalogPanel.qml, ThemeEditorPanel.qml.
+
+Dimensão do pacote: 625 arquivos, 8 761 815 bytes descompactados, 61 arquivos `.qml`.
+
+## 4. O que esta evidência prova e o que NÃO prova
+
+Prova:
+- o commit consolidado produz um wheel reprodutível, com hash batendo com proveniência e SHA256SUMS;
+- os módulos de correção da fileira (contrato de prontidão compartilhado e formatador de unidades) viajam no pacote, byte-idênticos ao main;
+- a auditoria de supply chain do próprio artefato está limpa;
+- o job "Wheel limpo, smoke e supply chain" do CI (success) já exercitou o smoke deste mesmo run.
+
+Não prova:
+- **experiência na release instalada do host.** Nada foi instalado em máquina física nesta etapa; não há jornada de teste executada em hardware. Isso continua pendência explícita do RC-01 (prova física).
+- o harness visual do repo (`tests/qml/check_readiness_surface.qml`) não é empacotado — é gate de desenvolvimento, não superfície de runtime. A ausência no wheel é esperada e não indica falha de empacotamento.
+
+## 5. Acrescentado: varredura integral do delta da fileira dentro do wheel (não só os dois módulos)
+
+Comando:
+```
+for f in $(git diff --name-only 3495c49d 7808374257db -- src/); do
+  compara sha256 de src/$f com o mesmo caminho descompactado do wheel
+done
+```
+Resultado:
+```
+arquivos de src/ alterados pela fileira: 20 | byte-identicos no wheel: 20 | fora/nao identicos: NENHUM
+```
+Ou seja: **todo** o código-fonte que os nove elos mudaram está no artefato do SHA consolidado, não apenas
+`sizes.js`/`readiness.js`. A coluna "empacotado" do quadro final apoia-se nesta varredura, e continua sem
+significar "instalado": nada foi instalado no host.

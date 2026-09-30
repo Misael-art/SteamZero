@@ -6,7 +6,7 @@
   "branch": "codex/rc01-home-first-fold-2026-09-29",
   "baseRef": "2d6a8957",
   "owner": "qoder-continuation",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "tests/integration/test_ui_shell_home_first_fold.py",
     "tests/qml/check_home_first_fold_attention.qml",
@@ -27,6 +27,6 @@
     "tests/integration/test_ui_shell_retrofe_import_late_response.py",
     "tests/qml/check_shell_retrofe_import_late_response.qml"
   ],
-  "nextAction": "PRÓXIMA AÇÃO: checkpoint dos sete gates na árvore congelada, digest e views renovados por último a partir do valor impresso pela ferramenta, push e PR do oitavo elo sobre codex/rc01-retrofe-shell-late-response-2026-09-29, com o CI terminal lido no SHA efetivamente entregue e registrado no PR — não em commit. DEPENDÊNCIA: merge e ordem de integração são decisão do operador. CRITÉRIO DE SAÍDA: o workstream fecha no SHA mergeado em main, com a dobra conferida na release instalada; head da branch x ref de merge preservados na evidência. LIMITE: dobra aferida offscreen em 1280x800 sem captura PNG; no pior caso, Pendências continua abaixo da dobra; compactação é lida do estado do cartão, não presumida. CONFISSÃO: o commit c2bae146 tocou cinco arquivos de outras frentes só em prosa (56 números de citação). NARRATIVA COMPLETA: docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/README.md.",
-  "updatedAt": "2026-09-29"
+  "nextAction": "Fechado: PR #246 integrado em main pelo merge cb71a5279921 (fileira #239-#247, main consolidado em 7808374257db). Contrato provado offscreen e presente no wheel desse SHA; resta a prova fisica do contrato da dobra na release instalada. Narrativa e provas: docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/README.md.",
+  "updatedAt": "2026-09-30"
 }

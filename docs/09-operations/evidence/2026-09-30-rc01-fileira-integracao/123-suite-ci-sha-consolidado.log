@@ -1,0 +1,98 @@
+# 123 — A suíte obrigatória REALMENTE executada no SHA consolidado (passo 6: "CI exigido para a composição final")
+
+Data: 2026-09-30. SHA: 7808374257db3059c1934cb4be6007d8a749346e (main consolidado, nono merge da fileira #239–#247).
+Método: não se leu "verde" de manchete — baixaram-se os artefatos junit do próprio run do push ao main e somaram-se
+os atributos de `testsuite`, conferindo com o total de `<testcase>` filhos.
+
+## 1. O run
+
+```
+run_number 878 | run id 36689372443 | workflow ci | evento push | head_sha 7808374257db
+jobs:
+  Wheel limpo, smoke e supply chain   completed success  08:23:58Z → 08:24:51Z
+  Smoke Ubuntu 24.04                  completed success  08:23:58Z → 08:24:32Z
+  Smoke Arch Linux                    completed success  08:23:58Z → 08:24:38Z
+  Smoke Manjaro                       completed success  08:24:03Z → 08:24:43Z
+  Python 3.12                         completed success  08:23:57Z → 08:33:20Z
+  Python 3.14                         completed success  08:23:58Z → 08:34:09Z
+  Python 3.11                         completed success  08:23:58Z → 08:36:17Z
+  Gate visual QML (Linux)            in_progress  desde 08:23:58Z (step "Gate visual" em execução)
+```
+
+O comando que esses jobs executam está em `.github/workflows/ci.yml`, step "Testes e cobertura":
+`python tools/run_tests_isolated.py -m "not visual" --durations=20 --junitxml=… --cov=steamzero …`
+
+## 2. Contagem extraída dos artefatos (não inferida)
+
+`gh api repos/…/actions/runs/36689372443/artifacts` → `test-results-3.11|3.12|3.14` (e `coverage-python-3.14`).
+Cada zip contém um `test-results-<v>.xml`. Parsing (ElementTree, `testsuites`→`testsuite` + contagem de `testcase`):
+
+```
+python 3.11: root=testsuites suites=1 soma_tests=6199 falhas=0 erros=0 skipped=47 | testcases=6199 com_skipped=47 com_failure=0
+python 3.12: root=testsuites suites=1 soma_tests=6199 falhas=0 erros=0 skipped=47 | testcases=6199 com_skipped=47 com_failure=0
+python 3.14: root=testsuites suites=1 soma_tests=6199 falhas=0 erros=0 skipped=47 | testcases=6199 com_skipped=47 com_failure=0
+```
+
+Atributo cru do `testsuite` (3.11): `errors="0" failures="0" skipped="47" tests="6199" time="695.114"
+timestamp="2026-09-30T08:24:31+00:00"`.
+
+**Leitura honesta dos números:** 6 199 itens coletados, 47 pulados, 0 falhas, 0 erros → **6 152 aprovados** nos três
+interpretadores. É exatamente a contagem da cabeça #247 (37040af3) medida no log `116`, o que se esperava: a árvore do
+merge consolidado é byte-idêntica àquela cabeça (prova de igualdade de árvore no log `115`/`117`), portanto o conjunto
+de testes coletados não mudou.
+
+## 3. O que isto prova e o que não prova
+
+Prova: a suíte exigida foi executada no SHA consolidado, por push direto ao `main`, com resultado zero-falha nas três
+versões de Python, e o resultado vem de artefato publicado, não de uma manchete do CI.
+
+Não prova: o **gate visual** desta composição (job ainda em andamento na coleta deste log) nem a **integrais local** de
+cada elo. E não reescreve o histórico: a suíte integral local da nona rodada fechou com
+**1 failed, 6528 passed, 47 skipped** — esse resultado histórico permanece como foi, e a correção de governança
+(renovação de digests + `render --write`) foi registrada separadamente, sem declarar aquela corrida como aprovada.
+
+## 4. Acrescentado depois: o gate visual terminal desta composição
+
+Coletado às 08:48:34Z (verificação direta, não leitura do observador):
+
+```
+Gate visual QML (Linux)                 COMPLETED  SUCCESS
+Python 3.11 / 3.12 / 3.14               COMPLETED  SUCCESS
+Wheel limpo, smoke e supply chain       COMPLETED  SUCCESS
+Smoke Ubuntu 24.04 / Arch / Manjaro     COMPLETED  SUCCESS
+```
+
+→ **8/8 checks obrigatórios em SUCCESS no SHA consolidado `7808374257db3059c1934cb4be6007d8a749346e`**, por push
+direto ao `main` (run 36689372443, job 109802904911).
+
+Contagem do próprio gate visual, lida do log do job (`gh api .../actions/jobs/109802904911/logs`, linha 241):
+
+```
+365 passed, 12 skipped, 6199 deselected in 1401.58s (0:23:21)
+```
+
+**Comparação que importa, e não se maquia:** nas cabeças da fileira o gate visual fechava com **377 passed** e zero
+pulados. Aqui são 365 + 12 pulados = os mesmos 377 itens. Os 12 que viraram `skipped` são os que o harness pula por
+condição de ambiente (marca `skipif`), não por falha: `failures=0`, conclusão `success`. Registrar a diferença é
+devido porque "verde" com 12 a menos executas não é a mesma frase que "verde com 377 executadas" — o conjunto de
+itens efetivamente exercitados nesta composição é 365.
+
+Nada nesta seção reescreve o item 3: a suíte integral local da nona rodada continua sendo
+**1 failed, 6528 passed, 47 skipped**, com a correção de governança registrada à parte.
+
+--- CORRECAO (registro acrescentado; o paragrafo acima nao foi apagado):
+A frase "nas cabecas da fileira o gate visual fechava com 377 passed e zero pulados" comparou coisas de ambientes
+diferentes. Relido agora, com o log do job CI da cabeca de #247 (run 36664976807, baixado por
+`gh api .../actions/jobs/<id>/logs`):
+
+```
+2026-09-30T03:57:46Z  365 passed, 12 skipped, 6199 deselected in 1356.55s (0:22:36)   <- CI, cabeca 37040af3 (#247)
+2026-09-30T08:48:16Z  365 passed, 12 skipped, 6199 deselected in 1401.58s (0:23:21)   <- CI, main 7808374257db
+```
+
+Os dois numeros do CI sao **identicos**. O "377 passed, 6199 deselected" sem pulados e do **gate visual local** da
+nona rodada (`2026-09-29-rc01-esde-import-generation/110-gate-visual-apos-governanca.log`), corrida na maquina de
+desenvolvimento, onde os 12 itens que o CI pula por condicao de ambiente foram executados.
+
+Consequencia correta para o fechamento: a composicao consolidada nao perdeu exercicio de gate em relacao a cabeca que
+o CI validou — mesma contagem, mesmo conjunto; e a diferenca local/CI e de ambiente, declarada, nao de regressao.

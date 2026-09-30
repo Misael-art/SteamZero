@@ -5,7 +5,7 @@
   "title": "Auditoria integral de produto, telas e experiência do SteamZero",
   "domain": "ui",
   "implementation": "complete",
-  "integration": "feature-branch",
+  "integration": "integrated",
   "verification": "dev",
   "operation": "ready",
   "distribution": "not-packaged",
@@ -180,10 +180,16 @@
       "reference": "docs/09-operations/evidence/2026-09-17-aura-esde-active-surface/session-osd-real.json",
       "command": "Sessão real confirmou pausa/retomada e bezel; fade foi observado somente em phase=idle, sem transição visual isolada.",
       "result": "partial"
+    },
+    {
+      "kind": "diagnostic",
+      "result": "recorded",
+      "reference": "docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/115-integracao-da-fileira-239-247.log",
+      "command": "Documentos da auditoria de design integrados em main pelo merge 9fc1c5948fca (#239)."
     }
   ],
   "nextAction": "Priorizar UX-01 (contraste), UX-02 (estado/custo de carregamento) e DATA-01 (fila de arquivos arquivados e multidisco); revalidar a sessão AURA na release atual cobrindo OSD pausado, save-state, fade, troca multidisco pelo Launcher e retorno; corrigir localização/causas visíveis do OSD e confirmar o escopo de seleção do bezel.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-26",
+  "updatedAt": "2026-09-30",
   "notes": "Relatorio de auditoria concluido no branch codex/project-design-audit-2026-09-26. Nenhum codigo do produto foi alterado. Provas fisicas historicas foram visualmente revisadas para Theme Studio, RetroFE, ES-DE, AURA UI, AURA Cinema e gestao de sessao de emulacao; sao de releases anteriores e nao recertificam a release instalada em 2026-09-26. A suite integral tem uma falha documental registrada; testes focados de tema e sessao passaram. O guard detectou escrita independente do daemon do host durante a janela dos 208 testes de sessao, sem atribuir essa escrita ao runner. Permanecem gaps de OSD pausado atual, fade fisico, troca multidisco via Launcher, checkpoint fisico AC-SV-02, localizacao/causas das acoes do OSD, escolha de bezel, dialogo compacto RetroFE, preview ES-DE com dados reais, mutacao fisica do Theme Studio e performance Cinema a 1280x800. Nenhum commit, push ou merge foi feito."
 }

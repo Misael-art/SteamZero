@@ -1,0 +1,290 @@
+=== parametros ===
+ref varrido         : <diff staged>
+rev do checkout     : 7808374257db3059c1934cb4be6007d8a749346e
+auto-excluidos de A : docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/127-varredura-de-segredos.sh
+                      docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/127-varredura-de-segredos-e-dados-pessoais.log
+
+=== alvo A: conteudo integral desta pasta de evidencia ===
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/115-integracao-da-fileira-239-247.log
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/116-suite-real-executada-no-ci.log
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/117-pos-merge.sh
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/118-merge-um-elo.sh
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/119-ci-terminal-main-consolidado.log
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/119-observador-ci-main.sh
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/120b-manifesto-arquivo-duravel.sha256
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/120c-leia-me-arquivo-duravel.md
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/120-preservar-logs-essenciais.log
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/121-cartoes-afetados-pela-fileira.log
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/122-empacotamento-sha-consolidado.log
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/123-suite-ci-sha-consolidado.log
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/124-fechar-fileira.py
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/125-preparacao-do-host-no-sha-consolidado.md
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/126-renovacao-de-digest-e-views.log
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/README.md
+arquivos: 16   linhas: 2027
+
+=== alvo B: linhas adicionadas desta entrega nos arquivos ja versionados ===
+  docs/status/items/project-design-audit-2026-09-26.json
+  docs/status/items/roadmap-continuation-2026-09-26.json
+  docs/status/items/ui-desktop-audit.json
+  docs/status/workstreams/rc01-central-loading-2026-09-26.json
+  docs/status/workstreams/rc01-esde-import-generation-2026-09-29.json
+  docs/status/workstreams/rc01-home-first-fold-2026-09-29.json
+  docs/status/workstreams/rc01-readiness-focus-2026-09-27.json
+  docs/status/workstreams/rc01-readiness-semantics-2026-09-28.json
+  docs/status/workstreams/rc01-retrofe-shell-late-2026-09-29.json
+  docs/status/workstreams/rc01-shell-esde-dialog-2026-09-27.json
+  docs/status/workstreams/rc01-storage-units-2026-09-28.json
+  docs/WORKLOG.md
+arquivos: 12   linhas adicionadas: 230
+
+padrao                                       alvo-A   alvo-B
+token GitHub                                 0        0
+chave privada PEM                            0        0
+segredo atribuido a chave de config          0        0
+e-mail                                       0        0
+JWT                                          0        0
+caminho absoluto pessoal (fora do repo)      0        0
+
+=== alvo A: ocorrencia por arquivo (as seis classes somadas) ===
+(nenhuma linha acima = zero ocorrencias em todos os arquivos do alvo A)
+
+=== contexto: cada linha com caminho absoluto, nos dois alvos ===
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/115-integracao-da-fileira-239-247.log:770:--- referencias a /home/misael/steamzero-retrofe-tmp em arquivos versionados (count por arquivo):
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/117-pos-merge.sh:6:CK="/home/misael/Projects/Steam Zero/Canonical/2026-09-21"
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/118-merge-um-elo.sh:6:CK="/home/misael/Projects/Steam Zero/Canonical/2026-09-21"
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/119-observador-ci-main.sh:6:CK="/home/misael/Projects/Steam Zero/Canonical/2026-09-21"
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/119-observador-ci-main.sh:8:LOG=${2:-/home/misael/steamzero-retrofe-tmp/119-ci-terminal-main-consolidado.log}
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/120-preservar-logs-essenciais.log:1:=== ETAPA 5 — extracao das referencias a /home/misael/steamzero-retrofe-tmp em arquivos versionados ===
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/120-preservar-logs-essenciais.log:2:      2 /home/misael/steamzero-retrofe-tmp/100-checkpoint-integral-nono-elo.log
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/120-preservar-logs-essenciais.log:3:      1 /home/misael/steamzero-retrofe-tmp/cit-backup-83
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/120-preservar-logs-essenciais.log:4:      1 /home/misael/steamzero-retrofe-tmp/73-bateria-mutacoes-esde-raiz.py
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/120-preservar-logs-essenciais.log:5:      1 /home/misael/steamzero-retrofe-tmp/24-comandos-e-saidas.log
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/120-preservar-logs-essenciais.log:6:      1 /home/misael/steamzero-retrofe-tmp/102-gate-visual-nono-elo.log
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/README.md:22:| repo, checkout único, árvore | `/home/misael/Projects/Steam Zero/Canonical/2026-09-21`, `git status` limpo, um único `HEAD` |
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/README.md:111:Todas as referências a `/home/misael/steamzero-retrofe-tmp` feitas por arquivos versionados foram
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/README.md:112:extraídas, copiadas para `/home/misael/steamzero-evidencia-integracao-2026-09-30/` e reconciliadas:
+--- alvo B ---
+51:versionados a `/home/misael/steamzero-retrofe-tmp` foram extraídas, copiadas para
+52:`/home/misael/steamzero-evidencia-integracao-2026-09-30/` e reconciliadas: **79/79 cópias
+
+=== os unicos caminhos absolutos publicados, agrupados por dois primeiros niveis ===
+     10 /home/misael/steamzero-retrofe-tmp
+      4 /home/misael/Projects
+      2 /home/misael/steamzero-evidencia-integracao-2026-09-30
+
+=== hosts externos citados ===
+      2 github.com
+      2 docs.github.com
+
+=== controlador de nao-vacio: o mesmo mecanismo, aplicado a uma fixture sintetica ===
+padrao                                       fixture  fixture+alvo
+token GitHub                                 1        1
+chave privada PEM                            1        1
+segredo atribuido a chave de config          1        1
+e-mail                                       1        1
+JWT                                          1        1
+caminho absoluto pessoal (fora do repo)      1        1
+(cada classe acha a sua linha plantada; o alvo real, acima, nao acha nenhuma)
+vocabulario do dominio (roms/bios/saves/emulation), que NAO e achado:
+  alvo-A: 1   alvo-B: 0   fixture: 1
+logo o mecanismo conta; o zero das seis classes e ausencia do que elas procuram,
+nao ausencia de procura.
+
+=== auto-excluidos, conferidos por outro metodo ===
+-- (i) runs de 36+ caracteres alfanumericos seguidos, nos dois arquivos --
+        2 3495c49d…(objeto git)
+        2 78083742…(objeto git)
+        1 eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
+  (o que aparece aqui e identificador de commit e de blob, citado de proposito; nenhum
+   tem o prefixo de token do GitHub, e a fixture acima prova que o formato seria achado)
+-- (ii) linha do script que contem palavra de credencial --
+  38:P3='(aws_secret_access_key|client_secret|api_key|apikey|secret_key|access_token|password|passwd)[[:space:]]*[:=][[:space:]]*["'"'"']?[A-Za-z0-9/+_.-]{8,}'
+  46: "token GitHub"
+  103:  echo 'client_secret = abcdefghijklmnop1234'
+  128:echo "   tem o prefixo de token do GitHub, e a fixture acima prova que o formato seria achado)"
+  130:grep -niE 'password|secret|token|api.?key' "$EV/127-varredura-de-segredos.sh" \
+  (todas sao nome de padrao, texto de grep, etiqueta de tabela ou linha plantada da
+   fixture de controle -- valor sintetico, escreito aqui para que o formato fosse
+   achado se aparecesse num alvo. Nenhum e credencial real: a coluna 'fixture' acima
+   prova que o mecanismo as detecta, e os alvos A e B dao zero.)
+-- (iii) o script codifica algum caminho absoluto? --
+8
+  (todas as ocorrencias sao o texto dos greps que ele executa; a raiz do checkout vem
+   de dirname $0, entao o log e repetivel em qualquer maquina)
+
+=== o que fica FORA do escopo desta varredura, medido a parte ===
+  docs/WORKLOG.md lido inteiro, hoje        : 7 linhas com caminho pessoal absoluto
+  docs/WORKLOG.md lido inteiro, em 3495c49d : 7 linhas
+  fileira inteira (#239..#247), linhas adicionadas com o mesmo padrao: 0
+
+=== leitura do resultado ===
+* Zero nas seis classes, nos dois alvos. Os unicos caminhos absolutos publicados por
+  esta entrega sao o do checkout, o do temporario e o do acervo duravel de evidencia
+  - os tres necessarios para repetir o comando que gera este log.
+* O controle de nao-vacio e uma fixture sintetica em /tmp (seis linhas plantadas, uma por
+  classe, nunca commitadas): as seis sao achadas, e o alvo real nao acha nenhuma. Sem essa
+  coluna, "zero em tudo" nao distinguiria "nao havia" de "nao procurava".
+* O vocabulario do dominio (roms, bios, saves, emulation) e o nome das coisas que o produto
+  gerencia; aparece em codigo, teste e doc e nao e achado de seguranca. Por isso e medido e
+  rotulado a parte, e nao entra nas seis classes.
+* CORRECAO na mesma rodada, antes de qualquer commit: a primeira versao desta secao
+  afirmava "107 linhas com termo de acervo" no WORKLOG. O numero vinha de um escopo
+  errado - a pasta de evidencia contava dentro do alvo B, e os literais dos proprios
+  padroes entravam na soma. O que identifica dado pessoal e o caminho absoluto fora do
+  repo, medido na secao anterior, e nao o termo de dominio.
+* Consequencia: as linhas do WORKLOG com caminho do acervo pessoal sao as mesmas sete da
+  base anterior a fileira. Nem a fileira nem este fechamento acrescentaram uma.
+  Apaga-las ou reescreve-las seria falsificar o registro, e a ordem do operador proibe
+  tanto apagar acervo quanto reescrever historico. Ficam declaradas como pendencia do
+  operador, nao encobertas por uma alegacao de limpeza do arquivo inteiro.
+
+
+================================================================================
+SEGUNDA CORRIDA — varredura do delta de governanca, antes do commit dele
+================================================================================
+Motivo: o commit documental d1476dd2 deixou a arvore com quatro arquivos por commitar
+(as tres visoes geradas + o cartao com o scopeDigest renovado e as duas entradas de
+evidencia novas). Essas 19 linhas de 'command' sao texto desta entrega e, portanto,
+precisam ser medidas, nao presumidas limpas. A corrida acima varreu o delta documental
+e nao este.
+
+Alvo B desta corrida = git diff --cached (quatro arquivos, 19 linhas adicionadas),
+com a pasta de evidencia excluida do diff pelo mesmo :!EV da primeira corrida. As
+duas diferencas entre esta arvore varrida e a arvore commitada sao (i) o valor do
+campo scopeDigest do cartao, que a corrida ainda nao renovara, e (ii) este proprio
+acrescimo ao log, que os dois alvos excluem por nome. Nenhuma das duas pode casar
+as seis classes: o primeiro e um hexadecimal de 64 digitos e os padroes pedem
+prefixo de token,_BEGIN KEY_, atribuicao de config, @ de e-mail, eyJ de JWT ou
+/home/<usuario>/<pasta-pessoal>/; o segundo esta fora do escopo medido.
+
+=== parametros ===
+ref varrido         : <diff staged>
+rev do checkout     : d1476dd2cbddadd4ce40e626e33eda0421e7e991
+auto-excluidos de A : docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/127-varredura-de-segredos.sh
+                      docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/127-varredura-de-segredos-e-dados-pessoais.log
+
+=== alvo A: conteudo integral desta pasta de evidencia ===
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/115-integracao-da-fileira-239-247.log
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/116-suite-real-executada-no-ci.log
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/117-pos-merge.sh
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/118-merge-um-elo.sh
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/119-ci-terminal-main-consolidado.log
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/119-observador-ci-main.sh
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/120b-manifesto-arquivo-duravel.sha256
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/120c-leia-me-arquivo-duravel.md
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/120-preservar-logs-essenciais.log
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/121-cartoes-afetados-pela-fileira.log
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/122-empacotamento-sha-consolidado.log
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/123-suite-ci-sha-consolidado.log
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/124-fechar-fileira.py
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/125-preparacao-do-host-no-sha-consolidado.md
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/126-renovacao-de-digest-e-views.log
+  docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/README.md
+arquivos: 16   linhas: 2027
+
+=== alvo B: linhas adicionadas desta entrega nos arquivos ja versionados ===
+  docs/ACTIVE-WORK.md
+  docs/status/COVERAGE.md
+  docs/status/items/ui-desktop-audit.json
+  docs/STATUS.md
+arquivos: 4   linhas adicionadas: 19
+
+padrao                                       alvo-A   alvo-B
+token GitHub                                 0        0
+chave privada PEM                            0        0
+segredo atribuido a chave de config          0        0
+e-mail                                       0        0
+JWT                                          0        0
+caminho absoluto pessoal (fora do repo)      0        0
+
+=== alvo A: ocorrencia por arquivo (as seis classes somadas) ===
+(nenhuma linha acima = zero ocorrencias em todos os arquivos do alvo A)
+
+=== contexto: cada linha com caminho absoluto, nos dois alvos ===
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/115-integracao-da-fileira-239-247.log:770:--- referencias a /home/misael/steamzero-retrofe-tmp em arquivos versionados (count por arquivo):
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/117-pos-merge.sh:6:CK="/home/misael/Projects/Steam Zero/Canonical/2026-09-21"
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/118-merge-um-elo.sh:6:CK="/home/misael/Projects/Steam Zero/Canonical/2026-09-21"
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/119-observador-ci-main.sh:6:CK="/home/misael/Projects/Steam Zero/Canonical/2026-09-21"
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/119-observador-ci-main.sh:8:LOG=${2:-/home/misael/steamzero-retrofe-tmp/119-ci-terminal-main-consolidado.log}
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/120-preservar-logs-essenciais.log:1:=== ETAPA 5 — extracao das referencias a /home/misael/steamzero-retrofe-tmp em arquivos versionados ===
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/120-preservar-logs-essenciais.log:2:      2 /home/misael/steamzero-retrofe-tmp/100-checkpoint-integral-nono-elo.log
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/120-preservar-logs-essenciais.log:3:      1 /home/misael/steamzero-retrofe-tmp/cit-backup-83
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/120-preservar-logs-essenciais.log:4:      1 /home/misael/steamzero-retrofe-tmp/73-bateria-mutacoes-esde-raiz.py
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/120-preservar-logs-essenciais.log:5:      1 /home/misael/steamzero-retrofe-tmp/24-comandos-e-saidas.log
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/120-preservar-logs-essenciais.log:6:      1 /home/misael/steamzero-retrofe-tmp/102-gate-visual-nono-elo.log
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/README.md:22:| repo, checkout único, árvore | `/home/misael/Projects/Steam Zero/Canonical/2026-09-21`, `git status` limpo, um único `HEAD` |
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/README.md:111:Todas as referências a `/home/misael/steamzero-retrofe-tmp` feitas por arquivos versionados foram
+docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/README.md:112:extraídas, copiadas para `/home/misael/steamzero-evidencia-integracao-2026-09-30/` e reconciliadas:
+--- alvo B ---
+
+=== os unicos caminhos absolutos publicados, agrupados por dois primeiros niveis ===
+      9 /home/misael/steamzero-retrofe-tmp
+      4 /home/misael/Projects
+      1 /home/misael/steamzero-evidencia-integracao-2026-09-30
+
+=== hosts externos citados ===
+      2 github.com
+      2 docs.github.com
+
+=== controlador de nao-vacio: o mesmo mecanismo, aplicado a uma fixture sintetica ===
+padrao                                       fixture  fixture+alvo
+token GitHub                                 1        1
+chave privada PEM                            1        1
+segredo atribuido a chave de config          1        1
+e-mail                                       1        1
+JWT                                          1        1
+caminho absoluto pessoal (fora do repo)      1        1
+(cada classe acha a sua linha plantada; o alvo real, acima, nao acha nenhuma)
+vocabulario do dominio (roms/bios/saves/emulation), que NAO e achado:
+  alvo-A: 1   alvo-B: 0   fixture: 1
+logo o mecanismo conta; o zero das seis classes e ausencia do que elas procuram,
+nao ausencia de procura.
+
+=== auto-excluidos, conferidos por outro metodo ===
+-- (i) runs de 36+ caracteres alfanumericos seguidos, nos dois arquivos --
+        2 3495c49d…(objeto git)
+        2 78083742…(objeto git)
+        2 eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
+  (o que aparece aqui e identificador de commit e de blob, citado de proposito; nenhum
+   tem o prefixo de token do GitHub, e a fixture acima prova que o formato seria achado)
+-- (ii) linha do script que contem palavra de credencial --
+  38:P3='(aws_secret_access_key|client_secret|api_key|apikey|secret_key|access_token|password|passwd)[[:space:]]*[:=][[:space:]]*["'"'"']?[A-Za-z0-9/+_.-]{8,}'
+  46: "token GitHub"
+  103:  echo 'client_secret = abcdefghijklmnop1234'
+  128:echo "   tem o prefixo de token do GitHub, e a fixture acima prova que o formato seria achado)"
+  130:grep -niE 'password|secret|token|api.?key' "$EV/127-varredura-de-segredos.sh" \
+  (todas sao nome de padrao, texto de grep, etiqueta de tabela ou linha plantada da
+   fixture de controle -- valor sintetico, escreito aqui para que o formato fosse
+   achado se aparecesse num alvo. Nenhum e credencial real: a coluna 'fixture' acima
+   prova que o mecanismo as detecta, e os alvos A e B dao zero.)
+-- (iii) o script codifica algum caminho absoluto? --
+8
+  (todas as ocorrencias sao o texto dos greps que ele executa; a raiz do checkout vem
+   de dirname $0, entao o log e repetivel em qualquer maquina)
+
+=== o que fica FORA do escopo desta varredura, medido a parte ===
+  docs/WORKLOG.md lido inteiro, hoje        : 7 linhas com caminho pessoal absoluto
+  docs/WORKLOG.md lido inteiro, em 3495c49d : 7 linhas
+  fileira inteira (#239..#247), linhas adicionadas com o mesmo padrao: 0
+
+=== leitura do resultado ===
+* Zero nas seis classes, nos dois alvos. Os unicos caminhos absolutos publicados por
+  esta entrega sao o do checkout, o do temporario e o do acervo duravel de evidencia
+  - os tres necessarios para repetir o comando que gera este log.
+* O controle de nao-vacio e uma fixture sintetica em /tmp (seis linhas plantadas, uma por
+  classe, nunca commitadas): as seis sao achadas, e o alvo real nao acha nenhuma. Sem essa
+  coluna, "zero em tudo" nao distinguiria "nao havia" de "nao procurava".
+* O vocabulario do dominio (roms, bios, saves, emulation) e o nome das coisas que o produto
+  gerencia; aparece em codigo, teste e doc e nao e achado de seguranca. Por isso e medido e
+  rotulado a parte, e nao entra nas seis classes.
+* CORRECAO na mesma rodada, antes de qualquer commit: a primeira versao desta secao
+  afirmava "107 linhas com termo de acervo" no WORKLOG. O numero vinha de um escopo
+  errado - a pasta de evidencia contava dentro do alvo B, e os literais dos proprios
+  padroes entravam na soma. O que identifica dado pessoal e o caminho absoluto fora do
+  repo, medido na secao anterior, e nao o termo de dominio.
+* Consequencia: as linhas do WORKLOG com caminho do acervo pessoal sao as mesmas sete da
+  base anterior a fileira. Nem a fileira nem este fechamento acrescentaram uma.
+  Apaga-las ou reescreve-las seria falsificar o registro, e a ordem do operador proibe
+  tanto apagar acervo quanto reescrever historico. Ficam declaradas como pendencia do
+  operador, nao encobertas por uma alegacao de limpeza do arquivo inteiro.

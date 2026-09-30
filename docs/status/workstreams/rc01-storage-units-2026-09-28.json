@@ -6,7 +6,7 @@
   "branch": "codex/rc01-storage-units-2026-09-28",
   "baseRef": "c0de54c9",
   "owner": "qoder-continuation",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/ui/qml/sizes.js",
     "tests/qml/check_storage_units.qml",
@@ -31,6 +31,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "PRÓXIMA AÇÃO: nada em aberto neste corte — a jornada UX-04 está verde, documentada, e o artefato do CI foi conferido entrada por entrada contra os blobs da cabeça (31-varredura-wheel-x-head.md). O próximo movimento é do operador: merge da fileira 239 a 244, ou da serialização da RC-01. DEPENDÊNCIA: base da fileira; enquanto o SHA não estiver em main, este workstream continua feature-branch e o empacotamento continua provado só no artefato, não na release instalada. CRITÉRIO DE SAÍDA: ao integrar, registrar o SHA realmente mergeado, renovar este cartão com evidência de release e fechar o gap de captura visual. NARRATIVA COMPLETA: docs/09-operations/evidence/2026-09-28-rc01-storage-units/ (arquivo 32-nextaction-verbatim-ws-2026-09-rc01-storage-units.md guarda o texto integral anterior).",
-  "updatedAt": "2026-09-29"
+  "nextAction": "Fechado: PR #244 integrado em main pelo merge c43853088baf (fileira #239-#247, main consolidado em 7808374257db). Contrato provado offscreen e presente no wheel desse SHA; resta a prova fisica (o empacotamento ja esta provado: sizes.js byte-identicos no wheel do SHA consolidado). Narrativa e provas: docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/README.md.",
+  "updatedAt": "2026-09-30"
 }

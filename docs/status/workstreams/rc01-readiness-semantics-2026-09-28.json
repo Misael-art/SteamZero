@@ -6,7 +6,7 @@
   "branch": "codex/rc01-readiness-semantics-2026-09-28",
   "baseRef": "5d95034b",
   "owner": "qoder-continuation",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "src/steamzero/domain/readiness.py",
     "src/steamzero/ui/qml/readiness.js",
@@ -45,6 +45,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "PRÓXIMA AÇÃO: F-1 (memória do plano em GB) e F-2 (prosa do plano de atualização) ficaram declarados e não implementados; retomar só com a ordem de serialização do operador, porque ambos tocam adapters/emulation.py e Main.qml, já serializados na fileira. DEPENDÊNCIA: contrato de prontidão v2 já entregue e testado offscreen; integração e artefato dependem do merge dos PRs abertos. CRITÉRIO DE SAÍDA: vermelho reproduzido com evento real antes de mexer no produto, verde nos dois lados do contrato, e nenhuma promoção de \"pronto\" baseada em mera existência de arquivo. NARRATIVA COMPLETA: docs/09-operations/evidence/2026-09-28-rc01-readiness-semantics/ (arquivo 18-nextaction-verbatim-ws-2026-09-rc01-readiness-semantics.md).",
-  "updatedAt": "2026-09-28"
+  "nextAction": "Fechado: PR #243 integrado em main pelo merge 5f6ff5082adb (fileira #239-#247, main consolidado em 7808374257db). Contrato provado offscreen e presente no wheel desse SHA; resta F-1 (memoryGb -> bytes pelo formatador) e a prova fisica. Narrativa e provas: docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/README.md.",
+  "updatedAt": "2026-09-30"
 }
