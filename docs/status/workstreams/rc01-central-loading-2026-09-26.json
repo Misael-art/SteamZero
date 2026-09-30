@@ -6,7 +6,7 @@
   "branch": "codex/rc01-central-loading-2026-09-26",
   "baseRef": "069501ab",
   "owner": "qoder-continuation",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "docs/09-operations/evidence/2026-09-26-rc01-central-loading",
     "docs/status/items/ui-desktop-audit.json",
@@ -32,6 +32,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "2026-09-27: checkpoint integral rodado (uma execucao; 1 falha de consistencia de catalogo atribuida, regenerada e revalidada; 6397 passed, estado real do operador intocado) e gates rapidos verdes na 2a passada. FEITO nesta rodada: commits 72579141 (funcional) e c959be13 (documental), push na branch, PR 240 reescrito e OPEN em c959be13; no ato do commit o status-check reprova por um nome de arquivo nao-ASCII (limitacao de core.quotepath em _changed_paths), renomeado para ASCII com nove referencias reescritas e digest renovado. Falta: CI terminal no SHA final e merge do operador. O workstream segue 'active' e so fecha como 'integrated' com o SHA em main; os eixos do item SZ-UI-DESKTOP-AUDIT nao promovem sem prova de host fisico e release instalada.",
-  "updatedAt": "2026-09-27"
+  "nextAction": "Fechado: PR #240 integrado em main pelo merge cba3fe426f23 (fileira #239-#247, main consolidado em 7808374257db). Contrato provado offscreen e presente no wheel desse SHA; resta a prova fisica da central durante carregamento e a cauda de latencia de /status emulation (backend, fora deste escopo). Narrativa e provas: docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/README.md.",
+  "updatedAt": "2026-09-30"
 }

@@ -6,7 +6,7 @@
   "branch": "codex/rc01-readiness-focus-2026-09-27",
   "baseRef": "c959be13",
   "owner": "qoder-continuation",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "docs/09-operations/evidence/2026-09-27-rc01-readiness-focus",
     "docs/status/workstreams/rc01-readiness-focus-2026-09-27.json",
@@ -36,6 +36,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "2026-09-27: gate visual do PR #241 fechado pela causa medida (container sem fonte + fontconfig herdado do host), contrato de captura substituido por igualdade pixel a pixel + geografia declarada pela cena, e publicacao de evidencia certificada em CI (artefato qml-visual-artifacts existe no run 36341332344, 51 arquivos / 36 PNG, nove capturas byte identicas as baselines). Restam desta rodada, nesta ordem: renovar o scopeDigest documental que reprovou o status-check nos tres jobs Python daquele mesmo run, conferir o CI terminal no SHA dessa correcao, e apresentar a situacao de integracao. NENHUM merge pelo agente; a 4a fatia (dialogo ES-DE duplicado em Main.qml) segue sem inicio por instrucao do operador. RC-01 nao se declara concluido: primeira dobra da Home, UX-03, UX-04 e prova fisica na release seguem com criterios proprios.",
-  "updatedAt": "2026-09-27"
+  "nextAction": "Fechado: PR #241 integrado em main pelo merge 67e30afcddaa (fileira #239-#247, main consolidado em 7808374257db). Contrato provado offscreen e presente no wheel desse SHA; resta medir as cinco superficies rolaveis ainda nao exercitadas e a prova fisica. Narrativa e provas: docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/README.md.",
+  "updatedAt": "2026-09-30"
 }

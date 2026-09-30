@@ -1,0 +1,59 @@
+# 126 — Governança do fechamento: renovação de digest e visões geradas
+
+## Leitura antes de qualquer renovação (com os cartões já editados pelo `124` e o WORKLOG já acrescido)
+
+`make status-check` → `.venv/bin/python tools/project_status.py check`:
+
+```
+STATUS-CHECK: FALHOU
+- SZ-UI-DESKTOP-AUDIT: evidencia obsoleta; scopeDigest esperado 007f2eb46cb242b6bb1567061e3133d141653018f25f0ca2bbb27dbd8b3ab27c, atual 1e8060daaac8cc872cad921824c4883763ffc04ff5607e5e5309a1034cf0b926
+- docs/STATUS.md esta desatualizado; execute tools/project_status.py render --write
+- docs/ACTIVE-WORK.md esta desatualizado; execute tools/project_status.py render --write
+- docs/status/COVERAGE.md esta desatualizado; execute tools/project_status.py render --write
+```
+
+Uma única obsolescência de digest, e ela é **atribuível por leitura, não por memória**:
+o `124` acrescentou `docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao` ao escopo de
+`SZ-UI-DESKTOP-AUDIT` (94 caminhos) e esta pasta foi criada agora. Os outros dois cartões mexidos
+(`SZ-PROJECT-DESIGN-AUDIT`, `SZ-ROADMAP-CONTINUATION`) **não** envelheceram: os caminhos de escopo
+deles não incluem esta pasta — `SZ-PROJECT-DESIGN-AUDIT` tem um único `scopePath` (a pasta da
+rodada 26/09) e `SZ-ROADMAP-CONTINUATION` tem quatro arquivos de roadmap/handoff. Verificado com:
+
+```
+python3 -c "…'WORKLOG' in p for p in scopePaths…"   → False
+python3 -c "…'STATUS.md' in p for p in scopePaths…" → False
+```
+
+Ou seja: nem o WORKLOG desta rodada nem as visões geradas entram no digest de ninguém, o que é o
+motivo pelo qual o remédio proporcional cabe em um `digest --item` + `render --write`.
+
+## O ponto fixo, declarado antes de executar
+
+Esta pasta está dentro do escopo do cartão que renova o digest. Portanto **a renovação é a última
+escrita**: qualquer arquivo acrescentado aqui depois dela envelhece o `scopeDigest` outra vez. A
+procedência é a do precedente da nona rodada (`105`/`105b`):
+
+1. escrever todos os arquivos desta pasta (feita antes deste log);
+2. commit documental (evidência + WORKLOG + cartões com eixos movidos);
+3. `.venv/bin/python tools/project_status.py digest --item SZ-UI-DESKTOP-AUDIT`, conferindo o valor
+   **impresso pela ferramenta** com o `check` (dupla leitura), nunca escrevendo valor de memória;
+4. `render --write` (STATUS.md, ACTIVE-WORK.md, COVERAGE.md);
+5. `check` final, que deve devolver `STATUS-CHECK: OK`;
+6. commit de governança separando só o que é gerado.
+
+O valor final renovado fica registrado **no próprio commit** (o campo `scopeDigest` do cartão) e é
+validado no CI do PR por
+`tests/unit/test_project_status.py::test_committed_catalog_and_generated_views_are_consistent`,
+que recalcula o digest dos arquivos commitados — não se precisa de um sétimo arquivo para prová-lo,
+e escrevê-lo depois da renovação seria exatamente o que reabriria a obsolescência.
+
+## Adenda escrita depois do item 1: a varredura `127`
+
+Este log foi escrito antes de existir o `127-varredura-de-segredos.sh` e seu resultado, que a ordem
+do operador exige (etapa 5: "não publique segredos ou conteúdo pessoal"). O remédio é o mesmo do
+ponto fixo: a varredura entra como **última escrita de conteúdo**, antes do passo 2 (commit
+documental), e é re-corrida contra a árvore já staged para que os totais que ela imprime sejam os do
+conteúdo que será commitado — assim nenhum número do README §6 fica atrás da própria edição do
+README. O `127` não muda eixo nenhum de cartão nem linha de `nextAction`; ele só sustenta uma
+afirmação que antes estava sem suporte (o README §6 citava o `120c`, e o `120c` não contém varredura
+alguma — corrigido nesta mesma rodada, antes de qualquer commit).

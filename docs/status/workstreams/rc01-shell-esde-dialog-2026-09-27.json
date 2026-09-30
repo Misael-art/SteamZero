@@ -6,7 +6,7 @@
   "branch": "codex/rc01-shell-esde-dialog-2026-09-27",
   "baseRef": "190ea683",
   "owner": "qoder-continuation",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "tests/integration/test_ui_shell_esde_import_dialog.py",
     "tests/qml/check_shell_esde_import_dialog_journey.qml",
@@ -22,6 +22,6 @@
     "docs/status/COVERAGE.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "PRÓXIMA AÇÃO: nenhum trabalho pendente neste corte; aguarda decisão de merge do operador para o fechamento documental único pós-integração (SHA em main, sessão nova no WORKLOG, eixos sustentados por evidência). DEPENDÊNCIA: fileira 239 a 244; HEAD medida 98037b705ce (funcional) e 6f551778 (docs), sem squash e sem rebase. CRITÉRIO DE SAÍDA: as cinco superficies rolaveis que ficam nao medidas (Emulation.qml, SectionNavigator.qml, SteamGameplay.qml e os dois dialogos de ThemeEditorPanel.qml) so sao promovidas com execucao propria; o contrato de geracao do importador ES-DE e um corte a parte, medido em 28-fora-de-escopo-esde-geracao.md do lote do RetroFE. NARRATIVA COMPLETA: docs/09-operations/evidence/2026-09-27-shell-esde-dialog/ (arquivo 10-nextaction-verbatim-ws-2026-09-rc01-shell-esde-dialog.md).",
-  "updatedAt": "2026-09-28"
+  "nextAction": "Fechado: PR #242 integrado em main pelo merge 231ba4d38418 (fileira #239-#247, main consolidado em 7808374257db). Contrato provado offscreen e presente no wheel desse SHA; resta o seletor nativo de diretorio (nao dirigivel por evento sob offscreen) e a prova fisica. Narrativa e provas: docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/README.md.",
+  "updatedAt": "2026-09-30"
 }

@@ -1,0 +1,39 @@
+=== observador CI main consolidado  SHA=7808374257db3059c1934cb4be6007d8a749346e  inicio 2026-09-30T05:24:17-03:00  (max 40 leituras, 90s entre elas)
+leitura 1 2026-09-30T05:24:17-03:00: check-runs=8 pendentes/falhos: Python 3.11=AUSENTE Python 3.12=AUSENTE Python 3.14=AUSENTE Wheel limpo, smoke e supply chain=AUSENTE Smoke Ubuntu 24.04=AUSENTE Smoke Arch Linux=AUSENTE Smoke Manjaro=AUSENTE Gate visual QML (Linux)=AUSENTE
+--- CORRECAO DO PREDICADO (registro acrescentado, a linha acima nao foi apagada):
+  a leitura 1 usou um predicado jq com erro ( `.[0]` aplicado a uma string), que
+  produzia 'AUSENTE' para check em andamento. Os oito estavam de fato in_progress.
+  O erro foi corrigido no proprio script e o observador sera relancado; a leitura 1
+  permanece aqui como evidencia de que o predicado foi auditado, nao assumido.
+=== observador CI main consolidado  SHA=7808374257db3059c1934cb4be6007d8a749346e  inicio 2026-09-30T05:26:07-03:00  (max 40 leituras, 90s entre elas)
+leitura 1 2026-09-30T05:26:08-03:00: check-runs=8 pendentes/falhos: Python 3.11=PENDENTE(in_progress) Python 3.12=PENDENTE(in_progress) Python 3.14=PENDENTE(in_progress) Wheel limpo, smoke e supply chain=CONCLUSAO(success) Smoke Ubuntu 24.04=CONCLUSAO(success) Smoke Arch Linux=CONCLUSAO(success) Smoke Manjaro=CONCLUSAO(success) Gate visual QML (Linux)=PENDENTE(in_progress)
+leitura 2 2026-09-30T05:27:38-03:00: check-runs=8 pendentes/falhos: Python 3.11=PENDENTE(in_progress) Python 3.12=PENDENTE(in_progress) Python 3.14=PENDENTE(in_progress) Wheel limpo, smoke e supply chain=CONCLUSAO(success) Smoke Ubuntu 24.04=CONCLUSAO(success) Smoke Arch Linux=CONCLUSAO(success) Smoke Manjaro=CONCLUSAO(success) Gate visual QML (Linux)=PENDENTE(in_progress)
+--- CORRECAO 2 do predicado (registro acrescentado): a API de check-runs devolve conclusao em minusculas ("success"); a comparacao anterior era case-sensitive e trataria um check verde como CONCLUSAO(success). Corrigido para normalizar caixa antes de comparar.
+=== observador CI main consolidado  SHA=7808374257db3059c1934cb4be6007d8a749346e  inicio 2026-09-30T05:28:26-03:00  (max 40 leituras, 90s entre elas)
+leitura 1 2026-09-30T05:28:27-03:00: check-runs=8 pendentes/falhos: Python 3.11=PENDENTE(in_progress) Python 3.12=PENDENTE(in_progress) Python 3.14=PENDENTE(in_progress) Gate visual QML (Linux)=PENDENTE(in_progress)
+leitura 2 2026-09-30T05:29:57-03:00: check-runs=8 pendentes/falhos: Python 3.11=PENDENTE(in_progress) Python 3.12=PENDENTE(in_progress) Python 3.14=PENDENTE(in_progress) Gate visual QML (Linux)=PENDENTE(in_progress)
+leitura 3 2026-09-30T05:31:28-03:00: check-runs=8 pendentes/falhos: Python 3.11=PENDENTE(in_progress) Python 3.12=PENDENTE(in_progress) Python 3.14=PENDENTE(in_progress) Gate visual QML (Linux)=PENDENTE(in_progress)
+leitura 4 2026-09-30T05:32:59-03:00: check-runs=8 pendentes/falhos: Python 3.11=PENDENTE(in_progress) Python 3.12=PENDENTE(in_progress) Python 3.14=PENDENTE(in_progress) Gate visual QML (Linux)=PENDENTE(in_progress)
+leitura 5 2026-09-30T05:34:30-03:00: check-runs=8 pendentes/falhos: Python 3.11=PENDENTE(in_progress) Gate visual QML (Linux)=PENDENTE(in_progress)
+leitura 6 2026-09-30T05:36:01-03:00: check-runs=8 pendentes/falhos: Python 3.11=PENDENTE(in_progress) Gate visual QML (Linux)=PENDENTE(in_progress)
+leitura 7 2026-09-30T05:37:32-03:00: check-runs=8 pendentes/falhos: Gate visual QML (Linux)=PENDENTE(in_progress)
+leitura 8 2026-09-30T05:39:03-03:00: check-runs=8 pendentes/falhos: Gate visual QML (Linux)=PENDENTE(in_progress)
+leitura 9 2026-09-30T05:40:34-03:00: check-runs=8 pendentes/falhos: Gate visual QML (Linux)=PENDENTE(in_progress)
+leitura 10 2026-09-30T05:42:05-03:00: check-runs=8 pendentes/falhos: Gate visual QML (Linux)=PENDENTE(in_progress)
+=== observador CI main consolidado  SHA=7808374257db3059c1934cb4be6007d8a749346e  inicio 2026-09-30T05:42:11-03:00  (max 40 leituras, 90s entre elas)
+leitura 1 2026-09-30T05:42:11-03:00: check-runs=8 pendentes/falhos: Gate visual QML (Linux)=PENDENTE(in_progress)
+--- DUPLICACAO EVITADA (registro acrescentado): ao relancar o observador sem checar a vivencia, dois processos passaram a escrever no mesmo log (pids 1701520 e 1750335). O 1750335 foi encerrado; o 1701520 (inicio 05:28:26-03:00, 40 leituras de 90s) permanece como observador unico desta composicao.
+leitura 11 2026-09-30T05:43:35-03:00: check-runs=8 pendentes/falhos: Gate visual QML (Linux)=PENDENTE(in_progress)
+leitura 12 2026-09-30T05:45:06-03:00: check-runs=8 pendentes/falhos: Gate visual QML (Linux)=PENDENTE(in_progress)
+leitura 13 2026-09-30T05:46:37-03:00: check-runs=8 pendentes/falhos: Gate visual QML (Linux)=PENDENTE(in_progress)
+leitura 14 2026-09-30T05:48:08-03:00: check-runs=8 pendentes/falhos: Gate visual QML (Linux)=PENDENTE(in_progress)
+leitura 15 2026-09-30T05:49:40-03:00: check-runs=8 pendentes/falhos:nenhum
+TERMINAL de verdade apos 15 leitura(s): os oito obrigatorios estao SUCCESS em 7808374257db3059c1934cb4be6007d8a749346e
+  Smoke Ubuntu 24.04	success	completed
+  Smoke Arch Linux	success	completed
+  Python 3.14	success	completed
+  Python 3.11	success	completed
+  Smoke Manjaro	success	completed
+  Python 3.12	success	completed
+  Gate visual QML (Linux)	success	completed
+  Wheel limpo, smoke e supply chain	success	completed

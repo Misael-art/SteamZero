@@ -14414,3 +14414,108 @@ suíte integral e gate visual na árvore do elo. Integrado: **não** — merge �
 decisão do operador e a fileira está pronta, sequenciada. Empacotado: **não**.
 Experiência na release instalada: **não**. Seletor nativo de diretório: **não
 comprovado**.
+
+## 2026-09-30 — Fileira #239→#247 integrada em `main`: a coluna G promovida por prova de árvore, e a coluna H não
+
+**O que autorizou esta sessão.** Integração das nove PRs em `main` por merge commit preservando
+ancestralidade, na sequência proposta, com recolocação da base de #245/#246/#247 nos pontos
+apropriados, mais o fechamento documental e seu merge. Instalação, release e alterações
+privilegiadas no host ficaram **fora** e continuam fora.
+
+**Pré-voo re-medido antes de tocar em qualquer merge** (`115`): `origin/main = 3495c49d…`; as nove
+cabeças conferidas uma a uma contra `origin/<branch>` — 9× **IGUAL**, nenhuma deriva desde a medição
+da rodada `106`; ancestralidade linear par a par; incrementos `2+5+13+4+10+16+8+16+9 = 83`, e
+`git rev-list --count 3495c49d..78083742` devolve **92** (= 83 sem merge + 9 merge commits, contados
+separadamente); diff da fileira 524 arquivos, **+71 730 / −1 231**; árvore limpa antes e depois de
+cada passo.
+
+**O achado que muda o valor da proteção.** Branch protection clássica: **404 "Branch not
+protected"**; `rulesets`: `[]`; regras efetivas em `main`: `[]`; sem `CODEOWNERS`. Nada no servidor
+barraria um merge com gate obrigatório vermelho. `reviewDecision` vazio não foi lido como aprovação
+— leu-se o estado de proteção, e o compensatório foi mecânico: `118-merge-um-elo.sh` só executa
+`gh pr merge N --merge` com PR `OPEN`, `MERGEABLE/CLEAN` e os **oito** nomes obrigatórios em
+`SUCCESS` naquela cabeça; sem isso sai com código de erro sem mesclar. Sem `--admin`, sem
+force-push. O refusal não foi teórico: #243 foi **recusado** enquanto a composição estava
+`UNKNOWN/UNKNOWN`, e mergedeu só depois de `MERGEABLE/CLEAN` resolver.
+
+**A transferência de verde foi medida, não presumida.** Em cada um dos nove elos, além do
+`state=MERGED` e dos dois pais do merge commit, conferiu-se `árvore(merge) == árvore(cabeça testada
+no CI)` — `0abc2596`, `e9aba1f8`, `4b23b239`, `b7cb4a08`, `cffe5779`, `622b176c`, `2a4d29fcd190` e os
+demais, nove **IGUAIS**. É isso que permite dizer que o que landed é o que o CI validou; sem essa
+linha, o verde da cabeça não diria nada sobre a composição. As três mudanças de base só ocorreram
+depois de o elo anterior estar integrado, e cada uma foi precedida de `árvore(main novo) ==
+árvore(base antiga do ramo)`: `c4385308==af6a5c6e`, `66b442b6==2d6a8957`, `cb71a527==c4975979`.
+Por isso nenhuma mudança de base gerou nova execução obrigatória — e o diff exclusivo de #247 antes
+e depois de `--base main` é o mesmo (`105 arquivos, +12 118/−103`). **Zero conflito.**
+
+**A suíte exigida foi conferida como executada.** Não se leu manchete: `.github/workflows/ci.yml`
+roda `tools/run_tests_isolated.py -m "not visual" … --junitxml=… --cov=steamzero`, e os zips
+`test-results-*` de cada run trazem a contagem crua. Por cabeça (`116`): 5 965 → 6 152 aprovados, 47
+pulados. No consolidado (`123`): **6 199 coletados, 0 falhas, 0 erros, 47 pulados** nos três
+interpretadores, e gate visual **365 passed, 12 skipped, 6199 deselected**, com **8/8 obrigatórios
+em SUCCESS** por push direto em `7808374257db…`. Uma correção foi acrescentada ao próprio `123`: o
+"377 passed, zero pulados" que circula é do gate **local**, não do CI — as duas corridas de CI
+(cabeça de #247 e consolidado) têm contagem idêntica. Registrar essa distinção é devido porque
+"verde com 12 a menos executados" e "verde com o mesmo conjunto" não são a mesma frase.
+
+**O resultado histórico da integral não foi redeclarado.** A suíte integral local da nona rodada
+fechou com **1 failed, 6 528 passed, 47 skipped**, e continua escrita assim. O único falho era o gate
+de governança (11 `scopeDigest` envelhecidos, atribuídos por leitura dos cartões), e a correção da
+governança (renovação no valor impresso pela ferramenta + `render --write`) está registrada
+separadamente — aquela corrida **não** é chamada de aprovada aqui.
+
+**Empacotamento no SHA consolidado, com a varredura do delta inteiro.** O wheel do próprio run
+consolidado tem proveniência `commit=7808374257db…`, `sourceTreeState=clean`, sha256 `a1cd3709…`
+batendo com `SHA256SUMS` e proveniência, `pip-audit` limpo, 625 arquivos, 61 `.qml`. Além dos dois
+módulos do contrato (`sizes.js` `6d5ca418…`, `readiness.js` `7d76be27…`, `domain/readiness.py`,
+`console_runtime_readiness.py`), varreu-se **todo** o `src/` tocado pela fileira: **20 arquivos,
+20 byte-idênticos dentro do pacote, nenhum ausente, nenhum diferente** (`122` §5). Existência de
+arquivo não foi tratada como prova de pacote, e pacote não é release instalada.
+
+**O que estava em temporário deixou de sustentar o fechamento.** As referências feitas por arquivos
+versionados a `/home/misael/steamzero-retrofe-tmp` foram extraídas, copiadas para
+`/home/misael/steamzero-evidencia-integracao-2026-09-30/` e reconciliadas: **79/79 cópias
+byte-idênticas**, `LC_ALL=C sha256sum -c MANIFEST.sha256` → **86/86 OK**. O manifesto e o leia-me
+entraram nesta pasta de evidência. Nada foi apagado do temporário, de branches, de bundles, de
+backups ou do acervo.
+
+A ordem também pedia para não publicar segredo nem conteúdo pessoal, e isso foi medido em vez de
+afirmado: o script `127-varredura-de-segredos.sh` varre dois alvos declarados — o conteúdo integral
+dos arquivos novos desta pasta e as linhas adicionadas nos arquivos já versionados — contra seis
+classes (token GitHub, chave PEM, segredo atribuído a chave de config, e-mail, JWT, caminho
+absoluto pessoal fora do repositório). **Zero em ambos os alvos** (log `127`, que imprime os totais
+de cada um, declara a auto-exclusão do próprio script e aplica os mesmos seis padrões a uma
+*fixture* sintética de seis linhas plantadas em `/tmp` — que acha as seis, para que o zero signifique
+contagem e não desatenção). O que a varredura não cobre também está dito lá: as sete linhas do
+`WORKLOG` com caminho absoluto do acervo pessoal são as mesmas sete da base `3495c49d` — nem a
+fileira nem este fechamento acrescentaram uma, e reescrevê-las seria apagar fato registrado.
+
+**Fechamento documental.** Os oito `WS-2026-09-RC01-*` passam a `closed` com o SHA de merge
+realmente integrado na `nextAction` (curta, com narrativa nesta pasta); `SZ-UI-DESKTOP-AUDIT`,
+`SZ-PROJECT-DESIGN-AUDIT` e `SZ-ROADMAP-CONTINUATION` saem de `feature-branch` para `integrated`.
+**Nenhum outro eixo se moveu**: `implementation=partial`, `verification=dev`, `operation=degraded`
+em `SZ-UI-DESKTOP-AUDIT` continuam dizendo a verdade de antes, porque prova física não foi
+executada. A promoção de `distribution` foi recusada de propósito nesta rodada — o wheel do SHA
+consolidado é artefato de CI, não a release governada, e a AGENTS §4 não autoriza esta frente a
+construí-la.
+
+**Vinte e um cartões que a fileira só encostou ficaram onde estavam.** A `fileira` tocou 44 cartões
+pelo `sharedPaths` (`STATUS.md`, `WORKLOG.md`, `ui-desktop-audit.json`, COVERAGE), e 21 deles seguem
+`feature-branch` porque o trabalho **deles** não foi mergeado — `SZ-PS3-OFFICIAL-FIRMWARE-DOWNLOAD`,
+`SZ-AURA-ESDE-ACTIVE-SURFACE`, `SZ-AURA-ESDE-RUNTIME-BRIDGE`, os `SZ-EMULATION-*` e `SZ-PLATFORM-*`
+listados em `121`. Mover eixo de quem não entregou é exatamente o tipo de claim que este WORKLOG já
+registrou como erro de leitura.
+
+**Quadro final da RC-01** (`README.md` §7 desta pasta): a coluna **G** passou de "não" para **sim em
+todas as treze linhas**, com prova de árvore; a coluna **P** passou a "sim" apoiada na varredura dos
+20 arquivos; **nenhuma linha moveu H**, e a pendência física é agora a única diferença entre
+"contrato integrado" e "experiência comprovada na release instalada". Ficam abertos por natureza:
+seletor nativo de diretório (a rota por Enter não promove a rota não testada), política de contraste
+(decisão de produto), F-1 (`memoryGb`), cinco superfícies roláveis não medidas, e
+`GAP-UI-VISUAL-CAPTURE-NOT-CERTIFIED-IN-CI`.
+
+**Próxima decisão, concreta:** autorizar a release candidata a partir de
+`7808374257db3059c1934cb4be6007d8a749346e` pelo fluxo governado e, separadamente, conceder ou recusar
+a autorização específica de instalação com token. O plano está em
+`125-preparacao-do-host-no-sha-consolidado.md` — pré-condição 1 satisfeita por medição, 2/3/4 ainda
+do operador. Nenhuma instalação foi executada ou presumida.

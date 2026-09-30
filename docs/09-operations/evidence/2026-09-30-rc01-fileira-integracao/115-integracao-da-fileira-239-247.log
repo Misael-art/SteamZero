@@ -1,0 +1,792 @@
+=== PRE-VOO 2026-09-30 — etapa 1 do operador ===
+2026-09-30T05:11:06-03:00
+--- identidade do repo
+https://github.com/Misael-art/SteamZero.git
+Misael-art/SteamZero
+--- arvore local
+git status --porcelain vazio? SIM
+--- stash list
+stash@{0}: On codex/transactional-host-update: transfer-aura-theme-docs-2026-08-17
+stash@{1}: autostash
+stash@{2}: WIP on codex/ui-regression-remediation: c72d139 fix(ui): restore system navigation and responsive bridge
+stash@{3}: WIP on codex/compartilhar-tela-s1-web-receiver: 456c7c6 docs: record release 0.1.0a35 promotion session
+stash@{4}: WIP on codex/desktop-ergonomia-d0: 51c8f40 feat(ui): structured ERROR-UX from error-v1 contract
+--- HEAD local e ramo
+codex/rc01-esde-import-generation-2026-09-29
+37040af3bed758bc0429fc72501b05358fd1a2c2
+--- working tree limpo de arquivos nao rastreados grandes?
+0
+
+--- fetch de main e das cabecas das nove PRs
+fetch main ok
+fetch heads ok
+--- origin/main agora
+3495c49d5d7c3244267e8292beee34475f70236b
+
+--- heads completos lidos do GitHub (gh pr view) e conferidos contra refs/pull
+239
+  ramo=codex/project-design-audit-2026-09-26 head=069501ab954c42118b5aaf91c450b58800e90219
+  base=main@3495c49d5d7c state=OPEN draft=false
+  refs/pull/239/head=refs/pull/239/head
+SEM-REF -> DIVERGE
+240
+  ramo=codex/rc01-central-loading-2026-09-26 head=c959be139f95c673dc258b9d8b8011313d5c97f6
+  base=main@3495c49d5d7c state=OPEN draft=false
+  refs/pull/240/head=refs/pull/240/head
+SEM-REF -> DIVERGE
+241
+  ramo=codex/rc01-readiness-focus-2026-09-27 head=190ea683a941f8dc37036ef6402ffabaf7843799
+  base=main@3495c49d5d7c state=OPEN draft=false
+  refs/pull/241/head=refs/pull/241/head
+SEM-REF -> DIVERGE
+242
+  ramo=codex/rc01-shell-esde-dialog-2026-09-27 head=5d95034b67fb50fd1218f267afbfe189d4444bd2
+  base=main@3495c49d5d7c state=OPEN draft=false
+  refs/pull/242/head=refs/pull/242/head
+SEM-REF -> DIVERGE
+243
+  ramo=codex/rc01-readiness-semantics-2026-09-28 head=c0de54c9f10c480693ce495a0533acb524fe53ad
+  base=main@3495c49d5d7c state=OPEN draft=false
+  refs/pull/243/head=refs/pull/243/head
+SEM-REF -> DIVERGE
+244
+  ramo=codex/rc01-storage-units-2026-09-28 head=af6a5c6ed8523c04030d25b1d391e885a3b3b48e
+  base=main@3495c49d5d7c state=OPEN draft=false
+  refs/pull/244/head=refs/pull/244/head
+SEM-REF -> DIVERGE
+245
+  ramo=codex/rc01-retrofe-shell-late-response-2026-09-29 head=2d6a895760ef55bf3cbdf742808e6798946da9d5
+  base=codex/rc01-storage-units-2026-09-28@af6a5c6ed852 state=OPEN draft=false
+  refs/pull/245/head=refs/pull/245/head
+SEM-REF -> DIVERGE
+246
+  ramo=codex/rc01-home-first-fold-2026-09-29 head=c4975979b93a03e661294b6854146e76f22fa8c3
+  base=codex/rc01-retrofe-shell-late-response-2026-09-29@2d6a895760ef state=OPEN draft=false
+  refs/pull/246/head=refs/pull/246/head
+SEM-REF -> DIVERGE
+247
+  ramo=codex/rc01-esde-import-generation-2026-09-29 head=37040af3bed758bc0429fc72501b05358fd1a2c2
+  base=codex/rc01-home-first-fold-2026-09-29@c4975979b93a state=OPEN draft=false
+  refs/pull/247/head=refs/pull/247/head
+SEM-REF -> DIVERGE
+--- fetch dos nove ramos remotos (nomes reais, nao refs/pull)
+fetch ramos ok
+
+--- cabeca de cada ramo remoto vs head do GitHub
+239 gh=069501ab954c ramo=069501ab954c IGUAL
+240 gh=c959be139f95 ramo=c959be139f95 IGUAL
+241 gh=190ea683a941 ramo=190ea683a941 IGUAL
+242 gh=5d95034b67fb ramo=5d95034b67fb IGUAL
+243 gh=c0de54c9f10c ramo=c0de54c9f10c IGUAL
+244 gh=af6a5c6ed852 ramo=af6a5c6ed852 IGUAL
+245 gh=2d6a895760ef ramo=2d6a895760ef IGUAL
+246 gh=c4975979b93a ramo=c4975979b93a IGUAL
+247 gh=37040af3bed7 ramo=37040af3bed7 IGUAL
+
+--- ancestralidade (merge-base --is-ancestor A B; comandos exatos abaixo)
+  ANCESTRAL: 3495c49d -> 069501ab
+  ANCESTRAL: 069501ab -> c959be13
+  ANCESTRAL: c959be13 -> 190ea683
+  ANCESTRAL: 190ea683 -> 5d95034b
+  ANCESTRAL: 5d95034b -> c0de54c9
+  ANCESTRAL: c0de54c9 -> af6a5c6e
+  ANCESTRAL: af6a5c6e -> 2d6a8957
+  ANCESTRAL: 2d6a8957 -> c4975979
+  ANCESTRAL: c4975979 -> 37040af3
+
+--- incremento por elo (rev-list contagem do anterior ate a cabeca)
+main -> 239: 2
+  069501ab954c42118b5aaf91c450b58800e90219 -> 240 : 5
+  c959be139f95c673dc258b9d8b8011313d5c97f6 -> 241 : 13
+  190ea683a941f8dc37036ef6402ffabaf7843799 -> 242 : 4
+  5d95034b67fb50fd1218f267afbfe189d4444bd2 -> 243 : 10
+  c0de54c9f10c480693ce495a0533acb524fe53ad -> 244 : 16
+  af6a5c6ed8523c04030d25b1d391e885a3b3b48e -> 245 : 8
+  2d6a895760ef55bf3cbdf742808e6798946da9d5 -> 246 : 16
+  c4975979b93a03e661294b6854146e76f22fa8c3 -> 247 : 9
+  acumulado main..247: 83
+
+--- diff funcional total da fileira vs main (shortstat + arquivos por tipo)
+ 524 files changed, 71730 insertions(+), 1231 deletions(-)
+  arquivos alterados: 524
+
+--- main nao se moveu desde a medicao anterior?
+origin/main = 3495c49d5d7c3244267e8292beee34475f70236b  (esperado 3495c49d5d7c3244267e8292beee34475f70236b)
+
+=== ETAPA 2 — protecao de main e requisitos de revisao ===
+--- git (protecao local nao existe; API):
+[protection completa]
+{"message":"Branch not protected","documentation_url":"https://docs.github.com/rest/branches/branch-protection#get-branch-protection","status":"404"}gh: Branch not protected (HTTP 404)
+
+[required_status_checks]
+{"message":"Branch not protected","documentation_url":"https://docs.github.com/rest/branches/branch-protection#get-status-checks-protection","status":"404"}gh: Branch not protected (HTTP 404)
+--- rulesets do repo (a protecao pode ser ruleset, nao branch protection classica)
+[]
+--- regras efetivas no ramo main
+[]
+--- revisoes exigidas por CODEOWNERS / review policitcs
+sem CODEOWNERS
+
+
+--- reviewDecision das nove PRs no head exato
+239	069501ab		CLEAN	MERGEABLE
+240	c959be13		CLEAN	MERGEABLE
+241	190ea683		CLEAN	MERGEABLE
+242	5d95034b		CLEAN	MERGEABLE
+243	c0de54c9		CLEAN	MERGEABLE
+244	af6a5c6e		CLEAN	MERGEABLE
+245	2d6a8957		CLEAN	MERGEABLE
+246	c4975979		CLEAN	MERGEABLE
+247	37040af3		CLEAN	MERGEABLE
+
+--- workflows presentes no head de 247
+  .github/workflows/ci.yml
+  .github/workflows/qml-visual-image.yml
+
+--- nomes de job e passos relevantes em .github/workflows/ci.yml (no head 37040af3)
+2:name: ci
+4:on:
+6:    branches: [main, "codex/*release-candidate*"]
+7:    tags: ["v*"]
+11:concurrency:
+15:permissions:
+18:env:
+22:jobs:
+24:    name: Python ${{ matrix.python-version }}
+25:    runs-on: ubuntu-latest
+29:    timeout-minutes: 45
+30:    strategy:
+33:        python-version: ["3.11", "3.12", "3.14"]
+34:    steps:
+35:      - name: Checkout limpo
+48:      - name: Python ${{ matrix.python-version }}
+51:          python-version: ${{ matrix.python-version }}
+52:      - name: Dependências verificadas por hash
+54:      - name: Checkout sem alterações prévias
+56:      - name: Formatação
+58:      - name: Lint
+60:      - name: Fronteiras arquiteturais
+62:      - name: Independência do PhaseZero
+64:      - name: Estado do projeto
+73:      - name: Tipos estritos
+84:      - name: Testes e cobertura
+90:            --junitxml=build/test-results-${{ matrix.python-version }}.xml \
+93:            --cov-report=xml:build/coverage-${{ matrix.python-version }}.xml \
+94:            --cov-report=json:build/coverage-${{ matrix.python-version }}.json
+95:      - name: Publicar cobertura
+99:        if: always() && matrix.python-version == '3.14'
+106:      - name: Publicar resultados JUnit
+112:          name: test-results-${{ matrix.python-version }}
+113:          path: build/test-results-${{ matrix.python-version }}.xml
+118:    name: Wheel limpo, smoke e supply chain
+119:    runs-on: ubuntu-latest
+120:    permissions:
+125:    steps:
+126:      - name: Checkout limpo
+131:      - name: Python 3.14
+134:          python-version: "3.14"
+135:      - name: Dependências verificadas por hash
+137:      - name: Verificar checkout e construir wheel isolado
+143:      - name: Instalar wheel em ambiente vazio e executar smoke
+152:      - name: Auditar ambiente instalado pelo feed OSV e gerar SBOM
+157:      - name: Gerar proveniência local e checksums
+172:      - name: Atestar proveniência assinada em tags
+180:      - name: Atestar SBOM assinada em tags
+189:      - name: Wheelhouse de runtime com manifesto
+202:      - name: Publicar wheel, auditoria, SBOM e proveniência
+219:    name: Smoke ${{ matrix.name }}
+220:    runs-on: ubuntu-latest
+221:    strategy:
+231:    container:
+233:    steps:
+234:      - name: Checkout limpo
+238:      - name: Bibliotecas de runtime da distribuição
+250:      - name: Python 3.14 portátil
+253:          python-version: "3.14"
+254:      - name: Identificar distribuição
+256:      - name: Construir e instalar sem editable
+278:    name: Gate visual QML (Linux)
+279:    runs-on: ubuntu-latest
+280:    container:
+284:    steps:
+285:      - name: Checkout limpo
+289:      - name: Conferir o ambiente contra o lock
+317:      - name: Dependências verificadas por hash
+321:      - name: Gate visual
+323:      - name: Publicar artefatos visuais
+
+--- check-runs por cabeca exata (gh api commits/{sha}/check-runs)
+PR 239  head=069501ab954c42118b5aaf91c450b58800e90219
+   Gate visual QML (Linux)	completed	success
+   Python 3.11	completed	success
+   Python 3.12	completed	success
+   Python 3.14	completed	success
+   Smoke Arch Linux	completed	success
+   Smoke Manjaro	completed	success
+   Smoke Ubuntu 24.04	completed	success
+   Sourcery review	completed	skipped
+   Wheel limpo, smoke e supply chain	completed	success
+PR 240  head=c959be139f95c673dc258b9d8b8011313d5c97f6
+   Gate visual QML (Linux)	completed	success
+   Python 3.11	completed	success
+   Python 3.12	completed	success
+   Python 3.14	completed	success
+   Smoke Arch Linux	completed	success
+   Smoke Manjaro	completed	success
+   Smoke Ubuntu 24.04	completed	success
+   Sourcery review	completed	skipped
+   Wheel limpo, smoke e supply chain	completed	success
+PR 241  head=190ea683a941f8dc37036ef6402ffabaf7843799
+   Gate visual QML (Linux)	completed	success
+   Python 3.11	completed	success
+   Python 3.12	completed	success
+   Python 3.14	completed	success
+   Smoke Arch Linux	completed	success
+   Smoke Manjaro	completed	success
+   Smoke Ubuntu 24.04	completed	success
+   Sourcery review	completed	skipped
+   Wheel limpo, smoke e supply chain	completed	success
+PR 242  head=5d95034b67fb50fd1218f267afbfe189d4444bd2
+   Gate visual QML (Linux)	completed	success
+   Python 3.11	completed	success
+   Python 3.12	completed	success
+   Python 3.14	completed	success
+   Smoke Arch Linux	completed	success
+   Smoke Manjaro	completed	success
+   Smoke Ubuntu 24.04	completed	success
+   Sourcery review	completed	skipped
+   Wheel limpo, smoke e supply chain	completed	success
+PR 243  head=c0de54c9f10c480693ce495a0533acb524fe53ad
+   Gate visual QML (Linux)	completed	success
+   Python 3.11	completed	success
+   Python 3.12	completed	success
+   Python 3.14	completed	success
+   Smoke Arch Linux	completed	success
+   Smoke Manjaro	completed	success
+   Smoke Ubuntu 24.04	completed	success
+   Sourcery review	completed	skipped
+   Wheel limpo, smoke e supply chain	completed	success
+PR 244  head=af6a5c6ed8523c04030d25b1d391e885a3b3b48e
+   Gate visual QML (Linux)	completed	success
+   Python 3.11	completed	success
+   Python 3.12	completed	success
+   Python 3.14	completed	success
+   Smoke Arch Linux	completed	success
+   Smoke Manjaro	completed	success
+   Smoke Ubuntu 24.04	completed	success
+   Sourcery review	completed	skipped
+   Wheel limpo, smoke e supply chain	completed	success
+PR 245  head=2d6a895760ef55bf3cbdf742808e6798946da9d5
+   Gate visual QML (Linux)	completed	success
+   Python 3.11	completed	success
+   Python 3.12	completed	success
+   Python 3.14	completed	success
+   Smoke Arch Linux	completed	success
+   Smoke Manjaro	completed	success
+   Smoke Ubuntu 24.04	completed	success
+   Sourcery review	completed	skipped
+   Wheel limpo, smoke e supply chain	completed	success
+PR 246  head=c4975979b93a03e661294b6854146e76f22fa8c3
+   Gate visual QML (Linux)	completed	success
+   Python 3.11	completed	success
+   Python 3.12	completed	success
+   Python 3.14	completed	success
+   Smoke Arch Linux	completed	success
+   Smoke Manjaro	completed	success
+   Smoke Ubuntu 24.04	completed	success
+   Sourcery review	completed	skipped
+   Wheel limpo, smoke e supply chain	completed	success
+PR 247  head=37040af3bed758bc0429fc72501b05358fd1a2c2
+   Gate visual QML (Linux)	completed	success
+   Python 3.11	completed	success
+   Python 3.12	completed	success
+   Python 3.14	completed	success
+   Smoke Arch Linux	completed	success
+   Smoke Manjaro	completed	success
+   Smoke Ubuntu 24.04	completed	success
+   Sourcery review	completed	skipped
+   Wheel limpo, smoke e supply chain	completed	success
+
+=== ETAPA 3 — resultado historico da suite integral (NAO declarado aprovado) ===
+Suíte integral local do nono elo, arquivada em
+  docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/100-checkpoint-integral-nono-elo.log
+veredito historico medido: 1 failed, 6528 passed, 47 skipped in 2529.34s (0:42:09)
+unica falha: tests/unit/test_project_status.py::test_committed_catalog_and_generated_views_are_consistent
+  = obsolescencia de governanca (catalogo/views ainda nao renovados naquela arvore),
+  corrigida DEPOIS por commit documental propio; a corrida integral de 29/09 nao e
+  declarada aprovada. Validacoes posteriores registradas a parte:
+  - 110-gate-visual-apos-governanca.log: 377 passed, 6199 deselected, VEREDITO PASSOU rc=0
+  - STATUS-CHECK: OK rc=0 apos renovacao de digests/views
+  - CI na cabeca 37040af3 (acima): suite nao-visual 6152 passed, 47 skipped, 377 deselected
+
+=== PROTECAO MEDIDA (fator de risco, nao motivo de bypass) ===
+branch protection classica: 404 'Branch not protected'; rulesets: []; regras efetivas em main: []; sem CODEOWNERS.
+Consequencia honesta: nada no servidor barra merge com check vermelho. A disciplina e nossa:
+  exigir 8/8 SUCCESS no SHA exato antes de cada merge commit, sem --admin, sem force-push.
+
+=== MERGE 1/9 — PR #239 (head 069501ab954c42118b5aaf91c450b58800e90219) ===
+comando: gh pr merge 239 --merge   (sem --admin, sem --delete-branch, sem force)
+rc=0
+PR #239  state=MERGED  mergedAt=2026-09-30T08:15:58Z  mergeCommit=9fc1c5948fca  base=main  head=069501ab954c
+origin/main = 9fc1c5948fca76961efff2d6ee89926f0141b95d
+parents do merge commit: 3495c49d5d7c 
+ancestralidade: head 069501ab954c42118b5aaf91c450b58800e90219 acima de main? SIM
+main acima desta cabeca (rev-list HEAD..main): 1
+proxima PR #240 head=c959be139f95 base=main@3495c49d5d7c
+  diff exclusivo vs main: 51 files changed, 5528 insertions(+), 141 deletions(-)
+  proprios (main..head): 5
+  mergeable=UNKNOWN mergeStateStatus=UNKNOWN
+
+--- PR 240 contra a NOVA base (main=9fc1c594): mergeable e checks
+{"base":"3495c49d5d7c","checks":[{"c":"SUCCESS","n":"Python 3.11"},{"c":"SUCCESS","n":"Python 3.12"},{"c":"SUCCESS","n":"Python 3.14"},{"c":"SUCCESS","n":"Wheel limpo, smoke e supply chain"},{"c":"SUCCESS","n":"Smoke Ubuntu 24.04"},{"c":"SUCCESS","n":"Smoke Arch Linux"},{"c":"SUCCESS","n":"Smoke Manjaro"},{"c":"SUCCESS","n":"Gate visual QML (Linux)"},{"c":"SKIPPED","n":"Sourcery review"},{"c":null,"n":"CodeRabbit"}],"mergeStateStatus":"CLEAN","mergeable":"MERGEABLE"}
+--- igualdade de arvore: merge(239 em main) vs cabeca 239
+  tree 9fc1c594 = 3168fad39bf53fde6f190cff75644a2343040d9f
+  tree 069501ab = 3168fad39bf53fde6f190cff75644a2343040d9f
+  IDENTICAS? SIM
+  diff main...cabeca240 (o que 240 acrescenta ao main atual):
+ 51 files changed, 5528 insertions(+), 141 deletions(-)
+  diff main vs cabeca240 em duas direcoes (rev-list main..240 = 5; 240..main = 1)
+
+=== MERGE 2/9 — PR #240 ===
+gate PR #240 head=c959be139f95c673dc258b9d8b8011313d5c97f6 state=OPEN mergeable=MERGEABLE mergeState=CLEAN
+  Python 3.11 <- SUCCESS
+  Python 3.12 <- SUCCESS
+  Python 3.14 <- SUCCESS
+  Wheel limpo, smoke e supply chain <- SUCCESS
+  Smoke Ubuntu 24.04 <- SUCCESS
+  Smoke Arch Linux <- SUCCESS
+  Smoke Manjaro <- SUCCESS
+  Gate visual QML (Linux) <- SUCCESS
+gate OK -> gh pr merge 240 --merge
+merge solicitado para #240 (sem --admin, sem --delete-branch)
+--- conferencia pos-merge 240 (comando: 117-pos-merge.sh 240 <head> 241)
+PR #240  state=MERGED  mergedAt=2026-09-30T08:18:46Z  mergeCommit=cba3fe426f23  base=main  head=c959be139f95
+origin/main = cba3fe426f237ee75eb3f6aad42f6e0a098cc809
+merge commit cba3fe426f23 tem 0 pai(s): c959be139f95c673dc258b9d8b8011313d5c97f6 
+arvore integrada = 0abc25968bdd | arvore da cabeca testada no CI = 0abc25968bdd | IGUAIS? SIM (a composicao que landed e a mesma que o CI validou)
+main acima desta cabeca (rev-list HEAD..main): 2
+ancestralidade: head c959be139f95c673dc258b9d8b8011313d5c97f6 acima de main? SIM
+main acima desta cabeca (rev-list HEAD..main): 2
+proxima PR #241 head=190ea683a941 base=main@3495c49d5d7c
+  diff exclusivo vs main: 93 files changed, 8370 insertions(+), 283 deletions(-)
+  proprios (main..head): 13
+  mergeable=UNKNOWN mergeStateStatus=UNKNOWN
+
+=== MERGE 3/9 — PR #241 (aguarda mergeable resolver contra a nova base) ===
+leitura 1: MERGEABLE	CLEAN
+gate PR #241 head=190ea683a941f8dc37036ef6402ffabaf7843799 state=OPEN mergeable=MERGEABLE mergeState=CLEAN
+  Python 3.11 <- SUCCESS
+  Python 3.12 <- SUCCESS
+  Python 3.14 <- SUCCESS
+  Wheel limpo, smoke e supply chain <- SUCCESS
+  Smoke Ubuntu 24.04 <- SUCCESS
+  Smoke Arch Linux <- SUCCESS
+  Smoke Manjaro <- SUCCESS
+  Gate visual QML (Linux) <- SUCCESS
+gate OK -> gh pr merge 241 --merge
+merge solicitado para #241 (sem --admin, sem --delete-branch)
+PR #241  state=MERGED  mergedAt=2026-09-30T08:19:28Z  mergeCommit=67e30afcddaa  base=main  head=190ea683a941
+origin/main = 67e30afcddaa29f00e74e536533fcaaa1b8a1599
+merge commit 67e30afcddaa tem 2 pai(s): cba3fe426f23 190ea683a941 
+arvore integrada = e9aba1f80557 | arvore da cabeca testada no CI = e9aba1f80557 | IGUAIS? SIM (a composicao que landed e a mesma que o CI validou)
+main acima desta cabeca (rev-list HEAD..main): 3
+ancestralidade: head 190ea683a941f8dc37036ef6402ffabaf7843799 acima de main? SIM
+main acima desta cabeca (rev-list HEAD..main): 3
+proxima PR #242 head=5d95034b67fb base=main@3495c49d5d7c
+  diff exclusivo vs main: 62 files changed, 7046 insertions(+), 128 deletions(-)
+  proprios (main..head): 4
+  mergeable=UNKNOWN mergeStateStatus=UNKNOWN
+=== MERGE 4/9 — PR #242 ===
+gate PR #242 head=5d95034b67fb50fd1218f267afbfe189d4444bd2 state=OPEN mergeable=MERGEABLE mergeState=CLEAN
+  Python 3.11 <- SUCCESS
+  Python 3.12 <- SUCCESS
+  Python 3.14 <- SUCCESS
+  Wheel limpo, smoke e supply chain <- SUCCESS
+  Smoke Ubuntu 24.04 <- SUCCESS
+  Smoke Arch Linux <- SUCCESS
+  Smoke Manjaro <- SUCCESS
+  Gate visual QML (Linux) <- SUCCESS
+gate OK -> gh pr merge 242 --merge
+merge solicitado para #242 (sem --admin, sem --delete-branch)
+PR #242  state=MERGED  mergedAt=2026-09-30T08:19:46Z  mergeCommit=231ba4d38418  base=main  head=5d95034b67fb
+origin/main = 231ba4d384181f6b5ea1154bbb5ef4a734a47d60
+merge commit 231ba4d38418 tem 2 pai(s): 67e30afcddaa 5d95034b67fb 
+arvore integrada = 4b23b239aa66 | arvore da cabeca testada no CI = 4b23b239aa66 | IGUAIS? SIM (a composicao que landed e a mesma que o CI validou)
+main acima desta cabeca (rev-list HEAD..main): 4
+ancestralidade: head 5d95034b67fb50fd1218f267afbfe189d4444bd2 acima de main? SIM
+main acima desta cabeca (rev-list HEAD..main): 4
+proxima PR #243 head=c0de54c9f10c base=main@3495c49d5d7c
+  diff exclusivo vs main: 107 files changed, 8203 insertions(+), 220 deletions(-)
+  proprios (main..head): 10
+  mergeable=UNKNOWN mergeStateStatus=UNKNOWN
+=== MERGE 5/9 — PR #243 ===
+gate PR #243 head=c0de54c9f10c480693ce495a0533acb524fe53ad state=OPEN mergeable=UNKNOWN mergeState=UNKNOWN
+  Python 3.11 <- SUCCESS
+  Python 3.12 <- SUCCESS
+  Python 3.14 <- SUCCESS
+  Wheel limpo, smoke e supply chain <- SUCCESS
+  Smoke Ubuntu 24.04 <- SUCCESS
+  Smoke Arch Linux <- SUCCESS
+  Smoke Manjaro <- SUCCESS
+  Gate visual QML (Linux) <- SUCCESS
+RECUSA: composicao nao esta MERGEABLE/CLEAN (UNKNOWN/UNKNOWN)
+leitura 1 de 243: MERGEABLE	CLEAN
+gate PR #243 head=c0de54c9f10c480693ce495a0533acb524fe53ad state=OPEN mergeable=MERGEABLE mergeState=CLEAN
+  Python 3.11 <- SUCCESS
+  Python 3.12 <- SUCCESS
+  Python 3.14 <- SUCCESS
+  Wheel limpo, smoke e supply chain <- SUCCESS
+  Smoke Ubuntu 24.04 <- SUCCESS
+  Smoke Arch Linux <- SUCCESS
+  Smoke Manjaro <- SUCCESS
+  Gate visual QML (Linux) <- SUCCESS
+gate OK -> gh pr merge 243 --merge
+merge solicitado para #243 (sem --admin, sem --delete-branch)
+PR #243  state=MERGED  mergedAt=2026-09-30T08:20:13Z  mergeCommit=5f6ff5082adb  base=main  head=c0de54c9f10c
+origin/main = 5f6ff5082adb69cfbcd999f5aee10ed94075b36f
+merge commit 5f6ff5082adb tem 2 pai(s): 231ba4d38418 c0de54c9f10c 
+arvore integrada = b7cb4a08f88b | arvore da cabeca testada no CI = b7cb4a08f88b | IGUAIS? SIM (a composicao que landed e a mesma que o CI validou)
+main acima desta cabeca (rev-list HEAD..main): 5
+ancestralidade: head c0de54c9f10c480693ce495a0533acb524fe53ad acima de main? SIM
+main acima desta cabeca (rev-list HEAD..main): 5
+proxima PR #244 head=af6a5c6ed852 base=main@3495c49d5d7c
+  diff exclusivo vs main: 89 files changed, 5226 insertions(+), 96 deletions(-)
+  proprios (main..head): 16
+  mergeable=UNKNOWN mergeStateStatus=UNKNOWN
+=== MERGE 6/9 — PR #244 ===
+gate PR #244 head=af6a5c6ed8523c04030d25b1d391e885a3b3b48e state=OPEN mergeable=MERGEABLE mergeState=CLEAN
+  Python 3.11 <- SUCCESS
+  Python 3.12 <- SUCCESS
+  Python 3.14 <- SUCCESS
+  Wheel limpo, smoke e supply chain <- SUCCESS
+  Smoke Ubuntu 24.04 <- SUCCESS
+  Smoke Arch Linux <- SUCCESS
+  Smoke Manjaro <- SUCCESS
+  Gate visual QML (Linux) <- SUCCESS
+gate OK -> gh pr merge 244 --merge
+merge solicitado para #244 (sem --admin, sem --delete-branch)
+PR #244  state=MERGED  mergedAt=2026-09-30T08:20:30Z  mergeCommit=c43853088baf  base=main  head=af6a5c6ed852
+origin/main = c43853088bafed1fbb725995d84a025899ade6e1
+merge commit c43853088baf tem 2 pai(s): 5f6ff5082adb af6a5c6ed852 
+arvore integrada = cffe5779dbb2 | arvore da cabeca testada no CI = cffe5779dbb2 | IGUAIS? SIM (a composicao que landed e a mesma que o CI validou)
+main acima desta cabeca (rev-list HEAD..main): 6
+ancestralidade: head af6a5c6ed8523c04030d25b1d391e885a3b3b48e acima de main? SIM
+main acima desta cabeca (rev-list HEAD..main): 6
+proxima PR #245 head=2d6a895760ef base=codex/rc01-storage-units-2026-09-28@af6a5c6ed852
+  diff exclusivo vs main: 59 files changed, 5268 insertions(+), 27 deletions(-)
+  proprios (main..head): 8
+  mergeable=MERGEABLE mergeStateStatus=CLEAN
+--- antes: codex/rc01-storage-units-2026-09-28	af6a5c6ed852
+comando: gh pr edit 245 --base main  (seguro: #244 ja integrado, head 2d6a8957 contem af6a5c6e)
+https://github.com/Misael-art/SteamZero/pull/245
+--- depois: main	c43853088baf
+--- #245 apos mudanca de base: rollup e runs em andamento na cabeca
+{"checks":[{"c":"SUCCESS","n":"Python 3.11"},{"c":"SUCCESS","n":"Python 3.12"},{"c":"SUCCESS","n":"Python 3.14"},{"c":"SUCCESS","n":"Wheel limpo, smoke e supply chain"},{"c":"SUCCESS","n":"Smoke Ubuntu 24.04"},{"c":"SUCCESS","n":"Smoke Arch Linux"},{"c":"SUCCESS","n":"Smoke Manjaro"},{"c":"SUCCESS","n":"Gate visual QML (Linux)"},{"c":"SKIPPED","n":"Sourcery review"},{"c":null,"n":"CodeRabbit"}],"mergeStateStatus":"CLEAN","mergeable":"MERGEABLE"}
+--- workflows runs com head_sha=2d6a8957 (evento pull_request)
+null	ci	pull_request	completed	success	2d6a8957	2026-09-29T16:05:19Z
+--- argumento de transferancia do verde para #245 (medido, nao suposto):
+  arvore do novo main c4385308 = cffe5779dbb24df8057bac34771de6154a5d0aa2
+  arvore da base antiga af6a5c6e = cffe5779dbb24df8057bac34771de6154a5d0aa2
+  arvores IGUAIS? SIM
+  logo a composicao testada pelo CI (2d6a8957 sobre af6a5c6e) e conteudisticamente a mesma de 2d6a8957 sobre o main atual.
+=== MERGE 7/9 — PR #245 ===
+gate PR #245 head=2d6a895760ef55bf3cbdf742808e6798946da9d5 state=OPEN mergeable=MERGEABLE mergeState=CLEAN
+  Python 3.11 <- SUCCESS
+  Python 3.12 <- SUCCESS
+  Python 3.14 <- SUCCESS
+  Wheel limpo, smoke e supply chain <- SUCCESS
+  Smoke Ubuntu 24.04 <- SUCCESS
+  Smoke Arch Linux <- SUCCESS
+  Smoke Manjaro <- SUCCESS
+  Gate visual QML (Linux) <- SUCCESS
+gate OK -> gh pr merge 245 --merge
+merge solicitado para #245 (sem --admin, sem --delete-branch)
+PR #245  state=MERGED  mergedAt=2026-09-30T08:21:38Z  mergeCommit=66b442b6b4f7  base=main  head=2d6a895760ef
+origin/main = 66b442b6b4f747e6cb35854689262a0d0f1bd2f8
+merge commit 66b442b6b4f7 tem 2 pai(s): c43853088baf 2d6a895760ef 
+arvore integrada = c67dc3ade19d | arvore da cabeca testada no CI = c67dc3ade19d | IGUAIS? SIM (a composicao que landed e a mesma que o CI validou)
+main acima desta cabeca (rev-list HEAD..main): 7
+ancestralidade: head 2d6a895760ef55bf3cbdf742808e6798946da9d5 acima de main? SIM
+main acima desta cabeca (rev-list HEAD..main): 7
+proxima PR #246 head=c4975979b93a base=codex/rc01-retrofe-shell-late-response-2026-09-29@2d6a895760ef
+  diff exclusivo vs main: 56 files changed, 4210 insertions(+), 96 deletions(-)
+  proprios (main..head): 16
+  mergeable=MERGEABLE mergeStateStatus=CLEAN
+
+=== MERGE 8/9 — PR #246: mudanca de base + transferencia de verde medida ===
+  antes: codex/rc01-retrofe-shell-late-response-2026-09-29	2d6a895760ef
+  arvore main 66b442b6 = c67dc3ade19d3932e80088c4e5e318594b02cb0d
+  arvore base antiga 2d6a8957 = c67dc3ade19d3932e80088c4e5e318594b02cb0d
+  IGUAIS? SIM
+  comando gh pr edit 246 --base main aplicado
+  depois: main	66b442b6b4f7
+  runs na cabeca c4975979: 
+    ci	pull_request	completed	success	criado 2026-09-29T22:17:07Z
+gate PR #246 head=c4975979b93a03e661294b6854146e76f22fa8c3 state=OPEN mergeable=MERGEABLE mergeState=CLEAN
+  Python 3.11 <- SUCCESS
+  Python 3.12 <- SUCCESS
+  Python 3.14 <- SUCCESS
+  Wheel limpo, smoke e supply chain <- SUCCESS
+  Smoke Ubuntu 24.04 <- SUCCESS
+  Smoke Arch Linux <- SUCCESS
+  Smoke Manjaro <- SUCCESS
+  Gate visual QML (Linux) <- SUCCESS
+gate OK -> gh pr merge 246 --merge
+merge solicitado para #246 (sem --admin, sem --delete-branch)
+--- conferencia pos-merge 246
+PR #246  state=MERGED  mergedAt=2026-09-30T08:22:30Z  mergeCommit=cb71a5279921  base=main  head=c4975979b93a
+origin/main = cb71a52799214a50c22dcd6471c43a11ef7be7ff
+merge commit cb71a5279921 tem 2 pai(s): 66b442b6b4f7 c4975979b93a 
+arvore integrada = 622b176c093d | arvore da cabeca testada no CI = 622b176c093d | IGUAIS? SIM (a composicao que landed e a mesma que o CI validou)
+main acima desta cabeca (rev-list HEAD..main): 8
+ancestralidade: head c4975979b93a03e661294b6854146e76f22fa8c3 acima de main? SIM
+main acima desta cabeca (rev-list HEAD..main): 8
+proxima PR #247 head=37040af3bed7 base=codex/rc01-home-first-fold-2026-09-29@c4975979b93a
+  diff exclusivo vs main: 105 files changed, 12118 insertions(+), 103 deletions(-)
+  proprios (main..head): 9
+  mergeable=MERGEABLE mergeStateStatus=CLEAN
+
+=== MERGE 9/9 — PR #247: mudanca de base + transferencia de verde medida ===
+  antes: codex/rc01-home-first-fold-2026-09-29	c4975979b93a
+  arvore main cb71a527 = 622b176c093d2c3a0207f07e1fc04f02a197ee97
+  arvore base antiga c4975979 = 622b176c093d2c3a0207f07e1fc04f02a197ee97
+  IGUAIS? SIM
+  comando gh pr edit 247 --base main aplicado
+  depois: main	cb71a5279921
+  diff exclusivo esperado vs main:  105 files changed, 12118 insertions(+), 103 deletions(-)
+  runs na cabeca 37040af3:
+    ci	pull_request	completed	success	criado 2026-09-30T03:33:59Z
+gate PR #247 head=37040af3bed758bc0429fc72501b05358fd1a2c2 state=OPEN mergeable=MERGEABLE mergeState=CLEAN
+  Python 3.11 <- SUCCESS
+  Python 3.12 <- SUCCESS
+  Python 3.14 <- SUCCESS
+  Wheel limpo, smoke e supply chain <- SUCCESS
+  Smoke Ubuntu 24.04 <- SUCCESS
+  Smoke Arch Linux <- SUCCESS
+  Smoke Manjaro <- SUCCESS
+  Gate visual QML (Linux) <- SUCCESS
+gate OK -> gh pr merge 247 --merge
+merge solicitado para #247 (sem --admin, sem --delete-branch)
+--- conferencia pos-merge 247 (ultimo elo)
+PR #247  state=MERGED  mergedAt=2026-09-30T08:23:08Z  mergeCommit=7808374257db  base=main  head=37040af3bed7
+origin/main = 7808374257db3059c1934cb4be6007d8a749346e
+merge commit 7808374257db tem 2 pai(s): cb71a5279921 37040af3bed7 
+arvore integrada = 2a4d29fcd190 | arvore da cabeca testada no CI = 2a4d29fcd190 | IGUAIS? SIM (a composicao que landed e a mesma que o CI validou)
+main acima desta cabeca (rev-list HEAD..main): 9
+ancestralidade: head 37040af3bed758bc0429fc72501b05358fd1a2c2 acima de main? SIM
+main acima desta cabeca (rev-list HEAD..main): 9
+
+=== FECHO DA INTEGRACAO — estado das nove PRs e main consolidado ===
+#239 MERGED	2026-09-30T08:15:58Z	9fc1c5948fca76961efff2d6ee89926f0141b95d
+#240 MERGED	2026-09-30T08:18:46Z	cba3fe426f237ee75eb3f6aad42f6e0a098cc809
+#241 MERGED	2026-09-30T08:19:28Z	67e30afcddaa29f00e74e536533fcaaa1b8a1599
+#242 MERGED	2026-09-30T08:19:46Z	231ba4d384181f6b5ea1154bbb5ef4a734a47d60
+#243 MERGED	2026-09-30T08:20:13Z	5f6ff5082adb69cfbcd999f5aee10ed94075b36f
+#244 MERGED	2026-09-30T08:20:30Z	c43853088bafed1fbb725995d84a025899ade6e1
+#245 MERGED	2026-09-30T08:21:38Z	66b442b6b4f747e6cb35854689262a0d0f1bd2f8
+#246 MERGED	2026-09-30T08:22:30Z	cb71a52799214a50c22dcd6471c43a11ef7be7ff
+#247 MERGED	2026-09-30T08:23:08Z	7808374257db3059c1934cb4be6007d8a749346e
+--- origin/main = 7808374257db3059c1934cb4be6007d8a749346e
+--- diff do que a fileira trouxe para main (3495c49d...7808374):
+ 524 files changed, 71730 insertions(+), 1231 deletions(-)
+--- commits em main vindos da fileira: 92 (83 da fileira + 9 merge commits)
+--- arvore final main = 2a4d29fcd190decd1e3b333c119b8aee41f7898f | arvore cabeca 247 = 2a4d29fcd190decd1e3b333c119b8aee41f7898f | IGUAIS? SIM
+--- runs de push em main (composicao final):
+null	ci	7808374257db	pending	-	2026-09-30T08:23:11Z
+null	ci	cb71a5279921	completed	cancelled	2026-09-30T08:22:33Z
+null	ci	66b442b6b4f7	in_progress	-	2026-09-30T08:21:42Z
+null	ci	c43853088baf	completed	cancelled	2026-09-30T08:20:33Z
+null	ci	5f6ff5082adb	completed	cancelled	2026-09-30T08:20:17Z
+null	ci	231ba4d38418	completed	cancelled	2026-09-30T08:19:50Z
+null	ci	67e30afcddaa	completed	cancelled	2026-09-30T08:19:31Z
+null	ci	cba3fe426f23	completed	cancelled	2026-09-30T08:18:49Z
+null	ci	9fc1c5948fca	completed	cancelled	2026-09-30T08:16:01Z
+null	ci	3495c49d5d7c	completed	success	2026-09-26T10:55:41Z
+null	ci	1ffafa648b3d	completed	success	2026-09-26T10:29:26Z
+null	ci	ed097a1323d5	completed	success	2026-09-26T01:49:47Z
+null	ci	9176c1aeca79	completed	success	2026-09-26T00:44:59Z
+null	ci	1873fc991ef2	completed	success	2026-09-25T18:32:01Z
+null	ci	5e2e8194a7e8	completed	success	2026-09-22T23:27:07Z
+
+=== ETAPA 6 — main consolidado: conteudo esperado ===
+  (use "git pull" to update your local branch)
+ create mode 100644 tools/central_status_probe.py
+HEAD local = 7808374257db3059c1934cb4be6007d8a749346e  (origin/main = 7808374257db3059c1934cb4be6007d8a749346e)
+--- arquivos esperados
+  src/steamzero/ui/qml/sizes.js : AUSENTE
+  src/steamzero/ui/qml/readiness.js : AUSENTE
+--- presenca no objeto (arvore do commit) e no disco:
+  src/steamzero/ui/qml/sizes.js blob=66ad6af418d2 disco=presente ultimo commit que o tocou=ed2fd930
+  src/steamzero/ui/qml/readiness.js blob=1c373416bdf6 disco=presente ultimo commit que o tocou=4c4d2b11
+
+--- consumidores de sizes.js (import QtQuick/... + .js) no codigo:
+  src/steamzero/ui/qml/Emulation.qml:8:import "sizes.js" as Sizes
+  src/steamzero/ui/qml/Main.qml:7:import "sizes.js" as Sizes
+  src/steamzero/ui/qml/SteamGameplay.qml:8:import "sizes.js" as Sizes
+  src/steamzero/ui/qml/ThemeCatalogPanel.qml:22:import "sizes.js" as Sizes
+  src/steamzero/ui/qml/ThemeEditorPanel.qml:6:import "sizes.js" as Sizes
+  tests/unit/test_emulation_storage_cards.py:7:``sizes.js``; este arquivo cobre o outro lado do defeito, o produtor: o texto cru
+  tests/qml/check_storage_units.qml:43:    // comentário de `src/steamzero/ui/qml/sizes.js`.
+  tests/qml/check_storage_units.qml:47:    // puro impresso pelo próprio Qt no locale em vigor. `sizes.js` e esta
+
+--- consumidores de readiness.js:
+  src/steamzero/ui/qml/EditorialLibrary.qml:14:import "readiness.js" as Readiness
+  src/steamzero/ui/qml/Emulation.qml:7:import "readiness.js" as Readiness
+  src/steamzero/ui/qml/Main.qml:6:import "readiness.js" as Readiness
+  src/steamzero/ui/qml/SteamGameplay.qml:7:import "readiness.js" as Readiness
+  tests/qml/check_readiness_surface.qml:14:import "../../src/steamzero/ui/qml/readiness.js" as Readiness
+
+--- correcoes alegadas, procuradas no main consolidado (nome de simbolo -> ocorrencias)
+  esdeImportGeneration                           24 ocorrencia(s) em src | exemplos: src/steamzero/ui/qml/Main.qml src/steamzero/ui/qml/ThemeEditorPanel.qml 
+  retrofeImportGeneration                        13 ocorrencia(s) em src | exemplos: src/steamzero/ui/qml/ThemeEditorPanel.qml 
+  resetEsdeImport                                3 ocorrencia(s) em src | exemplos: src/steamzero/ui/qml/Main.qml src/steamzero/ui/qml/ThemeEditorPanel.qml 
+  resetRetrofeImport                             4 ocorrencia(s) em src | exemplos: src/steamzero/ui/qml/ThemeEditorPanel.qml 
+  ocupadoAntes                                   16 ocorrencia(s) em src | exemplos: src/steamzero/ui/qml/Main.qml src/steamzero/ui/qml/ThemeEditorPanel.qml 
+  formatSize                                     0 ocorrencia(s) em src | exemplos: 
+  readinessFor                                   0 ocorrencia(s) em src | exemplos: 
+  focusReason                                    0 ocorrencia(s) em src | exemplos: 
+  viewportAlerta                                 0 ocorrencia(s) em src | exemplos: 
+
+--- arquivos funcionais principais e o commit mais recente que os tocou em main:
+  src/steamzero/ui/qml/Main.qml                5ba8f1bc feat(ui): rota raiz do importador ES-DE passa a carregar a geração do pedido
+  src/steamzero/ui/qml/ThemeEditorPanel.qml    9bd4b31c feat(ui): painel do importador ES-DE passa a carregar a geração do pedido
+  src/steamzero/domain/readiness.py            905b0af0 feat(readiness): contrato v2 separa o que a prontidao afirma do que ela mede
+  src/steamzero/adapters/desktop_ui.py         042ab86a feat(theme-studio): enable safe layout editing
+
+--- exportacoes reais dos dois modulos JS
+[sizes.js]
+  27:var ABSENTE = "—"
+  29:var _unidades = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"]
+  32:function _ausente(valor) {
+  35:    const bytes = Number(valor)
+  39:function bytes(valor) {
+  42:    const total = Number(valor)
+[readiness.js]
+  14:function _contrato(readiness) {
+  25:function _lista(valor) {
+  29:        const copia = []
+  37:function contractVersion(readiness) {
+  38:    const value = Number(_contrato(readiness).contractVersion)
+  42:function state(readiness) {
+  43:    const value = _contrato(readiness).state
+  47:function measure(readiness) {
+  48:    const value = _contrato(readiness).measure
+  55:function percent(readiness) {
+  56:    const current = measure(readiness)
+  59:    const value = current.percent
+  63:function isMeasured(readiness) {
+  67:function showsProgress(readiness) {
+  71:function progressValue(readiness) {
+  72:    const value = percent(readiness)
+  76:function percentText(readiness, missingText) {
+  77:    const value = percent(readiness)
+  81:function ratioText(readiness) {
+  82:    const current = measure(readiness)
+  85:    const numerator = current.numerator
+  86:    const denominator = current.denominator
+  92:function dimensionText(readiness) {
+  93:    const current = measure(readiness)
+  102:function dimensionCaption(readiness) {
+  106:function absentReason(readiness) {
+  107:    const current = measure(readiness)
+  113:function headline(readiness) {
+  114:    const current = _contrato(readiness)
+  122:function cause(readiness) {
+  123:    const current = _contrato(readiness)
+  131:function action(readiness) {
+  132:    const value = _contrato(readiness).nextAction
+  136:function blockers(readiness) {
+  140:function verification(readiness) {
+  141:    const value = _contrato(readiness).verification
+  145:function basis(readiness) {
+  146:    const value = _contrato(readiness).basis
+  152:function tone(readiness) {
+  153:    const current = state(readiness)
+  163:function accent(readiness, colors) {
+  166:    const key = tone(readiness)
+  173:function surface(readiness) {
+  174:    const key = tone(readiness)
+  189:function notInspected(label, cause, nextAction, blockers) {
+  216:function normalize(raw, fallback) {
+  219:    const current = _contrato(raw)
+
+--- consumidores por nome (Sizes.<x> / Readiness.<x>) em src:
+       10 Sizes.bytes
+        6 Readiness.notInspected
+        3 Readiness.surface
+        3 Readiness.percentText
+        3 Readiness.normalize
+        3 Readiness.headline
+        3 Readiness.action
+        2 Readiness.tone
+        2 Readiness.showsProgress
+        2 Readiness.ratioText
+        2 Readiness.progressValue
+        2 Readiness.dimensionText
+        2 Readiness.dimensionCaption
+        2 Readiness.cause
+        2 Readiness.blockers
+        2 Readiness.accent
+
+--- gates QML e testes de integracao que a fileira trouxe para main (nome do arquivo -> elo de origem)
+  capture_esde_import_viewport.qml                                 723cfcde test(qml): fecha o gate visual dos dois diálogos de importação pela causa medida
+  capture_responsive.qml                                           4c4d2b11 fix(ui): as paginas leem o contrato, e a dobra de prontidao chega completa
+  capture_retrofe_import_viewport.qml                              723cfcde test(qml): fecha o gate visual dos dois diálogos de importação pela causa medida
+  capture_shell_esde_import_dialog.qml                             fc4dc5ce test(qml): jornada do diálogo ES-DE do shell provada por tecla real do Qt
+  check_central_loading.qml                                        72579141 fix(ui): uma renovação pedida durante a leitura em andamento não some mais
+  check_emulation.qml                                              4c4d2b11 fix(ui): as paginas leem o contrato, e a dobra de prontidao chega completa
+  check_esde_import_dialog_compact_viewport.qml                    cf80927e fix(ui): o diálogo ES-DE cabe no viewport e o D-pad percorre o modal
+  check_home_first_fold_attention.qml                              6d8034fa docs(RC-01): checkpoint 52 arquivado, auditoria de citacoes 53 e quatro citacoes falsas corrigidas por simbolo
+  check_readiness_surface.qml                                      041139e9 test(qml): a geometria do cartão é medida depois de assentar, não no frame anterior
+  check_retrofe_import_dialog_compact_viewport.qml                 7fe9e8b2 fix(ui): o diálogo RetroFE cabe no viewport e o D-pad percorre o modal
+  check_shell_esde_import_dialog_journey.qml                       b0df61e0 test(qml): reconfronta 73 citacoes de numero de linha movidas pelo nono elo
+  check_shell_esde_import_late_response.qml                        4d6f33ab test(qml): gate de resposta tardia do ES-DE na shell, com ponte real e atraso
+  check_shell_retrofe_import_late_response.qml                     b0df61e0 test(qml): reconfronta 73 citacoes de numero de linha movidas pelo nono elo
+  check_status_refresh_coalesced.qml                               72579141 fix(ui): uma renovação pedida durante a leitura em andamento não some mais
+  check_storage_units.qml                                          3bf68498 test(qml): o gate de unidades le o locale em vigor, nao o fuso do autor
+  check_warning_surface_contrast.qml                               6df5afde feat(ui): declara o que a Central ainda não mediu
+  test_central_status_probe.py                                     6df5afde feat(ui): declara o que a Central ainda não mediu
+  test_cloud_platforms.py                                          9891fb40 feat(emulation): os nove produtores publicam o contrato em vez de um percentual
+  test_desktop_dashboard.py                                        9891fb40 feat(emulation): os nove produtores publicam o contrato em vez de um percentual
+  test_emulation_controller.py                                     9891fb40 feat(emulation): os nove produtores publicam o contrato em vez de um percentual
+  test_emulation_storage_cards.py                                  748d532b feat(ux-04): armazenamento viaja como medida tipada e e lido por um unico formatador
+  test_esde_import_dialog_compact.py                               723cfcde test(qml): fecha o gate visual dos dois diálogos de importação pela causa medida
+  test_gamemode_probe.py                                           9891fb40 feat(emulation): os nove produtores publicam o contrato em vez de um percentual
+  test_qml_handheld_offscreen.py                                   f9ec2815 test(ci): o gate de unidades entra no harness visual (arquivo isolado, AGENTS 2)
+  test_readiness_contract.py                                       905b0af0 feat(readiness): contrato v2 separa o que a prontidao afirma do que ela mede
+  test_readiness_producers.py                                      a3304baa fix(ui): o fallback do shell declara nao inspecao, nao um percentual medido
+  test_retrofe_import_dialog_compact.py                            723cfcde test(qml): fecha o gate visual dos dois diálogos de importação pela causa medida
+  test_storage_units_locale_matrix.py                              1eae804c test(qml): o gate de locales passa no ruff, nenhuma assercao muda
+  test_switch_truth_preservation.py                                9891fb40 feat(emulation): os nove produtores publicam o contrato em vez de um percentual
+  test_themes.py                                                   6df5afde feat(ui): declara o que a Central ainda não mediu
+  test_ui_attention_surface_contrast.py                            6df5afde feat(ui): declara o que a Central ainda não mediu
+  test_ui_control_matrix.py                                        3b0778fe test(RC-01): mede os 48 px dentro do shell na janela do Deck e fecha a documentação do #241
+  test_ui_shell_esde_import_dialog.py                              b0df61e0 test(qml): reconfronta 73 citacoes de numero de linha movidas pelo nono elo
+  test_ui_shell_esde_import_late_response.py                       4d6f33ab test(qml): gate de resposta tardia do ES-DE na shell, com ponte real e atraso
+  test_ui_shell_home_first_fold.py                                 b0df61e0 test(qml): reconfronta 73 citacoes de numero de linha movidas pelo nono elo
+  test_ui_shell_retrofe_import_late_response.py                    b0df61e0 test(qml): reconfronta 73 citacoes de numero de linha movidas pelo nono elo
+
+=== ETAPA 5 — logs ainda referenciados no acervo versionado ===
+--- referencias a /home/misael/steamzero-retrofe-tmp em arquivos versionados (count por arquivo):
+  ./docs/09-operations/evidence/2026-09-28-rc01-storage-units/30-ci-terminal-na-cabeca-ee09dbcc.log
+  ./docs/09-operations/evidence/2026-09-28-rc01-storage-units/30-ci-terminal-na-cabeca-ee09dbcc.md
+  ./docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/100-checkpoint-integral-nono-elo.py
+  ./docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/102-gate-visual-nono-elo.py
+  ./docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/103-gerar-adendos-checkpoint.py
+  ./docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/104-reconcilio-rc01-nono-elo.py
+  ./docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/105-renovar-digests.py
+  ./docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/109-aplicar-adendos.py
+  ./docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/110-gate-visual-apos-governanca.py
+  ./docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/70-bateria-mutacoes-esde-geracao.py
+  ./docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/73-bateria-mutacoes-esde-raiz.py
+  ./docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/75-conferir-ancoras-raiz.py
+  ./docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/87-verificacao-final-citacoes.py
+  ./docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/90-classificacao-documental.py
+  ./docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/93-guardas-substring-harness.py
+  ./docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/34-sonda-geografia-dobra.log
+  ./docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/47-drv-bateria-de-mutacoes.py
+  ./docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/24-comandos-e-saidas.log
+  ./docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/25-checkpoint-integral-e-gates.md
+  ./docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/30-atribuicao-digests.log
+  ./docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/31-identidade-da-arvore.md
+--- total de arquivos versionados com tal referencia: 21

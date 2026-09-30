@@ -1,0 +1,76 @@
+=== ETAPA 5 — extracao das referencias a /home/misael/steamzero-retrofe-tmp em arquivos versionados ===
+      2 /home/misael/steamzero-retrofe-tmp/100-checkpoint-integral-nono-elo.log
+      1 /home/misael/steamzero-retrofe-tmp/cit-backup-83
+      1 /home/misael/steamzero-retrofe-tmp/73-bateria-mutacoes-esde-raiz.py
+      1 /home/misael/steamzero-retrofe-tmp/24-comandos-e-saidas.log
+      1 /home/misael/steamzero-retrofe-tmp/102-gate-visual-nono-elo.log
+--- total de caminhos unicos referenciados:
+21
+
+=== cada caminho referenciado: existe no tmp? ja existe igual no acervo versionado? ===
+  100-checkpoint-integral-nono-elo.log   tmp:sim 17272 bytes | no acervo: docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/100-checkpoint-integral-nono-elo.log -> MESMO-CONTEUDO
+  102-gate-visual-nono-elo.log           tmp:sim 196 bytes | no acervo: docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/102-gate-visual-nono-elo.log -> MESMO-CONTEUDO
+  24-comandos-e-saidas.log               tmp:sim 29265 bytes | no acervo: docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/24-comandos-e-saidas.log -> MESMO-CONTEUDO
+  30-atribuicao-digests.log              tmp:sim 8369 bytes | no acervo: docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/30-atribuicao-digests.log -> CONTEUDO-DIFERENTE(repo=3a37674f667ce9b6)
+  73-bateria-mutacoes-esde-raiz.py       tmp:sim 6915 bytes | no acervo: docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/73-bateria-mutacoes-esde-raiz.py -> MESMO-CONTEUDO
+  cit-backup-83                          tmp:sim 360K (diretorio, 7 arquivos) hash=n/a | no acervo: AUSENTE
+  redl30                                 tmp:sim 11M (diretorio, 8 arquivos) hash=n/a | no acervo: AUSENTE
+  arts30_reconcile.py                    tmp:sim 2054 bytes hash=1772b61ea54999fa | no acervo: AUSENTE
+  probe_fold.py                          tmp:sim 1612 bytes hash=c5de67c3e78a8993 | no acervo: AUSENTE
+  idtest                                 tmp:sim 132K (diretorio, 31 arquivos) hash=n/a | no acervo: AUSENTE
+  idtest2                                tmp:sim 132K (diretorio, 31 arquivos) hash=n/a | no acervo: AUSENTE
+
+--- conteudo dos artefatos ainda so no tmp
+[cit-backup-83]
+    check_shell_esde_import_dialog_journey.qml
+    check_shell_esde_import_late_response.qml
+    check_shell_retrofe_import_late_response.qml
+    test_ui_shell_esde_import_dialog.py
+    test_ui_shell_esde_import_late_response.py
+    test_ui_shell_home_first_fold.py
+    test_ui_shell_retrofe_import_late_response.py
+    total: 7 arquivos, 360K
+[redl30]
+    build
+    dist
+    requirements-runtime.lock
+    total: 8 arquivos, 11M
+[idtest]
+    src
+    total: 31 arquivos, 132K
+[idtest2]
+    src
+    total: 31 arquivos, 132K
+
+--- como os documentos versionados descrevem cada um
+[cit-backup-83]
+    docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/93-guardas-substring-harness-antes.log:1:HEAD c4975979 | snapshot pré-corte cit-backup-83
+    docs/09-operations/evidence/2026-09-29-rc01-esde-import-generation/93-guardas-substring-harness-depois.log:1:HEAD c4975979 | snapshot pré-corte cit-backup-83
+[redl30]
+    docs/09-operations/evidence/2026-09-28-rc01-storage-units/30-ci-terminal-na-cabeca-ee09dbcc.log:127:  gh run download 36554123223 -R Misael-art/SteamZero -n steamzero-wheel-8bdbb42a52a64d2a3cd8e2a74b9a26b8756d5527 -D ~/steamzero-retrofe-tmp/redl30
+    docs/09-operations/evidence/2026-09-28-rc01-storage-units/30-ci-terminal-na-cabeca-ee09dbcc.log:128:  find ~/steamzero-retrofe-tmp/redl30 -type f | wc -l = 8
+[idtest]
+    docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/31-identidade-da-arvore.md:128:fora do checkout (`~/steamzero-retrofe-tmp/idtest`, dois arquivos rastreados, nada do
+    docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/31-identidade-da-arvore.md:160:rastreados — reproduzido em `~/steamzero-retrofe-tmp/idtest2` com `reset --hard` entre os
+[idtest2]
+    docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/31-identidade-da-arvore.md:160:rastreados — reproduzido em `~/steamzero-retrofe-tmp/idtest2` com `reset --hard` entre os
+[arts30_reconcile.py]
+    docs/09-operations/evidence/2026-09-28-rc01-storage-units/30-ci-terminal-na-cabeca-ee09dbcc.log:17:  python3 ~/steamzero-retrofe-tmp/arts30_reconcile.py         # bytes do zip x size_in_bytes e SHA-256 x digest
+    docs/09-operations/evidence/2026-09-28-rc01-storage-units/30-ci-terminal-na-cabeca-ee09dbcc.log:101:comando: python3 ~/steamzero-retrofe-tmp/arts30_reconcile.py   # bytes do zip x tamanho declarado, SHA-256 do zip x digest
+[probe_fold.py]
+    docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/34-sonda-geografia-dobra.log:2:#   PROBE_ESC=<vazio|1.5> .venv/bin/python ~/steamzero-retrofe-tmp/probe_fold.py
+
+--- diferenca entre o 30-atribuicao-digests.log do tmp e o do acervo:
+  tmp: 66 linhas | acervo: 97 linhas
+    4a5,12
+    > #
+    > #
+    > #
+    > #
+    > #
+    > # 177 hardware / 16 design / 12 release / 1 vm / 2 gate no repo inteiro, e os 2
+    > # 2 `hardware`, 1 `design`) e nenhuma usava `gate`. Para registro de gates em .md com suítes
+    > # 30-atribuicao-digests.log — atribuição por arquivo do item acusado
+    8a17
+    > # Comando exato (no checkout, com o venv da casa):
+    10a20,21
