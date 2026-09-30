@@ -9,7 +9,7 @@
   "verification": "dev",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopeDigest": "e4ebbad3b6085227dc8263ab236abbf93c798b68ffd287acdbe713718afc1fd6",
+  "scopeDigest": "52c1d30d12d9f46d84a2b14598f07a027df25bbc5e9f486900680b9e9c26de39",
   "scopePaths": [
     "src/steamzero/adapters/desktop_dashboard.py",
     "src/steamzero/domain/theme_import_esde.py",
@@ -65,6 +65,12 @@
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/09-refresh-coercido.log",
       "command": "2026-09-27 renovacao de escopo pela frente WS-2026-09-RC01-CENTRAL-LOADING (fatia UX-01/UX-02 de RC-01). Arquivos deste escopo alterados: src/steamzero/ui/qml/Main.qml: Main.qml ganhou a coercao de renovacao de status (statusRefreshQueued + drainStatusRefresh nos dois callbacks da leitura): uma renovacao pedida durante uma leitura em andamento deixa de ser descartada. E mudanca visivel no shell, nao neste item; nenhum contrato deste item foi reexecutado. O digest foi regenerado pela ferramenta porque o escopo mudou; as capacidades deste item NAO foram reatestadas, nenhuma evidencia deste item foi carimbada, e nenhum eixo dele mudou de estado neste lote.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-27-shell-esde-dialog/00-preflight.log",
+      "command": "2026-09-27 RC-01 (4a fatia, dialogo ES-DE do shell): scopeDigest renovado por mudanca ALHEIA a este item. O escopo deste cartao declara src/steamzero/ui/qml/Main.qml, que a frente RC-01 editou para dar ao dialogo de importacao ES-DE do shell teto de altura, corpo rolavel, rodape fixo de 48 px e navegacao por tecla real (objeto theme-import-esde-dialog). A renovacao e revalidacao de escopo, NAO carimbo: nenhuma evidencia deste item foi reexecutada e nada do que esta pendente aqui mudou de estado. O gate da frente (tests/integration/test_ui_shell_esde_import_dialog.py, 20 passed na arvore da entrega) cobre o dialogo alterado, nao as assercoes deste cartao. A conciliacao do claim de Main.qml, medida e nao presumida, esta no log referenciado. Nada da superficie ativa de ESDE/Aura foi tocado.",
       "result": "recorded"
     }
   ],

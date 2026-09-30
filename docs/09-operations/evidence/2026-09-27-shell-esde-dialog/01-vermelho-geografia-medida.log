@@ -1,0 +1,71 @@
+# 01 — o vermelho medido na base (190ea683), com tecla real e captura inspecionada
+
+Execução de referência do gate focado contra a base, antes de qualquer correção:
+
+    $ .venv/bin/python -m pytest tests/integration/test_ui_shell_esde_import_dialog.py -q \
+          --deselect tests/integration/test_ui_shell_esde_import_dialog.py::test_capturas_de_evidencia_da_jornada_do_shell
+    12 failed, 7 passed, 1 deselected in 61.18s
+
+A suíte coleta 20 itens: 13 exercem Qt (8 linhas de matriz de jornada + 3 de 48 px
++ 1 de escala + a cena de capturas) e 7 são guardas de intenção sem Qt. Os números
+fecham exatamente: as doze abaixo são 8 + 3 + 1, as sete aprovações são as guardas,
+e o único item de Qt que não rodou nesta contagem é `test_capturas_…`, desenfileirado
+porque a geografia vermelha das capturas foi medida à parte — as cinco linhas
+verbatim da seção abaixo, produzidas pela cena de captura contra o `Main.qml` de
+190ea683, e não por esta corrida. No verde a suíte roda inteira: 20 passed.
+
+As doze reprovações, na ordem em que o pytest as imprimiu:
+
+    FAILED …::test_a_jornada_esde_do_shell_cabe_no_viewport_dado[949x593-tipico]
+    FAILED …::test_a_jornada_esde_do_shell_cabe_no_viewport_dado[949x593-sem-esquema]
+    FAILED …::test_a_jornada_esde_do_shell_cabe_no_viewport_dado[949x593-recusa]
+    FAILED …::test_a_jornada_esde_do_shell_cabe_no_viewport_dado[949x593-aviso-longo]
+    FAILED …::test_a_jornada_esde_do_shell_cabe_no_viewport_dado[949x593-nomes-longos]
+    FAILED …::test_a_jornada_esde_do_shell_cabe_no_viewport_dado[949x593-falha-de-rede]
+    FAILED …::test_a_jornada_esde_do_shell_cabe_no_viewport_dado[1280x800-tipico]
+    FAILED …::test_a_jornada_esde_do_shell_cabe_no_viewport_dado[1280x800-aviso-longo]
+    FAILED …::test_alvos_de_48_px_e_escala_de_texto_no_dialogo_do_shell[1.0]
+    FAILED …::test_alvos_de_48_px_e_escala_de_texto_no_dialogo_do_shell[1.25]
+    FAILED …::test_alvos_de_48_px_e_escala_de_texto_no_dialogo_do_shell[1.5]
+    FAILED …::test_a_escala_de_texto_publicada_muda_a_geometria_do_dialogo
+
+As sete aprovações restantes são as guardas de intenção que rodam sem Qt: elas
+também passaram no vermelho, e é por isso que sozinhas não provam nada — a prova é
+a suíte `visual` acima.
+
+## A geografia do defeito, lida da própria cena de captura
+
+Linhas verbatim impressas por `tests/qml/capture_shell_esde_import_dialog.qml`
+contra o `Main.qml` de 190ea683. `capturado=Main` é o `QQuickRootItem` da janela —
+único item que é capturável E contém o overlay onde o `Dialog` vive (medido em
+`05-alvo-de-captura-medido.log`; nem `contentItem` nem o `Popup` capturam).
+
+    GEOMETRIA|1-compacto-aberto|capturado=Main|janela=949x593|moldura=155,184,640,226|corpo=161,216,628,188|rodape=155,376,640,34|acao=709,356,80,48|esquemas=0|aviso=0|cenario=tipico
+    GEOMETRIA|2-compacto-24-esquemas|capturado=Main|janela=949x593|moldura=155,0,640,593|corpo=161,32,628,555|rodape=155,559,640,34|acao=709,1646,80,48|esquemas=24|aviso=0|cenario=tipico
+    GEOMETRIA|3-compacto-nome-focado|capturado=Main|janela=949x593|moldura=155,0,640,593|corpo=161,32,628,555|rodape=155,559,640,34|acao=709,1646,80,48|esquemas=24|aviso=0|cenario=nomes-longos
+    GEOMETRIA|4-compacto-recusa-com-aviso|capturado=Main|janela=949x593|moldura=155,0,640,593|corpo=161,32,628,555|rodape=155,559,640,34|acao=709,1950,80,48|esquemas=24|aviso=2328|cenario=aviso-longo
+    GEOMETRIA|5-largo-recusa-com-aviso|capturado=Main|janela=1280x800|moldura=320,0,640,800|corpo=326,32,628,762|rodape=320,766,640,34|acao=874,1950,80,48|esquemas=24|aviso=2328|cenario=aviso-longo
+
+Quatro leituras que fecham o diagnóstico, todas derivadas das linhas acima:
+
+| Leitura | Número | Consequência |
+| --- | --- | --- |
+| A ação fora da tela | `acao` a y=1646 numa moldura que termina em y=593 | 1 053 px abaixo do que existe na tela; nenhuma tecla do D-pad alcança `Importar`, porque não há o que rolar |
+| A moldura estourada | `moldura=155,0,640,593` com `y=0` e altura = a da janela | o `Dialog` não tinha teto: cresceu até o pé do próprio conteúdo e encostou no topo da janela |
+| O alvo abaixo do mínimo | `rodape=…,34` | 34 px de banda de ações contra os 48 px exigidos (UX-05) |
+| Não é efeito do viewport | `5-largo` repete o corte em 1280x800 (`acao=874,1950`) | o defeito é de estrutura, não de tela pequena |
+
+## Reproduzir
+
+O vermelho não depende de narrativa nem deste arquivo: ele é a árvore de 190ea683.
+
+    $ git diff 190ea683 -- src/steamzero/ui/qml/Main.qml   # mostra a forma que produziu as linhas acima
+    # e, nela, o gate focado reprova as doze acima.
+
+## Artefatos de falha preservados
+
+`imagens/vermelho/` guarda os dois PNGs da execução vermelha que restaram, nas
+mesmas hashes de bytes listadas na própria execução (107 801 e 142 274). Os três
+primeiros (46 759, 50 012, 63 308) foram sobrescritos pela corrida verde em
+`build/visual-evidence/`, que é diretório de evidência viva e não versionado; a
+geografia acima é a leitura que sobrevive e é o que o contrato de captura compara.

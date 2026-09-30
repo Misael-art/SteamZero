@@ -1,0 +1,9 @@
+# data: 2026-09-27T22:16:14-03:00  # nproc=8  # loadago=3.39 8.40 8.41
+# burners: 16
+# carga instalada: 6.00 8.86 8.56
+....................                                                     [100%]
+20 passed in 220.67s (0:03:40)
+# rc da suíte sob carga: 0
+# burners vivos depois do kill: 0
+0
+# load depois: 19.24 15.37 11.33

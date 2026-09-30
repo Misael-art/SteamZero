@@ -1,0 +1,135 @@
+# data: 2026-09-27T22:07:45-03:00  # nproc=8  # loadago=4.49 4.58 5.77
+# burners: 16
+# carga instalada: 4.49 4.58 5.77
+.......F............                                                     [100%]
+=================================== FAILURES ===================================
+___ test_a_jornada_esde_do_shell_cabe_no_viewport_dado[949x593-sem-esquema] ____
+
+viewport = '949x593', cenario = 'sem-esquema'
+
+            "a cena de captura não pode buscar nada na rede (o endereço da ponte chega "
+            "pelo arquivo de configuração efêmero)"
+        )
+        assert "esdeImportDialogControl" in fonte, (
+            "a cena captura o diálogo do shell, não um quadro genérico"
+        )
+    
+    
+    # ---------------------------------------------------------------------------
+    # A jornada em si: roda com Qt, marcada como `visual`.
+    # ---------------------------------------------------------------------------
+    
+    
+    @pytest.mark.visual
+    @pytest.mark.parametrize("viewport,cenario", JORNADA)
+    def test_a_jornada_esde_do_shell_cabe_no_viewport_dado(viewport: str, cenario: str) -> None:
+        """abrir → examinar → preencher → navegar → publicar/cancelar, com teclas reais.
+    
+        O vermelho desta fatia é medido aqui. No `Main.qml:2822` atual o diálogo não
+        declara `height`, o corpo é um `ColumnLayout { anchors.fill: parent }` sem
+        mecanismo de rolagem e as ações vivem no fim desse fluxo: com 24 esquemas o
+        botão "Importar" fica abaixo do pé da moldura, e nenhuma tecla o alcança.
+        """
+        if RUNNER is None:
+            pytest.fail(
+                "QML-VISUAL-ENVIRONMENT-001: qmltestrunner ausente. A jornada do diálogo "
+                "ES-DE do shell não pode ser verificada sem runtime QML; declarar verde "
+                "sem renderizar é o defeito que a RC-01 combate."
+            )
+        bridge, state = _start_bridge(cenario)
+        esperado = SCENARIOS[cenario]["espera"]
+        try:
+            completed = _run_qmltestrunner(bridge, cenario, viewport)
+        finally:
+            bridge.shutdown()
+            bridge.server_close()
+    
+        assert state.unauthorized == 0, (
+            "a ponte devolveu 401 por token: a jornada não passou pela rota autenticada "
+            f"de `Main.qml` ({state.unauthorized} requisições)"
+        )
+        assert state.status_calls >= 1, (
+            "a ponte nunca serviu /status; o shell não leu os contratos publicados"
+        )
+        assert state.inspect_calls, (
+            "nenhum POST a /theme/import/esde/inspect: o clique em Examinar não exerceu "
+>           "a rota publicada"
+        )
+E       AssertionError: jornada 949x593/sem-esquema reprovou (status=9, inspect=4, apply=0, espera={'fechar': False, 'aviso': True}):
+E         ********* Start testing of qmltestrunner *********
+E         Config: Using QtTest library 6.11.2, Qt 6.11.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 16.2.1 20260810), biglinux unknown
+E         PASS   : qmltestrunner::ShellEsdeImportJourney::initTestCase()
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_01_o_botao_real_abre_o_modal_e_o_foco_entra_no_corpo() debug|REVELA|foco|antes|banda=491|rolagemAltura=431|contentHeight=848|contentY=0|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=417|alvoTop=(239,736)-(362,784)|alvoNaRolagem=(239,736)-(362,784)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:949x848>-:949x848>clip:949x431>clip:949x491|compact=true|inset=60|escala=1|janela=949x593
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_01_o_botao_real_abre_o_modal_e_o_foco_entra_no_corpo() debug|REVELA|foco|banda=491|rolagemAltura=431|contentHeight=848|contentY=365|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=417|alvoTop=(239,371)-(362,419)|alvoNaRolagem=(239,371)-(362,419)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:949x848>-:949x848>clip:949x431>clip:949x491|compact=true|inset=60|escala=1|janela=949x593
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_01_o_botao_real_abre_o_modal_e_o_foco_entra_no_corpo() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x560|apply=(560,512)-(640,560)|corpo=474/0|rodape=(0,512)-(640,560)
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_01_o_botao_real_abre_o_modal_e_o_foco_entra_no_corpo() debug|FOCO ABERTO theme-import-esde-source
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_01_o_botao_real_abre_o_modal_e_o_foco_entra_no_corpo() debug|DESBFECHO fechar=0
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_01_o_botao_real_abre_o_modal_e_o_foco_entra_no_corpo() debug|DESBFECHO aviso=0
+E         PASS   : qmltestrunner::ShellEsdeImportJourney::test_01_o_botao_real_abre_o_modal_e_o_foco_entra_no_corpo()
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_02_examinar_pela_rota_real_publica_os_esquemas() debug|REVELA|foco|antes|banda=397|rolagemAltura=337|contentHeight=848|contentY=459|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=511|alvoTop=(239,277)-(362,325)|alvoNaRolagem=(239,277)-(362,325)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:949x848>-:949x848>clip:949x337>clip:949x397|compact=true|inset=60|escala=1|janela=949x593
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_02_examinar_pela_rota_real_publica_os_esquemas() debug|REVELA|foco|banda=397|rolagemAltura=337|contentHeight=848|contentY=459|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=511|alvoTop=(239,277)-(362,325)|alvoNaRolagem=(239,277)-(362,325)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:949x848>-:949x848>clip:949x337>clip:949x397|compact=true|inset=60|escala=1|janela=949x593
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_02_examinar_pela_rota_real_publica_os_esquemas() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x560|apply=(560,512)-(640,560)|corpo=474/0|rodape=(0,512)-(640,560)
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_02_examinar_pela_rota_real_publica_os_esquemas() debug|ESTABILIZOU 'examinado' em 20 ms :: 640x560|apply=(560,512)-(640,560)|corpo=474/0|rodape=(0,512)-(640,560)
+E         FAIL!  : qmltestrunner::ShellEsdeImportJourney::test_02_examinar_pela_rota_real_publica_os_esquemas() 'sem esquema publicado o diálogo precisa dizer isso no corpo' returned FALSE. ()
+E            Loc: [<CHECKOUT>/tests/qml/check_shell_esde_import_dialog_journey.qml(794)]
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_03_teclas_reais_de_d_pad_percorrem_o_dialogo_com_foco_visivel() debug|PULADO test_03: sem esquema publicado não há jornada completa para percorrer; o cenário é o de estado vazio
+E         PASS   : qmltestrunner::ShellEsdeImportJourney::test_03_teclas_reais_de_d_pad_percorrem_o_dialogo_com_foco_visivel()
+E         FAIL!  : qmltestrunner::ShellEsdeImportJourney::test_04_tab_e_shift_tab_reais_nao_saem_do_modal() 'limpeza: o estado do importador não voltou ao neutro (expirou o limite de 3000 ms após 3000 ms)' returned FALSE. ()
+E            Loc: [<CHECKOUT>/tests/qml/check_shell_esde_import_dialog_journey.qml(353)]
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_04_tab_e_shift_tab_reais_nao_saem_do_modal() debug|PULADO test_04: o estado vazio tem três controles e a tabulação é coberta no cenário carregado
+E         FAIL!  : qmltestrunner::ShellEsdeImportJourney::test_04_tab_e_shift_tab_reais_nao_saem_do_modal() 'limpeza: o estado do importador não voltou ao neutro (expirou o limite de 3000 ms após 3000 ms)' returned FALSE. ()
+E            Loc: [<CHECKOUT>/tests/qml/check_shell_esde_import_dialog_journey.qml(353)]
+E         FAIL!  : qmltestrunner::ShellEsdeImportJourney::test_05_as_setas_e_backspace_editam_sem_roubar_a_navegacao() 'limpeza: o estado do importador não voltou ao neutro (expirou o limite de 3000 ms após 3000 ms)' returned FALSE. ()
+E            Loc: [<CHECKOUT>/tests/qml/check_shell_esde_import_dialog_journey.qml(353)]
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_05_as_setas_e_backspace_editam_sem_roubar_a_navegacao() debug|PULADO test_05: o campo de nome só existe com esquema publicado; o estado vazio não tem edição para medir
+E         FAIL!  : qmltestrunner::ShellEsdeImportJourney::test_05_as_setas_e_backspace_editam_sem_roubar_a_navegacao() 'limpeza: o estado do importador não voltou ao neutro (expirou o limite de 3000 ms após 3000 ms)' returned FALSE. ()
+E            Loc: [<CHECKOUT>/tests/qml/check_shell_esde_import_dialog_journey.qml(353)]
+E         FAIL!  : qmltestrunner::ShellEsdeImportJourney::test_06_publicar_pela_tecla_real_exerce_a_rota_e_recupera() 'limpeza: o estado do importador não voltou ao neutro (expirou o limite de 3000 ms após 3000 ms)' returned FALSE. ()
+E            Loc: [<CHECKOUT>/tests/qml/check_shell_esde_import_dialog_journey.qml(353)]
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_06_publicar_pela_tecla_real_exerce_a_rota_e_recupera() debug|REVELA|foco|antes|banda=397|rolagemAltura=337|contentHeight=848|contentY=459|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=511|alvoTop=(239,277)-(362,325)|alvoNaRolagem=(239,277)-(362,325)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:949x848>-:949x848>clip:949x337>clip:949x397|compact=true|inset=60|escala=1|janela=949x593
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_06_publicar_pela_tecla_real_exerce_a_rota_e_recupera() debug|REVELA|foco|banda=397|rolagemAltura=337|contentHeight=848|contentY=459|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=511|alvoTop=(239,277)-(362,325)|alvoNaRolagem=(239,277)-(362,325)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:949x848>-:949x848>clip:949x337>clip:949x397|compact=true|inset=60|escala=1|janela=949x593
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_06_publicar_pela_tecla_real_exerce_a_rota_e_recupera() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x560|apply=(560,512)-(640,560)|corpo=474/0|rodape=(0,512)-(640,560)
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_06_publicar_pela_tecla_real_exerce_a_rota_e_recupera() debug|ESTABILIZOU 'examinado' em 20 ms :: 640x560|apply=(560,512)-(640,560)|corpo=474/0|rodape=(0,512)-(640,560)
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_06_publicar_pela_tecla_real_exerce_a_rota_e_recupera() debug|DESBFECHO fechar=0
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_06_publicar_pela_tecla_real_exerce_a_rota_e_recupera() debug|DESBFECHO aviso=1
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_06_publicar_pela_tecla_real_exerce_a_rota_e_recupera() debug|GEOMETRIA|vazio|janela=949x593|moldura=155,17,640,560|corpo=161,49,628,474|conteudo=156|rodape=155,529,640,48|acao=715,529,80,48|rotulo=15|esquemas=0|escala=1
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_07_escape_e_cancelar_fecham_sem_gravar_nada() debug|REVELA|foco|antes|banda=397|rolagemAltura=337|contentHeight=848|contentY=459|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=511|alvoTop=(239,277)-(362,325)|alvoNaRolagem=(239,277)-(362,325)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:949x848>-:949x848>clip:949x337>clip:949x397|compact=true|inset=60|escala=1|janela=949x593
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_07_escape_e_cancelar_fecham_sem_gravar_nada() debug|REVELA|foco|banda=397|rolagemAltura=337|contentHeight=848|contentY=459|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=511|alvoTop=(239,277)-(362,325)|alvoNaRolagem=(239,277)-(362,325)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:949x848>-:949x848>clip:949x337>clip:949x397|compact=true|inset=60|escala=1|janela=949x593
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_07_escape_e_cancelar_fecham_sem_gravar_nada() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x560|apply=(560,512)-(640,560)|corpo=474/0|rodape=(0,512)-(640,560)
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_07_escape_e_cancelar_fecham_sem_gravar_nada() debug|ESTABILIZOU 'examinado' em 20 ms :: 640x560|apply=(560,512)-(640,560)|corpo=474/0|rodape=(0,512)-(640,560)
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_07_escape_e_cancelar_fecham_sem_gravar_nada() debug|ESTABILIZOU 'fechamento' em 20 ms :: 640x560|apply=(560,512)-(640,560)|corpo=474/0|rodape=(0,512)-(640,560)
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_07_escape_e_cancelar_fecham_sem_gravar_nada() debug|REVELA|foco|antes|banda=397|rolagemAltura=337|contentHeight=848|contentY=459|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=511|alvoTop=(239,277)-(362,325)|alvoNaRolagem=(239,277)-(362,325)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:949x848>-:949x848>clip:949x337>clip:949x397|compact=true|inset=60|escala=1|janela=949x593
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_07_escape_e_cancelar_fecham_sem_gravar_nada() debug|REVELA|foco|banda=397|rolagemAltura=337|contentHeight=848|contentY=459|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=511|alvoTop=(239,277)-(362,325)|alvoNaRolagem=(239,277)-(362,325)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:949x848>-:949x848>clip:949x337>clip:949x397|compact=true|inset=60|escala=1|janela=949x593
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_07_escape_e_cancelar_fecham_sem_gravar_nada() debug|ESTABILIZOU 'aberto' em 20 ms :: 640x560|apply=(560,512)-(640,560)|corpo=474/0|rodape=(0,512)-(640,560)
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_07_escape_e_cancelar_fecham_sem_gravar_nada() debug|ESTABILIZOU 'examinado' em 20 ms :: 640x560|apply=(560,512)-(640,560)|corpo=474/0|rodape=(0,512)-(640,560)
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_07_escape_e_cancelar_fecham_sem_gravar_nada() debug|ESTABILIZOU 'cancelar' em 20 ms :: 640x560|apply=(560,512)-(640,560)|corpo=474/0|rodape=(0,512)-(640,560)
+E         PASS   : qmltestrunner::ShellEsdeImportJourney::test_07_escape_e_cancelar_fecham_sem_gravar_nada()
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_08_o_rodape_fica_na_banda_com_conteudo_que_excede() debug|PULADO test_08: sem conteúdo excedente a banda não é colocada à prova; o cenário é o de estado vazio
+E         PASS   : qmltestrunner::ShellEsdeImportJourney::test_08_o_rodape_fica_na_banda_com_conteudo_que_excede()
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_09_escala_de_texto_nao_corta_a_moldura() debug|PULADO test_09: a escala é medida no diálogo carregado, onde o texto existe
+E         PASS   : qmltestrunner::ShellEsdeImportJourney::test_09_escala_de_texto_nao_corta_a_moldura()
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_10_a_banda_que_muda_mantem_o_foco_revelado() debug|REVELA|foco|antes|banda=397|rolagemAltura=337|contentHeight=848|contentY=459|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=511|alvoTop=(239,277)-(362,325)|alvoNaRolagem=(239,277)-(362,325)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:949x848>-:949x848>clip:949x337>clip:949x397|compact=true|inset=60|escala=1|janela=949x593
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_10_a_banda_que_muda_mantem_o_foco_revelado() debug|REVELA|foco|banda=397|rolagemAltura=337|contentHeight=848|contentY=459|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=511|alvoTop=(239,277)-(362,325)|alvoNaRolagem=(239,277)-(362,325)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:949x848>-:949x848>clip:949x337>clip:949x397|compact=true|inset=60|escala=1|janela=949x593
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_10_a_banda_que_muda_mantem_o_foco_revelado() debug|REVELA|depois da banda mudar|antes|banda=277|rolagemAltura=217|contentHeight=848|contentY=459|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=631|alvoTop=(239,277)-(362,325)|alvoNaRolagem=(239,277)-(362,325)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:949x848>-:949x848>clip:949x217>clip:949x277|compact=true|inset=60|escala=1|janela=949x473
+E         QDEBUG : qmltestrunner::ShellEsdeImportJourney::test_10_a_banda_que_muda_mantem_o_foco_revelado() debug|REVELA|depois da banda mudar|banda=277|rolagemAltura=217|contentHeight=848|contentY=579|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=631|alvoTop=(239,157)-(362,205)|alvoNaRolagem=(239,157)-(362,205)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:949x848>-:949x848>clip:949x217>clip:949x277|compact=true|inset=60|escala=1|janela=949x473
+E         PASS   : qmltestrunner::ShellEsdeImportJourney::test_10_a_banda_que_muda_mantem_o_foco_revelado()
+E         PASS   : qmltestrunner::ShellEsdeImportJourney::cleanupTestCase()
+E         Totals: 8 passed, 4 failed, 0 skipped, 0 blacklisted, 17986ms
+E         ********* Finished testing of qmltestrunner *********
+E         
+E         # log desta execucao: <CHECKOUT>/build/qml-logs/shell-esde-949x593-sem-esquema-e1.0.txt
+E         
+E         warning|file://<CHECKOUT>/src/steamzero/ui/qml/Emulation.qml:4493:41: QML ModernIcon: Cannot find member data
+E         warning|file://<CHECKOUT>/src/steamzero/ui/qml/Emulation.qml:4493:41: QML ModernIcon: Cannot find member data
+E         
+E       assert 4 == 0
+E        +  where 4 = CompletedProcess(args=['/usr/lib/qt6/bin/qmltestrunner', '-input', '<HOME>/Projects/Steam Zero/Canonical/2026-09...Steam Zero/Canonical/2026-09-21/src/steamzero/ui/qml/Emulation.qml:4493:41: QML ModernIcon: Cannot find member data\n').returncode
+
+tests/integration/test_ui_shell_esde_import_dialog.py:858: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/test_ui_shell_esde_import_dialog.py::test_a_jornada_esde_do_shell_cabe_no_viewport_dado[949x593-sem-esquema]
+1 failed, 19 passed in 259.06s (0:04:19)
+# rc da suíte sob carga: 1
+# burners vivos depois do kill: 0
+0
+# load depois: 21.27 15.36 10.10

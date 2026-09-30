@@ -43,7 +43,7 @@
     "tests/unit/test_theme_import_esde_layout.py",
     "tests/unit/test_theme_sources.py"
   ],
-  "scopeDigest": "67bfe962f728c50c941cb25047265d68e182cded1a02c882889cbcf860947321",
+  "scopeDigest": "b3f432985bf06003c1a582f73ccc38142c94258fb19afcdf73d4b3ebeedfb0d7",
   "dependsOn": [],
   "knownGaps": [
     "GAP-THEME-ESDE-SCENE-NOT-RENDERED",
@@ -134,6 +134,12 @@
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/09-refresh-coercido.log",
       "command": "2026-09-27 renovacao de escopo pela frente WS-2026-09-RC01-CENTRAL-LOADING (fatia UX-01/UX-02 de RC-01). Arquivos deste escopo alterados: src/steamzero/ui/qml/Main.qml: Main.qml ganhou a coercao de renovacao de status (statusRefreshQueued + drainStatusRefresh nos dois callbacks da leitura): uma renovacao pedida durante uma leitura em andamento deixa de ser descartada. E mudanca visivel no shell, nao neste item; nenhum contrato deste item foi reexecutado. O digest foi regenerado pela ferramenta porque o escopo mudou; as capacidades deste item NAO foram reatestadas, nenhuma evidencia deste item foi carimbada, e nenhum eixo dele mudou de estado neste lote.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-27-shell-esde-dialog/00-preflight.log",
+      "command": "2026-09-27 RC-01 (4a fatia, dialogo ES-DE do shell): scopeDigest renovado por mudanca ALHEIA a este item. O escopo deste cartao declara src/steamzero/ui/qml/Main.qml, que a frente RC-01 editou para dar ao dialogo de importacao ES-DE do shell teto de altura, corpo rolavel, rodape fixo de 48 px e navegacao por tecla real (objeto theme-import-esde-dialog). A renovacao e revalidacao de escopo, NAO carimbo: nenhuma evidencia deste item foi reexecutada e nada do que esta pendente aqui mudou de estado. O gate da frente (tests/integration/test_ui_shell_esde_import_dialog.py, 20 passed na arvore da entrega) cobre o dialogo alterado, nao as assercoes deste cartao. A conciliacao do claim de Main.qml, medida e nao presumida, esta no log referenciado. Nao e o dialogo deste cartao: a 3a fatia corrigiu o importador ES-DE do PAINEL de temas (ThemeEditorPanel.qml) e esta frente corrigiu o OUTRO, duplicado no shell (Main.qml). O gate desta frente nao reexecuta as assercoes daquele cartao, e o claim de layout ES-DE permanece como esta registrado.",
       "result": "recorded"
     }
   ],

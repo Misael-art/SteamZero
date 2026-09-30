@@ -1,0 +1,13 @@
+# comando: /usr/lib/qt6/bin/qml <CHECKOUT>/tests/qml/capture_shell_esde_import_dialog.qml -- --output-dir=/tmp/pytest-of-<USER>/pytest-19/test_capturas_de_evidencia_da_0/capturas --cenario=aviso-longo
+# returncode: 0
+
+--- stdout ---
+
+--- stderr ---
+debug|ALVO|4-compacto-recusa-com-aviso|QQuickRootItem(0x5582c2340290, "Main")|949x593
+debug|CAPTURADO /tmp/pytest-of-<USER>/pytest-19/test_capturas_de_evidencia_da_0/capturas/4-compacto-recusa-com-aviso.png
+debug|GEOMETRIA|4-compacto-recusa-com-aviso|capturado=Main|janela=949x593|moldura=155,17,640,560|corpo=161,49,628,474|rodape=155,529,640,48|acao=715,529,80,48|esquemas=24|aviso=2328|cenario=aviso-longo
+debug|ALVO|5-largo-recusa-com-aviso|QQuickRootItem(0x5582c2340290, "Main")|1280x800
+debug|CAPTURADO /tmp/pytest-of-<USER>/pytest-19/test_capturas_de_evidencia_da_0/capturas/5-largo-recusa-com-aviso.png
+debug|GEOMETRIA|5-largo-recusa-com-aviso|capturado=Main|janela=1280x800|moldura=320,120,640,560|corpo=326,152,628,474|rodape=320,632,640,48|acao=880,632,80,48|esquemas=24|aviso=2328|cenario=aviso-longo
+debug|capturas=2 de 2 (cenário aviso-longo, publicadas=2)

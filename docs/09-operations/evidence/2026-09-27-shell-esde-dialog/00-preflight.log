@@ -1,0 +1,66 @@
+# 00 — preflight e conciliação do claim sobre Main.qml
+# medido em 2026-09-27T20:34:43-03:00, branch codex/rc01-shell-esde-dialog-2026-09-27
+
+## checkout único (um venv, nenhum diretório duplicado)
+$ git rev-parse --abbrev-ref HEAD
+codex/rc01-shell-esde-dialog-2026-09-27
+$ git rev-parse HEAD   # = base da fatia
+190ea683a941f8dc37036ef6402ffabaf7843799
+$ git worktree list
+<CHECKOUT> 190ea683 [codex/rc01-shell-esde-dialog-2026-09-27]
+$ ls -d .venv
+.venv
+$ git status --short
+ M src/steamzero/ui/qml/Main.qml
+?? docs/09-operations/evidence/2026-09-27-shell-esde-dialog/
+?? docs/status/workstreams/rc01-shell-esde-dialog-2026-09-27.json
+?? tests/integration/test_ui_shell_esde_import_dialog.py
+?? tests/qml/capture_shell_esde_import_dialog.qml
+?? tests/qml/check_shell_esde_import_dialog_journey.qml
+
+## o defeito existe na base? — reproduzido na rodada do vermelho
+base 190ea683, Main.qml:2822: Dialog sem height, corpo
+ColumnLayout { anchors.fill: parent } sem rolagem, ações no fim do fluxo.
+Medido com tecla real e captura inspecionada: 01-vermelho-geografia-medida.log
+
+## claim de Main.qml: dono, autorização e atividade medidos agora
+(a) quem detém o claim exclusivo:
+14:    "src/steamzero/ui/qml/Main.qml",
+32:  "nextAction": "G56 fechada no host (workspace Vita 6/6) e G57 implementada com preview de espaço comprovado na release governada; testar no host a recusa real por espaço insuficiente. Próximo P1 G58: relacionar derivados gerenciados aos jogos-base na Gestão de arquivos para todas as plataformas, com consentimento/quarentena/rollback e preservação das origens. G59: tornar scan um job assíncrono com progresso/cancelamento. Continuar certificação real de audit/rename/quarentena/rollback universal em cópias seguras; não declarar Vita3K launch sem runtime/adapter. RC-00 (2026-09-26): sobreposição de claim em Main.qml e desktop_contracts.py conciliada com evidência — o diff desses dois caminhos entre origin/main (3495c49d) e o tip cad58bb4 está vazio; os 2 commits pendentes (73919843, cad58bb4) não os tocam. O lote RC-01 da continuidade editará esses arquivos compartilhados em commit próprio e serial; conteúdo da frente permanece preservado na branch remota.",
+
+(b) autorização já registrada pelo próprio dono, em RC-00 (2026-09-26):
+O lote RC-01 da continuidade editará esses arquivos compartilhados em commit próprio e serial; conteúdo da frente permanece preservado na branch remota.
+
+(c) atividade da frente do dono:
+$ git ls-remote origin refs/heads/codex/library-host-release-caf9d922-2026-09-22
+cad58bb49f7bc17215d8cff20be93746c7acfce9	refs/heads/codex/library-host-release-caf9d922-2026-09-22
+
+# CONTROLADA: 'rtk git' (atalho) formata a saída e imprime uma linha vazia
+# quando o diff está vazio; a contagem abaixo é de 'rtk proxy git', verbatim.
+$ git diff --name-only origin/main cad58bb49f7bc17215d8cff20be93746c7acfce9 -- AGENTS.md   # controle: este arquivo DIFERE
+AGENTS.md
+linhas (controle): 1
+
+$ git diff --name-only origin/main cad58bb49f7bc17215d8cff20be93746c7acfce9 -- src/steamzero/ui/qml/Main.qml   # medido: Main.qml
+linhas (medido): 0   # 0 = a frente do dono não carrega alteração alguma no arquivo
+
+$ git rev-parse origin/main origin/main/src/steamzero/ui/qml/Main.qml cad58bb49f7bc17215d8cff20be93746c7acfce9:src/steamzero/ui/qml/Main.qml HEAD:src/steamzero/ui/qml/Main.qml
+  # blobs 2 e 3 iguais = o dono do claim não tem Main.qml próprio em disputa;
+  # blob 4 é desta base (190ea683), já à frente do main por causa do #241.
+3495c49d5d7c3244267e8292beee34475f70236b
+6f8e45dd05f055b58740aa8b531ece73f921a77d
+6f8e45dd05f055b58740aa8b531ece73f921a77d
+c599e55ea2f0275f7ec2cdd64cfdb3db779d68bc
+
+(d) PR aberto do dono do claim:
+$ gh pr list --state open --json number,headRefName | grep -c library-host-release
+0
+0 = nenhuma frente aberta; o claim está ativo como registro, inerte como diff.
+
+## conclusão da conciliação
+Main.qml entra em sharedPaths desta frente (não exclusivePaths): o claim exclusivo
+permanece com WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT. A serialização é: esta frente
+edita Main.qml em commit próprio e serial, como o próprio dono autorizou em RC-00, e
+não há diff concorrente no arquivo (medição (c): 0 linhas, com controle em AGENTS.md).
+Nenhuma autorização nova foi pedida nem era devida: o trabalho estava autorizado
+desde RC-00; o que faltava era o registro, e é este arquivo.

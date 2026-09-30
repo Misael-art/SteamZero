@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "f2115aa51ba765752b14557659c83a90b8104612ea5b640aec3c0ce8d05c1230",
+  "scopeDigest": "a125e53a1c67d694569c1b624a2b54de929b240a2b79ba1f692527bf2bcc3943",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -443,6 +443,12 @@
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-09-27-esde-import-dialog-compact/03-verde-medido-com-correcao.log",
       "command": "2026-09-27 renovação de escopo pela frente WS-2026-09-RC01-READINESS-FOCUS (3ª fatia de RC-01, item SZ-UI-DESKTOP-AUDIT). O motor de temas não mudou de contrato neste lote: o que mudou em src/steamzero/ui foi o diálogo de importação ES-DE do ThemeEditorPanel (corpo rolável, ações no rodapé, D-pad percorrendo o modal, sem ScrollView aninhado). Nenhum teste próprio deste item foi reexecutado e nenhuma evidência foi carimbada aqui; o digest foi regenerado pela ferramenta porque o escopo compartilhado mudou. Nenhum eixo deste item mudou de estado neste lote.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-27-shell-esde-dialog/00-preflight.log",
+      "command": "2026-09-27 RC-01 (4a fatia, dialogo ES-DE do shell): scopeDigest renovado por mudanca ALHEIA a este item. O escopo deste cartao declara src/steamzero/ui/qml/Main.qml, que a frente RC-01 editou para dar ao dialogo de importacao ES-DE do shell teto de altura, corpo rolavel, rodape fixo de 48 px e navegacao por tecla real (objeto theme-import-esde-dialog). A renovacao e revalidacao de escopo, NAO carimbo: nenhuma evidencia deste item foi reexecutada e nada do que esta pendente aqui mudou de estado. O gate da frente (tests/integration/test_ui_shell_esde_import_dialog.py, 20 passed na arvore da entrega) cobre o dialogo alterado, nao as assercoes deste cartao. A conciliacao do claim de Main.qml, medida e nao presumida, esta no log referenciado. Nada do motor de temas foi tocado; a secao Temas do shell nao faz parte do diff.",
       "result": "recorded"
     }
   ],

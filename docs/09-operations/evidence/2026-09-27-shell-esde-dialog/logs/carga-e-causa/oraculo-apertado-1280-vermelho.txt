@@ -1,0 +1,49 @@
+............F.......                                                     [100%]
+=================================== FAILURES ===================================
+_____ test_a_jornada_esde_do_shell_cabe_no_viewport_dado[1280x800-tipico] ______
+
+viewport = '1280x800', cenario = 'tipico'
+
+    @pytest.mark.visual
+    @pytest.mark.parametrize("viewport,cenario", JORNADA)
+    def test_a_jornada_esde_do_shell_cabe_no_viewport_dado(viewport: str, cenario: str) -> None:
+        """abrir → examinar → preencher → navegar → publicar/cancelar, com teclas reais.
+    
+        O vermelho desta fatia é medido aqui. No `Main.qml:2822` atual o diálogo não
+        declara `height`, o corpo é um `ColumnLayout { anchors.fill: parent }` sem
+        mecanismo de rolagem e as ações vivem no fim desse fluxo: com 24 esquemas o
+        botão "Importar" fica abaixo do pé da moldura, e nenhuma tecla o alcança.
+        """
+        if RUNNER is None:
+            pytest.fail(
+                "QML-VISUAL-ENVIRONMENT-001: qmltestrunner ausente. A jornada do diálogo "
+                "ES-DE do shell não pode ser verificada sem runtime QML; declarar verde "
+                "sem renderizar é o defeito que a RC-01 combate."
+            )
+        bridge, state = _start_bridge(cenario)
+        esperado = SCENARIOS[cenario]["espera"]
+        try:
+            completed = _run_qmltestrunner(bridge, cenario, viewport)
+        finally:
+            bridge.shutdown()
+            bridge.server_close()
+    
+        assert state.unauthorized == 0, (
+            "a ponte devolveu 401 por token: a jornada não passou pela rota autenticada "
+            f"de `Main.qml` ({state.unauthorized} requisições)"
+        )
+        assert state.status_calls >= 1, (
+            "a ponte nunca serviu /status; o shell não leu os contratos publicados"
+        )
+>       assert state.inspect_calls, (
+            "nenhum POST a /theme/import/esde/inspect: o clique em Examinar não exerceu "
+            "a rota publicada"
+        )
+E       AssertionError: nenhum POST a /theme/import/esde/inspect: o clique em Examinar não exerceu a rota publicada
+E       assert []
+E        +  where [] = <test_ui_shell_esde_import_dialog._JourneyState object at 0x7fe66eac19d0>.inspect_calls
+
+tests/integration/test_ui_shell_esde_import_dialog.py:842: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/test_ui_shell_esde_import_dialog.py::test_a_jornada_esde_do_shell_cabe_no_viewport_dado[1280x800-tipico]
+1 failed, 19 passed in 107.53s (0:01:47)

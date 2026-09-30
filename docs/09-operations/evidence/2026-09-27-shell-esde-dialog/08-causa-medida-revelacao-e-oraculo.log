@@ -1,0 +1,316 @@
+# 08 — Causa medida: a revelação por foco é um instantâneo, e o oráculo media a moldura errada
+# lote: 4ª fatia de RC-01 — diálogo ES-DE do shell — 2026-09-27
+# checkout: <CHECKOUT>  (caminhos pessoais normalizados pela regra de README.md)
+
+Este log fecha a pergunta que a suíte integral deixou aberta: o mesmo asserter
+passava verde na corrida isolada e reprova na suíte inteira. A resposta tem duas
+partes independentes, e as duas foram medidas antes de qualquer correção:
+
+  (A) a MEDIÇÃO estava errada — o oráculo comparava com o ScrollView, que não é
+      a superfície que recorta; quem recorta é o Flickable interno, e a diferença
+      entre as duas alturas é exatamente o bottomPadding (60 px). Por isso a
+      reprovação anunciava '4 px fora' de um alvo 64 px abaixo do pé da área
+      recortada;
+  (B) o PRODUTO estava errado — revelar pelo foco é ligado a
+      onActiveFocusItemChanged, que só dispara quando o foco MUDA. Se a banda muda
+      com o foco já instalado, o controle focado sai da tela e nada o traz de
+      volta — e havia folga de rolagem disponível para trazê-lo.
+
+A ordem importa: sem (A) corrigida, (B) não era reproduzível de propósito — o
+oráculo tolerante deixava passar cortes de até 60 px. Sem (B), (A) seria só um
+teste mais chato. O vermelho determinístico do item 3 existe porque as duas foram
+postas à prova na ordem certa.
+
+===========================================================================
+1. O que a suíte integral disse, verbatim
+===========================================================================
+
+Denominador: o log da execução integral promovido neste lote
+(logs/falha-integral-shell-esde-48px-escala-1.25.txt, returncode 8):
+
+----- falha-integral-shell-esde-48px-escala-1.25.txt:13,14p
+FAIL!  : qmltestrunner::ShellEsdeImportJourney::test_02_examinar_pela_rota_real_publica_os_esquemas() 'o foco não revelou o botão dentro do ScrollView da seção Sistema: (239,349)-(362,397) na banda de 393 px (expirou o limite de 4000 ms após 4000 ms)' returned FALSE. ()
+   Loc: [<CHECKOUT>/tests/qml/check_shell_esde_import_dialog_journey.qml(353)]
+
+----- falha-integral-shell-esde-48px-escala-1.25.txt  ~ /Totals: [0-9]+ passed, [0-9]+ failed/
+Totals: 3 passed, 8 failed, 0 skipped, 0 blacklisted, 32826ms
+
+As oito reprovações imprimem os MESMOS números porque compartilham processo e
+estado de rolagem: não são oito defeitos, é um defeito lido oito vezes.
+
+'na banda de 393 px' é a altura do ScrollView; o alvo terminava em y=397.
+Faltavam 4 px, portanto — e é exatamente esse '4' que fez o caso parecer
+arredondamento.
+
+Antes disto, a mesma suíte sob 16 processos de carga em 8 núcleos já tinha
+reprovado seis itens, com o conjunto mudando entre execuções (três dos seis nomes
+sobreviveram no resumo preservado; a saída integral daquela rodada não foi copiada
+na época e os logs por cenário viviam em build/, sobrescritos):
+
+----- antes-da-correcao-carga.txt:1,10p
+# rodada de carga ANTES da correção do produto
+# 16 burners em 8 núcleos, suíte focada inteira, oráculo ainda medindo a moldura do ScrollView
+# preservado: o resumo da saída (stdout integral não foi copiado na época; os logs por
+#   cenário viviam em build/qml-logs e foram sobrescritos pelas rodadas seguintes)
+# nomes das 6 reprovações: 3 sobreviveram na cauda preservada, as outras 3 não
+FAILED tests/integration/test_ui_shell_esde_import_dialog.py::test_a_jornada_esde_do_shell_cabe_no_viewport_dado[949x593-nomes-longos]
+FAILED tests/integration/test_ui_shell_esde_import_dialog.py::test_alvos_de_48_px_e_escala_de_texto_no_dialogo_do_shell[1.0]
+FAILED tests/integration/test_ui_shell_esde_import_dialog.py::test_a_escala_de_texto_publicada_muda_a_geometria_do_dialogo
+6 failed, 14 passed in 374.17s (0:06:14)
+
+===========================================================================
+2. Medida a sonda: duas alturas, uma só recorta
+===========================================================================
+
+A primeira versão da sonda imprimia contentY=NaN. Não era ruído: o objeto medido
+era o ScrollView, e ele NÃO expõe contentY — a impressão hoje traz o tipo da
+propriedade, para a afirmação ser conferível no log em vez de depender desta frase.
+
+Leituras da corrida final (sem carga, árvore congelada), uma por cenário:
+
+----- shell-esde-48px-escala-1.0.txt  ~ /REVELA\|foco\|antes/
+REVELA|foco|antes|banda=491|bandaExpoeContentY=undefined|rolagemAltura=431|contentHeight=848|contentY=0|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=417|alvoTop=(239,736)-(362,784)|alvoNaRolagem=(239,736)-(362,784)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:949x848>-:949x848>clip:949x431>clip:949x491|compact=true|inset=60|escala=1|janela=949x593
+
+----- shell-esde-48px-escala-1.25.txt  ~ /REVELA\|foco\|antes/
+REVELA|foco|antes|banda=491|bandaExpoeContentY=undefined|rolagemAltura=431|contentHeight=881|contentY=0|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=450|alvoTop=(239,769)-(362,817)|alvoNaRolagem=(239,769)-(362,817)|alvoEmConteudo=769|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:949x881>-:949x881>clip:949x431>clip:949x491|compact=true|inset=60|escala=1.25|janela=949x593
+
+----- shell-esde-48px-escala-1.5.txt  ~ /REVELA\|foco\|antes/
+REVELA|foco|antes|banda=491|bandaExpoeContentY=undefined|rolagemAltura=431|contentHeight=910|contentY=0|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=479|alvoTop=(239,798)-(362,846)|alvoNaRolagem=(239,798)-(362,846)|alvoEmConteudo=798|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:949x910>-:949x910>clip:949x431>clip:949x491|compact=true|inset=60|escala=1.5|janela=949x593
+
+----- shell-esde-949x593-tipico-e1.0.txt  ~ /REVELA\|foco\|antes/
+REVELA|foco|antes|banda=491|bandaExpoeContentY=undefined|rolagemAltura=431|contentHeight=848|contentY=0|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=417|alvoTop=(239,736)-(362,784)|alvoNaRolagem=(239,736)-(362,784)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:949x848>-:949x848>clip:949x431>clip:949x491|compact=true|inset=60|escala=1|janela=949x593
+
+----- shell-esde-1280x800-tipico-e1.0.txt  ~ /REVELA\|foco\|antes/
+REVELA|foco|antes|banda=698|bandaExpoeContentY=undefined|rolagemAltura=638|contentHeight=848|contentY=0|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=210|alvoTop=(239,736)-(362,784)|alvoNaRolagem=(239,736)-(362,784)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:1280x848>-:1280x848>clip:1280x638>clip:1280x698|compact=true|inset=60|escala=1|janela=1280x800
+
+Em cada linha, banda (ScrollView) menos rolagemAltura (Flickable) = 60 = o
+bottomPadding publicado, e bandaExpoeContentY=undefined enquanto o contentY do
+Flickable é numérico. A cadeia de recorte impressa (campo cadeia=) fecha o caso:
+os dois trechos com clip: são clip:949x431 (Flickable) e clip:949x491
+(ScrollView) — a superfície que recorta é a de 431. A banda que
+recorta tem 60 px MENOS do que o oráculo admitia. Refazendo a reprovação do
+item 1 com o quadro certo: alvo em 349..397 contra os 333 px que de fato
+recortam (393 - 60) = 64 px abaixo do recorte, não 4.
+E o verde continua verde com o oráculo apertado: na escala 1,25 da corrida final
+o alvo 371..419 cabe nos 431 px que recortam.
+
+Correção aplicada ao oráculo: bandOf() resolve o Flickable que clipa, e
+visibleTrigger() compara contra a altura dele. O corte real continua reprovando —
+foi com ele apertado que o item 3 ficou vermelho.
+
+===========================================================================
+3. Vermelho determinístico do produto, sem carga
+===========================================================================
+
+Com o oráculo medindo a banda que recorta, a cena foi colocada à prova de propósito
+(test_10_a_banda_que_muda_mantem_o_foco_revelado): focar o botão pelo mecanismo do
+produto, conferir que ele está inteiro na banda, e então encolher a janela em
+120 px — uma mudança de geometria com o foco já instalado. Executado na árvore
+ANTES da correção do produto, máquina ociosa:
+
+----- vermelho-deterministico-test10.log  ~ /FAIL!.*test_10/
+E         FAIL!  : qmltestrunner::ShellEsdeImportJourney::test_10_a_banda_que_muda_mantem_o_foco_revelado() 'o foco não revelou o botão dentro da banda que clipa (depois da banda mudar): (239,277)-(362,325) na banda de 217 px (expirou o limite de 4000 ms após 4000 ms)' returned FALSE. ()
+
+----- vermelho-deterministico-test10.log  ~ /Totals: 11 passed, 1 failed/
+E         Totals: 11 passed, 1 failed, 0 skipped, 0 blacklisted, 5457ms
+
+----- vermelho-deterministico-test10.log  ~ /1 failed in [0-9.]+s/
+1 failed in 8.69s
+
+A sonda da mesma execução (instantâneo logo após o encolhimento):
+
+----- vermelho-deterministico-test10.log  ~ /REVELA\|depois da banda mudar\|antes/
+REVELA|depois da banda mudar|antes|banda=277|rolagemAltura=217|contentHeight=848|contentY=459|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=631|alvoTop=(239,277)-(362,325)|alvoNaRolagem=(239,277)-(362,325)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:949x848>-:949x848>clip:949x217>clip:949x277|compact=true|inset=60|escala=1|janela=949x473
+
+Leitura: banda 337 → 217 px (exatamente -120: a janela encolheu 120), contentY
+parado em 459, alvo em 277..325 — 108 px abaixo do pé da área recortada, e
+limiteDoProduto=631: havia folga para rolar e ninguém rolou. Não é arredondamento
+(a diferença é da ordem de 100 px, não de 1); não é leitura antes de estabilizar
+(o until reamostrou por 4 000 ms e o valor não mudou); não é banda anômala
+(217 = 337 - 120).
+
+O que a hipótese descartada explicaria e esta não: a suíte isolada passava verde
+porque, sem carga, a banda já estava no tamanho final quando o foco chegou — o
+instantâneo nascia certo. Verde isolado nunca foi tratado aqui como ausência de
+defeito: foi ele que escondeu (A), (B) e a espera vazia do item 6.
+
+===========================================================================
+4. Verde, com os MESMOS números, na corrida promovida
+===========================================================================
+
+Mesmo cenário, mesma sonda, produto corrigido — os dois instantâneos do test_10 no
+log estável por execução (antes do until, depois dele):
+
+----- shell-esde-949x593-tipico-e1.0.txt  ~ /REVELA\|depois da banda mudar/
+REVELA|depois da banda mudar|antes|banda=277|bandaExpoeContentY=undefined|rolagemAltura=217|contentHeight=848|contentY=459|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=631|alvoTop=(239,277)-(362,325)|alvoNaRolagem=(239,277)-(362,325)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:949x848>-:949x848>clip:949x217>clip:949x277|compact=true|inset=60|escala=1|janela=949x473
+REVELA|depois da banda mudar|banda=277|bandaExpoeContentY=undefined|rolagemAltura=217|contentHeight=848|contentY=579|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=631|alvoTop=(239,157)-(362,205)|alvoNaRolagem=(239,157)-(362,205)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:949x848>-:949x848>clip:949x217>clip:949x277|compact=true|inset=60|escala=1|janela=949x473
+
+contentY 459 → 579 sem que o teste toque em contentY: quem rolou foi o produto,
+avisado pela própria banda. A conta bate com o código do produto: mirar o fundo do
+alvo mais a margem de 12 px dá 325 + 12 - 217 = 120 px de rolagem, e
+459 + 120 = 579; o alvo vem para 157..205 dentro dos 217 px que recortam.
+
+Em 1280x800 o mesmo instante já nasce acertado (contentY=372, alvo 364..412 numa
+banda de 424 px), porque ali a revelação por foco tinha acabado de rodar:
+
+----- shell-esde-1280x800-tipico-e1.0.txt  ~ /REVELA\|depois da banda mudar\|antes/
+REVELA|depois da banda mudar|antes|banda=484|bandaExpoeContentY=undefined|rolagemAltura=424|contentHeight=848|contentY=372|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=424|alvoTop=(239,364)-(362,412)|alvoNaRolagem=(239,364)-(362,412)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:1280x848>-:1280x848>clip:1280x424>clip:1280x484|compact=true|inset=60|escala=1|janela=1280x680
+
+Correção do produto: registrar o scroll mais próximo que uma revelação ajustou
+(Main.qml:727 focusedRevealScroll) e reconectá-lo a onHeightChanged /
+onContentHeightChanged (Main.qml:848-857), que revalidam o foco via
+revalidateFocusedReveal() (Main.qml:766). O sinal que faltava é o da banda, não o
+do foco.
+
+===========================================================================
+5. O gatilho da integral: medido como queda de banda, não filmado
+===========================================================================
+
+FATO MEDIDO: no mesmo cenário e escala, a banda da integral tinha 393 px
+(ScrollView) / 333 px (Flickable); a da corrida final tem 491 / 431. A banda da
+integral era 98 px mais curta, e a diferença entre as duas alturas é 60 px nas
+duas corridas — o padding não mudou, o que mudou foi o tamanho da banda.
+
+INSTÂNCIA DO MESMO MECANISMO, filmada: no MESMO processo da corrida final
+(1280x800, cenário típico) a banda tem 698 px na primeira revelação e 604 px a
+partir da segunda. Contagem de ocorrências no log, com a função que as imprimiu:
+
+  banda=698: 1 linhas, todas de: test_01_o_botao_real_abre_o_modal_e_o_foco_entra_no_corpo 
+  banda=604: 10 linhas, de: test_02_examinar_pela_rota_real_publica_os_esquemas test_03_teclas_reais_de_d_pad_percorrem_o_dialogo_com_foco_visivel test_04_tab_e_shift_tab_reais_nao_saem_do_modal test_05_as_setas_e_backspace_editam_sem_roubar_a_navegacao test_06_publicar_pela_tecla_real_exerce_a_rota_e_recupera test_07_escape_e_cancelar_fecham_sem_gravar_nada test_08_o_rodape_fica_na_banda_com_conteudo_que_excede test_09_escala_de_texto_nao_corta_a_moldura test_10_a_banda_que_muda_mantem_o_foco_revelado 
+
+Ou seja: a banda encolhe 94 px no meio da suíte, com o processo vivo, entre a
+primeira e a segunda revelação — a mesma ordem dos 98 px da integral. Os dois
+instantâneos, com a cadeia de recorte:
+
+----- shell-esde-1280x800-tipico-e1.0.txt  ~ /REVELA\|foco\|antes\|banda=698/
+REVELA|foco|antes|banda=698|bandaExpoeContentY=undefined|rolagemAltura=638|contentHeight=848|contentY=0|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=210|alvoTop=(239,736)-(362,784)|alvoNaRolagem=(239,736)-(362,784)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:1280x848>-:1280x848>clip:1280x638>clip:1280x698|compact=true|inset=60|escala=1|janela=1280x800
+
+----- shell-esde-1280x800-tipico-e1.0.txt  ~ /REVELA\|foco\|antes\|banda=604/
+REVELA|foco|antes|banda=604|bandaExpoeContentY=undefined|rolagemAltura=544|contentHeight=848|contentY=252|originY=0|topPadding=0|bottomPadding=60|limiteDoProduto=304|alvoTop=(239,484)-(362,532)|alvoNaRolagem=(239,484)-(362,532)|alvoEmConteudo=736|alturaAlvo=48|cadeia=-:123x48>-:462x48>-:1280x848>-:1280x848>clip:1280x544>clip:1280x604|compact=true|inset=60|escala=1|janela=1280x800
+
+Isto NÃO é, por si, a prova do defeito: cada test_* troca o foco, e trocar o foco
+dispara a revelação. A queda de banda é o perigo; o item 3 é o que mostra o
+perigo virar corte (banda muda com o foco já instalado, e nada rola).
+
+INCERTEZA DECLARADA: que os 98 px da integral sejam ESSA faixa de atenção é a
+hipótese que casa com as duas medidas acima, mas a integral vermelha não foi
+filmada com a sonda — o oráculo da época media a moldura errada e o log não
+imprimia a banda por instância. O que este lote prova é a classe do defeito (banda
+muda sob um foco que não mudou) e a correção do mecanismo, reproduzida
+deterministicamente nos itens 3 e 4. Não se afirma aqui qual widget encolheu a
+banda naquela corrida, nem se descarta que houvesse mais de um.
+
+===========================================================================
+6. Segunda causa, independente, encontrada pela carga
+===========================================================================
+
+Com o produto corrigido (itens 3-4), a rodada de carga caiu de seis falhas para
+uma — e a que sobrou não é de geometria, é espera vazia no próprio harness:
+
+----- carga-1-depois-da-correcao.txt  ~ /FAIL!.*test_02/
+E         FAIL!  : qmltestrunner::ShellEsdeImportJourney::test_02_examinar_pela_rota_real_publica_os_esquemas() 'sem esquema publicado o diálogo precisa dizer isso no corpo' returned FALSE. ()
+
+----- carga-1-depois-da-correcao.txt  ~ /Totals: [0-9]+ passed, [0-9]+ failed/
+E         Totals: 8 passed, 4 failed, 0 skipped, 0 blacklisted, 17986ms
+
+----- carga-1-depois-da-correcao.txt  ~ /limpeza: o estado do importador/
+E         FAIL!  : qmltestrunner::ShellEsdeImportJourney::test_04_tab_e_shift_tab_reais_nao_saem_do_modal() 'limpeza: o estado do importador não voltou ao neutro (expirou o limite de 3000 ms após 3000
+
+O passo inspectThroughTheRealButton() esperava
+esdeImportSchemes.length === esperado. No cenário de estado vazio esperado é 0, e
+a lista já está em 0 ANTES de qualquer resposta: a espera era vazia, e a asserção
+seguinte lia o estado pré-resposta. Sem carga a resposta chegava no intervalo entre
+o clique e a leitura, e o verde escondia a espera oca; com carga, não. As três
+reprovações de limpeza são cascata da primeira.
+
+Correção no oráculo do teste, não no produto: esperar pelo que a resposta PUBLICA
+(o aviso escrito em Main.qml:2983-2984 quando não há esquema nenhum) com a
+requisição fora de voo, e quiescer antes de fechar a superfície na limpeza — fechar
+com requisição em voo permite que a resposta reocupe um estado que onClosed
+(Main.qml:2885-2888) já tinha limpado.
+
+Limite declarado, não corrigido: se a resposta de um /inspect chegar DEPOIS de o
+diálogo ter sido fechado, o produto ainda reocupa esdeImportSchemes/aviso. Isso não
+afeta a jornada (o estado é limpo na abertura seguinte), mas é conduta de produto
+que este lote não afirma correta nem exercita.
+
+===========================================================================
+7. Controles de carga e a corrida promovida
+===========================================================================
+
+Repetições com limite DECLARADO ANTES de rodar (três), sem repetir até obter verde.
+As três com a mesma suíte focada, 16 processos 'yes' em 8 núcleos:
+
+----- 1ª (produto e oráculo já corrigidos): reprovou 1 — a espera vazia do item 6
+
+----- carga-1-depois-da-correcao.txt  ~ /[0-9]+ failed, [0-9]+ passed in [0-9.]+s/
+1 failed, 19 passed in 259.06s (0:04:19)
+----- 2ª: árvore NÃO congelada — o harness foi editado 30 s depois do início da
+       rodada (campo bandaExpoeContentY), então não promove
+
+----- carga-2-arvore-nao-congelada.txt  ~ /[0-9]+ passed in [0-9.]+s/
+20 passed in 220.67s (0:03:40)
+----- 3ª: árvore congelada, sha256 dos quatro arquivos que a suíte lê impresso no
+       próprio log ANTES e DEPOIS da rodada (idênticos)
+
+----- carga-3-arvore-congelada.txt  ~ /20 passed in [0-9.]+s/
+20 passed in 209.35s (0:03:29)
+
+A promoção é a 3ª rodada. O gate focado final, sem carga, sobre essa mesma árvore
+(logs/corrida-promovida.txt traz os sha256 conferidos depois — ele registra a
+re-promoção de 22:57, re-medida por causa de uma palavra do docstring do gate que
+`ruff check` reprova como RUF002, `20 passed in 67.62s`, com esta corrida de 60,96
+s preservada ao lado como o bruto que é):
+
+----- gate-focado-final-sem-carga.txt  ~ /[0-9]+ passed in [0-9.]+/
+20 passed in 60.96s (0:01:00)
+
+===========================================================================
+8. O que cada correção NÃO é
+===========================================================================
+
+* Nenhuma tolerância foi alargada: continua 1 px, e o vermelho do item 3 é
+  exatamente o oráculo apertado reprovando um corte real de 108 px.
+* Nenhum alvo foi encolhido e nenhuma escala removida: as 48 px por alvo e as três
+  escalas do host (1,0/1,25/1,5) continuam no denominador.
+* Nenhum wait() de intervalo fixo foi acrescentado. As esperas continuam until com
+  orçamento e falha explícita; a única mudança de orçamento foi a espera da resposta
+  (5 000 → 8 000 ms), porque ela passou a esperar um efeito real da rede sob carga
+  em vez de uma condição já vera.
+* A revelação por foco continua sendo do produto: o harness não escreve contentY,
+  não chama scrollTo()/positionViewAt e não usa Qt.callLater — as seis guardas sem
+  Qt do arquivo de integração proveem isso lendo o próprio harness.
+* A generalização para os outros pontos do shell que rolam pelo mesmo mecanismo
+  (Emulation.qml, SectionNavigator.qml, SteamGameplay.qml e ThemeEditorPanel.qml em
+  dois lugares) NÃO foi feita nem provada: a correção está no mecanismo que eles
+  compartilham (ensureFocusedItemVisible e o registro da banda), mas nenhuma
+  medição deste lote afirma que cada um deles estava cortado.
+
+==================================================================================
+9. Como conferir sem depender desta narrativa
+==================================================================================
+
+# o oráculo e a sonda (banda que recorta, typeof do contentY do ScrollView):
+$ grep -n 'bandaExpoeContentY\|function bandOf\|function visibleTrigger' \
+      <CHECKOUT>/tests/qml/check_shell_esde_import_dialog_journey.qml
+
+# o vermelho determinístico, recriável: remover o bloco Connections de Main.qml
+#   (target: root.focusedRevealScroll) e rodar o gate focado — test_10 reprova em
+#   ~5 s, sem carga, com os números do item 3.
+
+# a espera vazia: trocar o predicado de inspectThroughTheRealButton() de volta para
+#   'esdeImportSchemes.length === esperado' e rodar o cenário 949x593-sem-esquema
+#   sob carga — reprova no aviso, com cascata na limpeza.
+
+# os logs estáveis por execução desta árvore: logs/shell-esde-*.txt (16) e
+#   logs/corrida-promovida.txt (sha256 da árvore testada).
+
+# as fontes cruas citadas acima, preservadas no lote em logs/carga-e-causa/:
+#   antes-da-correcao-carga.txt          (item 1, a rodada de 6 reprovações)
+#   vermelho-deterministico-test10.log   (item 3)
+#   oraculo-apertado-1280-vermelho.txt   (a cena larga reprovando com o oráculo
+#                                          certo na árvore sem a correção)
+#   carga-1-depois-da-correcao.txt       (itens 6 e 7)
+#   carga-2-arvore-nao-congelada.txt     (item 7, por que não promove)
+#   carga-3-arvore-congelada.txt         (item 7, a promoção)
+#   gate-focado-final-sem-carga.txt      (item 7)

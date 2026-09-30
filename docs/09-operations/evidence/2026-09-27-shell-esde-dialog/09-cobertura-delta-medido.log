@@ -1,0 +1,172 @@
+# 09 — a queda de 0,02 pp de cobertura, medida antes de ser aceita ou rejeitada
+
+AGENTS.md:115 põe como gate `Cobertura não regride`. Entre a corrida integral
+pré-correção e a corrida promovida o agregado foi de 85,54% para 85,52%. Uma queda
+em gate não se despacha com explicação: mediu-se primeiro de onde ela vem, depois se
+o instrumento repete o mesmo número na mesma árvore.
+
+## 1. De onde vem: os dois logs brutos, arquivo por arquivo
+
+Extraído por `/tmp/esde_batch/cov_delta.py` (o script falha se os dois conjuntos de
+arquivos diferirem, ou se a soma de statements não for 47 202 nas duas):
+
+| arquivo | statements | em falta | ramos em falta | cobertura |
+| --- | --- | --- | --- | --- |
+| `src/steamzero/adapters/desktop_dashboard.py` | 959 nas duas | 176 → 178 (+2) | 55 → 55 (+0) | 80.00% → 79.83% |
+| `src/steamzero/adapters/emulation.py` | 4403 nas duas | 646 → 648 (+2) | 325 → 325 (+0) | 83.02% → 82.99% |
+| `src/steamzero/adapters/scraping/cache.py` | 121 nas duas | 4 → 6 (+2) | 1 → 1 (+0) | 96.12% → 94.57% |
+| `src/steamzero/adapters/screencast_web.py` | 374 nas duas | 7 → 7 (+0) | 8 → 9 (+1) | 96.35% → 96.14% |
+| `src/steamzero/adapters/steam_media.py` | 148 nas duas | 30 → 32 (+2) | 12 → 12 (+0) | 75.73% → 74.76% |
+| `src/steamzero/domain/bitrot.py` | 180 nas duas | 11 → 12 (+1) | 11 → 12 (+1) | 90.83% → 90.00% |
+
+As linhas que estavam cobertas e deixaram de estar, com o fonte ao lado:
+
+- `src/steamzero/adapters/desktop_dashboard.py` → `151: except OSError:` · `152: continue`
+- `src/steamzero/adapters/emulation.py` → `8610: except (OSError, ProcessLookupError):` · `8611: continue`
+- `src/steamzero/adapters/scraping/cache.py` → `84: except sqlite3.OperationalError:` · `85: time.sleep(0.05)` · `86: else:`
+- `src/steamzero/adapters/steam_media.py` → `37: except OSError:` · `38: continue`
+- `src/steamzero/domain/bitrot.py` → `336: raise SteamZeroError("E-STATE-INTEGRITY", detail="documento anti-bitrot inválido")`
+
+arquivos: 6 de 297 | statements totais: 47202 nas duas | em falta: 5557 → 5566 | soma dos deltas individuais: +9
+
+Três coisas dessa tabela sustentam a leitura, e só três:
+
+- os **statements totais são idênticos** (47 202) e os 297 arquivos são os mesmos nas
+  duas corridas: esta frente não acrescentou nem retirou linha de Python — edita
+  `Main.qml` (QML, fora do denominador do `--cov=steamzero`) e três arquivos de teste,
+  que não entram na cobertura de `src/`;
+- os nove statements a mais em falta **somam exatamente** os deltas individuais
+  (2+2+2+2+1), então não há diferença escondida em arquivo nenhum;
+- os seis arquivos atingidos estão **fora do escopo desta frente**, e nenhuma das
+  linhas recém-descoberta é fluxo normal: os oito statements são `except OSError:` /
+  `continue`, `except (OSError, ProcessLookupError):`, retry de
+  `sqlite3.OperationalError` com `sleep(0.05)` e um `raise` de integridade; o único
+  ramo é um `if … is not None:` seguido de saída. A lista completa, com o fonte, está
+  na seção 4.
+
+Isso ainda não responde à regra, porque `caminho de exceção` é uma classe e não uma
+medição. A pergunta é se o instrumento repete o mesmo conjunto de linhas na mesma
+árvore.
+
+## 2. O instrumento repete? Três rodadas do mesmo comando, com a árvore congelada
+
+Experimento limitado e informativo, declarado antes de rodar: em vez de uma segunda
+suíte integral (35 min, e o denominador da promovida mudaria), rodou-se três vezes o
+mesmo subconjunto de seis arquivos de teste, com cobertura, sobre a árvore dos sha256
+congelados. O subconjunto saiu da lista de arquivos do delta, não de resultado:
+
+```
+$ for i in 1 2 3; do .venv/bin/coverage erase; \
+    rtk proxy .venv/bin/python tools/run_tests_isolated.py tests/unit/scraping/test_cache.py tests/unit/test_desktop_dashboard.py tests/unit/test_screencast_web.py tests/integration/test_steam_media.py tests/integration/test_bitrot.py tests/unit/test_emulation_controller.py -q \
+      --cov=steamzero --cov-report=term-missing > /tmp/esde_batch/gates/cov-flip-$i.txt 2>&1
+  done
+# rodada 1: 294 passed in 176.70s (0:02:56)
+# rodada 2: 294 passed in 163.60s (0:02:43)
+# rodada 3: 294 passed in 163.50s (0:02:43)
+```
+
+O `rc=1` de cada rodada é o gate de 85% aplicado a um subconjunto (35,79% no agregado
+parcial), e não é um resultado: o que se lê aqui é o conjunto de linhas em falta por
+arquivo, que independe do limiar.
+
+| arquivo | rodada 1 | rodada 2 | rodada 3 | o conjunto de linhas em falta é o mesmo? |
+| --- | --- | --- | --- | --- |
+| `desktop_dashboard.py` | 343 / 62.49% | 343 / 62.49% | 343 / 62.49% | sim |
+| `emulation.py` | 1161 / 71.11% | 1161 / 71.11% | 1161 / 71.11% | sim |
+| `cache.py` | 6 / 94.57% | 6 / 94.57% | 6 / 94.57% | sim |
+| `screencast_web.py` | 12 / 95.06% | 12 / 94.85% | 12 / 94.85% | **NÃO** |
+| `steam_media.py` | 32 / 74.76% | 32 / 74.76% | 32 / 74.76% | sim |
+| `bitrot.py` | 11 / 90.83% | 12 / 90.00% | 12 / 90.00% | **NÃO** |
+
+* flutuam em `src/steamzero/adapters/screencast_web.py`: 110->exit
+* flutuam em `src/steamzero/domain/bitrot.py`: 336
+
+## 3. O que a flutuação prova, e o que não prova
+
+Prova: duas unidades do delta são o próprio instrumento oscilando, sem que código
+nenhum tenha mudado entre as rodadas —
+
+- `bitrot.py:336` (o `raise` de documento anti-bitrot inválido) sai coberto na rodada
+  1 e em falta nas rodadas 2 e 3. É exatamente o `+1` que o delta integral aponta
+  naquele arquivo;
+- o ramo `screencast_web.py:110->exit` sai em falta na rodada 1 e coberto nas rodadas
+  2 e 3. É o `+1` de ramo do mesmo arquivo no delta integral.
+
+Não prova: que os outros quatro arquivos (`desktop_dashboard`, `emulation`,
+`scraping/cache`, `steam_media`) flutuam. No subconjunto os conjuntos foram idênticos
+nas três rodadas, o que apenas mostra que o subconjunto os exercita de forma estável —
+não que estejam presos ao valor que o integral mediu. Para esses quatro o que existe
+é classe de linha (exceção/retry/ramo condicional) e identidade de arquivo (nenhum tocado por
+esta frente). **Não se rotula de flake o que não se reproduziu.**
+
+Consequência prática, declarada: o gate de `make check` passou com folga nas duas
+corridas (85,54% e 85,52% contra os 85,0% exigidos), e nenhuma linha de `src/` em
+Python foi tocada por esta entrega. Ainda assim, a regra `Cobertura não regride`
+aplicada como número agregado de duas casas aceita oscilação de instrumento e não a
+distingue de código retirado — um comparador por arquivo seria a forma correta de
+aplicá-la. Isso é pauta fora desta fatia.
+
+## 4. Como conferir, sem depender desta narrativa
+
+```
+$ python3 /tmp/esde_batch/cov_delta.py \
+      /tmp/esde_batch/gates/integral-anterior-com-falha.log \
+      /tmp/esde_batch/gates/integral-congelada.log
+
+# a flutuação, na mesma árvore:
+$ for i in 1 2 3; do grep -h "^src/steamzero/domain/bitrot.py" /tmp/esde_batch/gates/cov-flip-$i.txt; done
+$ for i in 1 2 3; do grep -h "^src/steamzero/adapters/screencast_web.py" /tmp/esde_batch/gates/cov-flip-$i.txt; done
+```
+
+As linhas citadas, com o fonte ao lado (cada bloco abaixo é o comando e a saída
+reais, lidos do checkout):
+
+```
+$ sed -n '334,336p' src/steamzero/domain/bitrot.py
+                "items",
+            }:
+                raise SteamZeroError("E-STATE-INTEGRITY", detail="documento anti-bitrot inválido")
+
+$ sed -n '108,110p' src/steamzero/adapters/screencast_web.py
+            self.end_headers()
+            self.wfile.write(b'{"ok":true}')
+            if _ReceiverHandler.provider is not None:
+
+$ sed -n '84,86p' src/steamzero/adapters/scraping/cache.py
+                except sqlite3.OperationalError:
+                    time.sleep(0.05)
+            else:
+
+$ sed -n '37,38p' src/steamzero/adapters/steam_media.py
+            except OSError:
+                continue
+
+$ sed -n '151,152p' src/steamzero/adapters/desktop_dashboard.py
+            except OSError:
+                continue
+
+$ sed -n '8610,8611p' src/steamzero/adapters/emulation.py
+                except (OSError, ProcessLookupError):
+                    continue
+```
+
+## 5. Identidade da árvore durante o experimento
+
+As três rodadas não editaram nada versionado; o resumo do estado é o mesmo da corrida
+congelada:
+
+```
+$ git rev-parse HEAD
+    190ea683a941f8dc37036ef6402ffabaf7843799
+$ git status --porcelain | sha256sum  (resumo de 16 caracteres)
+    b0203ecb6612b62c
+$ sha256sum dos quatro arquivos da entrega:
+    4c06718a68dd37e8aa927b9c13ed0685543df466f7ef3ad31714825da45ac9a9  src/steamzero/ui/qml/Main.qml
+    54db5889b3b8f46c8454d1e4227bdb8e21233dfe05a7c953b6562f173a119772  tests/integration/test_ui_shell_esde_import_dialog.py
+    16b8f321d0e52bd0c4f8adfe401d8175b33a9d7308317c8be597d40f516fa7e7  tests/qml/check_shell_esde_import_dialog_journey.qml
+    97fde9dc4112c09fd915455cae6bfd54184dec27dbf999874bba439e4a817c49  tests/qml/capture_shell_esde_import_dialog.qml
+```
+
+As rodadas escrevem apenas `.coverage` e artefatos de build, fora do versionado. Nada
+deste arquivo reescreve o resultado da corrida promovida: ela é lida como está, e o
+experimento acrescenta uma medição sobre o instrumento, não sobre o produto.
