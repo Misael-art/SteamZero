@@ -1,0 +1,50 @@
+# 09 — Re-execução focada na árvore parada
+
+Depois de a suíte `-m visual` ter terminado (e de os dois gates de diálogo terem
+sido reformatados e terem tido a docstring ajustada **durante** aquela corrida), o
+subconjunto afetado foi reexecutado com a árvore final, sem edição em curso:
+
+```
+$ .venv/bin/python tools/run_tests_isolated.py \
+    tests/integration/test_esde_import_dialog_compact.py \
+    tests/integration/test_retrofe_import_dialog_compact.py \
+    tests/integration/test_visual_goldens.py \
+    -k "not test_the_capture_matches_the_versioned_baseline" -q --tb=short
+rc=0
+...................................................................      [100%]
+67 passed, 10 deselected in 16.43s
+real-state before: exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790477787953832614 source=HOME-default
+real-state after:  exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790477787953832614 source=HOME-default
+```
+
+## O que está dentro dos 67
+
+* os 13 casos de `qmltestrunner` de cada diálogo (geometria e foco, teclado e
+  clique reais) — os dois gates de viewport;
+* as guardas de intenção dos dois arquivos, que rodam sem Qt;
+* `test_capturas_de_evidencia_dos_dois_viewports` das duas famílias, agora com o
+  contrato novo (viewport declarado, `assert_not_empty`, rodapé/ação dentro da
+  moldura e `compare_with_golden` com `changed_pixel_count == 0`);
+* `test_o_contrato_de_captura_reprova_vazio_ausente_e_corte` dos dois arquivos — a
+  mordida, sem Qt;
+* os inventários `test_every_fixture_has_a_baseline` e
+  `test_no_orphan_baseline_survives` de `tests/integration/test_visual_goldens.py`,
+  que são a razão de as baselines novas morarem em subdiretório: os dois varrem
+  `GOLDEN_DIR.glob("*.png")` raso, e as nove novas ficam fora daquele denominador
+  por construção, não por acidente.
+
+## Por que 10 foram desmarcados
+
+`test_the_capture_matches_the_versioned_baseline` é parametrizado sobre as dez
+fixtures históricas e re-renderiza cada uma. Rodou inteiro e verde dentro dos 342
+da corrida `-m visual` de `06-suite-visual-local.log`, minutos antes, e nada desta
+rodada toca `tools/qml_capture_runner.py`, as dez baselines antigas nem os
+harnesses que as produzem. Desmarcar aqui foi escolha de custo, não de conveniência
+— e está registrado para que o número de 67 não seja lido como "as dez baselines
+não mudaram".
+
+## Guarda de estado
+
+`real-state before` e `after` idênticos nos dois campos que importam
+(`files=12816`, `directories=2068`, `bytes=1372712391`, `max_mtime_ns=…953832614`):
+nenhuma escrita no `$HOME` real.

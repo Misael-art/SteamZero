@@ -1,0 +1,30 @@
+# gates rapidos do checkpoint — 2ª fatia RC-01 — 2026-09-27T09:21:59-03:00
+# branch=codex/rc01-readiness-focus-2026-09-27 HEAD=449b68c3c2e9dd9a0544fcdd8370ac6277683c98
+$ .venv/bin/ruff check src tools tests
+All checks passed!
+rc=0
+$ .venv/bin/ruff format --check src tools tests
+671 files already formatted
+rc=0
+$ .venv/bin/mypy src
+Success: no issues found in 297 source files
+rc=0
+$ make independence boundaries
+.venv/bin/python tools/check_independence.py
+independência de runtime: OK
+.venv/bin/python tools/lint_boundaries.py --root src
+lint de fronteiras: OK (0 violações)
+rc=0
+$ make status-check
+.venv/bin/python tools/project_status.py check
+STATUS-CHECK: FALHOU
+- SZ-THEME-ENGINE: evidencia obsoleta; scopeDigest esperado b5d0db609363634b605d9a5449125968ff9662169b1788690fc42f456b3e07ea, atual 264c1c4c3da65fbb1943f08fc759597e0dcd16d9c0d6b62ee3b65b084360ea64
+- SZ-THEME-IMPORT-RETROFE: evidencia obsoleta; scopeDigest esperado f094ddc8b43e274613aed93421d92c49568d16a931be8ee3083e3024f218ef1b, atual 921522d6e90d358c70a8aef756dacc2109341f54cdc661851ae7cab6bc0c7899
+- SZ-THEME-IMPORT-SURFACE: evidencia obsoleta; scopeDigest esperado 2f8486455e56844ac128e1da718250965e3a8c692b1a32ad67a42923b792b5ca, atual d636598b132f78d2de2b6a86958f5dc69ab0142f119e1514aef579a2a16d2028
+- SZ-THEME-STUDIO: evidencia obsoleta; scopeDigest esperado 96d17e677ccb109abf26688026732470ad835a92fb51163c0349caef3903dad3, atual 8bc96aa2a3d1ca2fc66613e6ed424f6f279830f1caf172d661b5f8c7cafa09cb
+- SZ-UI-DESKTOP-AUDIT: evidencia obsoleta; scopeDigest esperado 32520ddb360e0b2d973e7a9e9726b407a099cc3ffde7ecd32e058a337b216fab, atual ce3615c73f79fc8220d229b468dbf9c376cdd60403ef55bc1d9af95d699bf8ca
+- docs/STATUS.md esta desatualizado; execute tools/project_status.py render --write
+- docs/ACTIVE-WORK.md esta desatualizado; execute tools/project_status.py render --write
+- docs/status/COVERAGE.md esta desatualizado; execute tools/project_status.py render --write
+make: *** [Makefile:55: status-check] Error 1
+rc=2

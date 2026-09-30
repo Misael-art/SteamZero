@@ -1,0 +1,169 @@
+# UX-05/UX-07 — VERMELHO medido com o mecanismo de teste real do projeto
+# data: 2026-09-27T08:41:55-03:00  branch: codex/rc01-readiness-focus-2026-09-27  HEAD: 449b68c3c2e9dd9a0544fcdd8370ac6277683c98
+# harness: tests/qml/check_retrofe_import_dialog_compact_viewport.qml (caminho canônico do checkout)
+#   sha256 harness: 63d3843baa28f259a687b12ec22d6745650ff8aaddd286b69f29d9d21d143abe
+#   painel SEM a correção — referência Git recuperável (não é cópia solta): src/steamzero/ui/qml/ThemeEditorPanel.qml
+#     como está em origin/main 3495c49d, e idêntico em c959be13 e 449b68c3 (mesmo blob):
+#       git show origin/main:src/steamzero/ui/qml/ThemeEditorPanel.qml
+#     sha256 do blob sem a correção: 7368fd385b8dc793c2ba83c6dc647c0b20f0dc9d094be8783bf01d1a35bb4dda (2924 linhas)
+#     Para obter exatamente a árvore do vermelho é preciso acrescentar a superfície de teste que o harness
+#     consome — SEIS linhas, nenhuma delas muda comportamento:
+#       @@ -49,6 +49,9 @@   depois de `property var exportPlan: null`, antes de `signal applied()`:
+#            property alias retrofeImportDialogControl: retrofeImportDialog
+#            property alias retrofeImportApplyControl: retrofeImportApplyButton
+#            (uma linha em branco)
+#       @@ -1109,6 +1112,7 @@  primeira linha de `Label {` ligada a `text: panel.retrofeImportNotice`:
+#            objectName: "themeImportRetrofeNotice"
+#       @@ -1238,6 +1242,7 @@  primeira linha do `Button { text: qsTr("Cancelar") }` do rodapé:
+#            objectName: "themeImportRetrofeCancel"
+#       @@ -1245,6 +1250,7 @@  primeira linha do `Button {` do primary (o objectName "themeImportRetrofeApply" já existia):
+#            id: retrofeImportApplyButton
+#     conferência de que a árvore montada é a mesma deste log: sha256 do arquivo com as seis linhas
+#       13d5c644ce82d36c357b0d9d957078ca6c22b849ffb0826c412292e808c36140 (2930 linhas)
+#     o arquivo corrigido mede sha256 79dc0e5f68ff4008ddd0ebcd07985544b48c9974cc4fe4a11878ae5b49c790ed
+#     Não há cópia alternativa do painel dentro do repositório: um `grep -rl "retrofeImportDialog" src tests`
+#     devolve apenas o painel e os três arquivos de teste deste lote. O backup de trabalho usado durante a
+#     edição ficou fora do checkout (/tmp), e nada aqui depende dele.
+# plataforma: offscreen (QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software) — NÃO é prova da release instalada no host
+# comando: QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QT_FORCE_STDERR_LOGGING=1 QT_LOGGING_RULES="" /usr/lib/qt6/bin/qmltestrunner -input tests/qml/check_retrofe_import_dialog_compact_viewport.qml
+# cwd: /home/misael/Projects/Steam Zero/Canonical/2026-09-21
+#
+# O que este log prova: o contrato abaixo é violado pelo diálogo ANTES da correção.
+# I. conteúdo e ações alcançáveis, com o retângulo inteiro dentro da área útil;
+# II. sem exigir ScrollView quando o conteúdo cabe;
+# III. com um cenário determinístico de conteúdo extenso (relatório de erro de 24 frases, enviado
+#     pelo próprio callback de erro de theme.import.retrofe.apply) para exercitar a rolagem;
+# IV. espera de estabilização observável com limite e falha explícita (linhas ESTABILIZOU/PASSO);
+# V. teclado REAL (keyClick) e clique REAL (mouseClick) pelo qmltestrunner do projeto.
+-------------------------------------------------------------------------------
+********* Start testing of qmltestrunner *********
+Config: Using QtTest library 6.11.2, Qt 6.11.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 16.2.1 20260810), biglinux unknown
+PASS   : qmltestrunner::RetrofeImportDialogViewport::initTestCase()
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_01_o_botao_real_abre_o_modal_e_o_foco_entra_no_corpo() qml: ESTABILIZOU 'aberto' em 40 ms :: 700x569|apply=(610,450)-(694,494)|notice=17/17|body=528/142
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_01_o_botao_real_abre_o_modal_e_o_foco_entra_no_corpo() qml: MEDIDA aberto viewport=949x593 banda=569 apply=(610,450)-(694,494)
+PASS   : qmltestrunner::RetrofeImportDialogViewport::test_01_o_botao_real_abre_o_modal_e_o_foco_entra_no_corpo()
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_02_conteudo_que_cabe_nao_exige_rolagem_e_mantem_acoes_alcancaveis() qml: ESTABILIZOU 'aberto' em 40 ms :: 700x569|apply=(610,450)-(694,494)|notice=17/17|body=528/142
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_02_conteudo_que_cabe_nao_exige_rolagem_e_mantem_acoes_alcancaveis() qml: ESTABILIZOU 'examinado' em 40 ms :: 700x569|apply=(610,547)-(694,591)|notice=17/17|body=528/556
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_02_conteudo_que_cabe_nao_exige_rolagem_e_mantem_acoes_alcancaveis() qml: ESTABILIZOU 'compacto normal' em 20 ms :: 700x569|apply=(610,547)-(694,591)|notice=17/17|body=528/556
+FAIL!  : qmltestrunner::RetrofeImportDialogViewport::test_02_conteudo_que_cabe_nao_exige_rolagem_e_mantem_acoes_alcancaveis() 'as ações precisam estar dentro da moldura do diálogo: cancel=(6,547)-(86,591) apply=(610,547)-(694,591)' returned FALSE. ()
+   Loc: [/home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_retrofe_import_dialog_compact_viewport.qml(555)]
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: ESTABILIZOU 'aberto' em 40 ms :: 700x569|apply=(610,450)-(694,494)|notice=17/17|body=528/142
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: ESTABILIZOU 'examinado' em 40 ms :: 700x569|apply=(610,547)-(694,591)|notice=17/17|body=528/556
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: ESTABILIZOU 'compacto navegação' em 20 ms :: 700x569|apply=(610,547)-(694,591)|notice=17/17|body=528/556
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 1 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 2 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 3 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 4 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 5 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 6 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 7 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 8 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 9 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 10 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 11 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 12 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 13 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 14 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 15 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 16 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 17 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 18 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 19 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 20 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 21 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 22 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 23 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() qml: PASSO 24 tag=compacto descida foco=themeImportRetrofeSource em (6,79)-(439,123) banda=569
+FAIL!  : qmltestrunner::RetrofeImportDialogViewport::test_03_teclas_reais_de_dp_pad_percorrem_o_dialogo_com_foco_visivel() 'teclas reais de descida não chegaram ao alvo em 'compacto descida' depois de 24 pressões' returned FALSE. ()
+   Loc: [/home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_retrofe_import_dialog_compact_viewport.qml(516)]
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_04_tab_e_shift_tab_reais_avancam_retrocedem_e_mantem_foco_a_vista() qml: ESTABILIZOU 'aberto' em 40 ms :: 700x569|apply=(610,450)-(694,494)|notice=17/17|body=528/142
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_04_tab_e_shift_tab_reais_avancam_retrocedem_e_mantem_foco_a_vista() qml: ESTABILIZOU 'examinado' em 40 ms :: 700x569|apply=(610,547)-(694,591)|notice=17/17|body=528/556
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_04_tab_e_shift_tab_reais_avancam_retrocedem_e_mantem_foco_a_vista() qml: ESTABILIZOU 'compacto tabulação' em 20 ms :: 700x569|apply=(610,547)-(694,591)|notice=17/17|body=528/556
+FAIL!  : qmltestrunner::RetrofeImportDialogViewport::test_04_tab_e_shift_tab_reais_avancam_retrocedem_e_mantem_foco_a_vista() 'Tab real levou o foco para fora da banda visível no passo 6 (themeImportRetrofeCancel) (expirou o limite de 1200 ms após 1200 ms)' returned FALSE. ()
+   Loc: [/home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_retrofe_import_dialog_compact_viewport.qml(328)]
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_05_setas_nao_roubam_a_navegacao_de_dentro_do_campo() qml: ESTABILIZOU 'aberto' em 40 ms :: 700x569|apply=(610,450)-(694,494)|notice=17/17|body=528/142
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_05_setas_nao_roubam_a_navegacao_de_dentro_do_campo() qml: ESTABILIZOU 'examinado' em 40 ms :: 700x569|apply=(610,547)-(694,591)|notice=17/17|body=528/556
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_05_setas_nao_roubam_a_navegacao_de_dentro_do_campo() qml: ESTABILIZOU 'compacto edição' em 20 ms :: 700x569|apply=(610,547)-(694,591)|notice=17/17|body=528/556
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_05_setas_nao_roubam_a_navegacao_de_dentro_do_campo() qml: MEDIDA edição caret=7->5 texto=7->6
+FAIL!  : qmltestrunner::RetrofeImportDialogViewport::test_05_setas_nao_roubam_a_navegacao_de_dentro_do_campo() 'Down real não navegou a partir de um campo focado (expirou o limite de 2000 ms após 2000 ms)' returned FALSE. ()
+   Loc: [/home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_retrofe_import_dialog_compact_viewport.qml(328)]
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro() qml: ESTABILIZOU 'aberto' em 40 ms :: 700x569|apply=(610,450)-(694,494)|notice=17/17|body=528/142
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro() qml: ESTABILIZOU 'examinado' em 40 ms :: 700x569|apply=(610,547)-(694,591)|notice=17/17|body=528/556
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro() qml: ESTABILIZOU 'compacto extenso antes do erro' em 20 ms :: 700x569|apply=(610,547)-(694,591)|notice=17/17|body=528/556
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro() qml: ESTABILIZOU 'compacto extenso' em 40 ms :: 700x569|apply=(610,1210)-(694,1254)|notice=680/680|body=528/1219
+FAIL!  : qmltestrunner::RetrofeImportDialogViewport::test_06_relatorio_extenso_deixa_acoes_alcancaveis_e_texto_integro() 'com conteúdo extenso 'Publicar cena' ou fica na banda visível (ação fixa) ou está dentro de corpo rolável (ação alcançável); ficou em (610,1210)-(694,1254) sem rolagem' returned FALSE. ()
+   Loc: [/home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_retrofe_import_dialog_compact_viewport.qml(713)]
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: ESTABILIZOU 'aberto' em 40 ms :: 700x650|apply=(610,516)-(694,560)|notice=17/680|body=609/142
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: ESTABILIZOU 'examinado' em 40 ms :: 700x650|apply=(610,598)-(694,642)|notice=17/17|body=609/556
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: ESTABILIZOU 'largo normal' em 20 ms :: 700x650|apply=(610,598)-(694,642)|notice=17/17|body=609/556
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: MEDIDA largo normal moldura=700x650 nodes=33 foraDaBandaSemRolagem=0 espremidos=0 overflowHorizontal=0
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() qml: ESTABILIZOU 'largo extenso' em 40 ms :: 700x650|apply=(610,1210)-(694,1254)|notice=680/680|body=609/1219
+FAIL!  : qmltestrunner::RetrofeImportDialogViewport::test_07_no_viewport_largo_acoes_continuam_alcancaveis_sem_corte() 'no viewport largo com conteúdo extenso o primary tem de estar fixo na banda ou dentro de corpo rolável' returned FALSE. ()
+   Loc: [/home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_retrofe_import_dialog_compact_viewport.qml(753)]
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_08_primary_permanece_bloqueado_sem_conteudo_e_escape_fecha() qml: ESTABILIZOU 'aberto' em 40 ms :: 700x569|apply=(610,450)-(694,494)|notice=17/680|body=528/142
+PASS   : qmltestrunner::RetrofeImportDialogViewport::test_08_primary_permanece_bloqueado_sem_conteudo_e_escape_fecha()
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_09_cancelar_pelo_clique_real_fecha_e_nao_publica() qml: ESTABILIZOU 'aberto' em 40 ms :: 700x569|apply=(610,450)-(694,494)|notice=17/680|body=528/142
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_09_cancelar_pelo_clique_real_fecha_e_nao_publica() qml: ESTABILIZOU 'examinado' em 40 ms :: 700x569|apply=(610,547)-(694,591)|notice=17/17|body=528/556
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_09_cancelar_pelo_clique_real_fecha_e_nao_publica() qml: ESTABILIZOU 'cancelar' em 20 ms :: 700x569|apply=(610,547)-(694,591)|notice=17/17|body=528/556
+PASS   : qmltestrunner::RetrofeImportDialogViewport::test_09_cancelar_pelo_clique_real_fecha_e_nao_publica()
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_10_publicar_pelo_clique_real_envia_payload_e_nao_ativa() qml: ESTABILIZOU 'aberto' em 40 ms :: 700x569|apply=(610,450)-(694,494)|notice=17/17|body=528/142
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_10_publicar_pelo_clique_real_envia_payload_e_nao_ativa() qml: ESTABILIZOU 'examinado' em 40 ms :: 700x569|apply=(610,547)-(694,591)|notice=17/17|body=528/556
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_10_publicar_pelo_clique_real_envia_payload_e_nao_ativa() qml: ESTABILIZOU 'publicar' em 20 ms :: 700x569|apply=(610,547)-(694,591)|notice=17/17|body=528/556
+QDEBUG : qmltestrunner::RetrofeImportDialogViewport::test_10_publicar_pelo_clique_real_envia_payload_e_nao_ativa() qml: MEDIDA publicar viewport=949x593 sceneId=org.exemplo.retrofe
+PASS   : qmltestrunner::RetrofeImportDialogViewport::test_10_publicar_pelo_clique_real_envia_payload_e_nao_ativa()
+PASS   : qmltestrunner::RetrofeImportDialogViewport::test_11_estado_de_teste_nao_vaza_para_o_proximo_cenario()
+PASS   : qmltestrunner::RetrofeImportDialogViewport::cleanupTestCase()
+Totals: 7 passed, 6 failed, 0 skipped, 0 blacklisted, 4405ms
+********* Finished testing of qmltestrunner *********
+# exit_code=6
+## Apêndice (adicionado em 09:54-03:00 do mesmo dia, sem tocar na corrida acima)
+
+A superfície de teste que o harness consome, como unified diff contra o blob do Git. É o caminho curto
+para reproduzir esta corrida exata:
+
+    git show origin/main:src/steamzero/ui/qml/ThemeEditorPanel.qml > /tmp/base.qml
+    cp /tmp/base.qml /tmp/pre.qml
+    patch -s /tmp/pre.qml < /tmp/superficie.patch        # o diff abaixo, verbatim
+    sha256sum /tmp/pre.qml        # deve dar 13d5c644ce82d36c357b0d9d957078ca6c22b849ffb0826c412292e808c36140
+
+--- base (blob 7368fd38… de origin/main) x superfície de teste
+@@ -49,6 +49,9 @@
+     property var applyPlan: null
+     property var exportPlan: null
+
++    property alias retrofeImportDialogControl: retrofeImportDialog
++    property alias retrofeImportApplyControl: retrofeImportApplyButton
++
+     signal applied()
+     signal exported(string destination)
+
+@@ -1109,6 +1112,7 @@
+             }
+
+             Label {
++                objectName: "themeImportRetrofeNotice"
+                 text: panel.retrofeImportNotice
+                 visible: panel.retrofeImportNotice !== ""
+                 color: panel.retrofeImportNoticeIsError ? panel.redColor : panel.greenColor
+@@ -1238,6 +1242,7 @@
+             RowLayout {
+                 Layout.fillWidth: true
+                 Button {
++                    objectName: "themeImportRetrofeCancel"
+                     text: qsTr("Cancelar")
+                     Accessible.name: text
+                     Layout.minimumHeight: 44
+@@ -1245,6 +1250,7 @@
+                 }
+                 Item { Layout.fillWidth: true }
+                 Button {
++                    id: retrofeImportApplyButton
+                     objectName: "themeImportRetrofeApply"
+                     text: panel.retrofeImportBusy ? qsTr("Importando…") : qsTr("Publicar cena")
+                     enabled: !panel.retrofeImportBusy
+
+Seis linhas (5 de texto + 1 em branco), nenhuma delas muda comportamento. Este apêndice foi testado de
+fato: aplicando o diff acima ao blob de `origin/main`, o arquivo resultante saiu **byte a byte idêntico**
+ao usado nesta corrida (`cmp` sem saída, sha256 `13d5c644…`, 2930 linhas). O `mtime` da reconstrução é
+09:54:32-03:00 e a conferência por `sha256sum`/`cmp` foi reimpressa às 09:55:19-03:00. Nada foi copiado
+para dentro do checkout; a verificação foi feita em `/tmp`.

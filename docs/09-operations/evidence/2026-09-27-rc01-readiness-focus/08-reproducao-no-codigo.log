@@ -1,0 +1,69 @@
+# RC-01, segunda fatia — reprodução no código ANTES de qualquer mudança
+# Árvore: codex/rc01-central-loading-2026-09-26 @ c959be13 (HEAD com a 1ª fatia commitada)
+# Modo: somente leitura. Nenhum arquivo do checkout foi alterado por esta rodada.
+# data: 2026-09-27
+
+## UX-04 — unidades de armazenamento ilegíveis e divergentes
+
+1. O adaptador publica bytes crus como TEXTO de cartão:
+   - src/steamzero/adapters/emulation.py:5383  detail = f"{files} arquivo(s) · {bytes} byte(s)."
+   - src/steamzero/adapters/emulation.py:5395  metric = f"{bytes} B"
+   - src/steamzero/adapters/emulation.py:5401-5405  "{free} byte(s) livres de {capacity} byte(s)." / "{free} B livres"
+   Nenhum dos quatro formatadores do app é usado aqui: o número chega cru ao cartão.
+2. Quatro formatadores humanos coexistem, com TRÊS comportamentos diferentes para o mesmo valor:
+   - src/steamzero/ui/qml/Main.qml:1298-1306          -> "1.00 GiB" (units binárias rotuladas KiB/MiB/GiB, sem qsTr)
+   - src/steamzero/ui/qml/SteamGameplay.qml:290-298   -> idêntico ao de Main.qml (cópia)
+   - src/steamzero/ui/qml/Emulation.qml:533-542       -> "1.00 GB" (divide por 1024^3 e RÓTULA "GB", unit decimal
+     para divisor binário; precisão condicionada; <=0 devolve "Tamanho não publicado")
+   - src/steamzero/ui/qml/ThemeCatalogPanel.qml:81-88 -> "1024.0 MB" (divide por 1024^2 rotulando "MB"; não tem
+     andar de GiB/GB nenhum, então 5 GiB vira "5120.0 MB")
+   Consequência verificável: 1 GiB é escrito de três maneiras diferentes na mesma aplicação.
+3. Vazamento rotulado: src/steamzero/ui/qml/ThemeEditorPanel.qml:2259-2262
+   "Tamanho: %2 bytes" com panel.exportPlan.size cru, ao lado de "Arquivo:" e "Garantia:".
+
+## UX-03 — a porcentagem de prontidão não nomeia nenhum denominador
+
+1.src/steamzero/domain/emulation_workspace.py:430-474 compute_readiness devolve percent em {20, 35, 45, 100}
+   escolhido por ramo de bloqueio, e detail = blockers[0] (os demais bloqueios existem mas não aparecem).
+2. Pelo menos SEIS produtores independentes alimentam o mesmo campo "percent" com constantes arbitrárias e
+   sem denominador medido:
+   - domain/emulation_workspace.py:468                20 | 35 | 45 | 100
+   - domain/platform_composer.py:340,349              100 se launchable senão 45 | 0
+   - domain/cloud_platforms.py:107                    50 se opener_available senão 0
+   - domain/platforms.py:296                          0
+   - adapters/emulation.py:210                        100 se has_games senão 0
+   - adapters/steam_gameplay.py:248                   readiness (outro domínio)
+   - adapters/desktop_dashboard.py:638                0
+3. O consumo pinta o número como grandeza: src/steamzero/ui/qml/Emulation.qml:1611
+   text: page.readinessPercent() + "%" e a cor é decidida por UM limiar fixo em >= 80
+   (Emulation.qml:1601,1603,1612,3240-3242,3256,3265). Com o domínio real {20,35,45,100}, o limiar 80 só é
+   atingido pelo valor 100: 20, 35 e 45 significam coisas diferentes (blocked / unverified / attention) e
+   renderizam todos idênticos. A barra (Emulation.qml:3277-3283) ainda acessibiliza "N por cento" sem
+   dizer N de quê, e o detail vai com maximumLineCount: 1 + elide (Emulation.qml:3271-3274).
+4. readinessPercent() (Emulation.qml:425-428) apenas grava e corta em [0,100] — não normaliza nem documenta
+   denominador. O fallback da propriedade (Emulation.qml:184-189) abre com percent 0 e "Verificando plataforma".
+
+## UX-05 / UX-07 — o modal RetroFE não cabe nem rola em viewport compacto
+
+- src/steamzero/ui/qml/ThemeEditorPanel.qml:1048-1058: Dialog com height = min(panel.height - 24, 650),
+  modal, closePolicy só Escape, standardButtons nenhum.
+- src/steamzero/ui/qml/ThemeEditorPanel.qml:1063: contentItem: ColumnLayout { ... } — o corpo do diálogo NÃO
+  está dentro de um ScrollView. O único ScrollView (1126-1131, preferredHeight 150) cobre a lista de layouts,
+  não o corpo.
+- Consequência geométrica em 949x593: a altura útil do diálogo (~569 px) é menor que a altura implícita do
+  ColumnLayout (label de 3 linhas + campos + "Layouts encontrados" + lista de 150 + o que vem depois), então
+  o rodapé de ação fica fora da área visível sem meio de alcançá-lo por scroll. Falta confirmar por medição
+  (abaixo), não por leitura.
+
+## Limite desta rodada
+
+É reprodução por leitura de código, com cada linha conferida no arquivo e no número indicado. NÃO é prova de
+execução: a contradição geométrica do modal e o que o usuário de fato enxerga em 949x593 ainda precisam do
+probe offscreen (próximo passo), e nada aqui foi medido na release instalada.
+
+## Como refazer cada contagem
+
+  grep -n "byte(s)\|B livres" src/steamzero/adapters/emulation.py
+  grep -n "function formatBytes\|function humanBytes" src/steamzero/ui/qml/*.qml
+  grep -rn "\"percent\"" src/steamzero --include="*.py"
+  sed -n '1048,1136p' src/steamzero/ui/qml/ThemeEditorPanel.qml

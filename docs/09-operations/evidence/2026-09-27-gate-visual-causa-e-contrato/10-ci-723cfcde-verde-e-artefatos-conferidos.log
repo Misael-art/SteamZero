@@ -1,0 +1,106 @@
+# 10 — O gate visual fecha verde no SHA exato, o artefato existe, e o que a corrida ainda reprovou
+
+Data: 2026-09-27. Run `36341332344`, evento `pull_request`, `headSha =
+723cfcde35266a163cf141626a65c3d52c5cd59b` (a ponta desta rodada). Leitura do término de um único
+`gh run watch` — nenhum commit foi feito para "testar" o pipeline.
+
+## Grade terminal (medida, `gh run view --json jobs`)
+
+| job | status | conclusão | janela |
+| --- | --- | --- | --- |
+| Wheel limpo, smoke e supply chain | completed | **success** | 18:37:29Z → 18:38:10Z |
+| Smoke Ubuntu 24.04 | completed | success | 18:37:29Z → 18:38:02Z |
+| Smoke Arch Linux | completed | success | 18:37:30Z → 18:38:09Z |
+| Smoke Manjaro | completed | success | 18:37:29Z → 18:38:07Z |
+| Python 3.11 | completed | **failure** | 18:37:31Z → 18:37:57Z |
+| Python 3.12 | completed | **failure** | 18:37:29Z → 18:37:56Z |
+| Python 3.14 | completed | **failure** | 18:37:30Z → 18:37:58Z |
+| **Gate visual QML (Linux)** | completed | **success** | 18:37:30Z → 18:57:43Z (20m13s) |
+
+**O bloqueio desta rodada está fechado:** o job `Gate visual QML (Linux)` — vermelho em `fe5751a0`,
+`3b0778fe` e nas duas tentativas anteriores — passou em `723cfcde`. É exatamente o recorte da
+instrução do operador; nenhuma outra frente foi tocada.
+
+## O artefato que nunca existiu, agora conferido arquivo por arquivo
+
+`GET /repos/{owner}/{repo}/actions/artifacts` filtrado por `workflow_run.id == 36341332344` devolve
+dois artefatos: `steamzero-wheel-…` e **`qml-visual-artifacts` (1 620 705 bytes)**. Nos 100 runs
+anteriores a contagem de artefatos com esse nome era **zero**.
+
+Baixado e descompactado fora do checkout (`/tmp`), o conteúdo é:
+
+* **51 arquivos**, dos quais **36 PNG** e 15 `.json`/`.txt` — os mesmos 51/36 medidos localmente em
+  `03-artefatos-do-runner.log`; as contagens dos dois lados coincidem;
+* `esde-import/` com as 5 cenas (`<cena>-gate.png`), `geometria.json`, `ambiente.json`,
+  `saida-do-runner.txt` e uma subpasta por cena com `diff.png`/`overlay.png`/`expected.png` +
+  `metrics.json`; `retrofe-import/` com as 4 cenas e a mesma estrutura;
+* `saida-do-runner.txt` com `str(tmp_path)` substituído pelo marcador `<tmp>`, como desenhado.
+
+**As nove capturas do runner são byte idênticas às baselines versionadas** (sha256 dos dois lados,
+comparados aqui, e não "parecido"):
+
+| cena | sha256 (12 primeiros) | bytes |
+| --- | --- | --- |
+| esde/1-compacto-acoes-e-corpo | `84080a23b89d` | 31 184 |
+| esde/2-compacto-listagem-24-esquemas | `3c7d76bf6942` | 44 607 |
+| esde/3-compacto-rodape-fixo-com-campo-de-nome-focado | `52a917e6a784` | 44 513 |
+| esde/4-compacto-relatorio-extenso | `ef51bc1a58fc` | 106 557 |
+| esde/5-largo-relatorio-extenso | `25c6d99fe3a5` | 117 176 |
+| retrofe/1-compacto-acoes-e-corpo | `bc19440fd4b4` | 38 748 |
+| retrofe/2-compacto-foco-rola-destino | `563fa3ebeef4` | 38 731 |
+| retrofe/3-compacto-relatorio-extenso | `ca820b1d2cd4` | 71 450 |
+| retrofe/4-largo-relatorio-extenso | `9448ba7c6102` | 87 128 |
+
+`identicos = 9/9`. Fecha-se assim a pendência que `07-baselines-produzidas.log` declarava como
+limitação: a paridade byte a byte antes conferida só na cena 1 passa a existir para as nove, e ela não
+depende da minha leitura — qualquer pessoa confere o artefato contra `tests/qml/golden/import-dialogs/`.
+
+**Privacidade do que o CI publica:** varredura case-insensitive de
+`home/|/root|token|ghp_|authoriz|password|secret|misael|/tmp/steamzero|pytest-of` sobre os 15
+arquivos `.txt`/`.json` do artefato devolve **0 ocorrências em todos eles**. O acervo do host não entra
+por construção: o harness só conhece `tests/fixtures/**`.
+
+## O que a mesma corrida reprovou — e a causa é minha, não do produto
+
+Os três jobs `Python 3.11/3.12/3.14` falharam em ~26 s, todos no mesmo passo:
+
+```
+python tools/project_status.py check
+STATUS-CHECK: FALHOU
+- SZ-UI-DESKTOP-AUDIT: evidencia obsoleta; scopeDigest esperado 513c214c…, atual b83a9c78…
+```
+
+Hipótese: o `scopeDigest` commitado em `723cfcde` está velho para o conteúdo commitado da pasta de
+evidência. Experimento de variável única, local, sem segundo checkout: (a) `project_status.py check`
+na árvore de trabalho → `a085fd93…`; (b) a correção de texto do log `06` guardada à parte e o arquivo
+devolvido ao conteúdo de `HEAD` (sha256 `a512825b5b4b` contra `3cf667b30078` da minha versão) → o check
+devolve **exatamente `b83a9c78…`**, o mesmo valor do CI; (c) minha versão restaurada. Conclusão: o
+ambiente do runner não entra na conta — o hash é função do conteúdo, e o conteúdo commitado não bate
+com o digest commitado.
+
+Causa raiz do meu erro: renuei o digest e medi `STATUS-CHECK: OK` **antes** das últimas edições da
+pasta (`05-sonda-de-mordida.py` reescrito para ser autocontido, `04-…txt` regenerado a partir dele,
+bloco citado em `02` alinhado ao nome real e duas linhas do `README`). Depois dessas edições não
+reexecutei o check. É a mesma armadilha que a 2ª fatia registrou ("digest não pode ser renovado antes
+de os logs existirem"), agora na direção inversa: **log editado depois do digest**. A correção é a que a
+ferramenta manda fazer — renovar o digest pelo valor que ela imprime, no mesmo commit que carrega o
+conteúdo medido.
+
+O limite que eu havia escrito em `06-suite-visual-local.log` sobre os `12 skipped` do container também
+caiu nesta leitura: não eram "as capturas que abortavam cedo". São as variantes `MultiEffect` de
+`tests/integration/test_qml_asset_recipes.py`, que pulam por `QT_QUICK_BACKEND=software` (`:44`), e a
+imagem canônica traz esse valor no próprio `Config.Env` (conferido por `docker image inspect`). A
+correção está no próprio log `06`, e o artefato do job verde a confirma: 342 coletados dos dois lados.
+
+## O que isto prova, e o que ainda não prova
+
+* Prova: a causa do vermelho era o container sem fonte; o contrato novo renderiza igual no runner e
+  aqui; a publicação de evidência funciona e é inspecionável por terceiros; nada pessoal foi publicado.
+* Prova: a integral `-m visual` do projeto fecha verde no SHA da rodada.
+* **Não prova** o `STATUS-CHECK` naquele SHA — ele reprovou, e isso é defeito documental desta rodada,
+  corrigido no commit seguinte. A condição de saída pedida ("CI aprovado no SHA final") só se confere
+  no SHA que carrega esta correção.
+* **Não prova** nada de produto: `src/` não mudou nesta rodada, e a release instalada continua sem
+  verificação física (pendência registrada em cartão).
+* Não reescreve o histórico: as corridas de `fe5751a0`, `3b0778fe` e das duas tentativas anteriores
+  permanecem vermelhas para sempre, por definição do próprio registro.

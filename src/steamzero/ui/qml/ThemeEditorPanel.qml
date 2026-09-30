@@ -49,6 +49,11 @@ Rectangle {
     property var applyPlan: null
     property var exportPlan: null
 
+    property alias retrofeImportDialogControl: retrofeImportDialog
+    property alias retrofeImportApplyControl: retrofeImportApplyButton
+    property alias esdeImportDialogControl: esdeImportDialog
+    property alias esdeImportApplyControl: esdeImportApplyButton
+
     signal applied()
     signal exported(string destination)
 
@@ -388,6 +393,68 @@ Rectangle {
             panel.retrofeImportNotice = String(message || qsTr("Não foi possível importar a cena RetroFE."))
             panel.retrofeImportNoticeIsError = true
         })
+    }
+
+    /// O corpo do diálogo é rolável e as ações ficam no rodapé: antes de revelar
+    /// um item é preciso saber se ele pertence ao diálogo aberto.
+    function itemInRetrofeImportDialog(item) {
+        let current = item
+        while (current) {
+            if (current === retrofeImportScroll || current === retrofeImportFooter)
+                return true
+            current = current.parent
+        }
+        return false
+    }
+
+    function revealRetrofeImportItem(item) {
+        if (!panel.itemInRetrofeImportDialog(item))
+            return
+        const scroll = retrofeImportScroll.contentItem
+        if (!scroll || !scroll.contentItem || !item.height)
+            return
+        const point = item.mapToItem(scroll.contentItem, 0, 0)
+        if (point.y < 0 || point.y > scroll.contentHeight)
+            return
+        const top = point.y - 12
+        const bottom = point.y + item.height + 12
+        if (top < scroll.contentY)
+            scroll.contentY = Math.max(0, top)
+        else if (bottom > scroll.contentY + scroll.height)
+            scroll.contentY = Math.min(
+                Math.max(0, scroll.contentHeight - scroll.height),
+                bottom - scroll.height
+            )
+    }
+
+    function itemInEsdeImportDialog(item) {
+        let current = item
+        while (current) {
+            if (current === esdeImportScroll || current === esdeImportFooter)
+                return true
+            current = current.parent
+        }
+        return false
+    }
+
+    function revealEsdeImportItem(item) {
+        if (!panel.itemInEsdeImportDialog(item))
+            return
+        const scroll = esdeImportScroll.contentItem
+        if (!scroll || !scroll.contentItem || !item.height)
+            return
+        const point = item.mapToItem(scroll.contentItem, 0, 0)
+        if (point.y < 0 || point.y > scroll.contentHeight)
+            return
+        const top = point.y - 12
+        const bottom = point.y + item.height + 12
+        if (top < scroll.contentY)
+            scroll.contentY = Math.max(0, top)
+        else if (bottom > scroll.contentY + scroll.height)
+            scroll.contentY = Math.min(
+                Math.max(0, scroll.contentHeight - scroll.height),
+                bottom - scroll.height
+            )
     }
 
     function _mergeTokens(category, values) {
@@ -912,72 +979,102 @@ Rectangle {
         onOpened: importSourceField.forceActiveFocus()
         onClosed: panel.resetEsdeImport()
 
-        contentItem: ColumnLayout {
-            spacing: 10
+        /// Up/Down percorrem o diálogo inteiro, exatamente como no modal RetroFE da
+        /// fatia anterior. O rodapé não é descendente do corpo rolável, então as duas
+        /// pontas chamam o mesmo passo. Andar só dentro do modal e pular o que não
+        /// aceita foco: sem isso o D-pad atravessaria para os controles atrás do
+        /// diálogo ou empacaria em um botão desabilitado.
+        function moveVertical(event, forward) {
+            const hostWindow = panel.Window.window
+            const active = hostWindow ? hostWindow.activeFocusItem : null
+            let next = active
+            do {
+                next = next ? next.nextItemInFocusChain(forward) : null
+            } while (next && next !== active
+                     && (!panel.itemInEsdeImportDialog(next) || next.enabled === false))
+            if (!next || next === active)
+                return
+            next.forceActiveFocus(Qt.TabFocusReason)
+            Qt.callLater(function() { panel.revealEsdeImportItem(next) })
+        }
 
-            Label {
-                text: qsTr("Examine primeiro. A importação cria um tema editável e não altera o tema ativo.")
-                color: panel.mutedColor
-                wrapMode: Text.WordWrap
-                Layout.fillWidth: true
+        contentItem: ScrollView {
+            id: esdeImportScroll
+            clip: true
+            contentWidth: availableWidth
+            focus: true
+            // Setas verticais navegam o diálogo; as horizontais seguem editando.
+            Keys.onUpPressed: function(event) {
+                esdeImportDialog.moveVertical(event, false)
+            }
+            Keys.onDownPressed: function(event) {
+                esdeImportDialog.moveVertical(event, true)
             }
 
-            RowLayout {
-                Layout.fillWidth: true
-                TextField {
-                    id: importSourceField
-                    objectName: "themeImportEsdeSource"
-                    text: panel.esdeImportSource
-                    placeholderText: qsTr("Pasta do tema ES-DE")
-                    Accessible.name: qsTr("Pasta do tema ES-DE")
+            ColumnLayout {
+                width: esdeImportScroll.availableWidth
+                spacing: 10
+
+                Label {
+                    text: qsTr("Examine primeiro. A importação cria um tema editável e não altera o tema ativo.")
+                    color: panel.mutedColor
+                    wrapMode: Text.WordWrap
                     Layout.fillWidth: true
-                    Layout.minimumHeight: 48
-                    onTextChanged: panel.esdeImportSource = text
                 }
-                Button {
-                    objectName: "themeImportEsdeBrowse"
-                    text: qsTr("Escolher")
-                    Accessible.name: text
-                    Layout.minimumHeight: 48
-                    onClicked: esdeImportFolderDialog.open()
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    TextField {
+                        id: importSourceField
+                        objectName: "themeImportEsdeSource"
+                        text: panel.esdeImportSource
+                        placeholderText: qsTr("Pasta do tema ES-DE")
+                        Accessible.name: qsTr("Pasta do tema ES-DE")
+                        Layout.fillWidth: true
+                        Layout.minimumHeight: 48
+                        onTextChanged: panel.esdeImportSource = text
+                    }
+                    Button {
+                        objectName: "themeImportEsdeBrowse"
+                        text: qsTr("Escolher")
+                        Accessible.name: text
+                        Layout.minimumHeight: 48
+                        onClicked: esdeImportFolderDialog.open()
+                    }
+                    Button {
+                        objectName: "themeImportEsdeInspect"
+                        text: qsTr("Examinar")
+                        enabled: !panel.esdeImportBusy && panel.esdeImportSource.trim() !== ""
+                        Accessible.name: text
+                        Accessible.description: enabled
+                            ? qsTr("Lê os esquemas sem gravar arquivos")
+                            : qsTr("Informe a pasta do tema antes de examinar")
+                        Layout.minimumHeight: 48
+                        onClicked: panel.inspectEsdeImport()
+                    }
                 }
-                Button {
-                    objectName: "themeImportEsdeInspect"
-                    text: qsTr("Examinar")
-                    enabled: !panel.esdeImportBusy && panel.esdeImportSource.trim() !== ""
-                    Accessible.name: text
-                    Accessible.description: enabled
-                        ? qsTr("Lê os esquemas sem gravar arquivos")
-                        : qsTr("Informe a pasta do tema antes de examinar")
-                    Layout.minimumHeight: 48
-                    onClicked: panel.inspectEsdeImport()
+
+                Label {
+                    objectName: "themeImportEsdeNotice"
+                    text: panel.esdeImportNotice
+                    visible: panel.esdeImportNotice !== ""
+                    color: panel.esdeImportNoticeIsError ? panel.redColor : panel.greenColor
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
                 }
-            }
 
-            Label {
-                text: panel.esdeImportNotice
-                visible: panel.esdeImportNotice !== ""
-                color: panel.esdeImportNoticeIsError ? panel.redColor : panel.greenColor
-                wrapMode: Text.WordWrap
-                Layout.fillWidth: true
-            }
+                Label {
+                    text: qsTr("Esquemas encontrados")
+                    visible: panel.esdeImportSchemes.length > 0
+                    color: panel.textColor
+                    font.weight: Font.Medium
+                }
 
-            Label {
-                text: qsTr("Esquemas encontrados")
-                visible: panel.esdeImportSchemes.length > 0
-                color: panel.textColor
-                font.weight: Font.Medium
-            }
-
-            ScrollView {
-                visible: panel.esdeImportSchemes.length > 0
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                clip: true
-                contentWidth: availableWidth
                 ColumnLayout {
-                    width: parent.availableWidth
+                    visible: panel.esdeImportSchemes.length > 0
+                    Layout.fillWidth: true
                     spacing: 4
+
                     Repeater {
                         model: panel.esdeImportSchemes
                         delegate: RowLayout {
@@ -1005,42 +1102,52 @@ Rectangle {
                         }
                     }
                 }
+
+                TextField {
+                    id: importNameField
+                    objectName: "themeImportEsdeName"
+                    text: panel.esdeImportName
+                    visible: panel.esdeImportSchemes.length > 0
+                    placeholderText: qsTr("Nome do tema importado")
+                    Accessible.name: qsTr("Nome do tema importado")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onTextChanged: panel.esdeImportName = text
+                }
+            }
+        }
+
+        footer: RowLayout {
+            id: esdeImportFooter
+            Layout.fillWidth: true
+            Keys.onUpPressed: function(event) {
+                esdeImportDialog.moveVertical(event, false)
+            }
+            Keys.onDownPressed: function(event) {
+                esdeImportDialog.moveVertical(event, true)
             }
 
-            TextField {
-                id: importNameField
-                objectName: "themeImportEsdeName"
-                text: panel.esdeImportName
-                visible: panel.esdeImportSchemes.length > 0
-                placeholderText: qsTr("Nome do tema importado")
-                Accessible.name: qsTr("Nome do tema importado")
-                Layout.fillWidth: true
+            Button {
+                objectName: "themeImportEsdeCancel"
+                text: qsTr("Cancelar")
+                Accessible.name: text
                 Layout.minimumHeight: 48
-                onTextChanged: panel.esdeImportName = text
+                onClicked: esdeImportDialog.close()
             }
-
-            RowLayout {
-                Layout.fillWidth: true
-                Button {
-                    text: qsTr("Cancelar")
-                    Accessible.name: text
-                    Layout.minimumHeight: 48
-                    onClicked: esdeImportDialog.close()
-                }
-                Item { Layout.fillWidth: true }
-                Button {
-                    objectName: "themeImportEsdeApply"
-                    text: panel.esdeImportBusy ? qsTr("Importando…") : qsTr("Importar como editável")
-                    enabled: !panel.esdeImportBusy
-                        && panel.esdeImportSchemeIndex >= 0
-                        && panel.esdeImportName.trim() !== ""
-                    Accessible.name: text
-                    Accessible.description: enabled
-                        ? qsTr("Cria o tema e deixa o tema ativo inalterado")
-                        : qsTr("Examine um esquema e informe um nome")
-                    Layout.minimumHeight: 48
-                    onClicked: panel.applyEsdeImport()
-                }
+            Item { Layout.fillWidth: true }
+            Button {
+                id: esdeImportApplyButton
+                objectName: "themeImportEsdeApply"
+                text: panel.esdeImportBusy ? qsTr("Importando…") : qsTr("Importar como editável")
+                enabled: !panel.esdeImportBusy
+                    && panel.esdeImportSchemeIndex >= 0
+                    && panel.esdeImportName.trim() !== ""
+                Accessible.name: text
+                Accessible.description: enabled
+                    ? qsTr("Cria o tema e deixa o tema ativo inalterado")
+                    : qsTr("Examine um esquema e informe um nome")
+                Layout.minimumHeight: 48
+                onClicked: panel.applyEsdeImport()
             }
         }
     }
@@ -1059,79 +1166,109 @@ Rectangle {
         onOpened: retrofeImportSourceField.forceActiveFocus()
         onClosed: panel.resetRetrofeImport()
 
-        contentItem: ColumnLayout {
-            spacing: 10
+        /// Up/Down percorrem o diálogo inteiro. O rodapé não é descendente do
+        /// corpo rolável, então as duas pontas chamam o mesmo passo. Andar só
+        /// dentro do modal e pular o que não aceita foco: sem isso o D-pad
+        /// atravessaria para os controles atrás do diálogo ou empacaria em um
+        /// botão desabilitado.
+        function moveVertical(event, forward) {
+            const hostWindow = panel.Window.window
+            const active = hostWindow ? hostWindow.activeFocusItem : null
+            let next = active
+            do {
+                next = next ? next.nextItemInFocusChain(forward) : null
+            } while (next && next !== active
+                     && (!panel.itemInRetrofeImportDialog(next) || next.enabled === false))
+            if (!next || next === active)
+                return
+            next.forceActiveFocus(Qt.TabFocusReason)
+            Qt.callLater(function() { panel.revealRetrofeImportItem(next) })
+        }
 
-            Label {
-                text: qsTr("Examine primeiro. A cena é compilada para o IR comum, assets são copiados para o store por conteúdo e nada é ativado automaticamente.")
-                color: panel.mutedColor
-                wrapMode: Text.WordWrap
-                Layout.fillWidth: true
+        contentItem: ScrollView {
+            id: retrofeImportScroll
+            clip: true
+            contentWidth: availableWidth
+            focus: true
+            // Setas verticais navegam o diálogo; as horizontais seguem editando.
+            Keys.onUpPressed: function(event) {
+                retrofeImportDialog.moveVertical(event, false)
+            }
+            Keys.onDownPressed: function(event) {
+                retrofeImportDialog.moveVertical(event, true)
             }
 
-            RowLayout {
-                Layout.fillWidth: true
-                TextField {
-                    id: retrofeImportSourceField
-                    objectName: "themeImportRetrofeSource"
-                    text: panel.retrofeImportSource
-                    placeholderText: qsTr("Pasta ou layout XML do RetroFE")
-                    Accessible.name: qsTr("Pasta ou layout XML do RetroFE")
+            ColumnLayout {
+                width: retrofeImportScroll.availableWidth
+                spacing: 10
+
+                Label {
+                    text: qsTr("Examine primeiro. A cena é compilada para o IR comum, assets são copiados para o store por conteúdo e nada é ativado automaticamente.")
+                    color: panel.mutedColor
+                    wrapMode: Text.WordWrap
                     Layout.fillWidth: true
-                    Layout.minimumHeight: 44
-                    onTextChanged: panel.retrofeImportSource = text
                 }
-                Button {
-                    objectName: "themeImportRetrofeBrowseFolder"
-                    text: qsTr("Pasta")
-                    Accessible.name: text
-                    Layout.minimumHeight: 44
-                    onClicked: retrofeImportFolderDialog.open()
-                }
-                Button {
-                    objectName: "themeImportRetrofeBrowseFile"
-                    text: qsTr("XML")
-                    Accessible.name: text
-                    Layout.minimumHeight: 44
-                    onClicked: retrofeImportFileDialog.open()
-                }
-                Button {
-                    objectName: "themeImportRetrofeInspect"
-                    text: qsTr("Examinar")
-                    enabled: !panel.retrofeImportBusy && panel.retrofeImportSource.trim() !== ""
-                    Accessible.name: text
-                    Accessible.description: enabled
-                        ? qsTr("Compila a prévia sem gravar arquivos")
-                        : qsTr("Informe a origem antes de examinar")
-                    Layout.minimumHeight: 44
-                    onClicked: panel.inspectRetrofeImport()
-                }
-            }
 
-            Label {
-                text: panel.retrofeImportNotice
-                visible: panel.retrofeImportNotice !== ""
-                color: panel.retrofeImportNoticeIsError ? panel.redColor : panel.greenColor
-                wrapMode: Text.WordWrap
-                Layout.fillWidth: true
-            }
+                RowLayout {
+                    Layout.fillWidth: true
+                    TextField {
+                        id: retrofeImportSourceField
+                        objectName: "themeImportRetrofeSource"
+                        text: panel.retrofeImportSource
+                        placeholderText: qsTr("Pasta ou layout XML do RetroFE")
+                        Accessible.name: qsTr("Pasta ou layout XML do RetroFE")
+                        Layout.fillWidth: true
+                        Layout.minimumHeight: 44
+                        onTextChanged: panel.retrofeImportSource = text
+                    }
+                    Button {
+                        objectName: "themeImportRetrofeBrowseFolder"
+                        text: qsTr("Pasta")
+                        Accessible.name: text
+                        Layout.minimumHeight: 44
+                        onClicked: retrofeImportFolderDialog.open()
+                    }
+                    Button {
+                        objectName: "themeImportRetrofeBrowseFile"
+                        text: qsTr("XML")
+                        Accessible.name: text
+                        Layout.minimumHeight: 44
+                        onClicked: retrofeImportFileDialog.open()
+                    }
+                    Button {
+                        objectName: "themeImportRetrofeInspect"
+                        text: qsTr("Examinar")
+                        enabled: !panel.retrofeImportBusy && panel.retrofeImportSource.trim() !== ""
+                        Accessible.name: text
+                        Accessible.description: enabled
+                            ? qsTr("Compila a prévia sem gravar arquivos")
+                            : qsTr("Informe a origem antes de examinar")
+                        Layout.minimumHeight: 44
+                        onClicked: panel.inspectRetrofeImport()
+                    }
+                }
 
-            Label {
-                text: qsTr("Layouts encontrados")
-                visible: panel.retrofeImportLayouts.length > 0
-                color: panel.textColor
-                font.weight: Font.Medium
-            }
+                Label {
+                    objectName: "themeImportRetrofeNotice"
+                    text: panel.retrofeImportNotice
+                    visible: panel.retrofeImportNotice !== ""
+                    color: panel.retrofeImportNoticeIsError ? panel.redColor : panel.greenColor
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
 
-            ScrollView {
-                visible: panel.retrofeImportLayouts.length > 0
-                Layout.fillWidth: true
-                Layout.preferredHeight: 150
-                clip: true
-                contentWidth: availableWidth
+                Label {
+                    text: qsTr("Layouts encontrados")
+                    visible: panel.retrofeImportLayouts.length > 0
+                    color: panel.textColor
+                    font.weight: Font.Medium
+                }
+
                 ColumnLayout {
-                    width: parent.availableWidth
+                    visible: panel.retrofeImportLayouts.length > 0
+                    Layout.fillWidth: true
                     spacing: 4
+
                     Repeater {
                         model: panel.retrofeImportLayouts
                         delegate: RowLayout {
@@ -1159,108 +1296,133 @@ Rectangle {
                         }
                     }
                 }
+
+                Label {
+                    readonly property var selectedLayout: panel.retrofeImportLayoutIndex >= 0
+                        ? panel.retrofeImportLayouts[panel.retrofeImportLayoutIndex] : null
+                    text: selectedLayout && selectedLayout.assets
+                        ? (selectedLayout.assets.ready
+                            ? qsTr("Assets prontos: %1").arg(selectedLayout.assets.available.length)
+                            : qsTr("Assets ausentes/recusados: %1").arg(
+                                selectedLayout.assets.missing.length + selectedLayout.assets.refused.length))
+                        : ""
+                    visible: text !== ""
+                    color: selectedLayout && selectedLayout.assets && selectedLayout.assets.ready
+                        ? panel.greenColor : panel.amberColor
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+
+                GridLayout {
+                    columns: 2
+                    visible: panel.retrofeImportLayouts.length > 0
+                    Layout.fillWidth: true
+                    columnSpacing: 10
+                    rowSpacing: 8
+
+                    Label { text: qsTr("ID da cena"); color: panel.mutedColor }
+                    TextField {
+                        id: retrofeImportSceneIdField
+                        objectName: "themeImportRetrofeSceneId"
+                        text: panel.retrofeImportSceneId
+                        placeholderText: qsTr("org.exemplo.retrofe")
+                        Accessible.name: qsTr("ID da cena RetroFE")
+                        Layout.fillWidth: true
+                        onTextChanged: panel.retrofeImportSceneId = text
+                    }
+                    Label { text: qsTr("Nome"); color: panel.mutedColor }
+                    TextField {
+                        id: retrofeImportNameField
+                        objectName: "themeImportRetrofeName"
+                        text: panel.retrofeImportName
+                        placeholderText: qsTr("Nome da cena")
+                        Accessible.name: qsTr("Nome da cena RetroFE")
+                        Layout.fillWidth: true
+                        onTextChanged: panel.retrofeImportName = text
+                    }
+                    Label { text: qsTr("Autor"); color: panel.mutedColor }
+                    TextField {
+                        id: retrofeImportAuthorField
+                        objectName: "themeImportRetrofeAuthor"
+                        text: panel.retrofeImportAuthor
+                        placeholderText: qsTr("Autor do tema")
+                        Accessible.name: qsTr("Autor do tema RetroFE")
+                        Layout.fillWidth: true
+                        onTextChanged: panel.retrofeImportAuthor = text
+                    }
+                    Label { text: qsTr("Licença"); color: panel.mutedColor }
+                    TextField {
+                        id: retrofeImportLicenseField
+                        objectName: "themeImportRetrofeLicense"
+                        text: panel.retrofeImportLicense
+                        placeholderText: qsTr("SPDX, por exemplo CC0-1.0")
+                        Accessible.name: qsTr("Licença do tema RetroFE")
+                        Layout.fillWidth: true
+                        onTextChanged: panel.retrofeImportLicense = text
+                    }
+                }
+
+                CheckBox {
+                    objectName: "themeImportRetrofeOverwrite"
+                    text: qsTr("Substituir uma cena existente explicitamente")
+                    checked: panel.retrofeImportOverwrite
+                    visible: panel.retrofeImportLayouts.length > 0
+                    Accessible.name: text
+                    onToggled: panel.retrofeImportOverwrite = checked
+                }
+            }
+        }
+
+        footer: RowLayout {
+            id: retrofeImportFooter
+            Layout.fillWidth: true
+            Keys.onUpPressed: function(event) {
+                retrofeImportDialog.moveVertical(event, false)
+            }
+            Keys.onDownPressed: function(event) {
+                retrofeImportDialog.moveVertical(event, true)
             }
 
-            Label {
-                readonly property var selectedLayout: panel.retrofeImportLayoutIndex >= 0
-                    ? panel.retrofeImportLayouts[panel.retrofeImportLayoutIndex] : null
-                text: selectedLayout && selectedLayout.assets
-                    ? (selectedLayout.assets.ready
-                        ? qsTr("Assets prontos: %1").arg(selectedLayout.assets.available.length)
-                        : qsTr("Assets ausentes/recusados: %1").arg(
-                            selectedLayout.assets.missing.length + selectedLayout.assets.refused.length))
-                    : ""
-                visible: text !== ""
-                color: selectedLayout && selectedLayout.assets && selectedLayout.assets.ready
-                    ? panel.greenColor : panel.amberColor
-                wrapMode: Text.WordWrap
-                Layout.fillWidth: true
-            }
-
-            GridLayout {
-                columns: 2
-                visible: panel.retrofeImportLayouts.length > 0
-                Layout.fillWidth: true
-                columnSpacing: 10
-                rowSpacing: 8
-
-                Label { text: qsTr("ID da cena"); color: panel.mutedColor }
-                TextField {
-                    id: retrofeImportSceneIdField
-                    objectName: "themeImportRetrofeSceneId"
-                    text: panel.retrofeImportSceneId
-                    placeholderText: qsTr("org.exemplo.retrofe")
-                    Accessible.name: qsTr("ID da cena RetroFE")
-                    Layout.fillWidth: true
-                    onTextChanged: panel.retrofeImportSceneId = text
-                }
-                Label { text: qsTr("Nome"); color: panel.mutedColor }
-                TextField {
-                    id: retrofeImportNameField
-                    objectName: "themeImportRetrofeName"
-                    text: panel.retrofeImportName
-                    placeholderText: qsTr("Nome da cena")
-                    Accessible.name: qsTr("Nome da cena RetroFE")
-                    Layout.fillWidth: true
-                    onTextChanged: panel.retrofeImportName = text
-                }
-                Label { text: qsTr("Autor"); color: panel.mutedColor }
-                TextField {
-                    id: retrofeImportAuthorField
-                    objectName: "themeImportRetrofeAuthor"
-                    text: panel.retrofeImportAuthor
-                    placeholderText: qsTr("Autor do tema")
-                    Accessible.name: qsTr("Autor do tema RetroFE")
-                    Layout.fillWidth: true
-                    onTextChanged: panel.retrofeImportAuthor = text
-                }
-                Label { text: qsTr("Licença"); color: panel.mutedColor }
-                TextField {
-                    id: retrofeImportLicenseField
-                    objectName: "themeImportRetrofeLicense"
-                    text: panel.retrofeImportLicense
-                    placeholderText: qsTr("SPDX, por exemplo CC0-1.0")
-                    Accessible.name: qsTr("Licença do tema RetroFE")
-                    Layout.fillWidth: true
-                    onTextChanged: panel.retrofeImportLicense = text
-                }
-            }
-
-            CheckBox {
-                objectName: "themeImportRetrofeOverwrite"
-                text: qsTr("Substituir uma cena existente explicitamente")
-                checked: panel.retrofeImportOverwrite
-                visible: panel.retrofeImportLayouts.length > 0
+            Button {
+                objectName: "themeImportRetrofeCancel"
+                text: qsTr("Cancelar")
                 Accessible.name: text
-                onToggled: panel.retrofeImportOverwrite = checked
+                Layout.minimumHeight: 44
+                onClicked: retrofeImportDialog.close()
             }
+            Item { Layout.fillWidth: true }
+            Button {
+                id: retrofeImportApplyButton
+                objectName: "themeImportRetrofeApply"
+                text: panel.retrofeImportBusy ? qsTr("Importando…") : qsTr("Publicar cena")
+                enabled: !panel.retrofeImportBusy
+                    && panel.retrofeImportLayoutIndex >= 0
+                    && panel.retrofeImportSceneId.trim() !== ""
+                    && panel.retrofeImportName.trim() !== ""
+                    && panel.retrofeImportAuthor.trim() !== ""
+                    && panel.retrofeImportLicense.trim() !== ""
+                Accessible.name: text
+                Accessible.description: enabled
+                    ? qsTr("Grava a cena e seus assets no armazenamento gerenciado sem ativar")
+                    : qsTr("Examine um layout e informe ID, nome, autor e licença")
+                Layout.minimumHeight: 44
+                onClicked: panel.applyRetrofeImport()
+            }
+        }
+    }
 
-            RowLayout {
-                Layout.fillWidth: true
-                Button {
-                    text: qsTr("Cancelar")
-                    Accessible.name: text
-                    Layout.minimumHeight: 44
-                    onClicked: retrofeImportDialog.close()
-                }
-                Item { Layout.fillWidth: true }
-                Button {
-                    objectName: "themeImportRetrofeApply"
-                    text: panel.retrofeImportBusy ? qsTr("Importando…") : qsTr("Publicar cena")
-                    enabled: !panel.retrofeImportBusy
-                        && panel.retrofeImportLayoutIndex >= 0
-                        && panel.retrofeImportSceneId.trim() !== ""
-                        && panel.retrofeImportName.trim() !== ""
-                        && panel.retrofeImportAuthor.trim() !== ""
-                        && panel.retrofeImportLicense.trim() !== ""
-                    Accessible.name: text
-                    Accessible.description: enabled
-                        ? qsTr("Grava a cena e seus assets no armazenamento gerenciado sem ativar")
-                        : qsTr("Examine um layout e informe ID, nome, autor e licença")
-                    Layout.minimumHeight: 44
-                    onClicked: panel.applyRetrofeImport()
-                }
-            }
+    // O foco pode mudar por Tab, por toque ou pelo D-pad; qualquer mudança precisa
+    // revelar o destino dentro do corpo rolável do diálogo aberto.
+    Connections {
+        target: panel.Window.window
+        enabled: target !== null
+        ignoreUnknownSignals: true
+        function onActiveFocusItemChanged() {
+            if (!retrofeImportDialog.visible)
+                return
+            const item = target ? target.activeFocusItem : null
+            if (item)
+                Qt.callLater(function() { panel.revealRetrofeImportItem(item) })
         }
     }
 

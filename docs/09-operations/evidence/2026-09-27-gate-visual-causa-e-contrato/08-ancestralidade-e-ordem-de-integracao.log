@@ -1,0 +1,124 @@
+# 08 — Ancestralidade real de #239/#240/#241 e ordem de integração sem commits duplicados
+
+Data: 2026-09-27. Medido com `git merge-base`, `git rev-list --count` e
+`git ls-tree` sobre o clone canônico; nada aqui vem de memória nem do texto dos PRs.
+
+## O que a API diz (metadado)
+
+| PR | estado | base | head | mergeable |
+| --- | --- | --- | --- | --- |
+| #239 | OPEN | `main` | `069501ab` | MERGEABLE |
+| #240 | OPEN | `main` | `c959be13` | MERGEABLE |
+| #241 | OPEN | `main` | `3b0778fe` | MERGEABLE |
+
+Os três têm `base = main`. Se isto fosse tudo, seriam três frentes independentes —
+e não é o que o grafo diz.
+
+## O que o grafo diz (ascendência, medida)
+
+```
+main 3495c49d  ("Merge pull request #238 …", parado aí desde 26/09 10:55Z)
+  └─ +2   069501ab   cabeça do #239
+       └─ +5   c959be13   cabeça do #240        (069501ab é ancestral de c959be13)
+            └─ +11  3b0778fe   cabeça do #241   (c959be13 é ancestral de 3b0778fe)
+```
+
+Comandos e resultados:
+
+```
+$ git merge-base --is-ancestor 069501ab c959be13   → 0 (é ancestral)
+$ git merge-base --is-ancestor c959be13 3b0778fe   → 0 (é ancestral)
+$ git rev-list --count origin/main..069501ab        → 2
+$ git rev-list --count origin/main..c959be13        → 7
+$ git rev-list --count origin/main..3b0778fe        → 18
+$ git rev-list --count 069501ab..c959be13           → 5
+$ git rev-list --count c959be13..3b0778fe           → 11
+$ git merge-base origin/main <cada cabeça>           → 3495c49d nos três
+```
+
+Ou seja: **uma pilha linear** `#239 ⊂ #240 ⊂ #241`, todos com o mesmo
+merge-base com o `main`. Não há três históricos concorrentes — há um histórico com
+três pontas, e a ponta de cima (`3b0778fe`) já contém integralmente as outras duas.
+
+## Por que `mergeable=MERGEABLE` nos três não significa "independentes"
+
+O campo é calculado contra a base declarada (`main`), e como os commits de cada PR
+já estão todos acima de `3495c49d` sem tocar em conflito, os três fundem. A
+consequência prática é a que importa: **funding #241 sozinho, hoje, integra também
+os 2 commits do #239 e os 5 do #240** — 18 commits, não 11. Isso é legítimo mas
+não é o que os títulos dos PRs comunicam, e é por isso que a sequência abaixo
+importa.
+
+## Ordem de integração proposta (e por que evita commits duplicados)
+
+`#239` → `#240` → `#241`, cada um só com o gate obrigatório verde no SHA exato da
+cabeça daquele momento.
+
+1. Fundir **#239** (auditoria de design) em `main`. `main` passa a conter
+   `069501ab` como ancestral.
+2. Fundir **#240** (RC-01 central de carregamento). Como `069501ab` já está no
+   `main`, o diff do PR contra a base passa a mostrar **só os 5 commits próprios**
+   — os 2 anteriores não reaparecem, não são reaplicados e não podem duplicar.
+3. Fundir **#241** (RC-01 fatias 2..4: RetroFE, ES-DE, alvos de toque e este
+   fechamento do gate visual). Mostra **só os 11 commits** que lhe pertencem.
+
+Fundamentos em que isso se apoia, medidos e não presumidos:
+
+* O histórico recente do `main` integra por **merge commit**
+  (`3495c49d`, `1ffafa64`, `ed097a13`, `9176c1ae` são todos
+  `Merge pull request #NNN from …`), e `allow_merge_commit = true`
+  (`gh api repos/{owner}/{repo}`). Em regime de merge commit, o grafo de
+  ancestralidade é o que faz os commits "sumirem" do PR seguinte — sem rebase, sem
+  cherry-pick, sem cópia.
+* **Squash-merge quebraria essa propriedade**: achatar #239 criaria um commit novo
+  no `main` e `069501ab` deixaria de ser ancestral dele; #240 passaria a reapresentar
+  os mesmos conteúdos como se fossem novos, que é exatamente a "duplicação" que a
+  tarefa manda evitar. Os campos `allowed_squash_merge`/`allowed_rebase_merge` da API
+  devolveram `null` nesta conta, então não afirmo quais estão habilitados na
+  organização — apenas registro que **a ordem acima depende do merge commit**.
+* Nunca fundir na ordem inversa nem pular o meio: com `#240` aberto sobre `#239`,
+  fundir `#240` primeiro faz o diff de `#239` contra a base ficar vazio, que o
+  GitHub apresenta como nada a fundir — e o conteúdo do #239 entra sem o cartão do
+  #239 ter passado pelo gate dele.
+
+## Grade terminal nos três SHAs (medida no momento desta rodada)
+
+| PR / SHA | sucesso | pulado | falha | qual falha |
+| --- | --- | --- | --- | --- |
+| #239 `069501ab` | 8 | 1 | 0 | — |
+| #240 `c959be13` | 8 | 1 | 0 | — |
+| #241 `3b0778fe` | 7 | 1 | 1 | `Gate visual QML (Linux)` |
+
+Pulado em todos: `Sourcery review`. Fonte:
+`gh api repos/{owner}/{repo}/commits/<oid>/check-runs`. Correção de texto meu: em
+rodada anterior registrei "8 success + 1 skipped + 1 failure" para #241; a grade
+medida acima dá **7** sucesso, porque o job que antes contava como verde é
+exatamente o que reprova.
+
+## Por que #239 e #240 estão verdes e #241 vermelho no mesmo gate
+
+Medido com `git ls-tree`, não inferido:
+
+```
+main / #239 / #240 : tests/integration/test_qml_visual_capture.py   (usa CanonicalEnvironment)
+                     tests/qml/capture_{shell,handheld_drawer,responsive,task_center,theme_catalog,all_handheld_sections}.qml
+#241               : + tests/integration/test_esde_import_dialog_compact.py
+                     + tests/integration/test_retrofe_import_dialog_compact.py
+                     + tests/qml/capture_esde_import_viewport.qml
+                     + tests/qml/capture_retrofe_import_viewport.qml
+```
+
+O gate que já existia sempre declarou o ambiente (inclusive o `FONTCONFIG_FILE` com
+a fonte empacotada) — por isso ficou verde nas três cabeças antigas **apesar de a
+imagem do runner não ter fonte nenhuma**. Os dois gates novos, criados nas fatias 2
+e 3 deste #241, copiavam `os.environ`; foi só isso que mudou entre `c959be13` e
+`3b0778fe` no que diz respeito ao vermelho. A correção desta rodada alinha os dois
+novos com o precedente que já estava no repositório (`07-baselines-produzidas.log`).
+
+## Estado desta rodada em relação ao grafo
+
+Esta rodada trabalha **em cima de `3b0778fe`**, na mesma branch do #241, sem criar
+checkout, branch ou worktree alternativo. O commit novo desta rodada será o único
+conteúdo acima de `3b0778fe`, e a base dos três PRs permanece `main` — a pilha
+continua linear. `WORKLOG` e os cartões não afirmam integração: nada foi fundido, e
+só se fecha workstream com o SHA realmente fundido.

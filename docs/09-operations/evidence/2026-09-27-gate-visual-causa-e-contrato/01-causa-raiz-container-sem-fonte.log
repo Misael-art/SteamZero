@@ -1,0 +1,159 @@
+# 01 — Causa raiz do vermelho: a imagem canônica do gate não tem fonte nenhuma
+
+Data: 2026-09-27. Ponta investigada: `3b0778fe` (run `36333208783`, job
+`Gate visual QML (Linux)`, id `108659002909`).
+
+## O que o CI dizia (fato, não interpretação)
+
+Log do job, obtido com `curl -H "Authorization: bearer $(gh auth token)"` sobre
+`https://api.github.com/repos/Misael-art/SteamZero/actions/jobs/108659002909/logs`
+(490 linhas; copiado para fora do checkout):
+
+```
+tests/integration/test_esde_import_dialog_compact.py:213: in test_capturas_de_evidencia_dos_dois_viewports
+    assert arquivo.stat().st_size > 20_000, f"{nome} é uma tela quase vazia"
+E   AssertionError: 1-compacto-acoes-e-corpo é uma tela quase vazia
+tests/integration/test_retrofe_import_dialog_compact.py:196: in test_capturas_de_evidencia_dos_dois_viewports
+    assert arquivo.stat().st_size > 20_000, f"{nome} é uma tela quase vazia"
+E   AssertionError: 1-compacto-acoes-e-corpo é uma tela quase vazia
+2 failed, 328 passed, 12 skipped, 6116 deselected in 1145.33s (0:19:05)
+```
+
+Dois fatos que este extrato já continha e que eu não tinha lido direito:
+
+1. a asseritiva de **dimensão** (`imagem.size == (949, 593)`) vem na linha
+   anterior e **passou**: a captura do runner tem o viewport certo;
+2. reprova na **primeira** das cinco cenas, nos dois diálogos. As cenas 2..5
+   nunca foram avaliadas — o `for` aborta na primeira.
+
+## Hipótese
+
+O gate de captura não declara o ambiente de renderização que produz a imagem: ele
+herda o `fontconfig` do host. Num container sem nenhum arquivo de fonte, o mesmo
+código desenha tofu e o arquivo encolhe. Verificável por uma variável: rodar o mesmo
+comando dentro da imagem canônica fixada e contar as fontes disponíveis.
+
+## Reprodução local na MESMA imagem, em segundos (não no CI)
+
+O job não roda no runner do Ubuntu: roda em container com digest fixado
+(`.github/workflows/ci.yml:283`). A imagem já estava neste host:
+
+```
+$ docker images | grep qml-visual
+ghcr.io/misael-art/steamzero-qml-visual@sha256:8b832ec124ae…   8b832ec124ae   3.39GB
+```
+
+Comando executado (somente leitura do checkout, saída em `/tmp`):
+
+```
+$ docker run --rm -v "$PWD:/work:ro" -v /tmp/sz241-v1/ci-capture:/out -w /work \
+    ghcr.io/misael-art/steamzero-qml-visual@sha256:8b832ec124ae… \
+    bash -lc 'qml6 --version; fc-list | wc -l; \
+              /usr/lib/qt6/bin/qml tests/qml/capture_esde_import_viewport.qml -- \
+                --output-dir=/out --label=ci'
+Qml Runtime 6.11.2
+0
+debug|CAPTURADO /out/1-compacto-acoes-e-corpo-ci.png
+…
+capturas=5 de 5
+```
+
+**`fc-list` devolve 0.** A imagem instala `fontconfig`, `freetype2` e `harfbuzz`
+— a pilha — e nenhum arquivo de fonte (`ci/qml-visual/Containerfile:31-41`). O
+Qt 6.11.2 do container renderiza cada glifo como caixa de tofu.
+
+Tamanho da captura produzida ali: **7147 bytes**. O número exato que o CI
+reportou. Mesma imagem, mesmo commit, cena 1:
+
+| cena | container sem fonte | container com fonte empacotada | host sem isolar |
+| --- | --- | --- | --- |
+| 1-compacto-acoes-e-corpo | 7147 | 31184 | 40249 |
+| 2-compacto-listagem-24-esquemas | 9862 | 44607 | 53760 |
+| 3-compacto-rodape-fixo-com-campo-de-nome-focado | 9779 | 44513 | 53681 |
+| 4-compacto-relatorio-extenso | 7959 | 106557 | 149898 |
+| 5-largo-relatorio-extenso | 10972 | 117176 | 162596 |
+
+## Experimento de uma variável só
+
+Mesmo container, mesmo comando, mudando apenas `FONTCONFIG_FILE` para a
+configuração que expõe **somente a fonte empacotada**
+(`tests/fixtures/fonts/liberation-sans-2.1.5`, quatro faces):
+
+```
+$ docker run … bash -lc 'export FONTCONFIG_FILE=/fonts/fonts.conf; fc-list | wc -l; qml …'
+4
+…
+1-compacto-acoes-e-corpo-comfontes.png   31184
+```
+
+`fc-list`: 0 → 4. Cena 1: 7147 → 31184 bytes. Nenhum outro fator tocado.
+
+## Por que isto nunca apareceu aqui
+
+`_environment()` dos dois gates fazia `os.environ.copy()` e sobrescrevia quatro
+variáveis Qt. No host existem **828 fontes em 573 famílias** (`fc-list`), então a
+captura saía cheia de texto e o gate verde. Na imagem canônica não existe
+nenhuma, e o mesmo código produz outra imagem. O host escondia o defeito do harness;
+o limiar de bytes fez o trabalho dele — eu é que li o sintoma como "ambiente do
+CI" e "possível corrida" nas rodadas anteriores, o que estava errado.
+
+## Correção aplicada (e por que não é trocar o número)
+
+O projeto já tem a máquina para isso, e ela foi reutilizada em vez de reinventada:
+`tools/qml_capture_runner.py` define `CanonicalEnvironment` — o ambiente que
+produz as dez baselines versionadas — e isola o fontconfig na fonte empacotada
+por uma razão medida e escrita no próprio arquivo (larguras 320.08 → 323 quando a
+Liberation do sistema sombreava a empacotada). Os dois gates agora usam
+`CanonicalEnvironment().to_env()`, inclusive nas corridas de `qmltestrunner`.
+
+Prova de que o ambiente canônico é reproduzível fora do CI: as cinco capturas
+geradas neste host com `FONTCONFIG_FILE` isolado são **byte a byte iguais** às
+geradas dentro da imagem do runner.
+
+```
+$ sha256sum /tmp/sz241-v1/host-isolated/*.png /tmp/sz241-v1/ci-capture3/*comfontes.png
+84080a23b89dc3ba…  1-compacto-acoes-e-corpo-isolado.png
+84080a23b89dc3ba…  1-compacto-acoes-e-corpo-comfontes.png
+3c7d76bf69423815…  2-compacto-listagem-24-esquemas-…
+52a917e6a784c5a5…  3-compacto-rodape-fixo-…
+ef51bc1a58fc760a…  4-compacto-relatorio-extenso-…
+25c6d99fe3a5cbe7…  5-largo-relatorio-extenso-…
+```
+
+Determinismo no próprio host: duas execuções seguidas do mesmo comando, `cmp`
+silencioso nas cinco cenas.
+
+## O que as imagens mostram (inspeção, não inferência)
+
+`imagens/01-cena-1-no-container-sem-fonte.png` — 949×593, moldura, botões,
+caixas de seleção, rodapé e campos **todos no lugar certo**; cada caractere é um
+tofu. Nada de clipping, nada de layout quebrado: é texto que não existe.
+`imagens/02-cena-1-no-container-com-fonte-empacotada.png` — a mesma cena com
+"Importar tema ES-DE", "Escolher", "Examinar", "Cancelar", "Importar como
+editável" legíveis, dentro da moldura.
+`imagens/03-cena-4-relatorio-extenso-sem-fonte.png` — 7 959 bytes: é a cena mais
+densa em texto do diálogo e, mesmo assim, menor que a cena 1 com fonte. Tamanho de
+arquivo não separa "sem texto" de "muito texto"; a inspeção das três imagens acima é
+o que sustenta o diagnóstico, não o número.
+
+Conclusão separada das hipóteses: **não há defeito de produto nesta história.** O
+diálogo renderiza corretamente nos dois viewports; o que estava errado era o
+harness de captura (ambiente não declarado) e o contrato que o protegia (proxy de
+tamanho, que não diz *o quê* falta). Ver `02-contrato-novo-e-provas-de-mordida.log`.
+
+## Hipóteses anteriores que caíram (registradas para não serem repetidas)
+
+* "É o ambiente do runner / falta o Qt certo." Falso: o job confere o container
+  contra `ci/qml-visual/environment.lock.json` **antes** de renderizar, e o
+  `QML-VISUAL-ENVIRONMENT-001` passou — o Qt do run é o Qt declarado (6.11.2). O
+  problema era o que a imagem *não* instala: fontes.
+* "É corrida / temporalidade (grabToImage assíncrono, 20 ms)." Falso para este
+  vermelho: a asseritiva de dimensão passou e a cena tem o viewport certo; uma
+  corrida produziria outro formato ou contagem de capturas, não tofu em 5 de 5
+  cenas. A corrida real daquele `captureIndex` existe e já foi tratada no harness,
+  mas não é esta causa.
+* "Bytes repetidos identificam a causa." Falso como método: 7 147 se repetiu porque
+  o render é determinístico sem fontes, e é justamente por isso que a comparação
+  pixel a pixel com baseline passou a ser a prova, e o `st_size` deixou de ser.
+* "Um proxy de cobertura de tinta resolve." Rejeitado por medição — ver
+  `02-contrato-novo-e-provas-de-mordida.log`, seção 2.

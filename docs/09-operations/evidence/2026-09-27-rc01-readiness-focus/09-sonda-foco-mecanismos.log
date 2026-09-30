@@ -1,0 +1,14 @@
+********* Start testing of qmltestrunner *********
+Config: Using QtTest library 6.11.2, Qt 6.11.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 16.2.1 20260810), biglinux unknown
+PASS   : qmltestrunner::FocusProbe2::initTestCase()
+QDEBUG : qmltestrunner::FocusProbe2::test_mechanisms() qml: A0 target anexado é a janela? true
+QDEBUG : qmltestrunner::FocusProbe2::test_mechanisms() qml: A1 flick existe? QQuickFlickable(0x55e9c4836a70) contentHeight=575 viewport=288
+QDEBUG : qmltestrunner::FocusProbe2::test_mechanisms() qml: A2 mudanças após Tab=1 second.activeFocus=true
+QDEBUG : qmltestrunner::FocusProbe2::test_mechanisms() qml: B1 Down visto pelo ScrollView=1
+QDEBUG : qmltestrunner::FocusProbe2::test_mechanisms() qml: C1 Left visto pelo ScrollView=0 cursor=2 first ainda em foco=true mudanças de foco=0
+QDEBUG : qmltestrunner::FocusProbe2::test_mechanisms() qml: D1 último botão em y=288 com contentY=287 viewport=288
+QDEBUG : qmltestrunner::FocusProbe2::test_mechanisms() qml: D2 conversão flick->dialog: QPointF(0, 263)
+PASS   : qmltestrunner::FocusProbe2::test_mechanisms()
+PASS   : qmltestrunner::FocusProbe2::cleanupTestCase()
+Totals: 3 passed, 0 failed, 0 skipped, 0 blacklisted, 14ms
+********* Finished testing of qmltestrunner *********

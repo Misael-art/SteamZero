@@ -327,9 +327,14 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: qml-visual-artifacts
-          path: |
-            /tmp/pytest-of-*/**/*.png
-            /tmp/pytest-of-*/**/*.json
-            /tmp/pytest-of-*/**/*.txt
-          if-no-files-found: warn
+          # `build/visual-evidence/**`, e não `/tmp/pytest-of-*/**`: os dois
+          # globes nunca se encontraram. `tools/run_tests_isolated.py` realoca
+          # TMPDIR para `/tmp/steamzero-tests-*/tmp/pytest-of-...`, que o glob
+          # não casava, e apaga esse diretório na saída do contexto, que nem um
+          # glob certo salvaria. Medido no run 36333208783: o job reprovou com
+          # duas capturas em disco e publicou 5 artefatos sem nenhum PNG. Agora
+          # o gate copia a captura para o workspace ANTES de assentar, e
+          # `error` impede que a ausência volte a passar por sucesso.
+          path: build/visual-evidence/**
+          if-no-files-found: error
           retention-days: 14

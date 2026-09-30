@@ -1,0 +1,85 @@
+# Por que `qml-visual-artifacts` nunca apareceu no CI — e o que foi corrigido
+
+Data: 2026-09-27. Run de referência: `36333208783`, job `Gate visual QML (Linux)`
+(id `108659002909`, conclusão `failure`). Log do job obtido por `curl` autenticado com
+`gh auth token` (48 017 bytes, 490 linhas; a API de logs pelo proxy devolvia 0 bytes).
+
+## Hipótese
+
+O passo de upload roda (o `if: always()` está correto), mas o `path:` aponta para um
+diretório onde o gate nunca escreve — e mesmo que apontasse, os arquivos já teriam
+sumido quando o upload executasse.
+
+## Experimento (medido, não inferido)
+
+1. **O passo executou após a falha.** No log do job, linha 447:
+   `##[group]Run actions/upload-artifact@043fb46d…` , `name: qml-visual-artifacts`.
+   Ou seja, a *condição de execução após falha* não é o problema.
+2. **O glob não casou.** Linha 465 do mesmo log:
+   `##[warning]No files were found with the provided path: /tmp/pytest-of-*/**/*.png …
+   /tmp/pytest-of-*/**/*.txt. No artifacts will be uploaded.`
+3. **Nunca casou em nenhum run.** `GET /repos/{owner}/{repo}/actions/artifacts?per_page=100`
+   retorna `0` artefatos com nome iniciado por `qml-visual`. Os 5 artefatos do run
+   `36333208783` são `steamzero-wheel-…`, `test-results-3.11/3.12/3.14` e
+   `coverage-python-3.14` — nenhum contém PNG.
+4. **Onde o gate realmente escrevia.** `tools/run_tests_isolated.py` realoca
+   `TMPDIR`/`TEMP`/`TMP` (linhas 368-372) para `<raiz>/tmp`, onde a raiz é um
+   `tempfile.TemporaryDirectory(prefix="steamzero-tests-")` criado sob `/tmp`
+   (linhas 487-491). Caminho real observado nesta máquina durante a suíte:
+   `/tmp/steamzero-tests-rp7qc9su/tmp/pytest-of-misael/pytest-N/…`.
+   O glob do workflow procurava `/tmp/pytest-of-*/**`, um nível acima: nunca haveria
+   encontro, nem por acaso, nem em outro runner.
+5. **Segunda causa, independente da primeira.** O `TemporaryDirectory` é usado como
+   context manager: ao sair, a árvore inteira é removida. O upload é um *step
+   posterior*, então mesmo um glob correto (`/tmp/steamzero-tests-*/**/*.png`)
+   encontraria o diretório já apagado. Corrigir só o glob não publicaria nada.
+6. **Efeito colateral que escondia o problema:** `if-no-files-found: warn` — a
+   ausência de evidência era um aviso verde-como-cinza. Quem lia o job via a falha do
+   pytest e o aviso, e nenhum dos dois apontava para "não temos as imagens".
+
+## Correção
+
+Duas mudanças que se exigem mutuamente:
+
+* **O teste publica antes de assentar.** Em
+  `tests/integration/test_{esde,retrofe}_import_dialog_compact.py`, `_publicar()`
+  copia os PNGs das capturas e escreve `geometria.json`, `ambiente.json` e
+  `saida-do-runner.txt` em `build/visual-evidence/<dialogo>/` — dentro do
+  workspace, fora da árvore temporária — **antes** de qualquer `assert`. Uma cena
+  reprovada continua deixando a própria imagem e a geometria declarada em disco.
+  Quando o pixel-exact falha, `compare_with_golden` ainda escreve `diff.png`,
+  `overlay.png`, `expected.png` e `metrics.json` por cena.
+* **O workflow aponta para o workspace e não aceita ausência.**
+  `.github/workflows/ci.yml`, passo *Publicar artefatos visuais*:
+  `path: build/visual-evidence/**`, `if-no-files-found: error`, `retention-days: 14`,
+  `if: always()` preservado. O `error` é o que impede a ausência de voltar a passar
+  por sucesso.
+
+Volume medido da evidência numa execução local: 51 arquivos sob
+`build/visual-evidence/`, dos quais 36 PNG, distribuídos em `esde-import/` (5 cenas +
+5 diretórios de diff) e `retrofe-import/` (4 cenas + 4 diretórios de diff).
+`build/` é gitignored (`.gitignore:6`), então nada de evidência entra no commit.
+
+## Privacidade da publicação
+
+A política da tarefa é não publicar tokens nem caminhos pessoais. Verificado no
+conteúdo produzido:
+
+* `saida-do-runner.txt` é escrito com `str(tmp_path)` substituído por `<tmp>`; a
+  string `home/misael` não aparece em nenhum arquivo publicado (contagem `grep -c` = 0).
+* `ambiente.json` contém apenas as declarações do contrato visual (platform, backend,
+  DPR, fontDpi, locale, escala, animações, `reducedMotion`, `highContrast`).
+* `geometria.json` contém apenas retângulos de layout.
+* Busca por `token|ghp_|authorization|password|secret|/home/` em todos os `.txt`/`.json`
+  publicados: nenhum resultado.
+* Os PNGs mostram a UI montada sobre fixtures locais do repositório
+  (`tests/fixtures/**`) — sem acervo do usuário, sem caminhos reais, sem segredos.
+  Este ponto é estrutural: o harness não tem acesso ao catálogo real do host.
+
+## O que isto ainda não prova
+
+* A publicação corrigida só é confirmada pelo CI no SHA novo — a verificação é
+  "o artefato `qml-visual-artifacts` existe e contém os PNGs", não o texto deste log.
+* A mudança toca `.github/workflows/ci.yml`, fora do escopo dos dois diálogos; ela é
+  scoped em `SZ-GOVERNANCE-STATUS` (o `scopePaths` do cartão já inclui o workflow) e
+  não é exclusiva de nenhum workstream ativo.

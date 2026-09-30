@@ -1,0 +1,162 @@
+# medicao de alvos de toque DENTRO do shell — 4 configuracoes, 2026-09-27
+# checkout unico: /home/misael/Projects/Steam Zero/Canonical/2026-09-21 (branch codex/rc01-readiness-focus-2026-09-27, HEAD fe5751a0)
+# feito as 12:40, depois das edicoes desta fatia em tools/ e tests/. Arvore de produto (src/) intocada.
+# ROTULO HONESTO: os tres arquivos de medicao (tools/ui_control_probe.qml,
+# tools/ui_control_inventory.py, tests/integration/test_ui_control_matrix.py) estao editados NA
+# ARVORE DE TRABALHO e sem commit nesta data; os hashes abaixo sao os dessa arvore, e nenhum SHA
+# deste PR os contem ainda. As flags citadas (--viewport, --text-scale) so podem ser refeitas por
+# outra pessoa depois de esse diff virar commit. A medicao e preliminar a integracao.
+
+# ---------------------------------------------------------------------------
+# O QUE SE MEDIA AQUI, E POR QUE A MEDICAO ANTERIOR NAO SERVIA
+# ---------------------------------------------------------------------------
+# A auditoria (UX-05) registrou "alvos minimos de 48 px" como nao cumpridos, com o numero
+# 44 px na bagagem. Esse 44 px foi medido no PAINEL ISOLADO do dialogo ES-DE, fora do shell,
+# sem o tema e sem a janela real do Deck. 48 px e fisico: so faz sentido perguntar se o
+# polegar cabe na janela que o hardware tem. Entao a pergunta desta medicao e outra:
+#
+#   dentro do Main.qml vivo, na janela portatil (949x593), com a escala de texto do host,
+#   existe algum alvo acionavel abaixo de 48x48?
+#
+# A sonda ja existia (tools/ui_control_probe.qml, percorre a arvore de objetos de cada
+# superficie e registra width/height/visible/enabled/label por controle). Ela so sabia andar
+# numa janela de 1600x1000 com escala 1. Foi ela que ganhou --steamzero-viewport e
+# --steamzero-text-scale; o runner (tools/ui_control_inventory.py) ganhou as flags de CLI
+# correspondentes. Nao ha segunda travessia, nem sonda paralela, nem caminho de teste novo.
+
+# ---------------------------------------------------------------------------
+# ARQUIVOS DEPOIS DA EDICAO (baseline do 01-preflight.log era antes dela)
+# ---------------------------------------------------------------------------
+$ sha256sum tools/ui_control_inventory.py tools/ui_control_probe.qml \
+    tests/integration/test_ui_control_matrix.py src/steamzero/ui/qml/Main.qml
+82f6170cffef1f2f1e364294671a939dd8735446dea3d2dda4e7acf455fa667e  tools/ui_control_inventory.py
+6db2a573834b8a1e29d1316f3e48ce0dcc76443c1e0e4d6b69a1a43b1d173531  tools/ui_control_probe.qml
+732389e0f98bc42a2edfe35e7e7a4016e36ef1dac4b82396fd5bc7b8eb62af04  tests/integration/test_ui_control_matrix.py
+b6a474959c86195b332ec93a9b84a0255b306c3877516da5882e7b42e032c5c4  src/steamzero/ui/qml/Main.qml
+# Main.qml bate com o baseline do 01 (b6a47495...): nenhuma medicao desta fatia mexeu em produto.
+# Os artefatos JSON saem em /tmp (nenhuma copia de saida de medicao entra no repositorio).
+
+# ---------------------------------------------------------------------------
+# COMANDO REPRODUTIVEL (uma linha por configuracao; ~35 s cada)
+# ---------------------------------------------------------------------------
+# QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software sao definidos pelo proprio runner
+# (tools/ui_control_inventory.py:96-104), entao o comando abaixo funciona em shell limpo.
+.venv/bin/python tools/ui_control_inventory.py --only everything-ready --viewport 1600x1000 --text-scale 1   --json /tmp/targets-largo-1600x1000-esc1.json
+.venv/bin/python tools/ui_control_inventory.py --only everything-ready --viewport 949x593   --text-scale 1   --json /tmp/targets-compacto-949x593-esc1.json
+.venv/bin/python tools/ui_control_inventory.py --only everything-ready --viewport 949x593   --text-scale 1.5 --json /tmp/targets-compacto-949x593-esc1.5.json
+.venv/bin/python tools/ui_control_inventory.py --only everything-ready --viewport 949x593   --text-scale 2   --json /tmp/targets-compacto-949x593-esc2.json
+# 949x593 e a janela portatil real (Main.handheldLayout: width <= 1024 || height <= 640).
+# 1.5 e a escala de texto medida no host (adapters/desktop_kde.py:1614-1643 host_text_scale(),
+# KDE forceFontDPI/96); 2.0 e o topo do clamp que ThemeBridge.qml:31-35 aceita.
+
+# ---------------------------------------------------------------------------
+# RESULTADO DAS QUATRO CORRIDA (saida do proprio convite, copiada verbatim)
+# ---------------------------------------------------------------------------
+== largo-1600x1000-esc1
+   viewport eco=1600x1000 pedido=1600x1000 escala eco=1 pedida=1 handheld=False
+   registrados=309 acionaveis=275 abaixo_de_48=0 maiores_que_a_janela=0
+   alturas distintas=[48, 52, 54, 68, 80, 96, 128, 192]
+   48px exatos=125
+== compacto-949x593-esc1
+   viewport eco=949x593 pedido=949x593 escala eco=1 pedida=1 handheld=True
+   registrados=284 acionaveis=263 abaixo_de_48=0 maiores_que_a_janela=0
+   alturas distintas=[48, 52, 56, 59, 80, 96, 118, 152]
+   48px exatos=114
+== compacto-949x593-esc1.5
+   viewport eco=949x593 pedido=949x593 escala eco=1.5 pedida=1.5 handheld=True
+   registrados=284 acionaveis=263 abaixo_de_48=0 maiores_que_a_janela=0
+   alturas distintas=[48, 52, 56, 57, 59, 91, 101, 118, 152]
+   48px exatos=109
+== compacto-949x593-esc2
+   viewport eco=949x593 pedido=949x593 escala eco=2 pedida=2 handheld=True
+   registrados=284 acionaveis=263 abaixo_de_48=0 maiores_que_a_janela=0
+   alturas distintas=[48, 52, 56, 59, 67, 111, 118, 126, 152]
+   48px exatos=109
+
+# "acao" aqui segue o criterio ja existente do gate (tests/integration/test_ui_control_matrix.py:192-205
+# _actionable): visivel + habilitado + com label ou Accessible.name. Um alvo desabilitado nao e
+# promessa de toque, e ToolButton sem nome e o padrao de icone decorativo que o produto usa de
+# proposito (test_decorative_icons_are_not_announced_as_actionable).
+
+# Leitura, em uma frase: dentro do shell, na janela do Deck e nas tres escalas de texto, nenhum
+# alvo acionavel fica abaixo de 48x48 — o piso medido e exatamente 48, e nenhum controle cresce
+# alem da janela. Aclaim de UX-05 sobre "48 px nao cumpridos" NAO se reproduz no shell.
+
+# ---------------------------------------------------------------------------
+# ONDE O 48 px SAI DO NADA — as tres perguntas que a medicao ainda deve
+# ---------------------------------------------------------------------------
+# 1) o layout portatil espreme alvos? SIM, e visivelmente:
+== compacto vs largo: 134 alvos encolheram no eixo vertical
+   library/Steam, 0 jogos, Nenhum jogo Steam instalado foi publicado 192 -> 152
+   library/Nintendo Switch, 0 jogos, Pronto 192 -> 152
+   library/Game Boy, Game Boy Color e Game Boy Advance, 0 jogos, Integracao planejada 192 -> 152
+#    Encolher ate 118/152 continua acima do piso; o que importa e que a folga sumiu e o piso
+#    passou a ser sustentado por literal, nao pela sobra do layout largo.
+# 2) a escala de texto compra altura? SIM, em 12 alvos:
+== compacto-949x593-esc1.5: 12 alvos cresceram com a escala de texto
+   overview/Emuladores: 2 item(ns) exigem atencao 80 -> 91
+   overview/Saves e sync: Nenhuma fila pendente publicada 80 -> 91
+   overview/Diagnostico e midia: Estado detalhado disponivel no Sistema 80 -> 111 (escala 2)
+#    Os mesmos 12 nas duas escalas. Este e o crescimento que o gate nao-vacuo exige: se a escala
+#    injetada nao chegasse ao binding, nenhuma altura mudaria e o teste de escala seria decorativo.
+# 3) quem segura o piso de 48? 114 alvos estao exatamente em 48 px no portatil:
+48 exatos por superficie (compacto): {'emulators': 69, 'steam': 17, 'system': 7, 'overview': 5,
+    'cast': 5, 'themes': 4, 'task-drawer': 3, 'profiles': 2, 'sync': 1, 'handheld-drawer': 1} total 114
+48 exatos por superficie (largo):   {'emulators': 69, 'steam': 15, 'sidebar': 13, 'system': 7,
+    'overview': 5, 'cast': 5, 'themes': 4, 'task-drawer': 3, 'profiles': 2, 'sync': 1,
+    'handheld-drawer': 1} total 125
+#    No largo, 13 desses alvos sao da sidebar e somem no portatil (a sidebar vira drawer); em
+#    compensacao, 'steam' ganha 2 (15 -> 17). Menores larguras no portatil: [80, 89, 94, 95, 98, 111]
+#    — nenhuma abaixo de 48 tambem no eixo horizontal.
+
+# ---------------------------------------------------------------------------
+# ACHADO NOVO, FORA DO EIXO DE TAMANHO, REGISTRADO SEM CORRIGIR
+# ---------------------------------------------------------------------------
+# As corridas compactas terminam com exit=1 e o largo com exit=0. A diferenca e um unico
+# controle que so existe no layout portatil:
+{
+  "surface": "steam", "type": "ToolButton", "path": "/0/0/0/0/0/0/2/0",
+  "controlId": "fallback|steam|ToolButton||/0/0/0/0/0/0/2/0",
+  "label": "", "accessibleName": "", "enabled": false, "visible": true,
+  "width": 40, "height": 40, "verdict": "unnamed-actionable"
+}
+# Rotulo da sonda ("unnamed-actionable") e mais estrito que o do gate de tamanho: ele marca o
+# controle por ser ToolButton habilitavel sem nome, e aqui ele esta DESABILITADO, entao nao e
+# alvo de toque e nao reprovou os gates de 48 px. O que sobra e um icone desabilitado sem nome
+# acessivel na barra da tela Steam em janela portatil — questao de nomenclatura (UX-06/rota de
+# a), nao de área de toque. NAO corrijo nesta fatia: nao e o eixo medido, e a correcao seria
+# edit sem reclamacao reprodutivel. Fica como pendencia nomeada no PR.
+
+# ---------------------------------------------------------------------------
+# REPRODUTIBILIDADE: duas passadas independentes, mesmos numeros
+# ---------------------------------------------------------------------------
+# Passada 1: pelos fixtures do pytest (portable_inventory / portable_scaled_inventory em
+#   tests/integration/test_ui_control_matrix.py), antes de existir a flag de CLI.
+# Passada 2: acima, pela CLI desta fatia.
+# Registram iguais: 309/275 largo, 284/263 compacto, 134 encolhimentos verticais, 12 crescimentos
+# por escala, alturas distintas [48,52,56,59,80,96,118,152] no compacto e abaixo_de_48=0 nas
+# quatro configuracoes. /tmp/summarize_targets.py e o script que imprime este bloco a partir dos
+# quatro JSONs; ele e de analise, nao entra no repositorio.
+
+# ---------------------------------------------------------------------------
+# POS-MEDICAO (mesma data, rodada documental): ajuste de lint no arquivo de gate
+# ---------------------------------------------------------------------------
+$ .venv/bin/ruff check src tools tests          # rc=1 ANTES do ajuste
+RUF003 tests/integration/test_ui_control_matrix.py:233 (comentario)
+RUF002 tests/integration/test_ui_control_matrix.py:310 (docstring)
+# Os dois sao o mesmo caractere: en dash em "1.0–2.0", que RUF002/RUF003 do projeto
+# reprova. Trocado por hyfen comum. Nenhuma linha de codigo mudou — as duas
+# ocorrencias estavam em comentario e em docstring, e o baseline citado acima
+# (732389e0...) e do conteudo anterior ao ajuste.
+$ sha256sum tests/integration/test_ui_control_matrix.py
+732389e0f98bc42a2edfe35e7e7a4016e36ef1dac4b82396fd5bc7b8eb62af04  # conteudo medido acima
+f625cbecd3f51a31dc6c189321a38d0270b15de46ce4924af1ebf82d85cfd2a1  # conteudo apos o ajuste
+$ .venv/bin/ruff check src tools tests && .venv/bin/ruff format --check src tools tests
+All checks passed!  /  672 files already formatted          # rc=0 nos dois
+# Re-execução do par portátil no conteudo novo, para nao citar verde herdado:
+$ .venv/bin/python -m pytest tests/integration/test_ui_control_matrix.py -k portable -q
+2 passed, 21 deselected in 69.67s (0:01:09)
+# Limite honesto: os "23 passed em 614,86 s" citados acima e no 03-teste-de-mutacao.log
+# foram medidos no conteudo 732389e0..., nao no f625cbe0.... A diferenca entre os dois
+# e exclusivamente os dois caracteres de pontuacao desta secao; o par portatil foi
+# reexecutado no conteudo final e passou.

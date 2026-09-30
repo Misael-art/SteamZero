@@ -1,0 +1,93 @@
+# teste de mutacao: por que os dois gates portateis nao sao vacuos — 2026-09-27
+# checkout unico: /home/misael/Projects/Steam Zero/Canonical/2026-09-21 (HEAD fe5751a0)
+# Janela desta secao: 12:30 -> 12:38-03:00. Produto (src/) NAO ficou alterado: conferido ao final.
+
+# ---------------------------------------------------------------------------
+# O QUE PRECISAVA SER PROVADO
+# ---------------------------------------------------------------------------
+# Os gates novos (tests/integration/test_ui_control_matrix.py::test_actionable_targets_keep_a_48px_hit_area_in_the_portable_window
+# e ::test_the_portable_window_holds_48px_targets_at_the_host_text_scale) afirmam uma propriedade
+# medida, nao uma contagem. Uma asseritiva verde sobre uma propriedade que nada no código segura
+# e pior que um teste ausente: ela mente. Entao a exigencia e: quebrar de proposito um alvo de 48 px
+# e ver os dois gates nomearem o culpado.
+
+# ---------------------------------------------------------------------------
+# DUAS MUTACOES QUE NAO MORDERAM (medidas na sessao anterior, 2026-09-27 ~11:50-03:00; registradas
+# aqui porque a conclusao e util e porque omiti-las faria o gate parecer provado de primeira)
+# ---------------------------------------------------------------------------
+# 1) EditorialHome.qml:55  minimumTarget = Math.max(48 -> 40, themeMinimumTarget)
+# 2) EditorialHome.qml:55  minimumTarget = 40        (piso arrancado do Math.max)
+# Nas duas, o gate de 48 px continuou verde. Motivo, medido: EditorialHome.qml:29 ja define
+# themeMinimumTarget = 48, entao (1) e no-op por construção; e em (2) os alvos da home mantêm
+# alturas >= 48 vindas de outros bindings (Layout.minimumHeight literais e conteúdo intrínseco),
+# como mostra a distribuicao de 02-medicao-no-shell.log. Conclusao honesta: o piso de 48 px da
+# central NAO é sustentado por esse único binding, e tentar provar nao-vacuo por ele era prova de
+# nada. EditorialHome.qml foi devolvido a HEAD e conferido: sha256
+# ee80c0b9e050ab32b092b7dc2d2f3f28c3c4a16b1287d8eafc9d1ee07f5a4f25, sem diferenca para o HEAD.
+
+# ---------------------------------------------------------------------------
+# A MUTACAO QUE MORDEU: um literal Layout.minimumHeight: 48 em Main.qml
+# ---------------------------------------------------------------------------
+# Dos 114 alvos medidos exatamente em 48 px no viewport portatil, os da superficie `system`
+# ("Exportar estado" 98x48, "Pacote de suporte" ..., "Importar tema ES-DE" 127x48, ...) vem de
+# `Layout.minimumHeight: 48` literais em Main.qml:6291-6324. Escolhi um, o da linha 6298
+# ("Exportar estado"), e troquei 48 por 24. Nenhum outro arquivo foi tocado.
+
+$ cp src/steamzero/ui/qml/Main.qml /tmp/Main.qml.orig-backup
+$ sed '6298s/Layout.minimumHeight: 48/Layout.minimumHeight: 24/' /tmp/Main.qml.orig-backup > /tmp/Main.qml.mutation
+$ diff /tmp/Main.qml.orig-backup /tmp/Main.qml.mutation
+6298c6298
+<                                             Layout.minimumHeight: 48
+---
+>                                             Layout.minimumHeight: 24
+$ sha256sum /tmp/Main.qml.orig-backup /tmp/Main.qml.mutation src/steamzero/ui/qml/Main.qml   # antes de trocar
+b6a474959c86195b332ec93a9b84a0255b306c3877516da5882e7b42e032c5c4  /tmp/Main.qml.orig-backup
+da037b338facbc1ccc8152e9cd8beffd5f9fd28dc8b2df88fc47b8f2f690b005  /tmp/Main.qml.mutation
+b6a474959c86195b332ec93a9b84a0255b306c3877516da5882e7b42e032c5c4  src/steamzero/ui/qml/Main.qml
+# (6574 linhas nos dois; uma linha diferente)
+
+$ cp /tmp/Main.qml.mutation src/steamzero/ui/qml/Main.qml && sha256sum src/steamzero/ui/qml/Main.qml
+da037b338facbc1ccc8152e9cd8beffd5f9fd28dc8b2df88fc47b8f2f690b005  src/steamzero/ui/qml/Main.qml
+
+$ .venv/bin/python -m pytest tests/integration/test_ui_control_matrix.py -k "hit_area_in_the_portable" -q
+>       assert offenders == [], (
+            f"alvos acionáveis abaixo de 48x48 em {PORTABLE_VIEWPORT}:\n" + "\n".join(offenders)
+        )
+E       AssertionError: alvos acionáveis abaixo de 48x48 em 949x593:
+E         system → 'Exportar estado' (98x25)
+1 failed, 22 deselected in 35.74s
+
+$ .venv/bin/python -m pytest tests/integration/test_ui_control_matrix.py -k "portable" -q
+E       AssertionError: alvos abaixo de 48x48 em 949x593 com escala 1.5:
+E         system → 'Exportar estado' (98x25)
+FAILED tests/integration/test_ui_control_matrix.py::test_actionable_targets_keep_a_48px_hit_area_in_the_portable_window
+FAILED tests/integration/test_ui_control_matrix.py::test_the_portable_window_holds_48px_targets_at_the_host_text_scale
+2 failed, 21 deselected in 69.19s (0:01:09)
+
+# Os dois gates nomeiam o mesmo alvo, na janela portatil e com a escala de texto do host, com a
+# medida real (98x25 — 25, nao 24, porque a altura sai do conteudo do botao quando o minimo sai
+# de cena). Isso e o que se exige de um gate de area de toque: acusar o controle, nao a contagem.
+
+$ cp /tmp/Main.qml.orig-backup src/steamzero/ui/qml/Main.qml && sha256sum src/steamzero/ui/qml/Main.qml && git status --porcelain src/
+b6a474959c86195b332ec93a9b84a0255b306c3877516da5882e7b42e032c5c4  src/steamzero/ui/qml/Main.qml
+(sem saida: src/ integralmente igual a HEAD; nenhuma copia alternativa ficou no repositorio)
+
+# ---------------------------------------------------------------------------
+# verde restaurado, na mesma arvore conferida acima
+# ---------------------------------------------------------------------------
+$ .venv/bin/python -m pytest tests/integration/test_ui_control_matrix.py -q
+23 passed in 614.86s (0:10:14)
+# O arquivo inteiro do gate de matriz (23 testes, incluindo os dois portateis novos) passou com a
+# arvore de produto igual a HEAD. Esta nao e a suite integral do checkpoint: e o modulo do gate.
+
+# ---------------------------------------------------------------------------
+# LIMITES DESTA PROVA, DITOS SEM MAQUIAGEM
+# ---------------------------------------------------------------------------
+# - A mutacao mede o gate, nao o produto. Nada aqui certifica a release instalada no host, e a
+#   captura e offscreen (geometria, nao toque real).
+# - O nao-vacuo foi provado para UM alvo de 48 px da superficie `system`. Nao provou que os 114
+#   alvos em 48 px sao cada um sustentados por binding proprio — provar isso exigiria 114
+#   mutacoes, e o que o gate faz e medir a arvore viva inteira a cada corrida, o que cobre o
+#   caso geral sem precisar dele.
+# - As duas mutacoes iniciais em EditorialHome nao morderam. Registrei as duas em vez de apagar,
+#   porque a primeira conclusao util desta fatia e justamente que o piso nao esta ali.

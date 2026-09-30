@@ -1,0 +1,34 @@
+# Coerência final do catálogo depois do checkpoint — 2ª fatia de RC-01
+# branch=codex/rc01-readiness-focus-2026-09-27  HEAD=449b68c3  data=2026-09-27
+#
+# O que aconteceu entre 05-gates-rapidos.log (status-check FALHOU) e este arquivo:
+# * cinco scopeDigest renovados pela FERRAMENTA, nunca à mão:
+#   SZ-THEME-ENGINE          b5d0db60 -> 264c1c4c
+#   SZ-THEME-IMPORT-RETROFE  f094ddc8 -> 921522d6
+#   SZ-THEME-IMPORT-SURFACE  2f848645 -> d636598b
+#   SZ-THEME-STUDIO          96d17e67 -> 8bc96aa2
+#   SZ-UI-DESKTOP-AUDIT      32520ddb -> renovado de novo abaixo, porque esta pasta esta no escopo
+# * as tres visoes geradas (docs/STATUS.md, docs/ACTIVE-WORK.md, docs/status/COVERAGE.md)
+#   regravadas por `tools/project_status.py render --write`.
+# Cada JSON de item mudou em exatamente a linha do digest (conferido com `git diff --stat`:
+# 1 linha + as entradas de evidencia deste lote).
+#
+# Saida da validacao aplicavel, executada com o catalogo ja renovado:
+$ make status-check
+.venv/bin/python tools/project_status.py check
+STATUS-CHECK: OK
+rc=0
+
+$ .venv/bin/pytest tests/unit/test_project_status.py -q
+13 passed in 4.29s
+rc=0
+
+# Limite declarado, nao escondido: este proprio arquivo esta dentro de
+# `docs/09-operations/evidence/2026-09-27-rc01-readiness-focus`, que cai no escopo declarado de
+# `SZ-UI-DESKTOP-AUDIT`. Escreve-lo envelheceu o digest do item uma ultima vez, entao o digest foi
+# renovado DEPOIS desta gravação e a corrida que autoriza o estado final do catalogo foi refeita
+# com o mesmo resultado (STATUS-CHECK: OK). A saida impressa acima e da corrida imediatamente
+# anterior; a de confirmacao, identica em veredito, esta no relatorio da entrega. E auto-referencia
+# inevitavel da ferramenta (um log dentro do escopo que o escopo hash), ja registrada no lote
+# anterior da mesma frente com as mesmas palavras: nenhum valor intermediario descreve uma arvore
+# versionada.

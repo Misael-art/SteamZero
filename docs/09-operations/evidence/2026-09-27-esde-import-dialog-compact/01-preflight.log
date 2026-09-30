@@ -1,0 +1,48 @@
+# pre-flight da 3a fatia de RC-01 (dialogo ES-DE no ThemeEditorPanel) — 2026-09-27
+# checkout unico: /home/misael/Projects/Steam Zero/Canonical/2026-09-21
+2026-09-27T10:17:42-03:00
+
+$ git rev-parse --abbrev-ref HEAD
+codex/rc01-readiness-focus-2026-09-27
+$ git rev-parse HEAD origin/main origin/codex/rc01-readiness-focus-2026-09-27
+330401acd8798821effc9869e9fede1bc26ff0b5
+3495c49d5d7c3244267e8292beee34475f70236b
+330401acd8798821effc9869e9fede1bc26ff0b5
+$ git status --porcelain
+ M docs/ACTIVE-WORK.md
+ M docs/status/items/ui-desktop-audit.json
+ M docs/status/workstreams/rc01-readiness-focus-2026-09-27.json
+?? docs/09-operations/evidence/2026-09-27-esde-import-dialog-compact/
+$ git worktree list
+/home/misael/Projects/Steam Zero/Canonical/2026-09-21 330401ac [codex/rc01-readiness-focus-2026-09-27]
+$ git remote -v
+origin	https://github.com/Misael-art/SteamZero.git (fetch)
+origin	https://github.com/Misael-art/SteamZero.git (push)
+
+$ pgrep -fa "run_tests_isolated|pytest|qmltestrunner|/usr/lib/qt6/bin/qml " (processos de teste em andamento)
+(nenhum processo de teste em andamento)
+
+$ sha256sum src/steamzero/ui/qml/ThemeEditorPanel.qml
+79dc0e5f68ff4008ddd0ebcd07985544b48c9974cc4fe4a11878ae5b49c790ed  src/steamzero/ui/qml/ThemeEditorPanel.qml
+$ wc -l src/steamzero/ui/qml/ThemeEditorPanel.qml
+3014
+$ git hash-object src/steamzero/ui/qml/ThemeEditorPanel.qml
+b5e5212df9c0682f9c988879fb9bb290aa5174bb
+$ git rev-parse HEAD:src/steamzero/ui/qml/ThemeEditorPanel.qml (blob registrado no Git desta ponta)
+b5e5212df9c0682f9c988879fb9bb290aa5174bb
+
+$ git rev-parse HEAD:src/steamzero/ui/qml/ThemeEditorPanel.qml (blob desta ponta)
+b5e5212df9c0682f9c988879fb9bb290aa5174bb
+
+$ /usr/lib/qt6/bin/qml --version e qmltestrunner --version NAO sao suportados por estes binarios (imprimem
+# o help); a versao do runtime foi obtida por duas fontes que concordam:
+$ /usr/lib/qt6/bin/qmake6 -query QT_VERSION
+6.11.2
+$ pacman -Q qt6-base
+qt6-base 6.11.2-3
+
+# Leitura do pre-flight, em uma frase: worktree unico na branch desta frente, HEAD == ponta remota (330401ac),
+# nenhum processo de teste concorrente, e o painel sob teste esta byte a byte no estado do commit 7fe9e8b2
+# (sha256 79dc0e5f68ff4008ddd0ebcd07985544b48c9974cc4fe4a11878ae5b49c790ed, 3014 linhas, blob b5e5212d).
+# O que aparece sujo em `git status` e desta propria frente: os tres arquivos de governanca do registro da
+# 3a fatia e a pasta de evidencia recem-criada. Nada de outra frente, nada nao solicitado.

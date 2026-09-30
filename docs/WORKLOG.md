@@ -12913,3 +12913,605 @@ formatadores humanos divergentes (`Main.qml:1298`, `SteamGameplay.qml:290`, `Emu
 `ThemeEditorPanel.qml:1048-1266` para o diálogo RetroFE, cujo `contentItem: ColumnLayout` não é
 rolável. RC-02 (DATA-01) vem depois, com os 18 arquivos / 15 candidatos reclassificados sem somar
 conjuntos sobrepostos.
+
+## 2026-09-27 — RC-01, 2ª fatia: o diálogo RetroFE cabe no viewport e o D-pad percorre o modal (UX-05/UX-07)
+
+**Ponto de partida e leitura divergente.** Branch `codex/rc01-readiness-focus-2026-09-27` sobre
+`449b68c3`, um worktree, `.venv` do próprio checkout, nenhum processo de teste vivo. A sessão
+anterior tinha mostrado um resultado de leitura incompatível com o disco para
+`tests/qml/check_theme_editor_import.qml`. Em vez de discutir a anomalia, fixei o estado: caminho
+absoluto, sha256 `b9b000bb…`, 146 linhas / 6391 bytes, `git diff HEAD` vazio, mtime 2026-09-08,
+último commit `8364a24b`. Não atribuo a causa a outro agente ou processo — não há evidência de
+escrita nenhuma. Registrado em `01-preflight-e-estado-do-disco.log`, e daqui em diante toda
+afirmação do lote saiu de leitura direta com `rtk`.
+
+**Reproduzir antes de mexer, com eventos reais.** Reescrevi o instrumento como QtTest
+(`tests/qml/check_retrofe_import_dialog_compact_viewport.qml`, raiz `Item`, 11 cenários) usando o
+mecanismo que o projeto já tem: `/usr/lib/qt6/bin/qmltestrunner` sob
+`QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software`, o mesmo de `check_dialog_keys.qml`. Chamar
+`moveFocus` diretamente não conta como prova, então o contrato é teclado/click reais
+(`TestCase.keyClick`, `mouseClick`) e estabilização observável com limite e falha explícita — e o
+gate de integração tem três guardas de intenção que reprovam se alguém trocar a tecla pela chamada
+interna, por `wait()` fixo ou por rolagem manual. Vermelho medido com o painel sem correção:
+**exit 6, 7 passed / 6 failed**, cada falha com o número na mão — moldura de 569 px contra a linha
+de ações em `(610,547)-(694,591)` (22 px para fora, sem qualquer corpo rolável); com relatório de
+erro extenso o *Publicar cena* caia em `y=1210`, inacessível; 24 pressões de Down sem sair do
+primeiro `RadioButton`; Tab real pousando em controle recortado; Down partindo de campo focado sem
+navegar. Nada foi publicado no host para testar geometria — a cena é local e sintética.
+
+**A menor correção completa.** `ThemeEditorPanel.qml`, 99 inserções / 9 remoções (`-U2`, apenas o
+diálogo RetroFE; o ES-DE está byte a byte igual): o `contentItem` passou a ser um `ScrollView` com
+as ações num `footer` fixo; `itemInRetrofeImportDialog()` e `revealRetrofeImportItem()` revelam o
+destino dentro da banda; `moveVertical()` percorre o modal pelo padrão que `Emulation.qml` e
+`Main.qml` já usam, pulando quem não é do diálogo e quem está desabilitado. Corpo rolável **e**
+ações fixas não foi escolha por gosto: com um relatório de 24 frases o texto precisa ser lido por
+inteiro, e o primary tem de continuar alcançável.
+
+**Três medidas do Qt 6.11.2 que decidiram o desenho** (e uma que não decide nada): (1) o
+`ScrollView` aninhado da lista de layouts prendia o foco no primeiro `RadioButton` — 24 pressões sem
+progresso — e `contentItem.keyNavigationEnabled = false` **não** soltava, impresso e conferido; só
+retirar o scroll aninhado resolveu. (2) O `footer` de um `Dialog` não é descendente do corpo
+rolável, então as setas precisaram de handler nos dois lados, apontando o mesmo passo. (3) Handlers
+`Keys.onUpPressed/onDownPressed` de um ancestral **disparam** com um `TextField` de linha única
+focado: `Left`/`Backspace` continuaram editando (caret 7→5, texto 7→6) enquanto `Down` navega — ou
+seja, as setas não roubam a digitação. (4) Um probe sintético não conseguiu dar foco a um campo
+dentro de `Popup`. Isso é limite do probe, não propriedade das anexações: nenhuma conclusão geral
+foi tirada daí, e a prova veio do painel real.
+
+**Verde pelo comportamento.** **exit 0, 13 passed / 0 failed**, estável em três execuções. Nos dois
+viewports preservados: 949×593 → banda 484, conteúdo normal 396 sem exigir rolagem, primary em
+`(616,525)-(700,569)`; conteúdo extenso → 11 pressões reais de Down até o primary; 1280×800 → banda
+650, primary em `(616,606)-(700,650)`. `foraDaBandaSemRolagem=0 espremidos=0 overflowHorizontal=0`
+em todos os cenários. A jornada whole foi exercitada por input real: abrir pelo botão, examinar,
+preencher, navegar até publicar/cancelar, Escape, Cancelar, payload do aplicar sem ativação e
+ausência de vazamento de estado. Vermelho e verde estão em `02-…-vermelho-medido.log` e
+`03-…-verde-medido.log`; a prova visual é `04-capturas-viewport.log` com 8 PNGs (antes/depois × 4
+fases), cada uma inspecionada: em `3-…-antes.png` a grade de créditos e as duas ações aparecem
+inteiramente fora do diálogo, sem área de rolagem; em `3-…-depois.png` vê-se a banda rolável com a
+linha seguinte cortada e as ações fixas acima da divisória do rodapé. **Tudo isso é offscreen** —
+geometria e foco no runtime Qt do projeto, painel isolado sem o tema do shell; **não** é a release
+`2.0.0rc1-e2af2562ebba` instalada, que não foi tocada, empacotada nem revalidada no host.
+
+**Checkpoint.** Uma única suíte integral, com a árvore congelada: janela 08:50:33→09:21:16
+(1838,54 s), `1 failed, 6402 passed, 47 skipped`, rc=1, e o state home real do operador idêntico
+byte a byte antes e depois (12816 arquivos, 2068 diretórios, 1372712391 bytes, mesmo
+`max_mtime_ns`). A contagem reconcilia com a fatia 1: 6397 + 5 = 6402, os cinco testes do gate novo,
+e os mesmos 47 skips — nada foi silenciado por skip. A única falha é
+`test_committed_catalog_and_generated_views_are_consistent`, causada pela **ordem** em que escrevi:
+os itens do catálogo já continham as evidências do lote quando a suíte rodou, e o `scopeDigest` só
+pode ser renovado depois que todos os arquivos do escopo existem (os logs 05/06/07 e este WORKLOG
+ainda não existiam). Zero arquivo do checkout foi escrito durante a corrida (`find -newermt` da
+janela, excluindo caches e `build/`, não devolve nada; a impressão de `git status` é a mesma no
+lançamento e no fim, `ee04994d…`) — as gravações dentro do checkout durante a suíte foram artefatos
+ignorados em `build/`, regravados pela própria ferramenta. Ruff (`check` e `format --check`, 671
+arquivos), mypy (297 arquivos) e `make independence boundaries` passaram na primeira passada; a
+coerência final do catálogo é provada por `make status-check` sozinho, no fim, em
+`07-status-final.log`.
+
+**O que esta fatia NÃO fecha.** RC-01 continua aberto, e resolver UX-07 não o encerra: **UX-03**
+(percentuais de prontidão sem dimensão nomeada) segue; **UX-04** (unidades de armazenamento) fica
+adiada porque `adapters/emulation.py` está sob claim exclusivo de
+`WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT`; de **UX-05** este lote não mede a primeira dobra da Home
+nem o mínimo de 48 px por alvo — no painel isolado sem tema os botões do rodapé medem 44 px, o que
+é propriedade pré-existente dos controles e não foi reduzido aqui, mas também não foi certificado;
+o **diálogo ES-DE** conserva exatamente a mesma classe de defeito (corpo não rolável, ações fora da
+moldura) e foi deixado de fora por escopo, não por estar bom; e falta a prova física na release
+instalada, que depende de autorização. A etapa 1 (UX-01/UX-02) está com CI terminal 10/10 verde em
+`c959be13` e PR 240 OPEN — o merge é do operador, e `WS-2026-09-RC01-CENTRAL-LOADING` só fecha com
+o SHA realmente integrado em main.
+
+**Próximo lote.** RC-02 (DATA-01): fila acionável de arquivos/sets com extração segura, projeções
+multidisco e preview de espaço, reclassificando os 18 arquivos / 15 candidatos sem somar conjuntos
+sobrepostos, em cópias controladas — ROMs, BIOS e saves originais intocados. Antes disso, o fecho
+desta fatia: commits funcional e documental separados, push desta branch e PR.
+---
+
+## 2026-09-27 — Adendo ao lote RC-01 (2ª fatia): evidência no caminho canônico, reprodução recuperável por Git e PRs consultados no SHA exato
+
+Entrada **append-only**; nada do texto acima foi reescrito. Três afirmações deste mesmo lote estavam
+insuficientes ou erradas, e as correções abaixo valem a partir de agora.
+
+**1. "Um hash isolado do arquivo não basta" — a reprodução do vermelho agora é recuperável por Git.** O
+log `02-ux05-ux07-vermelho-medido.log` identificava a árvore pré-correção só pelo sha256 de um backup em
+`/tmp`. O painel sem correção é o blob `7368fd385b8dc793c2ba83c6dc647c0b20f0dc9d094be8783bf01d1a35bb4dda`
+(2924 linhas), **idêntico** em `origin/main` (`3495c49d`), em `c959be13` (PR 240) e em `449b68c3`; obtém-se
+com `git show origin/main:src/steamzero/ui/qml/ThemeEditorPanel.qml`. Sobre ele o reproduzidor acrescenta
+**seis linhas** de superfície de teste (2 `property alias`, 1 linha em branco, `objectName` do aviso,
+`objectName` do Cancelar, `id` do primary), cada uma com o número de linha do blob no log; a conferência é
+o sha256 `13d5c644…` (2930 linhas) do resultado. O `4 ++++` registrado no pre-flight descrevia o instante
+10:45:42Z e **não** cobre as três últimas linhas — correção escrita no próprio log `01`. Conferido também
+que não há cópia alternativa do painel no repositório: `grep -rl retrofeImportDialog src tests` devolve
+apenas o painel e os três arquivos de teste do lote; o backup de trabalho ficou fora do checkout.
+
+**2. Caminho canônico: a evidência de registro voltou a viver dentro do checkout.** Os brutos e a
+reprodução por leitura estavam só em `~/evidence-logs/2026-09-27-rc01-readiness/` e
+`~/evidence-logs/2026-09-27-rc01-slice2/`, que um revisor que clona o repositório não vê. Entraram em
+`docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/` como `08-reproducao-no-codigo.log`,
+`09-sonda-foco-mecanismos.log`, `10-gates-rapidos-bruto.log` e `11-checkpoint-integral-bruto.log`, no
+precedente da pasta `2026-09-26-rc01-central-loading/`, que já guarda `15-…-bruto.log` e
+`17-…-bruto.log`. Os gêmeos no host continuam lá, com md5 declarado em `05` e `06`; as linhas `# bruto:`
+agora apontam primeiro para o arquivo do repositório. `03` e `04` deixaram de citar caminhos absolutos do
+host como referência e passaram a citar o blob do Git; a linha `# runtime:  -help : This help`, que era
+ruído de captura, foi substituída pela versão real do runner.
+
+**3. "CI terminal 10/10 verde" era arredondamento indevido.** Consultei os PRs no SHA exato e gravei
+comando + resposta crua em `12-estado-dos-prs-no-sha-consultado.log`. Em `c959be13` (PR 240) há **9
+check-runs — 8 `success` + 1 `skipped` (Sourcery review)** — mais **1 commit status legado, CodeRabbit,
+`success`**; nenhum `failure`, nenhum em andamento. O PR 241 estava, no instante da consulta, com 6
+`success`, 1 `skipped` e **2 em andamento** (`Python 3.12`, `Gate visual QML`), `mergeStateStatus=UNSTABLE`;
+não fiz polling depois disso. E cometi um erro de atribuição, também corrigido ali: `c17def05` e
+`069501ab` são os dois commits do **PR 239** (RC-00), não do 240.
+
+**4. Dependência declarada, sem reapresentar commits alheios como novos.** A pilha é 239 (`069501ab`) →
+240 (`c959be13`) → 241 (ponta desta branch), todos com base `main` e todos `OPEN`. Verifiquei os 11 commits
+um a um com `git merge-base --is-ancestor … origin/main`: **nenhum** está em main. Portanto a ordem de
+integração é 239, 240, 241, e mesclar o 241 sem os anteriores arrasta o conteúdo deles. O que é desta
+fatia são os 4 commits desta frente, dos quais **só `7fe9e8b2` toca código**. Nenhuma frente foi fechada
+como integrada; `WS-2026-09-RC01-READINESS-FOCUS` e `WS-2026-09-RC01-CENTRAL-LOADING` seguem `active` até o
+merge efetivo, que é decisão do operador.
+
+**5. Sequência corrigida.** O parágrafo "Próximo lote" acima apontava RC-02. A instrução do operador coloca
+antes disso o que falta em RC-01, e esta frente segue nessa ordem: (a) diálogo **ES-DE** com os contratos de
+escopo, teclado real, foco visível e conteúdo extenso já provados; (b) **48 px** por alvo e a experiência
+medida **dentro do shell**, incluindo escala de texto em viewport compacto; (c) **UX-03**, explicar a
+prontidão sem confundir preflight com gameplay; (d) **UX-04**, conciliar o claim com a evidência atual e o
+dono real — `WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT` continua `active` (atualizado em 26/09) com
+`adapters/emulation.py` **e `Main.qml`** em `exclusivePaths`, e é isso que preciso verificar contra o estado
+de hoje antes de tratar UX-04 como adiada. RC-02 vem depois, não no lugar. A primeira dobra da Home e a
+prova física na release instalada continuam pendentes; offscreen não as substitui.
+
+**Governança deste adendo.** Os quatro arquivos novos e os seis editados caem no escopo de
+`SZ-UI-DESKTOP-AUDIT`; o `scopeDigest` foi renovado **pela ferramenta** depois de todas as escritas
+(`3c271359 → d17e35ea`, via `tools/project_status.py digest --item SZ-UI-DESKTOP-AUDIT`, valor gravado por
+`scope_digest()` do próprio módulo — nunca à mão), as três visões foram regeradas com `render --write` e a
+validação aplicável é esta, executada com a árvore final às 09:51-03:00 (bloco abaixo, gravado no host em
+`/tmp/fecho-documental.txt`) e reproduzida igual na janela 09:52:58 → 09:53:05-03:00:
+
+```
+$ .venv/bin/ruff check src tools tests        All checks passed!                 rc=0
+$ .venv/bin/ruff format --check src tools tests   671 files already formatted     rc=0
+$ .venv/bin/pytest tests/unit/test_project_status.py -q   13 passed in 4,81 s    rc=0
+$ make status-check                           STATUS-CHECK: OK                   rc=0
+```
+
+A suíte integral **não** foi reexecutada: nada aqui muda comportamento, e o checkpoint já tem a corrida
+única sobre a árvore congelada (`06`, bruto em `11`). O gate novo deste lote
+(`tests/integration/test_retrofe_import_dialog_compact.py`) roda em CI no SHA final. Uma razão a mais para
+este registro viver aqui e não na pasta do lote: `docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/`
+está no `scopePaths` do item, então um log dentro dela sobre o `status-check` invalidaria o digest que
+pretende atestar — paradoxo já declarado em `07-status-final.log`. `docs/WORKLOG.md` não está no escopo, e
+a verificação mais forte fica disponível para qualquer pessoa: no commit final deste lote,
+`make status-check` dá `OK`.
+
+## 2026-09-27 — Passo 4 da mesma fatia: dependência declarada no PR 241
+
+O passo anterior deixou o PR 241 dizendo que "o PR 240 ainda está OPEN, então o diff contra `main` inclui
+os commits dele". Correto, mas insuficiente: não declarava **ordem de integração** nem o estado lido no SHA
+de cada ponta, e citava um commit (`244b9550`) com um dígito trocado. O corpo foi reescrito com uma seção
+"Dependência: este PR depende do #240, e o #240 depende do #239", contendo a tabela de pontas, o estado
+consultado e a ordem **239 → 240 → 241**, mais a ressalva de que mesclar este sem os anteriores arrasta o
+conteúdo deles porque a base é `main` para os três.
+
+As três pontas e os estados foram lidos de novo, com `date -Iseconds` nas bordas, às **10:01:56 →
+10:02:07-03:00**, e o bruto está em
+`docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/12-estado-dos-prs-no-sha-consultado.log`
+(seção "Segunda leitura"): #239 `069501ab` OPEN/`CLEAN`; #240 `c959be13` OPEN/`MERGEABLE`/`CLEAN`; #241
+`f9256642` OPEN/`MERGEABLE`/`UNSTABLE`, com **4 `success` + 1 `skipped` + 4 `in_progress`** em 9
+check-runs e 1 status legado CodeRabbit `success`. `UNSTABLE` aqui significa checks em andamento, não
+checks quebrados — e `MERGEABLE` trata de conflitos, não de verde. Nenhuma consulta repetida depois dessa
+janela. O número de commits desta ponta até `origin/main` passou de 11 para **12** com `f9256642`; a
+afirmação de que nenhum é ancestral de `main` vale para os 12 (verificada individualmente).
+
+Nada de código foi tocado neste passo: `f9256642` tem 18 arquivos e **zero** fora de `docs/`
+(`git show --name-only f9256642 | grep -v '^docs/'` vazio). O push continuou fast-forward, sem force, e a
+decisão de merge permanece do operador — nenhuma frente se declara integrada aqui.
+
+**Governança deste passo.** Sete arquivos alterados, todos sob `docs/`. O `scopeDigest` de
+`SZ-UI-DESKTOP-AUDIT` foi renovado **pela ferramenta** depois de todas as escritas no escopo
+(`26b8c2d2 → 29f47724`, com `ps.scope_digest(ps.ROOT, item["scopePaths"])` às 10:06:19-03:00), as visões
+foram regeradas com `render --write`, e a validação aplicável foi corrida com a árvore final na janela
+10:06:36 → 10:06:45-03:00 (bruto em `/tmp/fecho-passo4.txt`):
+
+```
+$ .venv/bin/ruff check src tools tests        All checks passed!                 rc=0
+$ .venv/bin/ruff format --check src tools tests   671 files already formatted     rc=0
+$ .venv/bin/pytest tests/unit/test_project_status.py -q   13 passed in 4,47 s    rc=0
+$ make status-check                           STATUS-CHECK: OK                   rc=0
+$ make independence boundaries                independência OK / fronteiras OK   rc=0
+```
+
+A suíte integral não foi reexecutada (nada aqui muda comportamento), e nenhuma frente se declara
+integrada: `WS-2026-09-RC01-READINESS-FOCUS` e `WS-2026-09-RC01-CENTRAL-LOADING` continuam `active` até
+o merge efetivo do operador.
+
+**Continuação do passo 4 (10:07 → 10:12-03:00), para o registro não ficar um commit atrás da
+realidade.** Escrever o corpo de um PR e consultá-lo no GitHub não é atômico: depois do commit
+documental `00de2ec8` a ponta do PR 241 mudou de novo, e o log 12 recebeu uma terceira leitura
+(10:08:04 → 10:08:06-03:00) nela. Nessa ponta nova **só o check "Sourcery review" existia** (`skipped`),
+com os demais jobs ainda sem check-run criado, e `mergeStateStatus=CLEAN` — que ali significa "sem
+conflito e sem falha registrada", não "CI verde". A contagem de commits entre `origin/main` e esta ponta
+passou de 11 para 12 e para **13**, e a verificação de ancestralidade foi refeita sobre eles
+individualmente. O `scopeDigest` de `SZ-UI-DESKTOP-AUDIT` acompanhou: `26b8c2d2 → 29f47724 → 408390f9`,
+sempre pelo valor que a própria ferramenta calcula (`tools/project_status.py digest --item …`), gravado
+depois de todas as escritas no escopo, com `render --write` e `STATUS-CHECK: OK` em cada passagem.
+Conferido arquivo a arquivo: dos seis commits desta frente, **só `7fe9e8b2`** tem algo fora de `docs/`
+(4 arquivos: `ThemeEditorPanel.qml` e os três de teste); os outros cinco são puros documentos.
+
+## 2026-09-27 — RC-01, 3ª fatia: o diálogo ES-DE cabe no viewport e o D-pad percorre o modal (UX-05/UX-07)
+
+**Partida e registro antes da edição.** Branch `codex/rc01-readiness-focus-2026-09-27` sobre
+`330401ac`, o mesmo (e único) checkout do projeto, `.venv` dele próprio, `git worktree list` com uma
+linha só e nenhum processo de teste vivo (`01-preflight.log`). O painel estava byte a byte no estado
+funcional da fatia anterior: sha256 `79dc0e5f…`, 3014 linhas, blob `b5e5212d`. A frente foi registrada
+**antes** de tocar código: workstream com os quatro caminhos novos em `exclusivePaths`, item com as
+três rotas de teste e a pasta de evidência em `scopePaths`, e a pasta
+`docs/09-operations/evidence/2026-09-27-esde-import-dialog-compact/` criada com o log de pre-flight.
+
+**Reproduzir primeiro, com o instrumento final.** O harness `check_esde_import_dialog_compact_viewport.qml`
+(880 linhas, raiz `Item`, 11 cenários + init/cleanup) foi escrito como o da fatia anterior —
+`qmltestrunner` sob `QT_QPA_PLATFORM=offscreen` com backend de software, `TestCase.keyClick` e
+`mouseClick` reais, estabilização observável com limite e falha explícita — e o vermelho foi medido
+**com ele já fechado**, para o log não descrever um instrumento que depois mudou:
+**`Totals: 8 passed, 5 failed`, rc=5**, cinco falhas nomeadas:
+
+* `test_06`/`test_09` — `body=519/1102`: 1102 px de conteúdo num corpo de 519, sem área rolável, com o
+  primary em `(493,1041)-(634,1089)` numa moldura de 560 px e **9 controles de texto fora da banda "sem
+  como alcançar"**, nos dois viewports;
+* `test_03` — 24 pressões de `Qt.Key_Down` e o foco parado em `themeImportEsdeSource` (as 24 linhas
+  `PASSO` estão no log);
+* `test_05` — `Left`/`Backspace` editavam (18→17), mas o `Down` era engolido pela edição em vez de sair
+  do campo;
+* `test_07` — lista de esquemas com `ScrollView` aninhado: **1 visita distinta em 40 pressões**.
+
+As quatro causas são estruturais e estão escritas com linha do arquivo em
+`06-reproducao-no-codigo.log`. A árvore vermelha é recuperável por **Git**, não por cópia solta:
+`git show HEAD:…` + exatamente cinco linhas de superfície (`2` aliases, `objectName` do aviso,
+`objectName` do Cancelar, `id` do primary), conferida pelo sha256 `83b683dc…` de 3019 linhas. Nenhuma
+cópia alternativa ficou no repositório — `grep -rl "esdeImportDialog" src tests` devolve o painel, os
+três arquivos de teste deste lote e `Main.qml`, que tem **outro** diálogo ES-DE duplicado e pertence ao
+recorte "dentro do shell".
+
+**A correção é a forma da fatia anterior, não um mecanismo novo.** `ThemeEditorPanel.qml` em
+`+159/−87` (`git diff -w`: `+82/−10`), só o diálogo ES-DE: `contentItem` virou `ScrollView` único com
+`clip` e `contentWidth: availableWidth`, as duas ações foram para o `footer`, o `ScrollView` aninhado da
+lista de esquemas virou `ColumnLayout`, e `itemInEsdeImportDialog()` / `revealEsdeImportItem()` /
+`moveVertical()` repetem o par RetroFE — as setas verticais navegam o modal pulando quem não é do diálogo
+e quem está desabilitado, as horizontais continuam editando. Verde: **`Totals: 13 passed, 0 failed`,
+rc=0**, cinco execuções; primary alcançado por **6 pressões reais** com aviso implícito de 816 px
+rolável; 24 esquemas em corpo único com 6 pressões e 6 visitas distintas; `foraDaBandaSemRolagem=0`,
+`espremidos=0`, `overflowHorizontal=0` em todos os cenários, inclusive com escala de texto 1.5. Nenhuma
+regra de importação foi tocada: payload `{source, scheme, name}`, tema não ativado, `resetEsdeImport()`
+no `onClosed` — as três coisas são o `test_08`.
+
+**O lote também fechou uma corrida que a fatia anterior deixou no ar.** O gate de capturas do RetroFE
+reprovava intercaladamente sob o par combinado (`capturas=5 de 4`, um `undefined-gate.png`, rc=1) e
+passava sozinho. Em vez de registrar como sorte, reproduzi removendo a linha `harness.phase = 500`:
+**4 falhas em 4 execuções**; com a guarda de volta, **6 em 6**. `grabToImage` é assíncrono e o `Timer` de
+20 ms reentrava na mesma fase — a cena ES-DE nasceu com a guarda, a RetroFE recebeu a mesma linha e o
+gate das duas agora exige a linha e o comentário que diz por quê. A seção 1 do log `04` mostra o mesmo
+defeito no arquivo novo antes da correção (8 capturas para 5 nomes), com a cena restaurada e conferida
+por sha256.
+
+**Medida visual honesta.** Dez PNGs nos dois viewports, cinco de cada lado, `5 de 5` e rc=0 nas duas
+corridas, inspecionadas uma a uma. Onde o antes e o depois se parecem, o README diz: com um único
+esquema as ações aparecem nas duas imagens; o que muda é estrutural. E a imagem 3 tem o foco
+**programático de propósito** — ela prova o rodapé fixo com o destino fora da dobra, não prova rolagem;
+revelar o destino focado é caminho do D-pad real, medido no harness de contrato.
+
+**O que rodou, e o que não rodou.** `ruff check`, `ruff format --check` (672 arquivos), `mypy src`
+(297 arquivos), `make independence boundaries` — rc=0. Par de gates de viewport: `11 passed` cinco
+vezes. Regressão dirigida pela dependência real (`grep -rl ThemeEditorPanel tests/`): os 96 testes de
+`test_qml_handheld_offscreen.py` (que conduz os três harnesses do editor de temas), cobertura e jornada
+de diálogos e identidade e matriz de controles — **96 passed in 1158.03s**, rc=0, janela
+11:30:17→11:49:35 com a árvore congelada (última escrita 11:28:45, impressão do `git status` idêntica
+antes e depois). **A suíte integral não foi reexecutada aqui**: o checkpoint integral desta frente
+continua a corrida única da 2ª fatia (08:50→09:21, `1 failed, 6402 passed, 47 skipped`), e a integral da
+sequência vira no fim dos recortes 5(d)/5(b)/5(c), sobre a árvore final. Nada nesta fatia é prova da
+release `2.0.0rc1-e2af2562ebba` instalada: offscreen mede geometria, foco e teclado, não o host.
+
+**Dependência e integração.** Esta fatia senta sobre o commit funcional da anterior (`7fe9e8b2`), que
+está dentro do PR 241; a pilha declarada continua 239 (`069501ab`) → 240 (`c959be13`) → 241 (ponta desta
+branch), todos com base `main` e OPEN, ordem de integração obrigatória. Nada de 239/240 é reapresentado
+como mudança nova. Nenhuma frente se declara integrada: o merge é decisão do operador, e
+`WS-2026-09-RC01-READINESS-FOCUS` e `WS-2026-09-RC01-CENTRAL-LOADING` continuam `active` até o SHA
+realmente estar em `main`.
+
+**Governança deste passo.** Cinco `scopeDigest` envelheceram com a mudança em `src/steamzero/ui`
+(`SZ-UI-DESKTOP-AUDIT` e os quatro itens de tema), foram renovados **pelo valor que a própria ferramenta
+calcula** e as três visões regeradas com `render --write`; os quatro itens de tema receberam uma entrada
+de renovação que diz explicitamente que nenhuma capacidade deles foi reatestada, e o
+`SZ-THEME-IMPORT-RETROFE` registra que este lote **tocou** um arquivo dele (a cena de captura e o gate,
+com a guarda de fase). O WORKLOG é append-only. O `nextAction` da frente passa a listar a ordem que
+resta: conciliar o claim de `Main.qml` (evidência: `73919843`, o único commit funcional pendente de
+`WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT`, toca `adapters/emulation.py`, `adapters/discovery/vita_packaging.py`
+e dois testes unitários; `cad58bb4` é só docs; o diff de `Main.qml` e `desktop_contracts.py` entre
+`origin/main` e `cad58bb4` está **vazio**, conferido com `git diff --stat`), depois os 48 px por alvo
+dentro do shell com escala de texto, depois UX-03, e UX-04 só no que não invade `emulation.py`.
+
+## 2026-09-27 — RC-01, rodada de fechamento do PR 241: estado real das PRs, 48 px medidos dentro do shell e a evidência visual não certificada no CI
+
+**O que esta rodada é, e o que não é.** Instrução do operador: concluir a rodada
+atual do #241 antes de iniciar a quarta fatia. Ela fecha a documentação das fatias
+2 e 3 e entrega o recorte 5(b) — o mínimo de 48 px por alvo medido **dentro do
+shell**, com viewport compacto e escala de texto. **A 4ª fatia não começou**: nenhum
+arquivo de `src/` foi tocado (`Main.qml` segue `b6a47495…`, `EditorialHome.qml` segue
+`ee80c0b9…`, ambos conferidos byte a byte contra `HEAD` em `01-preflight.log`). O
+registro desta frente tinha sido escrito na sessão anterior como "4ª fatia iniciada",
+editando `Main.qml` sob a autorização escrita da outra frente; com a instrução nova,
+esse texto estava **falso** e foi corrigido — inclusive porque listava em
+`exclusivePaths` um arquivo que nunca existiu,
+`tests/qml/capture_shell_touch_targets_compact.qml` (removido; `ls tests/qml/` não o
+acha). O `git worktree list` continua com uma linha só e `git stash list` vazio.
+
+**Estado real das PRs, medido e não relatado**
+(`docs/09-operations/evidence/2026-09-27-pr241-verificacao-documental/01-estado-real-das-prs.log`).
+Três fontes independentes (`gh pr view`, `git rev-parse origin/main`, `git log -1
+origin/main`) dizem a mesma coisa: **#239 (`069501ab`), #240 (`c959be13`) e #241
+(`fe5751a0`) estão todas OPEN** e `main` está parado em `3495c49d` desde
+26/09 10:55Z — nada desta frente foi integrado, e a premissa de que o #240 já estava
+fechado não se sustentou. O `merge_commit_sha` que a API devolve para PR aberta é o
+ref de *test merge* do GitHub, não evidência de integração. A ordem de integração
+sai da mesma medição: os três têm base `main` e o #241 contém o conteúdo dos
+anteriores, então aplicar o #241 arrasta #239 e #240; o #241 não reabre o #240.
+Conciliado aqui, sem edição: o claim de `exclusivePaths` de
+`WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT` sobre `Main.qml` não é sustentado por
+conteúdo pendente (`git diff --stat origin/main..cad58bb4` vazio para `Main.qml` e
+`desktop_contracts.py`), mas **não exerci essa autorização nesta rodada**.
+
+**5(b): os 48 px deixaram de ser pendência e passaram a ser medição**
+(`docs/09-operations/evidence/2026-09-27-shell-touch-targets/`). Reutilizei o
+instrumento que o projeto já tinha em vez de criar um: `tools/ui_control_probe.qml`
+percorre a árvore viva de `Main {}` e `tools/ui_control_inventory.py` já despachava os
+14 cenários. Saíram daí dois parâmetros **aditivos** (`--viewport LGxAL` e
+`--text-scale`, com o inválido morrendo em `PROBE-FAIL` e rc=3) e o eco do contexto
+medido (`PROBE-CONTEXT` devolve `viewport`, `textScale`, `handheldLayout`), porque a
+escala de texto só existe como cópia nova de `accessibility.visualScale` dentro do
+payload — mutar no lugar não re-dispara o *binding*. Medido em quatro contextos:
+
+* `1600x1000` escala 1.0 é o denominador que já existia; `949x593` (a janela do Deck)
+  com escalas 1.0, 1.5 e 2.0 é o que a auditoria pedia;
+* nos três contextos portáteis: **284 controles registrados, 263 acionáveis,
+  `abaixo_de_48=0`, `maiores_que_a_janela=0`, piso exatamente 48×48**, estável em duas
+  passadas idênticas;
+* o par de gates novo (`test_actionable_targets_keep_a_48px_hit_area_in_the_portable_window`
+  e `test_the_portable_window_holds_48px_targets_at_the_host_text_scale`) passou com o
+  módulo inteiro: `23 passed in 614,86s`.
+
+**O gate morde, e isso foi provado antes de alegado.** Duas mutações em
+`EditorialHome.qml` (reduzir `Math.max(48…)` para 40 e `minimumTarget` para 40)
+**não reprovaram nada** e ficaram registradas como no-op, não apagadas. A que mordeu
+foi `Main.qml:6298`, `Layout.minimumHeight: 48` → `24`, montada por
+`git show HEAD:caminho` + edição exata, com hash da mutação `da037b33…` conferido e o
+original `b6a47495…` restaurado e reconferido: os dois gates reprovaram nomeando
+`system → 'Exportar estado' (98x25)` (`2 failed, 21 deselected in 69,19s`). Nenhuma
+cópia alternativa do arquivo ficou no repositório.
+
+**O claim de UX-05 foi estreitado, não ampliado.** `AUDIT.md:125` probe **reduzir**
+alvos de 48 px — não afirma que havia alvo abaixo de 48 no shell. O número de 44 px
+que anda citado pela frente é **minha** nota de WORKLOG (`docs/WORKLOG.md:12995`) sobre
+os botões do rodapé num painel isolado sem tema, propriedade pré-existente dos
+controles, não violação medida dentro do shell. UX-04 pelo canonical é **unidade de
+armazenamento** (`AUDIT.md:124`: "sem unidade SI/IEC"); nenhuma norma do repositório
+define UX-04 como formatação de data, e é assim que o cartão passa a dizer.
+
+**A evidência visual continua vermelha no CI, e agora sabe-se por que ela é
+inspecionável — não.** No SHA exato `fe5751a0` o job *Gate visual QML (Linux)* devolveu
+`2 failed, 326 passed, 12 skipped, 6116 deselected in 1111,46s`: as duas cenas de
+captura do diálogo ES-DE do painel saíram com 7147 B e 8021 B contra o piso de
+20 000 B do gate. No mesmo ambiente, localmente, a **mesma** captura deu 40249 B em
+6/6 execuções, inclusive com `HOME` vazia — logo não é flake declarável nem diferença
+de conteúdo. A corrida `36327779040` **não publicou** o artefato `qml-visual-artifacts`
+porque o workflow globa `/tmp/pytest-of-*` enquanto `tools/run_tests_isolated.py`
+realoca `TMPDIR` para `/tmp/steamzero-tests-*`: quem vai investigar a falha não recebe
+nenhuma das duas imagens (log `02-gate-visual-vermelho-no-runner.log`, com os candidatos
+de mecanismo linha a linha e um "ainda não sei" explícito onde ele termina).
+Consequências registradas: **não baixei o limiar de bytes**, **não expandi o lote**, e o
+item ganhou a evidência com `result: "failed"` mais o gap
+`GAP-UI-VISUAL-CAPTURE-NOT-CERTIFIED-IN-CI`. Os dois consertos candidatos (espera
+observável pela transição de entrada no harness; caminho do artefato no workflow) vão
+para decisão do operador, não para este commit.
+
+**`status-check` medido na base e na cabeça, com a saída real.** A premissa de "16
+reprovações" **não se reproduziu** em nenhuma das três árvores que existem para medir:
+com os três arquivos de medição sujos, a ferramenta devolve **1** reprovação
+(`SZ-UI-DESKTOP-AUDIT`, esperado `02435ffe…`, atual `fae75c04…`); com eles devolvidos a
+`HEAD`, `STATUS-CHECK: OK` (e `13 passed in 4,71s` no teste de consistência do
+catálogo); e o CI já tinha devolvido `STATUS-CHECK: OK` no mesmo `fe5751a0`. Depois
+desta rodada documental, com `AGENT-HANDOFF.md` e os três cartões alterados, a lista
+cresceu para **3 digests + 3 visões** — que é exatamente a contagem que cresce quando
+se edita documento governado, e é por isso que os três digests foram renovados **pelo
+valor que a ferramenta calcula** (`digest --item … --write`), nunca à mão, e no mesmo
+commit que carrega o código medido (os três caminhos de medição pertencem ao
+`scopePaths` do item, então separar em dois commits deixaria um deles reprovando).
+
+**Governança.** `ruff check src tools tests` reprovou **esta** entrega duas vezes — dois
+en dashes em `1.0–2.0` escritos por mim em comentário e *docstring* do arquivo de gate
+(`RUF003`/`RUF002`). Corrigidos por hífen, sem tocar linha de código, o hash do gate
+mudou de `732389e0…` para `f625cbe0…` e o par portátil foi **reexecutado no conteúdo
+final** (`2 passed in 69,67s`) em vez de herdar o verde anterior; os `23 passed em
+614,86s` citados são do conteúdo pré-ajuste, e o log diz isso. Verdes: `ruff format
+--check` (672 arquivos), `mypy src` (297 arquivos), `make independence boundaries`,
+`make component-lock`, `make capability-matrix`. **A suíte integral não foi
+reexecutada**, por instrução explícita do operador: o checkpoint desta frente continua
+a corrida única (`1 failed, 6402 passed, 47 skipped`) registrada na pasta da 2ª fatia,
+que cobre a árvore pré-documental; a falha continua atribuída documentalmente e não
+escondida. Build de release não foi gerado — proibido sem solicitação —, então o que
+cobra "build" aqui é o par `component-lock`/`capability-matrix` mais a validação de
+gerados do `status-check`.
+
+**Pendências, sem promover eixo algum.** `integration` segue `feature-branch`,
+`verification` `dev`, `operation` `degraded`, `distribution` `not-packaged`. Faltam: a
+decisão de merge da pilha 239 → 240 → 241; fechar `WS-2026-09-RC01-READINESS-FOCUS` e
+`WS-2026-09-RC01-CENTRAL-LOADING` como integrados só com o SHA em `main`; os dois
+consertos do gate de capturas; a 4ª fatia (o segundo diálogo ES-DE duplicado em
+`Main.qml`, `dialog 2822-2971` aberto em `6313`, corpo sem `ScrollView` nem teto, forma
+a copiar de `credentialDialog` `Main.qml:2173-2232`); UX-03; os formatadores de UX-04
+não reivindicados; e UX-05 na primeira dobra da Home com prova física na release
+`2.0.0rc1-e2af2562ebba` instalada, que depende de autorização — captura offscreen não
+substitui. O WORKLOG é append-only.
+
+## 2026-09-27 — Destravamento do gate visual do PR 241: a imagem canônica não tem fonte nenhuma, o upload nunca casou e o contrato de captura era um proxy
+
+Autorização desta rodada: **exclusivamente** o bloqueio visual do #241. Nenhum merge,
+nenhuma 4ª fatia, nenhuma segunda cópia da árvore. Evidência em
+`docs/09-operations/evidence/2026-09-27-gate-visual-causa-e-contrato/`.
+
+**A causa, medida na própria imagem do CI e não inferida dela.** O job não roda no
+runner do Ubuntu: roda em `ghcr.io/misael-art/steamzero-qml-visual@sha256:8b832ec124ae…`
+com digest fixado, e confere o container contra `ci/qml-visual/environment.lock.json`
+**antes** de renderizar. Essa guarda passou — o Qt é o Qt declarado (6.11.2). O que a
+imagem não instala é fonte: `fc-list` devolve **0** arquivos, embora `fontconfig`,
+`freetype2` e `harfbuzz` estejam presentes (`ci/qml-visual/Containerfile:31-41`). Os
+dois gates de captura de diálogo faziam `os.environ.copy()` e sobrescreviam quatro
+variáveis Qt, ou seja, herdavam o fontconfig de quem executa. No host há 828 fontes em
+573 famílias; na imagem, nenhuma. Experimento de uma variável só, no mesmo container e
+no mesmo commit: `FONTCONFIG_FILE` apontando para a fonte empacotada
+(`tests/fixtures/fonts/liberation-sans-2.1.5`, 4 faces) levou `fc-list` de 0 a 4 e a
+cena 1 de **7.147** para **31.184** bytes — exatamente o número que o CI reportou e o
+número do golden. Conclusão separada: **não há defeito de produto nesta história**; o
+diálogo renderiza certo nos dois viewports, todo glifo é tofu e nada está cortado. O
+defeito era de harness, e o precedente de conserto já estava no repositório
+(`CanonicalEnvironment`, usado por `test_qml_visual_capture.py` em três pontos) — foi
+reutilizado, não reinventado. É também por isso que `main`, #239 e #240 estão verdes no
+mesmo gate com a imagem sem fonte: o gate que existia declarava ambiente; os dois gates
+novos do #241, não.
+
+**Por que a evidência nunca chegou ao CI — duas causas independentes.** O passo de
+upload rodava (o `if: always()` estava certo; linha 447 do log do job), mas pedia
+`/tmp/pytest-of-*/**/*.png` enquanto `tools/run_tests_isolated.py:371` realoca
+`TMPDIR`/`TEMP`/`TMP` para `/tmp/steamzero-tests-*/tmp/…` e, em `:491`, apaga essa
+árvore ao sair. O log do run `36333208783` traz o aviso explícito de glob não casado
+(linha 465), e `gh api actions/artifacts` mostra **0** artefatos `qml-visual*` nos 100
+mais recentes — nunca foi publicado, em nenhum run. Um glob certo também não salvaria:
+os arquivos já teriam sumido quando o step subsequente rodasse. Corrigido dos dois
+lados: `_publicar()` copia as capturas e escreve `geometria.json`, `ambiente.json` e
+`saida-do-runner.txt` em `build/visual-evidence/<diálogo>/` **antes** de qualquer
+asserção, e o workflow passou a publicar `build/visual-evidence/**` com
+`if-no-files-found: error` — a ausência deixa de poder passar por sucesso. Nada de
+pessoal é publicado: o log sai com `str(tmp_path)` substituído por `<tmp>`, o
+`ambiente.json` traz os nove campos semânticos do contrato e não o ambiente cru, e a
+busca por `token|ghp_|authorization|password|secret|/home/` nos arquivos publicados não
+acha nada.
+
+**O contrato de captura, e por que não é trocar o número.** `st_size > 20_000` media a
+intenção "a cena tem conteúdo" por uma grande que não a representa: um golden adulterado
+com **um** pixel tem 34.554 bytes e passava; a captura sem fonte reprova, mas o número
+não diz *o quê* falta. Antes de decidir, medi um substituto plausível e o rejeitei por
+evidência — cobertura de tinta (pixels que diferem da cor modal da região em >32) deu
+3,0 % no corpo sem fonte e 2,4 % no corpo com fonte: os glifos tofu são decoration
+larga e o texto real tem entrelinha, então a métrica **inverte** o sinal e não
+discrimina. O contrato atual, por cena: o PNG existe, decodifica e tem o viewport
+pedido; a cena **declarou** o mesmo viewport na linha `GEOMETRIA|` que o harness QML
+agora emite por `mapToItem`; `assert_not_empty` contra `#071019`; rodapé e botão de
+ação dentro da moldura; e igualdade pixel a pixel com baseline versionada
+(`changed_pixel_count == 0`), com `diff.png`/`overlay.png`/`expected.png`/`metrics.json`
+escritos no diretório de evidência. Nada foi removido: as guardas de intenção e os 13
+casos de `qmltestrunner` de cada diálogo continuam, e nenhum limiar foi abaixado. A
+mordida virou asserção no repositório (`test_o_contrato_de_captura_reprova_vazio_ausente_e_corte`,
+sem Qt): fundo uniforme reprova em `assert_not_empty` **e** em 562.724/562.757 pixels; a
+captura real do runner sem fonte reprova por pixel-exact em 58.288 pixels (10,36 %)
+embora passe em `assert_not_empty`; um pixel trocado reprova (bbox `400,300,401,301`) e
+passava no proxy antigo; e `acao=(493,1041,141,48)` numa janela de 593 px está fora da
+moldura, enquanto `(663,529,132,48)` está dentro.
+
+**Nove baselines novas, geradas no contrato e não no host.**
+`tests/qml/golden/import-dialogs/{esde,retrofe}/*.png`, produzidas com
+`CanonicalEnvironment().to_env()`. A cena 1 ES-DE é **byte idêntica** ao render feito
+dentro da imagem fixada do runner (sha256 `84080a23b89dc3ba…`), e a regeneração completa
+das nove, depois de já estarem na árvore, deu `cmp` silencioso nas nove. Ficaram em
+subdiretório porque `test_every_fixture_has_a_baseline` e `test_no_orphan_baseline_survives`
+(`tests/integration/test_visual_goldens.py:113,117`) varrem glob raso. Limitação
+registrada em vez de escondida: `make update-qml-goldens` **não** as cobre — regrava-las
+é o ato manual documentado em `07-baselines-produzidas.log`.
+
+**Gates executados nesta rodada.** `-m visual` completo no ambiente isolado: **342
+passed, 6118 deselected em 1279,64s**, zero falha e zero skip (o run vermelho dava
+`2 failed, 328 passed, 12 skipped`), com a guarda `real-state` byte-idêntica antes e
+depois — nenhuma escrita em `$HOME`. Como os dois arquivos de gate foram reformatados e
+tiveram a docstring ajustada *durante* aquela corrida de 21 min, o subconjunto afetado
+foi reexecutado com a árvore parada: **67 passed, 10 deselected em 16,43s**, rc=0; os 10
+desmarcados são `test_the_capture_matches_the_versioned_baseline` das dez fixtures
+históricas, que rodou verde na corrida `-m visual` minutos antes e não é tocada por esta
+rodada. `ruff check src tools tests` e `ruff format --check src tools tests` passam
+(672 arquivos formatados); `mypy src` exit 0. A integral `tests -q` **não** foi
+repetida: as mudanças são de teste, harness QML, um workflow e documentação — nenhum
+arquivo de `src/` foi tocado, e repetir o gate integral sem necessidade concreta está
+fora da autorização.
+
+**Correções ao que eu havia afirmado, registradas aqui e não em particular.**
+(a) `git stash list` **não** estava vazio: há 5 entradas de 2026-07-24 a 2026-08-17,
+anteriores a este lote; nada foi tocado, aplicado ou removido. (b) O vermelho do gate
+visual não era "ambiente do runner" nem "possível corrida" — as duas hipóteses que
+registrei em rodadas anteriores e que a medição derruba. (c) Para o SHA `3b0778fe` eu
+havia anotado "8 success + 1 skipped + 1 failure"; a grade medida por
+`gh api commits/<oid>/check-runs` dá **7 success + 1 skipped + 1 failure**, porque o job
+que eu contava como verde é justamente o que reprova. (d) Havia escrito que a
+atualização das baselines se fazia por `make update-qml-goldens`; não se faz, e o texto
+foi corrigido antes do commit.
+
+**Ancestralidade e ordem de integração (medidas com `git merge-base`/`rev-list`).** Os
+três PRs abertos têm `base=main` e `mergeable=MERGEABLE, e isto engana: o grafo é uma
+pilha linear. `main` está parado em `3495c49d` desde 26/09; `#239` (`069501ab`) é
+`main+2`; `#240` (`c959be13`) é `main+7` e **contém** `069501ab`; `#241` (`3b0778fe`) é
+`main+18` e **contém** `c959be13`; o merge-base com o `main` é `3495c49d` nos três.
+Consequência: fundir #241 sozinho hoje integra 18 commits, não 11. A sequência que evita
+duplicação é **239 → 240 → 241 em merge commit** — que é como este `main` é mantido
+(`3495c49d`, `1ffafa64`, `ed097a13`, `9176c1ae` são todos `Merge pull request #NNN`), e
+em regime de merge a ancestralidade faz os commits de baixo saírem do diff do PR de
+cima, sem rebase nem cherry-pick. Squash-merge quebraria a propriedade: achatar #239
+cria commit novo, `069501ab` deixa de ser ancestral e o conteúdo reaparece como se fosse
+novo. Fundir na ordem inversa deixa o diff do PR de baixo vazio e o conteúdo entra sem o
+cartão dele ter passado pelo próprio gate. Não deixo de dizer o óbvio: **merge é do
+operador**, e nenhum dos três integra nesta rodada.
+
+**Pendências, sem promover eixo algum.** `integration` segue `feature-branch`,
+`verification` `dev`, `operation` `degraded`, `distribution` `not-packaged`. Faltam: a
+grade terminal no SHA desta rodada e a conferência de que `qml-visual-artifacts` existe
+com os PNGs (só o CI no SHA novo prova isso — nada aqui antecipa); a prova física na
+release `2.0.0rc1-e2af2562ebba` instalada em viewport compacto real, que captura
+offscreen não substitui e que depende de autorização; a 4ª fatia (segundo diálogo ES-DE
+duplicado em `Main.qml`, `2822-2971` aberto em `6313`, forma a copiar de
+`credentialDialog` `Main.qml:2173-2232`), não iniciada; UX-03; os formatadores não
+reivindicados de UX-04; e UX-05 na primeira dobra da Home, com critérios próprios —
+**RC-01 não está concluído**. O WORKLOG é append-only.
+
+### 2026-09-27 (continuação) — o gate visual fecha verde no SHA `723cfcde`, e o `STATUS-CHECK` reprovou no mesmo run
+
+Leitura terminal do run `36341332344`, evento `pull_request`, `headSha =
+723cfcde35266a163cf141626a65c3d52c5cd59b` — um único `gh run watch`, sem commit fabricado para
+"testar" o pipeline. O job **`Gate visual QML (Linux)` fechou `success`** (18:37:30Z → 18:57:43Z), o
+mesmo job que estava vermelho em `fe5751a0`, em `3b0778fe` e nas duas tentativas anteriores. A causa
+era a da rodada: a imagem canônica não tem nenhum arquivo de fonte e os dois gates de captura
+herdavam o fontconfig do host. `src/` não mudou uma linha nesta rodada.
+
+**A publicação de evidência, que nunca existiu, foi conferida arquivo por arquivo.** O run publicou
+`qml-visual-artifacts` (1 620 705 bytes) — nos 100 runs anteriores a contagem de artefatos com esse
+nome era **zero**. Baixado fora do checkout: **51 arquivos, 36 PNG**, os mesmos 51/36 medidos
+localmente, e **as nove capturas do runner byte idênticas às nove baselines versionadas** (sha256 dos
+dois lados). A varredura case-insensitive de `home/|token|ghp_|authoriz|password|secret|misael|pytest-of`
+nos 15 `.txt`/`.json` publicados devolve **0 ocorrências**. Fecha a limitação que `07-…log` declarava:
+a paridade antes conferida só na cena 1 agora existe para as nove, e qualquer pessoa a reproduce a
+partir do artefato.
+
+**O mesmo run reprovou o que a minha escrita documental deveria garantir.** Os três jobs
+`Python 3.11/3.12/3.14` falharam em ~26 s no passo `python tools/project_status.py check`:
+`SZ-UI-DESKTOP-AUDIT` esperava `513c214c…` e o conteúdo commitado devolve `b83a9c78…`. Não é ambiente
+do runner: com o `06-suite-visual-local.log` devolvido ao conteúdo de `HEAD` (sha256 `a512825b5b4b`,
+minha versão `3cf667b30078`), a ferramenta imprime **exatamente `b83a9c78…`** aqui. Causa: renovei os
+digests e medi `STATUS-CHECK: OK` **antes** das últimas edições da pasta de evidência, e não reexecutei
+o check depois — a armadilha da 2ª fatia na direção inversa (log editado depois do digest, e não antes).
+Corrigido no commit seguinte, com o digest renovado pelo valor que a própria ferramenta imprime.
+
+**Duas afirmações minhas caíram nesta leitura, e ficam registradas como caídas.** (a) Escrevi no log
+`06` que os `12 skipped` do container eram "as capturas que abortavam cedo e os dependentes". Não são:
+são as variantes `MultiEffect` de `tests/integration/test_qml_asset_recipes.py`, que pulam por
+`QT_QUICK_BACKEND=software` (`:44`) — e a imagem canônica traz esse valor no próprio `Config.Env`,
+conferido por `docker image inspect`. Os 342 coletados são os mesmos 342 dos dois lados. (b) A prova
+de mordida que relatei como "o gate de bytes reprovava" não distingue defeito de virtude: um golden com
+**um** pixel trocado tem 34 554 bytes e passava no limiar — é por isso que o contrato é pixel-exact.
+
+**Pendências, sem promover eixo algum.** A condição de saída pede CI aprovado **no SHA final**, e o SHA
+final é o que carrega a correção do digest — nada aqui antecipa aquela leitura. Continua fora de prova:
+a primeira dobra da Home (UX-05), UX-03, os formatadores de UX-04, a prova física na release
+`2.0.0rc1-e2af2562ebba`, e as nove baselines novas, que `make update-qml-goldens` não cobre. A 4ª fatia
+não foi iniciada, e merge é do operador. **RC-01 não está concluído.** O WORKLOG é append-only.

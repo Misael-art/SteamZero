@@ -65,13 +65,26 @@
     "tests/qml/check_central_loading.qml",
     "tests/qml/check_warning_surface_contrast.qml",
     "src/steamzero/adapters/theme_catalog.py",
-    "tests/qml/check_status_refresh_coalesced.qml"
+    "tests/qml/check_status_refresh_coalesced.qml",
+    "tests/qml/check_retrofe_import_dialog_compact_viewport.qml",
+    "tests/qml/capture_retrofe_import_viewport.qml",
+    "tests/integration/test_retrofe_import_dialog_compact.py",
+    "docs/09-operations/evidence/2026-09-27-rc01-readiness-focus",
+    "docs/09-operations/evidence/2026-09-27-esde-import-dialog-compact",
+    "tests/qml/check_esde_import_dialog_compact_viewport.qml",
+    "tests/qml/capture_esde_import_viewport.qml",
+    "tests/integration/test_esde_import_dialog_compact.py",
+    "docs/09-operations/evidence/2026-09-27-shell-touch-targets",
+    "docs/09-operations/evidence/2026-09-27-pr241-verificacao-documental",
+    "docs/09-operations/evidence/2026-09-27-gate-visual-causa-e-contrato",
+    "tests/qml/golden/import-dialogs"
   ],
-  "scopeDigest": "32520ddb360e0b2d973e7a9e9726b407a099cc3ffde7ecd32e058a337b216fab",
+  "scopeDigest": "2f02c06d5959739345a15347dffdcd40523564e98fa8857e88e4537377542998",
   "dependsOn": [],
   "knownGaps": [
     "GAP-UI-LIVE-LAUNCHER-ROUTING",
-    "GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
+    "GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES",
+    "GAP-UI-VISUAL-CAPTURE-NOT-CERTIFIED-IN-CI"
   ],
   "acceptanceCriteria": [
     "Instalar emulador nao e no-op silencioso.",
@@ -507,11 +520,198 @@
       "reference": "docs/09-operations/evidence/2026-09-26-rc01-central-loading/18-checkpoint-integral.log",
       "command": "2026-09-27 registro do checkpoint: o comando exato e a janela, a falha reproduzida e atribuida (os mesmos seis IDs, todos com o arquivo reformatado em escopo), o que a corrida integral cobre e o que ela nao cobre (os quatro logs escritos depois, os seis scopeDigest regenerados e as tres visoes geradas), e os limites declarados sem maquiagem: o pre-lancamento por pgrep casava o proprio involucro e nao prova isolamento, a checagem manual de ps anterior nao foi gravada e por isso nao conta como prova, e o roteiro esqueceu de reimprimir a identidade da arvore no fim — corrigenda para o proximo checkpoint, registrada em 16.",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/02-ux05-ux07-vermelho-medido.log",
+      "command": "2026-09-27 RC-01 (UX-05/UX-07): defeito reproduzido ANTES de editar, com o harness de eventos reais apontado no painel sem correcao (sha256 13d5c644...). Saida integral do qmltestrunner Qt 6.11.2, exit 6, '7 passed, 6 failed'. As seis falhas sao nominais e cada uma carrega o numero medido: no viewport 949x593 a linha de acoes ficava em (610,547)-(694,591) contra uma moldura de 569 px, ou seja 22 px para fora e sem qualquer corpo rolavel; com relatorio de erro extenso o 'Publicar cena' caia em y=1210, inacessivel; 24 pressoes de Down sem sair do primeiro RadioButton da lista de layouts; Tab real pousando em controle recortado no passo 6; Down partindo de um campo focado sem navegar. O pre-flight que fixa a divergencia de leitura do lote esta em 01-preflight-e-estado-do-disco.log.",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/03-ux05-ux07-verde-medido.log",
+      "command": "2026-09-27 RC-01 (UX-05/UX-07): mesma cena com a menor correcao completa aplicada no dialogo RetroFE (corpo virou ScrollView, acoes no rodape fixo, Up/Down percorrendo o modal, lista de layouts sem o ScrollView aninhado). 'Totals: 13 passed, 0 failed', exit 0, estavel em tres execucoes. Numeros: 949x593 com conteudo normal -> banda 484, conteudo 396, primary em (616,525)-(700,569) dentro da moldura; com relatorio extenso -> 11 pressoes reais de Down ate o primary, aviso implicito 680; nos dois viewports 'foraDaBandaSemRolagem=0 espremidos=0 overflowHorizontal=0'; 1280x800 -> primary em (616,606)-(700,650). Escrita de texto preservada contra navegacao: Left/Backspace editam (caret 7->5, texto 7->6) e Down navega. Escape, Cancelar, payload do aplicar e o carater modal continuam provados por clique/tecla reais, nao por chamada direta de funcao - e o proprio harness tem guarda de codigo que reprova se alguem trocar os eventos reais pela chamada interna.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/04-capturas-viewport.log",
+      "command": "2026-09-27 RC-01 (UX-05/UX-07): evidencia visual do mesmo cenario antes e depois - 8 PNGs (4 fases x 2 estados) obtidas por /usr/lib/qt6/bin/qml em offscreen, com o comando, o exit code de cada corrida e o sha256 de cada imagem no log. Rotulo honesto: offscreen prova GEOMETRIA no runtime Qt do projeto (retangulo, alcance, rolagem) e NAO e a release 2.0.0rc1-e2af2562ebba instalada no host, que nao foi tocada nem revalidada visualmente; os controles saem no estilo claro porque a captura carrega o painel isolado, sem o tema do shell. Imagens conferidas uma a uma: 3-...-antes.png mostra a grade de creditos e as duas acoes inteiramente fora do dialogo, sem area de rolagem; 3-...-depois.png mostra a banda rolavel com a linha seguinte cortada no rodape da banda e as acoes fixas acima da divisoria.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/README.md",
+      "command": "2026-09-27 RC-01 (UX-05/UX-07): indice do lote com a tabela antes/depois medida, o comando de reproducao, o limite da prova offscreen e as quatro decisoes de projeto - corpo rolavel em vez de so acoes fixas (o relatorio longo precisa ser lido por inteiro); remocao do ScrollView aninhado na lista de layouts, onde o foco ficava preso (24 pressoes sem progresso) e keyNavigationEnabled=false nao soltava; Keys.onUp/DownPressed no corpo E no footer, porque o rodape nao e descendente do corpo rolavel; e nenhuma conclusao geral sobre propriedades anexadas a partir do probe sintetico que nao conseguiu focar um campo dentro de Popup - a prova veio do painel real. Pendencias nomeadas: o dialogo ES-DE tem a mesma classe de defeito e NAO foi alterado; UX-05 continua aberto na parte que este lote nao mede (primeira dobra da Home e alvos minimos de 48 px, que aqui dao 44 px no painel isolado sem tema); prova fisica no host nao feita.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/08-reproducao-no-codigo.log",
+      "command": "2026-09-27 RC-01 (correcao documental): a reproducao por leitura, anterior a qualquer edicao, que estava so no host (~/evidence-logs/2026-09-27-rc01-slice2/00-...), foi trazida para dentro do checkout no caminho canonic docs/09-operations/evidence/<lote>. Conteudo: UX-03 com SETE produtores alimentando o mesmo campo percent sem denominador; UX-04 com quatro formatadores humanos e TRES saidas diferentes para o mesmo 1 GiB; UX-05/UX-07 com o corpo do modal fora de qualquer ScrollView. Cada linha conferida no arquivo e no numero indicado, com o comando de refazer ao final. Rotulo honesto do proprio log: e leitura de codigo, nao execucao nem prova na release instalada.",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/09-sonda-foco-mecanismos.log",
+      "command": "2026-09-27 RC-01 (correcao documental): a sonda que respondeu a duvida de foco no Qt 6.11.2 instalado esta agora no checkout, em vez de so no host. Saida integral: 'Totals: 3 passed, 0 failed' com as sete medidas (A0 anexo a janela, A1 flick 575/288, A2 mudanca apos Tab, B1 Down visto pelo ScrollView, C1 Left NAO visto com cursor preservado, D1/D2 conversao de coordenadas). E o registro que sustenta a decisao de nao generalizar a partir do probe sintetico.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/12-estado-dos-prs-no-sha-consultado.log",
+      "command": "2026-09-27 RC-01 (correcao documental): estado dos PRs consultado no SHA exato, com comando e resposta crua ao lado. Pilha real 239 (069501ab) -> 240 (c959be13) -> 241 (244bf550), todos OPEN com base main e MERGEABLE; nenhum dos 11 commits da pilha e ancestral de origin/main (3495c49d), verificado um a um com git merge-base --is-ancestor. No SHA exato do PR 240: 9 check-runs (8 success + 1 skipped, o Sourcery) + 1 commit status CodeRabbit success, nenhum failure e nenhum em andamento. Isso CORRIGE a frase 'CI terminal 10/10 verde' escrita antes neste lote, que arredondava indevidamente. No SHA do PR 241, no instante da consulta: 6 success, 1 skipped e 2 em andamento (Python 3.12 e Gate visual QML), mergeStateStatus UNSTABLE; nenhuma leitura repetida depois, por instrucao do operador. Tambem corrigido aqui: c17def05 e 069501ab pertencem ao PR 239 (RC-00), nao ao 240. Segunda leitura no mesmo arquivo, 10:01:56 -> 10:02:07-03:00, ja na ponta f9256642 e com a dependencia declarada no corpo do PR 241: 239 OPEN/CLEAN, 240 OPEN/MERGEABLE/CLEAN, 241 OPEN/MERGEABLE/UNSTABLE com 4 success + 1 skipped + 4 in_progress em 9 check-runs e status legado CodeRabbit success; UNSTABLE aqui significa checks em andamento, nao quebrados, e MERGEABLE trata de conflitos, nao de verde. A pilha passa a ter 12 commits fora de main, todos verificados individualmente. Terceira leitura, 10:08:04 -> 10:08:06-03:00, ja na ponta documental 00de2ec8: nela so o check 'Sourcery review' existia (skipped) e os demais jobs ainda nao tinham check-run criado, com mergeStateStatus CLEAN nesse instante o que nao significa CI verde e sim ausencia de conflito e de falha; a leitura com grade completa e a anterior. Nada de polling depois dessas janelas.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-27-rc01-readiness-focus/02-ux05-ux07-vermelho-medido.log",
+      "command": "2026-09-27 RC-01 (correcao documental do mesmo registro): o cabecalho do vermelho passou a descrever a arvore anterior por REFERENCIA GIT RECUPERAVEL em vez de hash de copia solta em /tmp. O painel sem correcao e o blob 7368fd385b8dc793c2ba83c6dc647c0b20f0dc9d094be8783bf01d1a35bb4dda (2924 linhas), identico em origin/main 3495c49d, c959be13 e 449b68c3, obtido por 'git show origin/main:src/steamzero/ui/qml/ThemeEditorPanel.qml'; as seis linhas de superficie de teste que o harness consome estao listadas uma a uma com o numero de linha do blob (2 property alias + 1 linha em branco + objectName do aviso + objectName do Cancelar + id do primary), e a conferencia e o sha256 13d5c644... (2930 linhas) do resultado. Um hash isolado nao bastava. Verificado tambem que nao ha copia alternativa do painel no repositorio: grep -rl retrofeImportDialog src tests devolve apenas o painel e os tres arquivos de teste deste lote. Acrescenta-se agora o apendice com o unified diff verbatim das seis linhas, e a verificacao de que ele reconstroi o arquivo da corrida: aplicado ao blob de origin/main, o resultado deu byte a byte identico (cmp sem saida, mtime 09:54:32-03:00, reimpresso as 09:55:19-03:00).",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-27-esde-import-dialog-compact/02-vermelho-medido-panel-sem-correcao.log",
+      "command": "2026-09-27 RC-01 (3a fatia, UX-05/UX-07 no dialogo Importar tema ES-DE): vermelho medido com o harness FINAL (sha256 d0d8aa1565d2582f2e294c2a7abd1127e73492333e855e4ac80046cf547bec6e, 880 linhas) contra a arvore anterior, montada por REFERENCIA GIT RECUPERAVEL e nao por copia solta: git show HEAD:src/steamzero/ui/qml/ThemeEditorPanel.qml (sha256 79dc0e5f68ff4008ddd0ebcd07985544b48c9974cc4fe4a11878ae5b49c790ed, 3014 linhas, blob b5e5212d, identico ao do commit funcional 7fe9e8b2) mais exatamente cinco linhas de superficie de teste (2 property alias + objectName do aviso + objectName do Cancelar + id do primary), nenhuma das quais muda comportamento. A arvore montada confere com o previsto: sha256 83b683dc02f4344d9ac36a858e55e756b204e855d93d43a6f7c5d54a9f77a926, 3019 linhas. Saida: Totals 8 passed, 5 failed, 0 skipped, rc=5, com as cinco falhas nomeadas (test_03 e test_05 = falta de handler de seta vertical; test_06 e test_09 = corpo sem rolagem com 9 controles fora da banda, primary em (493,1041)-(634,1089) numa moldura de 560 px; test_07 = ScrollView aninhado, 1 visita distinta em 40 pressoes). As 24 linhas PASSO 1..24 do log mostram o foco parado em themeImportEsdeSource.",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-27-esde-import-dialog-compact/03-verde-medido-com-correcao.log",
+      "command": "Mesmo harness, painel corrigido (sha256 fea75dead9d4839d0f8bb66043dc306c0621e0dac9bb4f1d9b106cdfb78b1656, 3086 linhas): Totals 13 passed, 0 failed, rc=0 em 1539 ms, executado cinco vezes seguidas com o mesmo resultado. Numeros medidos na saida: corpo rolavel com banda 471 no conteudo normal e apply (499,512)-(640,560) no rodape; relatorio extenso com aviso implicito de 816 px rolavel e 6 pressoes reais de Down ate o primary; 24 esquemas em corpo unico com 6 pressoes e 6 visitas distintas; descida e subida em 6 pressoes cada; edicao intacta (18 para 17) com Down saindo do campo; foraDaBandaSemRolagem=0, espremidos=0 e overflowHorizontal=0 em todos os cenarios, inclusive com escala de texto 1.5.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-27-esde-import-dialog-compact/04-capturas-viewport.log",
+      "command": "Capturas antes/depois nos dois viewports (949x593 e 1280x800), cinco de cinco em cada corrida, rc=0 nas duas. A secao 1 reproduz o defeito do PROPRIO arquivo de captura: sem a guarda de fase o Timer de 20 ms reentrava no grab assincrono e saiam 8 capturas para 5 nomes, tres delas undefined-<rotulo>.png, com rc=1; a cena foi restaurada e conferida por sha256. Secoes 2 e 3 usam respectivamente a arvore vermelha 83b683dc e a corrigida fea75dea, e a secao 4 devolve os hashes das arvores finais mais o git diff --stat. As dez PNGs estao nesta pasta e foram inspecionadas uma a uma; a secao 5 lista sha256 e tamanho de cada uma.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-09-27-esde-import-dialog-compact/05-gates-rapidos.log",
+      "command": "Gates rapidos do checkpoint: ruff check, ruff format --check (672 arquivos), mypy src (297 arquivos) e make independence boundaries, todos rc=0. O par de gates de viewport (6 ES-DE + 5 RetroFE = 11 testes) passou em cinco execucoes consecutivas. As secoes 4 e 5 nao registram um flake como sorte: a cena de captura da fatia anterior perdia capturas sob carga (capturas=5 de 4, undefined-gate.png, rc=1) e isso foi reproduzido 4 vezes em 4 com a guarda harness.phase = 500 removida, passando 6 em 6 com ela de volta; os dois arquivos da fatia anterior ganharam a guarda e o gate que a exige. A secao 7 e a regressao dirigida da mudanca: 96 testes dos cinco arquivos que leem o painel e os dialogos (test_qml_handheld_offscreen.py, que conduz check_theme_editor_{import,aura,asset_recipes}.qml, mais cobertura e jornada de dialogos e identidade e matriz de controles), 96 passed in 1158.03s, rc=0, janela 11:30:17 -> 11:49:35-03:00 com a arvore congelada (ultima escrita 11:28:45, impressao do git status identica antes e depois). NAO e a suite integral do checkpoint, e isso esta dito sem maquiagem: a integral da sequencia vira no fim dos recortes 5d/5b/5c, sobre a arvore final.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-27-esde-import-dialog-compact/06-reproducao-no-codigo.log",
+      "command": "Reproducao por leitura: as quatro causas estruturais com a linha do arquivo (contentItem sem corpo rolavel com height limitada a 560 px; acoes dentro do corpo; ausencia total de handler de seta vertical; ScrollView aninhado na lista de esquemas), o comando unico de reproducao do vermelho, as cinco falhas verbatim, as ancoras da correcao hoje no arquivo (itemInEsdeImportDialog:430, revealEsdeImportItem:440, moveVertical:987, ScrollView do corpo:1001, footer:1120) e a prova de que nao ficou copia alternativa no repositorio: grep -rl esdeImportDialog src tests devolve o painel, os tres arquivos de teste deste lote e Main.qml, que tem OUTRO dialogo ES-DE duplicado e pertence ao recorte dentro do shell.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-27-esde-import-dialog-compact/README.md",
+      "command": "Indice do lote: tabela antes/depois com os numeros medidos, inventario dos seis logs e das dez PNGs, descricao honesta de cada par de imagens (inclusive o que a imagem 3 NAO prova, porque o foco ali e programatico de proposito), os comandos de reproducao com as cinco linhas de superficie, a pilha 239 -> 240 -> 241, o limite offscreen e as cinco decisoes de projeto. Registro explicito de que test_04, test_08, test_10 e test_11 ja passavam na arvore vermelha: pinam contrato, nao sao resultado desta correcao.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "result": "recorded",
+      "reference": "docs/09-operations/evidence/2026-09-27-shell-touch-targets/01-preflight.log",
+      "command": "Pre-flight antes de qualquer edicao: sha256 de cada arquivo de src/ contra HEAD (Main.qml b6a47495... e EditorialHome.qml ee80c0b9..., ambos identicos a HEAD) + reconciliacao do claim de exclusivePaths sobre Main.qml (git diff --stat origin/main..cad58bb4 devolve vazio para Main.qml e desktop_contracts.py) contra a autorizacao escrita da propria frente em 26/09 + versoes do ambiente (qmake6 -query QT_VERSION = 6.11.2, pacman -Q qt6-base = 6.11.2-3, Python 3.14.7)."
+    },
+    {
+      "kind": "test",
+      "result": "passed",
+      "reference": "docs/09-operations/evidence/2026-09-27-shell-touch-targets/02-medicao-no-shell.log",
+      "command": ".venv/bin/python tools/ui_control_inventory.py --only everything-ready --viewport 1600x1000|949x593 --text-scale 1|1.5|2 --json /tmp/targets-*.json, quatro contextos (o de 1600x1000 escala 1 e o denominador que ja existia). Medido dentro do shell vivo: 284 controles registrados, 263 acionaveis, abaixo_de_48=0 e maiores_que_a_janela=0 nos tres contextos portateis, piso exatamente 48x48, duas passadas identicas. Aviso honesto no cabecalho do log: os tres arquivos de medicao estavam editados NA ARVORE DE TRABALHO e sem commit quando a medicao foi rodada. O log tambem carrega a secao de pos-medicao: o gate de lint do projeto (ruff check src tools tests) reprovou dois en dashes em comentario/docstring do arquivo de gate, o ajuste mudou o hash de 732389e0... para f625cbe0..., e o par portatil foi reexecutado no conteudo final (2 passed em 69,67s). Os 23 passed em 614,86s foram medidos no conteudo anterior ao ajuste de pontuacao."
+    },
+    {
+      "kind": "test",
+      "result": "passed",
+      "reference": "docs/09-operations/evidence/2026-09-27-shell-touch-targets/03-teste-de-mutacao.log",
+      "command": ".venv/bin/python -m pytest tests/integration/test_ui_control_matrix.py -k portable -q com Layout.minimumHeight de Main.qml:6298 mutado de 48 para 24 (arvore vermelha montada por git show HEAD:caminho + edicao exata; sha256 da mutacao da037b33... conferido, original b6a47495... restaurado e reconferido, nenhum arquivo alternativa ficou no repositorio): 2 failed, 21 deselected em 69,19s, os dois gates portateis nomeando 'system -> Exportar estado (98x25)'. Restaurada a arvore, o modulo inteiro passou (23 passed). Duas mutacoes antecedentes em EditorialHome.qml nao reprovaram nada e ficaram registradas como no-op, nao apagadas."
+    },
+    {
+      "kind": "diagnostic",
+      "result": "recorded",
+      "reference": "docs/09-operations/evidence/2026-09-27-pr241-verificacao-documental/01-estado-real-das-prs.log",
+      "command": "gh pr view 239/240/241 --json state,headRefOid + git rev-parse origin/main + git log -1 origin/main: tres fontes independentes mostram 239 (069501ab), 240 (c959be13) e 241 (fe5751a0) todos OPEN e main parado em 3495c49d desde 26/09 10:55Z; o merge_commit_sha devolvido para PR aberto e o ref de teste do GitHub, nao evidencia de integracao. Inclui a reconciliacao de UX-04 (AUDIT.md:124 trata de unidades de armazenamento) e a linha UX-05 (AUDIT.md:125, que probe REDUZIR alvos de 48 px) com a origem do numero de 44 px (docs/WORKLOG.md:12994-12996, nota minha sobre um painel isolado sem tema). A premissa de '16 reprovacoes no status-check' nao se reproduziu nas tres arvores possiveis (suja=1, medicao devolvida a HEAD=0, CI=0), com git worktree list (unico) e git stash list (vazio) conferidos."
+    },
+    {
+      "kind": "test",
+      "result": "failed",
+      "reference": "docs/09-operations/evidence/2026-09-27-pr241-verificacao-documental/02-gate-visual-vermelho-no-runner.log",
+      "command": "CI run 36327779040, job 'Gate visual QML (Linux)' no SHA exato fe5751a0: python tools/run_tests_isolated.py -m visual --tb=short -q devolveu 2 failed, 326 passed, 12 skipped, 6116 deselected em 1111,46s — as duas cenas de captura do dialogo ES-DE do painel (7147 B e 8021 B) contra o piso de 20.000 B do gate. No mesmo ambiente local a MESMA captura deu 40249 B em 6/6 execucoes, inclusive com HOME vazia. A corrida nao publicou o artefato qml-visual-artifacts porque o workflow globa /tmp/pytest-of-* enquanto tools/run_tests_isolated.py realoca TMPDIR para /tmp/steamzero-tests-*, ou seja, a falha ficou inspecionavel no CI. O limiar de bytes NAO foi baixado e o lote NAO foi expandido: a evidencia visual deste gate fica NAO CERTIFICADA no CI (GAP-UI-VISUAL-CAPTURE-NOT-CERTIFIED-IN-CI)."
+    },
+    {
+      "kind": "test",
+      "result": "passed",
+      "reference": "docs/09-operations/evidence/2026-09-27-pr241-verificacao-documental/03-status-check-na-base-e-na-cabeca.log",
+      "command": ".venv/bin/python tools/project_status.py check na base e na cabeca. Base: o passo 'Estado do projeto' do CI devolveu STATUS-CHECK: OK no SHA fe5751a0. Cabeca medida de tres modos: com os tres arquivos de medicao devolvidos a HEAD = STATUS-CHECK: OK (e 13 passed em 4,71s no teste de consistencia do catalogo); com eles sujos = 1 reprovacao (SZ-UI-DESKTOP-AUDIT, esperado 02435ffe..., atual fae75c04...); ida e volta conferidas por sha256. Como os tres caminhos medidos pertencem ao scopePaths deste item, o digest so pode ser renovado no mesmo commit que carrega o codigo da medicao."
+    },
+    {
+      "kind": "test",
+      "result": "passed",
+      "reference": "tests/integration/test_ui_control_matrix.py",
+      "command": "2026-09-27, medicao portatil: .venv/bin/python -m pytest tests/integration/test_ui_control_matrix.py -q devolveu 23 passed em 614,86s, incluindo os dois gates novos (alvos acionaveis >= 48x48 na janela do Deck 949x593 e o mesmo na escala de texto medida no host, visualScale 1.5), que percorrem a arvore QML viva do shell em vez de um payload isolado."
+    },
+    {
+      "kind": "diagnostic",
+      "result": "recorded",
+      "reference": "docs/09-operations/evidence/2026-09-27-gate-visual-causa-e-contrato/01-causa-raiz-container-sem-fonte.log",
+      "command": "docker run na imagem fixada do CI (ghcr.io/misael-art/steamzero-qml-visual@sha256:8b832ec124ae) + fc-list + qml tests/qml/capture_esde_import_viewport.qml: fc-list=0 na imagem, 4 com FONTCONFIG_FILE da fonte empacotada; cena 1 passa de 7.147 para 31.184 bytes mudando so essa variavel; sha256 do render do container identico ao do host"
+    },
+    {
+      "kind": "diagnostic",
+      "result": "recorded",
+      "reference": "docs/09-operations/evidence/2026-09-27-gate-visual-causa-e-contrato/03-artefatos-do-runner.log",
+      "command": "curl autenticado no log do job 108659002909 + gh api actions/artifacts: o passo upload rodou (if always), o glob pedia /tmp/pytest-of-*/** enquanto run_tests_isolated.py realoca TMPDIR para /tmp/steamzero-tests-*/tmp e apaga a arvore na saida; 0 artefatos qml-visual* nos 100 ultimos runs. Corrigido publicando em build/visual-evidence/ antes das assercoes e if-no-files-found: error"
+    },
+    {
+      "kind": "test",
+      "result": "passed",
+      "reference": "docs/09-operations/evidence/2026-09-27-gate-visual-causa-e-contrato/04-sonda-de-mordida-do-contrato.txt",
+      "command": ".venv/bin/python docs/09-operations/evidence/2026-09-27-gate-visual-causa-e-contrato/05-sonda-de-mordida.py: fundo uniforme reprova em assert_not_empty e em compare_with_golden (562.724/562.757 px); a captura real do runner sem fonte reprova por pixel-exact (58.288 px, 10,36%) embora passe em assert_not_empty; golden com 1 pixel trocado reprova (bbox 400,300,401,301) e PASSAVA no proxy antigo de 20.000 bytes com 34.554 bytes"
+    },
+    {
+      "kind": "test",
+      "result": "passed",
+      "reference": "docs/09-operations/evidence/2026-09-27-gate-visual-causa-e-contrato/07-baselines-produzidas.log",
+      "command": "regeracao das nove baselines com CanonicalEnvironment().to_env() em pasta fora do checkout + cmp contra tests/qml/golden/import-dialogs/: as nove IDENTICAS, inclusive esde/1 com sha256 84080a23b89dc3ba... igual ao render dentro da imagem do CI"
+    },
+    {
+      "kind": "diagnostic",
+      "result": "recorded",
+      "reference": "docs/09-operations/evidence/2026-09-27-gate-visual-causa-e-contrato/08-ancestralidade-e-ordem-de-integracao.log",
+      "command": "git merge-base --is-ancestor e git rev-list --count: main 3495c49d; #239 069501ab = +2; #240 c959be13 = +7 (contem 069501ab); #241 3b0778fe = +18 (contem c959be13); merge-base identico nos tres. Pilha linear, ordem de integracao 239->240->241 em merge commit; squash quebraria a ancestralidade e duplicaria conteudo"
+    },
+    {
+      "kind": "test",
+      "result": "passed",
+      "reference": "docs/09-operations/evidence/2026-09-27-gate-visual-causa-e-contrato/06-suite-visual-local.log",
+      "command": ".venv/bin/python tools/run_tests_isolated.py -m visual --tb=short -q: 342 passed, 6118 deselected em 1279,64s, zero falha e zero skip no seletor do job qml-visual-linux (o run vermelho de 3b0778fe dava 2 failed, 328 passed, 12 skipped). Guarda real-state before/after identica (files=12816, directories=2068, bytes=1372712391, max_mtime_ns=1790477787953832614)"
+    },
+    {
+      "kind": "test",
+      "result": "passed",
+      "reference": "docs/09-operations/evidence/2026-09-27-gate-visual-causa-e-contrato/09-reexecucao-focada-na-arvore-final.log",
+      "command": "re-execucao focada na arvore parada: run_tests_isolated.py dos dois gates de dialogo + test_visual_goldens.py -k 'not test_the_capture_matches_the_versioned_baseline' devolveu 67 passed, 10 deselected em 16,43s, rc=0. Os 10 desmarcados rodam na corrida -m visual acima e nada desta rodada toca o runner nem as dez baselines antigas"
+    },
+    {
+      "kind": "test",
+      "result": "passed",
+      "reference": "docs/09-operations/evidence/2026-09-27-gate-visual-causa-e-contrato/10-ci-723cfcde-verde-e-artefatos-conferidos.log",
+      "command": "CI run 36341332344 no SHA exato 723cfcde: o job 'Gate visual QML (Linux)' fechou SUCCESS em 20m13s (18:37:30Z->18:57:43Z), contra o mesmo job vermelho em fe5751a0 e 3b0778fe. Grade terminal da corrida: wheel+smoke e as tres variantes de smoke success, os tres jobs Python failure pelo STATUS-CHECK documental, gate visual success. A causa do vermelho visual era o container sem fonte; src/ nao mudou."
+    },
+    {
+      "kind": "diagnostic",
+      "result": "passed",
+      "reference": "docs/09-operations/evidence/2026-09-27-gate-visual-causa-e-contrato/10-ci-723cfcde-verde-e-artefatos-conferidos.log",
+      "command": "artefato qml-visual-artifacts do run 36341332344 baixado e conferido fora do checkout: 1620705 bytes, 51 arquivos dos quais 36 PNG (os mesmos 51/36 medidos localmente), as NOVE capturas do runner byte identicas as baselines versionadas por sha256 (esde/1 = 84080a23b89d...). Varredura case-insensitive de home/|token|ghp_|authoriz|password|secret|misael|pytest-of nos 15 .txt/.json publicados: 0 ocorrencias."
+    },
+    {
+      "kind": "diagnostic",
+      "result": "failed",
+      "reference": "docs/09-operations/evidence/2026-09-27-gate-visual-causa-e-contrato/10-ci-723cfcde-verde-e-artefatos-conferidos.log",
+      "command": "STATUS-CHECK: FALHOU no CI de 723cfcde nos tres jobs Python: SZ-UI-DESKTOP-AUDIT esperava scopeDigest 513c214c... e o conteudo commitado devolve b83a9c78... . Reproduzido local: com o log 06 devolvido ao conteudo de HEAD a ferramenta imprime exatamente b83a9c78..., ou seja diferenca de conteudo e nao de ambiente. Causa: digests renovados antes das ultimas edicoes da pasta de evidencia; nenhuma linha de src/ envolvida."
     }
   ],
-  "nextAction": "2026-09-27, checkpoint integral done. Esta fatia cobre UX-01/UX-02 dentro de RC-01 e nao encerra RC-01. Falta, nesta ordem: (1) commit funcional (Main.qml com a coercão de renovacao, check_status_refresh_coalesced.qml, check_central_loading.qml reestruturado e o gate de integracao da ponte de tres cenas) e commit documental (evidencias 08-18, README da pasta, esta governanca e as visoes regeneradas); (2) push em codex/rc01-central-loading-2026-09-26 e atualizacao do PR 240, hoje OPEN em d215e320 e sem esta correcao; (3) CI terminal conferida no SHA final; (4) merge, que e do operador — WS-2026-09-RC01-CENTRAL-LOADING so fecha com o SHA realmente integrado em main, e WORKLOG nao registra fechamento antes disso. Pendencias que esta fatia nao promove: cauda de latencia (~11,4 s, dominada por emulation; as cinco amostras do probe sao exploratorias), experiencia dos alertas empilhados na dobra de 800 px, prova fisica na release instalada, UX-03/04/05/07 (readiness compreensivel, unidades de armazenamento legiveis, foco/scroll/modal RetroFE em viewport compacto) e o conflito normativo de contraste semantico abaixo de 7:1 (14-contraste-politica-normativa.log).",
+  "nextAction": "2026-09-27, rodada EXCLUSIVA de destravamento do gate visual do PR #241 (nenhum merge, nenhuma 4a fatia). FECHADO com evidencia: a causa do vermelho era a imagem canonica sem nenhum arquivo de fonte (fc-list=0) somada ao os.environ.copy() dos dois gates, que herdava o fontconfig do host; o gate de capturas foi reescrito como contrato de conteudo (viewport declarado + nao uniforme + rodape/acao dentro da moldura + igualdade pixel a pixel contra nove baselines geradas em CanonicalEnvironment) sem baixar limiar nenhum; e a publicacao passou a acontecer em build/visual-evidence/** antes das assercoes, com if-no-files-found: error. No run 36341332344 (SHA 723cfcde) o job 'Gate visual QML (Linux)' fechou SUCCESS e o artefato qml-visual-artifacts existe pela primeira vez: 51 arquivos / 36 PNG, as nove capturas byte identicas as baselines, sem caminho pessoal nem segredo. PENDENTE desta mesma rodada: o STATUS-CHECK reprovou nos tres jobs Python daquela corrida por scopeDigest documental velho (conteudo commitado devolve b83a9c78 contra o 513c214c esperado) -- correcao em commit proprio, e o CI terminal so se confere no SHA dessa correcao; este cartao nao antecipa o resultado. FORA DE PROVA e continua aberto: UX-01 tem uma dobra da Home com criterios proprios; UX-03 (significado dos percentuais de prontidao); as 48 px fisicas na release 2.0.0rc1-e2af2562ebba; as nove baselines novas nao sao cobertas por make update-qml-goldens; e RC-01 nao se declara concluido.",
   "activeWorkstreams": [
-    "WS-2026-09-RC01-CENTRAL-LOADING"
+    "WS-2026-09-RC01-CENTRAL-LOADING",
+    "WS-2026-09-RC01-READINESS-FOCUS"
   ],
   "updatedAt": "2026-09-27",
   "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45 e reconciliada em codex/v2-harmonized-functional-release: a limpeza automatica dos marcadores de conflito havia descartado escopo, criterios e seis evidencias do lado f92734b, todos restaurados aqui. QML-KEY-INJECTION-001 esta FECHADO: o commit ff0b80e trocou o qmltestrunner do qt5-declarative pelo executor Qt 6 (/usr/lib/qt6/bin/qmltestrunner) com raiz Item, e tests/integration/test_ui_dialog_keys.py exige o runner (sem skip), returncode 0 e ausencia de FAIL. Por isso o criterio de Escape/Tab deixou de ser PENDENTE — a troca foi verificada re-executando o harness em 2026-08-24 (Qt 6.11.1, 7 passed / 0 skipped). Continua fora de prova: confirmacao com bridge alem da abertura, clique repetido, drawers e P0 visuais na release instalada. 2026-08-24: o CI (run 32726720427) reprovou em 3.11/3.12/3.14 porque tres provas portadas que exigem qmltestrunner Qt 6 estavam no job 'Testes e cobertura', que nao provisiona Qt. Elas foram marcadas 'visual', que ROTEIA para o job qml-visual-linux e nao dispensa — o gate visual reprova quando o Qt falta. A guarda de codigo de test_ui_dialog_keys.py ficou SEM marcador de proposito: ela existe para rodar justamente onde o runtime nao esta. 2026-08-24, ampliacao do denominador: a sonda de jornadas percorria 6 dos 15 modais do shell e NADA apontava a diferenca. Ao registrar os 8 restantes (o 15o e um FileDialog nativo, excluido com motivo), a auditoria encontrou um defeito real de acessibilidade: os OITO abriam sem receber o foco, deixando quem navega por teclado ou controle do lado de fora. Faltava a linha onOpened: root.focusDialogContent(...) que os seis ja sondados tinham desde 1bcb564 — a correcao anterior so alcancou o que estava no denominador. Um gate estatico novo impede o denominador de encolher de novo. 2026-08-24, ComboBox: a sonda de controles so clica, e clicar num ComboBox nao seleciona nada — por isso todos ficavam not-probed. A prova foi para um harness QuickTest com tecla REAL, nao para uma emissao de activated() na mao, que seria a mesma troca ja rejeitada quando close() fazia as vezes de Escape. O harness exige as duas coisas: que o indice mude E que activated seja emitido com o indice novo, porque currentIndex tambem muda por atribuicao. Percorrer as quatro areas da tela Steam revelou 10 ComboBox visiveis, nao os 5 que a matriz via, e DOIS deles estavam desabilitados SEM motivo (controllerLayoutPicker e mediaAccountPicker): cinzas e mudos, indistinguiveis de defeito para leitor de tela. Ambos ganharam Accessible.description condicional. 2026-08-24, decoracao: a sonda declarava 'icone decorativo' pela FORMA — sem rotulo, sem nome acessivel e desabilitado. Isso e hipotese, e classificar acao por forma ja produziu falso positivo neste projeto. O candidato passou a ser ATIVADO: inercia medida vira 'decorative', e qualquer efeito vira 'unnamed-actionable', que entra em FAILING_VERDICTS porque o controle existiria para quem enxerga e nao para quem usa leitor de tela. Resultado: os 31 provaram inercia, ZERO unnamed-actionable, e not-probed caiu de 38 para 7. Dois gates novos impedem a volta do atalho. 2026-08-24, contraste: medi e NAO entreguei. A sonda de tentativa acusaria varios textos abaixo de 4,5:1, mas o mesmo rotulo aparecia duas vezes — uma com 13,69 e outra com exatamente 1,0 — o que denuncia erro do heuristico, nao defeito do produto. Publicar essa contagem repetiria o padrao de falso positivo que esta sonda ja teve. Fica como GAP-UI-CONTRAST-MEASUREMENT com o caminho certo escrito: medir pixel renderizado. 2026-08-24, contraste (segunda tentativa): a sonda por PIXEL foi construida e captura as 9 secoes, com alinhamento de caixa conferido a olho. Tres vieses meus foram encontrados e corrigidos no caminho — adivinhar fundo pelo ancestral opaco, cortar candidatos por FRACAO de pixels (vies de largura em Label com fillWidth) e compor alpha sobre preto. O bloqueio que sobrou nao e vies e sim nao-determinismo da captura, e por isso a ferramenta fica registrada como medicao, NAO como gate: nenhuma contagem foi publicada como acusacao. 2026-08-24, superficie do shell: nenhum Item do Main pintava o fundo — quem pintava era a `color` da ApplicationWindow, que grabToImage de Item nenhum captura. O appShell passou a ficar dentro de um Rectangle que pinta root.backgroundColor, exposto como shellSurfaceControl. Isso torna o conteudo do shell capturavel e embutivel e serve a qualquer auditoria visual futura, nao so ao contraste. 2026-08-24, contraste do item selecionado CORRIGIDO: medi os dois temas com o resolvedor real e nenhuma cor fixa servia — no claro `text` da 1,95 e `background` da 7,02; no escuro e o inverso (4,53 contra 3,53). O QML passou a escolher entre as duas a que contrasta mais com o fundo selecionado, em seis delegates. Um teste prova a regra contra os tokens reais de cada tema empacotado, e um segundo reprova se algum dia UMA cor fixa passar em todos, para que simplificar nao reintroduza o defeito. Biblioteca e home editoriais passaram a declarar o tamanho de desenho das capas (LOD) em vez de decodificar a arte inteira, com decode assincrono. O harness check_editorial_library deixou de assumir Image.Ready no mesmo tick e passou a esperar pelo carregamento com orcamento limitado, de modo que uma capa que nunca carrega continua reprovando. Sem certificacao visual neste ciclo: o efeito foi verificado por gate offscreen, nao por captura no host. Varredura dos quatro usos do MediaEffectLayer: o backdrop contextual da biblioteca nao declarava teto e foi corrigido. Era exatamente o caso que o required existe para pegar. 2026-09-03: scopeDigest renovado por mudanca da frente WS-2026-09-CENA-ESDE (rota theme.scene.render e o botao de previa). A evidencia NAO foi carimbada: foi reexecutada e passou (matriz de controles 21 passed e gestos de ComboBox 13 passed, com os 5 seletores novos da previa). 2026-09-03: scopeDigest renovado por WS-2026-09-CENA-ESDE (SceneEsdeView ganhou os renderizadores de carousel, video e helpSystem). A evidencia NAO foi carimbada: foi reexecutada e passou (matriz de controles e gestos de ComboBox, 23 testes). 2026-09-04: scopeDigest renovado pela correcao do video em SceneEsdeView. A matriz NAO foi carimbada: foi reexecutada e passou (21 testes). 2026-09-27 (rotulo da entrega): esta frente e uma FATIA de RC-01, nao RC-01 inteiro. Fecha UX-01 na parte calculavel (tinta dos avisos sobre as seis superficies fixas, medida contra a norma >=7:1 em 14-contraste-politica-normativa.log) e UX-02 (primeiro frame sem afirmar ausencia, faixa de fase com retry, estado preservado quando a renovacao falha) mais a regra de que uma renovacao pedida durante uma leitura nao pode ser descartada. O que fica aberto e nao foi promovido: a cauda de latencia (~11,4 s; as cinco amostras do probe sao exploratorias — com n=5 o 'p95' e o maximo ordenado, nao um percentil), a experiencia dos alertas empilhados na dobra de 800 px, a prova fisica na release instalada e UX-03/04/05/07. Duas suites integrais rodaram sobrepostas no mesmo checkout em 2026-09-26 e isso esta conciliado em 08-duas-suites-concorrentes.log, com os limites: a concorrencia invalida tempo medido, nao a correcao dos contratos; nenhuma das duas cobriu as escritas finais de governanca; nao se alega isolamento global do host."

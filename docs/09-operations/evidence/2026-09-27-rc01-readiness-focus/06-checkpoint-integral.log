@@ -1,0 +1,186 @@
+# Checkpoint integral — uma execução, uma árvore, um intervalo
+# bruto (dentro do checkout, caminho canônico): 11-checkpoint-integral-bruto.log
+#   sha256 432c55f610ca922032ab143da264dc592bb2a0f1d80443fa191fe7761b383777
+#   twin fora do checkout, preservado do momento da corrida:
+#   ~/evidence-logs/2026-09-27-rc01-readiness/00-suite-integral-bruto.log  md5 1f12a7776c6475b69a86891a27b7718e
+#
+# ## 1. O que rodou
+# comando: .venv/bin/python tools/run_tests_isolated.py tests -q
+# janela:  2026-09-27 08:50:33 -> 09:21:16 -0300 (1843 s de parede; o pytest anuncia 1838,54 s)
+# arvore no lancamento:  branch codex/rc01-readiness-focus-2026-09-27 @ 449b68c3 + trabalho
+#                        nao commitado; impressao `git status --porcelain | sort | md5sum` =
+#                        ee04994d89e9f0f611ce2f628a2ed7a4
+# arvore no fim:         MESMA impressao ee04994d89e9f0f611ce2f628a2ed7a4 — reimpressa no fim
+#                        deste roteiro (a falha do lote anterior, que não reimprimia, fica assim
+#                        corrigida).
+# processos vivos antes do lancamento: nenhum (pgrep de run_tests_isolated/pytest/qmltestrunner
+#                        sem resultado; o grep do próprio involucro não conta como prova).
+#
+# ## 2. Resultado
+# `1 failed, 6402 passed, 47 skipped in 1838.54s`, rc=1
+# real-state before/after: exists=True files=12816 directories=2068 bytes=1372712391
+#                          max_mtime_ns=1790477787953832614 — identicos byte a byte, inclusive o
+#                          mtime maximo. O state home real do operador nao foi tocado.
+#
+# A unica falha e `tests/unit/test_project_status.py::test_committed_catalog_and_generated_views_are_consistent`,
+# com os mesmos 8 itens que `make status-check` apontou em 05-gates-rapidos.log: cinco scopeDigest
+# envelhecidos e tres visoes geradas. E consistencia de catalogo causada pela ordem de escrita,
+# nao comportamento. Nenhuma falha de QML, de foco, de viewport ou de jornada.
+#
+# ## 3. Reconciliacao da contagem (por que 6402 e nao 6397)
+# A corrida integral anterior, registrada na fatia 1 deste RC-01, fechou com
+# `1 failed, 6397 passed, 47 skipped`. A diferenca e +5 testes aprovados e zero de skip:
+# exatamente os cinco do gate novo deste lote (tests/integration/test_retrofe_import_dialog_compact.py,
+# 3 guardas de intencao + 2 execucoes `visual` de QtTest). 6397 + 5 = 6402, os 47 skips sao
+# os mesmos (conformance de Flatpak/cores que nao lancam sozinhos e tres referencias de
+# outro checkout) — logo, nada foi silenciado por skip neste lote.
+#
+# ## 4. O que a corrida NAO cobre, dito sem maquiagem
+# * escrita de artefatos ignorados pelo git dentro de `build/` (fixtures de cenarios de UI
+#   regravados pela propria suíte) — nada de codigo, teste ou documento do checkout mudou:
+#   `find . -type f -newermt "2026-09-27 08:50:33" ! -newermt "2026-09-27 09:21:16"`, excluindo
+#   `.git`, `.venv`, caches, `build/` e `htmlcov/`, nao devolve arquivo nenhum. A impressao do
+#   `git status` identica no lancamento e no fim confirma pelo mesmo caminho;
+# * os arquivos escritos DEPOIS da corrida: os logs 05/06/07 desta pasta, a entrada do
+#   WORKLOG, os scopeDigest renovados e as tres visoes regravadas. Tambem o docstring do
+#   gate novo foi corrigido depois (dizia que as capturas saem em `build/`; saem no
+#   temporario do pytest) — e comentario de modulo, sem linha executavel, entao nada do
+#   comportamento testado pela corrida mudou. Esses arquivos foram forcadamente depois: o
+#   digest so vale com todos os arquivos do escopo presentes, e o WORKLOG precisa citar o
+#   resultado real da suite. A tese de que o estado final do catalogo esta coerente e
+#   dada por `make status-check` sozinho, no fim, em 07-status-final.log;
+# * validacao fisica na release instalada do host: nao feita neste lote (offscreen apenas,
+#   como rotulado em README.md e 04-capturas-viewport.log).
+# checkpoint integral — 2ª fatia RC-01 (UX-05/UX-07) — lançamento 2026-09-27T08:50:33-03:00
+# branch=codex/rc01-readiness-focus-2026-09-27 HEAD=449b68c3c2e9dd9a0544fcdd8370ac6277683c98
+# fingerprint da arvore no lancamento: ee04994d89e9f0f611ce2f628a2ed7a4
+# cmd: .venv/bin/python tools/run_tests_isolated.py tests -q
+........................................................................ [  1%]
+........................................................................ [  2%]
+........................................................................ [  3%]
+........................................................................ [  4%]
+........................................................................ [  5%]
+........................................................................ [  6%]
+........................................................................ [  7%]
+........................................................................ [  8%]
+........................................................................ [ 10%]
+........................................................................ [ 11%]
+.........................................ss.s..s.................sssss.. [ 12%]
+..s........sssssssssssssssss..................sssssssssssssssss......... [ 13%]
+........................................................................ [ 14%]
+........................................................................ [ 15%]
+........................................................................ [ 16%]
+.....................s.................................................. [ 17%]
+........................................................................ [ 18%]
+........................................................................ [ 20%]
+........................................................................ [ 21%]
+........................................................................ [ 22%]
+........................................................................ [ 23%]
+........................................................................ [ 24%]
+........................................................................ [ 25%]
+........................................................................ [ 26%]
+........................................................................ [ 27%]
+........................................................................ [ 29%]
+........................................................................ [ 30%]
+........................................................................ [ 31%]
+........................................................................ [ 32%]
+........................................................................ [ 33%]
+........................................................................ [ 34%]
+........................................................................ [ 35%]
+........................................................................ [ 36%]
+........................................................................ [ 37%]
+........................................................................ [ 39%]
+........................................................................ [ 40%]
+........................................................................ [ 41%]
+........................................................................ [ 42%]
+........................................................................ [ 43%]
+........................................................................ [ 44%]
+........................................................................ [ 45%]
+........................................................................ [ 46%]
+........................................................................ [ 48%]
+........................................................................ [ 49%]
+........................................................................ [ 50%]
+........................................................................ [ 51%]
+........................................................................ [ 52%]
+........................................................................ [ 53%]
+........................................................................ [ 54%]
+........................................................................ [ 55%]
+........................................................................ [ 56%]
+........................................................................ [ 58%]
+........................................................................ [ 59%]
+........................................................................ [ 60%]
+........................................................................ [ 61%]
+................ss...................................................... [ 62%]
+........................................................................ [ 63%]
+........................................................................ [ 64%]
+........................................................................ [ 65%]
+.......................................F................................ [ 66%]
+........................................................................ [ 68%]
+........................................................................ [ 69%]
+........................................................................ [ 70%]
+........................................................................ [ 71%]
+........................................................................ [ 72%]
+........................................................................ [ 73%]
+........................................................................ [ 74%]
+........................................................................ [ 75%]
+........................................................................ [ 77%]
+........................................................................ [ 78%]
+........................................................................ [ 79%]
+........................................................................ [ 80%]
+........................................................................ [ 81%]
+........................................................................ [ 82%]
+........................................................................ [ 83%]
+........................................................................ [ 84%]
+........................................................................ [ 85%]
+........................................................................ [ 87%]
+........................................................................ [ 88%]
+........................................................................ [ 89%]
+........................................................................ [ 90%]
+........................................................................ [ 91%]
+........................................................................ [ 92%]
+........................................................................ [ 93%]
+........................................................................ [ 94%]
+........................................................................ [ 96%]
+........................................................................ [ 97%]
+........................................................................ [ 98%]
+........................................................................ [ 99%]
+..........................................                               [100%]
+=================================== FAILURES ===================================
+__________ test_committed_catalog_and_generated_views_are_consistent ___________
+
+    def test_committed_catalog_and_generated_views_are_consistent() -> None:
+>       assert project_status.check_catalog() == []
+E       AssertionError: assert ['SZ-THEME-EN...--write', ...] == []
+E         
+E         Left contains 8 more items, first extra item: 'SZ-THEME-ENGINE: evidencia obsoleta; scopeDigest esperado b5d0db609363634b605d9a5449125968ff9662169b1788690fc42f456b3e07ea, atual 264c1c4c3da65fbb1943f08fc759597e0dcd16d9c0d6b62ee3b65b084360ea64'
+E         Use -v to get more diff
+
+tests/unit/test_project_status.py:15: AssertionError
+=========================== short test summary info ============================
+SKIPPED [10] tests/integration/test_emulator_conformance.py:487: Flatpak fixa commit; o checksum é garantia do executor portátil
+SKIPPED [17] tests/integration/test_emulator_conformance.py:507: core não lança sozinho; quem lança é o RetroArch
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-bluemsx nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-fbneo nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-freeintv nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-fuse nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-genesis-plus-gx nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-ngp nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-pce nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-vb nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-wswan nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mesen nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mgba nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mupen64plus-next nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-opera nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-puae nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-snes9x nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-stella nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-vice-x64 nao declara capability `configure`
+SKIPPED [1] ../../../../../../mnt/sdcard/Projects/Port_Steam/tests/integration/test_metadata_to_catalog_pipeline.py:173: reference/ não versionado; checkout sem pesquisa
+SKIPPED [1] ../../../../../../mnt/sdcard/Projects/Port_Steam/tests/unit/test_metadata_import_pegasus.py:187: reference/ não versionado; checkout sem pesquisa
+SKIPPED [1] ../../../../../../mnt/sdcard/Projects/Port_Steam/tests/unit/test_metadata_import_pegasus.py:199: reference/ não versionado; checkout sem pesquisa
+FAILED tests/unit/test_project_status.py::test_committed_catalog_and_generated_views_are_consistent
+1 failed, 6402 passed, 47 skipped in 1838.54s (0:30:38)
+real-state before: exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790477787953832614 source=HOME-default
+real-state after:  exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790477787953832614 source=HOME-default
+rc=1 duracao=1843s fim=2026-09-27T09:21:16-03:00

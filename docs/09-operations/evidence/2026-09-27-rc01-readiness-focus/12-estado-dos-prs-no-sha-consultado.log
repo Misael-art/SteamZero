@@ -1,0 +1,163 @@
+# Estado dos PRs desta frente — consultado no SHA exato, com o comando ao lado de cada resposta
+# data: 2026-09-27T09:42:21-03:00 (12:42:21Z)  branch: codex/rc01-readiness-focus-2026-09-27
+# checkout único: caminho canônico do projeto; nada aqui foi lido de outro clone ou cópia.
+#
+# Leitura local (antes de qualquer chamada de rede):
+$ git rev-parse origin/main HEAD origin/codex/rc01-readiness-focus-2026-09-27
+3495c49d5d7c3244267e8292beee34475f70236b
+244bf550e60e9c17742ec41da8230d1a69b8b242
+244bf550e60e9c17742ec41da8230d1a69b8b242
+# HEAD == ponta remota da branch: o que está publicado é exatamente o que está aqui.
+$ git merge-base --is-ancestor c959be13 HEAD && echo ancestral=SIM
+ancestral=SIM
+$ git rev-list --count c959be13..HEAD
+4
+# Ou seja: desta ponta até o HEAD do PR 240 há exatamente 4 commits — os desta fatia. A *base* do PR 241 é
+# `main` (não o HEAD do 240); o que o empilha sobre o 240 é o histórico da branch, que contém `c959be13`.
+
+$ gh api repos/Misael-art/SteamZero/commits/c959be13/check-runs --jq '{total_count, runs:[.check_runs[]|{name,status,conclusion}]}'
+{"runs":[{"conclusion":"skipped","name":"Sourcery review","status":"completed"},{"conclusion":"success","name":"Smoke Manjaro","status":"completed"},{"conclusion":"success","name":"Python 3.11","status":"completed"},{"conclusion":"success","name":"Smoke Ubuntu 24.04","status":"completed"},{"conclusion":"success","name":"Wheel limpo, smoke e supply chain","status":"completed"},{"conclusion":"success","name":"Smoke Arch Linux","status":"completed"},{"conclusion":"success","name":"Python 3.14","status":"completed"},{"conclusion":"success","name":"Python 3.12","status":"completed"},{"conclusion":"success","name":"Gate visual QML (Linux)","status":"completed"}],"total_count":9}
+
+$ gh api repos/Misael-art/SteamZero/commits/c959be13/status --jq '{state,total_count,statuses:[.statuses[]|{context,state}]}'
+{"state":"success","statuses":[{"context":"CodeRabbit","state":"success"}],"total_count":1}
+
+$ gh pr view 240 --json number,state,headRefOid,mergeable,baseRefName
+{"baseRefName":"main","headRefOid":"c959be139f95c673dc258b9d8b8011313d5c97f6","mergeable":"MERGEABLE","number":240,"state":"OPEN"}
+
+$ gh pr view 241 --json number,state,headRefOid,baseRefName,mergeable
+{"baseRefName":"main","headRefOid":"244bf550e60e9c17742ec41da8230d1a69b8b242","mergeable":"MERGEABLE","number":241,"state":"OPEN"}
+
+$ gh api repos/Misael-art/SteamZero/commits/244bf550e60e9c17742ec41da8230d1a69b8b242/check-runs --jq '[.check_runs[]|{name,status,conclusion}]'
+[{"conclusion":"success","name":"Smoke Arch Linux","status":"completed"},{"conclusion":"success","name":"Python 3.14","status":"completed"},{"conclusion":"success","name":"Python 3.11","status":"completed"},{"conclusion":"success","name":"Smoke Ubuntu 24.04","status":"completed"},{"conclusion":null,"name":"Python 3.12","status":"in_progress"},{"conclusion":"success","name":"Smoke Manjaro","status":"completed"},{"conclusion":"success","name":"Wheel limpo, smoke e supply chain","status":"completed"},{"conclusion":null,"name":"Gate visual QML (Linux)","status":"in_progress"},{"conclusion":"skipped","name":"Sourcery review","status":"completed"}]
+
+$ gh pr view 241 --json mergeable,mergeStateStatus
+{"mergeStateStatus":"UNSTABLE","mergeable":"MERGEABLE"}
+
+$ git log --oneline 3495c49d..069501ab
+069501ab docs(RC-00): integra plano de continuidade e reconcilia claims ativos
+c17def05 docs: registra auditoria integral de produto, telas e experiência (26/09)
+$ git log --oneline 3495c49d..c959be13 | wc -l
+7
+$ git log --oneline 3495c49d..HEAD | wc -l
+11
+
+## O que essas respostas significam, dito com precisão
+
+* **A pilha real é 239 → 240 → 241, todos com base `main` e todos `OPEN`.** `origin/main` está em
+  `3495c49d` (2026-09-26T07:55:38-03:00) e **nenhum** dos commits `c17def05`, `069501ab`, `64932141`,
+  `6df5afde`, `d215e320`, `72579141`, `c959be13`, `449b68c3`, `7fe9e8b2`, `3fd059da`, `244bf550` é
+  ancestral de `origin/main` (verificado com `git merge-base --is-ancestor`, um a um). Correção de um
+  erro que constava deste log: `c17def05` e `069501ab` são os dois commits do **PR 239** (RC-00), não do
+  240; o 240 foi aberto sobre `069501ab` e traz 7 commits além do main, dos quais 5 são seus. Após a
+  leitura das 09h42 foram acrescentados mais commits documentais/governança a esta ponta, então os 11 da
+  lista acima são agora 12 com `f9256642` — ver "Segunda leitura", ao final.
+* PR 239 (RC-00, `069501ab`): OPEN, MERGEABLE. CI no SHA exato: 8 success + 1 skipped ("Sourcery review").
+* PR 240 (etapa 1 de RC-01, UX-01/UX-02): **OPEN** em `c959be139f95c673dc258b9d8b8011313d5c97f6`, `MERGEABLE`,
+  base `main`. No SHA exato dele há **9 check-runs** (8 `success` + 1 `skipped`, o "Sourcery review") e
+  **1 commit status** legado, o "CodeRabbit", em `success`. Nenhum check está em `failure` e nenhum está
+  `queued`/`in_progress`. Corrigindo a frase escrita mais cedo neste lote: "CI terminal 10/10 verde" é
+  arredondamento indevido — o número correto é **8 success + 1 skipped + 1 status CodeRabbit success**.
+* PR 241 (esta fatia, UX-05/UX-07 no diálogo RetroFE): OPEN em `244bf550`, base `main`, `mergeable=MERGEABLE`,
+  `mergeStateStatus=UNSTABLE`. No instante da consulta: **6 success, 1 skipped e 2 em andamento**
+  (`Python 3.12` e `Gate visual QML (Linux)`), mais o status legado CodeRabbit `success`. A CI desta ponta
+  **não** foi acompanhada até o fim: nenhuma consulta repetida foi feita depois desta leitura, por
+  instrução do operador. Quem integrar deve reler o estado no SHA final do lote.
+* `WS-2026-09-RC01-CENTRAL-LOADING` e `WS-2026-09-RC01-READINESS-FOCUS` permanecem `active`, e nenhum item
+  fecha como `integrated`. A decisão de merge é do operador.
+* Dependência real do conteúdo: o blob `7368fd38…` do painel sem correção é o mesmo em `origin/main`
+  (`3495c49d`), em `c959be13` (PR 240) e em `449b68c3`. O conteúdo das etapas anteriores não é
+  reapresentado como mudança nova: os commits de 239 e 240 aparecem no histórico do 241 porque ele é
+  empilhado sobre eles. O diff **funcional** desta fatia são os 4 commits `449b68c3..244bf550`, dos quais
+  só `7fe9e8b2` toca código; `f9256642` é documental (18 arquivos, todos sob `docs/`, conferido com
+  `git show --name-only`), e o commit extra `244bf550` é governança.
+
+## Segunda leitura (10:01–10:02-03:00), na ponta nova `f9256642` e com a dependência declarada no PR
+
+O corpo do PR 241 passou a declarar a pilha e a ordem de integração. Para que a declaração tenha
+contrapartida lida no momento em que foi escrita, refiz as consultas de estado — agora em `f9256642`,
+que é a ponta publicada, e nas pontas dos dois PRs dos quais este depende.
+
+$ date -Iseconds
+2026-09-27T10:01:56-03:00
+
+$ gh pr view 239 --json number,state,headRefOid,baseRefName,mergeStateStatus
+{"baseRefName":"main","headRefOid":"069501ab954c42118b5aaf91c450b58800e90219","mergeStateStatus":"CLEAN","number":239,"state":"OPEN"}
+
+$ gh pr view 240 --json number,state,headRefOid,mergeable,mergeStateStatus
+{"headRefOid":"c959be139f95c673dc258b9d8b8011313d5c97f6","mergeStateStatus":"CLEAN","mergeable":"MERGEABLE","number":240,"state":"OPEN"}
+
+$ gh pr view 241 --json number,state,headRefOid,mergeable,mergeStateStatus,reviewDecision
+{"headRefOid":"f925664241070dbdaaec20c3f2e1261f19aa18b8","mergeStateStatus":"UNSTABLE","mergeable":"MERGEABLE","number":241,"reviewDecision":"","state":"OPEN"}
+
+$ gh api repos/Misael-art/SteamZero/commits/f925664241070dbdaaec20c3f2e1261f19aa18b8/check-runs \
+    --jq '.check_runs[] | "\(.name)\t\(.status)\t\(.conclusion)"'
+Sourcery review	completed	skipped
+Python 3.12	in_progress	null
+Smoke Arch Linux	completed	success
+Smoke Manjaro	completed	success
+Python 3.14	in_progress	null
+Wheel limpo, smoke e supply chain	completed	success
+Python 3.11	in_progress	null
+Smoke Ubuntu 24.04	completed	success
+Gate visual QML (Linux)	in_progress	null
+
+$ gh api repos/Misael-art/SteamZero/commits/f925664241070dbdaaec20c3f2e1261f19aa18b8/status \
+    --jq '"commit_url state=\(.state) legacy_statuses=\(.statuses|length)"'
+commit_url state=success legacy_statuses=1
+$ date -Iseconds
+2026-09-27T10:02:07-03:00
+
+Leitura desta segunda passagem, sem arredondamento: em `f9256642` a CI tem **9 check-runs**, dos quais
+**4 `success`** (Smoke Arch Linux, Smoke Manjaro, Smoke Ubuntu 24.04, Wheel limpo/smoke/supply chain),
+**1 `skipped`** (Sourcery review) e **4 ainda `in_progress`** (Python 3.11, 3.12, 3.14 e Gate visual
+QML); mais **1 status legado** CodeRabbit, com `state=success`. Nenhum em `failure`. É por isso que
+`mergeStateStatus=UNSTABLE`: há checks em andamento, não checks quebrados — e o `MERGEABLE` diz
+respeito a conflitos, não a verde. **Não fiz polling depois desta leitura**; quem integrar relê no SHA
+final. Os 239 e 240 aparecem aqui como `mergeStateStatus=CLEAN`, o que reforça (sem provar) que a ordem
+de integração 239 → 240 → 241 é a que faz sentido: mesclar o mais antigo primeiro encolhe o diff dos
+outros dois.
+
+## Terceira leitura (10:08:04 -> 10:08:06-03:00), na ponta documental `00de2ec8`
+
+Depois da segunda leitura esta branch avançou com um commit **puramente documental** (`00de2ec8`,
+7 arquivos, todos sob `docs/`; `git diff --cached --name-only | grep -vc '^docs/'` deu 0 antes do
+commit), que era a ponta do PR 241 no instante desta leitura. Escrever o corpo de um PR e lê-lo no
+GitHub não são atômicos: a ponta pode ter avançado entre os dois, e foi o que aconteceu — o registro
+desta terceira leitura entrou em commit documental seguinte, e o corpo do PR diz isso em vez de fingir
+que a leitura é da ponta final.
+
+$ date -Iseconds
+2026-09-27T10:08:04-03:00
+$ gh api repos/Misael-art/SteamZero/commits/00de2ec81c4fbf12153c527cb14598071173afa0/check-runs --jq '.check_runs[] | "\(.name)\t\(.status)\t\(.conclusion)"'
+Sourcery review	completed	skipped
+
+$ gh pr view 241 --json headRefOid,mergeStateStatus,mergeable
+{"headRefOid":"00de2ec81c4fbf12153c527cb14598071173afa0","mergeStateStatus":"CLEAN","mergeable":"MERGEABLE"}
+$ date -Iseconds
+2026-09-27T10:08:06-03:00
+
+$ git rev-list --count origin/main..HEAD
+13
+$ git merge-base --is-ancestor HEAD origin/main; echo "rc=$?  (1 = NÃO está no main)"
+rc=1
+
+Dito com precisão, porque é exatamente onde uma afirmação apressada mentiria: nesta ponta nova **só o
+check "Sourcery review" existia** (conclusão `skipped`); os outros jobs ainda não tinham check-run
+criado no instante da leitura. O `mergeStateStatus=CLEAN` nesse mesmo instante **não** significa CI
+verde — significa que não há conflito pendente e que nenhum check obrigatório estava em falha. A última
+leitura com a grade completa de jobs é a anterior, em `f9256642`. Nenhuma consulta repetida foi feita
+depois desta janela.
+
+## Como refazer
+
+  git fetch origin main
+  git rev-parse origin/main c959be13 HEAD
+  gh pr view 240 --json state,headRefOid,mergeable
+  gh api repos/Misael-art/SteamZero/commits/c959be13/check-runs --jq '[.check_runs[]|{name,conclusion}]'
+  gh api repos/Misael-art/SteamZero/commits/c959be13/status --jq '.state'
+  git merge-base --is-ancestor c959be13 origin/main; echo "rc=$?  (1 = NÃO está no main)"
+
+## O que este log NÃO prova
+
+* Nada aqui é evidência de que a release instalada do host foi validada, nem de que o merge aconteceu.
+* A leitura da CI do PR 241 é um instante, não um resultado terminal.

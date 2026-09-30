@@ -1,0 +1,48 @@
+# 00 — Preflight deste lote (2026-09-27)
+
+Comandos e saída literal, executados antes de qualquer edição nesta rodada.
+
+```
+$ git rev-parse --abbrev-ref HEAD
+codex/rc01-readiness-focus-2026-09-27
+
+$ git rev-parse HEAD
+3b0778feb66dfa2ea4696e9523330908fbc87f9f
+
+$ git rev-parse origin/codex/rc01-readiness-focus-2026-09-27   # ponta remota
+3b0778feb66dfa2ea4696e9523330908fbc87f9f
+
+$ git worktree list
+/home/misael/Projects/Steam Zero/Canonical/2026-09-21 3b0778fe [codex/rc01-readiness-focus-2026-09-27]
+
+$ git status --porcelain=v1 | wc -l
+7
+```
+
+Árvore canônica única (um worktree, o do lote), HEAD local igual à ponta remota,
+venv existente `.venv/` reutilizado, nenhum checkout alternativo criado.
+
+## Processos de teste concorrentes
+
+`pgrep -af "pytest|qmltestrunner|run_tests_isolated"` mostrou exatamente **uma**
+família de teste neste host, iniciada por esta sessão:
+
+```
+158566 .venv/bin/python tools/run_tests_isolated.py -m visual --tb=short -q
+158598 .venv/bin/python -m pytest -m visual --tb=short -q
+```
+
+Nenhum `qmltestrunner` solto e nenhuma segunda suíte integral de outra sessão. A
+corrida acima é a suíte `-m visual` local desta rodada, cujo resultado está em
+`06-suite-visual-local.log`.
+
+## Correção a afirmações de rodadas anteriores
+
+* `git stash list` **não** está vazio: existem 5 entradas antigas
+  (2026-07-24 … 2026-08-17), anteriores a este lote. Nada foi tocado, aplicado ou
+  descartado. A afirmação de que não havia stashes estava errada e é corrigida aqui
+  e no WORKLOG.
+* O vermelho do gate visual **não** era "ambiente do runner" nem "possível corrida".
+  Era defeito de harness (ambiente de renderização não declarado) — ver
+  `01-causa-raiz-container-sem-fonte.log`.
+* Nenhum `git reset`/`clean`/`stash` automático foi executado nesta rodada.

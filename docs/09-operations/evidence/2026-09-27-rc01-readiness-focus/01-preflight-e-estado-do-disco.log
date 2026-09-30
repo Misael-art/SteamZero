@@ -1,0 +1,40 @@
+# Pre-flight — segunda fatia RC-01 (readiness, foco e viewport) — 2026-09-27T10:45:42Z
+
+cmd: git branch --show-current / git rev-parse HEAD / git status --porcelain / git diff --stat HEAD / git worktree list / ps -eo pid,etime,cmd
+branch=codex/rc01-readiness-focus-2026-09-27  HEAD=449b68c3c2e9dd9a0544fcdd8370ac6277683c98
+worktree único=1 linha: /home/misael/Projects/Steam Zero/Canonical/2026-09-21 449b68c3 [codex/rc01-readiness-focus-2026-09-27]
+origin=https://github.com/Misael-art/SteamZero.git
+status= M src/steamzero/ui/qml/ThemeEditorPanel.qml | ?? tests/qml/check_retrofe_import_dialog_compact_viewport.qml
+diff --stat HEAD = ThemeEditorPanel.qml | 4 ++++ (2 aliases + 1 id + 1 linha em branco); nada mais alterado
+processos de teste vivos = nenhum (ps -eo | grep -E 'pytest|qml6|qmltest6|run_tests_isolated' sem resultado)
+
+## Arquivo cuja leitura divergiu — estado no disco
+caminho canônico (relativo ao checkout): tests/qml/check_theme_editor_import.qml
+caminho absoluto no host: /home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_theme_editor_import.qml
+sha256: b9b000bb65f402cec6e2b8942ac1d0490916462c429fdac719a2629577ba7851
+linhas/bytes:  146 6391
+git diff HEAD -- arquivo = vazio (conteúdo idêntico ao commit)
+último commit do arquivo: 8364a24b1a98d8a81c43f6fe55ebbfd41f5a7623 2026-09-08 01:08:32 -0300 feat(theme): expose RetroFE import and managed assets
+
+A divergência observada foi um resultado de leitura que mostrava 238 linhas e uma referência a panel.retrofeImportDialogControl; o disco tem 146 linhas e grep -c retrofeImportDialogControl = 0. Não atribuo a causa a outro agente nem a outro processo: não há evidência de escrita (mtime 2026-09-08, arquivo sem diff). A partir daqui toda afirmação sobre este lote sai de leitura direta do disco com rtk.
+
+## Padrão de teste com teclado real já existente no projeto
+runner: /usr/lib/qt6/bin/qmltestrunner (existe, 14520 bytes, Qt 6.11.2)
+cmd: QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QT_FORCE_STDERR_LOGGING=1 QT_LOGGING_RULES="" qmltestrunner -input tests/qml/check_dialog_keys.qml
+saída: 7 passed, 0 failed, 0 skipped, 0 blacklisted, 226ms — rc=0
+fonte: tests/integration/test_ui_dialog_keys.py:36-54 define o ambiente e o argv; :57-73 é a guarda de código que exige keyClick real e proíbe wait()
+
+## Correções e complementos deste mesmo lote (escritos depois, sem apagar o registro acima)
+
+* A linha `diff --stat HEAD = ThemeEditorPanel.qml | 4 ++++` descreve o instante 10:45:42Z. Na corrida do
+  vermelho (08:41:55-03:00 do dia 27, log 02) a superfície de teste tinha **seis** linhas: os dois
+  `property alias`, a linha em branco, `objectName: "themeImportRetrofeNotice"`,
+  `objectName: "themeImportRetrofeCancel"` e `id: retrofeImportApplyButton`. O `4 ++++` abaixo daquele
+  instante não cobre as três últimas; a lista exata e recuperável por Git está no cabeçalho do log 02.
+* Os registros que dependiam de arquivos fora do checkout foram trazidos para esta pasta canônica
+  (`docs/09-operations/evidence/2026-09-27-rc01-readiness-focus`): `08-reproducao-no-codigo.log` (a
+  reprodução por leitura de UX-03/UX-04/UX-05/UX-07, antes de qualquer mudança, com os números de linha
+  conferidos no arquivo), `09-sonda-foco-mecanismos.log` (a sonda que respondeu a dúvida de foco no Qt
+  instalado), `10-gates-rapidos-bruto.log` e `11-checkpoint-integral-bruto.log`. Os gêmeos fora do
+  checkout continuam no host, com md5 declarado em 05 e 06.
+* Estado dos PRs consultado no SHA exato: `12-estado-dos-prs-no-sha-consultado.log`.
