@@ -1,0 +1,149 @@
+# comando: .venv/bin/python tools/run_tests_isolated.py tests/integration/test_qml_handheld_offscreen.py -m visual -k check_storage_units -q
+# executado em 2026-09-28T21:15:30-03:00
+# branch=codex/rc01-storage-units-2026-09-28 head=c0de54c9f10c480693ce495a0533acb524fe53ad
+# harness sha256=cb72549006b57ea5a7d21f31b0e96e20777a49720daa23c002544e317e2a5f72
+# gate listado em: 253
+--- saída crua ---
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_________ test_qml_handheld_harness_offscreen[check_storage_units.qml] _________
+
+harness = 'check_storage_units.qml'
+
+    @pytest.mark.visual
+    @pytest.mark.parametrize(
+        "harness",
+        [
+            "check_handheld_shell.qml",
+            "check_main_emulation.qml",
+            "check_emulation.qml",
+            "check_steam_gameplay_responsive.qml",
+            "check_editorial_home.qml",
+            "check_editorial_library.qml",
+            "check_editorial_canonical_systems.qml",
+            "check_media_effect_layer.qml",
+            "check_asset_recipe_preview.qml",
+            "check_scene_repeater.qml",
+            "check_scene_containers.qml",
+            # Navegação por controle do AURA Launcher. Capacidade separada da AURA
+            # UI: mora em seu próprio diretório e não promove o estado dela.
+            "launcher/check_launcher_home.qml",
+            "launcher/check_launcher_game_page.qml",
+            "launcher/check_launcher_shell.qml",
+            "launcher/check_launcher_activation.qml",
+            "launcher/check_launcher_accessibility.qml",
+            "launcher/check_launcher_covers.qml",
+            "launcher/check_launcher_session_osd.qml",
+            "launcher/check_launcher_save_state_gallery.qml",
+            "launcher/check_launcher_session_peripherals.qml",
+            "check_asset_color_transform.qml",
+            "check_glass_panel.qml",
+            "check_scene_motion.qml",
+            "check_scene_surfaces.qml",
+            "check_theme_studio_canvas.qml",
+            "check_operational_metric_card.qml",
+            "check_handheld_layout_focus.qml",
+            # UX-03: a superfície lê o contrato de prontidão (estado, medição, causa,
+            # próxima ação). A regra de cor vivia inteiramente no QML, e é ali que ela
+            # voltaria a morar se alguém reimplementá-la por página.
+            "check_readiness_surface.qml",
+            # UX-04: armazenamento em unidades compreensíveis. As quatro superfícies
+            # executadas lado a lado porque o defeito é justamente a divergência entre
+            # elas — o mesmo 1073741824 B lido como GiB, GB e MB conforme a tela.
+            "check_storage_units.qml",
+            "check_main_handheld_sections.qml",
+            "check_credentials.qml",
+            "check_credential_dialog_responsive.qml",
+            "check_high_contrast.qml",
+            # UX-01: a tinta dos avisos sobre superfície fixa é calculada, e o
+            # cálculo precisa sobreviver ao tema escuro e ao alto contraste.
+            "check_warning_surface_contrast.qml",
+            # Prova Image.Ready de cada asset empacotado, não apenas o caminho.
+            "check_packaged_assets.qml",
+            # Identidade AURA no editor: preview no ThemeBridge, cancelar restaura.
+            "check_theme_editor_aura.qml",
+            "check_theme_editor_asset_recipes.qml",
+            "check_responsive_components.qml",
+        ],
+    )
+    def test_qml_handheld_harness_offscreen(harness: str) -> None:
+        if harness in _SVG_HARNESSES and not _qml_decodes_svg():
+            pytest.fail(
+                f"{DIAG_VISUAL_ENVIRONMENT}: runtime sem plugin de imagem SVG; "
+                f"{harness} carrega asset .svg"
+            )
+        completed = subprocess.run(
+            [str(QML), f"tests/qml/{harness}"],
+            cwd=ROOT,
+            env=_qml_environment(),
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+>       _assert_qml_clean(completed, harness)
+
+tests/integration/test_qml_handheld_offscreen.py:284: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+completed = CompletedProcess(args=['/usr/sbin/qml6', 'tests/qml/check_storage_units.qml'], returncode=1, stdout='', stderr='qml: F...ocale medido é pt_BR e usa "," como separador decimal\nqml: check_storage_units: 30 falha(s) de 72 (primeira em #5)\n')
+label = 'check_storage_units.qml'
+
+    def _assert_qml_clean(completed: subprocess.CompletedProcess[str], label: str) -> None:
+        diagnostics = (
+            "Binding loop",
+            "Unable to assign",
+            "TypeError:",
+            "ReferenceError:",
+            "Cannot open:",
+        )
+>       assert completed.returncode == 0, (
+            f"{label} falhou ({completed.returncode})\n"
+            f"stdout:\n{completed.stdout}\nstderr:\n{completed.stderr}"
+        )
+E       AssertionError: check_storage_units.qml falhou (1)
+E         stdout:
+E         
+E         stderr:
+E         qml: FAIL: o valor 0 B lê Tamanho não publicado em Emulation e 0 B em Main — uma única grandeza não pode ter várias leituras
+E         qml: FAIL: o valor 512 B lê 0.0 MB em Emulation e 512 B em Main — uma única grandeza não pode ter várias leituras
+E         qml: FAIL: o valor 1048576 B lê 1.0 MB em Emulation e 1.0 MiB em Main — uma única grandeza não pode ter várias leituras
+E         qml: FAIL: o valor 1048576 B lê 1.0 MB em ThemeCatalogPanel e 1.0 MiB em Main — uma única grandeza não pode ter várias leituras
+E         qml: FAIL: o valor 1073741824 B lê 1.00 GB em Emulation e 1.00 GiB em Main — uma única grandeza não pode ter várias leituras
+E         qml: FAIL: o valor 1073741824 B lê 1024.0 MB em ThemeCatalogPanel e 1.00 GiB em Main — uma única grandeza não pode ter várias leituras
+E         qml: FAIL: o valor 1500000000 B lê 1.40 GB em Emulation e 1.40 GiB em Main — uma única grandeza não pode ter várias leituras
+E         qml: FAIL: o valor 1500000000 B lê 1430.5 MB em ThemeCatalogPanel e 1.40 GiB em Main — uma única grandeza não pode ter várias leituras
+E         qml: FAIL: o valor 5368709120 B lê 5.00 GB em Emulation e 5.00 GiB em Main — uma única grandeza não pode ter várias leituras
+E         qml: FAIL: o valor 5368709120 B lê 5120.0 MB em ThemeCatalogPanel e 5.00 GiB em Main — uma única grandeza não pode ter várias leituras
+E         qml: FAIL: o valor 1099511627776 B lê 1024.0 GB em Emulation e 1024.00 GiB em Main — uma única grandeza não pode ter várias leituras
+E         qml: FAIL: o valor 1099511627776 B lê 1048576.0 MB em ThemeCatalogPanel e 1024.00 GiB em Main — uma única grandeza não pode ter várias leituras
+E         qml: FAIL: valor 1073741824 saiu como "1.00 GB": divisor 1024 com rótulo decimal afirma uma grandeza 7 % menor que a real; o rótulo tem de dizer IEC (GiB)
+E         qml: FAIL: valor 1048576 saiu como "1.0 MB": divisor 1024 com rótulo decimal afirma uma grandeza que não é a medida; o rótulo tem de dizer IEC (MiB)
+E         qml: FAIL: valor 1073741824 saiu como "1024.0 MB": divisor 1024 com rótulo decimal afirma uma grandeza 7 % menor que a real; o rótulo tem de dizer IEC (GiB)
+E         qml: FAIL: valor 1048576 saiu como "1.0 MB": divisor 1024 com rótulo decimal afirma uma grandeza que não é a medida; o rótulo tem de dizer IEC (MiB)
+E         qml: FAIL: Emulation lê ausência como "Tamanho não publicado": dado não medido tem representação própria (traço), não 0 B nem prosa
+E         qml: FAIL: Main lê ausência como "0 B": dado não medido tem representação própria (traço), não 0 B nem prosa
+E         qml: FAIL: SteamGameplay lê ausência como "0 B": dado não medido tem representação própria (traço), não 0 B nem prosa
+E         qml: FAIL: ThemeCatalogPanel lê ausência como "0 B": dado não medido tem representação própria (traço), não 0 B nem prosa
+E         qml: FAIL: Emulation lê zero medido como "Tamanho não publicado": confundir 0 byte com dado ausente é a mesma troca de grandeza que a UX-03 fechou em readiness.percent
+E         qml: FAIL: Emulation mostra 512 B como "0.0 MB": um arquivo pequeno não pode desaparecer da tela
+E         qml: FAIL: Emulation lê 1 TiB como "1024.0 GB": sem andar superior o usuário compara 1024.00 GiB com 1048576.0 MB para a mesma grandeza
+E         qml: FAIL: Main lê 1 TiB como "1024.00 GiB": sem andar superior o usuário compara 1024.00 GiB com 1048576.0 MB para a mesma grandeza
+E         qml: FAIL: SteamGameplay lê 1 TiB como "1024.00 GiB": sem andar superior o usuário compara 1024.00 GiB com 1048576.0 MB para a mesma grandeza
+E         qml: FAIL: ThemeCatalogPanel lê 1 TiB como "1048576.0 MB": sem andar superior o usuário compara 1024.00 GiB com 1048576.0 MB para a mesma grandeza
+E         qml: FAIL: Emulation imprime 1.40 GB com separador de milhar/decimal estrangeiro: o locale medido é pt_BR e usa "," como separador decimal
+E         qml: FAIL: Main imprime 1.40 GiB com separador de milhar/decimal estrangeiro: o locale medido é pt_BR e usa "," como separador decimal
+E         qml: FAIL: SteamGameplay imprime 1.40 GiB com separador de milhar/decimal estrangeiro: o locale medido é pt_BR e usa "," como separador decimal
+E         qml: FAIL: ThemeCatalogPanel imprime 1430.5 MB com separador de milhar/decimal estrangeiro: o locale medido é pt_BR e usa "," como separador decimal
+E         qml: check_storage_units: 30 falha(s) de 72 (primeira em #5)
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/usr/sbin/qml6', 'tests/qml/check_storage_units.qml'], returncode=1, stdout='', stderr='qml: F...ocale medido é pt_BR e usa "," como separador decimal\nqml: check_storage_units: 30 falha(s) de 72 (primeira em #5)\n').returncode
+
+tests/integration/test_qml_handheld_offscreen.py:112: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/test_qml_handheld_offscreen.py::test_qml_handheld_harness_offscreen[check_storage_units.qml]
+1 failed, 57 deselected in 4.38s
+real-state before: exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790607044829769561 source=HOME-default
+real-state after:  exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790607044829769561 source=HOME-default
+CODIGO_DE_SAIDA_DO_PYTEST=1

@@ -1,0 +1,240 @@
+=== 0. cabeçalho de reprodução ===
+PR=244  branch=codex/rc01-storage-units-2026-09-28  cabeca_final=2d04ac96c56e0b7921cad98dbcf5183a7a78391f
+run_ci=36544698400  merge_ref=51442579a0d6dd0c66070c084be298de3d716bc7
+checkpoint_integral_local=f9ec2815 (evidência 27)
+
+Comandos (executados no checkout canônico, árvore limpa fora da própria pasta de evidência):
+  gh pr view 244 --json number,state,baseRefName,headRefOid,mergeable,mergeStateStatus
+  gh run view 36544698400 --json databaseId,headSha,status,conclusion,event,workflowName,url
+  gh run view 36544698400 --json databaseId,jobs   # nomes/status/inicio/fim por job
+  gh api repos/Misael-art/SteamZero/commits/2d04ac96/check-runs --jq '.check_runs[]|{.name,.status,.conclusion}'
+  <waiter> ~/steamzero-ux04-tmp/wait_ci_244_run2.sh   # identidade da árvore por ciclo
+  gh run download 36544698400 -n steamzero-wheel-51442579a0d6dd0c66070c084be298de3d716bc7 -D <dir>
+  cd <dir> && sha256sum -c build/SHA256SUMS
+  .venv/bin/python tools/release_provenance.py verify-wheel --wheel <dir>/dist/steamzero-2.0.0rc1-py3-none-any.whl
+  git fetch --no-tags origin refs/pull/244/merge    # só objeto; não toca a árvore de trabalho
+  .venv/bin/python docs/09-operations/evidence/2026-09-28-rc01-storage-units/29-verificacao-wheel-no-sha-final.py <dir> <lista>
+  find <dir>/qml-visual-artifacts -type f | sed 's/.*\.//' | sort | uniq -c   # composicao do artefato de capturas
+
+=== 1. pr view (cabeca final) ===
+{"baseRefName":"main","headRefOid":"2d04ac96c56e0b7921cad98dbcf5183a7a78391f","mergeStateStatus":"CLEAN","mergeable":"MERGEABLE","number":244,"state":"OPEN"}
+
+=== 2. run terminal do SHA final ===
+{"conclusion":"success","databaseId":36544698400,"event":"pull_request","headSha":"2d04ac96c56e0b7921cad98dbcf5183a7a78391f","status":"completed","url":"https://github.com/Misael-art/SteamZero/actions/runs/36544698400","workflowName":"ci"}
+
+=== 3. jobs (inicio/fim) ===
+Wheel limpo, smoke e supply chain	success	2026-09-29T08:45:04Z	2026-09-29T08:45:52Z
+Python 3.12	success	2026-09-29T08:45:03Z	2026-09-29T08:54:43Z
+Smoke Manjaro	success	2026-09-29T08:45:04Z	2026-09-29T08:45:41Z
+Python 3.14	success	2026-09-29T08:45:03Z	2026-09-29T08:52:58Z
+Smoke Ubuntu 24.04	success	2026-09-29T08:45:04Z	2026-09-29T08:45:46Z
+Smoke Arch Linux	success	2026-09-29T08:45:04Z	2026-09-29T08:45:41Z
+Python 3.11	success	2026-09-29T08:45:04Z	2026-09-29T08:57:54Z
+Gate visual QML (Linux)	success	2026-09-29T08:45:04Z	2026-09-29T09:06:31Z
+
+=== 4. checks no head ===
+Python 3.11	pass
+Wheel limpo, smoke e supply chain	pass
+Smoke Ubuntu 24.04	pass
+Smoke Arch Linux	pass
+Smoke Manjaro	pass
+Gate visual QML (Linux)	pass
+Python 3.12	pass
+Python 3.14	pass
+Sourcery review	skipping
+CodeRabbit	pass
+=== 5. waiter por ciclo (identidade da arvore) ===
+waiter iniciado 2026-09-29T08:45:36Z :: SHA=2d04ac96c56e0b7921cad98dbcf5183a7a78391f
+== ciclo 1 2026-09-29T08:45:36Z :: pendentes=8 :: head_local=2d04ac96c56e0b7921cad98dbcf5183a7a78391f :: linhas_status=0
+== ciclo 2 2026-09-29T08:47:37Z :: pendentes=4 :: head_local=2d04ac96c56e0b7921cad98dbcf5183a7a78391f :: linhas_status=0
+== ciclo 3 2026-09-29T08:49:38Z :: pendentes=4 :: head_local=2d04ac96c56e0b7921cad98dbcf5183a7a78391f :: linhas_status=0
+== ciclo 4 2026-09-29T08:51:52Z :: pendentes=ERRO :: head_local=2d04ac96c56e0b7921cad98dbcf5183a7a78391f :: linhas_status=0
+== ciclo 5 2026-09-29T08:53:52Z :: pendentes=3 :: head_local=2d04ac96c56e0b7921cad98dbcf5183a7a78391f :: linhas_status=0
+== ciclo 6 2026-09-29T08:56:02Z :: pendentes=2 :: head_local=2d04ac96c56e0b7921cad98dbcf5183a7a78391f :: linhas_status=0
+== ciclo 7 2026-09-29T08:58:06Z :: pendentes=1 :: head_local=2d04ac96c56e0b7921cad98dbcf5183a7a78391f :: linhas_status=0
+== ciclo 8 2026-09-29T09:00:14Z :: pendentes=1 :: head_local=2d04ac96c56e0b7921cad98dbcf5183a7a78391f :: linhas_status=0
+== ciclo 9 2026-09-29T09:02:17Z :: pendentes=1 :: head_local=2d04ac96c56e0b7921cad98dbcf5183a7a78391f :: linhas_status=0
+== ciclo 10 2026-09-29T09:04:19Z :: pendentes=1 :: head_local=2d04ac96c56e0b7921cad98dbcf5183a7a78391f :: linhas_status=0
+== ciclo 11 2026-09-29T09:06:22Z :: pendentes=1 :: head_local=2d04ac96c56e0b7921cad98dbcf5183a7a78391f :: linhas_status=0
+== ciclo 12 2026-09-29T09:08:24Z :: pendentes=0 :: head_local=2d04ac96c56e0b7921cad98dbcf5183a7a78391f :: linhas_status=0
+TERMINAL no ciclo 12 (2026-09-29T09:08:24Z)
+
+=== 6. sha256sum -c do SHA256SUMS publicado ===
+dist/steamzero-2.0.0rc1-py3-none-any.whl: SUCESSO
+build/sbom.cdx.json: SUCESSO
+build/provenance.json: SUCESSO
+build/pip-audit.json: SUCESSO
+dist/runtime-wheelhouse.tar.zst: SUCESSO
+dist/runtime-wheelhouse/WHEELHOUSE-MANIFEST.json: SUCESSO
+
+=== 7. verify-wheel governado ===
+{"project": "steamzero", "sha256": "232414d7865eb2a878676c112a56af6305c6611effa162823b33212736c718b7", "version": "2.0.0rc1"}
+exit=0
+
+=== 8. wheel x árvore: varredura total + os 8 arquivos do PR ===
+comando: .venv/bin/python docs/09-operations/evidence/2026-09-28-rc01-storage-units/29-verificacao-wheel-no-sha-final.py <dir-do-artefato> <lista>
+head_local=2d04ac96c56e0b7921cad98dbcf5183a7a78391f
+=== A. proveniência lida do próprio artefato ===
+repository=Misael-art/SteamZero
+ref=refs/pull/244/merge
+merge_ref=51442579a0d6dd0c66070c084be298de3d716bc7
+run=36544698400 builder=github-actions
+sourceTreeState=clean
+sujeito_arquivo=steamzero-2.0.0rc1-py3-none-any.whl bytes=3781402
+sujeito_sha256_publicado=232414d7865eb2a878676c112a56af6305c6611effa162823b33212736c718b7
+sujeito_sha256_no_disco=232414d7865eb2a878676c112a56af6305c6611effa162823b33212736c718b7
+sujeito_coincide=True
+
+=== B. varredura total do pacote (wheel x árvore) ===
+entradas_no_wheel=620 arquivos_no_HEAD=619
+arquivos_no_merge_ref=619
+sem_par_no_wheel=['steamzero/_build_info.py'] (total=1)
+sem_par_no_HEAD=[] (total=0)
+steamzero/_build_info.py: SOURCE_COMMIT=51442579a0d6dd0c66070c084be298de3d716bc7 SOURCE_DIRTY=False
+gerado_em_build_conferido=True
+pareados=619 identicos_HEAD=619 diferentes_HEAD=0
+pareados_merge=619 identicos_merge=619 diferentes_merge=0
+
+=== C. os 8 arquivos deste PR, por SHA-256 ===
+src/steamzero/adapters/emulation.py	459186	OK	sha256=91652738030626676edf86236331c62a1b761166e54a45718c031ef44b10ec23
+src/steamzero/schemas/emulation-workspace-v1.schema.json	45390	OK	sha256=631a6e99c2f58ca0dbd7c6503fd2d854f6759d5be5ce29dc32c17a6c143a9417
+src/steamzero/ui/qml/Emulation.qml	263271	OK	sha256=b426dd71eaac5e6c001740047816485f9a2787099859947cb9eec4397eaaa10a
+src/steamzero/ui/qml/Main.qml	380240	OK	sha256=391be85dd31e0b38eb2607efb44e3e7e3db38ce057e9368c4e92c07bc3e03a66
+src/steamzero/ui/qml/SteamGameplay.qml	106260	OK	sha256=9891374321b3ce7e24e24b2497f7618cd00b8f9f80f10c74c0d335a4d5112a20
+src/steamzero/ui/qml/ThemeCatalogPanel.qml	29838	OK	sha256=532cc4ad8e5e4fb130ee1c681fa6b6fd9968c412a627b07d33d9da6fbb2ad08a
+src/steamzero/ui/qml/ThemeEditorPanel.qml	135745	OK	sha256=a3ebf574842cd4fddc0585221a4ee0a9b0dde4379be8616c9284d047feebdf96
+src/steamzero/ui/qml/sizes.js	2377	OK	sha256=6d5ca418e514258fe6e55d1e9e5c2011fc9e306b6eb023bda77ee6be315a4829
+total=8 identicos_head=8 identicos_merge=8
+
+veredito=sujeito=True varredura_total=True arquivos_do_pr=True APROVADO
+exit_do_script=0
+
+=== 9. delta entre o checkpoint integral (f9ec2815) e a cabeça final (2d04ac96) ===
+--- commits no intervalo ---
+2d04ac96 2026-09-29T05:42:11-03:00 docs(status): reflete o veredito terminal e a prova de artefato no cartao
+615386b3 2026-09-29T05:41:54-03:00 docs(RC-01): le o CI terminal do PR 244 e fecha o empacotamento no wheel
+37f0add4 2026-09-29T01:20:14-03:00 chore(workstream): corrige por medicao a distancia da cabeca e marca o que ja foi feito
+b2f9e9cc 2026-09-29T01:17:05-03:00 docs(RC-01): fecha a UX-04 com o contrato documentado, os 31 digests renovados e o WORKLOG
+c4839656 2026-09-29T01:11:01-03:00 docs(RC-01): evidencia 23 a 27 da UX-04, com o checkpoint integral e os dois vermelhos por causa
+1eae804c 2026-09-29T01:06:56-03:00 test(qml): o gate de locales passa no ruff, nenhuma assercao muda
+--- arquivos alterados, por área ---
+src/: 0
+tools/: 0
+tests/: 1
+docs/: 71
+fora de docs/: 1
+--- o único arquivo não-docs ---
+tests/integration/test_storage_units_locale_matrix.py
+--- medição estrutural do arquivo de teste alterado (opcode por função + poças de constante) ---
+caminho=tests/integration/test_storage_units_locale_matrix.py
+funcoes_f9ec=9 funcoes_2d04=9 mesmos_nomes=True
+sequencias_de_opcode_diferentes=0 []
+pool_diferente_em=<module>.test_a_matriz_exerce_dois_contextos_de_formatacao_distintos
+  f9ec=': gate reprovado antes da comparação'
+  2d04=': o gate reprovou antes da comparação'
+--- o arquivo de teste re-executado na cabeça final ---
+comando: .venv/bin/python -m pytest -q tests/integration/test_storage_units_locale_matrix.py
+...                                                                      [100%]
+3 passed in 26.32s
+
+=== 10. suíte, cobertura e gate lidos dos artefatos do próprio run ===
+comandos:
+  gh api repos/Misael-art/SteamZero/actions/runs/36544698400/artifacts --jq '.artifacts[]|{name,size_in_bytes}'
+  gh run download 36544698400 -R Misael-art/SteamZero -n <arte> -D <dir>   # 5 artefatos
+  gh run view 36544698400 -R Misael-art/SteamZero --log --job 109328169087  # gate visual
+--- artefatos publicados pelo run ---
+qml-visual-artifacts	2004711
+test-results-3.11	111658
+test-results-3.12	111100
+steamzero-wheel-51442579a0d6dd0c66070c084be298de3d716bc7	11187796
+coverage-python-3.14	598447
+test-results-3.14	110561
+--- junit das três pernas Python (parse dos XML publicados) ---
+python=3.11 tests=6185 failures=0 errors=0 skipped=47 tempo=725.0s
+python=3.12 tests=6185 failures=0 errors=0 skipped=47 tempo=542.3s
+python=3.14 tests=6185 failures=0 errors=0 skipped=47 tempo=436.1s
+coverage-3.14 pct=85.4854091169178 covered=41761 missing=5605 statements=47366
+fail_under declarado em pyproject.toml:
+129:fail_under = 85
+--- rollup do gate visual no log do job (mesmo run) ---
+2026-09-29T08:46:04.1604600Z real-state before: exists=False files=0 directories=0 bytes=0 max_mtime_ns=0 source=HOME-default
+2026-09-29T09:06:27.3201204Z 348 passed, 12 skipped, 6185 deselected in 1222.86s (0:20:22)
+2026-09-29T09:06:28.1735119Z real-state after:  exists=False files=0 directories=0 bytes=0 max_mtime_ns=0 source=HOME-default
+--- linhas SKIPPED do gate ---
+2026-09-29T09:06:27.3193522Z SKIPPED [1] tests/integration/test_qml_asset_recipes.py:100: QML-RHI-ENVIRONMENT-001: goldens MultiEffect exigem RHI; o gate software cobre o contrato QML separadamente
+2026-09-29T09:06:27.3195591Z SKIPPED [1] tests/integration/test_qml_asset_recipes.py:111: QML-RHI-ENVIRONMENT-001: goldens MultiEffect exigem RHI; o gate software cobre o contrato QML separadamente
+2026-09-29T09:06:27.3197638Z SKIPPED [1] tests/integration/test_qml_asset_recipes.py:120: QML-RHI-ENVIRONMENT-001: goldens MultiEffect exigem RHI; o gate software cobre o contrato QML separadamente
+2026-09-29T09:06:27.3199541Z SKIPPED [9] tests/integration/test_qml_asset_recipes.py:131: QML-RHI-ENVIRONMENT-001: goldens MultiEffect exigem RHI; o gate software cobre o contrato QML separadamente
+--- famílias de captura publicadas ---
+arquivos_total=59
+       20 esde-import
+       16 retrofe-import
+        5 shell-esde-import
+png_com_nome_de_unidades=0
+--- reconcilio dos 59 com os 41 (comando: find por extensao no artefato baixado) ---
+total=59
+     15 json
+     41 png
+      3 txt
+por diretorio, todos os arquivos:  28 esde-import/  23 retrofe-import/  8 shell-esde-import/
+por diretorio, so PNG:             20 esde-import/  16 retrofe-import/  5 shell-esde-import/
+nao-PNG (18): metrics.json por cenario, ambiente.json, geometria.json e saida do runner/cena
+=> as duas contagens sao do mesmo artefato com escopos diferentes: a evidencia 28 contava
+   ARQUIVOS por familia (28/23/8 = 59) e esta conta PNG por familia (20/16/5 = 41).
+
+=== 11. por que o delta de cobertura não vem do código ===
+diff 37f0add4 (cabeça da evidência 28) -> 2d04ac96 (cabeça final):
+  src=0 tests=0 tools=0
+  arquivos no intervalo:
+    docs/09-operations/evidence/2026-09-28-rc01-storage-units/22-empacotamento-do-formatador.md
+    docs/09-operations/evidence/2026-09-28-rc01-storage-units/28-ci-terminal-e-wheel-no-sha-final.log
+    docs/09-operations/evidence/2026-09-28-rc01-storage-units/28-ci-terminal-e-wheel-no-sha-final.md
+    docs/09-operations/evidence/2026-09-28-rc01-storage-units/28-verificacao-wheel.py
+    docs/09-operations/evidence/2026-09-28-rc01-storage-units/README.md
+    docs/ACTIVE-WORK.md
+    docs/STATUS.md
+    docs/status/COVERAGE.md
+    docs/status/items/ui-desktop-audit.json
+    docs/status/workstreams/rc01-storage-units-2026-09-28.json
+
+=== 12. os dois wheels do CI lado a lado (run 36521236686 x run 36544698400) ===
+comando: comparação entrada a entrada dos dois .whl publicados pelo CI autorizado
+entradas_28=625 entradas_29=625
+so_no_28=[]
+so_no_29=[]
+entradas_comuns=625 com_bytes_diferentes=2 -> ['steamzero-2.0.0rc1.dist-info/RECORD', 'steamzero/_build_info.py']
+-- steamzero-2.0.0rc1.dist-info/RECORD
+   --- 
+   +++ 
+   @@ -2 +2 @@
+   -steamzero/_build_info.py,sha256=pBPjqidLNyiVDu_PfsMmGsGjfG19tdwuljkSoypMY6A,353
+   +steamzero/_build_info.py,sha256=wenbQtVs0H2pvemCXuwKfyt2msTjiIokgFnfIfgXEEI,353
+-- steamzero/_build_info.py
+   --- 
+   +++ 
+   @@ -10 +10 @@
+   -SOURCE_COMMIT = "a555999c856a18a711a251f23708c0270355ad27"
+   +SOURCE_COMMIT = "51442579a0d6dd0c66070c084be298de3d716bc7"
+
+=== 13. cadeia de integração re-medida nesta passada (2026-09-29) ===
+comando: gh pr view <n> --json number,state,baseRefName,headRefName,headRefOid,mergeable,mergeStateStatus
+239	OPEN	base=main	head=codex/project-design-audit-2026-09-26	069501ab	MERGEABLE/CLEAN
+240	OPEN	base=main	head=codex/rc01-central-loading-2026-09-26	c959be13	MERGEABLE/CLEAN
+241	OPEN	base=main	head=codex/rc01-readiness-focus-2026-09-27	190ea683	MERGEABLE/CLEAN
+242	OPEN	base=main	head=codex/rc01-shell-esde-dialog-2026-09-27	5d95034b	MERGEABLE/CLEAN
+243	OPEN	base=main	head=codex/rc01-readiness-semantics-2026-09-28	c0de54c9	MERGEABLE/CLEAN
+244	OPEN	base=main	head=codex/rc01-storage-units-2026-09-28	2d04ac96	MERGEABLE/CLEAN
+--- ancestralidade (eh_antecessor? sim = base é antecessora da cabeça) ---
+#239 (069501ab954c42118b5aaf91c450b58800e90219) antecessora de #240 (c959be139f95c673dc258b9d8b8011313d5c97f6): SIM
+#240 (c959be139f95c673dc258b9d8b8011313d5c97f6) antecessora de #241 (190ea683a941f8dc37036ef6402ffabaf7843799): SIM
+#241 (190ea683a941f8dc37036ef6402ffabaf7843799) antecessora de #242 (5d95034b67fb50fd1218f267afbfe189d4444bd2): SIM
+#242 (5d95034b67fb50fd1218f267afbfe189d4444bd2) antecessora de #243 (c0de54c9f10c480693ce495a0533acb524fe53ad): SIM
+#243 (c0de54c9f10c480693ce495a0533acb524fe53ad) antecessora de #244 (2d04ac96c56e0b7921cad98dbcf5183a7a78391f): SIM
+--- main atual e distância de cada cabeça ---
+3495c49d
+#239 ahead=2 behind=0
+#240 ahead=7 behind=0
+#241 ahead=20 behind=0
+#242 ahead=24 behind=0
+#243 ahead=34 behind=0
+#244 ahead=45 behind=0

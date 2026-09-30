@@ -26,7 +26,7 @@
     "docs/status/workstreams/main-reconciliation-2026-09-26.json",
     "docs/WORKLOG.md"
   ],
-  "scopeDigest": "961945dbaa60050356efeade5b88d993d3bb77871ca614968e0b3f504ba594d5",
+  "scopeDigest": "a70cb08113466627379646f5e060a46456344bab53ca3bc30c89c4c8d6e31d17",
   "dependsOn": [
     "SZ-LIBRARY-CANONICAL",
     "SZ-MULTIDISC-DESCRIPTOR-RECONCILIATION",

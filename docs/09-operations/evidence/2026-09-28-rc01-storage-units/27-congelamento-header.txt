@@ -1,0 +1,12 @@
+CHECKPOINT UX-04 (rodada 2) — congelamento da árvore sob teste
+INICIO 2026-09-28T23:41:36-03:00
+BRANCO codex/rc01-storage-units-2026-09-28
+HEAD f9ec2815390e1dfd5b0076f80ee6b6a72e8b364a
+HEAD-CURTO f9ec2815
+ARVORE-GIT a7c81019e2114a7c0574856df04cc4ba8ac5e37f
+ARQUIVOS 3
+
+Método: git ls-files -m -o --exclude-standard filtrado por grep -v '^docs/09-operations/evidence/'. O pathspec mágico ':\!…' não sobrevive ao envoltório rtk (a primeira tentativa devolveu 24 linhas com a própria pasta dentro), então a exclusão é feita por filtro nomeado — registrado aqui porque a guarda precisa ser reproduzível.
+Fora da guarda, por construção: 23 arquivos desta pasta de evidência, que o lote escreve durante e depois da execução. Nada em src/, tests/ ou tools/ está modificado em relação ao HEAD (verificado: git status --short sem linha fora de docs/).
+Conteúdo testado: HEAD f9ec2815 carrega o lote funcional (748d532b), a correção de rodada 2 do gate (3bf68498) e o registro isolado do gate no harness visual (f9ec2815).
+A diferença tracked é só documentação: docs/06-api/JSON-SCHEMAS.md, docs/status/items/ui-desktop-audit.json e docs/status/workstreams/rc01-storage-units-2026-09-28.json.

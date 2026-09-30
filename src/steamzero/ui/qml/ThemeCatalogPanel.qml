@@ -19,6 +19,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
+import "sizes.js" as Sizes
 // DarkButton respeita a paleta do pai; Button puro traz o estilo claro do Qt
 // e destoa do painel escuro, como a primeira captura mostrou.
 
@@ -79,12 +80,7 @@ Rectangle {
     palette.button: panel.raisedColor
 
     function humanBytes(value) {
-        const bytes = Number(value || 0)
-        if (bytes < 1024)
-            return bytes + " B"
-        if (bytes < 1024 * 1024)
-            return (bytes / 1024).toFixed(1) + " KB"
-        return (bytes / 1024 / 1024).toFixed(1) + " MB"
+        return Sizes.bytes(value)
     }
 
     function refresh() {

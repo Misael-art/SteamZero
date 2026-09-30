@@ -4,6 +4,7 @@ import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import "readiness.js" as Readiness
+import "sizes.js" as Sizes
 
 ApplicationWindow {
     id: root
@@ -622,8 +623,14 @@ ApplicationWindow {
         })
     }
 
-    function taskResultSummary(job) {
-        const result = job && job.result ? job.result : {}
+    // A linha da quarentena é lida em massa pelo delegate; separada aqui para que
+    // o gate de unidades a verifique sem abrir o diálogo.
+    function auditItemLabel(item) {
+        return qsTr("%1 · %2 · %3")
+            .arg(item.category).arg(item.relativePath).arg(Sizes.bytes(item.sizeBytes))
+    }
+
+    function taskResultSummary(job) {        const result = job && job.result ? job.result : {}
         const progress = job && job.progress ? job.progress : {}
         if (job.state === "running" && Number(progress.total || 0) > 0)
             return qsTr("%1 de %2 %3").arg(progress.current || 0)
@@ -635,8 +642,8 @@ ApplicationWindow {
                 .arg(result.games || 0).arg(result.unidentified || 0)
                 .arg(result.errors ? result.errors.length : 0)
         if (job.type === "library.bitrot")
-            return qsTr("%1 arquivo(s), %2 byte(s), %3 suspeito(s)")
-                .arg(result.checked || 0).arg(result.bytesRead || 0)
+            return qsTr("%1 arquivo(s), %2, %3 suspeito(s)")
+                .arg(result.checked || 0).arg(Sizes.bytes(result.bytesRead))
                 .arg(result.suspect || 0)
         if (job.type === "media.search") {
             const providerErrors = result.provider_errors || {}
@@ -1353,14 +1360,7 @@ ApplicationWindow {
     }
 
     function formatBytes(value) {
-        const bytes = Number(value || 0)
-        if (bytes < 1024)
-            return bytes + " B"
-        if (bytes < 1024 * 1024)
-            return (bytes / 1024).toFixed(1) + " KiB"
-        if (bytes < 1024 * 1024 * 1024)
-            return (bytes / (1024 * 1024)).toFixed(1) + " MiB"
-        return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GiB"
+        return Sizes.bytes(value)
     }
 
     function resourceClassDetail(row) {
@@ -1941,10 +1941,7 @@ ApplicationWindow {
                             required property var modelData
                             width: parent.width
                             implicitHeight: Math.max(48, contentItem.implicitHeight + 12)
-                            text: qsTr("%1 · %2 · %3 bytes")
-                                .arg(modelData.category)
-                                .arg(modelData.relativePath)
-                                .arg(modelData.sizeBytes)
+                            text: root.auditItemLabel(modelData)
                             onToggled: emulationDialog.setAuditSelected(
                                 modelData.relativePath, checked)
                             Accessible.name: text
@@ -4970,7 +4967,7 @@ ApplicationWindow {
                                             "confirmPhrase": confirmPhrase
                                         }, function(response) {
                                             root.refreshStatus(qsTr("%1 liberados com segurança").arg(
-                                                steamGameplayPage.formatBytes(response.freedBytes)
+                                                Sizes.bytes(response.freedBytes)
                                             ))
                                         })
                                     }

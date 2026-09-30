@@ -1,0 +1,107 @@
+### 1. PR 244 lido do GitHub (gh pr view)
+{"baseRefName":"main","headRefName":"codex/rc01-storage-units-2026-09-28","headRefOid":"37f0add44efa15fef55496698254ef0722ae552b","mergeStateStatus":"CLEAN","mergeable":"MERGEABLE","number":244,"state":"OPEN","url":"https://github.com/Misael-art/SteamZero/pull/244"}
+
+### 2. Checks das seis cabeças da cadeia (gh pr checks, contagem por estado)
+PR 239: total=10 ::  9 pass  1 skipping 
+PR 240: total=10 ::  9 pass  1 skipping 
+PR 241: total=10 ::  9 pass  1 skipping 
+PR 242: total=10 ::  9 pass  1 skipping 
+PR 243: total=10 ::  9 pass  1 skipping 
+PR 244: total=10 ::  9 pass  1 skipping 
+
+### 3. Ancestralidade real da cadeia (git merge-base --is-ancestor)
+069501ab -> c959be13 SIM
+c959be13 -> 190ea683 SIM
+190ea683 -> 5d95034b SIM
+5d95034b -> c0de54c9 SIM
+c0de54c9 -> 37f0add4 SIM
+### 4. Run do CI na cabeça 37f0add4 (gh run list --commit)
+[{"conclusion":"success","databaseId":36521236686,"event":"pull_request","headSha":"37f0add44efa15fef55496698254ef0722ae552b","name":"ci","status":"completed","url":"https://github.com/Misael-art/SteamZero/actions/runs/36521236686"}]
+
+### 5. Jobs do run 36521236686 e conclusão de cada um (gh run view --json jobs)
+Wheel limpo, smoke e supply chain	completed	success	2026-09-29T04:21:09Z	2026-09-29T04:21:46Z
+Smoke Arch Linux	completed	success	2026-09-29T04:21:09Z	2026-09-29T04:21:43Z
+Python 3.12	completed	success	2026-09-29T04:21:10Z	2026-09-29T04:38:40Z
+Smoke Manjaro	completed	success	2026-09-29T04:21:11Z	2026-09-29T04:21:51Z
+Python 3.11	completed	success	2026-09-29T04:21:10Z	2026-09-29T04:33:59Z
+Smoke Ubuntu 24.04	completed	success	2026-09-29T04:21:10Z	2026-09-29T04:21:42Z
+Python 3.14	completed	success	2026-09-29T04:21:10Z	2026-09-29T04:31:21Z
+Gate visual QML (Linux)	completed	success	2026-09-29T04:21:10Z	2026-09-29T04:42:39Z
+
+### 6. Comando do gate visual no runner e o rolagem terminal (cat do log do job 109254340872)
+  Gate visual QML (Linux)	UNKNOWN STEP	2026-09-29T04:22:13.8698210Z ##[group]Run python tools/run_tests_isolated.py -m visual --tb=short -q
+  Gate visual QML (Linux)	UNKNOWN STEP	2026-09-29T04:22:13.8698893Z ^[[36;1mpython tools/run_tests_isolated.py -m visual --tb=short -q^[[0m
+  2026-09-29T04:22:13.9691740Z real-state before: exists=False files=0 directories=0 bytes=0 max_mtime_ns=0 source=HOME-default
+  2026-09-29T04:42:34.6804926Z SKIPPED [1] tests/integration/test_qml_asset_recipes.py:100: QML-RHI-ENVIRONMENT-001: goldens MultiEffect exigem RHI; o gate software cobre o contrato QML separadamente
+  2026-09-29T04:42:34.6806641Z SKIPPED [1] tests/integration/test_qml_asset_recipes.py:111: QML-RHI-ENVIRONMENT-001: goldens MultiEffect exigem RHI; o gate software cobre o contrato QML separadamente
+  2026-09-29T04:42:34.6807805Z SKIPPED [1] tests/integration/test_qml_asset_recipes.py:120: QML-RHI-ENVIRONMENT-001: goldens MultiEffect exigem RHI; o gate software cobre o contrato QML separadamente
+  2026-09-29T04:42:34.6809602Z SKIPPED [9] tests/integration/test_qml_asset_recipes.py:131: QML-RHI-ENVIRONMENT-001: goldens MultiEffect exigem RHI; o gate software cobre o contrato QML separadamente
+  2026-09-29T04:42:34.6810569Z 348 passed, 12 skipped, 6185 deselected in 1220.44s (0:20:20)
+  2026-09-29T04:42:35.5543613Z real-state after:  exists=False files=0 directories=0 bytes=0 max_mtime_ns=0 source=HOME-default
+
+### 7. Artefatos publicados pelo run (gh api actions/runs/36521236686/artifacts)
+coverage-python-3.14	11013412190	598451
+test-results-3.12	11013333576	112347
+test-results-3.14	11013257788	110679
+test-results-3.11	11013193305	111708
+steamzero-wheel-a555999c856a18a711a251f23708c0270355ad27	11013096880	11187782
+qml-visual-artifacts	11013039554	2004709
+### 8. Suíte integral lida dos artefatos junit do MESMO run (test-results-*)
+  python 3.11: tests=6185 failures=0 errors=0 skipped=47 time=721.505
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+    s=list(ET.parse('/home/misael/steamzero-ux04-tmp/tr3.12/test-results-3.12.xml').iter('testsuite'))[0]
+           ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/xml/etree/ElementTree.py", line 1227, in parse
+    tree.parse(source, parser)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/xml/etree/ElementTree.py", line 570, in parse
+    source = open(source, "rb")
+FileNotFoundError: [Errno 2] No such file or directory: '/home/misael/steamzero-ux04-tmp/tr3.12/test-results-3.12.xml'
+  python 3.14: tests=6185 failures=0 errors=0 skipped=47 time=558.610
+
+### 9. Coleção visual no host, para conferir o rollup do CI (pytest -m visual --collect-only -q)
+360/6545 tests collected (6185 deselected) in 4.49s
+tests/integration/test_storage_units_locale_matrix.py::test_gate_de_unidades_e_verde_sob_cada_locale[pt_BR.UTF-8-pt_BR]
+tests/integration/test_storage_units_locale_matrix.py::test_a_matriz_exerce_dois_contextos_de_formatacao_distintos
+
+3 tests collected in 0.22s
+
+### 10. checksums publicados pelo próprio CI (sha256sum -c build/SHA256SUMS)
+  dist/steamzero-2.0.0rc1-py3-none-any.whl: SUCESSO
+  build/sbom.cdx.json: SUCESSO
+  build/provenance.json: SUCESSO
+  build/pip-audit.json: SUCESSO
+  dist/runtime-wheelhouse.tar.zst: SUCESSO
+  dist/runtime-wheelhouse/WHEELHOUSE-MANIFEST.json: SUCESSO
+
+### 11. Verificador governado do wheel (tools/release_provenance.py verify-wheel)
+{"project": "steamzero", "sha256": "50cafc76745cadefaf37ef558acd96b6d1564c7d752aa5b20eb92d12a6d0c880", "version": "2.0.0rc1"}
+  exit=0
+  provenance.json subject: 50cafc76745cadefaf37ef558acd96b6d1564c7d752aa5b20eb92d12a6d0c880 refs/pull/244/merge a555999c856a18a711a251f23708c0270355ad27 clean
+
+### 12. Wheel x blobs do HEAD e do merge ref, arquivo por arquivo (28-verificacao-wheel.py)
+src/steamzero/adapters/emulation.py	459186	OK	sha256=91652738030626676edf86236331c62a1b761166e54a45718c031ef44b10ec23
+src/steamzero/schemas/emulation-workspace-v1.schema.json	45390	OK	sha256=631a6e99c2f58ca0dbd7c6503fd2d854f6759d5be5ce29dc32c17a6c143a9417
+src/steamzero/ui/qml/Emulation.qml	263271	OK	sha256=b426dd71eaac5e6c001740047816485f9a2787099859947cb9eec4397eaaa10a
+src/steamzero/ui/qml/Main.qml	380240	OK	sha256=391be85dd31e0b38eb2607efb44e3e7e3db38ce057e9368c4e92c07bc3e03a66
+src/steamzero/ui/qml/SteamGameplay.qml	106260	OK	sha256=9891374321b3ce7e24e24b2497f7618cd00b8f9f80f10c74c0d335a4d5112a20
+src/steamzero/ui/qml/ThemeCatalogPanel.qml	29838	OK	sha256=532cc4ad8e5e4fb130ee1c681fa6b6fd9968c412a627b07d33d9da6fbb2ad08a
+src/steamzero/ui/qml/ThemeEditorPanel.qml	135745	OK	sha256=a3ebf574842cd4fddc0585221a4ee0a9b0dde4379be8616c9284d047feebdf96
+src/steamzero/ui/qml/sizes.js	2377	OK	sha256=6d5ca418e514258fe6e55d1e9e5c2011fc9e306b6eb023bda77ee6be315a4829
+
+total=8 identicos_head=8 identicos_merge=8
+### 13. Cobertura lida do artefato do mesmo run (coverage-python-3.14) contra fail_under=85
+  pct=85.48858795854791 covered=41762 missing=5604 statements=47366
+  src/steamzero/adapters/emulation.py -> (4408, 3766, 642)
+  src/steamzero/adapters/linux_runtime.py -> (227, 203, 24)
+  src/steamzero/adapters/scraping/cache.py -> (121, 115, 6)
+  Comparação registrada na evidência 16 do lote de prontidão (run 36497630184): pct=85.48812664907652 covered=41760 missing=5604 statements=47364
+  e linux_runtime.py (227, 203, 24) / scraping/cache.py (121, 115, 6)
+
+### 14. Artefato de capturas do mesmo run: quais famílias publicam PNG
+     28 esde-import
+     23 retrofe-import
+      8 shell-esde-import
+  total de arquivos: 59
+  PNG com 'storage', 'unidade', 'sizes' ou 'emulation' no nome: 0

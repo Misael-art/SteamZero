@@ -1,0 +1,7 @@
+# guarda pós-execução: mesmo escopo do 27-congelamento-sha256.txt, lido depois de a árvore receber as duas correções
+INICIO_LEITURA 2026-09-29T01:00:36-03:00
+3b76727289192c9da73e3795bf37f7c92cb0f5ab33e048e469809360295ed122  docs/status/workstreams/rc01-storage-units-2026-09-28.json
+a27eaa2b7df15ce121212af55713259c6e7627abe570b188ee3ffdc458f63c8b  docs/06-api/JSON-SCHEMAS.md
+a8a1bacf23c40ceb118c82510fa7d8e42ccfdf5e9b7dda6a531a0657e4179dab  docs/status/items/ui-desktop-audit.json
+7116e3ae5c858b928ec96bac576bec0ac6c66f53bfef1d2c55c98abddc6e62ad  tests/integration/test_storage_units_locale_matrix.py
+919ab43351e2c0806e3a38702535cc6d94d3d3e3d76f49ccf1525c9c139add86  tests/qml/check_storage_units.qml

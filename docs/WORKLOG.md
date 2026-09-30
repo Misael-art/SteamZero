@@ -13789,3 +13789,124 @@ workstream, visões regeradas e o digest renovado do valor impresso pela ferrame
 sendo o que se testou. O run desta cabeça documental é lido antes de qualquer fecho, e
 nenhum merge foi executado ou presumido aqui — a ordem segue 239→240→241→242→243, com
 `Main.qml` tendo dois donos exclusivos ativos do lado de lá.
+
+## 2026-09-29 — RC-01 / UX-04, sexto elo: a grandeza viaja como número, e o gate aprendeu a ler o locale em vigor
+
+**Correção a uma alegação da sessão anterior (append-only, então declaro aqui).** A
+rodada 16 escreveu que `Main.qml` tinha **dois** donos exclusivos ativos, e a sessão de
+fechamento da UX-03 repetiu a frase ao falar da ordem de integração. É falso, e a
+medição que a substitui está em
+`docs/09-operations/evidence/2026-09-28-rc01-readiness-semantics/17-claim-de-donos-re-medido.md`:
+`state == "active"`, pertença **exata** de caminho, `exclusivePaths` separado de
+`sharedPaths`. Resultado: `Main.qml` tem **um** dono exclusivo
+(`WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT`) e cinco compartilhantes — quatro da medição
+anterior mais esta frente, que passou a tocar o harness visual que o exercita;
+`adapters/emulation.py`, o mesmo dono exclusivo e seis compartilhantes. A frase
+errada vinha de ler *nomes* de workstream, não pertença de caminho.
+
+**UX-04 fecha o eixo "tamanho humano" do critério RC-01.** O mesmo `1073741824 B` era
+lido como `1.00 GiB`, `1.00 GB` ou `1024.0 MB` conforme a tela, e `512 B` saía como
+`0.0 MB` em três das quatro páginas. A grandeza agora viaja como número no contrato
+(`$defs/card` com `metricBytes`/`capacityBytes` inteiros ou nulos, `minimum: 0`,
+aditivos) e é lida por um único formatador (`src/steamzero/ui/qml/sizes.js`), com rótulo
+binário sobre divisor binário, traço para o que não foi medido e `0 B` para o zero
+medido. As quatro páginas que divergiam concordam, e a prosa do produtor parou de
+reimprimir grandeza em seis sítios.
+
+**A rodada 2 corrigiu o GATE, não a produção — e o falso verde era meu.** O harness
+pinava `Qt.locale("pt_BR")`; medido antes de tocar, 6 falhas de 109 sob `C`, `C.UTF-8`
+e `en_US.UTF-8` e 109 ok sob `pt_BR.UTF-8` e sem `LANG`/`LC_ALL`
+(`24-matriz-de-locales.md`). A imagem do gate tranca `LC_ALL=C.UTF-8`
+(`ci/qml-visual/Containerfile:58-59`, `environment.lock.json:26`): o verde na minha
+máquina era exatamente o vermelho diante do CI. A expectativa passou a sair do locale
+em vigor, os literais de frase viraram composição do formatador, e o harness foi
+revalidado nos dois fusos: **145 verificações, código 0, sob `C.UTF-8` e sob
+`pt_BR.UTF-8`** (antes, 109 sob o pino e 6 reprovações sob qualquer outro).
+
+**Dois falsos resultados da rodada 1, confessados.** (a) M1 e M2 "morriam" porque a
+âncora da mutação casava primeiro com o **comentário** de documentação em `sizes.js:19`
+— o código nunca mudava, e um mutante inerte não prova pino nenhum; a bateria agora exige
+contagem de âncora `== 1` e substitui dentro do corpo da função. (b) O mutante M3
+(divisor `1000` sob rótulo IEC) **sobreviveu honestamente**: as quatro páginas
+convergem entre si, e convergência não vê um erro que as quatro cometem igual. O harness
+ganhou grupo de oráculo com a referência declarada no próprio teste, e a bateria da
+rodada 2 fecha **8 de 8 mortos** sob os dois locales, com a árvore restaurada por sha256
+(`sizes.js 6d5ca418…` e `Main.qml 391be85d…` idênticos ao baseline no fim) e H1
+reintroduzindo o pino para provar que a matriz de locales pega a regressão — 2 falhas,
+1 passa. Contagem do harness: 109 → 145.
+
+**Três execuções integrais anteriores a esta não valem como veredito.** A execução 1 foi
+interrompida aos 22 % porque a frente achou, depois do congelamento, um quinto
+formatador divergente; a execução 2 morreu aos 26 % com `EEEEEE` no último byte do log e
+nenhum traceback — sem `short test summary`, sem rollup, sem causa. O `23-suite-integral.log`
+fica na pasta como registro do que **não** foi provado. O veredito desta frente é o
+checkpoint 27, e os seis `E` foram desfeitos por medição, não por suposição: a suíte
+integral passou do mesmo offset (a linha de 26 % e os 51 pontos seguintes, que na ordem
+de coleta são `test_theme_catalog_routes.py`, `test_transaction.py` e
+`test_ui_action_inventory.py`) **sem nenhum `E`**, e fechou com zero erros — era
+artefato do processo morto no meio de um teardown.
+
+**Checkpoint 27 (sete gates, uma suíte por vez, árvore não alterada durante a execução).**
+Integral `2 failed, 6496 passed, 47 skipped` em 2262,61 s; `-m visual` (o comando do CI)
+`360 passed, 6185 deselected` em 1400,29 s — 356 do lote anterior mais 3 da matriz mais 1
+do harness agora registrado, e a primeira vez que o gate de unidades roda no caminho que o
+CI executa, com o locale da imagem; mypy 298 arquivos OK; `make independence boundaries` OK
+com 0 violações; `status-check` vermelho por 31 digests envelhecidos por esta frente
+(atribuído por arquivo: 31 de 31 contêm arquivo desta frente, 0 sem) mais as três visões.
+Identidade reimpressa antes e depois de cada passo: 14 leituras idênticas nas quatro
+grandezas, e o `real-state` do isolador igual antes e depois nas duas suítes — nada de
+acervo, ROM, BIOS ou save foi tocado. O resultado não foi substituído por testes focados,
+e as duas falhas da integral têm causa lida: nenhuma é de produção.
+
+**Um vermelho meu, de estilo, descoberto tarde demais.** `ruff check` acusou E501 (101 >
+100) e `ruff format --check` pediu reformatar o arquivo de teste NOVO desta frente — o
+defeito existia desde a escrita e só apareceu 61 minutos depois, quando a árvore inteira
+já estava sob teste, a um custo de 37 minutos de suíte integral. Entrou `1eae804c`, só de
+layout, nenhuma asserção mudada, revalidado em 43,00 s. Lição: gate de lint de arquivo
+novo roda antes do checkpoint, não depois.
+
+**Outro vermelho meu, de governança, e a correção foi no lugar certo.** O `nextAction`
+que esta frente escreveu no cartão continha um literal de união com barra vertical, e o
+renderer (`tools/project_status.py:427-438`) publica o texto verbatim dentro de uma
+tabela Markdown de nove colunas: o teste
+`test_status_table_publishes_operation_and_distribution_per_item` reprovou com 10
+células contra 9. Corrigi no CARTÃO (o texto passou a "inteiro ou nulo"), não no
+renderer — ele não está em caminho algum desta frente, e escapar barra vertical ali
+mudaria a superfície compartilhada por 31 capacidades sem exigência correspondente. Medido de
+contorno: nenhum outro cartão tinha barra vertical e `docs/STATUS.md` não tinha `\|`
+escapado; este lote foi o primeiro a exercer o caso, e o pino já existia.
+
+**AGENTS.md §2: o hunk contestado viajava dentro do commit funcional.** As quatro linhas
+que registram o harness em `tests/integration/test_qml_handheld_offscreen.py` (arquivo de
+dono exclusivo de outra frente ativa) estavam em `360c59a9`. A branch ainda não tinha
+sido enviada, então o histórico foi reorganizado por `reset --soft` + re-stage, sem
+perder conteúdo: `748d532b` (funcional, exatamente `360c59a9` menos o hunk),
+`3bf68498` (correção do gate + matriz de locales), `f9ec2815` (o hunk, commit próprio),
+`1eae804c` (formatação, por último) e o lote documental desta sessão. Conferência:
+`git diff 360c59a9 HEAD` mostra só os dois arquivos de teste da rodada 2. Confesso também
+o precedente publicado: `4c4d2b11` (quinto elo) embute as mesmas quatro linhas; nada é
+reescrito por force-push, o erro fica declarado.
+
+**Fora de escopo medido, com dono, não consertado.** F-1 (`steam_gameplay.py:965` divide
+por 1024² e `SteamGameplay.qml:1320` escreve `" GB"`; -6,87 % de afirmação no host
+medido) e F-2 (`emulation.py:2989-2996` imprime bytes crus com separador de milhar no
+`preview` do plano, exibido em `Main.qml:1906`). Os dois arquivos têm dono exclusivo de
+outra frente ativa: ficam nomeados em `26-fora-de-escopo.md` como primeiro corte da
+frente seguinte, com serialização declarada — não viram edição desta branch.
+
+**Depois do checkpoint, a árvore voltou a receber só documento** (item 4 do operador):
+evidências `24-*`/`25-*`/`26-*`/`27-*`, índice da pasta, cartão (3 evidências novas e
+`nextAction` com as rodadas 2 e 3), workstream (`exclusivePaths` com a matriz nova),
+`docs/06-api/JSON-SCHEMAS.md` com a seção da medida de armazenamento, visões geradas e o
+`scopeDigest` renovado a partir do valor impresso pela própria ferramenta **na árvore
+final**. Nenhum arquivo de `src/`, `tests/` ou `tools/` mudou depois do HEAD testado
+(`f9ec2815`): as duas correções pós-veredito são o cartão e a formatação do teste.
+
+**O que esta sessão NÃO declara.** CI terminal do HEAD desta cabeça ainda não lido, e o
+empacotamento de `sizes.js` continua **PENDENTE** de artefato (evidência 22) — a
+conclusão da rodada 13 sobre `readiness.js` não se transfere para cá. Cadeia de
+integração medida: #239 → #240 → #241 → #242 → #243 abertas e empilhadas sobre `main`,
+cada uma com CI terminal verde na própria cabeça, esta cabeça a 5 commits de `c0de54c9` e
+39 de `origin/main`. Nenhum merge foi executado ou presumido: integração é decisão de
+ordem do operador, e nenhum item desta frente se declara fechado sem o SHA realmente
+integrado.

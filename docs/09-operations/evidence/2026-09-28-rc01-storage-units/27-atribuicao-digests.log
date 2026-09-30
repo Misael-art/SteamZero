@@ -1,0 +1,93 @@
+arquivos desta frente: 16
+SZ-AURA-CINEMA-COMPLETION: 2 arquivo(s) desta frente em scopePaths
+    - src/steamzero/adapters/emulation.py <- src/steamzero/adapters/emulation.py
+    - tests/integration/test_qml_handheld_offscreen.py <- tests/integration/test_qml_handheld_offscreen.py
+SZ-AURA-ESDE-ACTIVE-SURFACE: 2 arquivo(s) desta frente em scopePaths
+    - src/steamzero/ui/qml/Main.qml <- src/steamzero/ui/qml/Main.qml
+    - src/steamzero/ui/qml/ThemeCatalogPanel.qml <- src/steamzero/ui/qml/ThemeCatalogPanel.qml
+SZ-AURA-LAUNCHER: 1 arquivo(s) desta frente em scopePaths
+    - src/steamzero/adapters/emulation.py <- src/steamzero/adapters/emulation.py
+SZ-AURA-SAVE-STATE-GALLERY: 1 arquivo(s) desta frente em scopePaths
+    - tests/integration/test_qml_handheld_offscreen.py <- tests/integration/test_qml_handheld_offscreen.py
+SZ-AURA-SESSION-OSD: 2 arquivo(s) desta frente em scopePaths
+    - src/steamzero/adapters/emulation.py <- src/steamzero/adapters/emulation.py
+    - tests/integration/test_qml_handheld_offscreen.py <- tests/integration/test_qml_handheld_offscreen.py
+SZ-AURA-UI: 1 arquivo(s) desta frente em scopePaths
+    - tests/integration/test_qml_handheld_offscreen.py <- tests/integration/test_qml_handheld_offscreen.py
+SZ-EMULATION-PLATFORM-SCOPE: 1 arquivo(s) desta frente em scopePaths
+    - src/steamzero/adapters/emulation.py <- src/steamzero/adapters/emulation.py
+SZ-EMULATION-RUNTIME-REMEDIATION: 1 arquivo(s) desta frente em scopePaths
+    - src/steamzero/adapters/emulation.py <- src/steamzero/adapters/emulation.py
+SZ-EMULATION-STORAGE-MANAGEMENT: 1 arquivo(s) desta frente em scopePaths
+    - src/steamzero/adapters/emulation.py <- src/steamzero/adapters/emulation.py
+SZ-EMULATION-STORAGE-PLATFORM-SCOPE: 1 arquivo(s) desta frente em scopePaths
+    - src/steamzero/adapters/emulation.py <- src/steamzero/adapters/emulation.py
+SZ-EMULATION-STORAGE-READMODEL: 2 arquivo(s) desta frente em scopePaths
+    - src/steamzero/adapters/emulation.py <- src/steamzero/adapters/emulation.py
+    - src/steamzero/schemas/emulation-workspace-v1.schema.json <- src/steamzero/schemas/emulation-workspace-v1.schema.json
+SZ-EMULATION-ENHANCEMENTS: 1 arquivo(s) desta frente em scopePaths
+    - src/steamzero/adapters/emulation.py <- src/steamzero/adapters/emulation.py
+SZ-GAMEMODE-READINESS: 1 arquivo(s) desta frente em scopePaths
+    - src/steamzero/ui/qml/Main.qml <- src/steamzero/ui/qml/Main.qml
+SZ-EMULATION-HIGH-END-RUNTIME-READINESS: 1 arquivo(s) desta frente em scopePaths
+    - src/steamzero/adapters/emulation.py <- src/steamzero/adapters/emulation.py
+SZ-LIBRARY-CANONICAL: 3 arquivo(s) desta frente em scopePaths
+    - src/steamzero/adapters/emulation.py <- src/steamzero/adapters/emulation.py
+    - src/steamzero/ui/qml/Main.qml <- src/steamzero/ui/qml/Main.qml
+    - tests/integration/test_qml_handheld_offscreen.py <- tests/integration/test_qml_handheld_offscreen.py
+SZ-MAIN-WORKTREE-RECONCILIATION: 1 arquivo(s) desta frente em scopePaths
+    - src/steamzero/adapters/emulation.py <- src/steamzero/adapters/emulation.py
+SZ-MEDIA-AUDIT-PLATFORM-SCOPE: 1 arquivo(s) desta frente em scopePaths
+    - src/steamzero/adapters/emulation.py <- src/steamzero/adapters/emulation.py
+SZ-MEDIA-PIPELINE-PLATFORM-SCOPE: 1 arquivo(s) desta frente em scopePaths
+    - src/steamzero/adapters/emulation.py <- src/steamzero/adapters/emulation.py
+SZ-MEDIA-PROVIDER-PLATFORM-FILTER: 1 arquivo(s) desta frente em scopePaths
+    - src/steamzero/adapters/emulation.py <- src/steamzero/adapters/emulation.py
+SZ-MULTIDISC-MATERIALIZATION-INGESTION: 1 arquivo(s) desta frente em scopePaths
+    - src/steamzero/adapters/emulation.py <- src/steamzero/adapters/emulation.py
+SZ-PLATFORM-CORE-PER-SYSTEM: 1 arquivo(s) desta frente em scopePaths
+    - src/steamzero/adapters/emulation.py <- src/steamzero/adapters/emulation.py
+SZ-PLATFORM-REQUIREMENT-SCOPE: 1 arquivo(s) desta frente em scopePaths
+    - src/steamzero/adapters/emulation.py <- src/steamzero/adapters/emulation.py
+SZ-PS3-OFFICIAL-FIRMWARE-DOWNLOAD: 3 arquivo(s) desta frente em scopePaths
+    - src/steamzero/adapters/emulation.py <- src/steamzero/adapters/emulation.py
+    - src/steamzero/schemas/emulation-workspace-v1.schema.json <- src/steamzero/schemas/emulation-workspace-v1.schema.json
+    - src/steamzero/ui/qml/Main.qml <- src/steamzero/ui/qml/Main.qml
+SZ-SYSTEM-DIAGNOSTICS-GUIDANCE: 1 arquivo(s) desta frente em scopePaths
+    - src/steamzero/ui/qml/Main.qml <- src/steamzero/ui/qml/Main.qml
+SZ-THEME-ENGINE: 5 arquivo(s) desta frente em scopePaths
+    - src/steamzero/ui/qml/Emulation.qml <- src/steamzero/ui/qml/Emulation.qml
+    - src/steamzero/ui/qml/Main.qml <- src/steamzero/ui/qml/Main.qml
+    - src/steamzero/ui/qml/SteamGameplay.qml <- src/steamzero/ui/qml/SteamGameplay.qml
+    - src/steamzero/ui/qml/ThemeCatalogPanel.qml <- src/steamzero/ui/qml/ThemeCatalogPanel.qml
+    - src/steamzero/ui/qml/ThemeEditorPanel.qml <- src/steamzero/ui/qml/ThemeEditorPanel.qml
+SZ-THEME-ESDE-SCENE-RENDER: 1 arquivo(s) desta frente em scopePaths
+    - src/steamzero/ui/qml/ThemeCatalogPanel.qml <- src/steamzero/ui/qml/ThemeCatalogPanel.qml
+SZ-THEME-IMPORT-ESDE-LAYOUT: 2 arquivo(s) desta frente em scopePaths
+    - src/steamzero/ui/qml/Main.qml <- src/steamzero/ui/qml/Main.qml
+    - src/steamzero/ui/qml/ThemeCatalogPanel.qml <- src/steamzero/ui/qml/ThemeCatalogPanel.qml
+SZ-THEME-IMPORT-RETROFE: 1 arquivo(s) desta frente em scopePaths
+    - src/steamzero/ui/qml/ThemeEditorPanel.qml <- src/steamzero/ui/qml/ThemeEditorPanel.qml
+SZ-THEME-IMPORT-SURFACE: 1 arquivo(s) desta frente em scopePaths
+    - src/steamzero/ui/qml/ThemeEditorPanel.qml <- src/steamzero/ui/qml/ThemeEditorPanel.qml
+SZ-THEME-STUDIO: 1 arquivo(s) desta frente em scopePaths
+    - src/steamzero/ui/qml/ThemeEditorPanel.qml <- src/steamzero/ui/qml/ThemeEditorPanel.qml
+SZ-UI-DESKTOP-AUDIT: 14 arquivo(s) desta frente em scopePaths
+    - docs/06-api/JSON-SCHEMAS.md <- docs/06-api/JSON-SCHEMAS.md
+    - docs/09-operations/evidence/2026-09-28-rc01-storage-units <- docs/09-operations/evidence/2026-09-28-rc01-storage-units/
+    - src/steamzero/adapters/emulation.py <- src/steamzero/adapters/emulation.py
+    - src/steamzero/schemas/emulation-workspace-v1.schema.json <- src/steamzero/schemas/emulation-workspace-v1.schema.json
+    - src/steamzero/ui <- src/steamzero/ui/qml/Emulation.qml
+    - src/steamzero/ui <- src/steamzero/ui/qml/Main.qml
+    - src/steamzero/ui <- src/steamzero/ui/qml/SteamGameplay.qml
+    - src/steamzero/ui <- src/steamzero/ui/qml/ThemeCatalogPanel.qml
+    - src/steamzero/ui <- src/steamzero/ui/qml/ThemeEditorPanel.qml
+    - src/steamzero/ui <- src/steamzero/ui/qml/sizes.js
+    - src/steamzero/ui/qml/SteamGameplay.qml <- src/steamzero/ui/qml/SteamGameplay.qml
+    - tests/integration/test_qml_handheld_offscreen.py <- tests/integration/test_qml_handheld_offscreen.py
+    - tests/qml/check_storage_units.qml <- tests/qml/check_storage_units.qml
+    - tests/unit/test_emulation_storage_cards.py <- tests/unit/test_emulation_storage_cards.py
+
+itens acusados: 31
+com ao menos um arquivo desta frente no escopo: 31
+SEM nenhum arquivo desta frente: 0
