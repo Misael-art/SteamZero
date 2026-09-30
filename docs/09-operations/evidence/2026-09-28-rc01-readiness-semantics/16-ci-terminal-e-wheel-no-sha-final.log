@@ -1,0 +1,106 @@
+# Saida crua da rodada 16 — CI terminal no SHA final ba2ec0a8, wheel lido do proprio run e corpo do PR 243 revisado
+# gerado em 2026-09-28T20:53:14-03:00 a partir de /tmp/ux03_ci_16.log, /tmp/ux03_wheel_17.log e leituras diretas do gh
+
+== /tmp/ux03_ci_16.log (waiter limitado: SEG=120 s, MAX=18 segmentos) ==
+=== espera terminal: run=36497630184 sha=ba2ec0a8b1702835d5ecfc23670b376e64244513 inicio=2026-09-28T20:22:38-03:00 ===
+[1/18] 2026-09-28T20:24:38-03:00 status: in_progress 
+[2/18] 2026-09-28T20:26:39-03:00 status: in_progress 
+[3/18] 2026-09-28T20:28:40-03:00 status: in_progress 
+[4/18] 2026-09-28T20:30:41-03:00 status: in_progress 
+[5/18] 2026-09-28T20:32:42-03:00 status: in_progress 
+[6/18] 2026-09-28T20:34:42-03:00 status: in_progress 
+[7/18] 2026-09-28T20:36:43-03:00 status: in_progress 
+[8/18] 2026-09-28T20:38:44-03:00 status: in_progress 
+[9/18] 2026-09-28T20:40:45-03:00 status: in_progress 
+[10/18] 2026-09-28T20:42:45-03:00 status: in_progress 
+[11/18] 2026-09-28T20:44:46-03:00 status: completed success
+--- rolagem terminal ---
+conclusao=success atualizado=2026-09-28T23:43:48Z url=https://github.com/Misael-art/SteamZero/actions/runs/36497630184
+Smoke Ubuntu 24.04 :: completed :: success
+Python 3.11 :: completed :: success
+Smoke Arch Linux :: completed :: success
+Smoke Manjaro :: completed :: success
+Python 3.14 :: completed :: success
+Gate visual QML (Linux) :: completed :: success
+Wheel limpo, smoke e supply chain :: completed :: success
+Python 3.12 :: completed :: success
+=== fim 2026-09-28T20:44:52-03:00: run completou ===
+
+== gh pr checks 243 (roda apos a conclusao do run) ==
+Gate visual QML (Linux)	pass	21m30s	https://github.com/Misael-art/SteamZero/actions/runs/36497630184/job/109180794120	
+Python 3.11	pass	9m6s	https://github.com/Misael-art/SteamZero/actions/runs/36497630184/job/109180793972	
+Python 3.12	pass	12m43s	https://github.com/Misael-art/SteamZero/actions/runs/36497630184/job/109180794126	
+Python 3.14	pass	9m17s	https://github.com/Misael-art/SteamZero/actions/runs/36497630184/job/109180794012	
+Smoke Arch Linux	pass	45s	https://github.com/Misael-art/SteamZero/actions/runs/36497630184/job/109180793998	
+Smoke Manjaro	pass	37s	https://github.com/Misael-art/SteamZero/actions/runs/36497630184/job/109180794005	
+Smoke Ubuntu 24.04	pass	36s	https://github.com/Misael-art/SteamZero/actions/runs/36497630184/job/109180793672	
+Wheel limpo, smoke e supply chain	pass	38s	https://github.com/Misael-art/SteamZero/actions/runs/36497630184/job/109180794124	
+Sourcery review	skipping	0	https://sourcery.ai	
+CodeRabbit	pass	0		Review skipped: manual review required for this OSS repository
+
+== gh pr view 243 (estado de integracao) ==
+{"baseRefName":"main","headRefOid":"ba2ec0a8b1702835d5ecfc23670b376e64244513","mergeStateStatus":"CLEAN","mergeable":"MERGEABLE","state":"OPEN"}
+
+== artefatos do run terminal ==
+qml-visual-artifacts 2004709 expired=false
+test-results-3.14 110458 expired=false
+coverage-python-3.14 598385 expired=false
+test-results-3.11 110939 expired=false
+test-results-3.12 111538 expired=false
+steamzero-wheel-55c0f07e133a3c7f8e6e28c56f92cdb79fbd3e6b 11186419 expired=false
+
+== cobertura lida do artefato coverage-python-3.14 do MESMO run ==
+pct=85.48812664907652 covered=41760 missing=5604 statements=47364
+
+== blob de readiness.js identico entre ec86c228 e ba2ec0a8 ==
+1c373416bdf6e8b4f720c2277f171a7f8317c5b1
+1c373416bdf6e8b4f720c2277f171a7f8317c5b1
+
+== /tmp/ux03_wheel_17.log (download + integridade + .js byte a byte) ==
+== identidade da arvore antes ==
+ba2ec0a8b1702835d5ecfc23670b376e64244513
+== download do artefato do run terminal ==
+exit_download=0
+== conteudo do artefato ==
+498 /tmp/ux03_wheel_proof_17/wheel/build/pip-audit.json
+977 /tmp/ux03_wheel_proof_17/wheel/build/provenance.json
+1677 /tmp/ux03_wheel_proof_17/wheel/build/sbom.cdx.json
+581 /tmp/ux03_wheel_proof_17/wheel/build/SHA256SUMS
+7479149 /tmp/ux03_wheel_proof_17/wheel/dist/runtime-wheelhouse.tar.zst
+3159 /tmp/ux03_wheel_proof_17/wheel/dist/runtime-wheelhouse/WHEELHOUSE-MANIFEST.json
+3780002 /tmp/ux03_wheel_proof_17/wheel/dist/steamzero-2.0.0rc1-py3-none-any.whl
+18507 /tmp/ux03_wheel_proof_17/wheel/requirements-runtime.lock
+== integridade contra o SHA256SUMS do proprio CI ==
+dist/steamzero-2.0.0rc1-py3-none-any.whl: SUCESSO
+== verificador governado do projeto sobre o wheel do CI ==
+usage: release_provenance.py verify-wheel [-h] --wheel WHEEL
+release_provenance.py verify-wheel: error: the following arguments are required: --wheel
+== .js dentro do wheel, byte a byte contra o SHA FINAL enviado ==
+entradas no wheel: 624
+entradas .js no wheel: ['steamzero/ui/qml/readiness.js']
+entradas ui/qml no wheel: 86
+Traceback (most recent call last):
+  File "<stdin>", line 12, in <module>
+  File "/usr/lib/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['git', 'show', 'ba2ec0a8b1702835d5ecfc23670b376e64244513:steamzero/ui/qml/readiness.js']' returned non-zero exit status 128.
+== provenance do wheel (identidade) ==
+{"ref": "refs/pull/243/merge", "commit": "55c0f07e133a3c7f8e6e28c56f92cdb79fbd3e6b", "runId": "36497630184", "subject": "1e3e333d5bba66dc47477130bb13cff79e217ded79796e61cdf80e97a578884d", "sourceTreeState": null}
+== identidade da arvore depois ==
+ba2ec0a8b1702835d5ecfc23670b376e64244513
+== FIM ==
+== verify-wheel com a flag correta (--wheel) ==
+{"project": "steamzero", "sha256": "1e3e333d5bba66dc47477130bb13cff79e217ded79796e61cdf80e97a578884d", "version": "2.0.0rc1"}
+exit=0
+
+== .js do wheel vs git no SHA FINAL (caminho com src/) ==
+steamzero/ui/qml/readiness.js: wheel 8614 B sha256 7d76be27ab727d3f0ae7630e11fa3a2f68cafbdc5d633727429b89cd799e29f5
+steamzero/ui/qml/readiness.js: git   8614 B sha256 7d76be27ab727d3f0ae7630e11fa3a2f68cafbdc5d633727429b89cd799e29f5
+identico ao SHA final enviado: True
+
+== arvore intacta ==
+
+== arvore do checkout depois de toda a rodada (sem entradas de artefato) ==
+?? docs/09-operations/evidence/2026-09-28-rc01-readiness-semantics/16-ci-terminal-e-wheel-no-sha-final.log
+(vazio = limpa)

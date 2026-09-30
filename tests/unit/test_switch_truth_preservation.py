@@ -202,7 +202,11 @@ class TestNoImportIsRequestedWhileProjectionsHold:
     def test_ready_environment_has_no_import_blocker(self) -> None:
         readiness = _switch(_healthy_workspace())["readiness"]
         assert readiness["blockers"] == []
-        joined = " ".join([readiness["title"], readiness["detail"]]).casefold()
+        # UX-03: ``title``/``detail`` viraram ``label``/``cause``/``nextAction`` no
+        # contrato v2; o texto que antes ia em ``detail`` agora está na causa.
+        joined = " ".join(
+            filter(None, [readiness["label"], readiness["cause"], readiness["nextAction"]])
+        ).casefold()
         assert "importe" not in joined
 
     def test_missing_requirement_offers_repair_without_erasing(self) -> None:

@@ -1,0 +1,232 @@
+=========== RODADA 14: 2026-09-28T19:04:57-03:00 ===========
+=========== IDENTIDADE ANTES DE QUALQUER PASSO ===========
+HEAD=ec86c228eeeb6814af2aa6363889341cfff40358
+branch=codex/rc01-readiness-semantics-2026-09-28
+git status --short:
+ M tests/qml/check_readiness_surface.qml
+sha256 harness=73c5c4cde10aa2f2
+sha256 arvore(src+tests)=5939c47ca0cff1da
+
+########## 1 integral (tests -q) ##########
+--- comando: .venv/bin/python tools/run_tests_isolated.py tests -q
+........................................................................ [  1%]
+........................................................................ [  2%]
+........................................................................ [  3%]
+........................................................................ [  4%]
+........................................................................ [  5%]
+........................................................................ [  6%]
+........................................................................ [  7%]
+........................................................................ [  8%]
+........................................................................ [  9%]
+........................................................................ [ 11%]
+.........................................ss.s..s.................sssss.. [ 12%]
+..s........sssssssssssssssss..................sssssssssssssssss......... [ 13%]
+........................................................................ [ 14%]
+........................................................................ [ 15%]
+........................................................................ [ 16%]
+............................s........................................... [ 17%]
+........................................................................ [ 18%]
+........................................................................ [ 19%]
+........................................................................ [ 20%]
+........................................................................ [ 22%]
+........................................................................ [ 23%]
+........................................................................ [ 24%]
+........................................................................ [ 25%]
+........................................................................ [ 26%]
+........................................................................ [ 27%]
+........................................................................ [ 28%]
+........................................................................ [ 29%]
+........................................................................ [ 30%]
+........................................................................ [ 31%]
+........................................................................ [ 33%]
+........................................................................ [ 34%]
+........................................................................ [ 35%]
+........................................................................ [ 36%]
+........................................................................ [ 37%]
+........................................................................ [ 38%]
+........................................................................ [ 39%]
+........................................................................ [ 40%]
+........................................................................ [ 41%]
+........................................................................ [ 42%]
+........................................................................ [ 44%]
+........................................................................ [ 45%]
+........................................................................ [ 46%]
+........................................................................ [ 47%]
+........................................................................ [ 48%]
+........................................................................ [ 49%]
+........................................................................ [ 50%]
+........................................................................ [ 51%]
+........................................................................ [ 52%]
+........................................................................ [ 54%]
+........................................................................ [ 55%]
+........................................................................ [ 56%]
+........................................................................ [ 57%]
+........................................................................ [ 58%]
+........................................................................ [ 59%]
+........................................................................ [ 60%]
+...............................................ss....................... [ 61%]
+........................................................................ [ 62%]
+........................................................................ [ 63%]
+........................................................................ [ 65%]
+......................................................................F. [ 66%]
+........................................................................ [ 67%]
+........................................................................ [ 68%]
+........................................................................ [ 69%]
+........................................................................ [ 70%]
+........................................................................ [ 71%]
+........................................................................ [ 72%]
+........................................................................ [ 73%]
+........................................................................ [ 74%]
+........................................................................ [ 76%]
+........................................................................ [ 77%]
+........................................................................ [ 78%]
+........................................................................ [ 79%]
+........................................................................ [ 80%]
+........................................................................ [ 81%]
+........................................................................ [ 82%]
+........................................................................ [ 83%]
+........................................................................ [ 84%]
+........................................................................ [ 85%]
+........................................................................ [ 87%]
+........................................................................ [ 88%]
+........................................................................ [ 89%]
+........................................................................ [ 90%]
+........................................................................ [ 91%]
+........................................................................ [ 92%]
+........................................................................ [ 93%]
+........................................................................ [ 94%]
+........................................................................ [ 95%]
+........................................................................ [ 96%]
+........................................................................ [ 98%]
+........................................................................ [ 99%]
+....................................................                     [100%]
+=================================== FAILURES ===================================
+__________ test_committed_catalog_and_generated_views_are_consistent ___________
+
+    def test_committed_catalog_and_generated_views_are_consistent() -> None:
+>       assert project_status.check_catalog() == []
+E       AssertionError: assert ['SZ-UI-DESKT...5714793475a2'] == []
+E         
+E         Left contains one more item: 'SZ-UI-DESKTOP-AUDIT: evidencia obsoleta; scopeDigest esperado 5eec5ba5d84b9036a4940b8076f1c1cfd6c6aede13f4fae8a6ab191452e6e92b, atual e47bf54b4c82b1e141650af46027e0bbbb0953003b35ce8cd2aa5714793475a2'
+E         Use -v to get more diff
+
+tests/unit/test_project_status.py:15: AssertionError
+=========================== short test summary info ============================
+SKIPPED [10] tests/integration/test_emulator_conformance.py:487: Flatpak fixa commit; o checksum é garantia do executor portátil
+SKIPPED [17] tests/integration/test_emulator_conformance.py:507: core não lança sozinho; quem lança é o RetroArch
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-bluemsx nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-fbneo nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-freeintv nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-fuse nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-genesis-plus-gx nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-ngp nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-pce nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-vb nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-wswan nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mesen nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mgba nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mupen64plus-next nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-opera nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-puae nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-snes9x nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-stella nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-vice-x64 nao declara capability `configure`
+SKIPPED [1] ../../../../../../mnt/sdcard/Projects/Port_Steam/tests/integration/test_metadata_to_catalog_pipeline.py:173: reference/ não versionado; checkout sem pesquisa
+SKIPPED [1] ../../../../../../mnt/sdcard/Projects/Port_Steam/tests/unit/test_metadata_import_pegasus.py:187: reference/ não versionado; checkout sem pesquisa
+SKIPPED [1] ../../../../../../mnt/sdcard/Projects/Port_Steam/tests/unit/test_metadata_import_pegasus.py:199: reference/ não versionado; checkout sem pesquisa
+FAILED tests/unit/test_project_status.py::test_committed_catalog_and_generated_views_are_consistent
+1 failed, 6484 passed, 47 skipped in 1966.18s (0:32:46)
+real-state before: exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790607044829769561 source=HOME-default
+real-state after:  exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790607044829769561 source=HOME-default
+--- 1 integral (tests -q): exit=1 em 1970s
+HEAD=ec86c228eeeb6814af2aa6363889341cfff40358
+branch=codex/rc01-readiness-semantics-2026-09-28
+git status --short:
+ M tests/qml/check_readiness_surface.qml
+sha256 harness=73c5c4cde10aa2f2
+sha256 arvore(src+tests)=5939c47ca0cff1da
+
+########## 2 gate visual (-m visual) ##########
+--- comando: .venv/bin/python tools/run_tests_isolated.py -m visual --tb=short -q
+........................................................................ [ 20%]
+........................................................................ [ 40%]
+........................................................................ [ 60%]
+........................................................................ [ 80%]
+....................................................................     [100%]
+356 passed, 6176 deselected in 1307.21s (0:21:47)
+real-state before: exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790607044829769561 source=HOME-default
+real-state after:  exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790607044829769561 source=HOME-default
+--- 2 gate visual (-m visual): exit=0 em 1310s
+HEAD=ec86c228eeeb6814af2aa6363889341cfff40358
+branch=codex/rc01-readiness-semantics-2026-09-28
+git status --short:
+ M tests/qml/check_readiness_surface.qml
+sha256 harness=73c5c4cde10aa2f2
+sha256 arvore(src+tests)=5939c47ca0cff1da
+
+########## 3 ruff check ##########
+--- comando: .venv/bin/ruff check src tools tests
+All checks passed!
+--- 3 ruff check: exit=0 em 0s
+HEAD=ec86c228eeeb6814af2aa6363889341cfff40358
+branch=codex/rc01-readiness-semantics-2026-09-28
+git status --short:
+ M tests/qml/check_readiness_surface.qml
+sha256 harness=73c5c4cde10aa2f2
+sha256 arvore(src+tests)=5939c47ca0cff1da
+
+########## 4 ruff format --check ##########
+--- comando: .venv/bin/ruff format --check src tools tests
+676 files already formatted
+--- 4 ruff format --check: exit=0 em 0s
+HEAD=ec86c228eeeb6814af2aa6363889341cfff40358
+branch=codex/rc01-readiness-semantics-2026-09-28
+git status --short:
+ M tests/qml/check_readiness_surface.qml
+sha256 harness=73c5c4cde10aa2f2
+sha256 arvore(src+tests)=5939c47ca0cff1da
+
+########## 5 mypy src ##########
+--- comando: .venv/bin/mypy src
+Success: no issues found in 298 source files
+--- 5 mypy src: exit=0 em 0s
+HEAD=ec86c228eeeb6814af2aa6363889341cfff40358
+branch=codex/rc01-readiness-semantics-2026-09-28
+git status --short:
+ M tests/qml/check_readiness_surface.qml
+sha256 harness=73c5c4cde10aa2f2
+sha256 arvore(src+tests)=5939c47ca0cff1da
+
+########## 6 independence boundaries ##########
+--- comando: make independence boundaries
+.venv/bin/python tools/check_independence.py
+independência de runtime: OK
+.venv/bin/python tools/lint_boundaries.py --root src
+lint de fronteiras: OK (0 violações)
+--- 6 independence boundaries: exit=0 em 4s
+HEAD=ec86c228eeeb6814af2aa6363889341cfff40358
+branch=codex/rc01-readiness-semantics-2026-09-28
+git status --short:
+ M tests/qml/check_readiness_surface.qml
+sha256 harness=73c5c4cde10aa2f2
+sha256 arvore(src+tests)=5939c47ca0cff1da
+
+########## 7 status-check ##########
+--- comando: make status-check
+.venv/bin/python tools/project_status.py check
+STATUS-CHECK: FALHOU
+- SZ-UI-DESKTOP-AUDIT: evidencia obsoleta; scopeDigest esperado 5eec5ba5d84b9036a4940b8076f1c1cfd6c6aede13f4fae8a6ab191452e6e92b, atual e47bf54b4c82b1e141650af46027e0bbbb0953003b35ce8cd2aa5714793475a2
+make: *** [Makefile:55: status-check] Error 1
+--- 7 status-check: exit=2 em 1s
+HEAD=ec86c228eeeb6814af2aa6363889341cfff40358
+branch=codex/rc01-readiness-semantics-2026-09-28
+git status --short:
+ M tests/qml/check_readiness_surface.qml
+sha256 harness=73c5c4cde10aa2f2
+sha256 arvore(src+tests)=5939c47ca0cff1da
+
+=========== ROLLUP FINAL ===========
+rc_total=1
+1 failed, 6484 passed, 47 skipped in 1966.18s (0:32:46)
+356 passed, 6176 deselected in 1307.21s (0:21:47)
+All checks passed!

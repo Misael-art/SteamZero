@@ -18,7 +18,7 @@
     "tests/unit/test_desktop_dashboard.py",
     "docs/09-operations/evidence/2026-09-21-aura-harmonization"
   ],
-  "scopeDigest": "a9b731cf7fd2dcb81ac37d9046f5994ec0c84fc63113d6abe934de6c1fd467f0",
+  "scopeDigest": "768740a029f2086869c58c66873501a9327b6511488a665a860ca17d062728c0",
   "dependsOn": [
     "SZ-THEME-ENGINE",
     "SZ-AURA-LAUNCHER"

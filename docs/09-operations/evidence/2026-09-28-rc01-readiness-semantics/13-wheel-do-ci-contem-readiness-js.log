@@ -1,0 +1,43 @@
+== head do PR 243 ==
+ec86c228eeeb6814af2aa6363889341cfff40358
+
+== identidade do artefato (merge ref, nao head) ==
+qml-visual-artifacts	2004712
+steamzero-wheel-ddab4bda48da6230c107462e37c938315addba1e	11186413
+test-results-3.12	111156
+coverage-python-3.14	598360
+test-results-3.11	111247
+test-results-3.14	110713
+
+== potentialMergeCommit declarado pelo GitHub ==
+{"headRefOid":"ec86c228eeeb6814af2aa6363889341cfff40358","mergeable":"MERGEABLE","potentialMergeCommit":{"oid":"ddab4bda48da6230c107462e37c938315addba1e"},"state":"OPEN"}
+
+== download do artefato do wheel (-D extrai plano dentro do diretorio) ==
+
+== conteudo do artefato ==
+498	/tmp/ux03_wheel_proof/wheel/build/pip-audit.json
+977	/tmp/ux03_wheel_proof/wheel/build/provenance.json
+1671	/tmp/ux03_wheel_proof/wheel/build/sbom.cdx.json
+581	/tmp/ux03_wheel_proof/wheel/build/SHA256SUMS
+7479150	/tmp/ux03_wheel_proof/wheel/dist/runtime-wheelhouse.tar.zst
+3159	/tmp/ux03_wheel_proof/wheel/dist/runtime-wheelhouse/WHEELHOUSE-MANIFEST.json
+3780003	/tmp/ux03_wheel_proof/wheel/dist/steamzero-2.0.0rc1-py3-none-any.whl
+18507	/tmp/ux03_wheel_proof/wheel/requirements-runtime.lock
+
+== integridade conferida contra o SHA256SUMS do proprio CI ==
+dist/steamzero-2.0.0rc1-py3-none-any.whl: SUCESSO
+build/sbom.cdx.json: SUCESSO
+build/provenance.json: SUCESSO
+build/pip-audit.json: SUCESSO
+dist/runtime-wheelhouse.tar.zst: SUCESSO
+dist/runtime-wheelhouse/WHEELHOUSE-MANIFEST.json: SUCESSO
+
+== verificador governado do projeto sobre o wheel do CI ==
+{"project": "steamzero", "sha256": "db92dbeda1ff6ec5e8dbe4f0184f47da189543caae57895220ad331cf49309eb", "version": "2.0.0rc1"}
+
+== .js dentro do wheel, byte a byte contra o SHA enviado ==
+entradas .js no wheel: ['steamzero/ui/qml/readiness.js']
+entradas ui/qml no wheel: 86
+steamzero/ui/qml/readiness.js: wheel 8614 B sha256 7d76be27ab727d3f0ae7630e11fa3a2f68cafbdc5d633727429b89cd799e29f5
+steamzero/ui/qml/readiness.js: git   8614 B sha256 7d76be27ab727d3f0ae7630e11fa3a2f68cafbdc5d633727429b89cd799e29f5
+identico ao SHA enviado: True

@@ -1,0 +1,236 @@
+=== UX-03 / RC-01 — vermelho dos produtores (2026-09-28) ===
+timestamp: 2026-09-28T05:21:06-03:00
+branch: codex/rc01-readiness-semantics-2026-09-28
+HEAD: 5d95034b67fb50fd1218f267afbfe189d4444bd2
+
+$ .venv/bin/python -m pytest tests/unit/test_readiness_producers.py tests/unit/test_readiness_contract.py -q
+FFFFFFFFFFFFFF.................                                          [100%]
+=================================== FAILURES ===================================
+________ test_workspace_nao_afirma_pronto_com_key_obrigatoria_faltando _________
+
+    def test_workspace_nao_afirma_pronto_com_key_obrigatoria_faltando() -> None:
+        """Antes: ``percent=20`` para a categoria ``missing`` — 20 de quê?"""
+        state, label, payload = compute_readiness({"keys": _requirement("missing")}, _INSTALLED_EMULATOR)
+    
+        assert state == "blocked"
+>       assert payload["contractVersion"] == READINESS_CONTRACT_VERSION
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'contractVersion'
+
+tests/unit/test_readiness_producers.py:46: KeyError
+________ test_workspace_proporcao_vem_dos_requisitos_e_nao_da_categoria ________
+
+    def test_workspace_proporcao_vem_dos_requisitos_e_nao_da_categoria() -> None:
+        """Um obrigatório atendido e outro não verificado são 1/2 = 50%.
+    
+        O contrato anterior devolvia 35% fixo para qualquer ``unverified``: o número
+        era um rótulo colorido, não uma medição.
+        """
+        state, _label, payload = compute_readiness(
+            {"keys": _requirement("ok"), "firmware": _requirement("unverified")},
+            _INSTALLED_EMULATOR,
+        )
+    
+        assert state == "unverified"
+>       measure = payload["measure"]
+                  ^^^^^^^^^^^^^^^^^^
+E       KeyError: 'measure'
+
+tests/unit/test_readiness_producers.py:67: KeyError
+______ test_workspace_opcional_pendente_aparece_separado_sem_barar_pronto ______
+
+    def test_workspace_opcional_pendente_aparece_separado_sem_barar_pronto() -> None:
+        state, _label, payload = compute_readiness(
+            {"keys": _requirement("ok"), "firmware": _requirement("outdated", required=False)},
+            _INSTALLED_EMULATOR,
+        )
+    
+>       assert state == "ready"
+E       AssertionError: assert 'attention' == 'ready'
+E         
+E         - ready
+E         + attention
+
+tests/unit/test_readiness_producers.py:84: AssertionError
+____ test_workspace_emulador_ausente_e_causa_e_acao_sem_fabricar_percentual ____
+
+    def test_workspace_emulador_ausente_e_causa_e_acao_sem_fabricar_percentual() -> None:
+        """Antes: ``percent`` 100 (só requisitos obrigatórios contam) com emulador ausente.
+    
+        O número continuou legítimo — ele mede requisitos —, mas o estado não pode
+        ser ``ready`` e a superfície precisa dizer o que falta e o que fazer.
+        """
+        state, _label, payload = compute_readiness(
+            {"keys": _requirement("ok")}, [{"id": "eden", "installState": "not-installed"}]
+        )
+    
+>       assert state == "blocked"
+E       AssertionError: assert 'unverified' == 'blocked'
+E         
+E         - blocked
+E         + unverified
+
+tests/unit/test_readiness_producers.py:102: AssertionError
+__________ test_workspace_requisito_opcional_fica_fora_do_denominador __________
+
+    def test_workspace_requisito_opcional_fica_fora_do_denominador() -> None:
+        _state, _label, payload = compute_readiness(
+            {"keys": _requirement("ok"), "firmware": _requirement("missing", required=False)},
+            _INSTALLED_EMULATOR,
+        )
+    
+>       assert payload["measure"]["denominator"] == 1
+               ^^^^^^^^^^^^^^^^^^
+E       KeyError: 'measure'
+
+tests/unit/test_readiness_producers.py:115: KeyError
+_____ test_workspace_denominador_zero_esconde_o_numero_em_vez_de_dizer_cem _____
+
+    def test_workspace_denominador_zero_esconde_o_numero_em_vez_de_dizer_cem() -> None:
+        """Sem requisito obrigatório algum o contrato anterior dizia ``Pronto`` 100%.
+    
+        Ali não há o que medir: o percentual desaparece e o estado continua honesto.
+        """
+        _state, _label, payload = compute_readiness(
+            {"keys": _requirement("ok", required=False)}, _INSTALLED_EMULATOR
+        )
+    
+>       measure = payload["measure"]
+                  ^^^^^^^^^^^^^^^^^^
+E       KeyError: 'measure'
+
+tests/unit/test_readiness_producers.py:130: KeyError
+_______ test_workspace_emulador_degradado_marca_atencao_com_causa_e_acao _______
+
+    def test_workspace_emulador_degradado_marca_atencao_com_causa_e_acao() -> None:
+        state, _label, payload = compute_readiness(
+            {"keys": _requirement("ok")}, [{"id": "eden", "installState": "degraded"}]
+        )
+    
+        assert state == "attention"
+>       assert payload["cause"]
+               ^^^^^^^^^^^^^^^^
+E       KeyError: 'cause'
+
+tests/unit/test_readiness_producers.py:142: KeyError
+__________ test_cloud_abridor_disponivel_nao_vira_cinquenta_por_cento __________
+
+    def test_cloud_abridor_disponivel_nao_vira_cinquenta_por_cento() -> None:
+        """Antes: ``percent=50`` por existir ``xdg-open`` — metade de quê?"""
+        row = _cloud_rows(opener="/usr/bin/xdg-open")[0]
+    
+        readiness = row["readiness"]
+>       assert readiness["contractVersion"] == READINESS_CONTRACT_VERSION
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'contractVersion'
+
+tests/unit/test_readiness_producers.py:175: KeyError
+____________ test_cloud_sem_abridor_local_e_indisponivel_sem_numero ____________
+
+    def test_cloud_sem_abridor_local_e_indisponivel_sem_numero() -> None:
+        row = _cloud_rows(opener=None)[0]
+    
+        readiness = row["readiness"]
+>       assert readiness["state"] == "unavailable"
+               ^^^^^^^^^^^^^^^^^^
+E       KeyError: 'state'
+
+tests/unit/test_readiness_producers.py:189: KeyError
+_______ test_placeholder_planejado_nao_divulga_zero_como_se_for_medicao ________
+
+    def test_placeholder_planejado_nao_divulga_zero_como_se_for_medicao() -> None:
+        """Antes: ``percent=0`` para toda plataforma não composta — parecia medição."""
+        registry = PlatformRegistry.bundled()
+        payload = platform_placeholder(registry.get("snes"))
+    
+        readiness = payload["readiness"]
+>       assert readiness["state"] == "planned"
+               ^^^^^^^^^^^^^^^^^^
+E       KeyError: 'state'
+
+tests/unit/test_readiness_producers.py:203: KeyError
+__________ test_composer_launchavel_nao_transforma_booleem_percentual __________
+
+    def test_composer_launchavel_nao_transforma_booleem_percentual() -> None:
+        """Antes: ``percent=100`` quando launchable.
+    
+        Launchable é um booleano de preflight, não uma proporção; não há numerador
+        nem denominador por trás de 100%.
+        """
+        registry = PlatformRegistry.bundled()
+        payload = compose_platform(
+            registry.get("snes"), facts_for=_installed, core_present_for=lambda _core: True
+        )
+    
+        readiness = payload["readiness"]
+        assert payload["launchable"] is True
+>       assert readiness["state"] == "ready"
+               ^^^^^^^^^^^^^^^^^^
+E       KeyError: 'state'
+
+tests/unit/test_readiness_producers.py:248: KeyError
+___________ test_composer_sem_emulador_instalado_nomeia_falta_e_acao ___________
+
+    def test_composer_sem_emulador_instalado_nomeia_falta_e_acao() -> None:
+        registry = PlatformRegistry.bundled()
+        payload = compose_platform(registry.get("snes"), facts_for=_absent)
+    
+        readiness = payload["readiness"]
+        assert payload["launchable"] is False
+>       assert readiness["contractVersion"] == READINESS_CONTRACT_VERSION
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'contractVersion'
+
+tests/unit/test_readiness_producers.py:262: KeyError
+____ test_plataforma_editorial_com_jogos_nao_afirma_prontidao_cem_por_cento ____
+
+    def test_plataforma_editorial_com_jogos_nao_afirma_prontidao_cem_por_cento() -> None:
+        """Antes: ``percent=100`` porque existia jogo — o que foi verificado? Nada.
+    
+        A contagem de jogos é real e continua visível; o que não existe é proporção
+        de prontidão, então o número some e ``basis`` diz de onde veio o estado.
+        """
+        from steamzero.adapters.emulation import editorial_platform_index
+    
+        registry = PlatformRegistry.bundled()
+        rows = editorial_platform_index(registry, [{"platform": "snes", "title": "Jogo de teste"}])
+        snes = next(row for row in rows if row["id"] == "snes")
+    
+        readiness = snes["readiness"]
+>       assert readiness["contractVersion"] == READINESS_CONTRACT_VERSION
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'contractVersion'
+
+tests/unit/test_readiness_producers.py:285: KeyError
+_______ test_plataforma_editorial_sem_jogos_nao_recebe_zero_como_medido ________
+
+    def test_plataforma_editorial_sem_jogos_nao_recebe_zero_como_medido() -> None:
+        from steamzero.adapters.emulation import editorial_platform_index
+    
+        registry = PlatformRegistry.bundled()
+        rows = editorial_platform_index(registry, [])
+        snes = next(row for row in rows if row["id"] == "snes")
+    
+        readiness = snes["readiness"]
+>       assert readiness["state"] == "unverified"
+               ^^^^^^^^^^^^^^^^^^
+E       KeyError: 'state'
+
+tests/unit/test_readiness_producers.py:304: KeyError
+=========================== short test summary info ============================
+FAILED tests/unit/test_readiness_producers.py::test_workspace_nao_afirma_pronto_com_key_obrigatoria_faltando
+FAILED tests/unit/test_readiness_producers.py::test_workspace_proporcao_vem_dos_requisitos_e_nao_da_categoria
+FAILED tests/unit/test_readiness_producers.py::test_workspace_opcional_pendente_aparece_separado_sem_barar_pronto
+FAILED tests/unit/test_readiness_producers.py::test_workspace_emulador_ausente_e_causa_e_acao_sem_fabricar_percentual
+FAILED tests/unit/test_readiness_producers.py::test_workspace_requisito_opcional_fica_fora_do_denominador
+FAILED tests/unit/test_readiness_producers.py::test_workspace_denominador_zero_esconde_o_numero_em_vez_de_dizer_cem
+FAILED tests/unit/test_readiness_producers.py::test_workspace_emulador_degradado_marca_atencao_com_causa_e_acao
+FAILED tests/unit/test_readiness_producers.py::test_cloud_abridor_disponivel_nao_vira_cinquenta_por_cento
+FAILED tests/unit/test_readiness_producers.py::test_cloud_sem_abridor_local_e_indisponivel_sem_numero
+FAILED tests/unit/test_readiness_producers.py::test_placeholder_planejado_nao_divulga_zero_como_se_for_medicao
+FAILED tests/unit/test_readiness_producers.py::test_composer_launchavel_nao_transforma_booleem_percentual
+FAILED tests/unit/test_readiness_producers.py::test_composer_sem_emulador_instalado_nomeia_falta_e_acao
+FAILED tests/unit/test_readiness_producers.py::test_plataforma_editorial_com_jogos_nao_afirma_prontidao_cem_por_cento
+FAILED tests/unit/test_readiness_producers.py::test_plataforma_editorial_sem_jogos_nao_recebe_zero_como_medido
+14 failed, 17 passed in 0.88s
+rc=1

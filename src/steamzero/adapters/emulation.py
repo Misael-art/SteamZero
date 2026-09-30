@@ -145,6 +145,8 @@ from steamzero.domain.ps3_firmware import (
     Ps3FirmwareSource,
     validate_ps3_firmware,
 )
+from steamzero.domain.readiness import proportion
+from steamzero.domain.readiness import readiness as build_readiness
 from steamzero.domain.scraping_providers import PROVIDERS, allowed_external_url, provider_by_id
 from steamzero.domain.switch_cheats import (
     CheatType,
@@ -199,6 +201,31 @@ def editorial_platform_index(
     for manifest in registry.list():
         platform_games = by_platform.get(manifest.id, [])
         has_games = bool(platform_games)
+        # UX-03: existir jogo inventariado não é proporção de nada. A contagem
+        # real continua declarada em ``measure.counts``; o percentual some porque
+        # nunca houve denominador, e ``basis`` diz de onde o estado veio.
+        readiness = build_readiness(
+            state="unverified",
+            label="Jogos inventariados" if has_games else "Nenhum jogo inventariado",
+            cause=(
+                f"{manifest.name} tem jogos inventariados; nenhum requisito foi verificado."
+                if has_games
+                else f"Nenhum jogo inventariado para {manifest.name}."
+            ),
+            next_action=(
+                "Verifique emulador, BIOS e requisitos da plataforma para medir a prontidão."
+                if has_games
+                else "Varra a biblioteca ou importe jogos desta plataforma para verificar."
+            ),
+            verification="not_performed",
+            basis="inventory_existence" if has_games else "none",
+            measure=proportion(
+                "game_inventory",
+                dimension_label="jogos inventariados",
+                absent_reason="not_measured",
+                counts={"inventariados": len(platform_games)},
+            ),
+        )
         rows.append(
             {
                 "id": manifest.id,
@@ -207,7 +234,7 @@ def editorial_platform_index(
                 "games": platform_games,
                 "state": "ready" if has_games else "unverified",
                 "statusLabel": ("Jogos inventariados" if has_games else "Nenhum jogo inventariado"),
-                "readiness": {"percent": 100 if has_games else 0},
+                "readiness": readiness,
                 "requirements": {},
                 "subsystems": [],
             }

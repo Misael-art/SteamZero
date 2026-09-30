@@ -4,6 +4,7 @@ import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Window
+import "readiness.js" as Readiness
 
 Item {
     id: page
@@ -156,6 +157,54 @@ Item {
         ? games[gameIndex] : ({"id": "", "name": qsTr("Nenhum jogo instalado"), "coverUrl": ""})
     readonly property bool touchMode: desktopStatus.current && desktopStatus.current.profile
         ? desktopStatus.current.profile.touchMode : false
+
+    readonly property var readiness: Readiness.normalize(
+        gameplay && gameplay.readiness ? gameplay.readiness : undefined,
+        Readiness.notInspected(qsTr("Verificando ambiente"),
+            qsTr("A bridge local ainda não publicou a prontidão do ambiente de jogo."),
+            null, []))
+
+    // UX-03: estado, número e causa vêm do contrato compartilhado. O `percent >= 80`
+    // que havia aqui coloreava como pronto um ambiente bloqueado, porque o número
+    // era uma contagem de capacidades, não uma proporção de obrigatoriedade.
+    function readinessTone() {
+        return Readiness.tone(readiness)
+    }
+
+    function readinessColor() {
+        return Readiness.accent(readiness, {
+            "green": greenColor, "amber": amberColor, "red": redColor, "muted": mutedColor
+        })
+    }
+
+    function readinessSurface() {
+        const tint = Readiness.surface(readiness)
+        return tint === "" ? surfaceColor : tint
+    }
+
+    // Tipada como `color` de propósito: `contrastTextColor()` lê `.r/.g/.b`, e a
+    // tinta devolvida pelo módulo é uma string. Sem a coerção do tipo, o cálculo
+    // de contraste receberia um texto e o rótulo do cartão perderia a cor.
+    readonly property color readinessSurfaceColor: readinessSurface()
+
+    function readinessInk() {
+        return contrastTextColor(readinessSurfaceColor)
+    }
+
+    function readinessValueText() {
+        return Readiness.percentText(readiness, "—")
+    }
+
+    function readinessSummary() {
+        const ratio = Readiness.ratioText(readiness)
+        const dimension = Readiness.dimensionText(readiness)
+        if (ratio === "")
+            return qsTr("Prontidão: %1").arg(readinessValueText())
+        if (dimension === "")
+            return qsTr("Prontidão: %1 (%2)").arg(readinessValueText()).arg(ratio)
+        return qsTr("Prontidão: %1 (%2 — %3)").arg(readinessValueText())
+            .arg(ratio).arg(dimension)
+    }
 
     function valueIndex(values, value, fallback) {
         const index = values.indexOf(value)
@@ -1076,43 +1125,78 @@ Item {
                 Layout.fillWidth: true
                 Layout.leftMargin: page.responsiveGutter
                 Layout.rightMargin: page.responsiveGutter
-                Layout.minimumHeight: page.compactLayout ? 64 : 82
-                color: "#0c2a21"
-                border.color: page.gameplay && page.gameplay.readiness && page.gameplay.readiness.percent >= 80
-                    ? page.greenColor : page.amberColor
+                Layout.minimumHeight: Math.max(page.compactLayout ? 64 : 82,
+                    readinessColumn.implicitHeight + (page.compactLayout ? 20 : 32))
+                color: page.readinessSurfaceColor
+                border.color: page.readinessColor()
                 radius: 8
                 RowLayout {
+                    id: readinessColumn
                     anchors.fill: parent
                     anchors.margins: page.compactLayout ? 10 : 16
+                    ColumnLayout {
+                        spacing: 0
                         Label {
-                            text: page.gameplay && page.gameplay.readiness
-                                ? page.gameplay.readiness.percent + "%" : "—"
-                            color: page.contrastTextColor("#0c2a21")
-                        font.pixelSize: page.scaledTextSize(page.compactLayout ? 21 : 25)
-                        font.bold: true
+                            objectName: "gameplayReadinessValue"
+                            text: page.readinessValueText()
+                            color: page.readinessInk()
+                            font.pixelSize: page.scaledTextSize(page.compactLayout ? 21 : 25)
+                            font.bold: true
+                        }
+                        Label {
+                            objectName: "gameplayReadinessDimension"
+                            visible: text !== ""
+                            text: Readiness.dimensionCaption(page.readiness)
+                            color: page.readinessInk()
+                            font.pixelSize: page.scaledTextSize(10)
+                            // A dimensão responde "percentual de quê". Elidir a resposta
+                            // deixaria o número órfão de novo, que é o defeito que a
+                            // UX-03 veio corrigir; aqui ela quebra linha e o cartão cresce.
+                            wrapMode: Text.WordWrap
+                            Layout.maximumWidth: page.compactLayout ? 132 : 200
+                        }
                     }
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 2
                         Label {
-                            text: page.gameplay && page.gameplay.readiness
-                                ? page.gameplay.readiness.title : qsTr("Verificando ambiente")
-                            color: page.contrastTextColor("#0c2a21")
+                            objectName: "gameplayReadinessHeadline"
+                            text: Readiness.headline(page.readiness) || qsTr("Verificando ambiente")
+                            color: page.readinessInk()
                             font.pixelSize: page.scaledTextSize(page.compactLayout ? 15 : 18)
                             font.bold: true
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
                         }
                         Label {
-                            text: page.gameplay && page.gameplay.readiness
-                                ? String(page.gameplay.readiness.detail || "") : ""
-                            color: page.contrastTextColor("#0c2a21")
+                            objectName: "gameplayReadinessCause"
+                            text: Readiness.cause(page.readiness)
+                            color: page.readinessInk()
+                            // Jornada completa: sem a causa inteira o cartão dizia
+                            // "bloqueado" e o usuário ficava com o estado, não com o
+                            // motivo. Quebra em vez de elidir, como a dimensão acima.
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+                        Label {
+                            objectName: "gameplayReadinessAction"
+                            visible: text !== ""
+                            text: Readiness.action(page.readiness)
+                            color: page.readinessInk()
+                            font.bold: true
+                            font.pixelSize: page.scaledTextSize(page.compactLayout ? 11 : 12)
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
                         }
                     }
                     ProgressBar {
-                        value: page.gameplay && page.gameplay.readiness
-                            ? page.gameplay.readiness.percent / 100 : 0
+                        visible: Readiness.showsProgress(page.readiness)
+                        from: 0
+                        to: 1
+                        value: Readiness.progressValue(page.readiness)
                         Layout.preferredWidth: page.width < 1240 ? 140 : 260
                         Accessible.name: qsTr("Prontidão do ambiente")
-                        Accessible.description: qsTr("%1 por cento").arg(Math.round(value * 100))
+                        Accessible.description: page.readinessSummary()
                     }
                     Button {
                         visible: page.width < 1240

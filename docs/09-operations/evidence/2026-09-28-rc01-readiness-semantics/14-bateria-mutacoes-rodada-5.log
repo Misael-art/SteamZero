@@ -1,0 +1,62 @@
+# 14-bateria-mutacoes-rodada-5.log — saida crua, gravada pelo proprio comando
+#
+# Comando que produziu este arquivo (script em anexo, /tmp/ux03_mutations_14.py):
+#   .venv/bin/python /tmp/ux03_mutations_14.py > /tmp/ux03_gate_visual_14.log
+#
+# Ambiente de execucao (montado pelo script, nao herdado do shell):
+#   QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QT_LOGGING_RULES=
+#   QML_DISABLE_DISK_CACHE=1 QT_FORCE_STDERR_LOGGING=1
+#
+# Executado com cwd=/tmp/rp, sobre uma COPIA de src/steamzero/ui/qml; o harness
+# usado e o da arvore (tests/qml/check_readiness_surface.qml, 125 verificacoes).
+# Cada cena restaura o pristine antes de mutar, entao as cenas sao independentes.
+#
+# Conferencia de que a arvore do checkout nunca foi tocada, feita depois da
+# bateria (linha 0 do bloco final):
+#   $ diff -rq /tmp/rp_pristine/qml src/steamzero/ui/qml
+#   (sem saida = identicos)
+#   $ sha256sum /tmp/rp/src/steamzero/ui/qml/Emulation.qml src/steamzero/ui/qml/Emulation.qml
+#   173a4b98f815fab79f2f06a5f2e49c1033b0e4d18b157c2da41cfe7602b38d83  /tmp/rp/.../Emulation.qml
+#   173a4b98f815fab79f2f06a5f2e49c1033b0e4d18b157c2da41cfe7602b38d83  src/.../Emulation.qml
+#   $ sha256sum /tmp/rp/src/steamzero/ui/qml/SteamGameplay.qml src/steamzero/ui/qml/SteamGameplay.qml
+#   c6522fa09ff86aa4574bfef724b7c62db36822b44cf02e565248161965de2e66  (ambos)
+#
+# Leitura: exit=0 sem linha FAIL = cena verde; exit=1 com linhas FAIL = a mutacao
+# foi pega. M2 e o controle negativo deliberado (ver .md da rodada).
+### M0 baseline (copia pristine): espera 125 ok
+    (exit=0)
+qml: check_readiness_surface: 125 verificação(ões) ok
+
+### M1 Emulation NoWrap na causa: o pino estrutural de wrapMode tem de pegar
+    (exit=1)
+qml: FAIL: a causa quebra palavra em vez de estourar a largura do cartão
+qml: check_readiness_surface: 1 falha(s) de 125 (primeira em #67)
+
+### M2 Emulation coluna espremida a 200 px COM WordWrap: controle negativo (quebra acontece; nada estoura)
+    (exit=0)
+qml: check_readiness_surface: 125 verificação(ões) ok
+
+### M3 Emulation coluna a 200 px SEM quebra: contentWidth <= width tem de pegar
+    (exit=1)
+qml: FAIL: a causa quebra palavra em vez de estourar a largura do cartão
+qml: FAIL: nenhuma linha da causa sai da coluna do cartão (folga medida: -290 px)
+qml: check_readiness_surface: 2 falha(s) de 125 (primeira em #67)
+
+### M4 Ambiente NoWrap: overflow + lineCount do layout compacto tem de pegar
+    (exit=1)
+qml: FAIL: a causa do ambiente quebra palavra em vez de estourar o cartão
+qml: FAIL: a causa que não cabe em 720 px ocupa mais de uma linha: quebrou, não foi cortada (linhas medidas: 1)
+qml: FAIL: mesmo quebrada nenhuma linha estoura a coluna compacta
+qml: check_readiness_surface: 3 falha(s) de 125 (primeira em #85)
+
+### M5 Ambiente elide + maximumLineCount 1: pinos estruturais e o de quebra em 720 px tem de pegar
+    (exit=1)
+qml: FAIL: a causa do ambiente não é cortada
+qml: FAIL: a causa que não cabe em 720 px ocupa mais de uma linha: quebrou, não foi cortada (linhas medidas: 1)
+qml: check_readiness_surface: 2 falha(s) de 125 (primeira em #84)
+
+### M6 Ambiente altura congelada em 17 px: o pino vertical do compacto tem de pegar
+    (exit=1)
+qml: FAIL: o cartão compacto cresce com as linhas extras
+qml: check_readiness_surface: 1 falha(s) de 125 (primeira em #124)
+

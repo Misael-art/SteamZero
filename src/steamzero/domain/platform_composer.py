@@ -25,6 +25,30 @@ from typing import Any
 
 from steamzero.domain.launch_profile import LaunchProfile, parse_launch
 from steamzero.domain.platforms import PlatformManifest, platform_placeholder
+from steamzero.domain.readiness import proportion
+from steamzero.domain.readiness import readiness as build_readiness
+
+# Lançar é um booleano de preflight: existe runtime, existe core, a BIOS exigida
+# está presente. Não há numerador nem denominador por trás disso, e publicá-lo
+# como 100% foi exatamente o erro que esta fatia corrige.
+_LAUNCH_MEASURE = proportion(
+    "launch_preflight",
+    absent_reason="not_measured",
+    dimension_label="preflight de lançamento",
+)
+
+
+def _next_action_for(launch_reason: str | None) -> str | None:
+    """A ação pertinente ao motivo — ou nada, quando o motivo é uma lacuna do produto."""
+    if not launch_reason:
+        return None
+    if "não está instalado no RetroArch" in launch_reason:
+        return "Instale o core indicado pelo RetroArch."
+    if launch_reason.startswith("o emulador"):
+        return "Instale o emulador desta plataforma na central de emulação."
+    if launch_reason.startswith("a BIOS"):
+        return "Importe a BIOS exigida pelo adapter a partir do seu próprio arquivo."
+    return None
 
 
 @dataclass(frozen=True)
@@ -336,21 +360,32 @@ def compose_platform(
         payload["state"] = "unverified" if not launchable else "ready"
         payload["statusLabel"] = "Pronto" if launchable else "Verificação pendente"
         blockers = [] if launchable else [launch_reason or "verificação pendente"]
-        payload["readiness"] = {
-            "percent": 100 if launchable else 45,
-            "title": payload["statusLabel"],
-            "detail": launch_reason or "Ambiente pronto para uso.",
-            "blockers": blockers,
-        }
+        payload["readiness"] = build_readiness(
+            state=payload["state"],
+            label=payload["statusLabel"],
+            cause=None if launchable else launch_reason,
+            next_action=None if launchable else _next_action_for(launch_reason),
+            blockers=blockers,
+            # O que foi verificado aqui é o preflight de launch: runtime, core e
+            # BIOS observados no host. Gameplay não foi executado nem medido.
+            verification="verified",
+            basis="preflight",
+            measure=_LAUNCH_MEASURE,
+            pending_required=0 if launchable else None,
+        )
     elif launch_reason is not None:
         # Sem emulador instalado a plataforma continua planejada, mas o motivo
         # deixa de ser genérico: diz o que falta, não apenas que falta algo.
-        payload["readiness"] = {
-            "percent": 0,
-            "title": "Integração pendente",
-            "detail": launch_reason,
-            "blockers": [launch_reason],
-        }
+        payload["readiness"] = build_readiness(
+            state="planned",
+            label="Integração pendente",
+            cause=launch_reason,
+            next_action=_next_action_for(launch_reason),
+            blockers=[launch_reason],
+            verification="not_performed",
+            basis="none",
+            measure=_LAUNCH_MEASURE,
+        )
     return payload
 
 

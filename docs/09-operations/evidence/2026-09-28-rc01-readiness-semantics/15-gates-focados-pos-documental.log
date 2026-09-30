@@ -1,0 +1,37 @@
+### reconfirmacao dos gates depois da passada documental (arvore final, so mudancas de documento)
+# comando: .venv/bin/python tools/run_tests_isolated.py tests/unit/test_project_status.py tests/integration/test_qml_handheld_offscreen.py -q
+......................................................................   [100%]
+70 passed in 71.22s (0:01:11)
+real-state before: exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790607044829769561 source=HOME-default
+real-state after:  exists=True files=12816 directories=2068 bytes=1372712391 max_mtime_ns=1790607044829769561 source=HOME-default
+
+# comando: .venv/bin/ruff check src tools tests
+All checks passed!
+# comando: .venv/bin/ruff format --check src tools tests
+676 files already formatted
+# comando: .venv/bin/mypy src
+Success: no issues found in 298 source files
+# comando: make independence boundaries
+.venv/bin/python tools/lint_boundaries.py --root src
+lint de fronteiras: OK (0 violações)
+# comando: make status-check
+.venv/bin/python tools/project_status.py check
+STATUS-CHECK: OK
+
+# identidade da arvore nestes gates
+ec86c228eeeb6814af2aa6363889341cfff40358
+ M docs/09-operations/evidence/2026-09-28-rc01-readiness-semantics/README.md
+ M docs/ACTIVE-WORK.md
+ M docs/STATUS.md
+ M docs/WORKLOG.md
+ M docs/status/COVERAGE.md
+ M docs/status/items/ui-desktop-audit.json
+ M docs/status/workstreams/rc01-readiness-semantics-2026-09-28.json
+ M tests/qml/check_readiness_surface.qml
+?? docs/09-operations/evidence/2026-09-28-rc01-readiness-semantics/13-wheel-do-ci-contem-readiness-js.log
+?? docs/09-operations/evidence/2026-09-28-rc01-readiness-semantics/13-wheel-do-ci-contem-readiness-js.md
+?? docs/09-operations/evidence/2026-09-28-rc01-readiness-semantics/14-bateria-mutacoes-rodada-5.log
+?? docs/09-operations/evidence/2026-09-28-rc01-readiness-semantics/14-geometria-transitoria-vs-assentada-e-mutacoes.md
+?? docs/09-operations/evidence/2026-09-28-rc01-readiness-semantics/15-checkpoint-13-gates-integrais.md
+?? docs/09-operations/evidence/2026-09-28-rc01-readiness-semantics/15-comandos-e-saidas.log
+73c5c4cde10aa2f2353b7684

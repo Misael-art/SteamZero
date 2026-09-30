@@ -1,0 +1,61 @@
+# 12 — saidas cruas do isolamento de Main.qml (mesma rodada do md 12)
+# ramo: codex/rc01-readiness-semantics-2026-09-28  HEAD: c65f6ebcb3cb2892cc5b0e2ced1e97af6e65cdfe
+
+########## PILHA / IDENTIDADE
+=== pilha depois do isolamento ===
+c65f6ebc docs(RC-01): fecha a 5a fatia (UX-03) com a integral congelada e a causa do catalogo
+a3304baa fix(ui): o fallback do shell declara nao inspecao, nao um percentual medido
+4c4d2b11 fix(ui): as paginas leem o contrato, e a dobra de prontidao chega completa
+9891fb40 feat(emulation): os nove produtores publicam o contrato em vez de um percentual
+905b0af0 feat(readiness): contrato v2 separa o que a prontidao afirma do que ela mede
+
+=== identidade de conteudo: ponta antiga (ed0b3601) vs nova ===
+ed0b3601876225a74707540ba46300819e768ce5
+c65f6ebcb3cb2892cc5b0e2ced1e97af6e65cdfe
+ tests/unit/test_readiness_producers.py | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+
+=== arquivos por commit ===
+--- 905b0af0 feat(readiness): contrato v2 separa o que a prontidao afirma do que ela mede
+2
+--- 9891fb40 feat(emulation): os nove produtores publicam o contrato em vez de um percentual
+14
+--- 4c4d2b11 fix(ui): as paginas leem o contrato, e a dobra de prontidao chega completa
+9
+--- a3304baa fix(ui): o fallback do shell declara nao inspecao, nao um percentual medido
+2
+--- c65f6ebc docs(RC-01): fecha a 5a fatia (UX-03) com a integral congelada e a causa do catalogo
+66
+
+########## VERMELHO-E-VERDE DO PINO
+
+# 2) VERDE — mesmo teste, com o hunk de Main.qml isolado
+ src/steamzero/ui/qml/Main.qml | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+execucao: 2026-09-28T19:37:48Z
+.                                                                        [100%]
+1 passed in 0.43s
+
+########## GATES FOCADOS
+2026-09-28T19:39:25Z
+All checks passed!
+1 file already formatted
+...................................................                      [100%]
+51 passed in 0.94s
+
+########## GATES NA PONTA RECONSTRUCAO (ruff check/format, mypy, independence, status-check)
+2026-09-28T19:48:15Z
+All checks passed!
+676 files already formatted
+Success: no issues found in 298 source files
+independência de runtime: OK
+.venv/bin/python tools/lint_boundaries.py --root src
+lint de fronteiras: OK (0 violações)
+STATUS-CHECK: OK
+
+# Nota de honestidade sobre o bloco acima (a mesma armadilha registrada em `11-passada-documental.md`):
+# a pasta de evidencia desta entrega esta dentro do scopePaths de SZ-UI-DESKTOP-AUDIT, entao o
+# `STATUS-CHECK: OK` impresso aqui e de UMA arvore anterior a renovacao final do scopeDigest. Este
+# arquivo nao pode conter a propria attestacao: o valor que fecha o lote e o do job `status-check` do
+# CI no SHA publicado, e o digest final esta no cartao. A linha acima continua valida como registro
+# de quando cada gate foi rodado (19:48:15Z) e com que saida.

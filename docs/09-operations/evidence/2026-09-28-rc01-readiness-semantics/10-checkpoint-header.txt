@@ -1,0 +1,9 @@
+CHECKPOINT 10 — congelamento da árvore sob teste
+INICIO 2026-09-28T15:29:20-03:00
+BRANCO codex/rc01-readiness-semantics-2026-09-28
+HEAD 5d95034b67fb50fd1218f267afbfe189d4444bd2
+HEAD-CURTO 5d95034b
+ARVORE-GIT 4b23b239aa666de70ae72cbed59b8a61c0d0fa7b
+ARQUIVOS 29
+Escopo: toda a superfície funcional em mudança (git ls-files -m --others --exclude-standard), excluindo a própria pasta de evidência, que é escrita durante a execução.
+Os arquivos 06-congelamento-*.txt e 06-suíte-integral.log foram apagados deste registro: congelaram uma árvore anterior à rodada 4 e a suíte foi interrompida aos 26% sem veredito. Nada neles vale como resultado.

@@ -63,7 +63,9 @@ def test_cloud_platforms_publish_truthful_operational_state() -> None:
         "reason": None,
         "requiresConfirmation": False,
     }
-    detail = xbox["readiness"]["detail"].casefold()
+    # UX-03: o texto que explicava o que não foi verificado saiu de ``detail``
+    # (legado) e é agora o campo próprio de causa do contrato v2.
+    detail = xbox["readiness"]["cause"].casefold()
     assert "não foram verificados" in detail
     assert "conta" in detail and "rede" in detail
 

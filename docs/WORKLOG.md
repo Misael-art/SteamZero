@@ -13515,3 +13515,277 @@ final é o que carrega a correção do digest — nada aqui antecipa aquela leit
 a primeira dobra da Home (UX-05), UX-03, os formatadores de UX-04, a prova física na release
 `2.0.0rc1-e2af2562ebba`, e as nove baselines novas, que `make update-qml-goldens` não cobre. A 4ª fatia
 não foi iniciada, e merge é do operador. **RC-01 não está concluído.** O WORKLOG é append-only.
+
+## 2026-09-28 — RC-01, 5ª fatia (UX-03): o contrato de prontidão foi corrigido, não rotulado — e a inspeção visual achou três defeitos que 103 pinos não viam
+
+Autorização: concluir as pendências funcionais de RC-01 começando por UX-03, com entregas
+verificáveis e integração preparada. Nada de merge, nada de segunda cópia da árvore, nada de
+release fora do fluxo do operador. Evidência em
+`docs/09-operations/evidence/2026-09-28-rc01-readiness-semantics/` (logs `00`–`10`, sete PNGs
+com `SHA256SUMS.txt`).
+
+**A missão estava no diagnóstico medido antes de codar (log `00`).** Nove produtores publicavam
+`readiness.percent` com grandezas diferentes entre si: `emulation_workspace` codificava
+categorias em 20/45/35/100; `steam_gameplay` dividia requisitos obrigatórios por um denominador
+onde `missing` também contava opcionais, e devolvia 100 quando o denominador era zero;
+`emulation.editorial_platform_index` dava 100 ou 0 pela *existência* de jogos; `platform_composer`
+por launchability; `cloud_platforms` 50 por `xdg-open` existir; `platforms` e `desktop_dashboard`
+0; e duas páginas sintetizavam um fallback no próprio QML. Os consumidores tratavam tudo como a
+mesma coisa com uma única regra `percent >= 80`, de modo que 20%, 35%, 45% e 0% renderizavam a
+mesma cor e «pronto» podia ser alegado sem gameplay demonstrado. Corrigir o rótulo não tocaria
+nisto.
+
+**O que entrou no contrato.** `src/steamzero/domain/readiness.py` separa estado/label/causa/
+próxima-ação de uma proporção mensurável (`dimension`, `numerator`, `denominator`, `percent`
+nullable, `absentReason`), declara `verification` (`verified|not_performed|not_applicable|unknown`)
+e `basis` (`preflight|demonstrated_gameplay|inventory_existence|none`). Denominador zero e dado
+ausente produzem **percentual ausente**, nunca 100 nem 0; payload legado sem `contractVersion` é
+normalizado explicitamente para `unverified` com o número escondido. `READY_BASES` recusa `ready`
+com base de mera existência — registrado com precisão: nenhum dos nove produtores publicava `ready`
+assim, então o guard fecha um buraco **latente**, não um defeito em execução, e é dito desta forma
+para ninguém alegar uma correção que não houve.
+
+**Red Green medido, produtor por produtor** (logs `01`–`05`), e depois a superfície QML lendo o
+módulo compartilhado `src/steamzero/ui/qml/readiness.js`: nenhuma página reimplementa tom,
+superfície ou barra, e o `>= 80` foi retirado das duas páginas que o tinham.
+
+**A inspeção visual não foi formalidade — ela achou o que os testes não achavam.** As seis
+capturas promovidas eram todas de 1208×696 ou 949×593, e a sonda de reachabilidade (log `08`)
+mede que o painel de contexto só abre fora da biblioteca de jogos com largura ≥ 1500 e layout não
+compacto: nenhuma imagem anterior mostrava a caixa «Antes de continuar». Uma captura em 1656×954
+expôs três defeitos de produção:
+
+1. `Readiness.blockers()` devolvia lista **vazia** na página montada. Uma lista JS que cruza a
+   fronteira `required property var` chega como `QVariantList`: `Array.isArray` responde `false`
+   com o conteúdo e o `length` intactos (medido em sonda antes e depois da fronteira). O guard em
+   `Array.isArray` não era defesa — era o modo de falha silencioso. Corrigido com `_lista()`.
+2. O cabeçalho e o glifo do painel pintavam `blocked` com âmbar via `stateColor()` da plataforma,
+   enquanto o cartão e a caixa pintavam vermelho pelo contrato: a mesma dobra afirmava dois
+   estados ao mesmo tempo.
+3. A próxima ação aparecia duas vezes — uma como ação e outra como primeiro bloqueio, porque o
+   contrato publica `blockers` como as frases de ação. Corrigido na superfície, sem mexer no
+   contrato.
+
+Cada correção passou por bateria de mutação (logs `05`, `07`, `09`): 6/6, 8/8 e 6/6 pegas, com
+restauração byte a byte conferida por sha256 antes e depois. Duas recusas metodológicas ficaram
+registradas: fixar o fundo do cartão escapou da rodada 1 e virou pino próprio; e uma mutação que
+«pegava» com código 1 e **zero linhas FAIL** (propriedade duplicada no QML interrompe o
+carregamento) não é prova de nada — foi refeita como substituição com `erros_de_carga=0` e só
+então pegou com dois FAIL nomeados.
+
+**Checkpoint único, árvore congelada** (log `10`). Identidade antes da execução: HEAD
+`5d95034b`, árvore git `4b23b239`, 29 arquivos com sha256. `.venv/bin/python tools/run_tests_isolated.py tests -q`
+= **1 failed, 6483 passed, 47 skipped em 2071,39 s**; o sha256 dos 29 arquivos refeito depois da
+suíte dá `diff` vazio, e o isolador imprimiu `real-state before/after` idênticos (12816 arquivos,
+1.372.712.391 bytes) — nada tocou acervo, saves ou estado do host. ruff check, ruff format --check
+(676 arquivos), mypy (298 arquivos) e `make independence boundaries` verdes na mesma árvore. A
+suíte **não** foi substituída por testes focados quando falhou: a falha única é o gate de catálogo,
+e a causa foi medida — 33 itens com `scopeDigest` obsoleto, **33 de 33** contendo ao menos um
+arquivo desta frente no escopo e **0 de 33** reprovando por obsolescência anterior (19 deles por
+`src/steamzero/adapters/emulation.py`, que está no escopo de muitos itens). Renovar os 33 digests é
+atribuição desta frente; a alternativa foi medida antes de descartada. `docs/06-api/JSON-SCHEMAS.md`
+estava alterado sem item responsável e passou ao escopo de `SZ-UI-DESKTOP-AUDIT`. Duas visões
+geradas foram regravadas por `render --write`. Uma nota de honestidade está no próprio log copiado:
+o `CODIGO_DE_SAIDA 0` impresso é do `echo` do meu envoltório, não do pytest.
+
+**Empacotamento: a conclusão anterior estava sobre-alegada e foi re-registrada como pendente.**
+«`git check-ignore` não responde» não prova que `readiness.js` entra no wheel. O único wheel de CI
+disponível (`steamzero-wheel-5704c813`, run 36372744311, 622 entradas, 61 `.qml`, **zero** `.js`)
+foi construído em `5704c813`, antes do arquivo existir — a ausência não prova nada sobre este
+arquivo. A prova se fecha baixando o artefato do CI no SHA final deste lote e conferindo a entrada
+`steamzero/ui/qml/readiness.js` contra `build/SHA256SUMS`. Nenhum wheel foi montado fora do fluxo
+de release do operador (AGENTS.md §4). Registrado como `GAP-UI-QML-JS-NAO-PROVADO-DENTRO-DO-WHEEL-DO-CI`.
+
+**Cadeia de integração, conferida sem presumir merge.** `origin/main` em `3495c49d`. #239
+(`069501ab`), #240 (`c959be13`), #241 (`190ea683`) e #242 (`5d95034b`) seguem **abertas**, todas
+com base em `main`, todas MERGEABLE, e a ancestralidade entre elas é real (cada head contém o
+anterior; 24 commits à frente de `main`). Esta branch é o quinto elo sobre `5d95034b`. Fora desta
+frente: #233 (`codex/op-watchdog-2026-09-22`) está CONFLICTING desde 22/09 e continua sem dono
+nesta sessão. Merge é do operador; nada aqui alega integração antes do SHA realmente mergeado.
+
+**O que permanece pendente depois deste lote, declarado sem maquiagem:** (a) CI terminal no SHA
+final e leitura do wheel; (b) integração na ordem 239→240→241→242→este, com o operador; (c) prova
+física na release instalada `2.0.0rc1-e2af2562ebba`, que offscreen nenhum substitui; (d) UX-04
+(unidades humanas, valores exatos, ausência ≠ zero), a primeira dobra da Home em viewport
+compacto e a resposta tardia dos importadores no RetroFE — nada disso foi começado aqui. RC-01
+continua sem critérios obrigatórios completos.
+
+## 2026-09-28 — RC-01 / UX-03, rodada 13-14: o CI terminal reprovou, a causa foi medida, e o empacotamento foi fechado lendo o wheel
+
+**O veredito do CI, registrado como vermelho antes de qualquer correção.** PR #243,
+cabeça `ec86c228`, run 36475422213: `Python 3.11/3.12/3.14` SUCCESS,
+`Wheel limpo, smoke e supply chain` SUCCESS, `Smoke Ubuntu 24.04 / Arch / Manjaro`
+SUCCESS, `CodeRabbit` SUCCESS, e **`Gate visual QML (Linux)` FAILURE** —
+`1 failed, 343 passed, 12 skipped, 6176 deselected in 1185.23s`, com
+`FAIL: o texto quebrado continua dentro da largura do cartão` e
+`check_readiness_surface: 1 falha(s) de 112 (primeira em #71)`. Localmente o mesmo
+harness passava 112/112. A frente não reescreveu esse resultado nem o substituiu por
+teste focado: o comando do CI foi re-executado na árvore (`-m visual`) até ele ficar
+verde.
+
+**A causa, medida — e não é do produto.** Sonda no mesmo harness, lendo geometria no
+`tick` em que o modelo é atribuído e depois de assentar:
+
+| sítio | transitório (`ticks=0`) | assentado (`ticks=2`) |
+| --- | --- | --- |
+| Emulação 1360 | `w=76.00 cw=74.17 lines=9 h=17.00 ch=153.00` | `w=786.00 cw=489.70 lines=1 h=17.00 ch=17.00` |
+| Ambiente 1208 | `w=159.00 cw=141.84 lines=6 h=17.00 ch=102.00` | `w=797.00 cw=689.45 lines=1 h=17.00 ch=17.00` |
+| Ambiente 720×480 | `w=159.00 cw=141.84 lines=6 h=17.00 ch=102.00` | `w=309.00 cw=305.63 lines=3 h=51.00 ch=51.00` |
+
+Os Qt Quick Layouts são polidos num frame posterior. Na coluna transitória de 76 px a
+causa legítima estoura a largura por construção — 76 px não comporta uma palavra —, e
+`contentHeight` (153 px) media dentro de 17 px de altura. Foi aí que a folga local de
+1,83 px virou +1 px no runner: a asserção media métrica de fonte, não requisito. O
+produto assentado está correto (1100×786).
+
+**Duas correções recusadas, registradas.** Baixar o limiar (de `+1` para `+8`) foi
+recusado. Também foi recusada a substituição que esta própria rodada havia começado —
+trocar o pixel por comparação de string e atribuir o vermelho inteiro à métrica de
+fonte — porque a explicação estava incompleta (a causa é o *momento* da leitura) e
+deixava o requisito "nada é cortado" sem nenhuma medição.
+
+**Feito no harness (mudança de teste; nenhum arquivo de produto tocado):** obrigações
+geométricas acumuladas e executadas quando a largura se repete entre dois ticks
+(espiador de 16 ms, teto de 120 ticks como testemunha que falha alto em vez de tempo
+arbitrário); `contentWidth <= width` e `contentHeight <= height` **sem tolerância**,
+com guarda de não-vacuidade `contentWidth > 100` para "caber" não ser consequência de
+item vazio; e a demonstração de quebra movida para o regime onde ela é exigida —
+`Main.qml:12-13` fixa `minimumWidth: 720`/`minimumHeight: 480`, ali a coluna do
+ambiente assenta em 309 px e a causa de 121 caracteres precisa de 689 px numa linha
+(folga 2,2×), então `lineCount > 1` é requisito. Na Emulação à mesma largura a folga
+seria 1,13×, por isso nenhuma asserção de contagem de linha foi posta lá: seria o
+mesmo erro com outro nome. Harness de 112 para 125 verificações, verde em 1,09 s
+(o gate concede 30 s por harness).
+
+**Bateria de mutações rodada 5, executada sobre CÓPIA fora do checkout** (`/tmp/rp`,
+`diff -rq` sem saída e `sha256` iguais antes e depois, impressos no log): M0 pristine
+125 ok · M1 `NoWrap` na Emulação → 1 falha · M2 coluna a 200 px **com** WordWrap →
+**125 ok, controle negativo** (sem esta cena verde, `contentWidth <= width` poderia
+estar medindo qualquer coisa) · M3 200 px **sem** quebra → 2 falhas (`folga medida:
+-290 px`) · M4 `NoWrap` no ambiente → 3 falhas · M5 `elide` + `maximumLineCount: 1` →
+2 falhas · M6 `Layout.maximumHeight: 17` → 1 falha. Limitação que a bateria obriga a
+registrar e que agora está no comentário do harness: com a elipse ativa,
+`contentWidth`, `contentHeight` e a igualdade de texto **continuam verdes** — nada na
+geometria detecta corte por elipse; quem pega é o pino estrutural de `elide`/
+`maximumLineCount`. O erro da rodada anterior (mutar `Emulation.qml` dentro do
+checkout) não se repetiu.
+
+**Empacotamento fechado lendo o artefato, e a conclusão anterior corrigida.**
+`readiness.js` foi lido dentro do wheel da pipeline governada: `sha256sum -c` contra o
+`SHA256SUMS` do próprio CI (seis SUCESSO), `tools/release_provenance.py verify-wheel`
+→ `{"project": "steamzero", "sha256": "db92dbed…09eb", "version": "2.0.0rc1"}`, e a
+entrada `steamzero/ui/qml/readiness.js` = 8614 B com o mesmo `sha256`
+(`7d76be27…29f5`) do blob git de `ec86c228`; 86 entradas `ui/qml` no pacote.
+`GAP-UI-QML-JS-NAO-PROVADO-DENTRO-DO-WHEEL-DO-CI` saiu de `knownGaps`. A nuance fica
+declarada em vez de escondida: em run `pull_request` o artefato é nomeado pelo
+**merge ref** (`ddab4bda…`, `refs/pull/243/merge`), não pela cabeça enviada; o wheel
+nomeado pelo SHA integrado continua sendo do fluxo de release do operador (AGENTS.md
+§4), e nada aqui o antecipa. Cobertura lida do mesmo run: **85,4897 %**
+(41761/5603/47364) contra `fail_under = 85`, sem regressão — é o único número de
+cobertura que existe, pois a suíte local roda desinstrumentada. Erro de processo
+confesso: o `gh run download` foi tentado duas vezes com o nome do artefato em `-D`
+(que é destino, e extrai plano), criando dois diretórios na **raiz do checkout**;
+foram movidos para `/tmp` e a árvore reconferida. Nenhum wheel foi montado fora do
+fluxo do operador.
+
+**Checkpoint 13, uma execução por passo, identidade reimpressa depois de cada um dos
+sete passos (as sete leituras idênticas).** Integral `tools/run_tests_isolated.py
+tests -q` = **1 failed, 6484 passed, 47 skipped** em 1966,18 s. Gate visual
+`-m visual` = **356 passed, 6176 deselected** em 1307,21 s — o gate que reprovou no CI
+ficou verde no runner real, na árvore testada. `ruff check`, `ruff format --check`
+(676 arquivos), `mypy src` (298 arquivos) e `make independence boundaries`: todos
+verdes. `make status-check`: **uma** linha, `SZ-UI-DESKTOP-AUDIT: evidencia obsoleta …
+atual e47bf54b4c82b1e141650af46027e0bbbb0953003b35ce8cd2aa5714793475a2`, atribuída por
+inteiro a esta frente — o harness está em `scopePaths` do item, então qualquer mudança
+honesta envelhece o digest por construção; nenhum outro item obsoleto (contra os 33 do
+checkpoint 10). O `real-state before/after` do executor ficou idêntico em cada suíte
+(12816 arquivos, 1.372.712.391 bytes).
+
+**Consumidores do contrato v2 verificados, item por item do operador** (parágrafo 7 de
+`15-checkpoint-13-gates-integrais.md`): numerador+denominador juntos, denominador zero
+→ traço, dado ausente → traço (nunca 0 nem 100), não-verificado recusado, opcional não
+drena obrigatório, v1 continua aceito com as duas formas mutualmente exclusivas,
+nenhum percentual artificial — e na UI o título, a causa, o valor, a dimensão e a
+próxima ação estão pinados como **itens renderizados**, com `READY_BASES` recusando
+`ready` por mera existência e o cartão nomeando a grandeza medida para "12 de 14
+requisitos" nunca se ler como "o jogo roda".
+
+**Cadeia de integração, conferida sem presumir merge.** `origin/main` em `3495c49d`.
+#239 (`069501ab`), #240 (`c959be13`), #241 (`190ea683`), #242 (`5d95034b`) **OPEN** e
+`CLEAN`; #243 (`ec86c228`) **OPEN**, `MERGEABLE` e `UNSTABLE` exatamente pelo gate
+visual corrigido nesta rodada. Ancestralidade real: os quatro heads anteriores estão
+contidos em `ec86c228`. #233 (`codex/op-watchdog-2026-09-22`) continua CONFLICTING
+desde 22/09 e sem dono nesta sessão. Merge é do operador; nenhum merge foi feito aqui.
+
+**Depois do checkpoint, a árvore testada recebeu só documento** (declaração do item 4
+da instrução): evidências `13-*`, `14-*`, `15-*`, o índice da pasta, o cartão
+(6 evidências novas, gap fechado, `nextAction`), o workstream, o digest renovado do
+valor impresso pela ferramenta na árvore final e as visões regeradas. Nenhum arquivo
+funcional foi tocado depois do passo 7; a integral não foi re-rodada localmente e
+volta a valer como prova no SHA publicado, onde o CI a executa do zero.
+
+**O que permanece pendente:** (a) CI **terminal** no SHA final deste envio — a frente
+só se declara fechada com o veredito lido, nunca com "CI rodando"; (b) integração na
+ordem 239→240→241→242→243, com o operador; (c) `GAP-UI-VISUAL-CAPTURE-NOT-CERTIFIED-IN-CI`
+(escala de texto 100/125/150 %) e a prova física na release instalada
+`2.0.0rc1-e2af2562ebba`, que offscreen nenhum substitui; (d) UX-04, já medido: quatro
+formatadores divergentes (`Main.qml:1355` e `SteamGameplay.qml:339` são cópias
+idênticas em KiB/MiB/GiB; `Emulation.qml:597` põe rótulo `GB`/`MB` sobre divisor 1024;
+`ThemeCatalogPanel.qml:81` para em MB), com o mesmo `1073741824 B` lido como `1.00 GiB`,
+`1.00 GB` ou `1024.0 MB` conforme a tela, três dos quatro transformando ausência em
+`0 B`, `512 B` saindo como `0.0 MB`, e o texto cru dos cartões de armazenamento
+nascendo no produtor (`adapters/emulation.py:5410`, `:5422`, `:5429-5432`) sem um único
+pino em testes. Depois: primeira dobra da Home e RetroFE dentro do shell com respostas
+tardias dos importadores. RC-01 continua sem critérios obrigatórios completos.
+
+## Sessão de fechamento — rodada 16: o veredito terminal lido, e o corpo do PR revisado (2026-09-28)
+
+**CI terminal, no SHA que é a cabeça.** Run `36497630184` em `ba2ec0a8`:
+`conclusao=success`, oito jobs `completed success` — Gate visual QML (Linux) 21m30s,
+Python 3.11/3.12/3.14, Wheel limpo/smoke/supply chain, três smokes de plataforma.
+`gh pr checks 243` lido depois da conclusão: 8 `pass`, 1 `skipping`. `gh pr view 243`:
+`OPEN`, `MERGEABLE`, `mergeStateStatus=CLEAN`, base `main`. A espera foi pelo waiter
+limitado (120 s × 18, log único), 11 segmentos; o checkout ficou parado em `ba2ec0a8`
+com `git status --short` vazio durante todo o período. A pendência (a) da sessão
+anterior está fechada por leitura, não por promessa.
+
+**Empacotamento re-provado no wheel do mesmo run, não por transferência.** A rodada 13
+lera o artefato do run da cabeça anterior. Este run publicou
+`steamzero-wheel-55c0f07e…`: 624 entradas, um único `.js` =
+`steamzero/ui/qml/readiness.js`, 8614 B com o mesmo `sha256 7d76be27…` do blob em
+`ba2ec0a8`; `sha256sum -c` contra o `SHA256SUMS` do próprio CI e
+`release_provenance.py verify-wheel --wheel` ambos verdes, e o `subject.sha256` da
+proveniência concordando com o verificador. Nuance declarada: num run `pull_request` o
+nome do artefato usa o merge ref (`refs/pull/243/merge`, `55c0f07e`), não a cabeça
+enviada. Confesso dois erros da rodada: `verify-wheel` chamado como posicional (pede
+`--wheel`) e `git show` sem o prefixo `src/` no caminho (`exit 128`) — nenhum dos dois
+escreve na árvore.
+
+**Cobertura com a diferença atribuída, não reinterpretada.** `85,4881 %` no artefato do
+run terminal, acima do piso `85`. O run anterior dera `85,4897 %` com as mesmas 47 364
+declarações; a comparação arquivo por arquivo nos dois JSON mostra `linux_runtime.py`
++1 coberta e `scraping/cache.py` −2, saldo −1 — e **nenhum dos dois arquivos está no
+diff desta branch**. O que se alega é "acima do piso", nunca "igual ao run anterior":
+três linhas se movem entre dois runs de conteúdo funcional idêntico.
+
+**A lacuna visual continua aberta, e assim está escrita.** O `qml-visual-artifacts`
+deste run tem 59 arquivos / 41 PNG de três famílias (`esde-import`, `retrofe-import`,
+`shell-esde-import`); a dobra de prontidão é provada por harness offscreen, que não
+publica PNG. `GAP-UI-VISUAL-CAPTURE-NOT-CERTIFIED-IN-CI` permanece no cartão. O recorte
+onde esse mecanismo é exigido pela auditoria é a UX-04 — plano declarado, não feito.
+
+**Corpo do PR #243 revisado antes de publicar** (instrução do operador, item 2): três
+alegações estavam envelhecidas — "empacotamento PENDENTE" (agora provado em dois runs),
+"harness com 112 pinos" (são 125, e a causa da mudança está medida) e o número da
+integral do checkpoint 10 apresentado como o do lote (o checkpoint 13 é
+`1 failed, 6484 passed, 47 skipped` em 1966,18 s). Entraram no corpo a seção de testes
+de cor, a de geometria, a verificação dos consumidores do contrato v2 e o veredito
+terminal.
+
+**Depois do checkpoint 13, a árvore voltou a receber só documento** (item 4): evidências
+`16-*.md`/`16-*.log`, índice da pasta, cartão (3 evidências novas + `nextAction`),
+workstream, visões regeradas e o digest renovado do valor impresso pela ferramenta na
+árvore final. Conteúdo funcional intocado: `ec86c228` + harness `041139e9` continua
+sendo o que se testou. O run desta cabeça documental é lido antes de qualquer fecho, e
+nenhum merge foi executado ou presumido aqui — a ordem segue 239→240→241→242→243, com
+`Main.qml` tendo dois donos exclusivos ativos do lado de lá.
