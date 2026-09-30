@@ -97,7 +97,7 @@ Rectangle {
     /// incrementam; a resposta só escreve na superfície se carregar a geração
     /// corrente. Sem isto, um `inspect`/`apply` que chega depois de a superfície
     /// ter mudado reabre estado que o usuário já abandonou — e o pedido mais novo
-    /// perde para o anterior, porque os dois voam juntos (`Main.qml:1119` só
+    /// perde para o anterior, porque os dois voam juntos (`Main.qml:1134` só
     /// deduplica payload idêntico). O pedido em voo NÃO é cancelado: o que se
     /// descarta é o efeito dele.
     property int retrofeImportGeneration: 0
@@ -378,7 +378,7 @@ Rectangle {
                 panel.retrofeImportNotice = String(message || qsTr("Não foi possível examinar a cena RetroFE."))
                 panel.retrofeImportNoticeIsError = true
             })
-        // `Main.qml:1119` recusa payload idêntico já em voo sem disparar nenhuma
+        // `Main.qml:1134` recusa payload idêntico já em voo sem disparar nenhuma
         // callback. A recusa é um não-acontecimento: ela devolve a superfície ao que
         // ela era antes do clique, e só `ocupadoAntes` diz a verdade sobre isso.
         //   - pedido ainda corrente (`ocupadoAntes` verdadeiro): baixá-la aqui deixaria
@@ -1279,7 +1279,7 @@ Rectangle {
                         /// `resetRetrofeImport()` do `onClosed`, os dois seletores que
                         /// gravam `panel.localPath(...)`) não alcançaria mais o pixel.
                         /// Campo e botão leriam verdades diferentes — o "Examinar"
-                        /// decide por `panel.retrofeImportSource` (`:1309`). Este
+                        /// decide por `panel.retrofeImportSource` (`:1326`). Este
                         /// `Binding` é o espelho de mão única que sobrevive à edição;
                         /// escrever o valor que já está lá não emite `textChanged`,
                         /// então não há loop com o `onTextChanged` acima.

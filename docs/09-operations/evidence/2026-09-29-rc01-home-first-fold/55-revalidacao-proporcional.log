@@ -1,0 +1,127 @@
+REVALIDAÇÃO PROPORCIONAL — correção de quatro citações falsas (oitavo elo)
+COMANDO-MAE: bash 55-revalidacao-proporcional.sh <tmp-fora-do-checkout>/55-revalidacao-proporcional.log
+INICIO 2026-09-29T16:43:08-03:00
+python=Python 3.14.7
+
+===== PASSO 1 :: .venv/bin/ruff format --check src tests tools
+INICIO 2026-09-29T16:43:08-03:00
+--- identidade 2026-09-29T16:43:08-03:00 ---
+branch=codex/rc01-home-first-fold-2026-09-29
+HEAD=e7167080797a518aab376b289f7d821a10f28108
+git status --short:
+ M docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/README.md
+ M docs/status/items/ui-desktop-audit.json
+ M tests/integration/test_ui_shell_home_first_fold.py
+ M tests/qml/check_home_first_fold_attention.qml
+?? docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/52-comandos-e-saidas.log
+?? docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/52-comandos-e-saidas.log.rc
+?? docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/52-gates-integrais.sh
+?? docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/53-auditoria-de-citacoes.md
+sha256 por conteudo (arvore de trabalho):
+  709dbb68de6392c6  tests/integration/test_ui_shell_home_first_fold.py
+  c6fe05a954a45b76  tests/qml/check_home_first_fold_attention.qml
+  80a91ad6258a1901  docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/README.md
+  5b1a70d255777727  docs/status/items/ui-desktop-audit.json
+680 files already formatted
+FIM 2026-09-29T16:43:08-03:00 rc=0
+
+===== PASSO 2 :: .venv/bin/ruff check src tests tools
+INICIO 2026-09-29T16:43:08-03:00
+--- identidade 2026-09-29T16:43:08-03:00 ---
+branch=codex/rc01-home-first-fold-2026-09-29
+HEAD=e7167080797a518aab376b289f7d821a10f28108
+git status --short:
+ M docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/README.md
+ M docs/status/items/ui-desktop-audit.json
+ M tests/integration/test_ui_shell_home_first_fold.py
+ M tests/qml/check_home_first_fold_attention.qml
+?? docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/52-comandos-e-saidas.log
+?? docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/52-comandos-e-saidas.log.rc
+?? docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/52-gates-integrais.sh
+?? docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/53-auditoria-de-citacoes.md
+sha256 por conteudo (arvore de trabalho):
+  709dbb68de6392c6  tests/integration/test_ui_shell_home_first_fold.py
+  c6fe05a954a45b76  tests/qml/check_home_first_fold_attention.qml
+  80a91ad6258a1901  docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/README.md
+  5b1a70d255777727  docs/status/items/ui-desktop-audit.json
+All checks passed!
+FIM 2026-09-29T16:43:09-03:00 rc=0
+
+===== PASSO 3 :: .venv/bin/mypy src
+INICIO 2026-09-29T16:43:09-03:00
+--- identidade 2026-09-29T16:43:09-03:00 ---
+branch=codex/rc01-home-first-fold-2026-09-29
+HEAD=e7167080797a518aab376b289f7d821a10f28108
+git status --short:
+ M docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/README.md
+ M docs/status/items/ui-desktop-audit.json
+ M tests/integration/test_ui_shell_home_first_fold.py
+ M tests/qml/check_home_first_fold_attention.qml
+?? docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/52-comandos-e-saidas.log
+?? docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/52-comandos-e-saidas.log.rc
+?? docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/52-gates-integrais.sh
+?? docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/53-auditoria-de-citacoes.md
+sha256 por conteudo (arvore de trabalho):
+  709dbb68de6392c6  tests/integration/test_ui_shell_home_first_fold.py
+  c6fe05a954a45b76  tests/qml/check_home_first_fold_attention.qml
+  80a91ad6258a1901  docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/README.md
+  5b1a70d255777727  docs/status/items/ui-desktop-audit.json
+Success: no issues found in 298 source files
+FIM 2026-09-29T16:43:09-03:00 rc=0
+
+===== PASSO 4 :: .venv/bin/python -m pytest tests/integration/test_ui_shell_home_first_fold.py -q
+INICIO 2026-09-29T16:43:09-03:00
+--- identidade 2026-09-29T16:43:09-03:00 ---
+branch=codex/rc01-home-first-fold-2026-09-29
+HEAD=e7167080797a518aab376b289f7d821a10f28108
+git status --short:
+ M docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/README.md
+ M docs/status/items/ui-desktop-audit.json
+ M tests/integration/test_ui_shell_home_first_fold.py
+ M tests/qml/check_home_first_fold_attention.qml
+?? docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/52-comandos-e-saidas.log
+?? docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/52-comandos-e-saidas.log.rc
+?? docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/52-gates-integrais.sh
+?? docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/53-auditoria-de-citacoes.md
+sha256 por conteudo (arvore de trabalho):
+  709dbb68de6392c6  tests/integration/test_ui_shell_home_first_fold.py
+  c6fe05a954a45b76  tests/qml/check_home_first_fold_attention.qml
+  80a91ad6258a1901  docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/README.md
+  5b1a70d255777727  docs/status/items/ui-desktop-audit.json
+.............                                                            [100%]
+13 passed in 115.05s (0:01:55)
+FIM 2026-09-29T16:45:05-03:00 rc=0
+
+===== PASSO 5 :: make status-check
+INICIO 2026-09-29T16:45:05-03:00
+--- identidade 2026-09-29T16:45:05-03:00 ---
+branch=codex/rc01-home-first-fold-2026-09-29
+HEAD=e7167080797a518aab376b289f7d821a10f28108
+git status --short:
+ M docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/README.md
+ M docs/status/items/ui-desktop-audit.json
+ M tests/integration/test_ui_shell_home_first_fold.py
+ M tests/qml/check_home_first_fold_attention.qml
+?? docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/52-comandos-e-saidas.log
+?? docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/52-comandos-e-saidas.log.rc
+?? docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/52-gates-integrais.sh
+?? docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/53-auditoria-de-citacoes.md
+sha256 por conteudo (arvore de trabalho):
+  709dbb68de6392c6  tests/integration/test_ui_shell_home_first_fold.py
+  c6fe05a954a45b76  tests/qml/check_home_first_fold_attention.qml
+  80a91ad6258a1901  docs/09-operations/evidence/2026-09-29-rc01-home-first-fold/README.md
+  5b1a70d255777727  docs/status/items/ui-desktop-audit.json
+.venv/bin/python tools/project_status.py check
+STATUS-CHECK: FALHOU
+- SZ-UI-DESKTOP-AUDIT: evidencia obsoleta; scopeDigest esperado d42706c4da34e9c144b59198b3f06dea1e1ce63c12b267d4ce5070048a7debff, atual c668cc3efef2e740aa48595fa57d2b3a3a3ce53ade7a35c87d67ee87bfae8136
+- docs/status/COVERAGE.md esta desatualizado; execute tools/project_status.py render --write
+make: *** [Makefile:55: status-check] Error 1
+FIM 2026-09-29T16:45:06-03:00 rc=2
+
+===== ROLLUP
+1 rc=0 :: .venv/bin/ruff format --check src tests tools
+2 rc=0 :: .venv/bin/ruff check src tests tools
+3 rc=0 :: .venv/bin/mypy src
+4 rc=0 :: .venv/bin/python -m pytest tests/integration/test_ui_shell_home_first_fold.py -q
+5 rc=2 :: make status-check
+FIM TOTAL 2026-09-29T16:45:06-03:00

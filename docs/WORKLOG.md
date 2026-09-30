@@ -14020,3 +14020,229 @@ dedicado. `GAP-UI-VISUAL-CAPTURE-NOT-CERTIFIED-IN-CI` segue aberto: nenhuma capt
 alegada por esta fatia. A release instalada `2.0.0rc1-e2af2562ebba` não contém `sizes.js`,
 `readiness.js` nem o contrato de geração deste lote, então "experiência comprovada na
 release" é zero para a fileira inteira. RC-01 não se declara concluída.
+
+## 2026-09-29 — RC-01 / primeira dobra da Home, oitavo elo: quem duplica o anúncio se curva, e o conteúdo não é cortado
+
+**O corte, pedido pelo operador por prioridade** ("priorizando a primeira dobra da Home"),
+saiu da cabeça do PR #245 (`2d6a8957`) e é o oitavo elo da fileira #239 → #245. Vermelho
+primeiro: `tests/integration/test_ui_shell_home_first_fold.py` + o harness
+`tests/qml/check_home_first_fold_attention.qml` escritos antes de qualquer linha de produto,
+com `pytestmark = pytest.mark.visual`, o argv da produção (o `subprocess.Popen` de
+`launch_desktop_ui()` em `adapters/desktop_ui.py`) e testemunhas impressas pelo harness e lidas
+pelo gate **independentemente** do veredito do Qt.
+
+**A medição mudou a premissa.** A nota de 26/09 (`2026-09-26-rc01-central-loading`,
+§"Ressalva de experiência") cortava 209 px e alegava `bridgeUnavailable` **junto** de dados
+reais — combinação que os bindings de produção não alcançam: `apiUrl`/`apiToken` vêm de
+argumento na inicialização (`Main.qml:901-:908`), então sem eles não há leitura bem-sucedida e
+`desktopTruthNeedsAttention` (`:339`) e `hasConflicts` (`:334`) ficam falsos. Medido com o
+argv da produção, o que a produção **sim** empilha corta **264 px** dos 698 da cena quieta e os
+alvos do cartão têm **36 px**. O vermelho do produto: `5 failed, 3 passed` (`38`, `39`).
+
+**A correção é pela via do agregado, não pelo corte de conteúdo.** Um `/status` recusado
+anuncia o mesmo fato em duas superfícies (`request()` dispara o callback de erro **e** o
+`pushError`). A faixa de fase é a persistente; o cartão que reporta o **mesmo código** entra em
+forma compacta e leva a prosa de orientação para trás do "Ver detalhes", que já existia.
+`ErrorCard.qml` ganhou `property bool compact`, teve os quatro rótulos de prosa movidos para o
+cabeçalho com `visible: texto && (!compact || detailed)`, os três botões elevados de 36 → 48 px
+e o `RowLayout` + spacer removidos. `Main.qml` ganhou `statusBandFailureCode` (limpo no
+callback de sucesso, escrito no de falha) e `cardDuplicaAFaixa()`, ligado ao Repeater.
+Geometria medida depois: cartão 135/164 → **76 px**, chrome agregado 264 → **205 px**, primeiro
+alvo terminando em 449 px (100 %) e 468 px (150 %) dentro de uma banda visível de **493 px**;
+`cabe=SIM` nas quatro cenas.
+
+**Atribuição por arquivo (o que cada mudança comprou), medida sob o M1:** a reorganização do
+`ErrorCard.qml` leva o cartão de 135 → 89 px e fecha a dobra **a 100 % sozinha**; a regra de
+compactação do `Main.qml` leva 89 → 76 px e é **ela** que fecha a dobra **a 150 %** (sem ela,
+468 > 451 e o teto agregado reprova com 247 px contra 230). Bateria: M1 (`cardDuplicaAFaixa`
+sempre falso) 5 reprovações; M2 (prosa compacta nunca volta) 3; M3 (alvo a 36 px) 3; M4
+("Ver detalhes" some em compacto) 6. Árvore restaurada byte a byte após cada mutante
+(`b682f286cca879d2`, `281215854ac35f4a`) e confirmada no fim.
+
+**Quatro falsos vermelhos foram meus, e ficam registrados como culpa do teste:** (1) o harness
+na primeira passada walkava a árvore errada e lia altura no mesmo tick do clique — `clickTick+2`
+porque o layout só assenta dois ticks depois; (2) a asserção de não-regressão codificava um
+piso de `ceil(3·11·escala)=33 px` derivado de um palpite de altura de linha e reprovou 2 cenas
+com 31 px reais (`41`) — a referência medida (`45`) mostra o cartão estendido a 107/143 px com
+198 caracteres, e os rótulos "Ação automática"/"ID da operação" chegam **vazios** nesta cena,
+ocultos nos dois estados; (3) a varredura de prosa filtrava por `contentItem`, que o
+`QQuickLabel` não expõe a JS (`temCI=0`, dump em `44`); (4) o próprio driver de mutações foi
+arquivado com um rótulo que sugeria gate indiferente. A correção do (2) **fortaleceu** a
+asserção: hoje a forma compacta expandida é comparada com a forma estendida do mesmo cartão
+(altura, rótulos visíveis e caracteres na tela), que é o que "compactar não é apagar" significa.
+Nenhum teste foi enfraquecido ou deletado.
+
+**Consequência medida de mexer em `Main.qml` compartilhado:** as 18 linhas inseridas antes de
+`:4139` moveram **56 citações de número de linha em 45 linhas de 6 arquivos**, das quais **47
+em arquivos de outras frentes** (ES-DE 6+6, RetroFE 6+26, `ThemeEditorPanel.qml` 3). Foram
+reconfrontadas em `c2bae146` com mapa antigo→novo tirado dos cinco hunks `-U0` do próprio diff e
+substituição apenas quando o conteúdo da linha nova batia com o da linha antiga na base — zero
+substituições às cegas, todas as 45 linhas em prosa (docstring/comentário), nenhuma asserção
+tocada. Os três gates envolvidos verdes juntos: `42 passed em 194,61 s`, `real-state`
+antes/depois idêntico (`49`). Nota de exatidão: a mensagem do commit `e7167080` cita
+`c2ba146` onde se lê `c2bae146`.
+
+**Checkpoint único na árvore congelada.** Os sete gates de §6 rodaram **uma** vez em `e7167080`
+com `git status` vazio sob `src`/`tests`/`tools`, por invólucro que imprime branch, HEAD e
+sha256 por conteúdo dos quatro arquivos do corte antes e depois de **cada** passo, com o log
+cru escrito **fora** do checkout (a pasta de evidência está em `scopePaths`; escrevê-la durante
+a execução envelheceria o digest recém-renovado e o passo 5 reprovaria por culpa do invólucro).
+Resultado: sete passos `rc=0` — format, check, mypy, `make independence boundaries`,
+`make status-check`, integral `6520 passed + 47 skipped em 37m20s` e gate visual
+`375 passed + 6192 deselected em 26m34s`. As contagens fecham com o sétimo elo
+(`6507 → 6520`, `362 → 375`): as 13 verificações a mais são exatamente as deste gate. **Estes
+números são de `e7167080`** e não são reatribuídos aos quatro commits documentais que vieram
+depois nesta mesma sessão.
+
+**A auditoria de citações e a correção por símbolo.** A conferência da `53` achou **quatro
+citações falsas vivas**: `adapters/desktop_ui.py:990-:1001` aparecia como "o argv da produção"
+no docstring de `_rodar()`, no cabeçalho do harness QML, numa linha do README do lote e num
+texto de evidência deste cartão — mas `:990` em diante é `stdin=`, `env=`, o laço de `poll()` e
+`server_close()`. Falsa **já na base `2d6a8957`**, portanto erro meu de escrita, não deriva de
+número causada pelo `Main.qml` deste elo. Corrigidas as quatro sedes por **referência ao
+símbolo** (o `subprocess.Popen` de `launch_desktop_ui()`), que é o endereço estável quando o
+arquivo cresce; conferidos caminho, símbolo e conteúdo, não só o número. A diff dos dois
+arquivos de teste é comentário e docstring — nenhuma asserção executável tocada, então o trecho
+não é mudança de teste. O texto falso fica preservado na auditoria em vez de apagado.
+
+**Revalidação proporcional, não integral.** AGENTS §6 proíbe repetir a suíte integral entre
+microalterações, e a mudança aqui é de referência textual. Rodaram as três portas de estática,
+a porta **afetada por extensão** (o harness QML vive dentro do gate pytest) e o `status-check`:
+format/check/mypy `rc=0` e `13 passed em 115,05 s` (`55`). O quinto passo reprovou com causa
+declarada no log — `SZ-UI-DESKTOP-AUDIT` com `scopeDigest` desatualizado e `COVERAGE.md` obsoleto
+pelos arquivos **deste próprio lote** —, a renovação foi por último na árvore congelada no valor
+impresso pela ferramenta (`efab54f0f130ff8e…`, re-impresso idêntico depois de escrever, o que
+confirma que o cartão não entra no próprio digest) e o `56` relê as cinco portas na cabeça
+final: na cabeca `73a3c117` com `git status` vazio: cinco passos `rc=0` — `ruff format --check` (680 arquivos), `ruff check`, `mypy src`, o gate desta frente `13 passed em 119,35 s` e `STATUS-CHECK: OK`. O log cru fica fora do checkout pelo mesmo motivo do `52`.
+
+**Governança (itens 9, 10 e 11).** `nextAction` do cartão normativo reduzido de 1 320 → 909
+caracteres, com o texto integral preservado verbatim em
+`50-nextaction-verbatim-sz-ui-desktop-audit.md` (1 340 bytes, sha256 `e46ee66a…`, conferido
+contra `git show` na cabeça). O `make status-check` reprovou 11 itens; a atribuição por arquivo
+(`51`) mostra **todos os 11** com arquivo desta frente no escopo — 9 com um só (`Main.qml` ou
+`ThemeEditorPanel.qml`), `SZ-THEME-ENGINE` com 3 e `SZ-UI-DESKTOP-AUDIT` com 11 — e **zero**
+itens acusados sem causa desta frente. Renovação por último, na árvore congelada, do valor
+impresso pela ferramenta (`e7167080`, 1 linha por arquivo, as 22 linhas do diff `-U0` são todas
+`scopeDigest`). Pergunta que o sétimo elo deixou em aberto, agora resolvida no código:
+`scope_digest` **exclui** `docs/WORKLOG.md` por construção e `check_worklog_append_only` guarda
+o conteúdo anterior, então este acréscimo de fechamento não envelhece os digests de
+`SZ-GOVERNANCE-STATUS`/`SZ-MAIN-WORKTREE-RECONCILIATION` — que é por que o CI do PR #245 ficou
+verde no commit que só mexeu no WORKLOG. **Isso não dispensa o gate do WORKLOG:** o apêndice
+abaixo passa pelo mesmo `check_worklog_append_only` e o `status-check` foi relido depois dele.
+Redação aplicada antes do commit por AGENTS.md: `<checkout-canônico>`/`<tmp-fora-do-checkout>`
+em 1+1+5 linhas do lote `45`/`47` e em 1+3+1+1 linhas do lote `52`/`55`, sempre fora de linha de
+resultado; hashes pré e pós-redação registrados no README e no cartão.
+
+**Cinco camadas, separadas.** Interface implementada: sim, no sentido de que as linhas existem e
+o contrato é lido do estado do cartão, não presumido. Contrato testado offscreen: sim
+(`13 passed` no gate e a bateria de mutações acima). Código integrado: **não** — `origin/main`
+continua `3495c49d…` e nenhum elo da fileira é ancestral dele. Artefato empacotado: **não**.
+Experiência comprovada na release instalada: **não** — a release segue `2.0.0rc1-e2af2562ebba`
+(26/09), anterior à fileira inteira.
+
+**O que esta sessão NÃO declara.** Nenhum merge foi executado nem presumido; merge e ordem são
+decisão do operador, e a tabela com heads, bases, ancestralidade e diff exclusivo dos oito elos
+vai no corpo do PR. Nenhuma captura PNG é alegada —
+`GAP-UI-VISUAL-CAPTURE-NOT-CERTIFIED-IN-CI` segue aberto para esta fatia. O seletor nativo de
+diretório continua **pendente**, e a porta por Enter não o promove. `Pendências` continua abaixo
+da dobra no pior caso (581/597 px contra banda de 493 px): metê-la na dobra é decisão de
+arquitetura da Home, registrada como pendência, não como sucesso. O teto agregado do gate
+(`CAPA_CHROME_AGREGADO = 230`) é uma constante derivada de 698 − 468, não uma lei: se a Home
+ganhar outra superfície fixa acima do `ScrollView`, o número muda de natureza e o gate precisa
+de reavaliação, não de reajuste. RC-01 **não** se declara concluída: dos critérios do roadmap,
+quatro fecham em contrato offscreen nesta fileira e três continuam sem prova na release
+instalada, porque nada foi integrado nem empacotado. Cortes seguintes já nomeados com dono:
+contrato de geração no importador ES-DE (`grep -c esdeImportGeneration` = 0 contra 12 no
+RetroFE), F-1/F-2 do contrato de prontidão, e a validação física do conjunto integrado — que só
+tem sentido depois de um merge.
+
+## 2026-09-29 — RC-01 / oitavo elo, adendo de consolidação: a cadeia vira entrega, e não há nono elo
+
+**Por que este adendo existe.** O operador nomeou o risco da rodada: "o principal risco agora é
+continuar acumulando elos sem consolidar a entrega". A resposta não é um nono elo — é fechar o
+oitavo e entregar juntos o checkpoint, a reconciliação da cadeia, o quadro de RC-01 e o plano
+físico. Nada aqui implementa comportamento novo; os commits deste adendo tocam evidência, cartão
+e views, e nada de `src/` nem de `tests/`.
+
+**O checkpoint pertence a `e7167080`, e só a ele (item 1).** A integral e o gate visual rodaram
+na árvore congelada daquela cabeça, sem suíte concorrente, com identidade impressa antes e depois
+de cada passo: agregado `src+tests+tools = 1149f29557440970` em todas as leituras, ou seja, a
+árvore não se moveu durante a corrida. Resultado: **6520 passed, 47 skipped em 2240,73 s** e, no
+`-m visual`, **375 passed, 6192 deselected em 1594,46 s**; rollup de sete passos `rc=0`
+(format, check, mypy, independence boundaries, status-check, integral, visual). Arquivado em
+`52-comandos-e-saidas.log` (+ `.rc` e o driver `52-gates-integrais.sh`). Estes números **não**
+são reatribuídos aos commits posteriores (`6d8034fa`, `034bde87`, `fab10fdd`, `73a3c117`,
+`22773047`, `92e1bf4c`, `7a8af0c1`); cada um desses traz a própria validação proporcional.
+
+**As quatro citações falsas, corrigidas por símbolo (item 2).** Conferido caminho, símbolo e
+conteúdo — não apenas o número de linha: a referência `desktop_ui.py:990-:1001` apontava para
+`stdin=`/`env=`/o laço de `poll()`, e o argv da produção está no `subprocess.Popen` de
+`launch_desktop_ui()` (`:963`, lista em `:979-:989`). Onde a linha é instável, ficou a
+referência ao símbolo, que é o que torna a documentação estável: duas em prosa de teste
+(`test_ui_shell_home_first_fold.py`, `check_home_first_fold_attention.qml`) e duas em documento
+do cartão. A explicação permanece em `53-auditoria-de-citacoes.md`, intacta. A diff foi
+inspecionada linha a linha: **as quatro são comentário/docstring**, zero em asserção executável
+— por isso não há revalidação de comportamento a fazer aqui, e é por isso também que a regra do
+contrário está declarada: se uma citação participasse de asserção, o trecho seria tratado como
+alteração de teste. Varredura residual: `grep -c 'desktop_ui\.py:990'` = 0 nos arquivos
+rastreados, exceto a própria auditoria, que precisa citar o endereço falso para explicá-lo.
+
+**Revalidação proporcional, não a integral (item 3).** `55-revalidacao-proporcional.sh` roda os
+cinco passos proporcionais a uma mudança textual: gate afetado, lint, formatação, tipos e
+status-check. Verificados: `ruff format --check` `rc=0`, `ruff check` "All checks passed!",
+`mypy src` "no issues found in 298 source files", `test_ui_shell_home_first_fold.py`
+**13 passed em 115,05 s**. O `make status-check` dessa rodada fechou `rc=2`, e a causa foi
+registrada em vez de escondida: os arquivos do próprio lote envelhecem o digest que certificam, e
+a COVERAGE ainda não renderizava as entradas novas. Resolvido por render + renovação na árvore
+congelada; a leitura final (cinco passos `rc=0`, status-check **OK**) foi tomada em
+`73a3c117` e vive fora do checkout, porque arquivá-la dentro do lote envelheceria de novo o
+digest que ela acaba de certificar — o ponto fixo é o que o oitavo elo já estabeleceu.
+
+**Elos novos: zero.** A reconciliação (item 5), o quadro de RC-01 (item 6) e o plano físico
+(item 7) entraram como documentos do lote existente — `61-reconcilio-rc01-oito-elos.md` e
+`62-preparacao-de-validacao-fisica.md` — e não como branch, PR ou HEAD adicional. O cartão
+`SZ-UI-DESKTOP-AUDIT` passa a 170 evidências e o `nextAction` cai a orientação operacional
+(909 → 821 caracteres), com a narrativa longa no README do lote.
+
+**O que a reconciliação mediu (item 5), com números que fecham sozinhos.** Oito PRs abertos,
+`#239`…`#246`, heads `069501ab`, `c959be13`, `190ea683`, `5d95034b`, `c0de54c9`, `af6a5c6e`,
+`2d6a8957`, `22773047`; bases encadeadas a partir do quinto; ancestralidade conferida com
+`git merge-base --is-ancestor`, linear. A soma dos diffs exclusivos (2+5+13+4+10+16+8+12) dá
+**70**, igual a `rev-list --count origin/main..22773047`: a cadeia não duplica commit. `origin/main`
+continua `3495c49d…`, então **nenhum** elo está integrado, e merge é decisão reservada ao
+operador — a sequência pronta vai no corpo do PR, e nenhuma branch foi criada para contorná-la.
+Os nove PRs mais antigos também foram classificados por medição, não por memória: nenhum é
+ancestral desta cabeça, oito estão `CONFLICTING`, e portanto não são substituídos nem bloqueios
+desta fileira.
+
+**O que o quadro de RC-01 mediu (item 6).** Treze critérios nas cinco camadas, re-medidos contra
+esta cabeça em vez de copiados do sétimo elo: a única linha que se moveu foi a da primeira dobra,
+e moveu-se em **I** e **C**; **G**, **P** e **H** seguem "não" nos treze, com o fundo medido
+(`git ls-tree` vazio para `sizes.js` e `readiness.js` tanto em `origin/main` quanto em
+`e2af2562`). Contraste continua travado por decisão de produto (4,5:1 versus ≥7:1), o seletor
+nativo por limitação de plataforma offscreen, e F-2 pela posse exclusiva de
+`WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT` — atribuída, não editada. Executáveis por esta frente:
+contrato de geração do importador ES-DE (`grep -c esdeImportGeneration` = 0 contra 12 no
+RetroFE, cinco escritas incondicionais de `esdeImportBusy = false` em `ThemeEditorPanel.qml`) e
+F-1 (`memoryGb` via o precedente de `sizes.js`).
+
+**O que o plano físico declara (item 7).** Preparado, **não executado**: quatro pré-condições
+externas em ordem, oito cenários com o que cada um prova e o que **não** prova, sanitização de
+capturas pelo precedente de 22/07, e os limites — nenhuma ROM, BIOS, save ou unidade de terceiros
+tocada, reinício é decisão do operador, instalação sujeita à autorização específica e ao fluxo
+governado de `tools/release_host.py`. O bloqueio concreto está escrito no documento: enquanto
+`origin/main` for `3495c49d…`, a coluna **H** é "não" para os treze critérios, e validar o
+conjunto integrado antes do merge seria medir uma árvore que não existe na release.
+
+**Append-only, com o gate.** `scope_digest` exclui `docs/WORKLOG.md` por construção, mas isso não
+dispensa `check_worklog_append_only`: este acréscimo passa por ele, o arquivo tinha 872.988 bytes
+/ 14.157 linhas (sha256 `08fd7958b8a82c01…`) antes de mim, e o `status-check` é relido depois do
+acréscimo. Redação AGENTS.md: nenhum caminho pessoal, nenhum segredo, nenhuma linha de resultado
+tocada — inclusive a frase de verificação do README do lote, que citava o prefixo literalmente e
+agora o descreve.
+
+**Cinco camadas, separadas.** Interface: sim (dobra). Contrato offscreen: sim, e agora com a
+integral do checkpoint na árvore certa. Integrado: **não**. Empacotado: **não** — a prova de
+wheel dos elos 7 e 8 ainda não foi varrida. Experiência na release instalada: **não** — continua
+`2.0.0rc1-e2af2562ebba` (26/09). RC-01 **não** está concluída, e este adendo não a declara
+concluída: ele fecha a entrega do que existe e marca precisamente o que falta.

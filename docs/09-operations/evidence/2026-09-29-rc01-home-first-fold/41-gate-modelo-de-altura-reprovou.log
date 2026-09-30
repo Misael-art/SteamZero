@@ -1,0 +1,80 @@
+........F.F..                                                            [100%]
+=================================== FAILURES ===================================
+_ test_o_cartao_que_duplica_a_faixa_dobra_a_orientacao_e_a_devolve[atencao-maxima] _
+
+cena = 'atencao-maxima'
+
+    @pytest.mark.parametrize("cena", ("atencao-maxima", "atencao-maxima-150", "leitura-sem-dados"))
+    def test_o_cartao_que_duplica_a_faixa_dobra_a_orientacao_e_a_devolve(cena: str) -> None:
+        """A regra do oitavo elo, medida nas duas direções.
+    
+        Quando a faixa de fase já anuncia **exatamente este código** de falha, o
+        cartão entra em forma compacta (`compact` lido da árvore, não presumido). E
+        compactar não é apagar: acionar o "Ver detalhes" do controle tem de devolver
+        as linhas de orientação que a forma estendida mostrava — medida no tick
+        seguinte ao clique, senão seria a geometria antiga.
+        """
+        alvo = _cobra_testemunha_unica(cena)
+        assert _inteiro(alvo, "band") == 1, "sem faixa announcing a falha não há duplicação"
+        assert _inteiro(alvo, "cartoes") == 1, f"a cena {cena!r} perdeu o cartão de erro"
+        assert _inteiro(alvo, "cartao_compacto") == 1, (
+            f"na cena {cena!r} a faixa reporta o MESMO código do cartão, mas o cartão "
+            f"continua na forma estendida — o chrome duplicado não foi tratado"
+        )
+        assert alvo["gatilho"] == "clique", (
+            "o 'Ver detalhes' do cartão compacto não foi encontrado para ser acionado: "
+            "a forma compacta cortou o acesso à orientação"
+        )
+        escala = float(alvo["escala"])
+        ganho = _inteiro(alvo, "cartao_expandido_h") - _inteiro(alvo, "cartao_h")
+        minimo = math.ceil(LINHAS_ORIENTACAO_DOBRADAS * 11 * escala)
+>       assert ganho >= minimo, (
+            f"expandir o cartão compacto cresceu apenas {ganho} px; as linhas de "
+            f"orientação dobradas exigem ao menos {minimo} px em escala {escala} — "
+            f"dobra que não devolve texto é supressão"
+        )
+E       AssertionError: expandir o cartão compacto cresceu apenas 31 px; as linhas de orientação dobradas exigem ao menos 33 px em escala 1.0 — dobra que não devolve texto é supressão
+E       assert 31 >= 33
+
+tests/integration/test_ui_shell_home_first_fold.py:596: AssertionError
+_ test_o_cartao_que_duplica_a_faixa_dobra_a_orientacao_e_a_devolve[leitura-sem-dados] _
+
+cena = 'leitura-sem-dados'
+
+    @pytest.mark.parametrize("cena", ("atencao-maxima", "atencao-maxima-150", "leitura-sem-dados"))
+    def test_o_cartao_que_duplica_a_faixa_dobra_a_orientacao_e_a_devolve(cena: str) -> None:
+        """A regra do oitavo elo, medida nas duas direções.
+    
+        Quando a faixa de fase já anuncia **exatamente este código** de falha, o
+        cartão entra em forma compacta (`compact` lido da árvore, não presumido). E
+        compactar não é apagar: acionar o "Ver detalhes" do controle tem de devolver
+        as linhas de orientação que a forma estendida mostrava — medida no tick
+        seguinte ao clique, senão seria a geometria antiga.
+        """
+        alvo = _cobra_testemunha_unica(cena)
+        assert _inteiro(alvo, "band") == 1, "sem faixa announcing a falha não há duplicação"
+        assert _inteiro(alvo, "cartoes") == 1, f"a cena {cena!r} perdeu o cartão de erro"
+        assert _inteiro(alvo, "cartao_compacto") == 1, (
+            f"na cena {cena!r} a faixa reporta o MESMO código do cartão, mas o cartão "
+            f"continua na forma estendida — o chrome duplicado não foi tratado"
+        )
+        assert alvo["gatilho"] == "clique", (
+            "o 'Ver detalhes' do cartão compacto não foi encontrado para ser acionado: "
+            "a forma compacta cortou o acesso à orientação"
+        )
+        escala = float(alvo["escala"])
+        ganho = _inteiro(alvo, "cartao_expandido_h") - _inteiro(alvo, "cartao_h")
+        minimo = math.ceil(LINHAS_ORIENTACAO_DOBRADAS * 11 * escala)
+>       assert ganho >= minimo, (
+            f"expandir o cartão compacto cresceu apenas {ganho} px; as linhas de "
+            f"orientação dobradas exigem ao menos {minimo} px em escala {escala} — "
+            f"dobra que não devolve texto é supressão"
+        )
+E       AssertionError: expandir o cartão compacto cresceu apenas 31 px; as linhas de orientação dobradas exigem ao menos 33 px em escala 1.0 — dobra que não devolve texto é supressão
+E       assert 31 >= 33
+
+tests/integration/test_ui_shell_home_first_fold.py:596: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/test_ui_shell_home_first_fold.py::test_o_cartao_que_duplica_a_faixa_dobra_a_orientacao_e_a_devolve[atencao-maxima]
+FAILED tests/integration/test_ui_shell_home_first_fold.py::test_o_cartao_que_duplica_a_faixa_dobra_a_orientacao_e_a_devolve[leitura-sem-dados]
+2 failed, 11 passed in 108.01s (0:01:48)

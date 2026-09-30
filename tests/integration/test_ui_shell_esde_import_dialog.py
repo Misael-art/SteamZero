@@ -2,14 +2,14 @@
 """RC-01 (UX-05/UX-07, 4ª fatia) — o diálogo "Importar tema ES-DE" do SHELL.
 
 É o segundo exemplar desse diálogo no produto. O primeiro vive em
-`ThemeEditorPanel.qml` (corrigido na 3ª fatia); este vive em `Main.qml:2879`, aberto
-por um botão da área de diagnósticos da seção Sistema (`Main.qml:6427`). Nada testava
+`ThemeEditorPanel.qml` (corrigido na 3ª fatia); este vive em `Main.qml:2896`, aberto
+por um botão da área de diagnósticos da seção Sistema (`Main.qml:6445`). Nada testava
 este caminho: os `objectName` `theme-import-esde-*` não aparecem em arquivo de teste
 algum antes desta fatia, e é por isso que a mesma classe de defeito sobreviveu aqui.
 
 A diferença de bancada em relação à 3ª fatia é o ponto central: o painel recebe
 `request`/`requestAction` **injetados**, então o harness anterior pôde stubear a
-ponte. O shell não — `Main.qml:967` fala por `XMLHttpRequest` com `shell.apiUrl`.
+ponte. O shell não — `Main.qml:982` fala por `XMLHttpRequest` com `shell.apiUrl`.
 Aqui a ponte é um servidor real em loopback, e os contratos que `requestAction`
 resolve vêm de `desktop_contracts.handheld_ui_contracts()`, a mesma função que o
 produto publica em `/status`. Stub de contrato aqui seria exatamente o erro que a
@@ -408,7 +408,7 @@ class _JourneyHandler(BaseHTTPRequestHandler):
     state: _JourneyState
 
     def _autorizado(self) -> bool:
-        # `Main.qml:987` envia `X-SteamZero-Token` em toda requisição. Exigir aqui
+        # `Main.qml:1002` envia `X-SteamZero-Token` em toda requisição. Exigir aqui
         # é o que faz o verde provar a rota autenticada, e não um POST anônimo.
         return self.headers.get("X-SteamZero-Token") == self.state.token
 
@@ -768,7 +768,7 @@ def test_a_espera_e_observavel_com_limite_e_falha() -> None:
     )
     assert "Qt.callLater" not in fonte, (
         "o harness chama a revelação do foco à mão: quem revela é o produto "
-        "(`Main.qml:837-845`), e o teste só pode ESPERAR o efeito dele"
+        "(`Main.qml:852-860`), e o teste só pode ESPERAR o efeito dele"
     )
     assert not re.search(r"wait\(\s*(?:[3-9]\d\d|\d{4,})\s*\)", fonte), (
         "o harness usa intervalo fixo grande em vez de condição observável"
@@ -827,7 +827,7 @@ def test_a_captura_de_evidencia_existe_e_usa_dados_locais() -> None:
 def test_a_jornada_esde_do_shell_cabe_no_viewport_dado(viewport: str, cenario: str) -> None:
     """abrir → examinar → preencher → navegar → publicar/cancelar, com teclas reais.
 
-    O vermelho desta fatia é medido aqui. No `Main.qml:2879` atual o diálogo não
+    O vermelho desta fatia é medido aqui. No `Main.qml:2896` atual o diálogo não
     declara `height`, o corpo é um `ColumnLayout { anchors.fill: parent }` sem
     mecanismo de rolagem e as ações vivem no fim desse fluxo: com 24 esquemas o
     botão "Importar" fica abaixo do pé da moldura, e nenhuma tecla o alcança.

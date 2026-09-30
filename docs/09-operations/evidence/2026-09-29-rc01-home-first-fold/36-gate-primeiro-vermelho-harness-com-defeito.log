@@ -1,0 +1,286 @@
+FFFFFFF.                                                                 [100%]
+=================================== FAILURES ===================================
+___________ test_a_cena_queta_e_o_denominador_onde_a_dobra_ja_fecha ____________
+
+    def test_a_cena_queta_e_o_denominador_onde_a_dobra_ja_fecha() -> None:
+        """Controle: sem superfície de atenção, o primeiro alvo cabe na dobra.
+    
+        Esta asserção é obrigatoriamente verde antes da correção: se ela já
+        falhasse, o vermelho das cenas de atenção não estaria medindo atenção, e
+        sim uma Home que não fecha nem vazia.
+        """
+>       alvo = _cobra_testemunha_unica("quieto")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/integration/test_ui_shell_home_first_fold.py:385: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/test_ui_shell_home_first_fold.py:368: in _cobra_testemunha_unica
+    testemunha = _testemunha_ou_falha(cena)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cena = 'quieto'
+
+    def _testemunha_ou_falha(cena: str) -> dict[str, str]:
+        """Uma cena sem testemunha é reprovação, não ausência de evidência."""
+        if QML is None:
+            pytest.fail(
+                "QML-VISUAL-ENVIRONMENT-001: qml6 ausente; a geografia da dobra não "
+                "pode ser verificada sem runtime QML, e declarar verde sem renderizar "
+                "é o defeito que a RC-01 combate."
+            )
+        testemunhas, completed = _rodar(cena)
+        saida = completed.stderr or ""
+        assert "FAIL:" not in saida, f"o harness rejeitou a cena {cena!r}:\n{saida[-2000:]}"
+        assert completed.returncode == 0, (
+            f"harness da cena {cena!r} saiu com rc={completed.returncode}:\n{saida[-2000:]}"
+        )
+        faltantes = [chave for chave in TESTEMUNHOS if chave not in testemunhas.get(cena, {})]
+>       assert not faltantes, f"a testemunha de {cena!r} veio incompleta, falta {faltantes}"
+E       AssertionError: a testemunha de 'quieto' veio incompleta, falta ['cena', 'escala', 'band', 'banner', 'ponte', 'erros', 'cartoes', 'scroll_h', 'home_h', 'primeiro', 'primeiro_y', 'primeiro_h', 'primeiro_visivel', 'pend_y', 'pend_h', 'cartao_h', 'cartao_diag', 'cartao_detalhe', 'cartao_alvo_h', 'alvos']
+E       assert not ['cena', 'escala', 'band', 'banner', 'ponte', 'erros', ...]
+
+tests/integration/test_ui_shell_home_first_fold.py:359: AssertionError
+_ test_no_pior_caso_alcancavel_o_primeiro_alvo_ainda_cabe_na_dobra[atencao-maxima] _
+
+cena = 'atencao-maxima'
+
+    @pytest.mark.parametrize("cena", ("atencao-maxima", "atencao-maxima-150"))
+    def test_no_pior_caso_alcancavel_o_primeiro_alvo_ainda_cabe_na_dobra(cena: str) -> None:
+        """A alegação da oitava fatia, em 100 % e em 150 % de escala de texto.
+    
+        A cena é alcançável pelos bindings reais: leitura boa com verdade degradada
+        e conflito (banner), seguida de renovação recusada com dados preservados
+        (faixa) — e o MESMO código de falha empilhando um cartão de erro.
+        """
+>       alvo = _cobra_testemunha_unica(cena)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/integration/test_ui_shell_home_first_fold.py:409: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/test_ui_shell_home_first_fold.py:368: in _cobra_testemunha_unica
+    testemunha = _testemunha_ou_falha(cena)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cena = 'atencao-maxima'
+
+    def _testemunha_ou_falha(cena: str) -> dict[str, str]:
+        """Uma cena sem testemunha é reprovação, não ausência de evidência."""
+        if QML is None:
+            pytest.fail(
+                "QML-VISUAL-ENVIRONMENT-001: qml6 ausente; a geografia da dobra não "
+                "pode ser verificada sem runtime QML, e declarar verde sem renderizar "
+                "é o defeito que a RC-01 combate."
+            )
+        testemunhas, completed = _rodar(cena)
+        saida = completed.stderr or ""
+        assert "FAIL:" not in saida, f"o harness rejeitou a cena {cena!r}:\n{saida[-2000:]}"
+        assert completed.returncode == 0, (
+            f"harness da cena {cena!r} saiu com rc={completed.returncode}:\n{saida[-2000:]}"
+        )
+        faltantes = [chave for chave in TESTEMUNHOS if chave not in testemunhas.get(cena, {})]
+>       assert not faltantes, f"a testemunha de {cena!r} veio incompleta, falta {faltantes}"
+E       AssertionError: a testemunha de 'atencao-maxima' veio incompleta, falta ['cena', 'escala', 'band', 'banner', 'ponte', 'erros', 'cartoes', 'scroll_h', 'home_h', 'primeiro', 'primeiro_y', 'primeiro_h', 'primeiro_visivel', 'pend_y', 'pend_h', 'cartao_h', 'cartao_diag', 'cartao_detalhe', 'cartao_alvo_h', 'alvos']
+E       assert not ['cena', 'escala', 'band', 'banner', 'ponte', 'erros', ...]
+
+tests/integration/test_ui_shell_home_first_fold.py:359: AssertionError
+_ test_no_pior_caso_alcancavel_o_primeiro_alvo_ainda_cabe_na_dobra[atencao-maxima-150] _
+
+cena = 'atencao-maxima-150'
+
+    @pytest.mark.parametrize("cena", ("atencao-maxima", "atencao-maxima-150"))
+    def test_no_pior_caso_alcancavel_o_primeiro_alvo_ainda_cabe_na_dobra(cena: str) -> None:
+        """A alegação da oitava fatia, em 100 % e em 150 % de escala de texto.
+    
+        A cena é alcançável pelos bindings reais: leitura boa com verdade degradada
+        e conflito (banner), seguida de renovação recusada com dados preservados
+        (faixa) — e o MESMO código de falha empilhando um cartão de erro.
+        """
+>       alvo = _cobra_testemunha_unica(cena)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/integration/test_ui_shell_home_first_fold.py:409: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/test_ui_shell_home_first_fold.py:368: in _cobra_testemunha_unica
+    testemunha = _testemunha_ou_falha(cena)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cena = 'atencao-maxima-150'
+
+    def _testemunha_ou_falha(cena: str) -> dict[str, str]:
+        """Uma cena sem testemunha é reprovação, não ausência de evidência."""
+        if QML is None:
+            pytest.fail(
+                "QML-VISUAL-ENVIRONMENT-001: qml6 ausente; a geografia da dobra não "
+                "pode ser verificada sem runtime QML, e declarar verde sem renderizar "
+                "é o defeito que a RC-01 combate."
+            )
+        testemunhas, completed = _rodar(cena)
+        saida = completed.stderr or ""
+        assert "FAIL:" not in saida, f"o harness rejeitou a cena {cena!r}:\n{saida[-2000:]}"
+        assert completed.returncode == 0, (
+            f"harness da cena {cena!r} saiu com rc={completed.returncode}:\n{saida[-2000:]}"
+        )
+        faltantes = [chave for chave in TESTEMUNHOS if chave not in testemunhas.get(cena, {})]
+>       assert not faltantes, f"a testemunha de {cena!r} veio incompleta, falta {faltantes}"
+E       AssertionError: a testemunha de 'atencao-maxima-150' veio incompleta, falta ['cena', 'escala', 'band', 'banner', 'ponte', 'erros', 'cartoes', 'scroll_h', 'home_h', 'primeiro', 'primeiro_y', 'primeiro_h', 'primeiro_visivel', 'pend_y', 'pend_h', 'cartao_h', 'cartao_diag', 'cartao_detalhe', 'cartao_alvo_h', 'alvos']
+E       assert not ['cena', 'escala', 'band', 'banner', 'ponte', 'erros', ...]
+
+tests/integration/test_ui_shell_home_first_fold.py:359: AssertionError
+_____ test_a_correcao_nao_pode_esconder_as_acoes_do_cartao[atencao-maxima] _____
+
+cena = 'atencao-maxima'
+
+    @pytest.mark.parametrize("cena", ("atencao-maxima", "atencao-maxima-150"))
+    def test_a_correcao_nao_pode_esconder_as_acoes_do_cartao(cena: str) -> None:
+        """Guarda de informação: o que encolhe é a altura, nunca o alcance.
+    
+        Se a dobra fosse "corrigida" sumindo com o cartão, ou deixando-o sem os
+        botões de diagnóstico e de detalhes, esta asserção reprova — e AGENTS §8
+        (falha degrada, não trava) deixa de ser intenção declarada.
+        """
+>       alvo = _cobra_testemunha_unica(cena)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/integration/test_ui_shell_home_first_fold.py:444: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/test_ui_shell_home_first_fold.py:368: in _cobra_testemunha_unica
+    testemunha = _testemunha_ou_falha(cena)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cena = 'atencao-maxima'
+
+    def _testemunha_ou_falha(cena: str) -> dict[str, str]:
+        """Uma cena sem testemunha é reprovação, não ausência de evidência."""
+        if QML is None:
+            pytest.fail(
+                "QML-VISUAL-ENVIRONMENT-001: qml6 ausente; a geografia da dobra não "
+                "pode ser verificada sem runtime QML, e declarar verde sem renderizar "
+                "é o defeito que a RC-01 combate."
+            )
+        testemunhas, completed = _rodar(cena)
+        saida = completed.stderr or ""
+        assert "FAIL:" not in saida, f"o harness rejeitou a cena {cena!r}:\n{saida[-2000:]}"
+        assert completed.returncode == 0, (
+            f"harness da cena {cena!r} saiu com rc={completed.returncode}:\n{saida[-2000:]}"
+        )
+        faltantes = [chave for chave in TESTEMUNHOS if chave not in testemunhas.get(cena, {})]
+>       assert not faltantes, f"a testemunha de {cena!r} veio incompleta, falta {faltantes}"
+E       AssertionError: a testemunha de 'atencao-maxima' veio incompleta, falta ['cena', 'escala', 'band', 'banner', 'ponte', 'erros', 'cartoes', 'scroll_h', 'home_h', 'primeiro', 'primeiro_y', 'primeiro_h', 'primeiro_visivel', 'pend_y', 'pend_h', 'cartao_h', 'cartao_diag', 'cartao_detalhe', 'cartao_alvo_h', 'alvos']
+E       assert not ['cena', 'escala', 'band', 'banner', 'ponte', 'erros', ...]
+
+tests/integration/test_ui_shell_home_first_fold.py:359: AssertionError
+___ test_a_correcao_nao_pode_esconder_as_acoes_do_cartao[atencao-maxima-150] ___
+
+cena = 'atencao-maxima-150'
+
+    @pytest.mark.parametrize("cena", ("atencao-maxima", "atencao-maxima-150"))
+    def test_a_correcao_nao_pode_esconder_as_acoes_do_cartao(cena: str) -> None:
+        """Guarda de informação: o que encolhe é a altura, nunca o alcance.
+    
+        Se a dobra fosse "corrigida" sumindo com o cartão, ou deixando-o sem os
+        botões de diagnóstico e de detalhes, esta asserção reprova — e AGENTS §8
+        (falha degrada, não trava) deixa de ser intenção declarada.
+        """
+>       alvo = _cobra_testemunha_unica(cena)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/integration/test_ui_shell_home_first_fold.py:444: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/test_ui_shell_home_first_fold.py:368: in _cobra_testemunha_unica
+    testemunha = _testemunha_ou_falha(cena)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cena = 'atencao-maxima-150'
+
+    def _testemunha_ou_falha(cena: str) -> dict[str, str]:
+        """Uma cena sem testemunha é reprovação, não ausência de evidência."""
+        if QML is None:
+            pytest.fail(
+                "QML-VISUAL-ENVIRONMENT-001: qml6 ausente; a geografia da dobra não "
+                "pode ser verificada sem runtime QML, e declarar verde sem renderizar "
+                "é o defeito que a RC-01 combate."
+            )
+        testemunhas, completed = _rodar(cena)
+        saida = completed.stderr or ""
+        assert "FAIL:" not in saida, f"o harness rejeitou a cena {cena!r}:\n{saida[-2000:]}"
+        assert completed.returncode == 0, (
+            f"harness da cena {cena!r} saiu com rc={completed.returncode}:\n{saida[-2000:]}"
+        )
+        faltantes = [chave for chave in TESTEMUNHOS if chave not in testemunhas.get(cena, {})]
+>       assert not faltantes, f"a testemunha de {cena!r} veio incompleta, falta {faltantes}"
+E       AssertionError: a testemunha de 'atencao-maxima-150' veio incompleta, falta ['cena', 'escala', 'band', 'banner', 'ponte', 'erros', 'cartoes', 'scroll_h', 'home_h', 'primeiro', 'primeiro_y', 'primeiro_h', 'primeiro_visivel', 'pend_y', 'pend_h', 'cartao_h', 'cartao_diag', 'cartao_detalhe', 'cartao_alvo_h', 'alvos']
+E       assert not ['cena', 'escala', 'band', 'banner', 'ponte', 'erros', ...]
+
+tests/integration/test_ui_shell_home_first_fold.py:359: AssertionError
+_________ test_sem_dados_preservados_o_cartao_ainda_e_o_unico_anuncio __________
+
+    def test_sem_dados_preservados_o_cartao_ainda_e_o_unico_anuncio() -> None:
+        """A faixa só existe com dado preservado; sem ele o cartão é insubstituível.
+    
+        `statusBandVisible` é `statusIsLoading || statusStale` (`Main.qml:417`). Com a
+        primeira leitura recusada não há o que preservar, a fase vira `error` e a
+        faixa não acende. Uma correção que suprimisse o cartão "porque a faixa já
+        avisa" apagaria o único aviso que existe nessa jornada.
+        """
+>       alvo = _cobra_testemunha_unica("leitura-sem-dados")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/integration/test_ui_shell_home_first_fold.py:472: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/test_ui_shell_home_first_fold.py:368: in _cobra_testemunha_unica
+    testemunha = _testemunha_ou_falha(cena)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cena = 'leitura-sem-dados'
+
+    def _testemunha_ou_falha(cena: str) -> dict[str, str]:
+        """Uma cena sem testemunha é reprovação, não ausência de evidência."""
+        if QML is None:
+            pytest.fail(
+                "QML-VISUAL-ENVIRONMENT-001: qml6 ausente; a geografia da dobra não "
+                "pode ser verificada sem runtime QML, e declarar verde sem renderizar "
+                "é o defeito que a RC-01 combate."
+            )
+        testemunhas, completed = _rodar(cena)
+        saida = completed.stderr or ""
+>       assert "FAIL:" not in saida, f"o harness rejeitou a cena {cena!r}:\n{saida[-2000:]}"
+E       AssertionError: o harness rejeitou a cena 'leitura-sem-dados':
+E         critical|FAIL: a cena leitura-sem-dados não produziu testemunha (band=1 banner=0 erros=1)
+E         
+E       assert 'FAIL:' not in 'critical|FA...0 erros=1)\n'
+E         
+E         'FAIL:' is contained here:
+E           critical|FAIL: a cena leitura-sem-dados não produziu testemunha (band=1 banner=0 erros=1)
+E         ?          +++++
+
+tests/integration/test_ui_shell_home_first_fold.py:354: AssertionError
+_ test_a_ponte_da_cena_de_atencao_recusa_a_renovacao_e_nao_a_primeira_leitura __
+
+    def test_a_ponte_da_cena_de_atencao_recusa_a_renovacao_e_nao_a_primeira_leitura() -> None:
+        """Guarda sem Qt: o vermelho vem da renovação, não de uma ponte quebrada.
+    
+        Se a cena de atenção recusasse a primeira leitura, a Home nunca teria dados,
+        o banner não acenderia, e a dobra alegada seria outra cena.
+        """
+        for cena in ("atencao-maxima", "atencao-maxima-150"):
+            testemunha, _completed = _rodar(cena)
+>           alvo = testemunha[cena]
+                   ^^^^^^^^^^^^^^^^
+E           KeyError: 'atencao-maxima'
+
+tests/integration/test_ui_shell_home_first_fold.py:492: KeyError
+=========================== short test summary info ============================
+FAILED tests/integration/test_ui_shell_home_first_fold.py::test_a_cena_queta_e_o_denominador_onde_a_dobra_ja_fecha
+FAILED tests/integration/test_ui_shell_home_first_fold.py::test_no_pior_caso_alcancavel_o_primeiro_alvo_ainda_cabe_na_dobra[atencao-maxima]
+FAILED tests/integration/test_ui_shell_home_first_fold.py::test_no_pior_caso_alcancavel_o_primeiro_alvo_ainda_cabe_na_dobra[atencao-maxima-150]
+FAILED tests/integration/test_ui_shell_home_first_fold.py::test_a_correcao_nao_pode_esconder_as_acoes_do_cartao[atencao-maxima]
+FAILED tests/integration/test_ui_shell_home_first_fold.py::test_a_correcao_nao_pode_esconder_as_acoes_do_cartao[atencao-maxima-150]
+FAILED tests/integration/test_ui_shell_home_first_fold.py::test_sem_dados_preservados_o_cartao_ainda_e_o_unico_anuncio
+FAILED tests/integration/test_ui_shell_home_first_fold.py::test_a_ponte_da_cena_de_atencao_recusa_a_renovacao_e_nao_a_primeira_leitura
+7 failed, 1 passed in 57.80s

@@ -1,0 +1,39 @@
+# sonda de geografia da dobra — comando:
+#   PROBE_ESC=<vazio|1.5> .venv/bin/python ~/steamzero-retrofe-tmp/probe_fold.py
+# qml6=/usr/sbin/qml6, cena = ponte _CentralLoadingHandler do gate existente (chamada 2 -> 500)
+
+## escala 100%
+   qml: OBS|t3|janela=1280x800|compact=1|band=1|banner=0|ponte=0|erros=0|stack_h=643|scroll_h=643|home_h=1030|pend=overview.open-system|pend_y=590|pend_h=48|pend_visivel=1|rec=overview.open-recent|rec_y=
+      ALVO|overview.open-library|y=410|h=48|vis=1
+      ALVO|overview.open-system|y=590|h=48|vis=1
+      ALVO|overview.open-recent|y=590|h=48|vis=1
+      ALVO|overview.all-systems|y=674|h=48|vis=1
+   qml: OBS|t8-primeira-leitura|janela=1280x800|compact=1|band=0|banner=1|ponte=0|erros=0|stack_h=631|scroll_h=631|home_h=1030|pend=overview.open-system|pend_y=590|pend_h=48|pend_visivel=1|rec=overview.o
+      ALVO|overview.open-library|y=410|h=48|vis=1
+      ALVO|overview.open-system|y=590|h=48|vis=1
+      ALVO|overview.open-recent|y=590|h=48|vis=1
+      ALVO|overview.all-systems|y=674|h=48|vis=1
+   qml: OBS|t12-pos-renovacao|janela=1280x800|compact=1|band=1|banner=1|ponte=0|erros=1|stack_h=421|scroll_h=421|home_h=1030|pend=overview.open-system|pend_y=590|pend_h=48|pend_visivel=1|rec=overview.ope
+      ALVO|overview.open-library|y=410|h=48|vis=1
+      ALVO|overview.open-system|y=590|h=48|vis=1
+      ALVO|overview.open-recent|y=590|h=48|vis=1
+      ALVO|overview.all-systems|y=674|h=48|vis=1
+--- rc=0 chamadas=2
+
+## escala 150% (dashboard.accessibility.visualScale=1.5)
+   qml: OBS|t3|janela=1280x800|compact=1|band=1|banner=0|ponte=0|erros=0|stack_h=643|scroll_h=643|home_h=1030|pend=overview.open-system|pend_y=590|pend_h=48|pend_visivel=1|rec=overview.open-recent|rec_y=
+      ALVO|overview.open-library|y=410|h=48|vis=1
+      ALVO|overview.open-system|y=590|h=48|vis=1
+      ALVO|overview.open-recent|y=590|h=48|vis=1
+      ALVO|overview.all-systems|y=674|h=48|vis=1
+   qml: OBS|t8-primeira-leitura|janela=1280x800|compact=1|band=0|banner=1|ponte=0|erros=0|stack_h=631|scroll_h=631|home_h=1089|pend=overview.open-system|pend_y=605|pend_h=57|pend_visivel=1|rec=overview.o
+      ALVO|overview.open-library|y=425|h=57|vis=1
+      ALVO|overview.open-system|y=605|h=57|vis=1
+      ALVO|overview.open-recent|y=605|h=57|vis=1
+      ALVO|overview.all-systems|y=698|h=57|vis=1
+   qml: OBS|t12-pos-renovacao|janela=1280x800|compact=1|band=1|banner=1|ponte=0|erros=1|stack_h=384|scroll_h=384|home_h=1089|pend=overview.open-system|pend_y=605|pend_h=57|pend_visivel=1|rec=overview.ope
+      ALVO|overview.open-library|y=425|h=57|vis=1
+      ALVO|overview.open-system|y=605|h=57|vis=1
+      ALVO|overview.open-recent|y=605|h=57|vis=1
+      ALVO|overview.all-systems|y=698|h=57|vis=1
+--- rc=0 chamadas=2

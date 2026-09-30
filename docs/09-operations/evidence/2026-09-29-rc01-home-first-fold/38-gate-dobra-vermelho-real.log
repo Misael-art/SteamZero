@@ -1,0 +1,183 @@
+.FFFFF..                                                                 [100%]
+=================================== FAILURES ===================================
+_ test_no_pior_caso_alcancavel_o_primeiro_alvo_ainda_cabe_na_dobra[atencao-maxima] _
+
+cena = 'atencao-maxima'
+
+    @pytest.mark.parametrize("cena", ("atencao-maxima", "atencao-maxima-150"))
+    def test_no_pior_caso_alcancavel_o_primeiro_alvo_ainda_cabe_na_dobra(cena: str) -> None:
+        """A alegação da oitava fatia, em 100 % e em 150 % de escala de texto.
+    
+        A cena é alcançável pelos bindings reais: leitura boa com verdade degradada
+        e conflito (banner), seguida de renovação recusada com dados preservados
+        (faixa) — e o MESMO código de falha empilhando um cartão de erro.
+        """
+        alvo = _cobra_testemunha_unica(cena)
+        escala = float(alvo["escala"])
+        assert escala >= 1.49 or cena == "atencao-maxima", (
+            f"a cena {cena!r} pediu escala 1,5 e o shell renderizou a {escala}"
+        )
+        # As três superfícies têm de estar efetivamente empilhadas, ou a asserção
+        # de dobra estaria sendo satisfeita por uma cena que não é o pior caso.
+        assert _inteiro(alvo, "band") == 1, "a faixa de fase não acendeu na cena de atenção"
+        assert _inteiro(alvo, "banner") == 1, "o banner de atenção não acendeu na cena"
+        assert _inteiro(alvo, "cartoes") >= 1, (
+            "o cartão de erro da leitura recusada não apareceu — a cena não é o "
+            "pior caso que este gate declara medir"
+        )
+        assert _inteiro(alvo, "ponte") == 0, (
+            "a ponte ficou indisponível: com `apiUrl`/`apiToken` presentes isso não "
+            "deve acontecer, e a cena teria mudado de significado"
+        )
+        fundo = _inteiro(alvo, "primeiro_y") + _inteiro(alvo, "primeiro_h")
+        visivel = _inteiro(alvo, "scroll_h")
+        assert _inteiro(alvo, "primeiro_visivel") == 1
+>       assert fundo <= visivel, (
+            f"no pior caso alcançável ({cena}) o primeiro alvo acionável da Home "
+            f"termina em {fundo} px, abaixo da banda visível de {visivel} px — "
+            f"ficam {fundo - visivel} px fora da dobra"
+        )
+E       AssertionError: no pior caso alcançável (atencao-maxima) o primeiro alvo acionável da Home termina em 449 px, abaixo da banda visível de 434 px — ficam 15 px fora da dobra
+E       assert 449 <= 434
+
+tests/integration/test_ui_shell_home_first_fold.py:448: AssertionError
+_ test_no_pior_caso_alcancavel_o_primeiro_alvo_ainda_cabe_na_dobra[atencao-maxima-150] _
+
+cena = 'atencao-maxima-150'
+
+    @pytest.mark.parametrize("cena", ("atencao-maxima", "atencao-maxima-150"))
+    def test_no_pior_caso_alcancavel_o_primeiro_alvo_ainda_cabe_na_dobra(cena: str) -> None:
+        """A alegação da oitava fatia, em 100 % e em 150 % de escala de texto.
+    
+        A cena é alcançável pelos bindings reais: leitura boa com verdade degradada
+        e conflito (banner), seguida de renovação recusada com dados preservados
+        (faixa) — e o MESMO código de falha empilhando um cartão de erro.
+        """
+        alvo = _cobra_testemunha_unica(cena)
+        escala = float(alvo["escala"])
+        assert escala >= 1.49 or cena == "atencao-maxima", (
+            f"a cena {cena!r} pediu escala 1,5 e o shell renderizou a {escala}"
+        )
+        # As três superfícies têm de estar efetivamente empilhadas, ou a asserção
+        # de dobra estaria sendo satisfeita por uma cena que não é o pior caso.
+        assert _inteiro(alvo, "band") == 1, "a faixa de fase não acendeu na cena de atenção"
+        assert _inteiro(alvo, "banner") == 1, "o banner de atenção não acendeu na cena"
+        assert _inteiro(alvo, "cartoes") >= 1, (
+            "o cartão de erro da leitura recusada não apareceu — a cena não é o "
+            "pior caso que este gate declara medir"
+        )
+        assert _inteiro(alvo, "ponte") == 0, (
+            "a ponte ficou indisponível: com `apiUrl`/`apiToken` presentes isso não "
+            "deve acontecer, e a cena teria mudado de significado"
+        )
+        fundo = _inteiro(alvo, "primeiro_y") + _inteiro(alvo, "primeiro_h")
+        visivel = _inteiro(alvo, "scroll_h")
+        assert _inteiro(alvo, "primeiro_visivel") == 1
+>       assert fundo <= visivel, (
+            f"no pior caso alcançável ({cena}) o primeiro alvo acionável da Home "
+            f"termina em {fundo} px, abaixo da banda visível de {visivel} px — "
+            f"ficam {fundo - visivel} px fora da dobra"
+        )
+E       AssertionError: no pior caso alcançável (atencao-maxima-150) o primeiro alvo acionável da Home termina em 468 px, abaixo da banda visível de 405 px — ficam 63 px fora da dobra
+E       assert 468 <= 405
+
+tests/integration/test_ui_shell_home_first_fold.py:448: AssertionError
+_____ test_a_correcao_nao_pode_esconder_as_acoes_do_cartao[atencao-maxima] _____
+
+cena = 'atencao-maxima'
+
+    @pytest.mark.parametrize("cena", ("atencao-maxima", "atencao-maxima-150"))
+    def test_a_correcao_nao_pode_esconder_as_acoes_do_cartao(cena: str) -> None:
+        """Guarda de informação: o que encolhe é a altura, nunca o alcance.
+    
+        Se a dobra fosse "corrigida" sumindo com o cartão, ou deixando-o sem os
+        botões de diagnóstico e de detalhes, esta asserção reprova — e AGENTS §8
+        (falha degrada, não trava) deixa de ser intenção declarada.
+        """
+        alvo = _cobra_testemunha_unica(cena)
+        assert _inteiro(alvo, "cartoes") >= 1, f"a cena {cena!r} perdeu o cartão de erro"
+        assert _inteiro(alvo, "cartao_diag") == 1, (
+            "o cartão perdeu o botão 'Exportar diagnóstico': a correção cortou ação"
+        )
+        assert _inteiro(alvo, "cartao_detalhe") == 1, (
+            "o cartão perdeu o botão de detalhes: a correção cortou acesso à causa"
+        )
+>       assert _inteiro(alvo, "cartao_alvo_h") >= ALVO_MINIMO, (
+            f"o alvo de diagnóstico do cartão mede {_inteiro(alvo, 'cartao_alvo_h')} px, "
+            f"abaixo dos {ALVO_MINIMO} px do contrato de alcance"
+        )
+E       AssertionError: o alvo de diagnóstico do cartão mede 36 px, abaixo dos 48 px do contrato de alcance
+E       assert 36 >= 48
+E        +  where 36 = _inteiro({'cena': 'atencao-maxima', 'escala': '1', 'band': '1', 'banner': '1', ...}, 'cartao_alvo_h')
+
+tests/integration/test_ui_shell_home_first_fold.py:471: AssertionError
+___ test_a_correcao_nao_pode_esconder_as_acoes_do_cartao[atencao-maxima-150] ___
+
+cena = 'atencao-maxima-150'
+
+    @pytest.mark.parametrize("cena", ("atencao-maxima", "atencao-maxima-150"))
+    def test_a_correcao_nao_pode_esconder_as_acoes_do_cartao(cena: str) -> None:
+        """Guarda de informação: o que encolhe é a altura, nunca o alcance.
+    
+        Se a dobra fosse "corrigida" sumindo com o cartão, ou deixando-o sem os
+        botões de diagnóstico e de detalhes, esta asserção reprova — e AGENTS §8
+        (falha degrada, não trava) deixa de ser intenção declarada.
+        """
+        alvo = _cobra_testemunha_unica(cena)
+        assert _inteiro(alvo, "cartoes") >= 1, f"a cena {cena!r} perdeu o cartão de erro"
+        assert _inteiro(alvo, "cartao_diag") == 1, (
+            "o cartão perdeu o botão 'Exportar diagnóstico': a correção cortou ação"
+        )
+        assert _inteiro(alvo, "cartao_detalhe") == 1, (
+            "o cartão perdeu o botão de detalhes: a correção cortou acesso à causa"
+        )
+>       assert _inteiro(alvo, "cartao_alvo_h") >= ALVO_MINIMO, (
+            f"o alvo de diagnóstico do cartão mede {_inteiro(alvo, 'cartao_alvo_h')} px, "
+            f"abaixo dos {ALVO_MINIMO} px do contrato de alcance"
+        )
+E       AssertionError: o alvo de diagnóstico do cartão mede 36 px, abaixo dos 48 px do contrato de alcance
+E       assert 36 >= 48
+E        +  where 36 = _inteiro({'cena': 'atencao-maxima-150', 'escala': '1.5', 'band': '1', 'banner': '1', ...}, 'cartao_alvo_h')
+
+tests/integration/test_ui_shell_home_first_fold.py:471: AssertionError
+___ test_sem_dados_preservados_a_faixa_e_de_erro_e_o_cartao_guarda_as_acoes ____
+
+    def test_sem_dados_preservados_a_faixa_e_de_erro_e_o_cartao_guarda_as_acoes() -> None:
+        """Sem dados, a faixa acende pela variante de erro — e o cartão não sobra.
+    
+        Medido: com a primeira leitura recusada, `statusPhase` vira `error`
+        (`Main.qml:1231`), `statusBandIsError` (`:415`) põe a faixa na tela, e o
+        mesmo código empilha um cartão. Diferente da cena de atenção, aqui **não há
+        verdade preservada** e o banner não existe: a faixa anuncia o fato, mas só o
+        cartão tem detalhes e exportação. Uma correção que colapsasse o cartão
+        "porque a faixa já avisa" apagaria a única saída de diagnóstico dessa
+        jornada, e esta asserção reprova.
+        """
+        alvo = _cobra_testemunha_unica("leitura-sem-dados")
+        assert _inteiro(alvo, "band") == 1, (
+            "a faixa de erro não acendeu com a primeira leitura recusada: a cena "
+            "deixou de ser a que este gate declara medir"
+        )
+        assert _inteiro(alvo, "banner") == 0, "sem leitura bem-sucedida não há verdade a julgar"
+        assert _inteiro(alvo, "ponte") == 0
+        assert _inteiro(alvo, "cartoes") == 1, (
+            "o cartão de erro sumiu na única cena sem verdade preservada"
+        )
+        assert _inteiro(alvo, "cartao_diag") == 1
+        assert _inteiro(alvo, "cartao_detalhe") == 1
+>       assert _inteiro(alvo, "cartao_alvo_h") >= ALVO_MINIMO, (
+            f"nessa jornada o alvo de diagnóstico é a única saída e mede "
+            f"{_inteiro(alvo, 'cartao_alvo_h')} px, abaixo dos {ALVO_MINIMO} px do contrato"
+        )
+E       AssertionError: nessa jornada o alvo de diagnóstico é a única saída e mede 36 px, abaixo dos 48 px do contrato
+E       assert 36 >= 48
+E        +  where 36 = _inteiro({'cena': 'leitura-sem-dados', 'escala': '1', 'band': '1', 'banner': '0', ...}, 'cartao_alvo_h')
+
+tests/integration/test_ui_shell_home_first_fold.py:506: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/test_ui_shell_home_first_fold.py::test_no_pior_caso_alcancavel_o_primeiro_alvo_ainda_cabe_na_dobra[atencao-maxima]
+FAILED tests/integration/test_ui_shell_home_first_fold.py::test_no_pior_caso_alcancavel_o_primeiro_alvo_ainda_cabe_na_dobra[atencao-maxima-150]
+FAILED tests/integration/test_ui_shell_home_first_fold.py::test_a_correcao_nao_pode_esconder_as_acoes_do_cartao[atencao-maxima]
+FAILED tests/integration/test_ui_shell_home_first_fold.py::test_a_correcao_nao_pode_esconder_as_acoes_do_cartao[atencao-maxima-150]
+FAILED tests/integration/test_ui_shell_home_first_fold.py::test_sem_dados_preservados_a_faixa_e_de_erro_e_o_cartao_guarda_as_acoes
+5 failed, 3 passed in 72.54s (0:01:12)

@@ -7,7 +7,7 @@ real. As três anteriores (`check_retrofe_import_dialog_compact_viewport.qml`,
 callbacks DENTRO do stub: sincronia não exercita atraso, e por construção a resposta
 nunca chega depois de a superfície ter mudado. Aqui a ponte é um `ThreadingHTTPServer`
 real em loopback que DORME antes de responder, e o cliente é o `XMLHttpRequest` do
-produto (`Main.qml:986`, `timeout` `:997`).
+produto (`Main.qml:1001`, `timeout` `:1012`).
 
 O que se prova, cena por cena, está no cabeçalho de
 `tests/qml/check_shell_retrofe_import_late_response.qml`. Este arquivo acrescenta as
@@ -116,7 +116,7 @@ ORIGENS: dict[str, dict[str, object]] = {
 #: log da ponte, e a cena de captura do `test_01` depende disso para ser real.
 #:
 #: Os dois cliques recusados (`test_08`, `test_09`) NÃO entram nesta conta:
-#: `Main.qml:1119` devolve `false` antes de construir o `XMLHttpRequest`. A conta sobe
+#: `Main.qml:1134` devolve `false` antes de construir o `XMLHttpRequest`. A conta sobe
 #: só com os examines reais, e é exatamente isso que `test_o_clique_recusado_nao_chegou_
 #: a_ponte` reconcilia — se a recusa fosse muda apenas no cliente, a origem apareceria
 #: duas vezes no log e a cena estaria provando outra coisa.
@@ -352,7 +352,7 @@ class _LateResponseHandler(BaseHTTPRequestHandler):
     state: _LateResponseState
 
     def _autorizado(self) -> bool:
-        # `Main.qml:996` envia `X-SteamZero-Token` em toda requisição.
+        # `Main.qml:1011` envia `X-SteamZero-Token` em toda requisição.
         return self.headers.get("X-SteamZero-Token") == self.state.token
 
     def do_GET(self) -> None:
@@ -740,7 +740,7 @@ def test_o_harness_nao_pode_stubear_a_ponte_nem_a_callback() -> None:
 def test_a_espera_e_observavel_e_a_limpeza_testa_quiescencia() -> None:
     fonte = _harness_source()
     assert "Qt.callLater" not in fonte, (
-        "quem revela o foco é o produto (`Main.qml:838-844`); o teste espera o efeito"
+        "quem revela o foco é o produto (`Main.qml:853-859`); o teste espera o efeito"
     )
     assert not re.search(r"wait\(\s*(?:[3-9]\d\d|\d{4,})\s*\)", fonte), (
         "o harness usa intervalo fixo grande em vez de condição observável"
@@ -788,7 +788,7 @@ def test_a_ponte_publica_o_contrato_verdadeiro_e_atrasa_de_verdade() -> None:
 def test_o_contrato_da_ponte_bate_com_a_leitura_do_produto() -> None:
     """A ponte não pode servir um contrato que o produto não publica.
 
-    `Main.qml:1061` resolve a ação por `uiContracts.byId`, e o catálogo é o que
+    `Main.qml:1076` resolve a ação por `uiContracts.byId`, e o catálogo é o que
     `handheld_ui_contracts()` publica em `/status`. Se o id, o método ou o endpoint
     divergir do produto, a jornada exercita a ponte e não o shell.
     """

@@ -9,6 +9,10 @@ Rectangle {
     property var errorObject: ({})
     property bool critical: false
     property bool detailed: false
+    // O shell já anuncia esta mesma falha numa superfície persistente (a faixa
+    // de fase). Compacto é a forma duplicada: mantém título e todas as ações e
+    // leva a orientação para dentro do "Ver detalhes", que já existia.
+    property bool compact: false
     property string areaColor: "#d5b47d"
     property string areaIcon: "dialog-warning"
     property string codeLabel: ""
@@ -111,8 +115,10 @@ Rectangle {
                         opacity: 0.7
                     }
                 }
+                // Em compacto a prosa de orientação mora atrás do "Ver detalhes":
+                // mesma informação, um anúncio só.
                 Label {
-                    visible: whatLabel.length > 0
+                    visible: whatLabel.length > 0 && (!card.compact || card.detailed)
                     text: whatLabel
                     color: "#f2f6fb"
                     font.pixelSize: Math.round(12 * card.visualScale)
@@ -120,45 +126,36 @@ Rectangle {
                     Layout.fillWidth: true
                 }
                 Label {
-                    visible: impactLabel.length > 0
+                    visible: impactLabel.length > 0 && (!card.compact || card.detailed)
                     text: qsTr("Impacto: ") + impactLabel
                     color: "#d5b47d"
                     font.pixelSize: Math.round(11 * card.visualScale)
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
                 }
+                Label {
+                    visible: autoActionLabel.length > 0 && (!card.compact || card.detailed)
+                    text: qsTr("Ação automática: ") + autoActionLabel
+                    color: "#59d35d"
+                    font.pixelSize: Math.round(11 * card.visualScale)
+                    font.italic: true
+                    Layout.fillWidth: true
+                }
+                Label {
+                    visible: manualActionLabel.length > 0 && (!card.compact || card.detailed)
+                    text: qsTr("Orientação: ") + manualActionLabel
+                    color: "#f2f6fb"
+                    font.pixelSize: Math.round(11 * card.visualScale)
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
             }
-        }
-
-        Label {
-            visible: autoActionLabel.length > 0
-            text: qsTr("Ação automática: ") + autoActionLabel
-            color: "#59d35d"
-            font.pixelSize: Math.round(11 * card.visualScale)
-            font.italic: true
-            Layout.fillWidth: true
-            Layout.leftMargin: 36
-        }
-
-        Label {
-            visible: manualActionLabel.length > 0
-            text: qsTr("Orientação: ") + manualActionLabel
-            color: "#f2f6fb"
-            font.pixelSize: Math.round(11 * card.visualScale)
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-            Layout.leftMargin: 36
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.leftMargin: 36
-            spacing: 8
             Button {
                 id: detailButton
                 text: detailed ? qsTr("Ocultar detalhes") : qsTr("Ver detalhes")
                 palette.buttonText: "#9eabba"
-                Layout.minimumHeight: 36
+                Layout.minimumHeight: 48
+                Layout.alignment: Qt.AlignVCenter
                 Accessible.name: text
                 onClicked: detailed = !detailed
                 background: Rectangle {
@@ -171,7 +168,8 @@ Rectangle {
             Button {
                 text: qsTr("Exportar diagnóstico")
                 palette.buttonText: "#9eabba"
-                Layout.minimumHeight: 36
+                Layout.minimumHeight: 48
+                Layout.alignment: Qt.AlignVCenter
                 Accessible.name: text
                 onClicked: card.showDiagnostics()
                 background: Rectangle {
@@ -181,12 +179,12 @@ Rectangle {
                     border.width: 1
                 }
             }
-            Item { Layout.fillWidth: true }
             Button {
                 visible: !critical
                 text: qsTr("Descartar")
                 palette.buttonText: "#71808d"
-                Layout.minimumHeight: 36
+                Layout.minimumHeight: 48
+                Layout.alignment: Qt.AlignVCenter
                 Accessible.name: text
                 onClicked: card.dismiss()
                 background: Rectangle {
