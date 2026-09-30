@@ -82,11 +82,11 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-PLATFORM-PS5-CATALOG | 21 | 19 | 15 | unit |  |
 | SZ-PLATFORM-REQUIREMENT-SCOPE | 7 | 3 | 2 | unit |  |
 | SZ-PLATFORM-VITA-CATALOG | 5 | 8 | 5 | hw |  |
-| SZ-PROJECT-DESIGN-AUDIT | 12 | 24 | 6 | dev |  |
+| SZ-PROJECT-DESIGN-AUDIT | 12 | 25 | 6 | dev |  |
 | SZ-PS3-OFFICIAL-FIRMWARE-DOWNLOAD | 8 | 5 | 1 | unit |  |
 | SZ-RESOURCE-QML-PROBE | 7 | 2 | 1 | dev |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
-| SZ-ROADMAP-CONTINUATION | 4 | 4 | 2 | dev |  |
+| SZ-ROADMAP-CONTINUATION | 4 | 5 | 2 | dev |  |
 | SZ-SHARPEMU-COMPONENT-SMOKE-CONTRACT | 3 | 1 | 1 | unit |  |
 | SZ-SYSTEM-DIAGNOSTICS-GUIDANCE | 5 | 8 | 3 | dev |  |
 | SZ-TEST-STATE-ISOLATION | 4 | 4 | 4 | dev |  |
@@ -96,7 +96,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-THEME-IMPORT-RETROFE | 10 | 14 | 10 | hw |  |
 | SZ-THEME-IMPORT-SURFACE | 4 | 12 | 7 | unit |  |
 | SZ-THEME-STUDIO | 88 | 22 | 15 | hw |  |
-| SZ-UI-DESKTOP-AUDIT | 812 | 176 | 106 | dev |  |
+| SZ-UI-DESKTOP-AUDIT | 830 | 184 | 109 | dev |  |
 | SZ-UI-PACKAGED-ICONS | 57 | 4 | 2 | unit |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 

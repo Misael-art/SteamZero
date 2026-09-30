@@ -105,7 +105,7 @@
     "tools/ui_dialog_probe.qml",
     "tools/ui_scenario_fixtures.py"
   ],
-  "scopeDigest": "007f2eb46cb242b6bb1567061e3133d141653018f25f0ca2bbb27dbd8b3ab27c",
+  "scopeDigest": "b715454a3c591f8269c8e248811d998b0735f679498de62e3ad76126c5d7b011",
   "dependsOn": [],
   "knownGaps": [
     "GAP-UI-LIVE-LAUNCHER-ROUTING",
@@ -1244,6 +1244,18 @@
       "result": "recorded",
       "reference": "docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/125-preparacao-do-host-no-sha-consolidado.md",
       "command": "Proxima intervencao no host preparada no SHA consolidado: preflights, release candidata, rollback e cinco jornadas com o que cada uma prova e o que nao prova. Nada foi instalado; as precondicoes 2 e 3 continuam do operador."
+    },
+    {
+      "kind": "diagnostic",
+      "result": "recorded",
+      "reference": "docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/127-varredura-de-segredos-e-dados-pessoais.log",
+      "command": "2026-09-30 RC-01 (fechamento): varredura de segredo e dado pessoal do que esta entrega publica. Dois alvos declarados - A: conteudo integral dos 16 arquivos desta pasta (2 027 linhas); B: as 230 linhas adicionadas nos 12 arquivos ja versionados. Seis classes (token GitHub, chave PEM, segredo atribuido a chave de config, e-mail, JWT, caminho absoluto pessoal fora do repo) deram zero em A e zero em B. Controle de nao-vacio no mesmo log: uma fixture sintetica de seis linhas plantadas em /tmp, uma por classe, e achada nas seis, entao o zero e contagem e nao desatencao. Escopo declarado do que NAO cobre: as sete linhas do WORKLOG com caminho do acervo pessoal sao as mesmas sete da base 3495c49d; nem a fileira (0 linhas adicionadas) nem este fechamento (0) acrescentou uma, e reescreve-las seria apagar fato registrado."
+    },
+    {
+      "kind": "diagnostic",
+      "result": "recorded",
+      "reference": "docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/126-renovacao-de-digest-e-views.log",
+      "command": "2026-09-30 RC-01 (fechamento): renovacao do scopeDigest na arvore congelada depois do commit documental d1476dd2. Dupla leitura da mesma grandeza, sem valor escrito de memoria: `check` exigiu b39cd6a1... e `digest --item SZ-UI-DESKTOP-AUDIT` imprimiu b39cd6a1...; o valor gravado e o impresso. Causa atribuida por leitura: o `124` acrescentou esta pasta ao escopo do cartao (94 caminhos), e os arquivos 126/127 foram escritos depois daquele check. Ponto fixo declarado antes de executar: esta pasta esta dentro do proprio escopo, entao a renovacao e a ultima escrita dela, e a varredura 127 foi re-corrida antes do commit para que os totais impressos sejam os do conteudo commitado."
     }
   ],
   "nextAction": "Executar a validacao fisica do conjunto integrado (release candidata 7808374257db) com autorizacao especifica de instalacao; ate la os eixos implementacao/verificacao/operacao/distribuicao continuam os mesmos. F-1 (memoryGb), cinco superficies rolaveis e o seletor nativo seguem abertos.",

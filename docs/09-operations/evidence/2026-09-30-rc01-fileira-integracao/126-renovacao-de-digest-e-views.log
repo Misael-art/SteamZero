@@ -57,3 +57,29 @@ conteúdo que será commitado — assim nenhum número do README §6 fica atrás
 README. O `127` não muda eixo nenhum de cartão nem linha de `nextAction`; ele só sustenta uma
 afirmação que antes estava sem suporte (o README §6 citava o `120c`, e o `120c` não contém varredura
 alguma — corrigido nesta mesma rodada, antes de qualquer commit).
+
+## Segunda renovação, na mesma rodada (depois da varredura `127`)
+
+O ponto fixo declarou-se e verificou-se: a segunda corrida do `127` acrescentou conteúdo a esta
+pasta, e esta pasta está dentro do escopo do cartão. Logo o `check` voltou a falhar, exigindo
+`e6e7d5faf481…` contra o `b39cd6a1683f…` gravado um passo antes. A dupla leitura repetiu-se:
+
+```
+tools/project_status.py check   → esperado e6e7d5faf4811a1ccdeb4d74df700d0c19f3697aafcfb0e2b20de7e00a467a60
+tools/project_status.py digest --item SZ-UI-DESKTOP-AUDIT
+                                → e6e7d5faf4811a1ccdeb4d74df700d0c19f3697aafcfb0e2b20de7e00a467a60
+```
+
+Valores iguais, lidos da ferramenta, nenhum escrito de memória. Depois deles `render --write` e o
+`check` final, que devolve `STATUS-CHECK: OK`.
+
+Isto ainda não fechou: redigir este parágrafo é escrita de conteúdo nesta pasta, e o `check`
+imediatamente depois dele voltou a falhar (`esperado e6e7d5faf481…, atual 95a466f29f24…`) — ou
+seja, o ponto fixo se comporta exatamente como declarado, e a prova disso está nas duas linhas
+anteriores e nesta. A renovação definitiva é a que vem depois de esta edição: nenhum número dela é
+escrito aqui dentro, porque escrever o digest aqui envelheceria o digest que ele registraria. O
+valor final vive em um único lugar — o campo `scopeDigest` do cartão, no mesmo commit — e é validado
+no CI do PR por
+`tests/unit/test_project_status.py::test_committed_catalog_and_generated_views_are_consistent`,
+que recalcula o digest dos arquivos commitados. É a mesma razão pela qual a renovação tem de ser a
+última escrita.
