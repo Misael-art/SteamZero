@@ -1,0 +1,9 @@
+# varredura wheel x head af6a5c6ed852
+head_rev_parse=af6a5c6ed8523c04030d25b1d391e885a3b3b48e
+wheel_sha256=1579bda1c9ce2a401bfda734d246320831ef948b96823833b911bcc6b945b87d bytes=3781401
+entradas_wheel=625 arquivos_head=2768
+pareados=619 identicos=619 diferentes=0
+diferentes=[]
+so_no_wheel=['steamzero/_build_info.py (gerado no build)']
+so_no_head=[]
+indice_real_sha256=4d9c09b5e819678a7fc73c9f81157090132c58ae1c7e00b5c2c63cf76c4753a7

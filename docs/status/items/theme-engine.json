@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "450ddec4ef891f30c59bf018463a6488d4b209439901af3b97782d04594ccbf9",
+  "scopeDigest": "277f9d62811aaf4cb6f91bb5acdb4daedaa217dc391bc4c3dcf66b13ab2186fb",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -449,6 +449,12 @@
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-09-27-shell-esde-dialog/00-preflight.log",
       "command": "2026-09-27 RC-01 (4a fatia, dialogo ES-DE do shell): scopeDigest renovado por mudanca ALHEIA a este item. O escopo deste cartao declara src/steamzero/ui/qml/Main.qml, que a frente RC-01 editou para dar ao dialogo de importacao ES-DE do shell teto de altura, corpo rolavel, rodape fixo de 48 px e navegacao por tecla real (objeto theme-import-esde-dialog). A renovacao e revalidacao de escopo, NAO carimbo: nenhuma evidencia deste item foi reexecutada e nada do que esta pendente aqui mudou de estado. O gate da frente (tests/integration/test_ui_shell_esde_import_dialog.py, 20 passed na arvore da entrega) cobre o dialogo alterado, nao as assercoes deste cartao. A conciliacao do claim de Main.qml, medida e nao presumida, esta no log referenciado. Nada do motor de temas foi tocado; a secao Temas do shell nao faz parte do diff.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/09-verde-medido.md",
+      "command": "2026-09-29 renovação de escopo compartilhado pela frente WS-2026-09-RC01-RETROFE-SHELL-LATE (corte 'RetroFE na shell' de RC-01; dono da mudança: item SZ-UI-DESKTOP-AUDIT). Este lote TOCOU src/steamzero/ui/qml/ThemeEditorPanel.qml, que está no escopo deste item, e isso é registrado em vez de passar como renovação muda. O delta é confinado ao bloco do importador RetroFE, medido por `git diff -U0`: 13 blocos, todos entre 96-103 (declarador `retrofeImportGeneration`), 333-443 (`resetRetrofeImport`, `inspectRetrofeImport`, `applyRetrofeImport`) e 1271-1290, dentro de `retrofeImportDialog` (abre em :1203). Nenhum eixo deste item mudou de estado e NENHUMA verificação nova deste item foi executada neste lote: a renovação afirma só que o conjunto de arquivos do escopo foi re-digerido pela ferramenta, no precedente de 2026-09-27 (mesmo arquivo, mesma situação, evidência registrada em theme-import-retrofe.json). Capítulos deste item que a mudança não toca: o motor de temas em si, a superfície de importação e o estúdio.",
       "result": "recorded"
     }
   ],

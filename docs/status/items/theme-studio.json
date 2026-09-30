@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "6c6a789fa3b5225254d923e2e35fb7792709f880bee8b62a6ff461ed667b6510",
+  "scopeDigest": "027b901560dcbce89a52a258bcfb9fea3275be520eaa6aea356ff0cd324e0063",
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun",
     "docs/09-operations/evidence/2026-09-07-theme-studio-contrast",
@@ -172,6 +172,12 @@
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-09-27-esde-import-dialog-compact/03-verde-medido-com-correcao.log",
       "command": "2026-09-27 renovação de escopo pela frente WS-2026-09-RC01-READINESS-FOCUS (3ª fatia de RC-01, item SZ-UI-DESKTOP-AUDIT). O estúdio em si não mudou: o painel ThemeEditorPanel mudou apenas no diálogo de importação ES-DE (corpo rolável, ações no rodapé, navegação por D-pad real, lista de esquemas sem scroll aninhado), e o caminho de edição de tema continua o mesmo. Nenhum teste próprio deste item foi reexecutado neste lote e nenhuma evidência foi carimbada aqui; o digest foi regenerado pela ferramenta porque o escopo compartilhado (src/steamzero/ui) mudou. Nenhum eixo deste item mudou de estado.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/09-verde-medido.md",
+      "command": "2026-09-29 renovação de escopo compartilhado pela frente WS-2026-09-RC01-RETROFE-SHELL-LATE (corte 'RetroFE na shell' de RC-01; dono da mudança: item SZ-UI-DESKTOP-AUDIT). Este lote TOCOU src/steamzero/ui/qml/ThemeEditorPanel.qml, que está no escopo deste item, e isso é registrado em vez de passar como renovação muda. O delta é confinado ao bloco do importador RetroFE, medido por `git diff -U0`: 13 blocos, todos entre 96-103 (declarador `retrofeImportGeneration`), 333-443 (`resetRetrofeImport`, `inspectRetrofeImport`, `applyRetrofeImport`) e 1271-1290, dentro de `retrofeImportDialog` (abre em :1203). Nenhum eixo deste item mudou de estado e NENHUMA verificação nova deste item foi executada neste lote: a renovação afirma só que o conjunto de arquivos do escopo foi re-digerido pela ferramenta, no precedente de 2026-09-27 (mesmo arquivo, mesma situação, evidência registrada em theme-import-retrofe.json). Capítulos deste item que a mudança não toca: o motor de temas em si, a superfície de importação e o estúdio.",
       "result": "recorded"
     }
   ],

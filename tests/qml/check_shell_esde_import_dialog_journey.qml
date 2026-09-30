@@ -19,7 +19,7 @@
 //
 // Por que este diálogo e não outro: `Main.qml:2879` é o segundo exemplar do
 // importador ES-DE no produto (o primeiro, corrigido na 3ª fatia, vive em
-// `ThemeEditorPanel.qml:968`). Aqui o corpo é um `ColumnLayout` com
+// `ThemeEditorPanel.qml:1016`). Aqui o corpo é um `ColumnLayout` com
 // `anchors.fill: parent` dentro de um `Dialog` sem `height` declarado, as ações
 // ficam no FIM desse fluxo e não há rodapé nem corpo rolável — com 24 esquemas de
 // 48 px o "Importar" cai ~1 000 px abaixo do pé da moldura e nenhuma tecla o

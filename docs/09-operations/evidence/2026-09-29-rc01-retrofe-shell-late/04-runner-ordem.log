@@ -1,0 +1,35 @@
+# comando: /usr/lib/qt6/bin/qmltestrunner -input /home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_shell_retrofe_import_late_response.qml
+# returncode: 4
+
+--- stdout ---
+********* Start testing of qmltestrunner *********
+Config: Using QtTest library 6.11.2, Qt 6.11.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 16.2.1 20260810), biglinux unknown
+PASS   : qmltestrunner::ShellRetrofeImportLateResponse::initTestCase()
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_01_a_rota_real_do_shell_examina_e_publica_sem_ativar() debug|ESTABILIZOU 'aberto' em 60 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_01_a_rota_real_do_shell_examina_e_publica_sem_ativar() debug|ESTABILIZOU 'layouts-publicados' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=2
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_01_a_rota_real_do_shell_examina_e_publica_sem_ativar() debug|OBS|jornada-publicada|dialogo=aberto|pendentes=0|ocupado=0|layouts=2|indice=0|aviso=71|erro=0|origem=33
+PASS   : qmltestrunner::ShellRetrofeImportLateResponse::test_01_a_rota_real_do_shell_examina_e_publica_sem_ativar()
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia() debug|OBS|antes-do-escape|dialogo=aberto|pendentes=1|ocupado=1|layouts=0|indice=-1|aviso=0|erro=0|origem=32
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia() debug|OBS|depois-da-resposta-tardia|dialogo=fechado|pendentes=0|ocupado=0|layouts=3|indice=0|aviso=66|erro=0|origem=0
+FAIL!  : qmltestrunner::ShellRetrofeImportLateResponse::test_02_fechar_com_pedido_em_voo_nao_recebe_a_resposta_tardia() 'a resposta tardia reescreveu 3 layouts num diálogo fechado — o aviso e a seleção renascem na reabertura com dados que ninguém pediu' returned FALSE. ()
+   Loc: [/home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_shell_retrofe_import_late_response.qml(601)]
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() debug|OBS|depois-do-mais-novo|dialogo=aberto|pendentes=1|ocupado=0|layouts=1|indice=0|aviso=66|erro=0|origem=36
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() debug|OBS|depois-do-anterior-tardio|dialogo=aberto|pendentes=0|ocupado=0|layouts=3|indice=0|aviso=66|erro=0|origem=36
+FAIL!  : qmltestrunner::ShellRetrofeImportLateResponse::test_03_o_pedido_mais_novo_nao_perde_para_o_anterior() 'a resposta do pedido ANTERIOR substituiu o resultado do pedido mais novo: layouts=3, esperado 1' returned FALSE. ()
+   Loc: [/home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_shell_retrofe_import_late_response.qml(676)]
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_04_publicar_em_voo_e_fechar_nao_anuncia_sucesso_tardio() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_04_publicar_em_voo_e_fechar_nao_anuncia_sucesso_tardio() debug|OBS|depois-do-apply-tardio|dialogo=fechado|pendentes=0|ocupado=0|layouts=0|indice=-1|aviso=71|erro=0|origem=0
+FAIL!  : qmltestrunner::ShellRetrofeImportLateResponse::test_04_publicar_em_voo_e_fechar_nao_anuncia_sucesso_tardio() 'a resposta tardia do apply anunciou 'Cena RetroFE publicada com assets validados; ela ainda não foi ativada.' num diálogo fechado' returned FALSE. ()
+   Loc: [/home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_shell_retrofe_import_late_response.qml(739)]
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_05_reabrir_mostra_o_estado_e_nao_o_ultimo_texto_editado() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+QDEBUG : qmltestrunner::ShellRetrofeImportLateResponse::test_05_reabrir_mostra_o_estado_e_nao_o_ultimo_texto_editado() debug|ESTABILIZOU 'aberto' em 20 ms :: 700x536|origem=(6,70)-(439,114)|publicar=(617,492)-(700,536)|layouts=0
+FAIL!  : qmltestrunner::ShellRetrofeImportLateResponse::test_05_reabrir_mostra_o_estado_e_nao_o_ultimo_texto_editado() 'reabrir mostrou '/media/retrofe/cena-curta-reabertura' no campo de origem, sendo que o estado do importador está vazio: a binding do texto foi interrompida pela primeira edição e o onClosed não a reafirmou' returned FALSE. ()
+   Loc: [/home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_shell_retrofe_import_late_response.qml(785)]
+PASS   : qmltestrunner::ShellRetrofeImportLateResponse::cleanupTestCase()
+Totals: 3 passed, 4 failed, 0 skipped, 0 blacklisted, 4160ms
+********* Finished testing of qmltestrunner *********
+
+--- stderr ---

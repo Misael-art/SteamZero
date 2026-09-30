@@ -93,6 +93,14 @@ Rectangle {
     property bool retrofeImportBusy: false
     property string retrofeImportNotice: ""
     property bool retrofeImportNoticeIsError: false
+    /// Geração do pedido de importação RetroFE. Cada disparo e cada fechamento
+    /// incrementam; a resposta só escreve na superfície se carregar a geração
+    /// corrente. Sem isto, um `inspect`/`apply` que chega depois de a superfície
+    /// ter mudado reabre estado que o usuário já abandonou — e o pedido mais novo
+    /// perde para o anterior, porque os dois voam juntos (`Main.qml:1119` só
+    /// deduplica payload idêntico). O pedido em voo NÃO é cancelado: o que se
+    /// descarta é o efeito dele.
+    property int retrofeImportGeneration: 0
     // Objeto QML completo do tema (themeId/themeVersion/resolved/effects), na
     // forma exata de ``to_theme_qml_object``. O ThemeBridge espera esse formato
     // em ``_source.resolved`` — alimentá-lo com o dicionário de tokens puro
@@ -322,6 +330,9 @@ Rectangle {
     }
 
     function resetRetrofeImport() {
+        // Fechar revoga o pedido em voo: a resposta que chegar depois daqui não tem
+        // mais superfície a que pertencer.
+        panel.retrofeImportGeneration += 1
         panel.retrofeImportSource = ""
         panel.retrofeImportLayouts = []
         panel.retrofeImportLayoutIndex = -1
@@ -339,11 +350,16 @@ Rectangle {
         const source = panel.retrofeImportSource.trim()
         if (source === "")
             return
+        const ocupadoAntes = panel.retrofeImportBusy
+        const geracao = panel.retrofeImportGeneration + 1
+        panel.retrofeImportGeneration = geracao
         panel.retrofeImportBusy = true
         panel.retrofeImportNotice = ""
         panel.retrofeImportNoticeIsError = false
-        panel.requestAction("theme.import.retrofe.inspect", {source: source},
+        const despachado = panel.requestAction("theme.import.retrofe.inspect", {source: source},
             function(response) {
+                if (geracao !== panel.retrofeImportGeneration)
+                    return
                 panel.retrofeImportBusy = false
                 panel.retrofeImportLayouts = response && response.layouts
                     ? response.layouts : []
@@ -354,12 +370,28 @@ Rectangle {
                 panel.retrofeImportNoticeIsError = panel.retrofeImportLayouts.length === 0
             },
             function(message) {
+                if (geracao !== panel.retrofeImportGeneration)
+                    return
                 panel.retrofeImportBusy = false
                 panel.retrofeImportLayouts = []
                 panel.retrofeImportLayoutIndex = -1
                 panel.retrofeImportNotice = String(message || qsTr("Não foi possível examinar a cena RetroFE."))
                 panel.retrofeImportNoticeIsError = true
             })
+        // `Main.qml:1119` recusa payload idêntico já em voo sem disparar nenhuma
+        // callback. A recusa é um não-acontecimento: ela devolve a superfície ao que
+        // ela era antes do clique, e só `ocupadoAntes` diz a verdade sobre isso.
+        //   - pedido ainda corrente (`ocupadoAntes` verdadeiro): baixá-la aqui deixaria
+        //     "Importando…" sumido e "Publicar cena" habilitado sobre um importador que
+        //     ainda vai responder; o rollback de geração é o que faz a resposta dele
+        //     chegar a uma superfície que ainda é dele.
+        //   - pedido revogado pelo fechamento: o `onClosed` já baixou a bandeira, então
+        //     `ocupadoAntes` é falso e nada rearma — manter a bandeira armada seria o
+        //     diálogo preso para sempre, porque a resposta revogada não a abaixa mais.
+        if (!despachado) {
+            panel.retrofeImportGeneration = geracao - 1
+            panel.retrofeImportBusy = ocupadoAntes
+        }
     }
 
     function applyRetrofeImport() {
@@ -373,10 +405,13 @@ Rectangle {
         const layout = selected && selected.id ? String(selected.id) : ""
         if (layout === "")
             return
+        const ocupadoAntes = panel.retrofeImportBusy
         panel.retrofeImportBusy = true
         panel.retrofeImportNotice = ""
         panel.retrofeImportNoticeIsError = false
-        panel.requestAction("theme.import.retrofe.apply", {
+        const geracao = panel.retrofeImportGeneration + 1
+        panel.retrofeImportGeneration = geracao
+        const despachado = panel.requestAction("theme.import.retrofe.apply", {
             source: panel.retrofeImportSource.trim(),
             layout: layout,
             sceneId: panel.retrofeImportSceneId.trim(),
@@ -385,15 +420,27 @@ Rectangle {
             license: panel.retrofeImportLicense.trim(),
             overwrite: panel.retrofeImportOverwrite
         }, function(_response) {
+            if (geracao !== panel.retrofeImportGeneration)
+                return
             panel.retrofeImportBusy = false
             panel.retrofeImportNotice = qsTr("Cena RetroFE publicada com assets validados; ela ainda não foi ativada.")
             panel.retrofeImportNoticeIsError = false
             panel.refreshThemeList()
         }, function(message) {
+            if (geracao !== panel.retrofeImportGeneration)
+                return
             panel.retrofeImportBusy = false
             panel.retrofeImportNotice = String(message || qsTr("Não foi possível importar a cena RetroFE."))
             panel.retrofeImportNoticeIsError = true
         })
+        // ver `inspectRetrofeImport`: payload idêntico já em voo devolve `false` sem
+        // callback, e a recusa tem de devolver a bandeira ao que ela era antes do
+        // clique — a mesma regra nos dois despachantes, para o "Importando…" significar
+        // a mesma coisa nas duas rotas.
+        if (!despachado) {
+            panel.retrofeImportGeneration = geracao - 1
+            panel.retrofeImportBusy = ocupadoAntes
+        }
     }
 
     /// O corpo do diálogo é rolável e as ações ficam no rodapé: antes de revelar
@@ -1221,6 +1268,26 @@ Rectangle {
                         Layout.fillWidth: true
                         Layout.minimumHeight: 44
                         onTextChanged: panel.retrofeImportSource = text
+                        /// Enter examina. Num shell operado por controle, os dois
+                        /// seletores nativos abaixo são becos: o pad não alcança a
+                        /// janela de arquivo do sistema, e sem esta tecla o caminho
+                        /// digitado nunca viraria pedido.
+                        onAccepted: panel.inspectRetrofeImport()
+
+                        /// Digitar INTERROMPE o vínculo declarativo de cima: o editor
+                        /// escreve em `text`, e a partir daí quem muda o ESTADO (o
+                        /// `resetRetrofeImport()` do `onClosed`, os dois seletores que
+                        /// gravam `panel.localPath(...)`) não alcançaria mais o pixel.
+                        /// Campo e botão leriam verdades diferentes — o "Examinar"
+                        /// decide por `panel.retrofeImportSource` (`:1309`). Este
+                        /// `Binding` é o espelho de mão única que sobrevive à edição;
+                        /// escrever o valor que já está lá não emite `textChanged`,
+                        /// então não há loop com o `onTextChanged` acima.
+                        Binding {
+                            target: retrofeImportSourceField
+                            property: "text"
+                            value: panel.retrofeImportSource
+                        }
                     }
                     Button {
                         objectName: "themeImportRetrofeBrowseFolder"
