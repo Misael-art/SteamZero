@@ -30,6 +30,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "V1 commitado (c36edbc3); V3 backend+Studio (undo/redo, receita de mídia, import como cópia) pronto para gates. Falta V2: costura import→cena→runtime e pacote de demonstração para B_VISUAL.",
+  "nextAction": "Gates integrais locais ok (6541 passed). Pendente: passe de UI real por B_VISUAL (docs/09-operations/evidence/2026-10-01-v1-v3-theme-journey), fixtures ES-DE/RetroFE, Launcher; publicação depende de autorização.",
   "updatedAt": "2026-10-01"
 }

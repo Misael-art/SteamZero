@@ -14529,3 +14529,11 @@ do operador. Nenhuma instalação foi executada ou presumida.
 - Nenhuma alteração de src/tools/tests, nenhum build, instalação, push ou merge nesta revisão. Estados das capacidades de produto não promovidos. Integral histórica não verde preservada; validação desta entrega é documental e de status.
 
 Validação desta revisão: 13 testes de status aprovados em 5.13s, guard de estado idêntico na janela; status-check e diff --check aprovados; links locais, 11/11 AC-134 e preservação append-only conferidos.
+
+
+## 2026-10-01 — V1–V3: autoria, enquadramento e preview sintético
+
+- `SZ-ROADMAP-CONTINUATION` / `WS-2026-10-V1-V3-THEME-JOURNEY`, branch codex/v1-v3-theme-journey-2026-10-01 sobre b9d01b60.
+- V1 `c36edbc3`; V3 `1e3a17ef` (undo/redo, receita de mídia, importar como cópia, resolver único Python/QML); V2 `ee9431e2` e seguinte (preview sintético isolado; aplicar nomeia consumidor).
+- Gates locais: suíte integral 6541 passed/47 skipped; as 2 falhas eram governança (matriz e 15 scopeDigest, renovados sem alterar critérios); ruff, mypy, independence, boundaries, capability-matrix e status-check ok.
+- Fora de escopo/pendente: UI real e física, fixtures ES-DE/RetroFE, AURA Cinema, Launcher, V4. Sem push, build, instalação ou merge.

@@ -77,7 +77,7 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Integrar a revisão documental conforme autorização; executar V1 e avançar V2/V3 até um tema editado, salvo/reaberto e renderizado, com revisão de B_VISUAL por entrega.",
+  "nextAction": "V1–V3 implementados e testados localmente (c36edbc3, 1e3a17ef, ee9431e2 e seguinte). Falta: pass real de UI por B_VISUAL, fixtures ES-DE/RetroFE no V2, execução no Launcher e V4; push/release exigem autorização.",
   "activeWorkstreams": [],
   "updatedAt": "2026-10-01",
   "notes": "Planejamento concluído localmente; nenhuma implementação do produto ou certificação física promovida. Um checkout confirmado. Roadmap, marcos, handoff e prompt foram harmonizados; 13 testes de status passaram após corrigir digests compartilhados e a declaração prematura de verificação; links locais e 21 IDs de achados conferidos. RC-00 executado em 2026-09-26: base/release/worktree conferidos; 21 claims obsoletos encerrados com evidência de integração e 5 mantidos abertos; a suíte integral da auditoria permanece registrada como não verde (1 falha documental histórica). 2026-10-01: revisão documental após diagnóstico físico B_VISUAL 133/134; nenhuma capacidade do produto foi promovida. A validação de autoria/Launcher continua pendente; prioridade V1-V4 não abandona os demais lotes RC."
