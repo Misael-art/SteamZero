@@ -1344,6 +1344,7 @@ def handheld_ui_contracts() -> dict[str, Any]:
                 colorScheme="string",
                 fontSize="string",
                 aspectRatio="string",
+                synthetic="boolean",
             ),
         ),
         _action(

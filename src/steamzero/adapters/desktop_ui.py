@@ -702,6 +702,7 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 color_scheme=str(payload.get("colorScheme") or ""),
                 font_size=str(payload.get("fontSize") or ""),
                 aspect_ratio=str(payload.get("aspectRatio") or ""),
+                synthetic=payload.get("synthetic") is True,
             )
         if path == "/theme/import/esde/inspect":
             return self._dashboard().theme_import_esde_inspect(

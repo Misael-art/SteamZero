@@ -81,6 +81,10 @@ Item {
         return changed
     }
 
+    // Prévia usa dados sintéticos isolados por padrão; só um consumidor de
+    // runtime, com ação explícita, desliga isto.
+    property bool synthetic: true
+
     function render() {
         if (!themeId)
             return
@@ -92,7 +96,9 @@ Item {
             "aspectRatio": aspectBox.currentValue || "",
             "colorScheme": colorBox.currentValue || "",
             "fontSize": fontBox.currentValue || "",
-            "variant": variantBox.currentValue || ""
+            "variant": variantBox.currentValue || "",
+            // Preview nunca lê a biblioteca real: dados sintéticos isolados.
+            "synthetic": preview.synthetic
         }, function(result) {
             preview.loading = false
             preview.rendered = result

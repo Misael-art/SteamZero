@@ -62,6 +62,7 @@ from steamzero.domain.operation_history import OperationHistory
 from steamzero.domain.playtime import PlaytimeCatalog
 from steamzero.domain.readiness import not_measured
 from steamzero.domain.readiness import readiness as build_readiness
+from steamzero.domain.synthetic_library import synthetic_runtime_model
 from steamzero.domain.theme_editor import THEME_ID_RE, ThemeEditorManager
 from steamzero.domain.theme_install import ThemeInstaller
 from steamzero.domain.theme_preferences import ThemePreferenceManager
@@ -2038,7 +2039,9 @@ class DesktopDashboard:
         live = theme_assets.live_digests(theme_assets.load_installed_manifests(paths.themes_dir()))
         return store.collect_garbage(live, dry_run=not apply)
 
-    def _theme_runtime_model(self, system_id: str | None) -> dict[str, Any]:
+    def _theme_runtime_model(
+        self, system_id: str | None, *, synthetic: bool = False
+    ) -> dict[str, Any]:
         """Project the last canonical emulation snapshot for an ES-DE scene.
 
         Theme QML must not read the library cache or infer paths.  The dashboard
@@ -2046,6 +2049,9 @@ class DesktopDashboard:
         small, stable read model with explicit media fallbacks.  If the snapshot
         is unavailable the result is still valid and renders the empty state.
         """
+        if synthetic:
+            # Isolamento explícito: o snapshot privado nem é lido.
+            return synthetic_runtime_model()
         snapshot = self._last_emulation if isinstance(self._last_emulation, dict) else {}
         platforms = snapshot.get("editorialPlatforms", [])
         rows = platforms if isinstance(platforms, list) else []
@@ -2113,6 +2119,7 @@ class DesktopDashboard:
         color_scheme: str = "",
         font_size: str = "",
         aspect_ratio: str = "",
+        synthetic: bool = False,
     ) -> dict[str, Any]:
         """Compila o tema instalado e devolve a cena com os assets resolvidos.
 
@@ -2132,7 +2139,8 @@ class DesktopDashboard:
             ),
         )
         rendered["selections"] = theme_scene.available_selections_for(theme_id)
-        rendered["runtimeModel"] = self._theme_runtime_model(system_id)
+        rendered["runtimeModel"] = self._theme_runtime_model(system_id, synthetic=synthetic)
+        rendered["synthetic"] = synthetic
         return rendered
 
     def theme_import_retrofe_inspect(self, source: str) -> dict[str, Any]:
