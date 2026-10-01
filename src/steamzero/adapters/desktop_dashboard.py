@@ -2277,6 +2277,10 @@ class DesktopDashboard:
             }
         return {
             "status": "ready",
+            # Aplicar troca só o tema da central (AURA UI). Cena da Engine e
+            # cena do Launcher são consumidores distintos e não mudam aqui.
+            "consumer": "central",
+            "scope": "Tema da central; não altera a Engine nem o Launcher",
             "planId": plan.plan_id,
             "confirmToken": plan.confirm_token,
             "preview": plan.preview,

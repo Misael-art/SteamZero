@@ -637,7 +637,7 @@ Rectangle {
             panel.applyPlan = {
                 "planId": r.planId,
                 "confirmToken": r.confirmToken,
-                "preview": r.preview || "",
+                "preview": ((r.scope ? r.scope + "\n" : "") + (r.preview || "")),
                 "rollbackGuarantee": r.rollbackGuarantee || "",
                 "themeId": themeId
             }

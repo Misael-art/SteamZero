@@ -162,3 +162,33 @@ def test_focal_point_and_explicit_alignment() -> None:
         {"sourceOrder": ["cover"], "focalX": 0.9, "alignH": "left"},
     )
     assert resolve_fit(explicit, 1, 1, 1, 1)["alignH"] == "left"
+
+
+def test_edited_theme_reaches_runtime_resolver_and_apply_names_consumer(env: Path) -> None:
+    """Tema editado→salvo→resolvido pelo catálogo (o mesmo caminho do runtime) →
+    plano de aplicação explícito que nomeia o consumidor."""
+    from steamzero.adapters.desktop_dashboard import DesktopDashboard
+    from steamzero.adapters.theme_catalog import ThemeCatalog
+    from steamzero.core import paths
+
+    mgr = ThemeEditorManager()
+    created = mgr.create("Runtime")
+    sid = str(created["sessionId"])
+    theme_id = str(created["manifest"]["id"])  # type: ignore[index]
+    mgr.set_media_recipe(sid, "focusedCover", "fit", "contain")
+    mgr.set_media_recipe(sid, "focusedCover", "orientation", "auto")
+    mgr.set_media_recipe(sid, "focusedCover", "alignV", "top")
+    mgr.save(sid)
+
+    resolved = ThemeCatalog(user_themes_dir=paths.themes_dir()).resolve(theme_id)
+    runtime = resolved.to_theme_qml_object()
+    assert runtime["themeId"] == theme_id, "o runtime não pode cair no builtin"
+    recipe = runtime["mediaRecipes"]["focusedCover"]
+    assert (recipe["fit"], recipe["orientation"], recipe["alignV"]) == ("contain", "auto", "top")
+    # Capa retrato num slot paisagem: o contrato decide sem recortar e explica.
+    decision = resolve_fit(MediaRecipe.from_dict("focusedCover", recipe), 600, 900, 900, 600)
+    assert decision["fit"] == "contain" and decision["alignV"] == "top"
+
+    plan = DesktopDashboard().plan_theme_apply(theme_id)
+    assert plan["status"] == "ready" and plan["consumer"] == "central"
+    assert "Launcher" in plan["scope"]
