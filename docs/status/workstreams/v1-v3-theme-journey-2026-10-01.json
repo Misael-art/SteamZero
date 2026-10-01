@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-10-V1-V3-THEME-JOURNEY",
+  "item": "SZ-ROADMAP-CONTINUATION",
+  "branch": "codex/v1-v3-theme-journey-2026-10-01",
+  "baseRef": "b9d01b60",
+  "owner": "claude-a-codigo",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/ui/qml/ThemedDialog.qml",
+    "src/steamzero/ui/qml/CtaButton.qml",
+    "src/steamzero/ui/qml/mediaFit.js",
+    "src/steamzero/ui/qml/MediaEffectLayer.qml",
+    "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+    "src/steamzero/domain/theme_editor.py",
+    "src/steamzero/domain/media_recipes.py",
+    "tests/unit/test_theme_authoring_journey.py",
+    "tests/integration/test_media_fit_parity.py",
+    "docs/status/workstreams/v1-v3-theme-journey-2026-10-01.json"
+  ],
+  "sharedPaths": [
+    "src/steamzero/adapters/desktop_contracts.py",
+    "src/steamzero/adapters/desktop_dashboard.py",
+    "src/steamzero/adapters/desktop_ui.py",
+    "src/steamzero/ui/qml/Main.qml",
+    "src/steamzero/ui/qml/EditorialLibrary.qml",
+    "docs/status/items/roadmap-continuation-2026-09-26.json",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "V1 commitado (c36edbc3); V3 backend+Studio (undo/redo, receita de mídia, import como cópia) pronto para gates. Falta V2: costura import→cena→runtime e pacote de demonstração para B_VISUAL.",
+  "updatedAt": "2026-10-01"
+}

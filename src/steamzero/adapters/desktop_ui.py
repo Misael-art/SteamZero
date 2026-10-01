@@ -668,6 +668,7 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             return self._dashboard().theme_import_zip_apply(
                 self._required_string(payload, "source"),
                 overwrite=payload.get("overwrite") is True,
+                as_copy=payload.get("asCopy") is True,
             )
         if path == "/theme/catalog/list":
             return self._dashboard().theme_catalog_list()
@@ -750,6 +751,17 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 self._required_string(payload, "field"),
                 payload.get("value"),
             )
+        if path == "/theme/editor/set-media-recipe":
+            return self._dashboard().editor_set_media_recipe(
+                self._required_string(payload, "sessionId"),
+                self._required_string(payload, "role"),
+                self._required_string(payload, "field"),
+                payload.get("value"),
+            )
+        if path == "/theme/editor/undo":
+            return self._dashboard().editor_undo(self._required_string(payload, "sessionId"))
+        if path == "/theme/editor/redo":
+            return self._dashboard().editor_redo(self._required_string(payload, "sessionId"))
         if path == "/theme/editor/preview":
             sid = self._required_string(payload, "sessionId")
             hc = bool(payload.get("highContrast", False))

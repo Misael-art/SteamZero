@@ -68,6 +68,11 @@ Rectangle {
     property var editorTokens: ({})
     property bool editorReadOnly: false
     property bool editorDirty: false
+    // Histórico de autoria devolvido pelo backend (V3). Nunca é calculado aqui:
+    // undo/redo e `dirty` vêm do documento, para o preview não divergir dele.
+    property var editorHistory: ({canUndo: false, canRedo: false})
+    // Slot de mídia em edição no inspector de enquadramento.
+    property string mediaRecipeRole: "focusedCover"
     property var editorThemeList: []
     property string esdeImportSource: ""
     property var esdeImportSchemes: []
@@ -552,6 +557,38 @@ Rectangle {
         return copy
     }
 
+    function _applyEditorResult(r) {
+        if (r.preview) {
+            panel.editorPreviewObject = r.preview
+            panel.editorTokens = r.preview.resolved || {}
+        }
+        if (r.manifest)
+            panel.editorManifest = r.manifest
+        if (r.history) {
+            panel.editorHistory = r.history
+            panel.editorDirty = r.history.dirty === true
+        }
+    }
+
+    function editorUndo() {
+        panel.requestAction("theme.editor.undo", {sessionId: panel.editorSessionId},
+            panel._applyEditorResult)
+    }
+
+    function editorRedo() {
+        panel.requestAction("theme.editor.redo", {sessionId: panel.editorSessionId},
+            panel._applyEditorResult)
+    }
+
+    function setMediaRecipe(field, value) {
+        panel.requestAction("theme.editor.set-media-recipe", {
+            sessionId: panel.editorSessionId,
+            role: panel.mediaRecipeRole,
+            field: field,
+            value: value
+        }, panel._applyEditorResult)
+    }
+
     function setMetadata(field, value) {
         if (panel.editorReadOnly || !panel.editorSessionId)
             return
@@ -568,6 +605,7 @@ Rectangle {
 
     function _openEditor(sessionId, manifest, preview) {
         panel.editorSessionId = sessionId
+        panel.editorHistory = ({canUndo: false, canRedo: false})
         panel.editorManifest = manifest
         panel.editorPreviewObject = preview
         panel.editorTokens = preview && preview.resolved ? preview.resolved : {}
@@ -1769,6 +1807,50 @@ Rectangle {
                 }
 
                 Button {
+                    objectName: "themeEditorUndo"
+                    text: qsTr("Desfazer")
+                    enabled: !panel.editorReadOnly && panel.editorHistory.canUndo === true
+                    implicitHeight: 36
+                    implicitWidth: 90
+                    Accessible.name: text
+                    onClicked: panel.editorUndo()
+                    background: Rectangle {
+                        color: parent.enabled ? panel.surfaceColor : panel.borderColor
+                        radius: 6
+                        border.color: parent.activeFocus ? panel.cyanColor : panel.borderColor
+                        border.width: parent.activeFocus ? 2 : 1
+                    }
+                    contentItem: Label {
+                        text: parent.text
+                        color: parent.enabled ? panel.cyanColor : panel.mutedColor
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+
+                Button {
+                    objectName: "themeEditorRedo"
+                    text: qsTr("Refazer")
+                    enabled: !panel.editorReadOnly && panel.editorHistory.canRedo === true
+                    implicitHeight: 36
+                    implicitWidth: 90
+                    Accessible.name: text
+                    onClicked: panel.editorRedo()
+                    background: Rectangle {
+                        color: parent.enabled ? panel.surfaceColor : panel.borderColor
+                        radius: 6
+                        border.color: parent.activeFocus ? panel.cyanColor : panel.borderColor
+                        border.width: parent.activeFocus ? 2 : 1
+                    }
+                    contentItem: Label {
+                        text: parent.text
+                        color: parent.enabled ? panel.cyanColor : panel.mutedColor
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+
+                Button {
                     text: qsTr("Salvar")
                     enabled: !panel.editorReadOnly && panel.editorDirty
                     implicitHeight: 36
@@ -1940,6 +2022,8 @@ Rectangle {
                             panel.requestAction("theme.editor.set-tokens",
                                 {sessionId: panel.editorSessionId, category: "color", values: newValues},
                                 function(r) {
+                                    if (r.history)
+                                        panel.editorHistory = r.history
                                     if (r.preview && r.preview.resolved) {
                                         panel.editorPreviewObject = r.preview
                                         panel.editorTokens = r.preview.resolved
@@ -1964,6 +2048,8 @@ Rectangle {
                             panel.requestAction("theme.editor.set-tokens",
                                 {sessionId: panel.editorSessionId, category: "geometry", values: newValues},
                                 function(r) {
+                                    if (r.history)
+                                        panel.editorHistory = r.history
                                     if (r.preview && r.preview.resolved) {
                                         panel.editorPreviewObject = r.preview
                                         panel.editorTokens = r.preview.resolved
@@ -1988,6 +2074,8 @@ Rectangle {
                             panel.requestAction("theme.editor.set-tokens",
                                 {sessionId: panel.editorSessionId, category: "typography", values: newValues},
                                 function(r) {
+                                    if (r.history)
+                                        panel.editorHistory = r.history
                                     if (r.preview && r.preview.resolved) {
                                         panel.editorPreviewObject = r.preview
                                         panel.editorTokens = r.preview.resolved
@@ -2012,6 +2100,8 @@ Rectangle {
                             panel.requestAction("theme.editor.set-tokens",
                                 {sessionId: panel.editorSessionId, category: "motion", values: newValues},
                                 function(r) {
+                                    if (r.history)
+                                        panel.editorHistory = r.history
                                     if (r.preview && r.preview.resolved) {
                                         panel.editorPreviewObject = r.preview
                                         panel.editorTokens = r.preview.resolved
@@ -2436,6 +2526,8 @@ Rectangle {
                                     field: field,
                                     value: value
                                 }, function(r) {
+                                    if (r.history)
+                                        panel.editorHistory = r.history
                                     if (r.preview) {
                                         panel.editorPreviewObject = r.preview
                                         panel.editorTokens = r.preview.resolved || {}
@@ -2449,6 +2541,58 @@ Rectangle {
                             inspectorMutedColor: panel.mutedColor
                             inspectorSuccessColor: panel.greenColor
                             inspectorWarningColor: panel.amberColor
+                        }
+                    }
+
+                    Rectangle {
+                        objectName: "mediaRecipeInspector"
+                        visible: panel.studioGraphActive && !panel.editorReadOnly
+                        color: panel._previewBridge.surface
+                        radius: panel._previewBridge.radiusMedium
+                        Layout.fillWidth: true
+                        implicitHeight: visible ? 64 : 0
+                        border.color: panel._previewBridge.border
+                        border.width: 1
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 10
+                            Label {
+                                text: qsTr("Enquadramento de mídia")
+                                color: panel._previewBridge.textMuted
+                                font.pixelSize: Math.round(11 * panel.visualScale)
+                            }
+                            ComboBox {
+                                objectName: "mediaRecipeRole"
+                                Accessible.name: qsTr("Slot de mídia")
+                                model: ["focusedCover", "peripheralCover", "contextualBackdrop"]
+                                onActivated: panel.mediaRecipeRole = currentText
+                            }
+                            ComboBox {
+                                objectName: "mediaRecipeFit"
+                                Accessible.name: qsTr("Ajuste")
+                                model: ["crop", "cover", "contain", "fill"]
+                                onActivated: panel.setMediaRecipe("fit", currentText)
+                            }
+                            ComboBox {
+                                objectName: "mediaRecipeOrientation"
+                                Accessible.name: qsTr("Orientação")
+                                model: ["none", "auto", "portrait", "landscape"]
+                                onActivated: panel.setMediaRecipe("orientation", currentText)
+                            }
+                            ComboBox {
+                                objectName: "mediaRecipeAlignH"
+                                Accessible.name: qsTr("Alinhamento horizontal")
+                                model: ["left", "center", "right"]
+                                onActivated: panel.setMediaRecipe("alignH", currentText)
+                            }
+                            ComboBox {
+                                objectName: "mediaRecipeAlignV"
+                                Accessible.name: qsTr("Alinhamento vertical")
+                                model: ["top", "center", "bottom"]
+                                onActivated: panel.setMediaRecipe("alignV", currentText)
+                            }
                         }
                     }
 

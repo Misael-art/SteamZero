@@ -15,6 +15,7 @@ import json
 import logging
 import shutil
 import subprocess
+import tempfile
 import urllib.parse
 import zipfile
 from collections.abc import Callable, Sequence
@@ -39,7 +40,7 @@ from steamzero.adapters.registry import AdapterManifest, AdapterRegistry
 from steamzero.adapters.resource_probe import ResourceProbe
 from steamzero.adapters.steam_gameplay import SteamGameplayController
 from steamzero.adapters.theme_catalog import ThemeCatalog, validate_theme_directory
-from steamzero.core import log, paths, transaction
+from steamzero.core import ids, log, paths, transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.secret import Secret
 from steamzero.core.session_state import SESSION_OWNER
@@ -61,7 +62,7 @@ from steamzero.domain.operation_history import OperationHistory
 from steamzero.domain.playtime import PlaytimeCatalog
 from steamzero.domain.readiness import not_measured
 from steamzero.domain.readiness import readiness as build_readiness
-from steamzero.domain.theme_editor import ThemeEditorManager
+from steamzero.domain.theme_editor import THEME_ID_RE, ThemeEditorManager
 from steamzero.domain.theme_install import ThemeInstaller
 from steamzero.domain.theme_preferences import ThemePreferenceManager
 from steamzero.ports import CaptureConsent
@@ -161,6 +162,43 @@ def _steam_process_running(proc_root: Path | None = None) -> bool:
 #: manifesto inflado não pode virar consumo de memória antes de qualquer
 #: validação. Os manifestos reais têm poucos KB.
 _THEME_MANIFEST_MAX_BYTES = 1024 * 1024
+
+
+_THEME_COPY_MAX_BYTES = 64 * 1024 * 1024
+
+
+def _rewrite_theme_package_as_copy(source: str, scratch: Path) -> Path:
+    """Regrava o pacote com id/nome de cópia; devolve o novo zip."""
+    manifest = _peek_theme_manifest(source)
+    old_id = str(manifest.get("id", ""))
+    if not THEME_ID_RE.fullmatch(old_id):
+        raise SteamZeroError("E-THEME-MANIFEST", detail="id do pacote inválido para cópia")
+    new_id = f"{old_id}.copy{ids.new_ulid().casefold()[:6]}"
+    if not THEME_ID_RE.fullmatch(new_id):
+        raise SteamZeroError("E-THEME-MANIFEST", detail="id de cópia inválido")
+    target = scratch / "copy.zip"
+    with zipfile.ZipFile(Path(source).expanduser()) as package:
+        total = sum(info.file_size for info in package.infolist())
+        if total > _THEME_COPY_MAX_BYTES:
+            raise SteamZeroError(
+                "E-THEME-LIMIT", detail=f"pacote com {total} bytes excede o teto de cópia"
+            )
+        with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as out:
+            for info in package.infolist():
+                if info.is_dir():
+                    continue
+                name = info.filename
+                parts = name.split("/")
+                if parts[0] == old_id:
+                    parts[0] = new_id
+                data = package.read(info)
+                if parts[-1] == "theme.json" and len(parts) <= 2:
+                    doc = json.loads(data)
+                    doc["id"] = new_id
+                    doc["name"] = f"{doc.get('name', old_id)} (cópia)"
+                    data = json.dumps(doc, indent=2).encode("utf-8")
+                out.writestr("/".join(parts), data)
+    return target
 
 
 def _peek_theme_manifest(source: str) -> dict[str, Any]:
@@ -1813,7 +1851,9 @@ class DesktopDashboard:
             "alreadyInstalled": theme_id in installed,
         }
 
-    def theme_import_zip_apply(self, source: str, *, overwrite: bool = False) -> dict[str, Any]:
+    def theme_import_zip_apply(
+        self, source: str, *, overwrite: bool = False, as_copy: bool = False
+    ) -> dict[str, Any]:
         """Instala um pacote SteamZero vindo do disco.
 
         Reusa o `ThemeInstaller`, que já extrai com limites, valida o manifesto
@@ -1824,10 +1864,22 @@ class DesktopDashboard:
         `_peek_theme_manifest` roda antes para recusar URL e pacote ilegível com
         mensagem própria, em vez de deixar o instalador falhar mais fundo.
         """
+        if overwrite and as_copy:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail="escolha substituir OU importar como cópia, não ambos"
+            )
         _peek_theme_manifest(source)
-        installer = ThemeInstaller(validate=validate_theme_directory)
-        result = installer.install(source, force=overwrite, yes=True)
-        return dict(result)
+        if not as_copy:
+            installer = ThemeInstaller(validate=validate_theme_directory)
+            return dict(installer.install(source, force=overwrite, yes=True))
+        # Cópia explícita: o pacote é reescrito com um id novo (namespace de
+        # cópia) numa pasta temporária própria; o original instalado e o arquivo
+        # de origem permanecem intactos. O instalador continua sendo o único
+        # caminho que extrai e valida.
+        with tempfile.TemporaryDirectory(prefix="sz-theme-copy-") as scratch:
+            copy_path = _rewrite_theme_package_as_copy(source, Path(scratch))
+            installer = ThemeInstaller(validate=validate_theme_directory)
+            return dict(installer.install(str(copy_path), force=False, yes=True))
 
     # -- importação de tema de terceiros -------------------------------
 
@@ -2131,6 +2183,17 @@ class DesktopDashboard:
         self, session_id: str, layout_id: str, field: str, value: object
     ) -> dict[str, object]:
         return self._theme_editor.set_layout(session_id, layout_id, field, value)
+
+    def editor_set_media_recipe(
+        self, session_id: str, role: str, recipe_field: str, value: object
+    ) -> dict[str, object]:
+        return self._theme_editor.set_media_recipe(session_id, role, recipe_field, value)
+
+    def editor_undo(self, session_id: str) -> dict[str, object]:
+        return self._theme_editor.undo(session_id)
+
+    def editor_redo(self, session_id: str) -> dict[str, object]:
+        return self._theme_editor.redo(session_id)
 
     def editor_preview(
         self, session_id: str, *, high_contrast: bool = False, reduced_motion: bool = False

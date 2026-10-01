@@ -36,7 +36,28 @@ class MediaSourceKind(StrEnum):
 
 class MediaFit(StrEnum):
     CROP = "crop"
+    COVER = "cover"
     CONTAIN = "contain"
+    FILL = "fill"
+
+
+class MediaOrientation(StrEnum):
+    NONE = "none"
+    AUTO = "auto"
+    PORTRAIT = "portrait"
+    LANDSCAPE = "landscape"
+
+
+class MediaAlignH(StrEnum):
+    LEFT = "left"
+    CENTER = "center"
+    RIGHT = "right"
+
+
+class MediaAlignV(StrEnum):
+    TOP = "top"
+    CENTER = "center"
+    BOTTOM = "bottom"
 
 
 @dataclass(frozen=True)
@@ -48,6 +69,9 @@ class MediaRecipe:
     focal_y: float = 0.5
     effect_stack: str | None = None
     max_decode_width: int = 1920
+    orientation: MediaOrientation = MediaOrientation.NONE
+    align_h: MediaAlignH | None = None
+    align_v: MediaAlignV | None = None
 
     def __post_init__(self) -> None:
         if not self.source_order:
@@ -71,6 +95,11 @@ class MediaRecipe:
             recipe_role = MediaRole(role)
             sources = tuple(MediaSourceKind(item) for item in payload["sourceOrder"])
             fit = MediaFit(payload.get("fit", "crop"))
+            orientation = MediaOrientation(payload.get("orientation", "none"))
+            raw_h = payload.get("alignH")
+            raw_v = payload.get("alignV")
+            align_h = MediaAlignH(raw_h) if raw_h is not None else None
+            align_v = MediaAlignV(raw_v) if raw_v is not None else None
         except (KeyError, TypeError, ValueError) as exc:
             raise ValueError("receita de mídia inválida") from exc
         return cls(
@@ -81,6 +110,9 @@ class MediaRecipe:
             focal_y=float(payload.get("focalY", 0.5)),
             effect_stack=payload.get("effectStack"),
             max_decode_width=int(payload.get("maxDecodeWidth", 1920)),
+            orientation=orientation,
+            align_h=align_h,
+            align_v=align_v,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -93,7 +125,67 @@ class MediaRecipe:
         }
         if self.effect_stack is not None:
             result["effectStack"] = self.effect_stack
+        # Só campos fora do padrão são emitidos: pacotes anteriores continuam
+        # idênticos byte a byte depois de um round-trip.
+        if self.orientation is not MediaOrientation.NONE:
+            result["orientation"] = self.orientation.value
+        if self.align_h is not None:
+            result["alignH"] = self.align_h.value
+        if self.align_v is not None:
+            result["alignV"] = self.align_v.value
         return result
+
+
+def _shape(width: float, height: float) -> str:
+    if width <= 0 or height <= 0:
+        return "unknown"
+    if abs(width - height) / max(width, height) < 0.02:
+        return "square"
+    return "landscape" if width > height else "portrait"
+
+
+def _anchor(focal: float, low: str, high: str) -> str:
+    return low if focal < 1 / 3 else high if focal > 2 / 3 else "center"
+
+
+def resolve_fit(
+    recipe: MediaRecipe,
+    image_width: float,
+    image_height: float,
+    slot_width: float,
+    slot_height: float,
+) -> dict[str, str]:
+    """Decide enquadramento determinístico e explicável (spec §14.1).
+
+    ``auto`` compara a orientação da imagem com a do slot: se divergem, usa
+    ``contain`` (letterbox) em vez de cortar; ``portrait``/``landscape`` declaram
+    a orientação esperada e recuam para ``contain`` quando a imagem não a tem.
+    Imagem quadrada ou desconhecida nunca força recuo. O mesmo contrato roda no
+    QML (``mediaFit.js``); o teste de paridade impede que divirjam.
+    """
+    declared = "crop" if recipe.fit in (MediaFit.CROP, MediaFit.COVER) else recipe.fit.value
+    image = _shape(image_width, image_height)
+    slot = _shape(slot_width, slot_height)
+    fit = declared
+    reason = f"fit declarado: {declared}"
+    if recipe.orientation is MediaOrientation.AUTO:
+        if (
+            image in ("portrait", "landscape")
+            and slot in ("portrait", "landscape")
+            and image != slot
+        ):
+            fit, reason = "contain", f"auto: imagem {image} em slot {slot}; sem recorte"
+        else:
+            reason = f"auto: imagem {image} e slot {slot} compatíveis; {declared}"
+    elif recipe.orientation is not MediaOrientation.NONE:
+        expected = recipe.orientation.value
+        if image in ("portrait", "landscape") and image != expected:
+            fit, reason = "contain", f"{expected} esperado, imagem {image}; sem recorte"
+        else:
+            reason = f"{expected} esperado e atendido; {declared}"
+    align_h = recipe.align_h.value if recipe.align_h else _anchor(recipe.focal_x, "left", "right")
+    align_v = recipe.align_v.value if recipe.align_v else _anchor(recipe.focal_y, "top", "bottom")
+    return {"fit": fit, "alignH": align_h, "alignV": align_v, "reason": reason}
 
 
 def parse_media_recipes(payload: Mapping[str, Any] | None) -> dict[str, MediaRecipe]:

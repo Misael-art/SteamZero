@@ -8,6 +8,8 @@ import io
 import json
 import re
 import zipfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -17,6 +19,12 @@ from steamzero.core import fs, ids, paths
 from steamzero.core.errors import SteamZeroError
 from steamzero.domain.dynamic_palette import extract_dynamic_palette
 from steamzero.domain.glass_panels import resolve_glass_panels
+from steamzero.domain.media_recipes import (
+    MEDIA_RECIPE_SCHEMA_VERSION,
+    MediaRole,
+    media_recipes_to_dict,
+    parse_media_recipes,
+)
 from steamzero.domain.scene_containers import ContainerBounds, resolve_scene_containers
 from steamzero.domain.scene_layout import LayoutBounds, LayoutRecipeBook, resolve_scene_layouts
 from steamzero.domain.scene_motion import resolve_scene_motion
@@ -100,6 +108,10 @@ class EditorSession:
     # Bytes recebidos por ``set_asset`` que ainda não foram gravados em disco.
     # slot -> (nome de arquivo derivado do slot, conteúdo)
     pending_assets: dict[str, tuple[str, bytes]] = field(default_factory=dict)
+    # Histórico de autoria (V3): snapshots completos, não deltas, porque o
+    # documento é pequeno e um snapshot não pode divergir do preview derivado.
+    undo_stack: list[dict[str, Any]] = field(default_factory=list)
+    redo_stack: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _default_session_id() -> str:
@@ -359,6 +371,52 @@ def _to_preview_object(
     return preview
 
 
+_HISTORY_LIMIT = 100
+_MEDIA_RECIPE_FIELDS = {"fit", "orientation", "alignH", "alignV", "focalX", "focalY"}
+
+
+def _capture(session: EditorSession) -> dict[str, Any]:
+    return {
+        "manifest": deepcopy(session.manifest),
+        "tokens": deepcopy(session.tokens),
+        "assets": dict(session.assets),
+        "pending_assets": dict(session.pending_assets),
+        "dirty": session.dirty,
+    }
+
+
+def _restore(session: EditorSession, snapshot: dict[str, Any]) -> None:
+    session.manifest = deepcopy(snapshot["manifest"])
+    session.tokens = deepcopy(snapshot["tokens"])
+    session.assets = dict(snapshot["assets"])
+    session.pending_assets = dict(snapshot["pending_assets"])
+    session.dirty = bool(snapshot["dirty"])
+
+
+def _history_state(session: EditorSession) -> dict[str, object]:
+    return {
+        "canUndo": bool(session.undo_stack),
+        "canRedo": bool(session.redo_stack),
+        "undoDepth": len(session.undo_stack),
+        "redoDepth": len(session.redo_stack),
+        "dirty": session.dirty,
+    }
+
+
+@contextmanager
+def _mutation(session: EditorSession) -> Iterator[None]:
+    """Uma edição = um passo de undo. Falha restaura o documento exatamente."""
+    before = _capture(session)
+    try:
+        yield
+    except BaseException:
+        _restore(session, before)
+        raise
+    session.undo_stack.append(before)
+    del session.undo_stack[:-_HISTORY_LIMIT]
+    session.redo_stack.clear()
+
+
 class ThemeEditorManager:
     def __init__(self) -> None:
         self._sessions: dict[str, EditorSession] = {}
@@ -448,9 +506,10 @@ class ThemeEditorManager:
         session = self._get_session(session_id)
         if category not in _TOKEN_CATEGORIES:
             raise SteamZeroError("E-API-SCHEMA", detail=f"categoria inválida: {category}")
-        session.tokens[category] = dict(values)
-        session.dirty = True
-        return {"preview": self._preview(session)}
+        with _mutation(session):
+            session.tokens[category] = dict(values)
+            session.dirty = True
+        return {"preview": self._preview(session), "history": _history_state(session)}
 
     def set_metadata(self, session_id: str, meta_field: str, value: object) -> dict[str, object]:
         session = self._get_session(session_id)
@@ -459,9 +518,10 @@ class ThemeEditorManager:
             raise SteamZeroError("E-API-SCHEMA", detail=f"campo inválido: {meta_field}")
         if value is not None and not isinstance(value, str):
             raise SteamZeroError("E-API-SCHEMA", detail=f"valor de {meta_field} precisa ser string")
-        session.manifest[meta_field] = value
-        session.dirty = True
-        return {"manifest": dict(session.manifest)}
+        with _mutation(session):
+            session.manifest[meta_field] = value
+            session.dirty = True
+        return {"manifest": dict(session.manifest), "history": _history_state(session)}
 
     def set_layout(
         self, session_id: str, layout_id: str, field: str, value: object
@@ -498,9 +558,14 @@ class ThemeEditorManager:
             parsed = LayoutRecipeBook.from_dict(candidate)
         except (TypeError, ValueError) as exc:
             raise SteamZeroError("E-API-SCHEMA", detail=str(exc)) from exc
-        session.manifest["sceneLayouts"] = parsed.to_dict()
-        session.dirty = True
-        return {"preview": self._preview(session), "layout": parsed.layouts[layout_id].to_dict()}
+        with _mutation(session):
+            session.manifest["sceneLayouts"] = parsed.to_dict()
+            session.dirty = True
+        return {
+            "preview": self._preview(session),
+            "layout": parsed.layouts[layout_id].to_dict(),
+            "history": _history_state(session),
+        }
 
     def set_asset(
         self, session_id: str, slot: str, data: bytes, filename: str
@@ -518,10 +583,89 @@ class ThemeEditorManager:
         # O nome gravado é derivado do slot, nunca do nome enviado: o filename
         # externo só contribui com a extensão, já validada acima.
         stored_name = f"{slot}{ext}"
-        session.pending_assets[slot] = (stored_name, data)
-        session.assets[slot] = f"assets/{stored_name}"
-        session.dirty = True
-        return {"asset": {"slot": slot, "filename": stored_name, "size": len(data)}}
+        with _mutation(session):
+            session.pending_assets[slot] = (stored_name, data)
+            session.assets[slot] = f"assets/{stored_name}"
+            session.dirty = True
+        return {
+            "asset": {"slot": slot, "filename": stored_name, "size": len(data)},
+            "history": _history_state(session),
+        }
+
+    def set_media_recipe(
+        self, session_id: str, role: str, recipe_field: str, value: object
+    ) -> dict[str, object]:
+        """Edita enquadramento de um slot de mídia (fit/orientação/alinhamento/foco).
+
+        A receita herdada é materializada no manifesto na primeira edição e a
+        receita inteira é revalidada antes de tocar a sessão. Não há cópia
+        pré-transformada da arte: o pacote guarda só esta declaração.
+        """
+        session = self._get_session(session_id)
+        if recipe_field not in _MEDIA_RECIPE_FIELDS:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail=f"campo de receita não editável: {recipe_field}"
+            )
+        try:
+            MediaRole(role)
+        except ValueError:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"slot de mídia inválido: {role}") from None
+        current = _resolved_preview(session.manifest, session.tokens, session.assets)
+        inherited = current.get("mediaRecipes")
+        book: dict[str, dict[str, object]] = {}
+        raw_own = session.manifest.get("mediaRecipes")
+        if isinstance(raw_own, dict) and isinstance(raw_own.get("recipes"), dict):
+            book = deepcopy(raw_own["recipes"])
+        if role not in book:
+            base = inherited.get(role) if isinstance(inherited, dict) else None
+            if not isinstance(base, dict):
+                raise SteamZeroError("E-API-SCHEMA", detail=f"slot sem receita para editar: {role}")
+            book[role] = deepcopy(base)
+        book[role][recipe_field] = value
+        candidate = {"schemaVersion": MEDIA_RECIPE_SCHEMA_VERSION, "recipes": book}
+        try:
+            parsed = parse_media_recipes(candidate)
+        except (TypeError, ValueError) as exc:
+            raise SteamZeroError("E-API-SCHEMA", detail=str(exc)) from exc
+        with _mutation(session):
+            session.manifest["mediaRecipes"] = media_recipes_to_dict(parsed)
+            session.dirty = True
+        return {
+            "preview": self._preview(session),
+            "recipe": parsed[role].to_dict(),
+            "history": _history_state(session),
+        }
+
+    def undo(self, session_id: str) -> dict[str, object]:
+        return self._step(session_id, undo=True)
+
+    def redo(self, session_id: str) -> dict[str, object]:
+        return self._step(session_id, undo=False)
+
+    def _step(self, session_id: str, *, undo: bool) -> dict[str, object]:
+        session = self._get_session(session_id)
+        source, target = (
+            (session.undo_stack, session.redo_stack)
+            if undo
+            else (session.redo_stack, session.undo_stack)
+        )
+        if not source:
+            raise SteamZeroError(
+                "E-API-SCHEMA",
+                detail="nada para desfazer" if undo else "nada para refazer",
+            )
+        target.append(_capture(session))
+        _restore(session, source.pop())
+        # Manifesto, assets e preview saem da mesma sessão restaurada: não há
+        # estado de preview guardado que possa divergir do documento.
+        return {
+            "manifest": dict(session.manifest),
+            "preview": self._preview(session),
+            "history": _history_state(session),
+        }
+
+    def history(self, session_id: str) -> dict[str, object]:
+        return {"history": _history_state(self._get_session(session_id))}
 
     def preview(
         self,

@@ -603,6 +603,7 @@ Item {
         // honesto é o tamanho de desenho.
         decodeSize: root.coverDecodeSize(width, height)
         fillMode: root.recipeFillMode("contextualBackdrop")
+        recipe: root.mediaRecipe("contextualBackdrop")
         effects: root.recipeEffects("contextualBackdrop", "contextualBackdrop")
         opacity: root.highContrast ? 0 : 0.34
     }
@@ -1210,6 +1211,8 @@ Item {
                                         root.coverHeight())
                                     fillMode: root.recipeFillMode(index === root.selectedIndex
                                         ? "focusedCover" : "peripheralCover")
+                                    recipe: root.mediaRecipe(index === root.selectedIndex
+                                        ? "focusedCover" : "peripheralCover")
                                     effects: index === root.selectedIndex
                                         ? root.recipeEffects("focusedCover", "focusedCover")
                                         : root.recipeEffects("peripheralCover", "peripheralCover")
@@ -1312,6 +1315,7 @@ Item {
                                     decodeSize: root.coverDecodeSize(gameGrid.cellWidth,
                                         gameGrid.cellHeight)
                                     fillMode: root.recipeFillMode("peripheralCover")
+                                    recipe: root.mediaRecipe("peripheralCover")
                                     effects: root.recipeEffects("peripheralCover", "peripheralCover")
                                 }
                                 Rectangle {
