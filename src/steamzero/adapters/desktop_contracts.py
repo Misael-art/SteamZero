@@ -1486,6 +1486,23 @@ def handheld_ui_contracts() -> dict[str, Any]:
             ),
         ),
         _action(
+            "theme.editor.edit-motion",
+            "Editar keyframes e timelines do tema",
+            "/theme/editor/edit-motion",
+            service="system",
+            screen="system",
+            control="theme-editor-edit-motion",
+            schema=_schema(
+                "sessionId",
+                "op",
+                "timeline",
+                sessionId="string",
+                op="string",
+                timeline="string",
+                field="string",
+            ),
+        ),
+        _action(
             "theme.editor.undo",
             "Desfazer última edição do tema",
             "/theme/editor/undo",

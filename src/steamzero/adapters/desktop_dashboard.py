@@ -2211,6 +2211,9 @@ class DesktopDashboard:
     ) -> dict[str, object]:
         return self._theme_editor.edit_effect_stack(session_id, stack, op, **kwargs)
 
+    def editor_edit_motion(self, session_id: str, op: str, **kwargs: Any) -> dict[str, object]:
+        return self._theme_editor.edit_motion(session_id, op, **kwargs)
+
     def editor_undo(self, session_id: str) -> dict[str, object]:
         return self._theme_editor.undo(session_id)
 

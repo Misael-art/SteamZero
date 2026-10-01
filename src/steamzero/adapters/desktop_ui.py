@@ -777,6 +777,17 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 param=payload.get("param") if isinstance(payload.get("param"), str) else None,
                 value=payload.get("value"),
             )
+        if path == "/theme/editor/edit-motion":
+            raw_index = payload.get("index")
+            raw_field = payload.get("field")
+            return self._dashboard().editor_edit_motion(
+                self._required_string(payload, "sessionId"),
+                self._required_string(payload, "op"),
+                timeline=self._required_string(payload, "timeline"),
+                index=raw_index if isinstance(raw_index, int) else None,
+                field=raw_field if isinstance(raw_field, str) else None,
+                value=payload.get("value"),
+            )
         if path == "/theme/editor/undo":
             return self._dashboard().editor_undo(self._required_string(payload, "sessionId"))
         if path == "/theme/editor/redo":

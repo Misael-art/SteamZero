@@ -27,7 +27,7 @@ from steamzero.domain.media_recipes import (
 )
 from steamzero.domain.scene_containers import ContainerBounds, resolve_scene_containers
 from steamzero.domain.scene_layout import LayoutBounds, LayoutRecipeBook, resolve_scene_layouts
-from steamzero.domain.scene_motion import resolve_scene_motion
+from steamzero.domain.scene_motion import MotionBook, resolve_scene_motion
 from steamzero.domain.scene_surfaces import resolve_scene_surfaces
 from steamzero.domain.studio_graph import build_studio_graph
 from steamzero.domain.theme_effects import (
@@ -706,6 +706,89 @@ class ThemeEditorManager:
         return {
             "preview": self._preview(session),
             "stack": [item.to_dict() for item in parsed[stack]],
+            "history": _history_state(session),
+        }
+
+    def edit_motion(
+        self,
+        session_id: str,
+        op: str,
+        *,
+        timeline: str | None = None,
+        index: int | None = None,
+        field: str | None = None,
+        value: object = None,
+    ) -> dict[str, object]:
+        """Edita estados (keyframes) e timelines declarativos de ``sceneMotion``.
+
+        ``set_state`` altera um keyframe (opacity/scale/translate) do estado em
+        ``timeline``; as demais operações criam/alteram/removem timelines e clips.
+        O livro inteiro é revalidado por ``MotionBook`` antes de tocar a sessão.
+        """
+        session = self._get_session(session_id)
+        ops = {
+            "set_state",
+            "add_timeline",
+            "remove_timeline",
+            "set_timeline",
+            "add_clip",
+            "set_clip",
+            "remove_clip",
+        }
+        if op not in ops or not timeline:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"operação de movimento inválida: {op}")
+        raw = session.manifest.get("sceneMotion")
+        book: dict[str, Any] = (
+            deepcopy(raw)
+            if isinstance(raw, dict)
+            else {"schemaVersion": 1, "states": {"normal": {}}}
+        )
+        timelines: dict[str, Any] = book.setdefault("timelines", {})
+        try:
+            if op == "set_state":
+                if not field:
+                    raise ValueError("campo de keyframe obrigatório")
+                book["states"].setdefault(timeline, {})[field] = value
+            elif op == "add_timeline":
+                if timeline in timelines:
+                    raise ValueError(f"timeline já existe: {timeline}")
+                timelines[timeline] = {
+                    "kind": str(value or "sequence"),
+                    "clips": [{"state": "normal", "duration": 0}],
+                }
+            else:
+                if timeline not in timelines:
+                    raise ValueError(f"timeline inexistente: {timeline}")
+                entry = timelines[timeline]
+                if op == "remove_timeline":
+                    del timelines[timeline]
+                elif op == "set_timeline":
+                    if field not in {"kind", "repeat"}:
+                        raise ValueError("campo de timeline não editável")
+                    entry[field] = value
+                elif op == "add_clip":
+                    if not isinstance(value, dict):
+                        raise ValueError("clip exige objeto")
+                    entry["clips"].append(dict(value))
+                else:
+                    clips = entry["clips"]
+                    if index is None or not 0 <= index < len(clips):
+                        raise ValueError("índice de clip fora da timeline")
+                    if op == "remove_clip":
+                        del clips[index]
+                    else:
+                        if field not in {"state", "duration", "transition"}:
+                            raise ValueError("campo de clip não editável")
+                        clips[index][field] = value
+            parsed = MotionBook.from_dict(book)
+        except (TypeError, ValueError, KeyError) as exc:
+            raise SteamZeroError("E-API-SCHEMA", detail=str(exc)) from exc
+        with _mutation(session):
+            session.manifest["sceneMotion"] = parsed.to_dict()
+            session.dirty = True
+        return {
+            "preview": self._preview(session),
+            "motion": parsed.to_dict(),
             "history": _history_state(session),
         }
 

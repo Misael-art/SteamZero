@@ -90,3 +90,67 @@ def test_effect_edit_move_remove_and_invalid_edits_keep_document(env: Path) -> N
     assert mgr.history(sid)["history"]["undoDepth"] == depth  # type: ignore[index]
     removed = mgr.edit_effect_stack(sid, "s", "remove", index=0)
     assert [e["type"] for e in removed["stack"]] == ["blur"]  # type: ignore[union-attr]
+
+
+def _motion(preview: dict[str, object]) -> dict[str, object]:
+    motion = preview["sceneMotionPreview"]
+    assert isinstance(motion, dict)
+    return motion
+
+
+def test_motion_timeline_edit_undo_save_reopen_and_resolve(env: Path) -> None:
+    mgr = ThemeEditorManager()
+    created = mgr.create("Movimento")
+    sid = str(created["sessionId"])
+    theme_id = str(created["manifest"]["id"])  # type: ignore[index]
+
+    mgr.edit_motion(sid, "set_state", timeline="focused", field="scale", value=1.2)
+    mgr.edit_motion(sid, "add_timeline", timeline="entrada", value="sequence")
+    mgr.edit_motion(
+        sid, "add_clip", timeline="entrada", value={"state": "focused", "duration": 240}
+    )
+    edited = mgr.edit_motion(
+        sid, "set_clip", timeline="entrada", index=1, field="duration", value=300
+    )
+    assert edited["motion"]["timelines"]["entrada"]["clips"][1]["duration"] == 300  # type: ignore[index]
+    mgr.edit_motion(sid, "set_timeline", timeline="entrada", field="repeat", value=2)
+    assert mgr.history(sid)["history"]["undoDepth"] == 5  # type: ignore[index]
+
+    undone = mgr.undo(sid)
+    assert undone["manifest"]["sceneMotion"]["timelines"]["entrada"]["repeat"] == 0  # type: ignore[index]
+    mgr.redo(sid)
+    expected = mgr.preview(sid)["preview"]
+    mgr.save(sid)
+
+    reopened = ThemeEditorManager().load(theme_id)
+    assert _motion(reopened["preview"]) == _motion(expected)  # type: ignore[arg-type]
+    saved = json.loads(
+        (env / "data" / "steamzero" / "themes" / theme_id / "theme.json").read_text()
+    )
+    motion_schema = json.loads(
+        (ROOT / "src" / "steamzero" / "schemas" / "scene-motion-v1.schema.json").read_text("utf-8")
+    )
+    jsonschema.validate(saved["sceneMotion"], motion_schema)
+    timeline = _motion(expected)["timelines"]["entrada"]  # type: ignore[index]
+    assert [c["duration"] for c in timeline["steps"]] == [0, 300]  # type: ignore[index]
+
+
+def test_motion_invalid_edits_keep_document(env: Path) -> None:
+    mgr = ThemeEditorManager()
+    sid = str(mgr.create("Movimento 2")["sessionId"])
+    mgr.edit_motion(sid, "add_timeline", timeline="t", value="parallel")
+    depth = mgr.history(sid)["history"]["undoDepth"]  # type: ignore[index]
+    for kwargs in (
+        {"op": "set_state", "timeline": "focused", "field": "scale", "value": 9},
+        {"op": "set_state", "timeline": "inventado", "field": "scale", "value": 1},
+        {"op": "add_timeline", "timeline": "t", "value": "sequence"},
+        {"op": "add_timeline", "timeline": "Inválido!", "value": "sequence"},
+        {"op": "set_clip", "timeline": "t", "index": 0, "field": "duration", "value": 99999},
+        {"op": "remove_clip", "timeline": "t", "index": 0},  # timeline não pode ficar vazia
+        {"op": "add_clip", "timeline": "t", "value": {"transition": "ausente"}},
+        {"op": "remove_timeline", "timeline": "nao-existe"},
+    ):
+        op = str(kwargs.pop("op"))
+        with pytest.raises(SteamZeroError):
+            mgr.edit_motion(sid, op, **kwargs)  # type: ignore[arg-type]
+    assert mgr.history(sid)["history"]["undoDepth"] == depth  # type: ignore[index]

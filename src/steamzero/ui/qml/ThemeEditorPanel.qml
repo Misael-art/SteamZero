@@ -74,6 +74,7 @@ Rectangle {
     // Slot de mídia em edição no inspector de enquadramento.
     property string mediaRecipeRole: "focusedCover"
     property string effectStackName: "focusedCover"
+    property string motionTimelineName: "entrada"
     property var editorThemeList: []
     property string esdeImportSource: ""
     property var esdeImportSchemes: []
@@ -597,6 +598,15 @@ Rectangle {
         for (var k in extra)
             body[k] = extra[k]
         panel.requestAction("theme.editor.edit-effect", body, panel._applyEditorResult)
+    }
+
+    function editMotion(op, timeline, extra) {
+        if (panel.editorReadOnly || !panel.editorSessionId)
+            return
+        var body = {sessionId: panel.editorSessionId, op: op, timeline: timeline}
+        for (var k in extra)
+            body[k] = extra[k]
+        panel.requestAction("theme.editor.edit-motion", body, panel._applyEditorResult)
     }
 
     function setMetadata(field, value) {
@@ -2697,6 +2707,100 @@ Rectangle {
                                         text: qsTr("Remover")
                                         Accessible.name: qsTr("Remover efeito") + " " + effectRow.modelData.type
                                         onClicked: panel.editEffect("remove", {index: effectRow.index})
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        objectName: "motionInspector"
+                        visible: panel.studioGraphActive && !panel.editorReadOnly
+                        color: panel._previewBridge.surface
+                        radius: panel._previewBridge.radiusMedium
+                        Layout.fillWidth: true
+                        implicitHeight: visible ? motionColumn.implicitHeight + 24 : 0
+                        border.color: panel._previewBridge.border
+                        border.width: 1
+
+                        ColumnLayout {
+                            id: motionColumn
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 8
+                            RowLayout {
+                                spacing: 10
+                                Label {
+                                    text: qsTr("Timeline")
+                                    color: panel._previewBridge.textMuted
+                                    font.pixelSize: Math.round(11 * panel.visualScale)
+                                }
+                                TextField {
+                                    id: timelineNameField
+                                    objectName: "motionTimelineName"
+                                    Accessible.name: qsTr("Nome da timeline")
+                                    text: panel.motionTimelineName
+                                    implicitWidth: 120
+                                    onEditingFinished: panel.motionTimelineName = text
+                                }
+                                ComboBox {
+                                    id: timelineKindCombo
+                                    objectName: "motionTimelineKind"
+                                    Accessible.name: qsTr("Tipo de timeline")
+                                    model: ["sequence", "parallel"]
+                                }
+                                Button {
+                                    objectName: "motionTimelineAdd"
+                                    text: qsTr("Criar timeline")
+                                    Accessible.name: qsTr("Criar timeline")
+                                    onClicked: panel.editMotion("add_timeline", timelineNameField.text, {value: timelineKindCombo.currentText})
+                                }
+                                Button {
+                                    text: qsTr("Adicionar clip")
+                                    Accessible.name: qsTr("Adicionar clip à timeline")
+                                    onClicked: panel.editMotion("add_clip", panel.motionTimelineName, {value: {state: "focused", duration: 240}})
+                                }
+                                Button {
+                                    text: qsTr("Remover timeline")
+                                    Accessible.name: qsTr("Remover timeline")
+                                    onClicked: panel.editMotion("remove_timeline", panel.motionTimelineName, ({}))
+                                }
+                            }
+                            Label {
+                                objectName: "motionEmpty"
+                                visible: motionClipRepeater.count === 0
+                                text: qsTr("Sem clips. Crie uma timeline com o nome acima e adicione clips.")
+                                color: panel._previewBridge.textMuted
+                                font.pixelSize: Math.round(11 * panel.visualScale)
+                            }
+                            Repeater {
+                                id: motionClipRepeater
+                                objectName: "motionClipRepeater"
+                                model: {
+                                    var m = ((panel.editorManifest || {}).sceneMotion || {}).timelines || {}
+                                    return (m[panel.motionTimelineName] || {}).clips || []
+                                }
+                                delegate: RowLayout {
+                                    id: clipRow
+                                    required property var modelData
+                                    required property int index
+                                    spacing: 8
+                                    Label {
+                                        text: clipRow.modelData.state || clipRow.modelData.transition
+                                        color: panel._previewBridge.text
+                                        font.pixelSize: Math.round(12 * panel.visualScale)
+                                    }
+                                    TextField {
+                                        visible: clipRow.modelData.state !== undefined
+                                        Accessible.name: qsTr("Duração do clip") + " " + (clipRow.index + 1)
+                                        implicitWidth: 72
+                                        text: String(clipRow.modelData.duration)
+                                        onEditingFinished: panel.editMotion("set_clip", panel.motionTimelineName, {index: clipRow.index, field: "duration", value: parseInt(text)})
+                                    }
+                                    Button {
+                                        text: qsTr("Remover")
+                                        Accessible.name: qsTr("Remover clip") + " " + (clipRow.index + 1)
+                                        onClicked: panel.editMotion("remove_clip", panel.motionTimelineName, {index: clipRow.index})
                                     }
                                 }
                             }
