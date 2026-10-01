@@ -1348,6 +1348,15 @@ def handheld_ui_contracts() -> dict[str, Any]:
             ),
         ),
         _action(
+            "theme.scene.render-imported",
+            "Renderizar cena importada (sem ativar)",
+            "/theme/scene/render-imported",
+            service="system",
+            screen="system",
+            control="theme-scene-render-imported",
+            schema=_schema("sceneId", sceneId="string", synthetic="boolean"),
+        ),
+        _action(
             "theme.import.esde.inspect",
             "Examinar tema ES-DE antes de importar",
             "/theme/import/esde/inspect",

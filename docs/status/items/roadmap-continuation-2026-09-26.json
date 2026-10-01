@@ -13,9 +13,10 @@
     "IMPLEMENTATION-PROMPT.md",
     "docs/12-roadmap/IMPLEMENTATION-ROADMAP.md",
     "docs/12-roadmap/MILESTONES.md",
-    "docs/09-operations/AGENT-HANDOFF.md"
+    "docs/09-operations/AGENT-HANDOFF.md",
+    "docs/09-operations/evidence/2026-10-01-v1-v3-theme-journey"
   ],
-  "scopeDigest": "4fb0232f3010b3e5aabae846e68b2d359f6ed2572b95195d78bf346a54c92daa",
+  "scopeDigest": "d28c839f1c07bd675cd3a2031fe0ff71c49206728447af9aab07e2645c251222",
   "dependsOn": [
     "SZ-PROJECT-DESIGN-AUDIT"
   ],

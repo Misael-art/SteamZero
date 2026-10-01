@@ -230,3 +230,46 @@ def render_scene(
             "refused": sorted(includes.refused),
         },
     }
+
+
+def render_imported_scene(
+    scene_id: str,
+    *,
+    scenes_root: Path | None = None,
+    store: theme_assets.ThemeAssetStore | None = None,
+) -> dict[str, Any]:
+    """Cena importada (RetroFE) resolvida como a de um tema instalado.
+
+    Mesmo contrato de saída de :func:`render_scene` e a mesma resolução de
+    assets: importar sem poder renderizar deixava o pacote sem consumidor.
+    """
+    from steamzero.domain import scene_retrofe
+
+    root = scenes_root if scenes_root is not None else paths.scenes_dir()
+    assets = store if store is not None else theme_assets.ThemeAssetStore(paths.theme_assets_dir())
+    scene_path = root / f"{scene_id}.json"
+    manifest_path = root / f"{scene_id}.assets.json"
+    if not scene_path.is_file() or scene_path.is_symlink():
+        raise SteamZeroError("E-THEME-NOT-FOUND", detail=f"cena '{scene_id}' não está importada")
+    try:
+        scene = json.loads(scene_path.read_text(encoding="utf-8"))
+        manifest = (
+            json.loads(manifest_path.read_text(encoding="utf-8"))
+            if manifest_path.is_file() and not manifest_path.is_symlink()
+            else {}
+        )
+    except (OSError, ValueError) as exc:
+        raise SteamZeroError(
+            "E-THEME-MANIFEST", detail=f"cena '{scene_id}' ilegível: {exc}"
+        ) from exc
+    if not isinstance(scene, dict) or not isinstance(manifest.get("assets", {}), dict):
+        raise SteamZeroError("E-THEME-MANIFEST", detail=f"cena '{scene_id}' inválida")
+    report = _resolve_assets(scene, {"assets": manifest.get("assets", {})}, assets, system_id=None)
+    return {
+        "themeId": scene_id,
+        "origin": "retrofe",
+        "systemId": None,
+        "scene": scene,
+        "fidelity": scene_retrofe.fidelity_report(scene),
+        "assets": report,
+    }

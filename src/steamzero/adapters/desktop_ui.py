@@ -704,6 +704,11 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 aspect_ratio=str(payload.get("aspectRatio") or ""),
                 synthetic=payload.get("synthetic") is True,
             )
+        if path == "/theme/scene/render-imported":
+            return self._dashboard().theme_imported_scene_render(
+                self._required_string(payload, "sceneId"),
+                synthetic=payload.get("synthetic") is not False,
+            )
         if path == "/theme/import/esde/inspect":
             return self._dashboard().theme_import_esde_inspect(
                 self._required_string(payload, "source"),

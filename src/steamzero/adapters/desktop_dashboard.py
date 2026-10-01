@@ -2110,6 +2110,15 @@ class DesktopDashboard:
             "actions": ["Selecionar", "Detalhes", "Jogar"],
         }
 
+    def theme_imported_scene_render(
+        self, scene_id: str, *, synthetic: bool = True
+    ) -> dict[str, Any]:
+        """Renderiza uma cena importada sem ativá-la, com dados sintéticos por padrão."""
+        rendered = theme_scene.render_imported_scene(scene_id)
+        rendered["synthetic"] = synthetic
+        rendered["runtimeModel"] = self._theme_runtime_model(None, synthetic=synthetic)
+        return rendered
+
     def theme_scene_render(
         self,
         theme_id: str,
