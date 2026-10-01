@@ -293,8 +293,8 @@ def apply(
     target = paths.scenes_dir() / f"{scene_id}.json"
     if target.exists() and not overwrite:
         raise SteamZeroError(
-            "E-THEME-DOWNLOAD-FAILED",
-            detail=f"cena '{scene_id}' já existe; confirme overwrite para substituir",
+            "E-SCENE-ID-EXISTS",
+            detail=f"cena '{scene_id}' já existe; marque Substituir para trocá-la",
         )
     if target.is_symlink():
         raise SteamZeroError("E-THEME-UNSAFE", detail="destino de cena é symlink")

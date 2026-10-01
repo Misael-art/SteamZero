@@ -1317,7 +1317,7 @@ Item {
                             Label { text: qsTr("TDP"); color: page.mutedColor; Layout.fillWidth: true; Label { anchors.right: parent.right; text: page.hardware.tdpMax ? "%1–%2 W".arg(page.hardware.tdpMin).arg(page.hardware.tdpMax) : qsTr("não observado"); color: page.textColor } }
                             Label { text: qsTr("GPU"); color: page.mutedColor; Layout.fillWidth: true; Label { anchors.right: parent.right; text: page.hardware.gpuMax ? "%1–%2 MHz".arg(page.hardware.gpuMin).arg(page.hardware.gpuMax) : qsTr("não observado"); color: page.textColor } }
                             Label { text: qsTr("Tela"); color: page.mutedColor; Layout.fillWidth: true; Label { anchors.right: parent.right; text: page.hardware.refreshHz ? page.hardware.refreshHz + " Hz" : "—"; color: page.textColor } }
-                            Label { text: qsTr("Memória disponível"); color: page.mutedColor; Layout.fillWidth: true; Label { anchors.right: parent.right; text: page.hardware.memoryGb ? page.hardware.memoryGb + " GB" : "—"; color: page.textColor } }
+                            Label { text: qsTr("Memória disponível"); color: page.mutedColor; Layout.fillWidth: true; Label { anchors.right: parent.right; text: Sizes.bytes(page.hardware.memoryGb === null || page.hardware.memoryGb === undefined ? null : page.hardware.memoryGb * 1073741824); color: page.textColor } }
                             Label { text: page.hardware.withinSafeLimits ? qsTr("Dentro dos limites seguros") : qsTr("Limites não confirmados"); color: page.hardware.withinSafeLimits ? page.greenColor : page.amberColor; font.pixelSize: page.scaledTextSize(11) }
                         }
                     }
@@ -2060,32 +2060,22 @@ Item {
                 Accessible.name: text
                 onClicked: page.planRequested(page.safePayload())
             }
-            Button {
+            CtaButton {
                 id: reviewApplyButton
                 text: qsTr("Revisar e aplicar perfil")
                 enabled: page.games.length > 0
                 Layout.fillWidth: true
                 Layout.minimumHeight: page.compactLayout ? page.minimumTouchTarget : 54
-                Accessible.name: text
+                disabledFill: page.raisedColor
+                disabledLabel: page.mutedColor
+                focusColor: page.textColor
+                outlineColor: page.cyanColor
+                labelSize: page.scaledTextSize(16)
                 Accessible.description: enabled ? ""
                     : qsTr("Nenhum jogo na biblioteca Steam para aplicar o perfil.")
                 ToolTip.visible: hovered && !enabled
                 ToolTip.text: Accessible.description
                 onClicked: page.planRequested(page.payload())
-                background: Rectangle {
-                    color: parent.enabled ? "#069bd7" : page.raisedColor
-                    border.color: parent.activeFocus ? page.textColor : page.cyanColor
-                    border.width: parent.activeFocus ? 2 : 1
-                    radius: 7
-                }
-                contentItem: Label {
-                    text: parent.text
-                    color: parent.enabled ? "white" : page.mutedColor
-                    font.pixelSize: page.scaledTextSize(16)
-                    font.bold: true
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
             }
         }
     }

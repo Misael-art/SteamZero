@@ -565,7 +565,7 @@ class ThemeEditorManager:
 
         if target.exists() and not overwrite:
             raise SteamZeroError(
-                "E-THEME-DOWNLOAD-FAILED",
+                "E-THEME-ID-EXISTS",
                 detail=f"tema '{theme_id}' já existe. Use overwrite=true para substituir.",
             )
 

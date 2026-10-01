@@ -225,7 +225,7 @@ class TestEditorSave:
         mgr = ThemeEditorManager()
         sid = mgr.create("Dup")["sessionId"]
         mgr.save(sid)
-        with pytest.raises(SteamZeroError, match=r"E-THEME-DOWNLOAD-FAILED"):
+        with pytest.raises(SteamZeroError, match=r"E-THEME-ID-EXISTS"):
             mgr.save(sid)
 
     def test_save_overwrite(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

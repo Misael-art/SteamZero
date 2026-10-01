@@ -488,6 +488,10 @@ ApplicationWindow {
     }
 
     property var activeErrors: []
+    // V1 / AC-134-06: com vários erros ativos só o primeiro ocupa a dobra; os
+    // demais ficam agrupados numa linha que expande. Nenhum é descartado por
+    // timer: o agrupamento só muda o espaço, não a informação.
+    property bool errorsExpanded: false
     property var castReceivers: []
     property string selectedReceiverId: ""
     property string selectedReceiverName: ""
@@ -3699,6 +3703,7 @@ ApplicationWindow {
                                     spacing: root.compactLayout ? 0 : 12
                                     ToolButton {
                                         enabled: false
+                                        Accessible.ignored: true  // ícone decorativo: o texto vizinho nomeia
                                         icon.name: modelData.icon
                                         icon.color: root.sectionIndex === index ? root.cyanColor : root.mutedColor
                                         icon.width: 24
@@ -3757,6 +3762,7 @@ ApplicationWindow {
                             contentItem: RowLayout {
                                 ToolButton {
                                     enabled: false
+                                    Accessible.ignored: true  // ícone decorativo: o texto vizinho nomeia
                                     icon.name: "security-high"
                                     icon.color: root._contrastTextColor("#211a10")
                                     background: Item {}
@@ -3992,6 +3998,7 @@ ApplicationWindow {
                                 }
                                 ToolButton {
                                     enabled: false
+                                    Accessible.ignored: true  // ícone decorativo: o texto vizinho nomeia
                                     visible: !root.statusIsLoading
                                     icon.name: root.statusBandIsError
                                         ? "network-offline" : "dialog-warning"
@@ -4066,6 +4073,7 @@ ApplicationWindow {
                                 spacing: root.compactLayout ? 7 : 12
                                 ToolButton {
                                     enabled: false
+                                    Accessible.ignored: true  // ícone decorativo: o texto vizinho nomeia
                                     icon.name: "dialog-warning"
                                     icon.color: root._contrastTextColor("#24180b")
                                     icon.width: root.compactLayout ? 22 : 30
@@ -4168,6 +4176,7 @@ ApplicationWindow {
                                 spacing: 10
                                 ToolButton {
                                     enabled: false
+                                    Accessible.ignored: true  // ícone decorativo: o texto vizinho nomeia
                                     icon.name: "network-offline"
                                     icon.color: "#d45454"
                                     icon.width: 22
@@ -4190,7 +4199,8 @@ ApplicationWindow {
                             spacing: 0
 
                             Repeater {
-                                model: root.activeErrors
+                                model: root.errorsExpanded || root.activeErrors.length <= 1
+                                    ? root.activeErrors : root.activeErrors.slice(0, 1)
                                 ErrorCard {
                                     Layout.fillWidth: true
                                     errorObject: modelData
@@ -4200,6 +4210,17 @@ ApplicationWindow {
                                     onShowDiagnostics: root.beginDiagnosticsExport("support")
                                     Component.onCompleted: resolve(modelData)
                                 }
+                            }
+                            DarkButton {
+                                objectName: "errorGroupToggle"
+                                visible: root.activeErrors.length > 1
+                                Layout.fillWidth: true
+                                Layout.minimumHeight: root._themeBridge.minimumTarget
+                                text: root.errorsExpanded
+                                    ? qsTr("Recolher erros")
+                                    : qsTr("Mostrar mais %1 erro(s) ativo(s)").arg(root.activeErrors.length - 1)
+                                Accessible.name: text
+                                onClicked: root.errorsExpanded = !root.errorsExpanded
                             }
                         }
 
@@ -6107,6 +6128,7 @@ ApplicationWindow {
                                             spacing: 16
                                             ToolButton {
                                                 enabled: false
+                                                Accessible.ignored: true  // ícone decorativo: o texto vizinho nomeia
                                                 icon.name: "view-media-visualization"
                                                 icon.color: root.lsfgSystemData.state === "ready"
                                                     ? root.greenColor : root.cyanColor
@@ -6210,6 +6232,7 @@ ApplicationWindow {
                                             anchors.margins: 14
                                             ToolButton {
                                                 enabled: false
+                                                Accessible.ignored: true  // ícone decorativo: o texto vizinho nomeia
                                                 icon.name: "dialog-warning"
                                                 icon.color: root.amberColor
                                                 background: Item {}
@@ -6367,6 +6390,7 @@ ApplicationWindow {
                                                 anchors.margins: 14
                                                 ToolButton {
                                                     enabled: false
+                                                    Accessible.ignored: true  // ícone decorativo: o texto vizinho nomeia
                                                     icon.name: modelData.status === "pass" ? "dialog-ok-apply" : modelData.status === "warn" ? "dialog-warning" : "dialog-error"
                                                     icon.color: modelData.status === "pass" ? root.greenColor : modelData.status === "warn" ? root.amberColor : root.redColor
                                                     background: Item {}

@@ -545,8 +545,15 @@ Rectangle {
     }
 
     // -- confirmações -------------------------------------------------------
-    Dialog {
+    ThemedDialog {
         id: uninstallDialog
+        surfaceColor: panel.surfaceColor
+        raisedColor: panel.raisedColor
+        borderColor: panel.borderColor
+        textColor: panel.textColor
+        mutedColor: panel.mutedColor
+        accentColor: panel.cyanColor
+        visualScale: panel.visualScale
         objectName: "uninstallDialog"
         anchors.centerIn: parent
         modal: true
@@ -571,8 +578,15 @@ Rectangle {
         onAccepted: panel.uninstallTheme(uninstallDialog.themeId)
     }
 
-    Dialog {
+    ThemedDialog {
         id: gcDialog
+        surfaceColor: panel.surfaceColor
+        raisedColor: panel.raisedColor
+        borderColor: panel.borderColor
+        textColor: panel.textColor
+        mutedColor: panel.mutedColor
+        accentColor: panel.cyanColor
+        visualScale: panel.visualScale
         objectName: "gcDialog"
         anchors.centerIn: parent
         modal: true
@@ -587,8 +601,15 @@ Rectangle {
         onAccepted: panel.applyGarbage()
     }
 
-    Dialog {
+    ThemedDialog {
         id: applyDialog
+        surfaceColor: panel.surfaceColor
+        raisedColor: panel.raisedColor
+        borderColor: panel.borderColor
+        textColor: panel.textColor
+        mutedColor: panel.mutedColor
+        accentColor: panel.cyanColor
+        visualScale: panel.visualScale
         objectName: "applyDialog"
         anchors.centerIn: parent
         modal: true
@@ -631,8 +652,15 @@ Rectangle {
 
     // Prévia da cena. Não é confirmação: abre grande porque o que se avalia
     // aqui é layout, e um retângulo pequeno não deixaria julgar posição.
-    Dialog {
+    ThemedDialog {
         id: previewDialog
+        surfaceColor: panel.surfaceColor
+        raisedColor: panel.raisedColor
+        borderColor: panel.borderColor
+        textColor: panel.textColor
+        mutedColor: panel.mutedColor
+        accentColor: panel.cyanColor
+        visualScale: panel.visualScale
         objectName: "previewDialog"
         anchors.centerIn: parent
         modal: true

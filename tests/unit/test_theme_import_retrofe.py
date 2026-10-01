@@ -145,7 +145,7 @@ class TestRetrofeImport:
             "MIT",
         )
         dashboard.theme_import_retrofe_apply(*args)
-        with pytest.raises(SteamZeroError, match="overwrite"):
+        with pytest.raises(SteamZeroError, match="E-SCENE-ID-EXISTS"):
             dashboard.theme_import_retrofe_apply(*args)
         replaced = dashboard.theme_import_retrofe_apply(*args, overwrite=True)
         assert replaced["sceneId"] == "org.example.retrofe"

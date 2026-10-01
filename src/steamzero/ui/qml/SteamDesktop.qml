@@ -537,22 +537,22 @@ ColumnLayout {
             Accessible.name: text
             onClicked: panel.safeResetRequested()
         }
-        Button {
+        CtaButton {
             text: qsTr("Revisar e aplicar no Desktop")
             icon.name: "dialog-ok-apply"
             enabled: panel.conflicts.length === 0 && !panel.desktopStatus.recoveryRequired
             Layout.fillWidth: true
             Layout.minimumHeight: 54
-            Accessible.name: text
+            disabledFill: panel.raisedColor
+            disabledLabel: panel.mutedColor
+            focusColor: panel.textColor
+            outlineColor: panel.cyanColor
+            labelSize: Math.round(16 * panel.visualScale)
+            Accessible.description: enabled ? ""
+                : qsTr("Resolva os conflitos ou a recuperação pendente para aplicar o perfil.")
             onClicked: panel.profilePlanRequested(
                 ["auto", "handheld", "dock", "safe"][panel.profileIndex]
             )
-            background: Rectangle {
-                color: parent.enabled ? "#069bd7" : panel.raisedColor
-                border.color: parent.activeFocus ? panel.textColor : panel.cyanColor
-                border.width: parent.activeFocus ? 2 : 1
-                radius: 7
-            }
         }
     }
 

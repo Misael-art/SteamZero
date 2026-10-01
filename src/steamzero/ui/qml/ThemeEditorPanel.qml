@@ -1052,8 +1052,15 @@ Rectangle {
         }
     }
 
-    Dialog {
+    ThemedDialog {
         id: esdeImportDialog
+        surfaceColor: panel.surfaceColor
+        raisedColor: panel.raisedColor
+        borderColor: panel.borderColor
+        textColor: panel.textColor
+        mutedColor: panel.mutedColor
+        accentColor: panel.cyanColor
+        visualScale: panel.visualScale
         objectName: "themeImportEsdeDialog"
         modal: true
         closePolicy: Popup.CloseOnEscape
@@ -1239,8 +1246,15 @@ Rectangle {
         }
     }
 
-    Dialog {
+    ThemedDialog {
         id: retrofeImportDialog
+        surfaceColor: panel.surfaceColor
+        raisedColor: panel.raisedColor
+        borderColor: panel.borderColor
+        textColor: panel.textColor
+        mutedColor: panel.mutedColor
+        accentColor: panel.cyanColor
+        visualScale: panel.visualScale
         objectName: "themeImportRetrofeDialog"
         modal: true
         closePolicy: Popup.CloseOnEscape
@@ -1568,8 +1582,15 @@ Rectangle {
         }
     }
 
-    Dialog {
+    ThemedDialog {
         id: packageImportDialog
+        surfaceColor: panel.surfaceColor
+        raisedColor: panel.raisedColor
+        borderColor: panel.borderColor
+        textColor: panel.textColor
+        mutedColor: panel.mutedColor
+        accentColor: panel.cyanColor
+        visualScale: panel.visualScale
         objectName: "themeImportPackageDialog"
         modal: true
         closePolicy: Popup.CloseOnEscape
@@ -2499,8 +2520,15 @@ Rectangle {
         }
     }
 
-    Dialog {
+    ThemedDialog {
         id: exportPreviewDialog
+        surfaceColor: panel.surfaceColor
+        raisedColor: panel.raisedColor
+        borderColor: panel.borderColor
+        textColor: panel.textColor
+        mutedColor: panel.mutedColor
+        accentColor: panel.cyanColor
+        visualScale: panel.visualScale
         title: qsTr("Revisar exportação do tema")
         modal: true
         width: Math.min(panel.width > 0 ? panel.width - 32 : 720, 620)
@@ -2567,8 +2595,15 @@ Rectangle {
     // =====================================================================
     // APPLY THEME CONFIRMATION
     // =====================================================================
-    Dialog {
+    ThemedDialog {
         id: applyDialog
+        surfaceColor: panel.surfaceColor
+        raisedColor: panel.raisedColor
+        borderColor: panel.borderColor
+        textColor: panel.textColor
+        mutedColor: panel.mutedColor
+        accentColor: panel.cyanColor
+        visualScale: panel.visualScale
         title: qsTr("Aplicar tema")
         modal: true
         width: Math.min(panel.width > 0 ? panel.width - 32 : 720, 560)
@@ -2678,8 +2713,15 @@ Rectangle {
     // =====================================================================
     // CREATE DIALOG
     // =====================================================================
-    Dialog {
+    ThemedDialog {
         id: createDialog
+        surfaceColor: panel.surfaceColor
+        raisedColor: panel.raisedColor
+        borderColor: panel.borderColor
+        textColor: panel.textColor
+        mutedColor: panel.mutedColor
+        accentColor: panel.cyanColor
+        visualScale: panel.visualScale
         title: qsTr("Criar Novo Tema")
         modal: true
         width: Math.min(panel.width > 0 ? panel.width : 800, 420)
