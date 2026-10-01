@@ -1,59 +1,56 @@
-# Handoff do agente — atualizado em 27/09/2026 (registrado em 26/09/2026)
+# Handoff do agente — revisão de 01/10/2026
 
 ## Onde continuar
 
 Checkout único: `/home/misael/Projects/Steam Zero/Canonical/2026-09-21`.
-Na retomada de 27/09 a conferência mediu um só worktree (listado por
-`git worktree list`), na branch `codex/rc01-readiness-focus-2026-09-27`, HEAD
-`fe5751a0dc4271a83466b909336b9d10015f0cef`, com `origin/main` parado em
-`3495c49d5d7c3244267e8292beee34475f70236b` desde 26/09 10:55Z — nada das três
-PRs abertas (239 `069501ab`, 240 `c959be13`, 241 `fe5751a0`) foi integrado.
-Quando esta revisão foi registrada, em 26/09, o mesmo checkout estava na branch
-`codex/project-design-audit-2026-09-26` no HEAD `3495c49d`.
-Confira `git status` antes de agir e preserve todo conteúdo pendente. Não criar
-outro diretório de trabalho para contornar uma árvore suja.
+Antes desta revisão, a conferência local encontrou main em
+`5715d7962691efedef0f1b63e71adff1ad5ba801`, árvore limpa, um worktree e nenhum
+processo de suíte integral identificado. A revisão documental está na branch
+`codex/visual-diagnostic-roadmap-2026-10-01`; preserve suas alterações pendentes.
+Reconfira `git status`, base e claims antes de editar. Não criar diretório paralelo.
 
-A ordem executiva está exclusivamente em
-[IMPLEMENTATION-ROADMAP](../12-roadmap/IMPLEMENTATION-ROADMAP.md).
-O [prompt de continuidade](../../IMPLEMENTATION-PROMPT.md) contém o procedimento
-de retomada, autonomia, gates e disciplina de diretórios. Leia também `AGENTS.md`,
-`docs/status/README.md`, as views e os itens pertinentes antes de editar.
-Este handoff não mantém uma segunda fila de tarefas.
+A fila de execução está somente no
+[roadmap](../12-roadmap/IMPLEMENTATION-ROADMAP.md), prioridade V1–V4.
+O [prompt raiz](../../IMPLEMENTATION-PROMPT.md) é a instrução de continuidade
+para A_CODIGO. O catálogo continua sendo a fonte do estágio, embora alguns
+nextAction antigos precisem ser reconciliados com as evidências atuais.
 
-## O que já aconteceu
+## Base já integrada e instalada
 
-- Reconciliação seletiva das sete frentes integrada via PR #237, merge
-  `1ffafa648b3d4b0ac2691c11fd300b7e66d0c95e`; arquivos não promovidos preservados
-  em snapshots/bundle. Centralização não autoriza apagar as cópias de recuperação.
-- Release observada `2.0.0rc1-e2af2562ebba`, rollback registrado
-  `2.0.0rc1-621a3389db32`. Instalação/UI verificadas; gameplay completo não
-  certificado. Reconfira release e condições atuais antes de qualquer operação.
-- [Auditoria](evidence/2026-09-26-project-design-audit/AUDIT.md): scan persistente,
-  matriz de capacidades, telas, temas, Studio/Cinema e gestão de sessão.
-  Contratos e capturas históricas têm limites explícitos. O relatório contém
-  achados confirmados e lacunas de evidência; não promover todas a “bugs”.
-- Suíte integral auditada: 1 falha de views desatualizadas, 6.293 aprovados,
-  47 ignorados. Views/status focado foram corrigidos/validados; aquela integral
-  permanece não verde. Testes focados de temas/sessão/persistência passaram;
-  no grupo de 208 houve escrita concorrente do daemon externo e guard degradado.
+A cadeia #239–#248 foi integrada no main acima conforme os logs do fechamento
+canônico em `evidence/2026-09-30-rc01-fileira-integracao`. Não continua aguardando
+merge como dizia o handoff anterior.
 
-## Primeira ação e limites
+A instalação governada da release `2.0.0rc1-5715d7962691` está registrada nos
+logs 131/132 do acervo durável. B_VISUAL 133/134 exercitou essa release.
+Rollback relatado: `2.0.0rc1-e2af2562ebba`; este handoff não o executou nem
+reverificou. Autorizações antigas não autorizam a próxima instalação.
 
-RC-00 foi concluído e a frente em curso é RC-01: as fatias 2 e 3 estão abertas no
-PR #241 aguardando decisão de merge, e a próxima ação concreta de cada item está
-somente no campo `nextAction` de `docs/status/items/*.json`, que é a fonte.
-Claims ativos antigos devem ser reconciliados com Git, catálogo e dono; não
-assumir que branch antiga significa código ausente ou trabalho abandonado.
-A tabela de rastreabilidade do roadmap cobre todos os achados e define aceite
-por lote. Os planos especializados continuam definindo contratos do domínio.
+Acervo físico:
+`/home/misael/steamzero-evidencia-integracao-2026-09-30/integracao-2026-09-30/`
 
-AURA Launcher já tem provas físicas históricas; Studio já tem canvas/árvore/
-inspector visíveis. Alegações antigas de ausência total estão superadas, mas
-isso não satisfaz o DoD completo nem certifica a release atual. Conteúdo
-reconhecido/BIOS encontrada/preflight lançável não provam gameplay.
+Leia `134-b_visual-rc01-fisico-2/` (README, MATRIZ, ACHADOS, RC01,
+TAREFAS-A-CODIGO e adendos), comparando com `133-b_visual-rc01-fisico/`.
+Importação ES-DE/RetroFE, prontidão e unidades foram exercitadas com ressalvas;
+modais/componentes com contraste insuficiente e conflito de ID com mensagem
+errada estão documentados. Teclado/gamepad, round-trip do Studio e Launcher
+continuam sem prova física completa. Limitação de AT-SPI/input não prova defeito
+do produto; abertura incompleta do seletor permanece inconclusiva.
 
-Nenhuma autorização histórica de host passa automaticamente ao próximo agente.
-Seguir o portão vigente de `AGENTS.md`; não instalar para “atualizar o ambiente”
-sem autorização aplicável. Testes isolados e desenvolvimento podem continuar.
-Relatos de bloqueios e inventários de agosto/setembro anteriores são históricos;
-reproduzir a condição atual antes de usá-los como bloqueio.
+Foram criados por importação autorizada um tema “Diagnostico BV134 ESDE” e uma
+cena “bv134-cena-01”, sem ativação automática. Preserve os itens; remoção não faz
+parte da continuidade. Preferências e acervo original não foram alterados pelo
+relato. Não publique capturas privadas sem revisão de privacidade/licença.
+
+## Próxima entrega
+
+V1: corrigir apresentação/interação por componentes e contratos compartilhados.
+Prosseguir V2/V3 até tema importado/produzido pelo Studio renderizar no runtime,
+com autoria, undo/redo, persistência e round-trip demonstráveis. Leia AURA-SURFACES
+e THEME-ENGINE-AND-STUDIO antes da implementação. O roadmap define aceite e
+limites; este handoff não mantém backlog separado.
+
+A_CODIGO produz entrega e testes; B_VISUAL revisa jornada identificada por
+release/artefato. Um dono de código, passes seriais, checkout único. As provas
+históricas e a integral histórica não verde permanecem preservadas. Nenhuma
+capacidade recebeu promoção por esta revisão documental.

@@ -1,6 +1,6 @@
 # MILESTONES — marcos verificáveis
 
-A execução atual segue [IMPLEMENTATION-ROADMAP](IMPLEMENTATION-ROADMAP.md), lotes RC-00–08. Os marcos abaixo são critérios de produto, não autorização para reimplementar fundações existentes. O estado atual está nos cinco eixos do catálogo.
+A execução atual segue [IMPLEMENTATION-ROADMAP](IMPLEMENTATION-ROADMAP.md), lotes RC-00–08 com prioridade V1–V4 após B_VISUAL 133/134 (01/10/2026). Os marcos abaixo são critérios de produto, não autorização para reimplementar fundações existentes. O estado atual está nos cinco eixos do catálogo.
 
 Complexidade em T-shirt (S/M/L/XL) — sem datas (dependem de Q6/Q10 e capacidade de equipe; estimar em sprints na aprovação).
 
@@ -59,3 +59,21 @@ não deve orientar uma nova implementação sem reprodução. A instalação obs
 é `2.0.0rc1-e2af2562ebba`, posterior à fotografia acima. Não há promoção global
 dos marcos neste ajuste documental. Evidência histórica de pausa/bezel/save-state
 continua válida para sua release; não certifica automaticamente o tip atual.
+
+
+## Próximas demonstrações de produto — 01/10/2026
+
+A fila detalhada está no roadmap; os critérios originais de M12/M12-E/M12-S
+continuam obrigatórios. Nenhum marco é promovido nesta revisão.
+
+| Entrega vigente | Marco relacionado | Demonstração útil |
+|---|---|---|
+| V1 | AURA UI / recorte de M12 | Componentes e modais legíveis, foco/alvos consistentes, conflito explicado e recuperação na própria jornada |
+| V2 | M12-E + consumidor M12 | Cena builtin/portada resolve dados e renderiza no consumidor correto, com isolamento sintético e fallback |
+| V3 | Recorte de M12-S | Usuário cria/edita, desfaz/refaz, salva/reabre e exporta/importa pacote que executa em V2 |
+| V4 | DoD restante M12-E/M12-S | Efeitos/timeline/bindings e tiers editáveis/persistentes, validadores e medição de custo no hardware |
+
+A medição de ritmo do render loop não certifica FPS apresentado. Aplicar os
+métodos atuais do item de Theme Engine e registrar qualquer divergência de
+instrumentação com a spec. Gameplay/retorno, saves, bezel e multidisco exigem
+provas próprias de M12/RC-03, não apenas uma cena bem renderizada.

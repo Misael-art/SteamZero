@@ -14519,3 +14519,13 @@ seletor nativo de diretório (a rota por Enter não promove a rota não testada)
 a autorização específica de instalação com token. O plano está em
 `125-preparacao-do-host-no-sha-consolidado.md` — pré-condição 1 satisfeita por medição, 2/3/4 ainda
 do operador. Nenhuma instalação foi executada ou presumida.
+
+
+## 2026-10-01 — Roadmap após diagnóstico físico B_VISUAL 133/134
+
+- `SZ-ROADMAP-CONTINUATION` / `WS-2026-10-VISUAL-DIAGNOSTIC-ROADMAP`: revisão documental na base 5715d7962691efedef0f1b63e71adff1ad5ba801, branch codex/visual-diagnostic-roadmap-2026-10-01, usando o mesmo checkout.
+- Roadmap, prompt raiz, handoff e milestones atualizados nos arquivos existentes. V1 corrige componentes/jornadas; V2 fecha importação até execução; V3 autoria básica completa; V4 efeitos/timeline e desempenho. AC-134-01 a AC-134-11 rastreados.
+- Evidências da rodada 134 ampliam a 133: importadores, prontidão e unidades com ressalvas; capturas do modal e catálogo inspecionadas. Limites de input, round-trip Studio e Launcher permanecem explícitos. Divergência do quadro sobre seletor registrada para reconciliação, sem atribuição de causa.
+- Nenhuma alteração de src/tools/tests, nenhum build, instalação, push ou merge nesta revisão. Estados das capacidades de produto não promovidos. Integral histórica não verde preservada; validação desta entrega é documental e de status.
+
+Validação desta revisão: 13 testes de status aprovados em 5.13s, guard de estado idêntico na janela; status-check e diff --check aprovados; links locais, 11/11 AC-134 e preservação append-only conferidos.

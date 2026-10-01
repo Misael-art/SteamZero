@@ -5,7 +5,7 @@
   "title": "Roadmap de continuidade após auditoria integral",
   "domain": "governance",
   "implementation": "complete",
-  "integration": "integrated",
+  "integration": "feature-branch",
   "verification": "dev",
   "operation": "ready",
   "distribution": "not-packaged",
@@ -15,7 +15,7 @@
     "docs/12-roadmap/MILESTONES.md",
     "docs/09-operations/AGENT-HANDOFF.md"
   ],
-  "scopeDigest": "64cab367961430a1fdce66adebb0897926f66b46f78a07e051defce6387792d9",
+  "scopeDigest": "4fb0232f3010b3e5aabae846e68b2d359f6ed2572b95195d78bf346a54c92daa",
   "dependsOn": [
     "SZ-PROJECT-DESIGN-AUDIT"
   ],
@@ -23,7 +23,9 @@
   "acceptanceCriteria": [
     "Todos os achados da auditoria têm lote, dependência e critério de saída.",
     "O agente continua a implementação existente em um único checkout, preservando dados e evidências.",
-    "Plano, marcos e prompt distinguem implementação, integração e certificação física."
+    "Plano, marcos e prompt distinguem implementação, integração e certificação física.",
+    "Os achados AC-134-01 a AC-134-11 têm destino, critérios e limites explícitos nas entregas V1 a V4.",
+    "A primeira missão de implementação chega a um tema editado, salvo, reaberto e executado pelo runtime, sem declarar o DoD inteiro do Studio pelo recorte básico."
   ],
   "evidence": [
     {
@@ -55,10 +57,28 @@
       "result": "recorded",
       "reference": "docs/09-operations/evidence/2026-09-30-rc01-fileira-integracao/115-integracao-da-fileira-239-247.log",
       "command": "Roadmap, milestones e handoff continuados integrados em main pelo merge 9fc1c5948fca (#239)."
+    },
+    {
+      "kind": "design",
+      "reference": "docs/12-roadmap/IMPLEMENTATION-ROADMAP.md",
+      "command": "2026-10-01: revisão das rodadas B_VISUAL 133/134, incluindo ACHADOS, RC01 e TAREFAS-A-CODIGO; capturas 29-esde-dialogo e 27-temas-cards inspecionadas. Plano V1-V4 com componentes, runtime, autoria e evolução; evidências locais históricas não recertificadas.",
+      "result": "recorded"
+    },
+    {
+      "kind": "design",
+      "reference": "IMPLEMENTATION-PROMPT.md",
+      "command": "2026-10-01: prompt A_CODIGO com missão V1-V3, aceites de ciclo criar/editar/reabrir/renderizar, coordenação serial com B_VISUAL e regras de integração/checkout único. Handoff e marcos alinhados à base 5715d796.",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_project_status.py",
+      "command": "2026-10-01: .venv/bin/python tools/run_tests_isolated.py tests/unit/test_project_status.py -q; 13 passed em 5.13s, guard de estado idêntico antes/depois. make status-check e git diff --check aprovados; links locais, 11/11 AC-134 e WORKLOG append-only conferidos.",
+      "result": "passed"
     }
   ],
-  "nextAction": "RC-00 concluído na base 3495c49d. Executar RC-01: central legível e utilizável durante carregamento (UX-01/UX-02), com medição antes/depois, erro/retry e navegação acessível.",
+  "nextAction": "Integrar a revisão documental conforme autorização; executar V1 e avançar V2/V3 até um tema editado, salvo/reaberto e renderizado, com revisão de B_VISUAL por entrega.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-30",
-  "notes": "Planejamento concluído localmente; nenhuma implementação do produto ou certificação física promovida. Um checkout confirmado. Roadmap, marcos, handoff e prompt foram harmonizados; 13 testes de status passaram após corrigir digests compartilhados e a declaração prematura de verificação; links locais e 21 IDs de achados conferidos. RC-00 executado em 2026-09-26: base/release/worktree conferidos; 21 claims obsoletos encerrados com evidência de integração e 5 mantidos abertos; a suíte integral da auditoria permanece registrada como não verde (1 falha documental histórica)."
+  "updatedAt": "2026-10-01",
+  "notes": "Planejamento concluído localmente; nenhuma implementação do produto ou certificação física promovida. Um checkout confirmado. Roadmap, marcos, handoff e prompt foram harmonizados; 13 testes de status passaram após corrigir digests compartilhados e a declaração prematura de verificação; links locais e 21 IDs de achados conferidos. RC-00 executado em 2026-09-26: base/release/worktree conferidos; 21 claims obsoletos encerrados com evidência de integração e 5 mantidos abertos; a suíte integral da auditoria permanece registrada como não verde (1 falha documental histórica). 2026-10-01: revisão documental após diagnóstico físico B_VISUAL 133/134; nenhuma capacidade do produto foi promovida. A validação de autoria/Launcher continua pendente; prioridade V1-V4 não abandona os demais lotes RC."
 }
