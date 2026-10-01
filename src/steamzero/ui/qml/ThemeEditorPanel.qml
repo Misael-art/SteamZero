@@ -73,6 +73,7 @@ Rectangle {
     property var editorHistory: ({canUndo: false, canRedo: false})
     // Slot de mídia em edição no inspector de enquadramento.
     property string mediaRecipeRole: "focusedCover"
+    property string effectStackName: "focusedCover"
     property var editorThemeList: []
     property string esdeImportSource: ""
     property var esdeImportSchemes: []
@@ -587,6 +588,15 @@ Rectangle {
             field: field,
             value: value
         }, panel._applyEditorResult)
+    }
+
+    function editEffect(op, extra) {
+        if (panel.editorReadOnly || !panel.editorSessionId)
+            return
+        var body = {sessionId: panel.editorSessionId, stack: panel.effectStackName, op: op}
+        for (var k in extra)
+            body[k] = extra[k]
+        panel.requestAction("theme.editor.edit-effect", body, panel._applyEditorResult)
     }
 
     function setMetadata(field, value) {
@@ -2592,6 +2602,103 @@ Rectangle {
                                 Accessible.name: qsTr("Alinhamento vertical")
                                 model: ["top", "center", "bottom"]
                                 onActivated: panel.setMediaRecipe("alignV", currentText)
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        objectName: "effectStackInspector"
+                        visible: panel.studioGraphActive && !panel.editorReadOnly
+                        color: panel._previewBridge.surface
+                        radius: panel._previewBridge.radiusMedium
+                        Layout.fillWidth: true
+                        implicitHeight: visible ? effectColumn.implicitHeight + 24 : 0
+                        border.color: panel._previewBridge.border
+                        border.width: 1
+
+                        ColumnLayout {
+                            id: effectColumn
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 8
+                            RowLayout {
+                                spacing: 10
+                                Label {
+                                    text: qsTr("Efeitos")
+                                    color: panel._previewBridge.textMuted
+                                    font.pixelSize: Math.round(11 * panel.visualScale)
+                                }
+                                ComboBox {
+                                    objectName: "effectStackName"
+                                    Accessible.name: qsTr("Pilha de efeitos")
+                                    model: ["focusedCover", "peripheralCover", "contextualBackdrop"]
+                                    onActivated: panel.effectStackName = currentText
+                                }
+                                ComboBox {
+                                    id: effectTypeCombo
+                                    objectName: "effectTypeToAdd"
+                                    Accessible.name: qsTr("Tipo de efeito")
+                                    model: ["blur", "saturation", "brightness", "contrast", "colorize", "opacity", "shadow", "glow", "reflection", "gradientMask", "vignette"]
+                                }
+                                Button {
+                                    objectName: "effectAdd"
+                                    text: qsTr("Adicionar efeito")
+                                    Accessible.name: qsTr("Adicionar efeito à pilha")
+                                    onClicked: panel.editEffect("add", {effectType: effectTypeCombo.currentText})
+                                }
+                            }
+                            Label {
+                                objectName: "effectEmpty"
+                                visible: effectRepeater.count === 0
+                                text: qsTr("Pilha vazia. Escolha um tipo e use Adicionar efeito.")
+                                color: panel._previewBridge.textMuted
+                                font.pixelSize: Math.round(11 * panel.visualScale)
+                            }
+                            Repeater {
+                                id: effectRepeater
+                                objectName: "effectRepeater"
+                                model: ((panel.editorPreviewObject || {}).effects || {})[panel.effectStackName] || []
+                                delegate: RowLayout {
+                                    id: effectRow
+                                    required property var modelData
+                                    required property int index
+                                    spacing: 8
+                                    Label {
+                                        text: effectRow.modelData.type
+                                        color: panel._previewBridge.text
+                                        font.pixelSize: Math.round(12 * panel.visualScale)
+                                    }
+                                    Repeater {
+                                        model: Object.keys(effectRow.modelData.parameters || {})
+                                        delegate: RowLayout {
+                                            id: paramRow
+                                            required property string modelData
+                                            Label {
+                                                text: paramRow.modelData
+                                                color: panel._previewBridge.textMuted
+                                                font.pixelSize: Math.round(11 * panel.visualScale)
+                                            }
+                                            TextField {
+                                                Accessible.name: effectRow.modelData.type + " " + paramRow.modelData
+                                                implicitWidth: 72
+                                                text: String(effectRow.modelData.parameters[paramRow.modelData])
+                                                onEditingFinished: {
+                                                    var isColor = text.charAt(0) === "#"
+                                                    panel.editEffect("set", {
+                                                        index: effectRow.index,
+                                                        param: paramRow.modelData,
+                                                        value: isColor ? text : parseFloat(text)
+                                                    })
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Button {
+                                        text: qsTr("Remover")
+                                        Accessible.name: qsTr("Remover efeito") + " " + effectRow.modelData.type
+                                        onClicked: panel.editEffect("remove", {index: effectRow.index})
+                                    }
+                                }
                             }
                         }
                     }

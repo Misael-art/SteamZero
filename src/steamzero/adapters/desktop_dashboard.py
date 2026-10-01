@@ -2206,6 +2206,11 @@ class DesktopDashboard:
     ) -> dict[str, object]:
         return self._theme_editor.set_media_recipe(session_id, role, recipe_field, value)
 
+    def editor_edit_effect(
+        self, session_id: str, stack: str, op: str, **kwargs: Any
+    ) -> dict[str, object]:
+        return self._theme_editor.edit_effect_stack(session_id, stack, op, **kwargs)
+
     def editor_undo(self, session_id: str) -> dict[str, object]:
         return self._theme_editor.undo(session_id)
 

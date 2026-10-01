@@ -9,7 +9,7 @@
   "verification": "dev",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopeDigest": "35223b8f552f48f2d4e602f5666a999ffd306365690edc6f8d0212cb0353510c",
+  "scopeDigest": "9e9c61975c269e097960eefd89a8372c618ec4d6026bbb2df68f58b3ea3823db",
   "scopePaths": [
     "src/steamzero/adapters/desktop_dashboard.py",
     "src/steamzero/domain/theme_import_esde.py",

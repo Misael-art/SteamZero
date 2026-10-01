@@ -30,6 +30,11 @@ from steamzero.domain.scene_layout import LayoutBounds, LayoutRecipeBook, resolv
 from steamzero.domain.scene_motion import resolve_scene_motion
 from steamzero.domain.scene_surfaces import resolve_scene_surfaces
 from steamzero.domain.studio_graph import build_studio_graph
+from steamzero.domain.theme_effects import (
+    EFFECT_STACK_SCHEMA_VERSION,
+    effect_stacks_to_dict,
+    parse_effect_stacks,
+)
 from steamzero.domain.themes import (
     ASSET_SLOTS_ALLOWED,
     THEME_DEFAULT_ID,
@@ -633,6 +638,74 @@ class ThemeEditorManager:
         return {
             "preview": self._preview(session),
             "recipe": parsed[role].to_dict(),
+            "history": _history_state(session),
+        }
+
+    def edit_effect_stack(
+        self,
+        session_id: str,
+        stack: str,
+        op: str,
+        *,
+        index: int | None = None,
+        effect_type: str | None = None,
+        param: str | None = None,
+        value: object = None,
+    ) -> dict[str, object]:
+        """Edita uma pilha de efeitos declarativos (add/set/remove/move).
+
+        A pilha herdada é materializada no manifesto na primeira edição e a pilha
+        inteira é revalidada por ``EffectSpec`` (allowlist, limites, cores) antes
+        de tocar a sessão; falha deixa o documento intacto.
+        """
+        session = self._get_session(session_id)
+        if op not in {"add", "set", "remove", "move"}:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"operação de efeito inválida: {op}")
+        if not stack:
+            raise SteamZeroError("E-API-SCHEMA", detail="stack de efeitos obrigatório")
+        raw_own = session.manifest.get("effects")
+        stacks: dict[str, list[dict[str, Any]]] = {}
+        if isinstance(raw_own, dict) and isinstance(raw_own.get("stacks"), dict):
+            stacks = deepcopy(raw_own["stacks"])
+        if stack not in stacks:
+            inherited = _resolved_preview(session.manifest, session.tokens, session.assets).get(
+                "effects"
+            )
+            seed = inherited.get(stack) if isinstance(inherited, dict) else None
+            stacks[stack] = [
+                {"type": item["type"], **dict(item.get("parameters", {}))}
+                for item in (seed or [])
+                if isinstance(item, dict) and "type" in item
+            ]
+        entries = stacks[stack]
+        try:
+            if op == "add":
+                entries.append({"type": effect_type})
+            else:
+                if index is None or not 0 <= index < len(entries):
+                    raise ValueError("índice de efeito fora da pilha")
+                if op == "remove":
+                    del entries[index]
+                elif op == "move":
+                    target = int(value) if isinstance(value, int | float) else -1
+                    if not 0 <= target < len(entries):
+                        raise ValueError("destino de efeito fora da pilha")
+                    entries.insert(target, entries.pop(index))
+                else:
+                    if not param:
+                        raise ValueError("parâmetro obrigatório")
+                    entries[index][param] = value
+            parsed = parse_effect_stacks(
+                {"schemaVersion": EFFECT_STACK_SCHEMA_VERSION, "stacks": stacks}
+            )
+        except (TypeError, ValueError) as exc:
+            raise SteamZeroError("E-API-SCHEMA", detail=str(exc)) from exc
+        with _mutation(session):
+            session.manifest["effects"] = effect_stacks_to_dict(parsed)
+            session.dirty = True
+        return {
+            "preview": self._preview(session),
+            "stack": [item.to_dict() for item in parsed[stack]],
             "history": _history_state(session),
         }
 

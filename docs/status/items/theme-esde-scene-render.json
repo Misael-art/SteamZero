@@ -37,7 +37,7 @@
     "tests/qml/check_theme_scene_preview.qml",
     "tests/unit/test_theme_scene.py"
   ],
-  "scopeDigest": "fea30c8033f9a31b57a08d0bdfe8538c6efa17bea1a0e11843577c9fd8134aa0",
+  "scopeDigest": "0231336d4fc79302b1a4bf234444d2f08d792e75ba37d1df2b4a1ce0bf585297",
   "dependsOn": [
     "SZ-THEME-IMPORT-ESDE-LAYOUT"
   ],

@@ -764,6 +764,19 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 self._required_string(payload, "field"),
                 payload.get("value"),
             )
+        if path == "/theme/editor/edit-effect":
+            raw_index = payload.get("index")
+            return self._dashboard().editor_edit_effect(
+                self._required_string(payload, "sessionId"),
+                self._required_string(payload, "stack"),
+                self._required_string(payload, "op"),
+                index=raw_index if isinstance(raw_index, int) else None,
+                effect_type=payload.get("effectType")
+                if isinstance(payload.get("effectType"), str)
+                else None,
+                param=payload.get("param") if isinstance(payload.get("param"), str) else None,
+                value=payload.get("value"),
+            )
         if path == "/theme/editor/undo":
             return self._dashboard().editor_undo(self._required_string(payload, "sessionId"))
         if path == "/theme/editor/redo":

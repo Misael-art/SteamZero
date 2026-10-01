@@ -16,7 +16,7 @@
     "tests/unit/test_capability_matrix.py",
     "docs/01-product/CAPABILITY-MATRIX.md"
   ],
-  "scopeDigest": "da42d56351e42dcda956441cf2288e8a4ae150c599af9f4e3837c69c2825840f",
+  "scopeDigest": "cad4e0e9ab87ee8c3de54694ac89e9e6bff72eb21df70fb696a5b26ae7461332",
   "dependsOn": [
     "SZ-AGG-PLATFORM-MANIFESTS",
     "SZ-PLATFORM-REQUIREMENT-SCOPE"
