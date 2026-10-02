@@ -1,23 +1,10 @@
 # SteamZero
 
-Plataforma autônoma de jogos e emulação para Steam Deck e desktops Linux. A pesquisa
-histórica avaliou PhaseZero, EmuDeck, LinuxToys e RetroDECK, mas nenhum deles é
-dependência de build, instalação, runtime, recuperação ou testes do SteamZero.
+Plataforma autônoma de jogos e emulação para Steam Deck e desktops Linux.
 
-**Estado:** implementação aprovada e em andamento. Fases 1–2 e o critério de
-saída da Fase 3 possuem backend `verified-dev` (RT-06..11 verdes). A Fase 4 começou
-com schema/registry, três manifests núcleo e lifecycle portável transacional do M10;
-o M10-H adiciona a fundação Handheld Desktop para BigLinux/KDE, com status real no
-Steam Deck LCD, perfis transacionais e UI Qt/QML opcional. O M10 agora também possui
-lockfile verificado e executor Flatpak user-scoped com commit pinado, confirmação,
-verify, rollback e recovery; a instalação real em VM e a substituição da fonte EOL do
-DuckStation continuam pendentes. A aplicação SteamZero foi instalada de forma versionada
-no host BigLinux, com smokes e rollback real; aplicação dos perfis de hardware e demais
-marcos continuam pendentes. Conflitos de ownership no Desktop agora exibem causa e uma
-desativação confirmada/allowlisted no escopo real do serviço, sem falha silenciosa. A
-central Desktop agora usa um dashboard System Studio adaptativo, com gerenciamento real
-de emuladores, área Steam dedicada, Quick Reset, Sync, doctor e recuperação de emergência.
-Consulte `IMPLEMENTATION-REPORT.md` para evidências e limites.
+> **Status:** em desenvolvimento. A instalação versionada, os smoke checks e o rollback foram verificados no host BigLinux. A instalação real em VM e a substituição da fonte EOL do DuckStation continuam pendentes.
+
+Consulte [IMPLEMENTATION-REPORT.md](IMPLEMENTATION-REPORT.md) para detalhes e evidências por fase.
 
 ## Metodologia replicável
 
