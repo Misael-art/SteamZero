@@ -1201,6 +1201,7 @@ Item {
                                 border.width: parent.activeFocus || index === root.selectedIndex ? 3 : 1
                                 clip: true
                                 MediaEffectLayer {
+                                    objectName: "editorialFocusedCoverMedia"
                                     anchors.fill: parent
                                     source: modelData.coverUrl
                                     visible: modelData.coverUrl !== ""
