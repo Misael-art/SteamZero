@@ -32,6 +32,8 @@ from steamzero.domain.scene_surfaces import resolve_scene_surfaces
 from steamzero.domain.studio_graph import build_studio_graph
 from steamzero.domain.theme_effects import (
     EFFECT_STACK_SCHEMA_VERSION,
+    EffectType,
+    effect_defaults,
     effect_stacks_to_dict,
     parse_effect_stacks,
 )
@@ -310,6 +312,35 @@ def _editor_chain_diagnostic(exc: BaseException) -> dict[str, str] | None:
     return None
 
 
+def _declared(manifest: dict[str, object]) -> dict[str, object]:
+    """Declaração efetiva (cadeia ``extends`` + rascunho) de efeitos e movimento.
+
+    Diferente do preview, nada aqui é negociado por capability, tier ou
+    acessibilidade: é o que o tema *declara*, base de edição dos inspetores.
+    """
+    out: dict[str, object] = {"effects": {}, "sceneMotion": None}
+    try:
+        draft = ThemeManifest.from_dict(dict(manifest))
+        available = _load_manifests_for_resolution()
+        available[draft.id] = draft
+        chain = ThemeResolver(available)._build_chain(draft.id)
+    except (ValueError, TypeError, KeyError, AttributeError):
+        return out
+    stacks: dict[str, list[dict[str, Any]]] = {}
+    for item in chain:
+        for name, entries in item.effects.items():
+            stacks[name] = [{**effect_defaults(entry.type), **entry.to_dict()} for entry in entries]
+        if item.scene_motion is not None:
+            out["sceneMotion"] = item.scene_motion.to_dict()
+    out["effects"] = stacks
+    return out
+
+
+def _document(session: EditorSession) -> dict[str, object]:
+    """Documento + declaração que todo resultado de edição devolve à interface."""
+    return {"manifest": dict(session.manifest), "declared": _declared(session.manifest)}
+
+
 def _resolved_preview(
     manifest: dict[str, object],
     tokens: dict[str, dict[str, object]],
@@ -470,6 +501,7 @@ class ThemeEditorManager:
             "sessionId": sid,
             "readOnly": read_only,
             "manifest": manifest.to_dict(),
+            "declared": _declared(manifest.to_dict()),
             "preview": _resolved_preview(manifest.to_dict(), tokens, assets),
         }
 
@@ -499,6 +531,7 @@ class ThemeEditorManager:
         return {
             "sessionId": sid,
             "manifest": manifest.to_dict(),
+            "declared": _declared(manifest.to_dict()),
             "preview": _resolved_preview(manifest.to_dict(), {}, {}),
         }
 
@@ -567,6 +600,7 @@ class ThemeEditorManager:
             session.manifest["sceneLayouts"] = parsed.to_dict()
             session.dirty = True
         return {
+            **_document(session),
             "preview": self._preview(session),
             "layout": parsed.layouts[layout_id].to_dict(),
             "history": _history_state(session),
@@ -636,6 +670,7 @@ class ThemeEditorManager:
             session.manifest["mediaRecipes"] = media_recipes_to_dict(parsed)
             session.dirty = True
         return {
+            **_document(session),
             "preview": self._preview(session),
             "recipe": parsed[role].to_dict(),
             "history": _history_state(session),
@@ -668,19 +703,15 @@ class ThemeEditorManager:
         if isinstance(raw_own, dict) and isinstance(raw_own.get("stacks"), dict):
             stacks = deepcopy(raw_own["stacks"])
         if stack not in stacks:
-            inherited = _resolved_preview(session.manifest, session.tokens, session.assets).get(
-                "effects"
-            )
-            seed = inherited.get(stack) if isinstance(inherited, dict) else None
-            stacks[stack] = [
-                {"type": item["type"], **dict(item.get("parameters", {}))}
-                for item in (seed or [])
-                if isinstance(item, dict) and "type" in item
-            ]
+            declared_stacks = _declared(session.manifest)["effects"]
+            seed = declared_stacks.get(stack) if isinstance(declared_stacks, dict) else None
+            stacks[stack] = deepcopy(seed) if isinstance(seed, list) else []
         entries = stacks[stack]
         try:
             if op == "add":
-                entries.append({"type": effect_type})
+                entries.append(
+                    {"type": effect_type, **effect_defaults(EffectType(effect_type or ""))}
+                )
             else:
                 if index is None or not 0 <= index < len(entries):
                     raise ValueError("índice de efeito fora da pilha")
@@ -704,6 +735,7 @@ class ThemeEditorManager:
             session.manifest["effects"] = effect_stacks_to_dict(parsed)
             session.dirty = True
         return {
+            **_document(session),
             "preview": self._preview(session),
             "stack": [item.to_dict() for item in parsed[stack]],
             "history": _history_state(session),
@@ -738,6 +770,8 @@ class ThemeEditorManager:
         if op not in ops or not timeline:
             raise SteamZeroError("E-API-SCHEMA", detail=f"operação de movimento inválida: {op}")
         raw = session.manifest.get("sceneMotion")
+        if not isinstance(raw, dict):
+            raw = _declared(session.manifest)["sceneMotion"]  # herdado, nunca descartado
         book: dict[str, Any] = (
             deepcopy(raw)
             if isinstance(raw, dict)
@@ -787,6 +821,7 @@ class ThemeEditorManager:
             session.manifest["sceneMotion"] = parsed.to_dict()
             session.dirty = True
         return {
+            **_document(session),
             "preview": self._preview(session),
             "motion": parsed.to_dict(),
             "history": _history_state(session),
@@ -815,7 +850,7 @@ class ThemeEditorManager:
         # Manifesto, assets e preview saem da mesma sessão restaurada: não há
         # estado de preview guardado que possa divergir do documento.
         return {
-            "manifest": dict(session.manifest),
+            **_document(session),
             "preview": self._preview(session),
             "history": _history_state(session),
         }

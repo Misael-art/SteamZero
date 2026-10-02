@@ -75,6 +75,14 @@ Rectangle {
     property string mediaRecipeRole: "focusedCover"
     property string effectStackName: "focusedCover"
     property string motionTimelineName: "entrada"
+    property string motionStateName: "focused"
+    // Declaração do tema (cadeia extends + rascunho), sem negociação por tier ou
+    // acessibilidade: base dos inspetores. O preview pode omitir efeitos; isto não.
+    property var editorDeclared: ({effects: ({}), sceneMotion: null})
+    property string authoringNotice: ""
+    // Sobe quando uma edição é recusada: os campos reconstroem e voltam ao valor
+    // declarado, em vez de continuar exibindo o texto rejeitado.
+    property int authoringRevision: 0
     property var editorThemeList: []
     property string esdeImportSource: ""
     property var esdeImportSchemes: []
@@ -566,6 +574,9 @@ Rectangle {
         }
         if (r.manifest)
             panel.editorManifest = r.manifest
+        if (r.declared)
+            panel.editorDeclared = r.declared
+        panel.authoringNotice = ""
         if (r.history) {
             panel.editorHistory = r.history
             panel.editorDirty = r.history.dirty === true
@@ -597,7 +608,8 @@ Rectangle {
         var body = {sessionId: panel.editorSessionId, stack: panel.effectStackName, op: op}
         for (var k in extra)
             body[k] = extra[k]
-        panel.requestAction("theme.editor.edit-effect", body, panel._applyEditorResult)
+        panel.requestAction("theme.editor.edit-effect", body, panel._applyEditorResult,
+            function(message) { panel.authoringNotice = String(message); panel.authoringRevision += 1 })
     }
 
     function editMotion(op, timeline, extra) {
@@ -606,7 +618,8 @@ Rectangle {
         var body = {sessionId: panel.editorSessionId, op: op, timeline: timeline}
         for (var k in extra)
             body[k] = extra[k]
-        panel.requestAction("theme.editor.edit-motion", body, panel._applyEditorResult)
+        panel.requestAction("theme.editor.edit-motion", body, panel._applyEditorResult,
+            function(message) { panel.authoringNotice = String(message); panel.authoringRevision += 1 })
     }
 
     function setMetadata(field, value) {
@@ -623,8 +636,10 @@ Rectangle {
         })
     }
 
-    function _openEditor(sessionId, manifest, preview) {
+    function _openEditor(sessionId, manifest, preview, declared) {
         panel.editorSessionId = sessionId
+        panel.editorDeclared = declared || ({effects: ({}), sceneMotion: null})
+        panel.authoringNotice = ""
         panel.editorHistory = ({canUndo: false, canRedo: false})
         panel.editorManifest = manifest
         panel.editorPreviewObject = preview
@@ -706,7 +721,7 @@ Rectangle {
         panel.requestAction("theme.editor.create",
             {name: name, extends: sourceId},
             function(r) {
-                panel._openEditor(r.sessionId, r.manifest, r.preview)
+                panel._openEditor(r.sessionId, r.manifest, r.preview, r.declared)
             })
     }
 
@@ -1059,7 +1074,7 @@ Rectangle {
                                         // contrato do backend, não são montados aqui.
                                         panel.requestAction("theme.editor.load",
                                             {themeId: modelData.id}, function(r) {
-                                                panel._openEditor(r.sessionId, r.manifest, r.preview)
+                                                panel._openEditor(r.sessionId, r.manifest, r.preview, r.declared)
                                             })
                                     }
                                     background: Rectangle {
@@ -1871,6 +1886,7 @@ Rectangle {
                 }
 
                 Button {
+                    objectName: "themeEditorSave"
                     text: qsTr("Salvar")
                     enabled: !panel.editorReadOnly && panel.editorDirty
                     implicitHeight: 36
@@ -1950,6 +1966,7 @@ Rectangle {
 
             // LEFT: token editor
             ScrollView {
+                id: tokenScroll
                 Layout.fillHeight: true
                 Layout.preferredWidth: panel.compactLayout ? parent.width * 0.5 : 380
                 Layout.minimumWidth: 280
@@ -1957,7 +1974,9 @@ Rectangle {
                 contentWidth: availableWidth
 
                 ColumnLayout {
-                    width: parent.availableWidth
+                    // `parent` aqui é o contentItem (sem availableWidth): a largura caía no
+                    // implícito e a coluna estourava a viewport compacta, escondendo botões.
+                    width: tokenScroll.availableWidth
                     spacing: 0
 
                     Item { Layout.minimumHeight: 8 }
@@ -2127,6 +2146,419 @@ Rectangle {
                                         panel.editorTokens = r.preview.resolved
                                     }
                                 })
+                        }
+                    }
+
+                    Rectangle {
+                        objectName: "mediaRecipeInspector"
+                        visible: panel.editorSessionId !== "" && !panel.editorReadOnly
+                        color: panel._previewBridge.surface
+                        radius: panel._previewBridge.radiusMedium
+                        Layout.fillWidth: true
+                        implicitHeight: visible ? mediaColumn.implicitHeight + 24 : 0
+                        border.color: panel._previewBridge.border
+                        border.width: 1
+
+                        ColumnLayout {
+                            id: mediaColumn
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            Flow {
+                            id: mediaFlow
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: childrenRect.height
+                            spacing: 10
+                            Label {
+                                text: qsTr("Enquadramento de mídia")
+                                color: panel._previewBridge.textMuted
+                                font.pixelSize: Math.round(11 * panel.visualScale)
+                            }
+                            ComboBox {
+                                objectName: "mediaRecipeRole"
+                                implicitHeight: 40
+                                Accessible.name: qsTr("Slot de mídia")
+                                model: ["focusedCover", "peripheralCover", "contextualBackdrop"]
+                                onActivated: panel.mediaRecipeRole = currentText
+                            }
+                            ComboBox {
+                                objectName: "mediaRecipeFit"
+                                implicitHeight: 40
+                                Accessible.name: qsTr("Ajuste")
+                                model: ["crop", "cover", "contain", "fill"]
+                                onActivated: panel.setMediaRecipe("fit", currentText)
+                            }
+                            ComboBox {
+                                objectName: "mediaRecipeOrientation"
+                                implicitHeight: 40
+                                Accessible.name: qsTr("Orientação")
+                                model: ["none", "auto", "portrait", "landscape"]
+                                onActivated: panel.setMediaRecipe("orientation", currentText)
+                            }
+                            ComboBox {
+                                objectName: "mediaRecipeAlignH"
+                                implicitHeight: 40
+                                Accessible.name: qsTr("Alinhamento horizontal")
+                                model: ["left", "center", "right"]
+                                onActivated: panel.setMediaRecipe("alignH", currentText)
+                            }
+                            ComboBox {
+                                objectName: "mediaRecipeAlignV"
+                                implicitHeight: 40
+                                Accessible.name: qsTr("Alinhamento vertical")
+                                model: ["top", "center", "bottom"]
+                                onActivated: panel.setMediaRecipe("alignV", currentText)
+                            }
+                        }
+                        }
+                    }
+
+                    Rectangle {
+                        objectName: "effectStackInspector"
+                        visible: panel.editorSessionId !== "" && !panel.editorReadOnly
+                        color: panel._previewBridge.surface
+                        radius: panel._previewBridge.radiusMedium
+                        Layout.fillWidth: true
+                        implicitHeight: visible ? effectColumn.implicitHeight + 24 : 0
+                        border.color: panel._previewBridge.border
+                        border.width: 1
+
+                        ColumnLayout {
+                            id: effectColumn
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 8
+                            Flow {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: childrenRect.height
+                                spacing: 10
+                                Label {
+                                    text: qsTr("Efeitos")
+                                    color: panel._previewBridge.textMuted
+                                    font.pixelSize: Math.round(11 * panel.visualScale)
+                                }
+                                ComboBox {
+                                    objectName: "effectStackName"
+                                    implicitHeight: 40
+                                    Accessible.name: qsTr("Pilha de efeitos")
+                                    model: ["focusedCover", "peripheralCover", "contextualBackdrop"]
+                                    onActivated: panel.effectStackName = currentText
+                                }
+                                ComboBox {
+                                    id: effectTypeCombo
+                                    objectName: "effectTypeToAdd"
+                                    implicitHeight: 40
+                                    Accessible.name: qsTr("Tipo de efeito")
+                                    model: ["blur", "saturation", "brightness", "contrast", "colorize", "opacity", "shadow", "glow", "reflection", "gradientMask", "vignette"]
+                                }
+                                Button {
+                                    objectName: "effectAdd"
+                                    implicitHeight: 40
+                                    text: qsTr("Adicionar efeito")
+                                    Accessible.name: qsTr("Adicionar efeito à pilha")
+                                    onClicked: panel.editEffect("add", {effectType: effectTypeCombo.currentText})
+                                }
+                            }
+                            Label {
+                                objectName: "effectEmpty"
+                                visible: effectRepeater.count === 0
+                                text: qsTr("Pilha vazia. Escolha um tipo e use Adicionar efeito.")
+                                color: panel._previewBridge.textMuted
+                                font.pixelSize: Math.round(11 * panel.visualScale)
+                            }
+                            Repeater {
+                                id: effectRepeater
+                                objectName: "effectRepeater"
+                                model: panel.authoringRevision < 0 ? [] : ((panel.editorDeclared.effects || {})[panel.effectStackName] || [])
+                                delegate: Flow {
+                                    id: effectRow
+                                    required property var modelData
+                                    required property int index
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: childrenRect.height
+                                    spacing: 8
+                                    readonly property bool omittedInPreview: {
+                                        var shown = ((panel.editorPreviewObject || {}).effects || {})[panel.effectStackName] || []
+                                        return shown.length < ((panel.editorDeclared.effects || {})[panel.effectStackName] || []).length
+                                    }
+                                    Label {
+                                        objectName: "effectType"
+                                        text: effectRow.modelData.type
+                                        color: panel._previewBridge.text
+                                        font.pixelSize: Math.round(12 * panel.visualScale)
+                                    }
+                                    Label {
+                                        visible: effectRow.omittedInPreview
+                                        text: qsTr("(pode ser omitido neste preview)")
+                                        color: panel._previewBridge.textMuted
+                                        font.pixelSize: Math.round(11 * panel.visualScale)
+                                    }
+                                    Repeater {
+                                        model: Object.keys(effectRow.modelData).filter(function(k) { return k !== "type" && k !== "fallback" })
+                                        delegate: Row {
+                                            id: paramRow
+                                            required property string modelData
+                                            spacing: 4
+                                            Label {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                text: paramRow.modelData
+                                                color: panel._previewBridge.textMuted
+                                                font.pixelSize: Math.round(11 * panel.visualScale)
+                                            }
+                                            TextField {
+                                                objectName: "effectParam_" + effectRow.index + "_" + paramRow.modelData
+                                                Accessible.name: effectRow.modelData.type + " " + paramRow.modelData
+                                                implicitWidth: 76
+                                                implicitHeight: 40
+                                                text: String(effectRow.modelData[paramRow.modelData])
+                                                // editingFinished dispara no Enter e de novo ao perder
+                                                // o foco: sem este baseline a mesma edição entraria duas
+                                                // vezes no histórico (ou duas vezes no erro).
+                                                property string committed: ""
+                                                Component.onCompleted: committed = text
+                                                onEditingFinished: {
+                                                    if (text === committed)
+                                                        return
+                                                    committed = text
+                                                    var isColor = text.charAt(0) === "#"
+                                                    panel.editEffect("set", {
+                                                        index: effectRow.index,
+                                                        param: paramRow.modelData,
+                                                        value: isColor ? text : parseFloat(text)
+                                                    })
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Button {
+                                        objectName: "effectUp_" + effectRow.index
+                                        text: "↑"
+                                        implicitWidth: 40
+                                        implicitHeight: 40
+                                        enabled: effectRow.index > 0
+                                        Accessible.name: qsTr("Mover efeito para cima") + " " + effectRow.modelData.type
+                                        onClicked: panel.editEffect("move", {index: effectRow.index, value: effectRow.index - 1})
+                                    }
+                                    Button {
+                                        objectName: "effectDown_" + effectRow.index
+                                        text: "↓"
+                                        implicitWidth: 40
+                                        implicitHeight: 40
+                                        enabled: effectRow.index < effectRepeater.count - 1
+                                        Accessible.name: qsTr("Mover efeito para baixo") + " " + effectRow.modelData.type
+                                        onClicked: panel.editEffect("move", {index: effectRow.index, value: effectRow.index + 1})
+                                    }
+                                    Button {
+                                        objectName: "effectRemove_" + effectRow.index
+                                        text: qsTr("Remover")
+                                        implicitHeight: 40
+                                        Accessible.name: qsTr("Remover efeito") + " " + effectRow.modelData.type
+                                        onClicked: panel.editEffect("remove", {index: effectRow.index})
+                                    }
+                                }
+                            }
+                            Label {
+                                objectName: "authoringNotice"
+                                visible: panel.authoringNotice !== ""
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                                text: panel.authoringNotice
+                                color: panel.amberColor
+                                font.pixelSize: Math.round(12 * panel.visualScale)
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        objectName: "motionInspector"
+                        visible: panel.editorSessionId !== "" && !panel.editorReadOnly
+                        color: panel._previewBridge.surface
+                        radius: panel._previewBridge.radiusMedium
+                        Layout.fillWidth: true
+                        implicitHeight: visible ? motionColumn.implicitHeight + 24 : 0
+                        border.color: panel._previewBridge.border
+                        border.width: 1
+
+                        ColumnLayout {
+                            id: motionColumn
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 8
+                            Label {
+                                text: qsTr("Movimento — keyframes de estado e timelines")
+                                color: panel._previewBridge.textMuted
+                                font.pixelSize: Math.round(11 * panel.visualScale)
+                            }
+                            Flow {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: childrenRect.height
+                                spacing: 8
+                                ComboBox {
+                                    id: motionStateCombo
+                                    objectName: "motionStateName"
+                                    implicitHeight: 40
+                                    Accessible.name: qsTr("Estado do keyframe")
+                                    model: ["normal", "focused", "selected", "pressed", "disabled", "loading", "missing", "error", "offline", "playing", "idle", "menuOpen"]
+                                    currentIndex: model.indexOf(panel.motionStateName)
+                                    onActivated: panel.motionStateName = currentText
+                                }
+                                Repeater {
+                                    model: ["opacity", "scale", "translateX", "translateY"]
+                                    delegate: Row {
+                                        id: keyframeRow
+                                        required property string modelData
+                                        spacing: 4
+                                        Label {
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            text: keyframeRow.modelData
+                                            color: panel._previewBridge.textMuted
+                                            font.pixelSize: Math.round(11 * panel.visualScale)
+                                        }
+                                        TextField {
+                                            objectName: "keyframe_" + keyframeRow.modelData
+                                            Accessible.name: qsTr("Keyframe") + " " + panel.motionStateName + " " + keyframeRow.modelData
+                                            implicitWidth: 76
+                                            implicitHeight: 40
+                                            text: {
+                                                var st = ((panel.editorDeclared.sceneMotion || {}).states || {})[panel.motionStateName] || {}
+                                                var d = {opacity: 1, scale: 1, translateX: 0, translateY: 0}
+                                                return String(st[keyframeRow.modelData] !== undefined ? st[keyframeRow.modelData] : d[keyframeRow.modelData])
+                                            }
+                                            property string committed: ""
+                                            Component.onCompleted: committed = text
+                                            onTextChanged: if (!activeFocus) committed = text
+                                            onEditingFinished: {
+                                                if (text === committed)
+                                                    return
+                                                committed = text
+                                                panel.editMotion("set_state", panel.motionStateName, {field: keyframeRow.modelData, value: parseFloat(text)})
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            Flow {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: childrenRect.height
+                                spacing: 8
+                                Repeater {
+                                    id: timelineRepeater
+                                    objectName: "motionTimelineList"
+                                    model: Object.keys((panel.editorDeclared.sceneMotion || {}).timelines || {})
+                                    delegate: Button {
+                                        id: timelineButton
+                                        required property string modelData
+                                        objectName: "motionTimeline_" + modelData
+                                        text: modelData
+                                        implicitHeight: 40
+                                        checkable: true
+                                        checked: panel.motionTimelineName === modelData
+                                        Accessible.name: qsTr("Selecionar timeline") + " " + modelData
+                                        onClicked: panel.motionTimelineName = modelData
+                                    }
+                                }
+                                TextField {
+                                    id: timelineNameField
+                                    objectName: "motionTimelineName"
+                                    Accessible.name: qsTr("Nome da nova timeline")
+                                    placeholderText: qsTr("nome da timeline")
+                                    implicitWidth: 140
+                                    implicitHeight: 40
+                                }
+                                ComboBox {
+                                    id: timelineKindCombo
+                                    objectName: "motionTimelineKind"
+                                    implicitHeight: 40
+                                    Accessible.name: qsTr("Tipo de timeline")
+                                    model: ["sequence", "parallel"]
+                                }
+                                Button {
+                                    objectName: "motionTimelineAdd"
+                                    text: qsTr("Criar timeline")
+                                    implicitHeight: 40
+                                    onClicked: {
+                                        panel.motionTimelineName = timelineNameField.text
+                                        panel.editMotion("add_timeline", timelineNameField.text, {value: timelineKindCombo.currentText})
+                                    }
+                                }
+                                Button {
+                                    objectName: "motionClipAdd"
+                                    text: qsTr("Adicionar clip")
+                                    implicitHeight: 40
+                                    onClicked: panel.editMotion("add_clip", panel.motionTimelineName, {value: {state: panel.motionStateName, duration: 240}})
+                                }
+                                TextField {
+                                    objectName: "motionTimelineRepeat"
+                                    Accessible.name: qsTr("Repetições da timeline")
+                                    implicitWidth: 64
+                                    implicitHeight: 40
+                                    text: String((((panel.editorDeclared.sceneMotion || {}).timelines || {})[panel.motionTimelineName] || {}).repeat || 0)
+                                    property string committed: ""
+                                    Component.onCompleted: committed = text
+                                    onTextChanged: if (!activeFocus) committed = text
+                                    onEditingFinished: {
+                                        if (text === committed)
+                                            return
+                                        committed = text
+                                        panel.editMotion("set_timeline", panel.motionTimelineName, {field: "repeat", value: parseInt(text)})
+                                    }
+                                }
+                                Button {
+                                    objectName: "motionTimelineRemove"
+                                    text: qsTr("Remover timeline")
+                                    implicitHeight: 40
+                                    onClicked: panel.editMotion("remove_timeline", panel.motionTimelineName, ({}))
+                                }
+                            }
+                            Label {
+                                objectName: "motionEmpty"
+                                visible: motionClipRepeater.count === 0
+                                text: qsTr("Sem clips nesta timeline. Escreva um nome, escolha Criar timeline e depois Adicionar clip.")
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                                color: panel._previewBridge.textMuted
+                                font.pixelSize: Math.round(11 * panel.visualScale)
+                            }
+                            Repeater {
+                                id: motionClipRepeater
+                                objectName: "motionClipRepeater"
+                                model: panel.authoringRevision < 0 ? [] : ((((panel.editorDeclared.sceneMotion || {}).timelines || {})[panel.motionTimelineName] || {}).clips || [])
+                                delegate: Flow {
+                                    id: clipRow
+                                    required property var modelData
+                                    required property int index
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: childrenRect.height
+                                    spacing: 8
+                                    Label {
+                                        text: clipRow.modelData.state || clipRow.modelData.transition
+                                        color: panel._previewBridge.text
+                                        font.pixelSize: Math.round(12 * panel.visualScale)
+                                    }
+                                    TextField {
+                                        objectName: "motionClipDuration_" + clipRow.index
+                                        visible: clipRow.modelData.state !== undefined
+                                        Accessible.name: qsTr("Duração do clip") + " " + (clipRow.index + 1)
+                                        implicitWidth: 72
+                                        implicitHeight: 40
+                                        text: String(clipRow.modelData.duration)
+                                        property string committed: ""
+                                        Component.onCompleted: committed = text
+                                        onEditingFinished: {
+                                            if (text === committed)
+                                                return
+                                            committed = text
+                                            panel.editMotion("set_clip", panel.motionTimelineName, {index: clipRow.index, field: "duration", value: parseInt(text)})
+                                        }
+                                    }
+                                    Button {
+                                        objectName: "motionClipRemove_" + clipRow.index
+                                        text: qsTr("Remover")
+                                        implicitHeight: 40
+                                        Accessible.name: qsTr("Remover clip") + " " + (clipRow.index + 1)
+                                        onClicked: panel.editMotion("remove_clip", panel.motionTimelineName, {index: clipRow.index})
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -2564,249 +2996,6 @@ Rectangle {
                         }
                     }
 
-                    Rectangle {
-                        objectName: "mediaRecipeInspector"
-                        visible: panel.studioGraphActive && !panel.editorReadOnly
-                        color: panel._previewBridge.surface
-                        radius: panel._previewBridge.radiusMedium
-                        Layout.fillWidth: true
-                        implicitHeight: visible ? 64 : 0
-                        border.color: panel._previewBridge.border
-                        border.width: 1
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 10
-                            Label {
-                                text: qsTr("Enquadramento de mídia")
-                                color: panel._previewBridge.textMuted
-                                font.pixelSize: Math.round(11 * panel.visualScale)
-                            }
-                            ComboBox {
-                                objectName: "mediaRecipeRole"
-                                Accessible.name: qsTr("Slot de mídia")
-                                model: ["focusedCover", "peripheralCover", "contextualBackdrop"]
-                                onActivated: panel.mediaRecipeRole = currentText
-                            }
-                            ComboBox {
-                                objectName: "mediaRecipeFit"
-                                Accessible.name: qsTr("Ajuste")
-                                model: ["crop", "cover", "contain", "fill"]
-                                onActivated: panel.setMediaRecipe("fit", currentText)
-                            }
-                            ComboBox {
-                                objectName: "mediaRecipeOrientation"
-                                Accessible.name: qsTr("Orientação")
-                                model: ["none", "auto", "portrait", "landscape"]
-                                onActivated: panel.setMediaRecipe("orientation", currentText)
-                            }
-                            ComboBox {
-                                objectName: "mediaRecipeAlignH"
-                                Accessible.name: qsTr("Alinhamento horizontal")
-                                model: ["left", "center", "right"]
-                                onActivated: panel.setMediaRecipe("alignH", currentText)
-                            }
-                            ComboBox {
-                                objectName: "mediaRecipeAlignV"
-                                Accessible.name: qsTr("Alinhamento vertical")
-                                model: ["top", "center", "bottom"]
-                                onActivated: panel.setMediaRecipe("alignV", currentText)
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        objectName: "effectStackInspector"
-                        visible: panel.studioGraphActive && !panel.editorReadOnly
-                        color: panel._previewBridge.surface
-                        radius: panel._previewBridge.radiusMedium
-                        Layout.fillWidth: true
-                        implicitHeight: visible ? effectColumn.implicitHeight + 24 : 0
-                        border.color: panel._previewBridge.border
-                        border.width: 1
-
-                        ColumnLayout {
-                            id: effectColumn
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
-                            RowLayout {
-                                spacing: 10
-                                Label {
-                                    text: qsTr("Efeitos")
-                                    color: panel._previewBridge.textMuted
-                                    font.pixelSize: Math.round(11 * panel.visualScale)
-                                }
-                                ComboBox {
-                                    objectName: "effectStackName"
-                                    Accessible.name: qsTr("Pilha de efeitos")
-                                    model: ["focusedCover", "peripheralCover", "contextualBackdrop"]
-                                    onActivated: panel.effectStackName = currentText
-                                }
-                                ComboBox {
-                                    id: effectTypeCombo
-                                    objectName: "effectTypeToAdd"
-                                    Accessible.name: qsTr("Tipo de efeito")
-                                    model: ["blur", "saturation", "brightness", "contrast", "colorize", "opacity", "shadow", "glow", "reflection", "gradientMask", "vignette"]
-                                }
-                                Button {
-                                    objectName: "effectAdd"
-                                    text: qsTr("Adicionar efeito")
-                                    Accessible.name: qsTr("Adicionar efeito à pilha")
-                                    onClicked: panel.editEffect("add", {effectType: effectTypeCombo.currentText})
-                                }
-                            }
-                            Label {
-                                objectName: "effectEmpty"
-                                visible: effectRepeater.count === 0
-                                text: qsTr("Pilha vazia. Escolha um tipo e use Adicionar efeito.")
-                                color: panel._previewBridge.textMuted
-                                font.pixelSize: Math.round(11 * panel.visualScale)
-                            }
-                            Repeater {
-                                id: effectRepeater
-                                objectName: "effectRepeater"
-                                model: ((panel.editorPreviewObject || {}).effects || {})[panel.effectStackName] || []
-                                delegate: RowLayout {
-                                    id: effectRow
-                                    required property var modelData
-                                    required property int index
-                                    spacing: 8
-                                    Label {
-                                        text: effectRow.modelData.type
-                                        color: panel._previewBridge.text
-                                        font.pixelSize: Math.round(12 * panel.visualScale)
-                                    }
-                                    Repeater {
-                                        model: Object.keys(effectRow.modelData.parameters || {})
-                                        delegate: RowLayout {
-                                            id: paramRow
-                                            required property string modelData
-                                            Label {
-                                                text: paramRow.modelData
-                                                color: panel._previewBridge.textMuted
-                                                font.pixelSize: Math.round(11 * panel.visualScale)
-                                            }
-                                            TextField {
-                                                Accessible.name: effectRow.modelData.type + " " + paramRow.modelData
-                                                implicitWidth: 72
-                                                text: String(effectRow.modelData.parameters[paramRow.modelData])
-                                                onEditingFinished: {
-                                                    var isColor = text.charAt(0) === "#"
-                                                    panel.editEffect("set", {
-                                                        index: effectRow.index,
-                                                        param: paramRow.modelData,
-                                                        value: isColor ? text : parseFloat(text)
-                                                    })
-                                                }
-                                            }
-                                        }
-                                    }
-                                    Button {
-                                        text: qsTr("Remover")
-                                        Accessible.name: qsTr("Remover efeito") + " " + effectRow.modelData.type
-                                        onClicked: panel.editEffect("remove", {index: effectRow.index})
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        objectName: "motionInspector"
-                        visible: panel.studioGraphActive && !panel.editorReadOnly
-                        color: panel._previewBridge.surface
-                        radius: panel._previewBridge.radiusMedium
-                        Layout.fillWidth: true
-                        implicitHeight: visible ? motionColumn.implicitHeight + 24 : 0
-                        border.color: panel._previewBridge.border
-                        border.width: 1
-
-                        ColumnLayout {
-                            id: motionColumn
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
-                            RowLayout {
-                                spacing: 10
-                                Label {
-                                    text: qsTr("Timeline")
-                                    color: panel._previewBridge.textMuted
-                                    font.pixelSize: Math.round(11 * panel.visualScale)
-                                }
-                                TextField {
-                                    id: timelineNameField
-                                    objectName: "motionTimelineName"
-                                    Accessible.name: qsTr("Nome da timeline")
-                                    text: panel.motionTimelineName
-                                    implicitWidth: 120
-                                    onEditingFinished: panel.motionTimelineName = text
-                                }
-                                ComboBox {
-                                    id: timelineKindCombo
-                                    objectName: "motionTimelineKind"
-                                    Accessible.name: qsTr("Tipo de timeline")
-                                    model: ["sequence", "parallel"]
-                                }
-                                Button {
-                                    objectName: "motionTimelineAdd"
-                                    text: qsTr("Criar timeline")
-                                    Accessible.name: qsTr("Criar timeline")
-                                    onClicked: panel.editMotion("add_timeline", timelineNameField.text, {value: timelineKindCombo.currentText})
-                                }
-                                Button {
-                                    text: qsTr("Adicionar clip")
-                                    Accessible.name: qsTr("Adicionar clip à timeline")
-                                    onClicked: panel.editMotion("add_clip", panel.motionTimelineName, {value: {state: "focused", duration: 240}})
-                                }
-                                Button {
-                                    text: qsTr("Remover timeline")
-                                    Accessible.name: qsTr("Remover timeline")
-                                    onClicked: panel.editMotion("remove_timeline", panel.motionTimelineName, ({}))
-                                }
-                            }
-                            Label {
-                                objectName: "motionEmpty"
-                                visible: motionClipRepeater.count === 0
-                                text: qsTr("Sem clips. Crie uma timeline com o nome acima e adicione clips.")
-                                color: panel._previewBridge.textMuted
-                                font.pixelSize: Math.round(11 * panel.visualScale)
-                            }
-                            Repeater {
-                                id: motionClipRepeater
-                                objectName: "motionClipRepeater"
-                                model: {
-                                    var m = ((panel.editorManifest || {}).sceneMotion || {}).timelines || {}
-                                    return (m[panel.motionTimelineName] || {}).clips || []
-                                }
-                                delegate: RowLayout {
-                                    id: clipRow
-                                    required property var modelData
-                                    required property int index
-                                    spacing: 8
-                                    Label {
-                                        text: clipRow.modelData.state || clipRow.modelData.transition
-                                        color: panel._previewBridge.text
-                                        font.pixelSize: Math.round(12 * panel.visualScale)
-                                    }
-                                    TextField {
-                                        visible: clipRow.modelData.state !== undefined
-                                        Accessible.name: qsTr("Duração do clip") + " " + (clipRow.index + 1)
-                                        implicitWidth: 72
-                                        text: String(clipRow.modelData.duration)
-                                        onEditingFinished: panel.editMotion("set_clip", panel.motionTimelineName, {index: clipRow.index, field: "duration", value: parseInt(text)})
-                                    }
-                                    Button {
-                                        text: qsTr("Remover")
-                                        Accessible.name: qsTr("Remover clip") + " " + (clipRow.index + 1)
-                                        onClicked: panel.editMotion("remove_clip", panel.motionTimelineName, {index: clipRow.index})
-                                    }
-                                }
-                            }
-                        }
-                    }
-
                     // token summary
                     Rectangle {
                         color: panel._previewBridge.surface
@@ -3147,7 +3336,7 @@ Rectangle {
                         panel.requestAction("theme.editor.create",
                             {name: createNameField.text.trim()},
                             function(r) {
-                                panel._openEditor(r.sessionId, r.manifest, r.preview)
+                                panel._openEditor(r.sessionId, r.manifest, r.preview, r.declared)
                                 createDialog.close()
                                 createNameField.text = ""
                             })

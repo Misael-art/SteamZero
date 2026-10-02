@@ -154,3 +154,33 @@ def test_motion_invalid_edits_keep_document(env: Path) -> None:
         with pytest.raises(SteamZeroError):
             mgr.edit_motion(sid, op, **kwargs)  # type: ignore[arg-type]
     assert mgr.history(sid)["history"]["undoDepth"] == depth  # type: ignore[index]
+
+
+def test_first_edit_keeps_inherited_motion_and_declared_effects_survive_negotiation(
+    env: Path,
+) -> None:
+    mgr = ThemeEditorManager()
+    parent = ThemeEditorManager().load("org.steamzero.asset-recipes-demo")
+    inherited = parent["declared"]["sceneMotion"]  # type: ignore[index]
+    assert inherited and inherited["timelines"], "o demo precisa declarar timelines"
+
+    sid = str(mgr.create("Herdeiro", extends="org.steamzero.asset-recipes-demo")["sessionId"])
+    edited = mgr.edit_motion(sid, "set_state", timeline="focused", field="scale", value=1.1)
+    kept = edited["declared"]["sceneMotion"]  # type: ignore[index]
+    assert set(inherited["timelines"]) <= set(kept["timelines"]), (
+        "a primeira edição perdeu timelines"
+    )
+    assert kept["states"]["focused"]["scale"] == 1.1
+
+    mgr.edit_effect_stack(sid, "focusedCover", "add", effect_type="glow")
+    declared = _declared_stack(mgr, sid)
+    assert any(e["type"] == "glow" for e in declared)
+    # O preview negociado (alto contraste) omite efeitos; a declaração do documento não.
+    contrast = mgr.preview(sid, high_contrast=True)["preview"]
+    assert _stack(contrast, "focusedCover") == []  # type: ignore[arg-type]
+    assert any(e["type"] == "glow" for e in _declared_stack(mgr, sid))
+
+
+def _declared_stack(mgr: ThemeEditorManager, sid: str) -> list[dict[str, object]]:
+    state = mgr.edit_effect_stack(sid, "focusedCover", "move", index=0, value=0)
+    return [dict(e) for e in state["declared"]["effects"]["focusedCover"]]  # type: ignore[index]

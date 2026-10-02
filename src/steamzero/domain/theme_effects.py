@@ -239,6 +239,11 @@ class EffectDiagnostic:
         }
 
 
+def effect_defaults(effect_type: EffectType) -> dict[str, Any]:
+    """Parâmetros padrão do nó, para que a autoria exiba todos os controles."""
+    return dict(_RULES[effect_type].defaults)
+
+
 def parse_effect_stacks(payload: Mapping[str, Any] | None) -> dict[str, tuple[EffectSpec, ...]]:
     """Lê o namespace ``effects`` do manifesto, preservando a versão do stack."""
     if not payload:
