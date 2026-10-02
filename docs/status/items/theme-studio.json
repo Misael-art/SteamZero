@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "087d7b4a35ca083fd851f98d95af4c4363f1f8c4fc58ed672b79d021b7b760db",
+  "scopeDigest": "b0bc1a126a8a825f79437ea2463acd6d1603297566cb8ffe54d988c715dd66ef",
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun",
     "docs/09-operations/evidence/2026-09-07-theme-studio-contrast",
@@ -29,6 +29,7 @@
     "tests/unit/test_theme_editor.py",
     "tests/unit/test_studio_graph.py",
     "tests/unit/test_theme_editor_extends.py",
+    "tests/unit/test_theme_effect_authoring.py",
     "tests/unit/test_theme_import_package.py",
     "tests/unit/test_theme_marketplace.py"
   ],
@@ -218,10 +219,46 @@
       "reference": "tests/integration/test_theme_scene_runtime_e2e.py",
       "command": "2026-10-02, checkpoint integral com jornada QML de autoria e consumidor SceneEsdeView. .venv/bin/python tools/run_tests_isolated.py tests -q: 6557 passed, 47 skipped in 2599.72s; estado real antes/depois idêntico (files=12818, directories=2068, bytes=1372818509). Gates estáticos locais: ruff check, ruff format --check (689 files), mypy (299 files), make independence boundaries e make status-check aprovados. Não cobre Launcher/Cinema nem a release instalada.",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_theme_effect_authoring.py",
+      "command": "2026-10-02, .venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_effect_authoring.py -q: 10 passed em 1.20s; valida schemas tipados, limites e move_clip atômico em alvo inválido. Guard real idêntico antes/depois.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_theme_authoring_e2e.py",
+      "command": "2026-10-02, .venv/bin/python tools/run_tests_isolated.py tests/integration/test_theme_authoring_e2e.py -q: 1 passed em 14.08s; eventos Qt na QML real contra DesktopControlServer, ciclo criar/editar/undo/redo/salvar/reabrir/aplicar e leitura de pixels em EditorialLibrary/MediaEffectLayer; XDG temporário e guard real idêntico antes/depois. UI offscreen/software, não é input físico.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_theme_editor.py",
+      "command": "2026-10-02, tests/unit/test_theme_editor.py tests/unit/test_scene_motion.py tests/unit/test_theme_effects.py: 68 passed em 1.54s; guard de estado real idêntico antes/depois.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_theme_scene_runtime_e2e.py",
+      "command": "2026-10-02, reexecução separada de SceneEsdeView com fixtures ES-DE/RetroFE: 2 passed em 2.20s. Ela verifica decodificação/render de cena válida, mas não consome o tema editado na jornada central.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-10-01-v4-authoring-ui/README.md",
+      "command": "2026-10-02, revisão visual de nove capturas QML: seletor AURA, edição de vinheta, viewport 640x560 e consumidor central sintético; roteiro B_VISUAL preparado. Não houve sessão gráfica física, release nova, portal nativo ou biblioteca pessoal.",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_theme_authoring_e2e.py",
+      "command": "2026-10-02, gates integrais na árvore congelada: .venv/bin/python tools/run_tests_isolated.py tests -q — 6560 passed, 47 skipped em 2302.24s; estado real idêntico (files=12818, directories=2068, bytes=1372818509, max_mtime_ns=1790888510663329431). Ruff check, format (689 arquivos), mypy (299), independence, boundaries e status-check passaram. Execução/pixels cobertos na AURA UI central do checkout offscreen; sem promoção para Engine, release ou input físico.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Concluir os gates locais e publicar o checkpoint do PR #249. Depois, executar B_VISUAL na release candidata com teclado/gamepad/portal e observar o tema editado no consumidor Engine. Theme Studio segue parcial: edição de assetRecipes no documento, perfis por tier/resolução, Launcher/Cinema e medição na release permanecem pendentes.",
+  "nextAction": "Gates locais integrais aprovados nesta árvore. Separar commits funcionais e documental, fazer push autorizado do PR #249 e consultar CI no SHA final. Em release governada autorizada, B_VISUAL valida input físico. Permanecem edição assetRecipes, tiers/resolução, round-trip do tema editado na cena Engine, Launcher/Cinema e medição na release.",
   "activeWorkstreams": [],
   "updatedAt": "2026-10-02",
-  "notes": "A branch do PR #249 contém controles e jornada de efeitos, keyframes/timelines e bindings de layout pela UI QML contra a bridge real, com undo/redo, dirty, salvar/reabrir e round-trip de cenas. O gate visual no SHA ee72df66 encontrou alvos fora da viewport; a causa era largura implícita dos Flow sob o container Qt pinado. A correção limita os cartões e seus Flow ao viewport, e o harness agora verifica a geometria antes do input. A autoria passou no container Qt 6.11.2/Python 3.14.6 e no host; 140 testes focados de autoria, efeitos, cenas e receitas passaram. Isso continua sendo dev/offscreen: não promove Theme Studio, Theme Engine ou Launcher. Permanecem input físico e prova na release autorizada, execução da cena editada no consumidor Engine, edição de assetRecipes a partir de uma fonte única e perfis tier/resolução. Gates integrais locais no checkpoint: 6557 passed/47 skipped; lint, formato, mypy, independência, fronteiras e status-check verdes. Isso não substitui B_VISUAL nem muda os eixos do item."
+  "notes": "PR #249 já tem jornadas de autoria QML para efeitos, movimento, bindings e layout contra o servidor real, com histórico, dirty, salvar/reabrir e cópia de pacote em testes separados. Em 2026-10-02, os controles ganharam schemas tipados e limites de domínio; a jornada envia eventos Qt para adicionar/parametrizar/reordenar/remover efeitos, editar estados/timelines/clips, tratar erros e aplicar o tema à EditorialLibrary/MediaEffectLayer. O pixel da mídia sintética muda conforme a vinheta salva. O teste SceneEsdeView é separado e não consome o tema editado. Essas são provas do checkout offscreen, não de sessão física ou release. A integral atual desta árvore passou com 6560 passed/47 skipped em 2302.24s; os gates estáticos passaram e estão registrados na evidência da rodada. Pendem B_VISUAL com input físico, round-trip do tema editado na cena Engine, edição de assetRecipes/tier/resolução, Launcher/Cinema e medição de release. Nenhum eixo do item foi promovido."
 }

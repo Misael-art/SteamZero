@@ -105,7 +105,7 @@
     "tools/ui_dialog_probe.qml",
     "tools/ui_scenario_fixtures.py"
   ],
-  "scopeDigest": "f15bb8b33441d8197bacb1a96ad6adcacd5b6258b955cc016b4b639bcae09994",
+  "scopeDigest": "f90dee5cd192ebc8758abdeb3ac1219dfa66df6e7e382c128005292d9c9068db",
   "dependsOn": [],
   "knownGaps": [
     "GAP-UI-LIVE-LAUNCHER-ROUTING",
@@ -1268,6 +1268,12 @@
       "reference": "tests/integration/test_ui_action_inventory.py",
       "command": "2026-10-02, regressão em suíte integral após ajuste isolado dos inspetores de autoria do Theme Studio. .venv/bin/python tools/run_tests_isolated.py tests -q: 6557 passed, 47 skipped in 2599.72s; estado real antes/depois idêntico (files=12818, directories=2068, bytes=1372818509). Gates estáticos locais: ruff check, ruff format --check (689 files), mypy (299 files), make independence boundaries e make status-check aprovados. Não equivale a auditoria visual completa nem a prova física; nenhum eixo promovido.",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-10-01-v4-authoring-ui/README.md",
+      "command": "2026-10-02: scopeDigest renovado pelo delta da árvore QML compartilhada, restrito ao editor de efeitos/movimento e locator de teste. A auditoria de UI não foi reexecutada, critérios nem eixos foram promovidos.",
+      "result": "recorded"
     }
   ],
   "nextAction": "Executar a validacao fisica do conjunto integrado (release candidata 7808374257db) com autorizacao especifica de instalacao; ate la os eixos implementacao/verificacao/operacao/distribuicao continuam os mesmos. F-1 (memoryGb), cinco superficies rolaveis e o seletor nativo seguem abertos.",

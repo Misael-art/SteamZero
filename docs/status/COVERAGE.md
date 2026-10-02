@@ -83,21 +83,21 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-PLATFORM-REQUIREMENT-SCOPE | 7 | 3 | 2 | unit |  |
 | SZ-PLATFORM-VITA-CATALOG | 5 | 8 | 5 | hw |  |
 | SZ-PROJECT-DESIGN-AUDIT | 12 | 25 | 6 | dev |  |
-| SZ-PS3-OFFICIAL-FIRMWARE-DOWNLOAD | 8 | 5 | 1 | unit |  |
+| SZ-PS3-OFFICIAL-FIRMWARE-DOWNLOAD | 8 | 6 | 1 | unit |  |
 | SZ-RESOURCE-QML-PROBE | 7 | 2 | 1 | dev |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
-| SZ-ROADMAP-CONTINUATION | 19 | 9 | 3 | dev |  |
+| SZ-ROADMAP-CONTINUATION | 24 | 11 | 5 | dev |  |
 | SZ-SHARPEMU-COMPONENT-SMOKE-CONTRACT | 3 | 1 | 1 | unit |  |
 | SZ-SYSTEM-DIAGNOSTICS-GUIDANCE | 5 | 8 | 3 | dev |  |
 | SZ-TEST-STATE-ISOLATION | 4 | 4 | 4 | dev |  |
-| SZ-THEME-ENGINE | 125 | 56 | 46 | hw |  |
+| SZ-THEME-ENGINE | 126 | 58 | 48 | hw |  |
 | SZ-THEME-ESDE-SCENE-RENDER | 26 | 11 | 8 | hw |  |
 | SZ-THEME-IMPORT-ESDE-LAYOUT | 32 | 13 | 10 | hw |  |
-| SZ-THEME-IMPORT-RETROFE | 10 | 16 | 11 | hw |  |
-| SZ-THEME-IMPORT-SURFACE | 4 | 13 | 8 | unit |  |
-| SZ-THEME-STUDIO | 96 | 28 | 20 | hw |  |
-| SZ-UI-DESKTOP-AUDIT | 833 | 186 | 110 | dev |  |
+| SZ-THEME-IMPORT-RETROFE | 10 | 17 | 11 | hw |  |
+| SZ-THEME-IMPORT-SURFACE | 4 | 14 | 8 | unit |  |
+| SZ-THEME-STUDIO | 102 | 34 | 25 | hw |  |
+| SZ-UI-DESKTOP-AUDIT | 833 | 187 | 110 | dev |  |
 | SZ-UI-PACKAGED-ICONS | 57 | 4 | 2 | unit |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 
-Arquivos em `src/`: **623**. Sob agregador apenas, sem item de capacidade: **270** (43%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
+Arquivos em `src/`: **623**. Sob agregador apenas, sem item de capacidade: **269** (43%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.

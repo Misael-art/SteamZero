@@ -13,11 +13,15 @@
     "src/steamzero/ui/qml/mediaFit.js",
     "src/steamzero/ui/qml/MediaEffectLayer.qml",
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+    "src/steamzero/ui/qml/ColorPickerDialog.qml",
     "src/steamzero/domain/theme_editor.py",
+    "src/steamzero/domain/scene_motion.py",
+    "src/steamzero/domain/theme_effects.py",
     "src/steamzero/domain/media_recipes.py",
     "tests/integration/test_theme_authoring_e2e.py",
     "tests/integration/test_theme_scene_runtime_e2e.py",
     "tests/unit/test_theme_authoring_journey.py",
+    "tests/unit/test_theme_effect_authoring.py",
     "tests/qml/check_theme_authoring_e2e.qml",
     "tests/integration/test_media_fit_parity.py",
     "docs/status/workstreams/v1-v3-theme-journey-2026-10-01.json",
@@ -36,6 +40,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Gates integrais locais aprovados: 6557 passed/47 skipped, ruff/format/mypy/independência/fronteiras/status-check verdes. Separar commits funcional e documental, fazer push autorizado e atualizar o PR #249; em seguida consultar CI do SHA final. Pendem B_VISUAL na release candidata, input físico, autoria assetRecipes/tier/resolução e consumidores Launcher/Cinema.",
+  "nextAction": "Suíte integral (6560 passed/47 skipped) e Ruff/format/mypy/independence/boundaries/status-check aprovados. Separar commits funcionais e documental, fazer push autorizado e atualizar o PR #249; depois consultar CI terminal no SHA final. B_VISUAL físico, edição assetRecipes/tier/resolução, cena editada na Engine e Launcher/Cinema permanecem pendentes.",
   "updatedAt": "2026-10-02"
 }

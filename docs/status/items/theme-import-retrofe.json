@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "ready",
   "distribution": "installed",
-  "scopeDigest": "77a3de439579ba806fdc8e231a410dc4bb4c85a41b6beadae84502f9ac76d872",
+  "scopeDigest": "845e115025858cb9ed9c3e1b92dd51360f766e1589644ab4313e4065ab032e2a",
   "scopePaths": [
     "src/steamzero/adapters/desktop_contracts.py",
     "src/steamzero/adapters/desktop_dashboard.py",
@@ -130,6 +130,12 @@
       "reference": "tests/unit/test_theme_import_retrofe.py",
       "command": "2026-10-02, regressão em suíte integral após ajuste isolado da largura dos inspetores do Studio. .venv/bin/python tools/run_tests_isolated.py tests -q: 6557 passed, 47 skipped in 2599.72s; estado real antes/depois idêntico (files=12818, directories=2068, bytes=1372818509). Gates estáticos locais: ruff check, ruff format --check (689 files), mypy (299 files), make independence boundaries e make status-check aprovados. O importador/ativação não foi alterado nem promovido por esse resultado.",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-10-01-v4-authoring-ui/README.md",
+      "command": "2026-10-02: scopeDigest renovado por controles de efeitos/movimento no ThemeEditorPanel compartilhado. Blocos de importação RetroFE não mudaram e não foram retestados; nenhum eixo foi promovido.",
+      "result": "recorded"
     }
   ],
   "nextAction": "Manter a entrada RetroFE instalada e documentar explicitamente que inspeção/importação não promove ativação automática da cena.",

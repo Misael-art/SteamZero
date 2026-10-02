@@ -19,7 +19,7 @@
     "docs/09-operations/evidence/2026-10-01-v4-authoring-ui",
     "docs/status/workstreams/v1-v3-theme-journey-2026-10-01.json"
   ],
-  "scopeDigest": "22ca0cc584728e3a25c8a13ef946b5bb34f9d64fbdf589d40ebbdacf0b7e292d",
+  "scopeDigest": "c1151e88149d5edde821f127d8fc9b24eaffc3b422de88790f22eac1a4736419",
   "dependsOn": [
     "SZ-PROJECT-DESIGN-AUDIT"
   ],
@@ -85,12 +85,24 @@
       "reference": "docs/09-operations/evidence/2026-10-01-v4-authoring-ui/README.md",
       "command": "2026-10-02, checkpoint local da continuidade do PR #249. .venv/bin/python tools/run_tests_isolated.py tests -q: 6557 passed, 47 skipped in 2599.72s; estado real antes/depois idêntico (files=12818, directories=2068, bytes=1372818509). Gates estáticos locais: ruff check, ruff format --check (689 files), mypy (299 files), make independence boundaries e make status-check aprovados. Ruff, formatação, mypy, independência/fronteiras e status-check também passaram; push e CI do novo SHA seguem pendentes.",
       "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_theme_authoring_e2e.py",
+      "command": "2026-10-02, após completar schemas tipados e inspetor de movimento: 10 testes de autoria, 68 de domínio relacionados, 1 jornada QML com eventos Qt e 2 cenas importadas separados passaram; o guard XDG permaneceu idêntico. Nove capturas revisadas. O checkpoint integral 6557/47 é anterior a estas mudanças e não é resultado final.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-10-01-v4-authoring-ui/README.md",
+      "command": "2026-10-02, gates integrais na árvore congelada: suíte completa 6560 passed, 47 skipped em 2302.24s; guard do estado real idêntico antes/depois (files=12818, directories=2068, bytes=1372818509, max_mtime_ns=1790888510663329431). Ruff check/format, mypy, independence, boundaries, status-check e diff --check passaram. Push e CI do SHA final ainda pendentes.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Gates integrais locais aprovados no checkpoint do PR #249. Separar commits funcional/documental, fazer push autorizado e atualizar o PR; depois consultar CI no SHA final. Permanecem B_VISUAL, prova na release, Launcher/Cinema e autoria de assetRecipes/tier/resolução.",
+  "nextAction": "Separar commits funcionais/documentais, fazer push autorizado da branch existente e atualizar o PR #249; consultar CI no SHA final. Permanecem B_VISUAL em sessão/release autorizada, cena editada consumida pela Engine, autoria assetRecipes/tier/resolução e consumidores Launcher/Cinema.",
   "activeWorkstreams": [
     "WS-2026-10-V1-V3-THEME-JOURNEY"
   ],
   "updatedAt": "2026-10-02",
-  "notes": "Planejamento e continuidade no PR #249 permanecem locais à feature branch; nenhum merge, release, instalação ou certificação física foi promovido. Um checkout confirmado. Roadmap, marcos, handoff e prompt preservam os limites de autorização. RC-00 executado em 2026-09-26: base/release/worktree conferidos; 21 claims obsoletos encerrados com evidência de integração e 5 mantidos abertos; a suíte integral da auditoria permanece registrada como não verde (1 falha documental histórica). 2026-10-01: revisão das rodadas B_VISUAL 133/134. 2026-10-02: continuação da autoria Theme Studio; o overflow horizontal dos inspetores foi reproduzido no Qt pinado, corrigido com controles de largura e coberto por verificação geométrica antes de cada evento Qt. A jornada passou no container e no host, e 140 testes focados passaram. B_VISUAL continua necessário para input físico e a release instalada continua anterior a esta branch. Launcher/AURA Cinema não consomem cenas importadas. O engine tem demo de asset de fonte única, mas editar assetRecipes no documento e configurar tier/resolução ainda exige uma fatia própria de editor e runtime."
+  "notes": "Planejamento e continuidade no PR #249 permanecem locais à feature branch; nenhum merge, release, instalação ou certificação física foi promovido. Um checkout confirmado. Roadmap, marcos, handoff e prompt preservam os limites de autorização. RC-00 executado em 2026-09-26: base/release/worktree conferidos; 21 claims obsoletos encerrados com evidência de integração e 5 mantidos abertos; a suíte integral da auditoria permanece registrada como não verde (1 falha documental histórica). 2026-10-01: revisão das rodadas B_VISUAL 133/134. 2026-10-02: continuação da autoria Theme Studio; o overflow horizontal dos inspetores foi reproduzido no Qt pinado, corrigido com controles de largura e coberto por verificação geométrica antes de cada evento Qt. A jornada passou no container e no host, e 140 testes focados passaram. A continuação atual acrescenta controle tipado, estado loading/keyframe, edição e reordenação de timeline/clips e prova pixelizada no consumidor da AURA UI em biblioteca sintética isolada. Focados 10+68+1+2 passaram; a integral atual terminou 6560/47 em 2302.24s e todos os gates locais passaram. B_VISUAL continua necessário para input físico e a release instalada continua anterior a esta branch. Launcher/AURA Cinema não consomem cenas importadas. A Engine tem demo de asset de fonte única, mas editar assetRecipes no documento e configurar tier/resolução ainda exige uma fatia própria de editor e runtime; cena editada ainda não foi consumida por SceneEsdeView."
 }

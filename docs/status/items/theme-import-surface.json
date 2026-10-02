@@ -15,7 +15,7 @@
     "tests/unit/test_theme_import_esde.py",
     "tests/qml/check_theme_editor_import.qml"
   ],
-  "scopeDigest": "86acf77831ce35714176f4049f3fdb8dbdff9a45bac864ae755e109d50cb85a0",
+  "scopeDigest": "58800f9d2b236cb15c6caa7938d7bb95275885a503c81b796b4d208e59ea9e46",
   "dependsOn": [
     "SZ-THEME-STUDIO"
   ],
@@ -107,6 +107,12 @@
       "reference": "tests/unit/test_theme_import_esde.py",
       "command": "2026-10-02, regressão em suíte integral após ajuste isolado da largura dos inspetores do Studio. .venv/bin/python tools/run_tests_isolated.py tests -q: 6557 passed, 47 skipped in 2599.72s; estado real antes/depois idêntico (files=12818, directories=2068, bytes=1372818509). Gates estáticos locais: ruff check, ruff format --check (689 files), mypy (299 files), make independence boundaries e make status-check aprovados. A superfície de importação não foi alterada nem promovida por esse resultado.",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-10-01-v4-authoring-ui/README.md",
+      "command": "2026-10-02: scopeDigest renovado por controles de efeitos/movimento no ThemeEditorPanel compartilhado. O fluxo de importação ES-DE não mudou e não foi retestado; nenhum eixo foi promovido.",
+      "result": "recorded"
     }
   ],
   "nextAction": "Validar na release 2.0.0rc1-504d10b14485 com fontes ES-DE e pacote SteamZero reais; manter ausência explícita enquanto ES-DE/SRM não estiverem instalados e RetroFE não tiver pacote lançável.",

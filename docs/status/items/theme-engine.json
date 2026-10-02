@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "1952290d5161ba76f66bb09bb9347c092bd11223a39796f034e9a975a0fc5715",
+  "scopeDigest": "7ef384176107a3ca504304e7e0d6ed2623583fa93fb6487926301bc3bee225e7",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -22,6 +22,7 @@
     "src/steamzero/domain/scene_display.py",
     "src/steamzero/domain/scene_layout.py",
     "src/steamzero/domain/scene_motion.py",
+    "src/steamzero/domain/theme_effects.py",
     "src/steamzero/domain/scene_surfaces.py",
     "src/steamzero/domain/dynamic_palette.py",
     "src/steamzero/domain/glass_panels.py",
@@ -462,10 +463,22 @@
       "reference": "tests/unit/test_asset_recipes.py",
       "command": "2026-10-02, checkpoint integral inclui validação de receitas de asset, allowlist, tiers e fallback. .venv/bin/python tools/run_tests_isolated.py tests -q: 6557 passed, 47 skipped in 2599.72s; estado real antes/depois idêntico (files=12818, directories=2068, bytes=1372818509). Gates estáticos locais: ruff check, ruff format --check (689 files), mypy (299 files), make independence boundaries e make status-check aprovados. Nenhum código Engine nem eixo de capacidade mudou neste lote.",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_theme_effect_authoring.py",
+      "command": "2026-10-02, validação focada dos schemas de autoria publicados por theme_effects e scene_motion; 10 passed em 1.20s, incluindo move_clip e rejeição atômica de índices inválidos. Isso verifica contrato consumido pelo Studio, não o renderer Engine nem uma cena importada.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_theme_scene_runtime_e2e.py",
+      "command": "2026-10-02, a integral desta árvore congelada terminou 6560 passed, 47 skipped em 2302.24s; Ruff, format, mypy, independence, boundaries e status-check passaram. As provas de cena Engine/importação continuam separadas e não consomem o tema editado nesta jornada; nenhum eixo Engine foi promovido.",
+      "result": "passed"
     }
   ],
   "nextAction": "Reconciliar a cena ativa com o catálogo: o tema AURA ES-DE Physical resolve tokens fixos, efeitos e mediaRecipes, mas dynamicPalette/glass/sceneMotion/sceneSurfaces/sceneContainers permanecem nulos no tema ativo. Repetir bridge→catálogo→render na release atual e separar fixture asset-recipes de capacidade promovida.",
   "activeWorkstreams": [],
   "updatedAt": "2026-10-02",
-  "notes": "Estado permanece parcial, com três capacidades agora provadas fisicamente em releases anteriores; isso não cobre esta branch nem altera distribuição atual. GAP-THEME-ASSET-INVERT-HUE e GAP-THEME-FALLBACK-SIGNAL fechados: invert e hue rotate são aplicados pelo node builtin AssetColorTransform, com variantes pixel-distintas e alpha preservado. DEBT-HOST-INSTALL-DAEMON-RESTART FECHADO em release histórica. GAP-THEME-PERF-BUDGET-UNMEASURED teve sonda e medição de release registradas; FPS apresentado continua fora do critério sem instrumento de compositor. LOD de capas usa teto de decode declarado e evita textura intermediária sem consumidor. Em 2026-10-02, ThemeEditorPanel.qml foi alterado apenas para limitar a largura dos Flow internos do editor após reprodução do overflow no Qt pinado. A jornada QML passou no container e no host, os testes focados passaram e os harnesses de receita foram repetidos. O código da Engine, o resolver de receitas, a cena ativa instalada e a medição em release não mudaram nem foram promovidos neste lote. A suíte integral local passou com 6557 testes e 47 skips, sem alteração ou promoção do runtime da Engine neste lote."
+  "notes": "Estado permanece parcial, com três capacidades agora provadas fisicamente em releases anteriores; isso não cobre esta branch nem altera distribuição atual. GAP-THEME-ASSET-INVERT-HUE e GAP-THEME-FALLBACK-SIGNAL fechados: invert e hue rotate são aplicados pelo node builtin AssetColorTransform, com variantes pixel-distintas e alpha preservado. DEBT-HOST-INSTALL-DAEMON-RESTART FECHADO em release histórica. GAP-THEME-PERF-BUDGET-UNMEASURED teve sonda e medição de release registradas; FPS apresentado continua fora do critério sem instrumento de compositor. LOD de capas usa teto de decode declarado e evita textura intermediária sem consumidor. Em 2026-10-02, ThemeEditorPanel.qml foi alterado para limitar os Flow ao viewport e os domínios theme_effects/scene_motion ganharam schemas de controles tipados e reordenação de clips para a UI de autoria. Os focados passaram; isso verifica o contrato do Studio. O resolver de cenas, o renderer Engine, a cena ativa instalada e a medição em release não mudaram nem foram promovidos neste lote. O resultado integral de 6557 testes/47 skips pertence ao checkpoint anterior e será reexecutado para esta árvore. Nenhum eixo de Theme Engine foi promovido."
 }
