@@ -20,6 +20,7 @@ Rectangle {
     property color amberColor: "#ff9f1a"
     property color redColor: "#ff6b73"
     property real visualScale: 1.0
+    readonly property int minimumInteractiveTarget: 48
     readonly property int titlePixelSize: editorTitle.font.pixelSize
 
     property var requestAction: function(_ida, _payload, _cb, _ecb) {}
@@ -1180,7 +1181,7 @@ Rectangle {
                                     objectName: "themeApplyButton_" + modelData.id
                                     text: qsTr("Aplicar")
                                     implicitWidth: 88
-                                    implicitHeight: 36
+                                    implicitHeight: Math.max(panel.minimumInteractiveTarget, 36)
                                     Accessible.name: qsTr("Aplicar tema %1").arg(panel.themeLabel(modelData))
                                     onClicked: panel.beginApply(modelData.id)
                                     background: Rectangle {
@@ -1207,7 +1208,7 @@ Rectangle {
                                     implicitWidth: themeCard.isBuiltin
                                         ? (panel.compactLayout ? 120 : 150)
                                         : 88
-                                    implicitHeight: 36
+                                    implicitHeight: Math.max(panel.minimumInteractiveTarget, 36)
                                     Accessible.name: text + " " + (panel.themeLabel(modelData))
                                     onClicked: {
                                         // Via envelope de ações: URL/método vêm do
@@ -1239,7 +1240,7 @@ Rectangle {
                                     visible: themeCard.isBuiltin
                                     text: qsTr("Duplicar e editar")
                                     implicitWidth: panel.compactLayout ? 120 : 140
-                                    implicitHeight: 36
+                                    implicitHeight: Math.max(panel.minimumInteractiveTarget, 36)
                                     Accessible.name: qsTr("Duplicar e editar %1").arg(panel.themeLabel(modelData))
                                     onClicked: panel.duplicateAndEdit(modelData.id, modelData.name)
                                     background: Rectangle {
@@ -1391,13 +1392,14 @@ Rectangle {
                             required property var modelData
                             Layout.fillWidth: true
                             Layout.minimumHeight: 48
-                            RadioButton {
-                                text: modelData && modelData.scheme
-                                    ? String(modelData.scheme) : qsTr("Esquema")
-                                checked: panel.esdeImportSchemeIndex === index
-                                Accessible.name: qsTr("Esquema %1").arg(text)
-                                onClicked: panel.esdeImportSchemeIndex = index
-                            }
+                                RadioButton {
+                                    text: modelData && modelData.scheme
+                                        ? String(modelData.scheme) : qsTr("Esquema")
+                                    checked: panel.esdeImportSchemeIndex === index
+                                    Accessible.name: qsTr("Esquema %1").arg(text)
+                                    Layout.minimumHeight: panel.minimumInteractiveTarget
+                                    onClicked: panel.esdeImportSchemeIndex = index
+                                }
                             Label {
                                 text: modelData && modelData.isMonochrome
                                     ? qsTr("monocromático; derivação limitada")
@@ -1534,7 +1536,7 @@ Rectangle {
                         placeholderText: qsTr("Pasta ou layout XML do RetroFE")
                         Accessible.name: qsTr("Pasta ou layout XML do RetroFE")
                         Layout.fillWidth: true
-                        Layout.minimumHeight: 44
+                        Layout.minimumHeight: Math.max(panel.minimumInteractiveTarget, 44)
                         onTextChanged: panel.retrofeImportSource = text
                         /// Enter examina. Num shell operado por controle, os dois
                         /// seletores nativos abaixo são becos: o pad não alcança a
@@ -1562,14 +1564,14 @@ Rectangle {
                         objectName: "themeImportRetrofeBrowseFolder"
                         text: qsTr("Pasta")
                         Accessible.name: text
-                        Layout.minimumHeight: 44
+                        Layout.minimumHeight: Math.max(panel.minimumInteractiveTarget, 44)
                         onClicked: retrofeImportFolderDialog.open()
                     }
                     Button {
                         objectName: "themeImportRetrofeBrowseFile"
                         text: qsTr("XML")
                         Accessible.name: text
-                        Layout.minimumHeight: 44
+                        Layout.minimumHeight: Math.max(panel.minimumInteractiveTarget, 44)
                         onClicked: retrofeImportFileDialog.open()
                     }
                     Button {
@@ -1580,7 +1582,7 @@ Rectangle {
                         Accessible.description: enabled
                             ? qsTr("Compila a prévia sem gravar arquivos")
                             : qsTr("Informe a origem antes de examinar")
-                        Layout.minimumHeight: 44
+                        Layout.minimumHeight: Math.max(panel.minimumInteractiveTarget, 44)
                         onClicked: panel.inspectRetrofeImport()
                     }
                 }
@@ -1612,12 +1614,13 @@ Rectangle {
                             required property int index
                             required property var modelData
                             Layout.fillWidth: true
-                            Layout.minimumHeight: 44
+                            Layout.minimumHeight: Math.max(panel.minimumInteractiveTarget, 44)
                             RadioButton {
                                 text: modelData && modelData.name
                                     ? String(modelData.name) : qsTr("Layout")
                                 checked: panel.retrofeImportLayoutIndex === index
                                 Accessible.name: qsTr("Layout %1").arg(text)
+                                Layout.minimumHeight: panel.minimumInteractiveTarget
                                 onClicked: panel.retrofeImportLayoutIndex = index
                             }
                             Label {
@@ -1724,7 +1727,7 @@ Rectangle {
                 objectName: "themeImportRetrofeCancel"
                 text: qsTr("Cancelar")
                 Accessible.name: text
-                Layout.minimumHeight: 44
+                Layout.minimumHeight: Math.max(panel.minimumInteractiveTarget, 44)
                 onClicked: retrofeImportDialog.close()
             }
             Item { Layout.fillWidth: true }
@@ -1742,7 +1745,7 @@ Rectangle {
                 Accessible.description: enabled
                     ? qsTr("Grava a cena e seus assets no armazenamento gerenciado sem ativar")
                     : qsTr("Examine um layout e informe ID, nome, autor e licença")
-                Layout.minimumHeight: 44
+                Layout.minimumHeight: Math.max(panel.minimumInteractiveTarget, 44)
                 onClicked: panel.applyRetrofeImport()
             }
         }
@@ -1987,7 +1990,7 @@ Rectangle {
                     objectName: "themeEditorUndo"
                     text: qsTr("Desfazer")
                     enabled: !panel.editorReadOnly && panel.editorHistory.canUndo === true
-                    implicitHeight: 36
+                    implicitHeight: Math.max(panel.minimumInteractiveTarget, 36)
                     implicitWidth: 90
                     Accessible.name: text
                     onClicked: panel.editorUndo()
@@ -2009,7 +2012,7 @@ Rectangle {
                     objectName: "themeEditorRedo"
                     text: qsTr("Refazer")
                     enabled: !panel.editorReadOnly && panel.editorHistory.canRedo === true
-                    implicitHeight: 36
+                    implicitHeight: Math.max(panel.minimumInteractiveTarget, 36)
                     implicitWidth: 90
                     Accessible.name: text
                     onClicked: panel.editorRedo()
@@ -2031,7 +2034,7 @@ Rectangle {
                     objectName: "themeEditorSave"
                     text: qsTr("Salvar")
                     enabled: !panel.editorReadOnly && panel.editorDirty
-                    implicitHeight: 36
+                    implicitHeight: Math.max(panel.minimumInteractiveTarget, 36)
                     implicitWidth: 90
                     onClicked: {
                         panel.requestAction("theme.editor.save",
@@ -2060,7 +2063,7 @@ Rectangle {
                     objectName: "themeEditorExport"
                     text: qsTr("Exportar")
                     enabled: panel.editorSessionId !== ""
-                    implicitHeight: 36
+                    implicitHeight: Math.max(panel.minimumInteractiveTarget, 36)
                     implicitWidth: 90
                     Accessible.name: text
                     onClicked: panel.beginExport()
@@ -2081,7 +2084,7 @@ Rectangle {
                 Button {
                     objectName: "themeEditorClose"
                     text: qsTr("Fechar")
-                    implicitHeight: 36
+                    implicitHeight: Math.max(panel.minimumInteractiveTarget, 36)
                     implicitWidth: 80
                     onClicked: panel._closeEditor()
                     background: Rectangle {
@@ -2169,7 +2172,7 @@ Rectangle {
                                 text: panel.editorManifest[modelData] || ""
                                 enabled: !panel.editorReadOnly
                                 Layout.fillWidth: true
-                                Layout.minimumHeight: 36
+                                Layout.minimumHeight: panel.minimumInteractiveTarget
                                 color: panel.textColor
                                 placeholderText: modelData === "license"
                                     ? qsTr("Ex.: MIT ou GPL-3.0-or-later") : ""
@@ -2323,35 +2326,35 @@ Rectangle {
                             }
                             AuthCombo {
                                 objectName: "mediaRecipeRole"
-                                implicitHeight: 40
+                                requestedImplicitHeight: 40
                                 Accessible.name: qsTr("Slot de mídia")
                                 model: ["focusedCover", "peripheralCover", "contextualBackdrop"]
                                 onActivated: panel.mediaRecipeRole = currentText
                             }
                             AuthCombo {
                                 objectName: "mediaRecipeFit"
-                                implicitHeight: 40
+                                requestedImplicitHeight: 40
                                 Accessible.name: qsTr("Ajuste")
                                 model: ["crop", "cover", "contain", "fill"]
                                 onActivated: panel.setMediaRecipe("fit", currentText)
                             }
                             AuthCombo {
                                 objectName: "mediaRecipeOrientation"
-                                implicitHeight: 40
+                                requestedImplicitHeight: 40
                                 Accessible.name: qsTr("Orientação")
                                 model: ["none", "auto", "portrait", "landscape"]
                                 onActivated: panel.setMediaRecipe("orientation", currentText)
                             }
                             AuthCombo {
                                 objectName: "mediaRecipeAlignH"
-                                implicitHeight: 40
+                                requestedImplicitHeight: 40
                                 Accessible.name: qsTr("Alinhamento horizontal")
                                 model: ["left", "center", "right"]
                                 onActivated: panel.setMediaRecipe("alignH", currentText)
                             }
                             AuthCombo {
                                 objectName: "mediaRecipeAlignV"
-                                implicitHeight: 40
+                                requestedImplicitHeight: 40
                                 Accessible.name: qsTr("Alinhamento vertical")
                                 model: ["top", "center", "bottom"]
                                 onActivated: panel.setMediaRecipe("alignV", currentText)
@@ -2391,7 +2394,7 @@ Rectangle {
                                 }
                                 AuthCombo {
                                     objectName: "effectStackName"
-                                    implicitHeight: 40
+                                    requestedImplicitHeight: 40
                                     Accessible.name: qsTr("Pilha de efeitos")
                                     model: ["focusedCover", "peripheralCover", "contextualBackdrop"]
                                     onActivated: panel.effectStackName = currentText
@@ -2399,13 +2402,13 @@ Rectangle {
                                 AuthCombo {
                                     id: effectTypeCombo
                                     objectName: "effectTypeToAdd"
-                                    implicitHeight: 40
+                                    requestedImplicitHeight: 40
                                     Accessible.name: qsTr("Tipo de efeito")
                                     model: ["blur", "saturation", "brightness", "contrast", "colorize", "opacity", "shadow", "glow", "reflection", "gradientMask", "vignette"]
                                 }
                                 AuthButton {
                                     objectName: "effectAdd"
-                                    implicitHeight: 40
+                                    requestedImplicitHeight: 40
                                     text: qsTr("Adicionar efeito")
                                     Accessible.name: qsTr("Adicionar efeito à pilha")
                                     onClicked: panel.editEffect("add", {effectType: effectTypeCombo.currentText})
@@ -2456,7 +2459,7 @@ Rectangle {
                                             AuthButton {
                                                 objectName: "effectUp_" + effectRow.index
                                                 text: "↑"
-                                                implicitWidth: 40
+                                                requestedImplicitWidth: 40
                                                 enabled: effectRow.index > 0
                                                 Accessible.name: qsTr("Mover efeito para cima") + " " + effectRow.modelData.type
                                                 onClicked: panel.editEffect("move", {index: effectRow.index, value: effectRow.index - 1})
@@ -2464,7 +2467,7 @@ Rectangle {
                                             AuthButton {
                                                 objectName: "effectDown_" + effectRow.index
                                                 text: "↓"
-                                                implicitWidth: 40
+                                                requestedImplicitWidth: 40
                                                 enabled: effectRow.index < effectRepeater.count - 1
                                                 Accessible.name: qsTr("Mover efeito para baixo") + " " + effectRow.modelData.type
                                                 onClicked: panel.editEffect("move", {index: effectRow.index, value: effectRow.index + 1})
@@ -2527,7 +2530,7 @@ Rectangle {
                                                         objectName: "effectColorHex_" + effectRow.index + "_" + paramRow.modelData
                                                         Accessible.name: effectRow.modelData.type + " " + paramRow.modelData
                                                         Accessible.description: qsTr("Cor no formato #RRGGBB")
-                                                        implicitWidth: 84
+                                                        requestedImplicitWidth: 84
                                                         declaredText: String(effectRow.modelData[paramRow.modelData])
                                                         onEditingFinished: submit(function(t) {
                                                             panel.editEffect("set", {
@@ -2582,7 +2585,7 @@ Rectangle {
                                                         rangeDecimals: Number(paramRow.specification.decimals || 2)
                                                         declaredValue: Number(effectRow.modelData[paramRow.modelData])
                                                         fieldName: paramRow.modelData
-                                                        implicitWidth: 116
+                                                        requestedImplicitWidth: 116
                                                         onValueCommitted: function(nextValue) {
                                                             panel.editEffect("set", {
                                                                 index: effectRow.index,
@@ -2650,7 +2653,7 @@ Rectangle {
                                 AuthCombo {
                                     id: motionStateCombo
                                     objectName: "motionStateName"
-                                    implicitHeight: 40
+                                    requestedImplicitHeight: 40
                                     Accessible.name: qsTr("Estado do keyframe")
                                     model: panel.motionStateOptions
                                     currentIndex: model.indexOf(panel.motionStateName)
@@ -2678,7 +2681,7 @@ Rectangle {
                                             rangeStep: Number(specification.step)
                                             rangeDecimals: Number(specification.decimals || 2)
                                             fieldName: keyframeRow.modelData
-                                            implicitWidth: 84
+                                            requestedImplicitWidth: 84
                                             declaredValue: Number(panel.keyframeText(
                                                 panel.motionStateName, keyframeRow.modelData))
                                             onValueCommitted: function(nextValue) {
@@ -2705,7 +2708,7 @@ Rectangle {
                                         required property string modelData
                                         objectName: "motionTimeline_" + modelData
                                         text: modelData
-                                        implicitHeight: 40
+                                        requestedImplicitHeight: 40
                                         checkable: true
                                         checked: panel.motionTimelineName === modelData
                                         Accessible.name: qsTr("Selecionar timeline") + " " + modelData
@@ -2717,13 +2720,13 @@ Rectangle {
                                     objectName: "motionTimelineName"
                                     Accessible.name: qsTr("Nome da nova timeline")
                                     placeholderText: qsTr("nome da timeline")
-                                    implicitWidth: 140
-                                    implicitHeight: 40
+                                    requestedImplicitWidth: 140
+                                    requestedImplicitHeight: 40
                                 }
                                 AuthCombo {
                                     id: timelineKindCombo
                                     objectName: "motionTimelineKind"
-                                    implicitHeight: 40
+                                    requestedImplicitHeight: 40
                                     Accessible.name: qsTr("Tipo de timeline")
                                     model: panel.editorMotionSchema.timelineKinds || ["sequence", "parallel"]
                                     currentIndex: {
@@ -2744,7 +2747,7 @@ Rectangle {
                                 AuthButton {
                                     objectName: "motionTimelineAdd"
                                     text: qsTr("Criar timeline")
-                                    implicitHeight: 40
+                                    requestedImplicitHeight: 40
                                     onClicked: {
                                         panel.motionTimelineName = timelineNameField.text
                                         panel.editMotion("add_timeline", timelineNameField.text, {value: timelineKindCombo.currentText})
@@ -2753,7 +2756,7 @@ Rectangle {
                                 AuthButton {
                                     objectName: "motionClipAdd"
                                     text: qsTr("Adicionar clip")
-                                    implicitHeight: 40
+                                    requestedImplicitHeight: 40
                                     onClicked: panel.editMotion("add_clip", panel.motionTimelineName, {value: {state: panel.motionStateName, duration: 240}})
                                 }
                                 AuthRangeSpinBox {
@@ -2764,7 +2767,7 @@ Rectangle {
                                     rangeStep: Number((panel.editorMotionSchema.repeat || {}).step || 1)
                                     rangeDecimals: 0
                                     fieldName: qsTr("Repetições")
-                                    implicitWidth: 64
+                                    requestedImplicitWidth: 64
                                     declaredValue: Number(panel.repeatText(panel.motionTimelineName))
                                     onValueCommitted: function(nextValue) {
                                         panel.editMotion("set_timeline", panel.motionTimelineName,
@@ -2774,7 +2777,7 @@ Rectangle {
                                 AuthButton {
                                     objectName: "motionTimelineRemove"
                                     text: qsTr("Remover timeline")
-                                    implicitHeight: 40
+                                    requestedImplicitHeight: 40
                                     onClicked: panel.editMotion("remove_timeline", panel.motionTimelineName, ({}))
                                 }
                             }
@@ -2807,7 +2810,7 @@ Rectangle {
                                         Accessible.name: qsTr("Estado do clip") + " " + (clipRow.index + 1)
                                         model: panel.motionStateOptions
                                         currentIndex: model.indexOf(clipRow.modelData.state || "normal")
-                                        implicitWidth: 140
+                                        requestedImplicitWidth: 140
                                         onActivated: panel.editMotion("set_clip", panel.motionTimelineName,
                                             {index: clipRow.index, field: "state", value: currentText})
                                     }
@@ -2826,7 +2829,7 @@ Rectangle {
                                         rangeStep: Number((panel.editorMotionSchema.duration || {}).step || 1)
                                         rangeDecimals: 0
                                         fieldName: qsTr("Duração")
-                                        implicitWidth: 72
+                                        requestedImplicitWidth: 72
                                         declaredValue: Number(clipRow.modelData.duration)
                                         onValueCommitted: function(nextValue) {
                                             panel.editMotion("set_clip", panel.motionTimelineName,
@@ -2836,7 +2839,7 @@ Rectangle {
                                     AuthButton {
                                         objectName: "motionClipUp_" + clipRow.index
                                         text: "↑"
-                                        implicitWidth: 44
+                                        requestedImplicitWidth: 44
                                         enabled: clipRow.index > 0
                                         Accessible.name: qsTr("Mover clip para cima") + " " + (clipRow.index + 1)
                                         onClicked: panel.editMotion("move_clip", panel.motionTimelineName,
@@ -2845,7 +2848,7 @@ Rectangle {
                                     AuthButton {
                                         objectName: "motionClipDown_" + clipRow.index
                                         text: "↓"
-                                        implicitWidth: 44
+                                        requestedImplicitWidth: 44
                                         enabled: clipRow.index < motionClipRepeater.count - 1
                                         Accessible.name: qsTr("Mover clip para baixo") + " " + (clipRow.index + 1)
                                         onClicked: panel.editMotion("move_clip", panel.motionTimelineName,
@@ -2854,7 +2857,7 @@ Rectangle {
                                     AuthButton {
                                         objectName: "motionClipRemove_" + clipRow.index
                                         text: qsTr("Remover")
-                                        implicitHeight: 40
+                                        requestedImplicitHeight: 40
                                         Accessible.name: qsTr("Remover clip") + " " + (clipRow.index + 1)
                                         onClicked: panel.editMotion("remove_clip", panel.motionTimelineName, {index: clipRow.index})
                                     }
@@ -2917,7 +2920,7 @@ Rectangle {
                                 spacing: 8
                                 AuthCombo {
                                     objectName: "bindingLayout"
-                                    implicitHeight: 40
+                                    requestedImplicitHeight: 40
                                     Accessible.name: qsTr("Layout")
                                     model: bindingColumn.layoutNames
                                     currentIndex: bindingColumn.layoutNames.indexOf(panel.bindingLayoutName)
@@ -2926,7 +2929,7 @@ Rectangle {
                                 AuthCombo {
                                     id: bindingPropCombo
                                     objectName: "bindingProp"
-                                    implicitHeight: 40
+                                    requestedImplicitHeight: 40
                                     Accessible.name: qsTr("Propriedade")
                                     model: bindingColumn.boundProps
                                     onModelChanged: if (count > 0 && panel.bindingPropName === "") panel.bindingPropName = textAt(0)
@@ -2936,28 +2939,28 @@ Rectangle {
                                 AuthCombo {
                                     id: bindingFieldCombo
                                     objectName: "bindingField"
-                                    implicitHeight: 40
+                                    requestedImplicitHeight: 40
                                     Accessible.name: qsTr("Metadado")
                                     model: ["title", "year", "developer", "publisher", "genre", "description", "rating", "players", "region", "language", "series"]
                                 }
                                 AuthField {
                                     id: bindingFallbackField
                                     objectName: "bindingFallback"
-                                    implicitHeight: 40
-                                    implicitWidth: 140
+                                    requestedImplicitHeight: 40
+                                    requestedImplicitWidth: 140
                                     placeholderText: qsTr("valor se ausente")
                                     Accessible.name: qsTr("Valor alternativo")
                                 }
                                 AuthButton {
                                     objectName: "bindingApply"
-                                    implicitHeight: 40
+                                    requestedImplicitHeight: 40
                                     text: qsTr("Ligar")
                                     Accessible.name: qsTr("Ligar propriedade ao metadado")
                                     onClicked: panel.editBinding("item." + bindingFieldCombo.currentText, bindingFallbackField.text)
                                 }
                                 AuthButton {
                                     objectName: "bindingClear"
-                                    implicitHeight: 40
+                                    requestedImplicitHeight: 40
                                     text: qsTr("Remover binding")
                                     Accessible.name: qsTr("Remover binding e usar valor fixo")
                                     onClicked: panel.editBinding(null, bindingFallbackField.text)
@@ -3164,6 +3167,7 @@ Rectangle {
                                         "outlinedGlow", "outlinedShadow"
                                     ]
                                     implicitWidth: 150
+                                    Layout.minimumHeight: panel.minimumInteractiveTarget
                                     Accessible.name: qsTr("Variante do asset")
                                     onActivated: panel.assetRecipeSelection = model[index]
                                 }
@@ -3535,7 +3539,7 @@ Rectangle {
                 Button {
                     text: qsTr("Cancelar")
                     Layout.fillWidth: true
-                    Layout.minimumHeight: 44
+                    Layout.minimumHeight: Math.max(panel.minimumInteractiveTarget, 44)
                     onClicked: {
                         panel.exportPlan = null
                         exportPreviewDialog.close()
@@ -3545,7 +3549,7 @@ Rectangle {
                     text: qsTr("Confirmar exportação")
                     enabled: panel.exportPlan !== null
                     Layout.fillWidth: true
-                    Layout.minimumHeight: 44
+                    Layout.minimumHeight: Math.max(panel.minimumInteractiveTarget, 44)
                     onClicked: panel.confirmExport()
                 }
             }
@@ -3624,7 +3628,7 @@ Rectangle {
                 Button {
                     text: qsTr("Cancelar")
                     Layout.fillWidth: true
-                    Layout.minimumHeight: 44
+                    Layout.minimumHeight: Math.max(panel.minimumInteractiveTarget, 44)
                     Accessible.name: text
                     onClicked: {
                         panel.applyPlan = null
@@ -3651,7 +3655,7 @@ Rectangle {
                         && panel.applyPlan.planId
                         && panel.applyPlan.confirmToken
                     Layout.fillWidth: true
-                    Layout.minimumHeight: 44
+                    Layout.minimumHeight: Math.max(panel.minimumInteractiveTarget, 44)
                     Accessible.name: text
                     onClicked: panel.confirmApply()
                     background: Rectangle {
@@ -3711,7 +3715,7 @@ Rectangle {
                 id: createNameField
                 placeholderText: qsTr("Meu Tema Personalizado")
                 Layout.fillWidth: true
-                Layout.minimumHeight: 44
+                Layout.minimumHeight: Math.max(panel.minimumInteractiveTarget, 44)
                 color: panel.textColor
                 background: Rectangle {
                     color: panel.backgroundColor
@@ -3728,7 +3732,7 @@ Rectangle {
                 Item { Layout.fillWidth: true }
                 Button {
                     text: qsTr("Cancelar")
-                    Layout.minimumHeight: 44
+                    Layout.minimumHeight: Math.max(panel.minimumInteractiveTarget, 44)
                     Layout.preferredWidth: 120
                     onClicked: createDialog.close()
                     background: Rectangle {
@@ -3748,7 +3752,7 @@ Rectangle {
                     id: createConfirmButton
                     text: qsTr("Criar")
                     enabled: createNameField.text.trim().length > 0
-                    Layout.minimumHeight: 44
+                    Layout.minimumHeight: Math.max(panel.minimumInteractiveTarget, 44)
                     Layout.preferredWidth: 120
                     onClicked: {
                         panel.requestAction("theme.editor.create",
@@ -3949,7 +3953,7 @@ Rectangle {
                 required property string modelData
                 spacing: 8
                 Layout.fillWidth: true
-                Layout.minimumHeight: 36
+                Layout.minimumHeight: panel.minimumInteractiveTarget
 
                 Label {
                     text: {
@@ -3961,32 +3965,21 @@ Rectangle {
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                 }
-                SpinBox {
-                    from: 0
-                    to: 120
-                    value: catSection.tokens[modelData] !== undefined
-                        ? Number(catSection.tokens[modelData]) : 0
-                    editable: true
+                AuthRangeSpinBox {
                     enabled: !catSection.readOnly
-                    implicitWidth: 90
-                    implicitHeight: 32
-                    onValueModified: {
+                    Accessible.name: modelData
+                    rangeMinimum: 0
+                    rangeMaximum: 120
+                    rangeStep: 1
+                    rangeDecimals: 0
+                    fieldName: modelData
+                    requestedImplicitWidth: 90
+                    declaredValue: catSection.tokens[modelData] !== undefined
+                        ? Number(catSection.tokens[modelData]) : 0
+                    onValueCommitted: function(nextValue) {
                         var vals = {}
-                        vals[modelData] = value
+                        vals[modelData] = nextValue
                         catSection.tokenChanged(vals)
-                    }
-                    background: Rectangle {
-                        color: catSection.surfaceColor
-                        radius: 6
-                        border.color: catSection.readOnly ? catSection.borderColor : parent.activeFocus ? catSection.cyanColor : catSection.borderColor
-                        border.width: parent.activeFocus ? 2 : 1
-                    }
-                    contentItem: TextInput {
-                        text: parent.text
-                        color: catSection.textColor
-                        font: parent.font
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
                     }
                 }
                 Label {
@@ -4008,7 +4001,7 @@ Rectangle {
                 required property string modelData
                 spacing: 8
                 Layout.fillWidth: true
-                Layout.minimumHeight: 36
+                Layout.minimumHeight: panel.minimumInteractiveTarget
 
                 Label {
                     text: {
@@ -4023,7 +4016,7 @@ Rectangle {
 
                 Loader {
                     Layout.preferredWidth: 120
-                    Layout.minimumHeight: 32
+                    Layout.minimumHeight: panel.minimumInteractiveTarget
                     sourceComponent: {
                         if (modelData === "scale")
                             return TypoScaleEditorComp
@@ -4036,31 +4029,21 @@ Rectangle {
         }
     }
 
-    component TypoScaleEditorComp: SpinBox {
-        from: 50
-        to: 200
-        value: catSection.tokens.scale !== undefined
-            ? Math.round(Number(catSection.tokens.scale) * 100) : 100
-        editable: true
+    component TypoScaleEditorComp: AuthRangeSpinBox {
         enabled: !catSection.readOnly
-        implicitHeight: 32
-        onValueModified: {
+        Accessible.name: qsTr("Escala tipográfica")
+        rangeMinimum: 0.5
+        rangeMaximum: 2
+        rangeStep: 0.01
+        rangeDecimals: 2
+        fieldName: qsTr("Escala tipográfica")
+        requestedImplicitWidth: 90
+        declaredValue: catSection.tokens.scale !== undefined
+            ? Number(catSection.tokens.scale) : 1
+        onValueCommitted: function(nextValue) {
             var vals = {}
-            vals.scale = value / 100.0
+            vals.scale = nextValue
             catSection.tokenChanged(vals)
-        }
-        background: Rectangle {
-            color: catSection.surfaceColor
-            radius: 6
-            border.color: parent.activeFocus ? catSection.cyanColor : catSection.borderColor
-            border.width: parent.activeFocus ? 2 : 1
-        }
-        contentItem: TextInput {
-            text: parent.text
-            color: catSection.textColor
-            font: parent.font
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
         }
         Label {
             anchors.right: parent.right
@@ -4075,6 +4058,9 @@ Rectangle {
     // Controles do editor (chrome do Studio): usam as cores do PAINEL, nunca as do tema
     // em edição — senão a interface do editor mudaria de aparência com o tema editado.
     component AuthField: TextField {
+        id: authField
+        property int requestedImplicitWidth: 0
+        property int requestedImplicitHeight: 0
         // `declaredText` é o valor aceito pelo documento. Enter e perda de foco disparam
         // editingFinished; `committed` evita enviar a mesma edição duas vezes, e uma edição
         // recusada (authoringRevision) devolve o campo ao valor declarado.
@@ -4092,7 +4078,14 @@ Rectangle {
             committed = text
             send(text)
         }
-        implicitHeight: 40
+        implicitWidth: Math.max(panel.minimumInteractiveTarget, requestedImplicitWidth,
+            authField.contentItem
+                ? authField.contentItem.implicitWidth + leftPadding + rightPadding : 0)
+        implicitHeight: Math.max(panel.minimumInteractiveTarget, requestedImplicitHeight,
+            authField.contentItem
+                ? authField.contentItem.implicitHeight + topPadding + bottomPadding : 0)
+        Layout.minimumWidth: panel.minimumInteractiveTarget
+        Layout.minimumHeight: panel.minimumInteractiveTarget
         color: panel.textColor
         placeholderTextColor: panel.mutedColor
         selectedTextColor: "#071019"
@@ -4109,7 +4102,16 @@ Rectangle {
 
     component AuthButton: Button {
         id: authButton
-        implicitHeight: 40
+        property int requestedImplicitWidth: 0
+        property int requestedImplicitHeight: 0
+        implicitWidth: Math.max(panel.minimumInteractiveTarget, requestedImplicitWidth,
+            authButton.contentItem
+                ? authButton.contentItem.implicitWidth + leftPadding + rightPadding : 0)
+        implicitHeight: Math.max(panel.minimumInteractiveTarget, requestedImplicitHeight,
+            authButton.contentItem
+                ? authButton.contentItem.implicitHeight + topPadding + bottomPadding : 0)
+        Layout.minimumWidth: panel.minimumInteractiveTarget
+        Layout.minimumHeight: panel.minimumInteractiveTarget
         leftPadding: 12
         rightPadding: 12
         Accessible.name: text
@@ -4131,7 +4133,17 @@ Rectangle {
     }
 
     component AuthCombo: SteamComboBox {
-        implicitHeight: 40
+        id: authCombo
+        property int requestedImplicitWidth: 0
+        property int requestedImplicitHeight: 0
+        implicitWidth: Math.max(panel.minimumInteractiveTarget, requestedImplicitWidth,
+            authCombo.contentItem
+                ? authCombo.contentItem.implicitWidth + leftPadding + rightPadding : 0)
+        implicitHeight: Math.max(panel.minimumInteractiveTarget, requestedImplicitHeight,
+            authCombo.contentItem
+                ? authCombo.contentItem.implicitHeight + topPadding + bottomPadding : 0)
+        Layout.minimumWidth: panel.minimumInteractiveTarget
+        Layout.minimumHeight: panel.minimumInteractiveTarget
         surfaceColor: panel.surfaceColor
         raisedColor: panel.raisedColor
         borderColor: panel.borderColor
@@ -4142,6 +4154,8 @@ Rectangle {
 
     component AuthRangeSpinBox: SpinBox {
         id: rangeSpin
+        property int requestedImplicitWidth: 0
+        property int requestedImplicitHeight: 0
         property real rangeMinimum: 0
         property real rangeMaximum: 100
         property real rangeStep: 1
@@ -4157,11 +4171,68 @@ Rectangle {
         stepSize: Math.max(1, Math.round(rangeStep * precisionFactor))
         editable: true
         inputMethodHints: Qt.ImhFormattedNumbersOnly
-        implicitHeight: 40
-        leftPadding: 8
-        rightPadding: 36
+        implicitWidth: Math.max(
+            panel.minimumInteractiveTarget + leftPadding + rightPadding,
+            requestedImplicitWidth + 2 * panel.minimumInteractiveTarget,
+            rangeSpin.contentItem
+                ? rangeSpin.contentItem.implicitWidth + leftPadding + rightPadding : 0)
+        implicitHeight: Math.max(panel.minimumInteractiveTarget, requestedImplicitHeight,
+            rangeSpin.contentItem
+                ? rangeSpin.contentItem.implicitHeight + topPadding + bottomPadding : 0)
+        Layout.minimumWidth: panel.minimumInteractiveTarget
+        Layout.minimumHeight: panel.minimumInteractiveTarget
+        leftPadding: 8 + panel.minimumInteractiveTarget
+        rightPadding: 8 + panel.minimumInteractiveTarget
         Accessible.description: qsTr("Permitido de %1 a %2; passo %3")
             .arg(rangeMinimum).arg(rangeMaximum).arg(rangeStep)
+
+        up.indicator: Rectangle {
+            objectName: rangeSpin.objectName + "_incrementTarget"
+            Accessible.name: qsTr("Incrementar %1").arg(rangeSpin.fieldName)
+            Accessible.role: Accessible.Button
+            x: rangeSpin.mirrored ? 0 : rangeSpin.width - width
+            y: 0
+            implicitWidth: panel.minimumInteractiveTarget
+            implicitHeight: panel.minimumInteractiveTarget
+            width: implicitWidth
+            height: rangeSpin.height
+            color: rangeSpin.up.pressed ? panel.cyanDarkColor : panel.raisedColor
+            border.color: rangeSpin.activeFocus ? panel.cyanColor : panel.borderColor
+            radius: 4
+            Rectangle {
+                anchors.centerIn: parent
+                width: Math.max(14, parent.width / 3)
+                height: 2
+                color: rangeSpin.up.enabled ? panel.textColor : panel.mutedColor
+            }
+            Rectangle {
+                anchors.centerIn: parent
+                width: 2
+                height: Math.max(14, parent.width / 3)
+                color: rangeSpin.up.enabled ? panel.textColor : panel.mutedColor
+            }
+        }
+
+        down.indicator: Rectangle {
+            objectName: rangeSpin.objectName + "_decrementTarget"
+            Accessible.name: qsTr("Diminuir %1").arg(rangeSpin.fieldName)
+            Accessible.role: Accessible.Button
+            x: rangeSpin.mirrored ? rangeSpin.width - width : 0
+            y: 0
+            implicitWidth: panel.minimumInteractiveTarget
+            implicitHeight: panel.minimumInteractiveTarget
+            width: implicitWidth
+            height: rangeSpin.height
+            color: rangeSpin.down.pressed ? panel.cyanDarkColor : panel.raisedColor
+            border.color: rangeSpin.activeFocus ? panel.cyanColor : panel.borderColor
+            radius: 4
+            Rectangle {
+                anchors.centerIn: parent
+                width: Math.max(14, parent.width / 3)
+                height: 2
+                color: rangeSpin.down.enabled ? panel.textColor : panel.mutedColor
+            }
+        }
 
         validator: DoubleValidator {
             bottom: -1000000
@@ -4211,7 +4282,8 @@ Rectangle {
         text: catSection.tokens.family || ""
         placeholderText: qsTr("Fonte (ex: Noto Sans)")
         enabled: !catSection.readOnly
-        implicitHeight: 32
+        implicitHeight: panel.minimumInteractiveTarget
+        Layout.minimumHeight: panel.minimumInteractiveTarget
         color: catSection.textColor
         background: Rectangle {
             color: catSection.surfaceColor
@@ -4230,7 +4302,8 @@ Rectangle {
         text: catSection.tokens[modelData] !== undefined
             ? String(catSection.tokens[modelData]) : ""
         enabled: !catSection.readOnly
-        implicitHeight: 32
+        implicitHeight: panel.minimumInteractiveTarget
+        Layout.minimumHeight: panel.minimumInteractiveTarget
         color: catSection.textColor
         background: Rectangle {
             color: catSection.surfaceColor
@@ -4255,7 +4328,7 @@ Rectangle {
                 required property string modelData
                 spacing: 8
                 Layout.fillWidth: true
-                Layout.minimumHeight: 36
+                Layout.minimumHeight: panel.minimumInteractiveTarget
 
                 Label {
                     text: {
@@ -4267,32 +4340,21 @@ Rectangle {
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                 }
-                SpinBox {
-                    from: 0
-                    to: 2000
-                    value: catSection.tokens[modelData] !== undefined
-                        ? Number(catSection.tokens[modelData]) : 0
-                    editable: true
+                AuthRangeSpinBox {
                     enabled: !catSection.readOnly
-                    implicitWidth: 90
-                    implicitHeight: 32
-                    onValueModified: {
+                    Accessible.name: modelData
+                    rangeMinimum: 0
+                    rangeMaximum: 2000
+                    rangeStep: 1
+                    rangeDecimals: 0
+                    fieldName: modelData
+                    requestedImplicitWidth: 90
+                    declaredValue: catSection.tokens[modelData] !== undefined
+                        ? Number(catSection.tokens[modelData]) : 0
+                    onValueCommitted: function(nextValue) {
                         var vals = {}
-                        vals[modelData] = value
+                        vals[modelData] = nextValue
                         catSection.tokenChanged(vals)
-                    }
-                    background: Rectangle {
-                        color: catSection.surfaceColor
-                        radius: 6
-                        border.color: parent.activeFocus ? catSection.cyanColor : catSection.borderColor
-                        border.width: parent.activeFocus ? 2 : 1
-                    }
-                    contentItem: TextInput {
-                        text: parent.text
-                        color: catSection.textColor
-                        font: parent.font
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
                     }
                 }
                 Label {

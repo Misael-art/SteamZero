@@ -185,6 +185,7 @@ Item {
         name: "ThemeAuthoringE2E"
         when: windowShown
         property string themeId: ""
+        property var targetMeasurements: ({})
 
         function readConfig() {
             const r = new XMLHttpRequest()
@@ -278,6 +279,18 @@ Item {
                 + " contentPoint=" + contentPoint.x + "," + contentPoint.y
         }
 
+        function assertTarget(item, name) {
+            const minimumTarget = 48
+            targetMeasurements[name] = {
+                width: item.width,
+                height: item.height,
+                visualScale: panel.visualScale
+            }
+            verify(item.width >= minimumTarget && item.height >= minimumTarget,
+                   name + " abaixo do alvo de " + minimumTarget + " × " + minimumTarget
+                   + " px (escala " + panel.visualScale + "): " + inputGeometry(item))
+        }
+
         function pickerControl(name) {
             const picker = panel.effectColorDialogControl
             if (!picker)
@@ -303,8 +316,7 @@ Item {
                 || find(panel.effectColorDialogControl, name) || pickerControl(name) || item
             verify(fullyInsideViewport(item), name + " fora da viewport: " + inputGeometry(item))
             const target = item
-            // alvo mínimo (acessibilidade): o controle clicável precisa caber um toque
-            verify(target.width >= 40 && target.height >= 36, name + " abaixo do alvo mínimo")
+            assertTarget(target, name)
             mousePress(target, target.width / 2, target.height / 2)
             if (!target.pressed)
                 console.log("INPUT_DEBUG click " + name + " " + inputGeometry(target))
@@ -318,6 +330,7 @@ Item {
             verify(combo !== null, "seletor ausente: " + name)
             reveal(combo)
             verify(fullyInsideViewport(combo), name + " fora da viewport: " + inputGeometry(combo))
+            assertTarget(combo, name)
             const index = combo.model.indexOf(value)
             verify(index >= 0, "opção ausente em " + name + ": " + value)
             const previousIndex = combo.currentIndex
@@ -340,6 +353,7 @@ Item {
             item = find(panel, name) || find(panel.effectColorDialogControl, name)
                 || pickerControl(name) || item
             verify(fullyInsideViewport(item), name + " fora da viewport: " + inputGeometry(item))
+            assertTarget(item, name)
             const editor = typeof item.selectAll === "function" ? item
                 : (item.contentItem && typeof item.contentItem.selectAll === "function"
                     ? item.contentItem : item)
@@ -357,8 +371,27 @@ Item {
         function typeNumber(name, value) {
             const spin = find(panel, name)
             verify(spin !== null, "controle numérico ausente: " + name)
+            assertTarget(spin, name)
+            verify(spin.up !== undefined && spin.down !== undefined,
+                   name + " não publicou incrementadores acessíveis")
+            verify(spin.up.indicator !== null && spin.down.indicator !== null,
+                   name + " não publicou áreas visíveis dos incrementadores")
+            assertTarget(spin.up.indicator, name + " incrementar")
+            assertTarget(spin.down.indicator, name + " decrementar")
             const text = Number(value).toLocaleString(spin.locale, "f", spin.rangeDecimals)
             typeInto(name, text)
+        }
+
+        function stepNumber(name, increase) {
+            const spin = find(panel, name)
+            verify(spin !== null, "controle numérico ausente: " + name)
+            const button = increase ? spin.up.indicator : spin.down.indicator
+            assertTarget(button, name + (increase ? " incrementar" : " decrementar"))
+            const before = spin.value
+            mouseClick(button, button.width / 2, button.height / 2)
+            tryVerify(function() {
+                return spin.value === before + (increase ? spin.stepSize : -spin.stepSize)
+            }, 3000, name + " não respondeu ao incremento/decremento")
         }
 
         // Captura opcional (cfg.captureDir): o quadro real do painel para inspeção visual.
@@ -426,6 +459,12 @@ Item {
             typeInto("effectParam_" + last + "_radius", "24")
             tryVerify(function() { return effects("focusedCover")[last].radius === 24 }, 3000,
                       "o parâmetro editado não chegou ao documento")
+            stepNumber("effectParam_" + last + "_radius", true)
+            tryVerify(function() { return effects("focusedCover")[last].radius === 25 }, 3000,
+                      "o botão de incremento não chegou ao documento")
+            stepNumber("effectParam_" + last + "_radius", false)
+            tryVerify(function() { return effects("focusedCover")[last].radius === 24 }, 3000,
+                      "o botão de decremento não restaurou o documento")
             chooseCombo("effectTypeToAdd", "vignette")
             click("effectAdd")
             tryVerify(function() { return effects("focusedCover").length === baseEffects + 2 }, 3000)
@@ -646,6 +685,7 @@ Item {
             harness.width = 640
             harness.height = 560
             panel._closeEditor()
+            panel.visualScale = 1.5
             panel.duplicateAndEdit("org.steamzero.default", "Compacto V4")
             tryVerify(function() { return panel.editorSessionId !== "" }, 5000)
             const base = effects("focusedCover").length
@@ -669,10 +709,13 @@ Item {
             tryVerify(function() { return find(panel, "motionClipDuration_1") !== null }, 3000, "clip: " + JSON.stringify(harness.errors) + " tl=" + panel.motionTimelineName + " " + JSON.stringify((panel.editorDeclared.sceneMotion || {}).timelines))
             reveal(find(panel, "motionClipDuration_1"))
             capture("04-studio-compact-movimento")
+            panel._closeEditor()
+            panel.visualScale = 1.0
         }
 
         function test_03_binding_de_layout_pelos_controles() {
             harness.cfg = readConfig()
+            panel.visualScale = 1.0
             panel.compactLayout = false
             harness.width = 1100
             harness.height = 900
@@ -709,6 +752,10 @@ Item {
                 const layouts = (panel.editorDeclared.sceneLayouts || {}).layouts || {}
                 return layouts[layout].template.properties[prop].binding === "item.title"
             }, 3000, "desfazer não restaurou o binding herdado")
+        }
+
+        function cleanupTestCase() {
+            console.log("TARGET_DIMENSIONS=" + JSON.stringify(targetMeasurements))
         }
     }
 }

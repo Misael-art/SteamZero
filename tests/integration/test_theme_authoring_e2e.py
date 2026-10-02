@@ -102,6 +102,23 @@ def test_autoria_pela_ui_real_persiste_e_resolve(
     assert completed.returncode == 0, (
         f"jornada de autoria reprovou:\n{output[:2500]}\n...\n{output[-1200:]}"
     )
+    measurements = next(
+        (
+            line.split("TARGET_DIMENSIONS=", 1)[1].strip()
+            for line in output.splitlines()
+            if "TARGET_DIMENSIONS=" in line
+        ),
+        "",
+    )
+    assert measurements, "a jornada QML não registrou as dimensões efetivas dos alvos"
+    measured_targets = json.loads(measurements)
+    minimum_width = min(float(value["width"]) for value in measured_targets.values())
+    minimum_height = min(float(value["height"]) for value in measured_targets.values())
+    scales = sorted({float(value["visualScale"]) for value in measured_targets.values()})
+    print(
+        f"alvos de autoria medidos: {len(measured_targets)}; menor={minimum_width:.0f}x"
+        f"{minimum_height:.0f} px; escalas={','.join(str(scale) for scale in scales)}"
+    )
     assert "FAIL" not in output, output[-5000:]
     found = re.search(r"THEME_ID=(\S+)", output)
     assert found, f"o harness não publicou o id do tema:\n{output[-2000:]}"
