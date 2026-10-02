@@ -92,10 +92,15 @@ Item {
 
         // Rola o Flickable ancestral até o controle caber na janela: um clique fora
         // da área visível não chega ao controle, e isso também reprovaria o usuário.
-        function reveal(item) {
+        function scrollViewport(item) {
             let flick = item.parent
             while (flick && flick.contentY === undefined)
                 flick = flick.parent
+            return flick
+        }
+
+        function reveal(item) {
+            const flick = scrollViewport(item)
             if (!flick)
                 return
             const y = item.mapToItem(flick.contentItem, 0, 0).y
@@ -104,16 +109,50 @@ Item {
             wait(60)
         }
 
+        function fullyInsideViewport(item) {
+            const flick = scrollViewport(item)
+            if (!flick)
+                return true
+            const point = item.mapToItem(flick, 0, 0)
+            const epsilon = 0.5
+            return point.x >= -epsilon && point.y >= -epsilon
+                && point.x + item.width <= flick.width + epsilon
+                && point.y + item.height <= flick.height + epsilon
+        }
+
+        function inputGeometry(item) {
+            let flick = item.parent
+            while (flick && flick.contentY === undefined)
+                flick = flick.parent
+            const point = item.mapToItem(harness, 0, 0)
+            if (!flick)
+                return "scene=" + point.x + "," + point.y
+                    + " size=" + item.width + "x" + item.height
+            const viewportPoint = item.mapToItem(flick, 0, 0)
+            const contentPoint = item.mapToItem(flick.contentItem, 0, 0)
+            return "scene=" + point.x + "," + point.y
+                + " size=" + item.width + "x" + item.height
+                + " viewport=" + viewportPoint.x + "," + viewportPoint.y
+                + " flick=" + flick.width + "x" + flick.height
+                + " content=" + flick.contentWidth + "x" + flick.contentHeight
+                + " contentY=" + flick.contentY
+                + " contentPoint=" + contentPoint.x + "," + contentPoint.y
+        }
+
         function click(name) {
             const item = find(panel, name)
             verify(item !== null, "controle ausente: " + name)
             tryVerify(function() { return item.visible && item.enabled }, 3000, name + " não ficou acionável")
             reveal(item)
+            verify(fullyInsideViewport(item), name + " fora da viewport: " + inputGeometry(item))
             const target = item
             // alvo mínimo (acessibilidade): o controle clicável precisa caber um toque
             verify(target.width >= 40 && target.height >= 36, name + " abaixo do alvo mínimo")
             mousePress(target, target.width / 2, target.height / 2)
-            verify(target.pressed, name + " não recebeu o toque (coberto ou fora da viewport)")
+            if (!target.pressed)
+                console.log("INPUT_DEBUG click " + name + " " + inputGeometry(target))
+            verify(target.pressed, name + " não recebeu o toque (coberto ou fora da viewport): "
+                   + inputGeometry(target))
             mouseRelease(target, target.width / 2, target.height / 2)
         }
 
@@ -122,8 +161,11 @@ Item {
             verify(item !== null, "campo ausente: " + name)
             tryVerify(function() { return item.visible }, 3000, name + " invisível")
             reveal(item)
+            verify(fullyInsideViewport(item), name + " fora da viewport: " + inputGeometry(item))
             mouseClick(item)
-            verify(item.activeFocus, name + " não recebeu o foco do clique")
+            if (!item.activeFocus)
+                console.log("INPUT_DEBUG focus " + name + " " + inputGeometry(item))
+            verify(item.activeFocus, name + " não recebeu o foco do clique: " + inputGeometry(item))
             item.selectAll()
             for (let i = 0; i < text.length; i++)
                 keyClick(text.charAt(i))
@@ -242,6 +284,11 @@ Item {
             typeInto("motionTimelineName", "compacta")
             click("motionTimelineAdd")
             tryVerify(function() { return find(panel, "motionClipDuration_0") !== null }, 3000)
+            reveal(find(panel, "motionClipAdd"))
+            verify(fullyInsideViewport(find(panel, "motionClipAdd")),
+                   "Adicionar clip não cabe no viewport compacto: "
+                   + inputGeometry(find(panel, "motionClipAdd")))
+            capture("04-studio-compact-movimento")
             click("motionClipAdd")
             tryVerify(function() { return find(panel, "motionClipDuration_1") !== null }, 3000, "clip: " + JSON.stringify(harness.errors) + " tl=" + panel.motionTimelineName + " " + JSON.stringify((panel.editorDeclared.sceneMotion || {}).timelines))
         }

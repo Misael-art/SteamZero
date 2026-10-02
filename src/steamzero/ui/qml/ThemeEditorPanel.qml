@@ -2184,6 +2184,8 @@ Rectangle {
                         color: panel.surfaceColor
                         radius: 8
                         Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        Layout.maximumWidth: tokenScroll.availableWidth
                         implicitHeight: visible ? mediaColumn.implicitHeight + 24 : 0
                         border.color: panel.borderColor
                         border.width: 1
@@ -2195,6 +2197,9 @@ Rectangle {
                             Flow {
                             id: mediaFlow
                             Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            Layout.preferredWidth: mediaColumn.width
+                            Layout.maximumWidth: mediaColumn.width
                             Layout.preferredHeight: childrenRect.height
                             spacing: 10
                             Label {
@@ -2247,6 +2252,8 @@ Rectangle {
                         color: panel.surfaceColor
                         radius: 8
                         Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        Layout.maximumWidth: tokenScroll.availableWidth
                         implicitHeight: visible ? effectColumn.implicitHeight + 24 : 0
                         border.color: panel.borderColor
                         border.width: 1
@@ -2258,6 +2265,9 @@ Rectangle {
                             spacing: 8
                             Flow {
                                 Layout.fillWidth: true
+                                Layout.minimumWidth: 0
+                                Layout.preferredWidth: effectColumn.width
+                                Layout.maximumWidth: effectColumn.width
                                 Layout.preferredHeight: childrenRect.height
                                 spacing: 10
                                 Label {
@@ -2354,6 +2364,9 @@ Rectangle {
                                         }
                                         Flow {
                                             Layout.fillWidth: true
+                                            Layout.minimumWidth: 0
+                                            Layout.preferredWidth: effectCard.width
+                                            Layout.maximumWidth: effectCard.width
                                             Layout.preferredHeight: childrenRect.height
                                             spacing: 8
                                             Repeater {
@@ -2404,6 +2417,8 @@ Rectangle {
                         color: panel.surfaceColor
                         radius: 8
                         Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        Layout.maximumWidth: tokenScroll.availableWidth
                         implicitHeight: visible ? motionColumn.implicitHeight + 24 : 0
                         border.color: panel.borderColor
                         border.width: 1
@@ -2420,6 +2435,9 @@ Rectangle {
                             }
                             Flow {
                                 Layout.fillWidth: true
+                                Layout.minimumWidth: 0
+                                Layout.preferredWidth: motionColumn.width
+                                Layout.maximumWidth: motionColumn.width
                                 Layout.preferredHeight: childrenRect.height
                                 spacing: 8
                                 AuthCombo {
@@ -2457,6 +2475,9 @@ Rectangle {
                             }
                             Flow {
                                 Layout.fillWidth: true
+                                Layout.minimumWidth: 0
+                                Layout.preferredWidth: motionColumn.width
+                                Layout.maximumWidth: motionColumn.width
                                 Layout.preferredHeight: childrenRect.height
                                 spacing: 8
                                 Repeater {
@@ -2539,6 +2560,9 @@ Rectangle {
                                     required property var modelData
                                     required property int index
                                     Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    Layout.preferredWidth: motionColumn.width
+                                    Layout.maximumWidth: motionColumn.width
                                     Layout.preferredHeight: childrenRect.height
                                     spacing: 8
                                     Label {
@@ -2574,6 +2598,8 @@ Rectangle {
                         color: panel.surfaceColor
                         radius: 8
                         Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        Layout.maximumWidth: tokenScroll.availableWidth
                         implicitHeight: visible ? bindingColumn.implicitHeight + 24 : 0
                         border.color: panel.borderColor
                         border.width: 1
@@ -2613,6 +2639,9 @@ Rectangle {
                             Flow {
                                 visible: bindingColumn.layoutNames.length > 0
                                 Layout.fillWidth: true
+                                Layout.minimumWidth: 0
+                                Layout.preferredWidth: bindingColumn.width
+                                Layout.maximumWidth: bindingColumn.width
                                 Layout.preferredHeight: childrenRect.height
                                 spacing: 8
                                 AuthCombo {
