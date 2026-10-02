@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -22,7 +23,7 @@ def installed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(Path, "home", classmethod(lambda _cls: tmp_path))
     store = theme_assets.ThemeAssetStore(paths.theme_assets_dir())
     assets = {}
-    for source in FIXTURE.iterdir():
+    for source in (p for p in FIXTURE.iterdir() if p.suffix in {".png", ".xml"}):
         assets[source.name] = {"digest": store.put(source.name, source.read_bytes()).digest}
     directory = paths.themes_dir() / THEME_ID
     directory.mkdir(parents=True)
@@ -70,13 +71,7 @@ def test_retrofe_import_is_rendered_by_the_same_resolver_and_not_activated(
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
     monkeypatch.setattr(Path, "home", classmethod(lambda _cls: tmp_path))
     source = tmp_path / "retrofe"
-    (source / "assets").mkdir(parents=True)
-    (source / "layout.xml").write_text(
-        '<layout width="1920" height="1080"><image src="logo.png" x="10" y="10" width="200" '
-        'height="100"/></layout>',
-        encoding="utf-8",
-    )
-    (source / "assets" / "logo.png").write_bytes(b"synthetic licensed asset")
+    shutil.copytree(FIXTURE.parent / "retrofe-mini", source)  # PNG válido, CC0
     dashboard = DesktopDashboard()
     dashboard._last_emulation = {
         "editorialPlatforms": [{"id": "x", "games": [{"name": "Privado"}]}]
@@ -96,8 +91,37 @@ def test_retrofe_import_is_rendered_by_the_same_resolver_and_not_activated(
     ]
     assert sources and sources[0].startswith("file://")
     assert rendered["assets"]["resolved"] == 1 and rendered["assets"]["missing"] == []
+    # O renderizador de cena lê frações da tela: pixels do layout 1920x1080 viram frações.
+    layout = rendered["scene"]["views"][0]["elements"][0]["layout"]
+    assert layout["x"] == pytest.approx(10 / 1920) and layout["width"] == pytest.approx(200 / 1920)
+    assert layout["height"] == pytest.approx(100 / 1080)
     assert rendered["fidelity"] and "Privado" not in json.dumps(rendered)
     from steamzero.core.errors import SteamZeroError
 
     with pytest.raises(SteamZeroError):
         dashboard.theme_imported_scene_render("nao-importada")
+
+
+def test_retrofe_percent_and_default_canvas_are_normalized_without_touching_the_stored_scene() -> (
+    None
+):
+    from steamzero.domain.theme_scene import _normalize_retrofe_scene
+
+    scene = {
+        "views": [
+            {
+                "id": "v",
+                "elements": [{"layout": {"x": "50%", "width": 960, "y": 540, "height": "10%"}}],
+            }
+        ]
+    }
+    out = _normalize_retrofe_scene(scene)
+    layout = out["views"][0]["elements"][0]["layout"]
+    assert layout == {"x": 0.5, "width": 0.5, "y": 0.5, "height": 0.1}
+    assert scene["views"][0]["elements"][0]["layout"]["x"] == "50%"  # origem intacta
+    canvas = {
+        "views": [
+            {"canvas": {"width": 800.0, "height": 400.0}, "elements": [{"layout": {"x": 400}}]}
+        ]
+    }
+    assert _normalize_retrofe_scene(canvas)["views"][0]["elements"][0]["layout"]["x"] == 0.5

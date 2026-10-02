@@ -184,3 +184,36 @@ def test_first_edit_keeps_inherited_motion_and_declared_effects_survive_negotiat
 def _declared_stack(mgr: ThemeEditorManager, sid: str) -> list[dict[str, object]]:
     state = mgr.edit_effect_stack(sid, "focusedCover", "move", index=0, value=0)
     return [dict(e) for e in state["declared"]["effects"]["focusedCover"]]  # type: ignore[index]
+
+
+def test_export_import_copy_preserves_effects_and_motion_semantics(env: Path) -> None:
+    from steamzero.adapters.desktop_dashboard import DesktopDashboard
+
+    mgr = ThemeEditorManager()
+    created = mgr.create("Roundtrip V4")
+    sid = str(created["sessionId"])
+    theme_id = str(created["manifest"]["id"])  # type: ignore[index]
+    mgr.edit_effect_stack(sid, "focusedCover", "add", effect_type="shadow")
+    mgr.edit_effect_stack(sid, "focusedCover", "set", index=2, param="blur", value=20)
+    mgr.edit_motion(sid, "set_state", timeline="focused", field="opacity", value=0.8)
+    mgr.edit_motion(sid, "add_timeline", timeline="entrada", value="parallel")
+    mgr.edit_motion(sid, "set_timeline", timeline="entrada", field="repeat", value=2)
+    mgr.set_media_recipe(sid, "focusedCover", "fit", "cover")
+    mgr.save(sid)
+    original = ThemeEditorManager().load(theme_id)
+
+    package = env / "roundtrip.zip"
+    package.write_bytes(mgr.export_zip(sid))
+    result = DesktopDashboard().theme_import_zip_apply(str(package), as_copy=True)
+    copy_id = str(result.get("id") or result.get("themeId"))
+    assert copy_id != theme_id
+    copy = ThemeEditorManager().load(copy_id)
+
+    # Mesma semântica de documento; id/nome/namespace da cópia podem diferir.
+    for key in ("effects", "sceneMotion", "mediaRecipes"):
+        assert copy["manifest"].get(key) == original["manifest"].get(key), key  # type: ignore[union-attr]
+    assert copy["declared"] == original["declared"]
+    assert _stack(copy["preview"], "focusedCover") == _stack(original["preview"], "focusedCover")  # type: ignore[arg-type]
+    assert (
+        ThemeEditorManager().load(theme_id)["manifest"] == original["manifest"]
+    )  # original intacto

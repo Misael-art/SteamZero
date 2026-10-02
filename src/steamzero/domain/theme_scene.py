@@ -22,6 +22,7 @@ Três coisas acontecem aqui, e nenhuma delas pertence às camadas vizinhas:
 from __future__ import annotations
 
 import contextlib
+import copy
 import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -232,6 +233,43 @@ def render_scene(
     }
 
 
+#: Tela de referência quando o layout RetroFE não declara `width`/`height`.
+_RETROFE_DEFAULT_CANVAS = {"width": 1920.0, "height": 1080.0}
+_RETROFE_X_KEYS = ("x", "width", "maxWidth", "xOffset")
+_RETROFE_Y_KEYS = ("y", "height", "maxHeight", "yOffset")
+
+
+def _normalize_retrofe_scene(scene: dict[str, Any]) -> dict[str, Any]:
+    """Converte pixels/percentuais do IR RetroFE nas frações que o renderizador de cena lê.
+
+    O SceneEsdeView interpreta ``x/y/width/height`` como fração da tela; o IR do
+    RetroFE guarda pixels do canvas do layout (ou ``"50%"``). Sem esta conversão o
+    mesmo tema importado desenhava um logo de 200 px com 160 000 px de largura.
+    A cena armazenada permanece intacta; só a saída de render é normalizada.
+    """
+    out = copy.deepcopy(scene)
+    for view in out.get("views", []):
+        canvas = view.get("canvas") or _RETROFE_DEFAULT_CANVAS
+        for element in view.get("elements", []):
+            layout = element.get("layout")
+            if not isinstance(layout, dict):
+                continue
+            for keys, extent in (
+                (_RETROFE_X_KEYS, canvas["width"]),
+                (_RETROFE_Y_KEYS, canvas["height"]),
+            ):
+                for key in keys:
+                    value = layout.get(key)
+                    if isinstance(value, bool):
+                        continue
+                    if isinstance(value, int | float):
+                        layout[key] = float(value) / extent
+                    elif isinstance(value, str) and value.endswith("%"):
+                        layout[key] = float(value[:-1]) / 100.0
+        view["coordinateSpace"] = "normalized"
+    return out
+
+
 def render_imported_scene(
     scene_id: str,
     *,
@@ -269,7 +307,7 @@ def render_imported_scene(
         "themeId": scene_id,
         "origin": "retrofe",
         "systemId": None,
-        "scene": scene,
+        "scene": _normalize_retrofe_scene(scene),
         "fidelity": scene_retrofe.fidelity_report(scene),
         "assets": report,
     }
