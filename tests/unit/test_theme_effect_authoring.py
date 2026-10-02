@@ -10,12 +10,47 @@ import jsonschema
 import pytest
 
 from steamzero.core.errors import SteamZeroError
+from steamzero.domain.scene_motion import motion_editor_schema
 from steamzero.domain.theme_editor import ThemeEditorManager
+from steamzero.domain.theme_effects import effect_editor_schema
 
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA = json.loads(
     (ROOT / "src" / "steamzero" / "schemas" / "theme-manifest-v1.schema.json").read_text("utf-8")
 )
+
+
+def test_editor_schema_exposes_closed_fields_and_domain_ranges() -> None:
+    schema = effect_editor_schema()
+    assert schema["shadow"]["parameters"]["color"]["kind"] == "color"
+    radius = schema["shadow"]["parameters"]["blur"]
+    assert radius == {
+        "kind": "number",
+        "default": 12.0,
+        "minimum": 0,
+        "maximum": 48,
+        "step": 1.0,
+        "decimals": 2,
+    }
+    assert schema["shadow"]["fallbacks"] == ["omit", "minimal"]
+
+    created = ThemeEditorManager().create("Schema de edição")
+    assert created["effectSchema"] == schema
+
+
+def test_motion_editor_schema_exposes_native_states_and_ranges() -> None:
+    schema = motion_editor_schema()
+    assert {"loading", "error", "offline", "playing"} <= set(schema["states"])
+    assert schema["timelineKinds"] == ["sequence", "parallel"]
+    assert schema["keyframes"]["scale"] == {
+        "minimum": 0.5,
+        "maximum": 2.0,
+        "step": 0.05,
+        "decimals": 2,
+    }
+    assert schema["duration"] == {"minimum": 0, "maximum": 2000, "step": 1}
+    assert schema["repeat"] == {"minimum": 0, "maximum": 8, "step": 1}
+    assert ThemeEditorManager().create("Schema de movimento")["motionSchema"] == schema
 
 
 @pytest.fixture
@@ -153,6 +188,36 @@ def test_motion_invalid_edits_keep_document(env: Path) -> None:
         op = str(kwargs.pop("op"))
         with pytest.raises(SteamZeroError):
             mgr.edit_motion(sid, op, **kwargs)  # type: ignore[arg-type]
+    assert mgr.history(sid)["history"]["undoDepth"] == depth  # type: ignore[index]
+
+
+def test_motion_clips_reorder_and_invalid_targets_are_atomic(env: Path) -> None:
+    mgr = ThemeEditorManager()
+    sid = str(mgr.create("Ordem de clips")["sessionId"])
+    mgr.edit_motion(sid, "add_timeline", timeline="entrada", value="parallel")
+    mgr.edit_motion(
+        sid, "add_clip", timeline="entrada", value={"state": "focused", "duration": 240}
+    )
+    mgr.edit_motion(
+        sid, "add_clip", timeline="entrada", value={"state": "loading", "duration": 300}
+    )
+
+    moved = mgr.edit_motion(sid, "move_clip", timeline="entrada", index=2, value=0)
+    clips = moved["motion"]["timelines"]["entrada"]["clips"]  # type: ignore[index]
+    assert [clip["state"] for clip in clips] == ["loading", "normal", "focused"]
+    depth = mgr.history(sid)["history"]["undoDepth"]  # type: ignore[index]
+    before = moved["motion"]
+    for kwargs in (
+        {"index": 0, "value": -1},
+        {"index": 0, "value": 3},
+        {"index": 3, "value": 1},
+        {"index": 0, "value": 1.5},
+        {"index": 0, "value": True},
+    ):
+        with pytest.raises(SteamZeroError):
+            mgr.edit_motion(sid, "move_clip", timeline="entrada", **kwargs)
+    current = mgr._get_session(sid).manifest["sceneMotion"]
+    assert current == before
     assert mgr.history(sid)["history"]["undoDepth"] == depth  # type: ignore[index]
 
 

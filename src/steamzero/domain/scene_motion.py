@@ -75,6 +75,22 @@ _IDENTIFIER = re.compile(r"^[a-z][a-zA-Z0-9]{0,63}$")
 _PRESENCE_SOURCE = re.compile(r"^interaction\.state$")
 
 
+def motion_editor_schema() -> dict[str, Any]:
+    """Expose the allowlisted motion controls and bounds used by validation."""
+    return {
+        "states": list(NATIVE_STATES),
+        "timelineKinds": ["sequence", "parallel"],
+        "keyframes": {
+            "opacity": {"minimum": 0.0, "maximum": 1.0, "step": 0.05, "decimals": 2},
+            "scale": {"minimum": 0.5, "maximum": 2.0, "step": 0.05, "decimals": 2},
+            "translateX": {"minimum": -256.0, "maximum": 256.0, "step": 1.0, "decimals": 2},
+            "translateY": {"minimum": -256.0, "maximum": 256.0, "step": 1.0, "decimals": 2},
+        },
+        "duration": {"minimum": 0, "maximum": MAX_DURATION, "step": 1},
+        "repeat": {"minimum": 0, "maximum": 8, "step": 1},
+    }
+
+
 def _number(value: Any, *, name: str, low: float, high: float) -> float:
     if isinstance(value, bool) or not isinstance(value, int | float) or not math.isfinite(value):
         raise ValueError(f"{name} exige número finito")

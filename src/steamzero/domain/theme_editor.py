@@ -27,13 +27,14 @@ from steamzero.domain.media_recipes import (
 )
 from steamzero.domain.scene_containers import ContainerBounds, resolve_scene_containers
 from steamzero.domain.scene_layout import LayoutBounds, LayoutRecipeBook, resolve_scene_layouts
-from steamzero.domain.scene_motion import MotionBook, resolve_scene_motion
+from steamzero.domain.scene_motion import MotionBook, motion_editor_schema, resolve_scene_motion
 from steamzero.domain.scene_surfaces import resolve_scene_surfaces
 from steamzero.domain.studio_graph import build_studio_graph
 from steamzero.domain.theme_effects import (
     EFFECT_STACK_SCHEMA_VERSION,
     EffectType,
     effect_defaults,
+    effect_editor_schema,
     effect_stacks_to_dict,
     parse_effect_stacks,
 )
@@ -340,7 +341,12 @@ def _declared(manifest: dict[str, object]) -> dict[str, object]:
 
 def _document(session: EditorSession) -> dict[str, object]:
     """Documento + declaração que todo resultado de edição devolve à interface."""
-    return {"manifest": dict(session.manifest), "declared": _declared(session.manifest)}
+    return {
+        "manifest": dict(session.manifest),
+        "declared": _declared(session.manifest),
+        "effectSchema": effect_editor_schema(),
+        "motionSchema": motion_editor_schema(),
+    }
 
 
 def _resolved_preview(
@@ -520,6 +526,8 @@ class ThemeEditorManager:
             "manifest": manifest.to_dict(),
             "declared": _declared(manifest.to_dict()),
             "preview": _resolved_preview(manifest.to_dict(), tokens, assets),
+            "effectSchema": effect_editor_schema(),
+            "motionSchema": motion_editor_schema(),
         }
 
     def create(
@@ -550,6 +558,8 @@ class ThemeEditorManager:
             "manifest": manifest.to_dict(),
             "declared": _declared(manifest.to_dict()),
             "preview": _resolved_preview(manifest.to_dict(), {}, {}),
+            "effectSchema": effect_editor_schema(),
+            "motionSchema": motion_editor_schema(),
         }
 
     def set_tokens(
@@ -837,6 +847,7 @@ class ThemeEditorManager:
             "add_clip",
             "set_clip",
             "remove_clip",
+            "move_clip",
         }
         if op not in ops or not timeline:
             raise SteamZeroError("E-API-SCHEMA", detail=f"operação de movimento inválida: {op}")
@@ -881,6 +892,13 @@ class ThemeEditorManager:
                         raise ValueError("índice de clip fora da timeline")
                     if op == "remove_clip":
                         del clips[index]
+                    elif op == "move_clip":
+                        if isinstance(value, bool) or not isinstance(value, int):
+                            raise ValueError("destino de clip precisa ser inteiro")
+                        target = value
+                        if not 0 <= target < len(clips):
+                            raise ValueError("destino de clip fora da timeline")
+                        clips.insert(target, clips.pop(index))
                     else:
                         if field not in {"state", "duration", "transition"}:
                             raise ValueError("campo de clip não editável")

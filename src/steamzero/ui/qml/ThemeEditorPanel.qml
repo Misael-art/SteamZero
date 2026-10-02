@@ -54,6 +54,8 @@ Rectangle {
     property alias retrofeImportApplyControl: retrofeImportApplyButton
     property alias esdeImportDialogControl: esdeImportDialog
     property alias esdeImportApplyControl: esdeImportApplyButton
+    property alias applyConfirmControl: applyConfirmButton
+    property var effectColorDialogControl: null
 
     signal applied()
     signal exported(string destination)
@@ -75,17 +77,25 @@ Rectangle {
     property string mediaRecipeRole: "focusedCover"
     property string effectStackName: "focusedCover"
     property string motionTimelineName: "entrada"
+    property string motionNewTimelineKind: "sequence"
     property string motionStateName: "focused"
+    readonly property var motionStateOptions: editorMotionSchema.states || ["normal", "focused",
+        "selected", "pressed", "disabled", "loading", "missing", "error", "offline",
+        "playing", "idle", "menuOpen"]
     property string bindingLayoutName: ""
     property string bindingPropName: ""
     // Declaração do tema (cadeia extends + rascunho), sem negociação por tier ou
     // acessibilidade: base dos inspetores. O preview pode omitir efeitos; isto não.
     property var editorDeclared: ({effects: ({}), sceneMotion: null})
+    property var editorEffectSchema: ({})
+    property var editorMotionSchema: ({})
     property string authoringNotice: ""
     // Sobe quando uma edição é recusada: os campos reconstroem e voltam ao valor
     // declarado, em vez de continuar exibindo o texto rejeitado.
     property int authoringRevision: 0
     property var editorThemeList: []
+    property int effectColorIndex: -1
+    property string effectColorParameter: ""
     property string esdeImportSource: ""
     property var esdeImportSchemes: []
     property int esdeImportSchemeIndex: -1
@@ -578,6 +588,10 @@ Rectangle {
             panel.editorManifest = r.manifest
         if (r.declared)
             panel.editorDeclared = r.declared
+        if (r.effectSchema)
+            panel.editorEffectSchema = r.effectSchema
+        if (r.motionSchema)
+            panel.editorMotionSchema = r.motionSchema
         panel.authoringNotice = ""
         if (r.history) {
             panel.editorHistory = r.history
@@ -612,6 +626,96 @@ Rectangle {
             body[k] = extra[k]
         panel.requestAction("theme.editor.edit-effect", body, panel._applyEditorResult,
             function(message) { panel.authoringNotice = String(message); panel.authoringRevision += 1 })
+    }
+
+    function effectParameterSpec(effectType, parameter) {
+        const entry = panel.editorEffectSchema[effectType] || ({})
+        const specified = (entry.parameters || ({}))[parameter]
+        if (specified)
+            return specified
+        return parameter === "color"
+            ? {kind: "color", default: "#000000"}
+            : {kind: "number", minimum: -1000000, maximum: 1000000, step: 1, decimals: 2}
+    }
+
+    function effectFallbackOptions(effectType) {
+        const entry = panel.editorEffectSchema[effectType] || ({})
+        return Array.isArray(entry.fallbacks) && entry.fallbacks.length
+            ? entry.fallbacks : ["omit", "minimal"]
+    }
+
+    function motionKeyframeSpec(field) {
+        const keyframes = panel.editorMotionSchema.keyframes || ({})
+        return keyframes[field] || {minimum: -256, maximum: 256, step: 1, decimals: 2}
+    }
+
+    function rejectEditorNumber(field, minimum, maximum) {
+        panel.authoringNotice = qsTr("%1 precisa ficar entre %2 e %3.")
+            .arg(field).arg(minimum).arg(maximum)
+        panel.authoringRevision += 1
+    }
+
+    function effectColorHex(value) {
+        const raw = String(value || "").toLowerCase()
+        const hex = raw.startsWith("#") ? raw.slice(1) : raw
+        if (/^[0-9a-f]{8}$/.test(hex))
+            return "#" + hex.slice(-6)
+        if (/^[0-9a-f]{6}$/.test(hex))
+            return "#" + hex
+        return "#000000"
+    }
+
+    function formatEffectNumber(value, locale, decimals) {
+        let formatted = Number(value).toLocaleString(locale, "f", decimals)
+        const sample = Number(1.1).toLocaleString(locale, "f", 1)
+        const separator = sample.charAt(1)
+        if (separator && formatted.indexOf(separator) >= 0) {
+            while (formatted.endsWith("0"))
+                formatted = formatted.slice(0, -1)
+            if (formatted.endsWith(separator))
+                formatted = formatted.slice(0, -1)
+        }
+        return formatted
+    }
+
+    function openEffectColor(index, parameter, value) {
+        panel.effectColorIndex = index
+        panel.effectColorParameter = parameter
+        const dialog = colorPickerComponent.createObject(panel, {
+            objectName: "effectColorDialog",
+            initialColor: panel.effectColorHex(value),
+            backgroundColor: panel.backgroundColor,
+            surfaceColor: panel.surfaceColor,
+            raisedColor: panel.raisedColor,
+            borderColor: panel.borderColor,
+            textColor: panel.textColor,
+            mutedColor: panel.mutedColor,
+            cyanColor: panel.cyanColor,
+            cyanDarkColor: panel.cyanDarkColor,
+            visualScale: panel.visualScale
+        })
+        if (!dialog) {
+            panel.authoringNotice = qsTr("Não foi possível abrir o seletor de cor.")
+            panel.authoringRevision += 1
+            return
+        }
+        panel.effectColorDialogControl = dialog
+        dialog.colorPicked.connect(panel.acceptEffectColor)
+        dialog.closed.connect(function() {
+            if (panel.effectColorDialogControl === dialog)
+                panel.effectColorDialogControl = null
+        })
+        dialog.open()
+    }
+
+    function acceptEffectColor(value) {
+        if (panel.effectColorIndex < 0 || panel.effectColorParameter === "")
+            return
+        panel.editEffect("set", {
+            index: panel.effectColorIndex,
+            param: panel.effectColorParameter,
+            value: panel.effectColorHex(value)
+        })
     }
 
     function editMotion(op, timeline, extra) {
@@ -665,9 +769,11 @@ Rectangle {
         })
     }
 
-    function _openEditor(sessionId, manifest, preview, declared) {
+    function _openEditor(sessionId, manifest, preview, declared, effectSchema, motionSchema) {
         panel.editorSessionId = sessionId
         panel.editorDeclared = declared || ({effects: ({}), sceneMotion: null})
+        panel.editorEffectSchema = effectSchema || ({})
+        panel.editorMotionSchema = motionSchema || ({})
         panel.authoringNotice = ""
         panel.editorHistory = ({canUndo: false, canRedo: false})
         panel.editorManifest = manifest
@@ -686,6 +792,8 @@ Rectangle {
         panel.editorManifest = {}
         panel.editorPreviewObject = null
         panel.editorTokens = {}
+        panel.editorEffectSchema = ({})
+        panel.editorMotionSchema = ({})
         panel.editorDirty = false
         panel.editorReadOnly = false
     }
@@ -750,7 +858,8 @@ Rectangle {
         panel.requestAction("theme.editor.create",
             {name: name, extends: sourceId},
             function(r) {
-                panel._openEditor(r.sessionId, r.manifest, r.preview, r.declared)
+                panel._openEditor(r.sessionId, r.manifest, r.preview, r.declared,
+                                  r.effectSchema, r.motionSchema)
             })
     }
 
@@ -1068,6 +1177,7 @@ Rectangle {
 
                                 Button {
                                     visible: !themeCard.isActive
+                                    objectName: "themeApplyButton_" + modelData.id
                                     text: qsTr("Aplicar")
                                     implicitWidth: 88
                                     implicitHeight: 36
@@ -1090,6 +1200,7 @@ Rectangle {
                                 }
 
                                 Button {
+                                    objectName: "themeEditButton_" + modelData.id
                                     text: themeCard.isBuiltin
                                         ? qsTr("Ver (somente leitura)")
                                         : qsTr("Editar")
@@ -1103,7 +1214,9 @@ Rectangle {
                                         // contrato do backend, não são montados aqui.
                                         panel.requestAction("theme.editor.load",
                                             {themeId: modelData.id}, function(r) {
-                                                panel._openEditor(r.sessionId, r.manifest, r.preview, r.declared)
+                                                panel._openEditor(r.sessionId, r.manifest, r.preview,
+                                                                  r.declared, r.effectSchema,
+                                                                  r.motionSchema)
                                             })
                                     }
                                     background: Rectangle {
@@ -1966,6 +2079,7 @@ Rectangle {
                 }
 
                 Button {
+                    objectName: "themeEditorClose"
                     text: qsTr("Fechar")
                     implicitHeight: 36
                     implicitWidth: 80
@@ -2369,11 +2483,39 @@ Rectangle {
                                             Layout.maximumWidth: effectCard.width
                                             Layout.preferredHeight: childrenRect.height
                                             spacing: 8
+                                            Label {
+                                                text: qsTr("Fallback do efeito")
+                                                color: panel.mutedColor
+                                                font.pixelSize: Math.round(11 * panel.visualScale)
+                                                Accessible.name: text
+                                            }
+                                            AuthCombo {
+                                                objectName: "effectFallback_" + effectRow.index
+                                                Accessible.name: qsTr("Fallback") + " " + effectRow.modelData.type
+                                                model: panel.effectFallbackOptions(effectRow.modelData.type)
+                                                currentIndex: model.indexOf(effectRow.modelData.fallback || "omit")
+                                                onActivated: panel.editEffect("set", {
+                                                    index: effectRow.index,
+                                                    param: "fallback",
+                                                    value: currentText
+                                                })
+                                            }
+                                        }
+                                        Flow {
+                                            Layout.fillWidth: true
+                                            Layout.minimumWidth: 0
+                                            Layout.preferredWidth: effectCard.width
+                                            Layout.maximumWidth: effectCard.width
+                                            Layout.preferredHeight: childrenRect.height
+                                            spacing: 8
                                             Repeater {
                                                 model: Object.keys(effectRow.modelData).filter(function(k) { return k !== "type" && k !== "fallback" })
                                                 delegate: ColumnLayout {
                                                     id: paramRow
                                                     required property string modelData
+                                                    readonly property var specification:
+                                                        panel.effectParameterSpec(effectRow.modelData.type,
+                                                                                  paramRow.modelData)
                                                     spacing: 2
                                                     Label {
                                                         text: paramRow.modelData
@@ -2381,17 +2523,82 @@ Rectangle {
                                                         font.pixelSize: Math.round(11 * panel.visualScale)
                                                     }
                                                     AuthField {
-                                                        objectName: "effectParam_" + effectRow.index + "_" + paramRow.modelData
+                                                        visible: paramRow.specification.kind === "color"
+                                                        objectName: "effectColorHex_" + effectRow.index + "_" + paramRow.modelData
                                                         Accessible.name: effectRow.modelData.type + " " + paramRow.modelData
+                                                        Accessible.description: qsTr("Cor no formato #RRGGBB")
                                                         implicitWidth: 84
                                                         declaredText: String(effectRow.modelData[paramRow.modelData])
                                                         onEditingFinished: submit(function(t) {
                                                             panel.editEffect("set", {
                                                                 index: effectRow.index,
                                                                 param: paramRow.modelData,
-                                                                value: t.charAt(0) === "#" ? t : parseFloat(t)
+                                                                value: t
                                                             })
                                                         })
+                                                    }
+                                                    AuthButton {
+                                                        visible: paramRow.specification.kind === "color"
+                                                        objectName: "effectColorOpen_" + effectRow.index + "_" + paramRow.modelData
+                                                        text: qsTr("Escolher cor")
+                                                        implicitWidth: 120
+                                                        Accessible.name: qsTr("Escolher cor para") + " "
+                                                            + effectRow.modelData.type + " " + paramRow.modelData
+                                                        onClicked: panel.openEffectColor(effectRow.index,
+                                                            paramRow.modelData,
+                                                            effectRow.modelData[paramRow.modelData])
+                                                        contentItem: RowLayout {
+                                                            spacing: 6
+                                                            Rectangle {
+                                                                Layout.preferredWidth: 22
+                                                                Layout.preferredHeight: 22
+                                                                radius: 4
+                                                                color: panel.effectColorHex(
+                                                                    effectRow.modelData[paramRow.modelData])
+                                                                border.color: panel.borderColor
+                                                                border.width: 1
+                                                            }
+                                                            Label {
+                                                                Layout.fillWidth: true
+                                                                text: qsTr("Cor…")
+                                                                color: panel.textColor
+                                                                horizontalAlignment: Text.AlignHCenter
+                                                                verticalAlignment: Text.AlignVCenter
+                                                            }
+                                                        }
+                                                    }
+                                                    AuthRangeSpinBox {
+                                                        id: effectNumberEditor
+                                                        visible: paramRow.specification.kind === "number"
+                                                        objectName: "effectParam_" + effectRow.index + "_" + paramRow.modelData
+                                                        Accessible.name: effectRow.modelData.type + " " + paramRow.modelData
+                                                        Accessible.description: qsTr("Permitido de %1 a %2; passo %3")
+                                                            .arg(paramRow.specification.minimum)
+                                                            .arg(paramRow.specification.maximum)
+                                                            .arg(paramRow.specification.step)
+                                                        rangeMinimum: Number(paramRow.specification.minimum)
+                                                        rangeMaximum: Number(paramRow.specification.maximum)
+                                                        rangeStep: Number(paramRow.specification.step)
+                                                        rangeDecimals: Number(paramRow.specification.decimals || 2)
+                                                        declaredValue: Number(effectRow.modelData[paramRow.modelData])
+                                                        fieldName: paramRow.modelData
+                                                        implicitWidth: 116
+                                                        onValueCommitted: function(nextValue) {
+                                                            panel.editEffect("set", {
+                                                                index: effectRow.index,
+                                                                param: paramRow.modelData,
+                                                                value: nextValue
+                                                            })
+                                                        }
+                                                    }
+                                                    Label {
+                                                        visible: paramRow.specification.kind === "number"
+                                                        text: qsTr("%1–%2")
+                                                            .arg(paramRow.specification.minimum)
+                                                            .arg(paramRow.specification.maximum)
+                                                        color: panel.mutedColor
+                                                        font.pixelSize: Math.round(10 * panel.visualScale)
+                                                        Accessible.name: qsTr("Intervalo permitido") + " " + text
                                                     }
                                                 }
                                             }
@@ -2445,7 +2652,7 @@ Rectangle {
                                     objectName: "motionStateName"
                                     implicitHeight: 40
                                     Accessible.name: qsTr("Estado do keyframe")
-                                    model: ["normal", "focused", "selected", "pressed", "disabled", "loading", "missing", "error", "offline", "playing", "idle", "menuOpen"]
+                                    model: panel.motionStateOptions
                                     currentIndex: model.indexOf(panel.motionStateName)
                                     onActivated: panel.motionStateName = currentText
                                 }
@@ -2461,14 +2668,23 @@ Rectangle {
                                             color: panel.mutedColor
                                             font.pixelSize: Math.round(11 * panel.visualScale)
                                         }
-                                        AuthField {
+                                        AuthRangeSpinBox {
                                             objectName: "keyframe_" + keyframeRow.modelData
                                             Accessible.name: qsTr("Keyframe") + " " + panel.motionStateName + " " + keyframeRow.modelData
+                                            readonly property var specification:
+                                                panel.motionKeyframeSpec(keyframeRow.modelData)
+                                            rangeMinimum: Number(specification.minimum)
+                                            rangeMaximum: Number(specification.maximum)
+                                            rangeStep: Number(specification.step)
+                                            rangeDecimals: Number(specification.decimals || 2)
+                                            fieldName: keyframeRow.modelData
                                             implicitWidth: 84
-                                            declaredText: panel.keyframeText(panel.motionStateName, keyframeRow.modelData)
-                                            onEditingFinished: submit(function(t) {
-                                                panel.editMotion("set_state", panel.motionStateName, {field: keyframeRow.modelData, value: parseFloat(t)})
-                                            })
+                                            declaredValue: Number(panel.keyframeText(
+                                                panel.motionStateName, keyframeRow.modelData))
+                                            onValueCommitted: function(nextValue) {
+                                                panel.editMotion("set_state", panel.motionStateName,
+                                                    {field: keyframeRow.modelData, value: nextValue})
+                                            }
                                         }
                                     }
                                 }
@@ -2509,7 +2725,21 @@ Rectangle {
                                     objectName: "motionTimelineKind"
                                     implicitHeight: 40
                                     Accessible.name: qsTr("Tipo de timeline")
-                                    model: ["sequence", "parallel"]
+                                    model: panel.editorMotionSchema.timelineKinds || ["sequence", "parallel"]
+                                    currentIndex: {
+                                        const timelines = ((panel.editorDeclared.sceneMotion || {}).timelines || ({}))
+                                        const existing = timelines[panel.motionTimelineName]
+                                        return model.indexOf(existing
+                                            ? existing.kind : panel.motionNewTimelineKind)
+                                    }
+                                    onActivated: {
+                                        const timelines = ((panel.editorDeclared.sceneMotion || {}).timelines || ({}))
+                                        if (timelines[panel.motionTimelineName])
+                                            panel.editMotion("set_timeline", panel.motionTimelineName,
+                                                {field: "kind", value: currentText})
+                                        else
+                                            panel.motionNewTimelineKind = currentText
+                                    }
                                 }
                                 AuthButton {
                                     objectName: "motionTimelineAdd"
@@ -2526,14 +2756,20 @@ Rectangle {
                                     implicitHeight: 40
                                     onClicked: panel.editMotion("add_clip", panel.motionTimelineName, {value: {state: panel.motionStateName, duration: 240}})
                                 }
-                                AuthField {
+                                AuthRangeSpinBox {
                                     objectName: "motionTimelineRepeat"
                                     Accessible.name: qsTr("Repetições da timeline")
+                                    rangeMinimum: Number((panel.editorMotionSchema.repeat || {}).minimum || 0)
+                                    rangeMaximum: Number((panel.editorMotionSchema.repeat || {}).maximum || 8)
+                                    rangeStep: Number((panel.editorMotionSchema.repeat || {}).step || 1)
+                                    rangeDecimals: 0
+                                    fieldName: qsTr("Repetições")
                                     implicitWidth: 64
-                                    declaredText: panel.repeatText(panel.motionTimelineName)
-                                    onEditingFinished: submit(function(t) {
-                                        panel.editMotion("set_timeline", panel.motionTimelineName, {field: "repeat", value: parseInt(t)})
-                                    })
+                                    declaredValue: Number(panel.repeatText(panel.motionTimelineName))
+                                    onValueCommitted: function(nextValue) {
+                                        panel.editMotion("set_timeline", panel.motionTimelineName,
+                                            {field: "repeat", value: nextValue})
+                                    }
                                 }
                                 AuthButton {
                                     objectName: "motionTimelineRemove"
@@ -2565,20 +2801,55 @@ Rectangle {
                                     Layout.maximumWidth: motionColumn.width
                                     Layout.preferredHeight: childrenRect.height
                                     spacing: 8
+                                    AuthCombo {
+                                        visible: clipRow.modelData.state !== undefined
+                                        objectName: "motionClipState_" + clipRow.index
+                                        Accessible.name: qsTr("Estado do clip") + " " + (clipRow.index + 1)
+                                        model: panel.motionStateOptions
+                                        currentIndex: model.indexOf(clipRow.modelData.state || "normal")
+                                        implicitWidth: 140
+                                        onActivated: panel.editMotion("set_clip", panel.motionTimelineName,
+                                            {index: clipRow.index, field: "state", value: currentText})
+                                    }
                                     Label {
-                                        text: clipRow.modelData.state || clipRow.modelData.transition
+                                        visible: clipRow.modelData.transition !== undefined
+                                        text: clipRow.modelData.transition || ""
                                         color: panel.textColor
                                         font.pixelSize: Math.round(12 * panel.visualScale)
                                     }
-                                    AuthField {
+                                    AuthRangeSpinBox {
                                         objectName: "motionClipDuration_" + clipRow.index
                                         visible: clipRow.modelData.state !== undefined
                                         Accessible.name: qsTr("Duração do clip") + " " + (clipRow.index + 1)
+                                        rangeMinimum: Number((panel.editorMotionSchema.duration || {}).minimum || 0)
+                                        rangeMaximum: Number((panel.editorMotionSchema.duration || {}).maximum || 2000)
+                                        rangeStep: Number((panel.editorMotionSchema.duration || {}).step || 1)
+                                        rangeDecimals: 0
+                                        fieldName: qsTr("Duração")
                                         implicitWidth: 72
-                                        declaredText: String(clipRow.modelData.duration)
-                                        onEditingFinished: submit(function(t) {
-                                            panel.editMotion("set_clip", panel.motionTimelineName, {index: clipRow.index, field: "duration", value: parseInt(t)})
-                                        })
+                                        declaredValue: Number(clipRow.modelData.duration)
+                                        onValueCommitted: function(nextValue) {
+                                            panel.editMotion("set_clip", panel.motionTimelineName,
+                                                {index: clipRow.index, field: "duration", value: nextValue})
+                                        }
+                                    }
+                                    AuthButton {
+                                        objectName: "motionClipUp_" + clipRow.index
+                                        text: "↑"
+                                        implicitWidth: 44
+                                        enabled: clipRow.index > 0
+                                        Accessible.name: qsTr("Mover clip para cima") + " " + (clipRow.index + 1)
+                                        onClicked: panel.editMotion("move_clip", panel.motionTimelineName,
+                                            {index: clipRow.index, value: clipRow.index - 1})
+                                    }
+                                    AuthButton {
+                                        objectName: "motionClipDown_" + clipRow.index
+                                        text: "↓"
+                                        implicitWidth: 44
+                                        enabled: clipRow.index < motionClipRepeater.count - 1
+                                        Accessible.name: qsTr("Mover clip para baixo") + " " + (clipRow.index + 1)
+                                        onClicked: panel.editMotion("move_clip", panel.motionTimelineName,
+                                            {index: clipRow.index, value: clipRow.index + 1})
                                     }
                                     AuthButton {
                                         objectName: "motionClipRemove_" + clipRow.index
@@ -3373,6 +3644,8 @@ Rectangle {
                     }
                 }
                 Button {
+                    id: applyConfirmButton
+                    objectName: "themeApplyConfirm"
                     text: qsTr("Confirmar aplicação")
                     enabled: panel.applyPlan !== null
                         && panel.applyPlan.planId
@@ -3481,7 +3754,8 @@ Rectangle {
                         panel.requestAction("theme.editor.create",
                             {name: createNameField.text.trim()},
                             function(r) {
-                                panel._openEditor(r.sessionId, r.manifest, r.preview, r.declared)
+                                panel._openEditor(r.sessionId, r.manifest, r.preview, r.declared,
+                                                  r.effectSchema, r.motionSchema)
                                 createDialog.close()
                                 createNameField.text = ""
                             })
@@ -3866,6 +4140,73 @@ Rectangle {
         accentColor: panel.cyanColor
     }
 
+    component AuthRangeSpinBox: SpinBox {
+        id: rangeSpin
+        property real rangeMinimum: 0
+        property real rangeMaximum: 100
+        property real rangeStep: 1
+        property int rangeDecimals: 2
+        property real declaredValue: 0
+        property string fieldName: qsTr("Valor")
+        readonly property real precisionFactor: Math.pow(10, rangeDecimals)
+        signal valueCommitted(real value)
+
+        from: Math.ceil(rangeMinimum * precisionFactor - 0.000001)
+        to: Math.floor(rangeMaximum * precisionFactor + 0.000001)
+        value: Math.max(from, Math.min(to, Math.round(Number(declaredValue) * precisionFactor)))
+        stepSize: Math.max(1, Math.round(rangeStep * precisionFactor))
+        editable: true
+        inputMethodHints: Qt.ImhFormattedNumbersOnly
+        implicitHeight: 40
+        leftPadding: 8
+        rightPadding: 36
+        Accessible.description: qsTr("Permitido de %1 a %2; passo %3")
+            .arg(rangeMinimum).arg(rangeMaximum).arg(rangeStep)
+
+        validator: DoubleValidator {
+            bottom: -1000000
+            top: 1000000
+            decimals: rangeSpin.rangeDecimals
+            locale: rangeSpin.locale.name
+        }
+        textFromValue: function(raw, locale) {
+            return panel.formatEffectNumber(raw / rangeSpin.precisionFactor,
+                locale, rangeSpin.rangeDecimals)
+        }
+        valueFromText: function(text, locale) {
+            const parsed = Number.fromLocaleString(locale, text)
+            if (!Number.isFinite(parsed) || parsed < rangeSpin.rangeMinimum
+                    || parsed > rangeSpin.rangeMaximum
+                    || (rangeSpin.rangeDecimals === 0 && !Number.isInteger(parsed))) {
+                panel.rejectEditorNumber(rangeSpin.fieldName,
+                    rangeSpin.rangeMinimum, rangeSpin.rangeMaximum)
+                return rangeSpin.value
+            }
+            return Math.round(parsed * rangeSpin.precisionFactor)
+        }
+        onValueModified: valueCommitted(value / precisionFactor)
+
+        background: Rectangle {
+            color: panel.surfaceColor
+            radius: 8
+            border.color: rangeSpin.activeFocus ? panel.cyanColor : panel.borderColor
+            border.width: rangeSpin.activeFocus ? 2 : 1
+        }
+        contentItem: TextInput {
+            text: rangeSpin.displayText
+            font: rangeSpin.font
+            color: panel.textColor
+            selectionColor: panel.cyanColor
+            selectedTextColor: panel.backgroundColor
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            readOnly: !rangeSpin.editable
+            validator: rangeSpin.validator
+            inputMethodHints: rangeSpin.inputMethodHints
+            selectByMouse: true
+        }
+    }
+
     component TypoFamilyEditorComp: TextField {
         text: catSection.tokens.family || ""
         placeholderText: qsTr("Fonte (ex: Noto Sans)")
@@ -3987,7 +4328,12 @@ Rectangle {
     Component {
         id: colorPickerComponent
         ColorPickerDialog {
-            onClosed: destroy()
+            id: effectPicker
+            onClosed: {
+                if (panel.effectColorDialogControl === effectPicker)
+                    panel.effectColorDialogControl = null
+                destroy()
+            }
         }
     }
 }

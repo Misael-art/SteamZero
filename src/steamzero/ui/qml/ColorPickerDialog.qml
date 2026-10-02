@@ -16,6 +16,9 @@ QQC.Dialog {
     property color cyanColor: "#13bdf2"
     property color cyanDarkColor: "#0a5f85"
     property real visualScale: 1.0
+    property alias hexEditorControl: hexField
+    property alias applyButtonControl: applyButton
+    property alias cancelButtonControl: cancelButton
     readonly property int hexLabelPixelSize: hexLabel.font.pixelSize
 
     property var presets: [
@@ -75,6 +78,7 @@ QQC.Dialog {
                 }
                 QQC.TextField {
                     id: hexField
+                    objectName: "themeColorPickerHex"
                     text: String(dialog.initialColor)
                     placeholderText: "#RRGGBB"
                     maximumLength: 7
@@ -130,6 +134,8 @@ QQC.Dialog {
             spacing: 12
             Item { Layout.fillWidth: true }
             QQC.Button {
+                id: cancelButton
+                objectName: "themeColorPickerCancel"
                 text: qsTr("Cancelar")
                 Layout.minimumHeight: 44
                 Layout.preferredWidth: 120
@@ -148,6 +154,8 @@ QQC.Dialog {
                 }
             }
             QQC.Button {
+                id: applyButton
+                objectName: "themeColorPickerApply"
                 text: qsTr("Aplicar")
                 Layout.minimumHeight: 44
                 Layout.preferredWidth: 120
