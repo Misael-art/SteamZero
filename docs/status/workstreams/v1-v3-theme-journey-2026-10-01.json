@@ -5,7 +5,7 @@
   "item": "SZ-ROADMAP-CONTINUATION",
   "branch": "codex/v1-v3-theme-journey-2026-10-01",
   "baseRef": "b9d01b60",
-  "owner": "claude-a-codigo",
+  "owner": "codex-a-codigo",
   "state": "active",
   "exclusivePaths": [
     "src/steamzero/ui/qml/ThemedDialog.qml",
@@ -15,9 +15,15 @@
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
     "src/steamzero/domain/theme_editor.py",
     "src/steamzero/domain/media_recipes.py",
+    "tests/integration/test_theme_authoring_e2e.py",
+    "tests/integration/test_theme_scene_runtime_e2e.py",
     "tests/unit/test_theme_authoring_journey.py",
+    "tests/qml/check_theme_authoring_e2e.qml",
     "tests/integration/test_media_fit_parity.py",
-    "docs/status/workstreams/v1-v3-theme-journey-2026-10-01.json"
+    "docs/status/workstreams/v1-v3-theme-journey-2026-10-01.json",
+    "docs/status/items/theme-studio.json",
+    "docs/status/items/theme-engine.json",
+    "docs/09-operations/evidence/2026-10-01-v4-authoring-ui"
   ],
   "sharedPaths": [
     "src/steamzero/adapters/desktop_contracts.py",
@@ -30,6 +36,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "V1-V3 e V4 recortes 1-2 no PR #249 (gates locais ok). Pendente: CI, merge/release autorizados, passe de UI real por B_VISUAL, medicao na release; V4 restante: bindings/states, logo por asset unico, perfil por tier.",
-  "updatedAt": "2026-10-01"
+  "nextAction": "Gates integrais locais aprovados: 6557 passed/47 skipped, ruff/format/mypy/independência/fronteiras/status-check verdes. Separar commits funcional e documental, fazer push autorizado e atualizar o PR #249; em seguida consultar CI do SHA final. Pendem B_VISUAL na release candidata, input físico, autoria assetRecipes/tier/resolução e consumidores Launcher/Cinema.",
+  "updatedAt": "2026-10-02"
 }

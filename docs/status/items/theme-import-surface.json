@@ -15,7 +15,7 @@
     "tests/unit/test_theme_import_esde.py",
     "tests/qml/check_theme_editor_import.qml"
   ],
-  "scopeDigest": "2cb5ad24555f1416198639d0e8fb232547e97634c0f39f40d94c64dccacf17f3",
+  "scopeDigest": "86acf77831ce35714176f4049f3fdb8dbdff9a45bac864ae755e109d50cb85a0",
   "dependsOn": [
     "SZ-THEME-STUDIO"
   ],
@@ -101,10 +101,16 @@
       "result": "recorded",
       "reference": "docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/28-fora-de-escopo-esde-geracao.md",
       "command": "Fora de escopo do sétimo elo, medido e com dono: o importador ES-DE continua sem contrato de geração. grep -c esdeImportGeneration src/steamzero/ui/qml/ThemeEditorPanel.qml = 0 contra retrofeImportGeneration = 12; cinco escritas incondicionais de `panel.esdeImportBusy = false` nas linhas 215 (resetEsdeImport), 229 e 239 (callbacks de inspectEsdeImport) e 263 e 271 (callbacks de applyEsdeImport), com as propriedades esdeImport* declaradas em :72-:78. Não foi corrigido aqui por serialização: os gates ES-DE pertencem a WS-2026-09-RC01-SHELL-ESDE-DIALOG e o corte exige vermelho próprio mais a mesma bateria de mutantes (M1-M4 + guarda) que fechou o RetroFE."
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_theme_import_esde.py",
+      "command": "2026-10-02, regressão em suíte integral após ajuste isolado da largura dos inspetores do Studio. .venv/bin/python tools/run_tests_isolated.py tests -q: 6557 passed, 47 skipped in 2599.72s; estado real antes/depois idêntico (files=12818, directories=2068, bytes=1372818509). Gates estáticos locais: ruff check, ruff format --check (689 files), mypy (299 files), make independence boundaries e make status-check aprovados. A superfície de importação não foi alterada nem promovida por esse resultado.",
+      "result": "passed"
     }
   ],
   "nextAction": "Validar na release 2.0.0rc1-504d10b14485 com fontes ES-DE e pacote SteamZero reais; manter ausência explícita enquanto ES-DE/SRM não estiverem instalados e RetroFE não tiver pacote lançável.",
   "activeWorkstreams": [],
   "updatedAt": "2026-09-22",
-  "notes": "O backend já implementa inspect/apply como tema editável. Esta frente fecha a descoberta e a jornada da superfície Temas sem duplicar o importador. 2026-09-03: scopeDigest renovado por mudanca da frente WS-2026-09-CENA-ESDE (rota theme.scene.render e o botao de previa). A evidencia NAO foi carimbada: foi reexecutada e passou (117 testes de contrato, dashboard e import)."
+  "notes": "O backend já implementa inspect/apply como tema editável. Esta frente fecha a descoberta e a jornada da superfície Temas sem duplicar o importador. 2026-09-03: scopeDigest renovado por mudanca da frente WS-2026-09-CENA-ESDE (rota theme.scene.render e o botao de previa). A evidencia NAO foi carimbada: foi reexecutada e passou (117 testes de contrato, dashboard e import). 2026-10-02: renovacao de escopo por alteracao restrita aos inspetores de autoria do Theme Studio. Importacao ES-DE/RetroFE, dialogs do shell e eixos deste item nao foram alterados nem promovidos."
 }

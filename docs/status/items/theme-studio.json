@@ -9,11 +9,12 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "99594f3aeb6fdb7fe8f4af2693dede65792ccd51dc94723fa64f139402396109",
+  "scopeDigest": "087d7b4a35ca083fd851f98d95af4c4363f1f8c4fc58ed672b79d021b7b760db",
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun",
     "docs/09-operations/evidence/2026-09-07-theme-studio-contrast",
     "docs/09-operations/evidence/2026-09-22-media-theme-first-run",
+    "docs/09-operations/evidence/2026-10-01-v4-authoring-ui",
     "src/steamzero/domain/theme_editor.py",
     "src/steamzero/domain/theme_marketplace.py",
     "src/steamzero/domain/studio_graph.py",
@@ -22,7 +23,9 @@
     "src/steamzero/ui/qml/SceneSurfacePreview.qml",
     "src/steamzero/ui/qml/ColorPickerDialog.qml",
     "tests/qml/check_theme_editor_aura.qml",
+    "tests/qml/check_theme_authoring_e2e.qml",
     "tests/qml/check_theme_studio_canvas.qml",
+    "tests/integration/test_theme_authoring_e2e.py",
     "tests/unit/test_theme_editor.py",
     "tests/unit/test_studio_graph.py",
     "tests/unit/test_theme_editor_extends.py",
@@ -189,18 +192,36 @@
     {
       "kind": "test",
       "reference": "tests/integration/test_theme_authoring_e2e.py",
-      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_theme_authoring_e2e.py -q (1 passed; eventos Qt mouse/teclado sobre inspetores contra DesktopControlServer real, offscreen; NAO e input fisico)",
+      "command": "2026-10-02: o gate visual no run 36952440268 falhou em keyframe_scale e motionClipAdd fora da viewport horizontal; reproduzido no container pinado ghcr.io/misael-art/steamzero-qml-visual@sha256:8b832ec124ae72aa59a4de3b5c00ccf3f03b41a7e688f45c10daf767290041cd. Após limitar ScrollView/Flow e exigir que o alvo inteiro caiba antes do evento: python tools/run_tests_isolated.py tests/integration/test_theme_authoring_e2e.py -q --tb=short, 1 passed no container Qt 6.11.2/Python 3.14.6 e 1 passed no host Qt 6.11.2. Eventos Qt mouse/teclado, DesktopControlServer real, XDG temporário; não é input físico.",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-10-01-v4-authoring-ui/04-studio-compact-movimento.png",
+      "command": "Captura do host BigLinux/Qt 6.11.2 em 640x560 após rolagem até o inspetor; o botão Adicionar clip cabe inteiro. Captura QML offscreen com tema sintético; não certifica release instalada ou input físico.",
+      "result": "recorded"
     },
     {
       "kind": "test",
       "reference": "tests/integration/test_theme_scene_runtime_e2e.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_theme_scene_runtime_e2e.py -q (2 passed; SceneEsdeView decodifica PNG valido e pixels sao lidos; Launcher/Cinema nao consomem cenas importadas)",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_theme_authoring_e2e.py",
+      "command": "2026-10-02, checkpoint integral no código da jornada de autoria QML. .venv/bin/python tools/run_tests_isolated.py tests -q: 6557 passed, 47 skipped in 2599.72s; estado real antes/depois idêntico (files=12818, directories=2068, bytes=1372818509). Gates estáticos locais: ruff check, ruff format --check (689 files), mypy (299 files), make independence boundaries e make status-check aprovados.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_theme_scene_runtime_e2e.py",
+      "command": "2026-10-02, checkpoint integral com jornada QML de autoria e consumidor SceneEsdeView. .venv/bin/python tools/run_tests_isolated.py tests -q: 6557 passed, 47 skipped in 2599.72s; estado real antes/depois idêntico (files=12818, directories=2068, bytes=1372818509). Gates estáticos locais: ruff check, ruff format --check (689 files), mypy (299 files), make independence boundaries e make status-check aprovados. Não cobre Launcher/Cinema nem a release instalada.",
+      "result": "passed"
     }
   ],
-  "nextAction": "V4 recortes 1-3 (efeitos, keyframes/timelines, bindings) com inspetores sincronizados e eventos Qt na bridge real; falta input fisico/teclado/gamepad na release instalada, variantes de logo por asset unico, tier/resolucao e medicao na release. Nao promover a autoria concluida.",
+  "nextAction": "Concluir os gates locais e publicar o checkpoint do PR #249. Depois, executar B_VISUAL na release candidata com teclado/gamepad/portal e observar o tema editado no consumidor Engine. Theme Studio segue parcial: edição de assetRecipes no documento, perfis por tier/resolução, Launcher/Cinema e medição na release permanecem pendentes.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-22",
-  "notes": "Maturidade parcial e bem delimitada. A autoria real cobre metadados, tokens, layout, preview, save, export e cancelamento em XDG isolado; builtins permanecem read-only e o pacote exportado contém o manifesto esperado. O canvas usa o mesmo SceneRepeater da interface e a árvore/inspector/constraints estão funcionais. Efeitos, motion, bindings e custo são resolvidos e observáveis, mas o painel não cria/remove/reordena/edita EffectSpec; o profiler é declarativo (measured=false) e o harness de scene preview expirou. A prova de usuário por input físico, import/reopen em release e medição física continuam abertas."
+  "updatedAt": "2026-10-02",
+  "notes": "A branch do PR #249 contém controles e jornada de efeitos, keyframes/timelines e bindings de layout pela UI QML contra a bridge real, com undo/redo, dirty, salvar/reabrir e round-trip de cenas. O gate visual no SHA ee72df66 encontrou alvos fora da viewport; a causa era largura implícita dos Flow sob o container Qt pinado. A correção limita os cartões e seus Flow ao viewport, e o harness agora verifica a geometria antes do input. A autoria passou no container Qt 6.11.2/Python 3.14.6 e no host; 140 testes focados de autoria, efeitos, cenas e receitas passaram. Isso continua sendo dev/offscreen: não promove Theme Studio, Theme Engine ou Launcher. Permanecem input físico e prova na release autorizada, execução da cena editada no consumidor Engine, edição de assetRecipes a partir de uma fonte única e perfis tier/resolução. Gates integrais locais no checkpoint: 6557 passed/47 skipped; lint, formato, mypy, independência, fronteiras e status-check verdes. Isso não substitui B_VISUAL nem muda os eixos do item."
 }

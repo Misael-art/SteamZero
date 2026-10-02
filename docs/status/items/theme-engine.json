@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "32e6d0e70961d248f34401c4d77cbb5428f025e5a71e8d54c26d1c937b58999e",
+  "scopeDigest": "1952290d5161ba76f66bb09bb9347c092bd11223a39796f034e9a975a0fc5715",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -154,7 +154,7 @@
     {
       "kind": "test",
       "reference": "tests/qml/check_theme_editor_asset_recipes.qml",
-      "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_asset_recipe_preview.qml && QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_theme_editor_asset_recipes.qml",
+      "command": "2026-10-02: rtk env QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_asset_recipe_preview.qml (0) && rtk env QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_theme_editor_asset_recipes.qml (0); reexecutado após limitar a largura dos Flow do inspector compartilhado; sem mudança no contrato/resolver da Engine.",
       "result": "passed"
     },
     {
@@ -456,10 +456,16 @@
       "reference": "docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/09-verde-medido.md",
       "command": "2026-09-29 renovação de escopo compartilhado pela frente WS-2026-09-RC01-RETROFE-SHELL-LATE (corte 'RetroFE na shell' de RC-01; dono da mudança: item SZ-UI-DESKTOP-AUDIT). Este lote TOCOU src/steamzero/ui/qml/ThemeEditorPanel.qml, que está no escopo deste item, e isso é registrado em vez de passar como renovação muda. O delta é confinado ao bloco do importador RetroFE, medido por `git diff -U0`: 13 blocos, todos entre 96-103 (declarador `retrofeImportGeneration`), 333-443 (`resetRetrofeImport`, `inspectRetrofeImport`, `applyRetrofeImport`) e 1271-1290, dentro de `retrofeImportDialog` (abre em :1203). Nenhum eixo deste item mudou de estado e NENHUMA verificação nova deste item foi executada neste lote: a renovação afirma só que o conjunto de arquivos do escopo foi re-digerido pela ferramenta, no precedente de 2026-09-27 (mesmo arquivo, mesma situação, evidência registrada em theme-import-retrofe.json). Capítulos deste item que a mudança não toca: o motor de temas em si, a superfície de importação e o estúdio.",
       "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_asset_recipes.py",
+      "command": "2026-10-02, checkpoint integral inclui validação de receitas de asset, allowlist, tiers e fallback. .venv/bin/python tools/run_tests_isolated.py tests -q: 6557 passed, 47 skipped in 2599.72s; estado real antes/depois idêntico (files=12818, directories=2068, bytes=1372818509). Gates estáticos locais: ruff check, ruff format --check (689 files), mypy (299 files), make independence boundaries e make status-check aprovados. Nenhum código Engine nem eixo de capacidade mudou neste lote.",
+      "result": "passed"
     }
   ],
   "nextAction": "Reconciliar a cena ativa com o catálogo: o tema AURA ES-DE Physical resolve tokens fixos, efeitos e mediaRecipes, mas dynamicPalette/glass/sceneMotion/sceneSurfaces/sceneContainers permanecem nulos no tema ativo. Repetir bridge→catálogo→render na release atual e separar fixture asset-recipes de capacidade promovida.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-26",
-  "notes": "Estado permanece parcial, com tres capacidades agora provadas fisicamente na release instalada. GAP-THEME-ASSET-INVERT-HUE e GAP-THEME-FALLBACK-SIGNAL fechados: invert e hue rotate sao aplicados pelo node builtin AssetColorTransform, com variantes pixel-distintas e alpha preservado. DEBT-HOST-INSTALL-DAEMON-RESTART FECHADO: a release 0.1.0a46-862fe3aa6837 convergiu sozinha (restarted=true) na primeira instalacao em que ativacao e convergencia rodaram ambas com o codigo corrigido. O defeito levou tres diagnosticos: nao era falta de restart nem o smoke em si, e sim _verify_release rodando 'doctor --json' com check=True, enquanto o doctor real sai com EXIT_FAILURE em status=failed; os testes escondiam isso porque o fake saia com codigo 0. GAP-THEME-PERF-BUDGET-UNMEASURED fechado. Eu havia afirmado que VRAM nao era mensuravel; isso valia para uma API portatil e por processo, mas nao para este host: o amdgpu expoe drm-memory-vram no fdinfo do processo. A sonda passou a medir, agrupando por drm-client-id porque o driver repete o mesmo cliente em varios fds. Na release instalada: p95 13,882 ms, startup 147 ms, 46,6 MB de VRAM — dentro dos tres limites. O criterio foi reescrito para excluir FPS apresentado, que exige instrumentacao do compositor inexistente na plataforma; o ritmo do render loop nao serve de substituto. Reconciliacao 2026-08-24: o porte v2 alterou MediaEffectLayer.qml e ReflectionLayer.qml (degradacao segura de efeitos no Qt 6.4) e tests/unit/test_theme_effects.py dentro deste escopo. As provas automatizadas foram re-executadas e estao verdes, mas as medicoes de desempenho no host (p95, startup, RSS, VRAM) sao ANTERIORES a essa mudanca de QML e precisam ser refeitas na proxima release instalada antes de sustentar o eixo hw.LOD de capas: MediaEffectLayer passou a aceitar um teto de decode declarado (CoverLod) e a decodificar fora da thread de render. A textura intermediaria e a mascara gradiente agora acompanham o renderer avancado em vez de custar por capa sem consumidor; sem esse gate a mascara ainda ficava visivel sobre a midia quando QtQuick.Effects estava ausente. Nao ha medicao de FPS ou memoria neste ciclo: o ganho declarado e a remocao de trabalho sem consumidor, nao um numero de desempenho. O teto de decode passou a ser required no MediaEffectLayer: um padrao permitiria que uma superficie nova voltasse ao decode integral em silencio. Medido que o teto so reduz (arte 320x180 com teto 4096 mantem implicitWidth 320), entao exigi-lo nao infla capas pequenas em tela grande."
+  "updatedAt": "2026-10-02",
+  "notes": "Estado permanece parcial, com três capacidades agora provadas fisicamente em releases anteriores; isso não cobre esta branch nem altera distribuição atual. GAP-THEME-ASSET-INVERT-HUE e GAP-THEME-FALLBACK-SIGNAL fechados: invert e hue rotate são aplicados pelo node builtin AssetColorTransform, com variantes pixel-distintas e alpha preservado. DEBT-HOST-INSTALL-DAEMON-RESTART FECHADO em release histórica. GAP-THEME-PERF-BUDGET-UNMEASURED teve sonda e medição de release registradas; FPS apresentado continua fora do critério sem instrumento de compositor. LOD de capas usa teto de decode declarado e evita textura intermediária sem consumidor. Em 2026-10-02, ThemeEditorPanel.qml foi alterado apenas para limitar a largura dos Flow internos do editor após reprodução do overflow no Qt pinado. A jornada QML passou no container e no host, os testes focados passaram e os harnesses de receita foram repetidos. O código da Engine, o resolver de receitas, a cena ativa instalada e a medição em release não mudaram nem foram promovidos neste lote. A suíte integral local passou com 6557 testes e 47 skips, sem alteração ou promoção do runtime da Engine neste lote."
 }

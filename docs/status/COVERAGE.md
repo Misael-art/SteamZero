@@ -86,17 +86,17 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-PS3-OFFICIAL-FIRMWARE-DOWNLOAD | 8 | 5 | 1 | unit |  |
 | SZ-RESOURCE-QML-PROBE | 7 | 2 | 1 | dev |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
-| SZ-ROADMAP-CONTINUATION | 17 | 8 | 3 | dev |  |
+| SZ-ROADMAP-CONTINUATION | 19 | 9 | 3 | dev |  |
 | SZ-SHARPEMU-COMPONENT-SMOKE-CONTRACT | 3 | 1 | 1 | unit |  |
 | SZ-SYSTEM-DIAGNOSTICS-GUIDANCE | 5 | 8 | 3 | dev |  |
 | SZ-TEST-STATE-ISOLATION | 4 | 4 | 4 | dev |  |
-| SZ-THEME-ENGINE | 125 | 55 | 45 | hw |  |
+| SZ-THEME-ENGINE | 125 | 56 | 46 | hw |  |
 | SZ-THEME-ESDE-SCENE-RENDER | 26 | 11 | 8 | hw |  |
 | SZ-THEME-IMPORT-ESDE-LAYOUT | 32 | 13 | 10 | hw |  |
-| SZ-THEME-IMPORT-RETROFE | 10 | 14 | 10 | hw |  |
-| SZ-THEME-IMPORT-SURFACE | 4 | 12 | 7 | unit |  |
-| SZ-THEME-STUDIO | 88 | 25 | 18 | hw |  |
-| SZ-UI-DESKTOP-AUDIT | 833 | 184 | 109 | dev |  |
+| SZ-THEME-IMPORT-RETROFE | 10 | 16 | 11 | hw |  |
+| SZ-THEME-IMPORT-SURFACE | 4 | 13 | 8 | unit |  |
+| SZ-THEME-STUDIO | 96 | 28 | 20 | hw |  |
+| SZ-UI-DESKTOP-AUDIT | 833 | 186 | 110 | dev |  |
 | SZ-UI-PACKAGED-ICONS | 57 | 4 | 2 | unit |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 

@@ -16,9 +16,10 @@
     "docs/09-operations/AGENT-HANDOFF.md",
     "docs/09-operations/evidence/2026-10-01-v1-v3-theme-journey",
     "docs/09-operations/evidence/2026-10-01-v4-perf",
-    "docs/09-operations/evidence/2026-10-01-v4-authoring-ui"
+    "docs/09-operations/evidence/2026-10-01-v4-authoring-ui",
+    "docs/status/workstreams/v1-v3-theme-journey-2026-10-01.json"
   ],
-  "scopeDigest": "e94464f8b4df361b3a67bc4ea3a0083e92f00fc87eb7be11f6effa14898aa4b4",
+  "scopeDigest": "22ca0cc584728e3a25c8a13ef946b5bb34f9d64fbdf589d40ebbdacf0b7e292d",
   "dependsOn": [
     "SZ-PROJECT-DESIGN-AUDIT"
   ],
@@ -78,10 +79,18 @@
       "reference": "tests/unit/test_project_status.py",
       "command": "2026-10-01: .venv/bin/python tools/run_tests_isolated.py tests/unit/test_project_status.py -q; 13 passed em 5.13s, guard de estado idêntico antes/depois. make status-check e git diff --check aprovados; links locais, 11/11 AC-134 e WORKLOG append-only conferidos.",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-10-01-v4-authoring-ui/README.md",
+      "command": "2026-10-02, checkpoint local da continuidade do PR #249. .venv/bin/python tools/run_tests_isolated.py tests -q: 6557 passed, 47 skipped in 2599.72s; estado real antes/depois idêntico (files=12818, directories=2068, bytes=1372818509). Gates estáticos locais: ruff check, ruff format --check (689 files), mypy (299 files), make independence boundaries e make status-check aprovados. Ruff, formatação, mypy, independência/fronteiras e status-check também passaram; push e CI do novo SHA seguem pendentes.",
+      "result": "recorded"
     }
   ],
-  "nextAction": "V1–V3 implementados e testados localmente (c36edbc3, 1e3a17ef, ee9431e2 e seguinte). Falta: pass real de UI por B_VISUAL, fixtures ES-DE/RetroFE no V2, execução no Launcher e V4; push/release exigem autorização.",
-  "activeWorkstreams": [],
-  "updatedAt": "2026-10-01",
-  "notes": "Planejamento concluído localmente; nenhuma implementação do produto ou certificação física promovida. Um checkout confirmado. Roadmap, marcos, handoff e prompt foram harmonizados; 13 testes de status passaram após corrigir digests compartilhados e a declaração prematura de verificação; links locais e 21 IDs de achados conferidos. RC-00 executado em 2026-09-26: base/release/worktree conferidos; 21 claims obsoletos encerrados com evidência de integração e 5 mantidos abertos; a suíte integral da auditoria permanece registrada como não verde (1 falha documental histórica). 2026-10-01: revisão documental após diagnóstico físico B_VISUAL 133/134; nenhuma capacidade do produto foi promovida. A validação de autoria/Launcher continua pendente; prioridade V1-V4 não abandona os demais lotes RC."
+  "nextAction": "Gates integrais locais aprovados no checkpoint do PR #249. Separar commits funcional/documental, fazer push autorizado e atualizar o PR; depois consultar CI no SHA final. Permanecem B_VISUAL, prova na release, Launcher/Cinema e autoria de assetRecipes/tier/resolução.",
+  "activeWorkstreams": [
+    "WS-2026-10-V1-V3-THEME-JOURNEY"
+  ],
+  "updatedAt": "2026-10-02",
+  "notes": "Planejamento e continuidade no PR #249 permanecem locais à feature branch; nenhum merge, release, instalação ou certificação física foi promovido. Um checkout confirmado. Roadmap, marcos, handoff e prompt preservam os limites de autorização. RC-00 executado em 2026-09-26: base/release/worktree conferidos; 21 claims obsoletos encerrados com evidência de integração e 5 mantidos abertos; a suíte integral da auditoria permanece registrada como não verde (1 falha documental histórica). 2026-10-01: revisão das rodadas B_VISUAL 133/134. 2026-10-02: continuação da autoria Theme Studio; o overflow horizontal dos inspetores foi reproduzido no Qt pinado, corrigido com controles de largura e coberto por verificação geométrica antes de cada evento Qt. A jornada passou no container e no host, e 140 testes focados passaram. B_VISUAL continua necessário para input físico e a release instalada continua anterior a esta branch. Launcher/AURA Cinema não consomem cenas importadas. O engine tem demo de asset de fonte única, mas editar assetRecipes no documento e configurar tier/resolução ainda exige uma fatia própria de editor e runtime."
 }
