@@ -1503,6 +1503,23 @@ def handheld_ui_contracts() -> dict[str, Any]:
             ),
         ),
         _action(
+            "theme.editor.edit-binding",
+            "Editar binding de metadado do layout",
+            "/theme/editor/edit-binding",
+            service="system",
+            screen="system",
+            control="theme-editor-edit-binding",
+            schema=_schema(
+                "sessionId",
+                "layoutId",
+                "prop",
+                sessionId="string",
+                layoutId="string",
+                prop="string",
+                binding="string",
+            ),
+        ),
+        _action(
             "theme.editor.undo",
             "Desfazer última edição do tema",
             "/theme/editor/undo",

@@ -217,3 +217,46 @@ def test_export_import_copy_preserves_effects_and_motion_semantics(env: Path) ->
     assert (
         ThemeEditorManager().load(theme_id)["manifest"] == original["manifest"]
     )  # original intacto
+
+
+def test_binding_edit_inherits_layouts_validates_allowlist_and_roundtrips(env: Path) -> None:
+    mgr = ThemeEditorManager()
+    created = mgr.create("Binding", extends="org.steamzero.asset-recipes-demo")
+    sid = str(created["sessionId"])
+    theme_id = str(created["manifest"]["id"])  # type: ignore[index]
+    inherited = created["declared"]["sceneLayouts"]["layouts"]  # type: ignore[index]
+    assert "previewTitles" in inherited, "o layout herdado deve aparecer na declaração"
+
+    edited = mgr.edit_layout_binding(
+        sid, "previewTitles", "text", binding="item.genre", fallback="Sem gênero"
+    )
+    assert edited["layout"]["template"]["properties"]["text"] == {  # type: ignore[index]
+        "binding": "item.genre",
+        "fallback": "Sem gênero",
+    }
+    assert set(inherited) <= set(edited["declared"]["sceneLayouts"]["layouts"])  # type: ignore[index]
+    depth = mgr.history(sid)["history"]["undoDepth"]  # type: ignore[index]
+    for bad in ("item.senha", "item.", "layout.title", "item.title; rm -rf /"):
+        with pytest.raises(SteamZeroError):
+            mgr.edit_layout_binding(sid, "previewTitles", "text", binding=bad)
+    with pytest.raises(SteamZeroError):  # propriedade fora do template
+        mgr.edit_layout_binding(sid, "previewTitles", "script", binding="item.title")
+    assert mgr.history(sid)["history"]["undoDepth"] == depth
+
+    undone = mgr.undo(sid)
+    assert (
+        undone["declared"]["sceneLayouts"]["layouts"]["previewTitles"]["template"]["properties"][  # type: ignore[index]
+            "text"
+        ]["binding"]
+        == "item.title"
+    )
+    mgr.redo(sid)
+    cleared = mgr.edit_layout_binding(sid, "previewTitles", "text", binding=None, fallback="Fixo")
+    assert cleared["layout"]["template"]["properties"]["text"] == "Fixo"  # type: ignore[index]
+    mgr.undo(sid)
+    mgr.save(sid)
+    reopened = ThemeEditorManager().load(theme_id)
+    reopened_props = reopened["declared"]["sceneLayouts"]["layouts"]["previewTitles"]["template"][  # type: ignore[index]
+        "properties"
+    ]
+    assert reopened_props["text"]["binding"] == "item.genre"

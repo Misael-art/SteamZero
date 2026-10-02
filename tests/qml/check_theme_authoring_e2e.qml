@@ -130,6 +130,18 @@ Item {
             keyClick(Qt.Key_Return)
         }
 
+        // Captura opcional (cfg.captureDir): o quadro real do painel para inspeção visual.
+        function capture(name) {
+            if (!cfg.captureDir)
+                return
+            let done = false
+            panel.grabToImage(function(result) {
+                result.saveToFile(cfg.captureDir + "/" + name + ".png")
+                done = true
+            })
+            tryVerify(function() { return done }, 3000, "captura " + name + " não concluiu")
+        }
+
         function effects(stack) {
             return (panel.editorDeclared.effects || {})[stack] || []
         }
@@ -163,6 +175,8 @@ Item {
             tryVerify(function() { return panel.authoringNotice !== "" }, 3000, "o erro não ficou visível")
             compare(panel.editorHistory.undoDepth, depth, "edição inválida alterou o histórico")
             compare(effects("focusedCover")[baseEffects + 1].radius, 24, "edição inválida alterou o documento")
+            tryCompare(find(panel, "effectParam_" + (baseEffects + 1) + "_radius"), "text", "24", 3000,
+                       "o campo continuou exibindo o valor recusado")
 
             // movimento: keyframe, timeline, clip (sem depender de Undo para atualizar a tela)
             typeInto("keyframe_scale", "1.2")
@@ -191,6 +205,8 @@ Item {
             click("themeEditorRedo")
             tryVerify(function() { return JSON.stringify(panel.editorDeclared) === beforeUndo }, 3000,
                       "refazer não restaurou o documento")
+
+            capture("01-studio-efeitos-movimento")
 
             // salvar, fechar e reabrir
             themeId = panel.editorManifest.id
@@ -222,11 +238,52 @@ Item {
             click("effectAdd")
             tryVerify(function() { return effects("focusedCover").length === base + 1 }, 3000,
                       "inspetor de efeitos inalcançável no viewport compacto")
+            capture("02-studio-compacto")
             typeInto("motionTimelineName", "compacta")
             click("motionTimelineAdd")
             tryVerify(function() { return find(panel, "motionClipDuration_0") !== null }, 3000)
             click("motionClipAdd")
             tryVerify(function() { return find(panel, "motionClipDuration_1") !== null }, 3000, "clip: " + JSON.stringify(harness.errors) + " tl=" + panel.motionTimelineName + " " + JSON.stringify((panel.editorDeclared.sceneMotion || {}).timelines))
+        }
+
+        function test_03_binding_de_layout_pelos_controles() {
+            harness.cfg = readConfig()
+            panel.compactLayout = false
+            harness.width = 1100
+            harness.height = 900
+            panel._closeEditor()
+            // Tema sem layouts: o inspetor explica o próximo passo em vez de ficar vazio.
+            panel.duplicateAndEdit("org.steamzero.default", "Sem layouts")
+            tryVerify(function() { return panel.editorSessionId !== "" }, 5000)
+            tryVerify(function() { return find(panel, "bindingEmpty") !== null && find(panel, "bindingEmpty").visible }, 3000,
+                      "o estado vazio dos bindings não orienta o usuário")
+            panel._closeEditor()
+
+            panel.duplicateAndEdit("org.steamzero.asset-recipes-demo", "Com layouts")
+            tryVerify(function() { return panel.editorSessionId !== "" }, 5000)
+            tryVerify(function() { return find(panel, "bindingApply") !== null && find(panel, "bindingApply").visible }, 3000)
+            tryVerify(function() { return panel.bindingLayoutName !== "" && panel.bindingPropName !== "" }, 3000,
+                      "layout/propriedade não foram selecionados por padrão")
+            const layout = panel.bindingLayoutName
+            const prop = panel.bindingPropName
+            const field = find(panel, "bindingField")
+            field.currentIndex = field.model.indexOf("genre")
+            typeInto("bindingFallback", "Sem genero")
+            click("bindingApply")
+            tryVerify(function() {
+                const layouts = (panel.editorDeclared.sceneLayouts || {}).layouts || {}
+                const p = (((layouts[layout] || {}).template || {}).properties || {})[prop]
+                return p !== undefined && p.binding === "item.genre" && p.fallback === "Sem genero"
+            }, 3000, "o binding ligado não chegou ao documento")
+            tryVerify(function() { return find(panel, "bindingCurrent_" + prop) !== null
+                                   && find(panel, "bindingCurrent_" + prop).text.indexOf("item.genre") >= 0 }, 3000,
+                      "o inspetor não mostra o binding atual")
+            capture("03-studio-binding")
+            click("themeEditorUndo")
+            tryVerify(function() {
+                const layouts = (panel.editorDeclared.sceneLayouts || {}).layouts || {}
+                return layouts[layout].template.properties[prop].binding === "item.title"
+            }, 3000, "desfazer não restaurou o binding herdado")
         }
     }
 }

@@ -61,7 +61,12 @@ def test_autoria_pela_ui_real_persiste_e_resolve(
     CONFIG.parent.mkdir(exist_ok=True)
     CONFIG.write_text(
         json.dumps(
-            {"apiUrl": f"http://127.0.0.1:{server.server_port}", "apiToken": "authoring-token"}
+            {
+                "apiUrl": f"http://127.0.0.1:{server.server_port}",
+                "apiToken": "authoring-token",
+                # Capturas só quando pedido (evidência visual); o teste normal não grava.
+                "captureDir": os.environ.get("SZ_CAPTURE_DIR", ""),
+            }
         ),
         encoding="utf-8",
     )
@@ -90,7 +95,9 @@ def test_autoria_pela_ui_real_persiste_e_resolve(
         server.shutdown()
         thread.join(timeout=3)
     output = (completed.stdout or "") + (completed.stderr or "")
-    assert completed.returncode == 0, f"jornada de autoria reprovou:\n{output[-5000:]}"
+    assert completed.returncode == 0, (
+        f"jornada de autoria reprovou:\n{output[:2500]}\n...\n{output[-1200:]}"
+    )
     assert "FAIL" not in output, output[-5000:]
     found = re.search(r"THEME_ID=(\S+)", output)
     assert found, f"o harness não publicou o id do tema:\n{output[-2000:]}"

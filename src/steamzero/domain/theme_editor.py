@@ -318,7 +318,7 @@ def _declared(manifest: dict[str, object]) -> dict[str, object]:
     Diferente do preview, nada aqui é negociado por capability, tier ou
     acessibilidade: é o que o tema *declara*, base de edição dos inspetores.
     """
-    out: dict[str, object] = {"effects": {}, "sceneMotion": None}
+    out: dict[str, object] = {"effects": {}, "sceneMotion": None, "sceneLayouts": None}
     try:
         draft = ThemeManifest.from_dict(dict(manifest))
         available = _load_manifests_for_resolution()
@@ -332,6 +332,8 @@ def _declared(manifest: dict[str, object]) -> dict[str, object]:
             stacks[name] = [{**effect_defaults(entry.type), **entry.to_dict()} for entry in entries]
         if item.scene_motion is not None:
             out["sceneMotion"] = item.scene_motion.to_dict()
+        if item.scene_layouts is not None:
+            out["sceneLayouts"] = item.scene_layouts.to_dict()
     out["effects"] = stacks
     return out
 
@@ -408,6 +410,21 @@ def _to_preview_object(
 
 
 _HISTORY_LIMIT = 100
+#: Metadados públicos que um binding de layout pode ler (spec §13); nada fora disto
+#: chega a uma propriedade de template, mesmo que a regex genérica do domínio aceite.
+BINDING_FIELDS = (
+    "title",
+    "year",
+    "developer",
+    "publisher",
+    "genre",
+    "description",
+    "rating",
+    "players",
+    "region",
+    "language",
+    "series",
+)
 _MEDIA_RECIPE_FIELDS = {"fit", "orientation", "alignH", "alignV", "focalX", "focalY"}
 
 
@@ -573,6 +590,8 @@ class ThemeEditorManager:
         session = self._get_session(session_id)
         raw_book = session.manifest.get("sceneLayouts")
         if not isinstance(raw_book, dict):
+            raw_book = _declared(session.manifest)["sceneLayouts"]  # herdado, materializado
+        if not isinstance(raw_book, dict):
             raise SteamZeroError("E-API-SCHEMA", detail="tema não possui sceneLayouts editável")
         raw_layouts = raw_book.get("layouts")
         if not isinstance(raw_layouts, dict) or layout_id not in raw_layouts:
@@ -592,6 +611,58 @@ class ThemeEditorManager:
             item[field.split(".", 1)[1]] = value
         else:
             layout[field] = value
+        try:
+            parsed = LayoutRecipeBook.from_dict(candidate)
+        except (TypeError, ValueError) as exc:
+            raise SteamZeroError("E-API-SCHEMA", detail=str(exc)) from exc
+        with _mutation(session):
+            session.manifest["sceneLayouts"] = parsed.to_dict()
+            session.dirty = True
+        return {
+            **_document(session),
+            "preview": self._preview(session),
+            "layout": parsed.layouts[layout_id].to_dict(),
+            "history": _history_state(session),
+        }
+
+    def edit_layout_binding(
+        self,
+        session_id: str,
+        layout_id: str,
+        prop: str,
+        *,
+        binding: str | None,
+        fallback: object = None,
+    ) -> dict[str, object]:
+        """Liga (ou desliga) uma propriedade do template de layout a um metadado público.
+
+        ``binding=None`` troca o binding pelo valor de ``fallback`` (escalar). O livro
+        inteiro é revalidado por ``LayoutRecipeBook`` e a fonte do binding precisa
+        estar na allowlist de metadados públicos; nada executável entra no documento.
+        """
+        session = self._get_session(session_id)
+        raw_book = session.manifest.get("sceneLayouts")
+        if not isinstance(raw_book, dict):
+            raw_book = _declared(session.manifest)["sceneLayouts"]
+        if not isinstance(raw_book, dict):
+            raise SteamZeroError("E-API-SCHEMA", detail="tema não possui sceneLayouts editável")
+        candidate = deepcopy(raw_book)
+        layout = candidate.get("layouts", {}).get(layout_id)
+        if not isinstance(layout, dict) or not isinstance(layout.get("template"), dict):
+            raise SteamZeroError("E-API-SCHEMA", detail=f"layout sem template: {layout_id}")
+        properties = layout["template"].setdefault("properties", {})
+        if binding is None:
+            properties[prop] = fallback
+        else:
+            if not binding.startswith("item.") or binding[5:] not in BINDING_FIELDS:
+                raise SteamZeroError(
+                    "E-API-SCHEMA",
+                    detail=f"binding fora da allowlist de metadados públicos: {binding}",
+                )
+            entry: dict[str, object] = {"binding": binding}
+            if fallback is not None:
+                entry["fallback"] = fallback
+            properties[prop] = entry
         try:
             parsed = LayoutRecipeBook.from_dict(candidate)
         except (TypeError, ValueError) as exc:

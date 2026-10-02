@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "703ae635f2810597304e74ce4f2ab69753c1e9e166e7a2da2463991212603b6f",
+  "scopeDigest": "e419e25120c168c8e200734700600385f6646bef8038675d3ce46438c83fea0f",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",

@@ -788,6 +788,15 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 field=raw_field if isinstance(raw_field, str) else None,
                 value=payload.get("value"),
             )
+        if path == "/theme/editor/edit-binding":
+            raw_binding = payload.get("binding")
+            return self._dashboard().editor_edit_binding(
+                self._required_string(payload, "sessionId"),
+                self._required_string(payload, "layoutId"),
+                self._required_string(payload, "prop"),
+                binding=raw_binding if isinstance(raw_binding, str) else None,
+                fallback=payload.get("fallback"),
+            )
         if path == "/theme/editor/undo":
             return self._dashboard().editor_undo(self._required_string(payload, "sessionId"))
         if path == "/theme/editor/redo":

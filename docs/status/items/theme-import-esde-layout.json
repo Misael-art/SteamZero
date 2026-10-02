@@ -43,7 +43,7 @@
     "tests/unit/test_theme_import_esde_layout.py",
     "tests/unit/test_theme_sources.py"
   ],
-  "scopeDigest": "1437a18bc564df3c5d5853ceab231ceb582560e46388b94ad6e8add8664271c5",
+  "scopeDigest": "abefd584860fad12a9e189e5c4b54bf83be1a7ff3e9e906a7d03996399d550f2",
   "dependsOn": [],
   "knownGaps": [
     "GAP-THEME-ESDE-SCENE-NOT-RENDERED",

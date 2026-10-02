@@ -76,6 +76,8 @@ Rectangle {
     property string effectStackName: "focusedCover"
     property string motionTimelineName: "entrada"
     property string motionStateName: "focused"
+    property string bindingLayoutName: ""
+    property string bindingPropName: ""
     // Declaração do tema (cadeia extends + rascunho), sem negociação por tier ou
     // acessibilidade: base dos inspetores. O preview pode omitir efeitos; isto não.
     property var editorDeclared: ({effects: ({}), sceneMotion: null})
@@ -619,6 +621,33 @@ Rectangle {
         for (var k in extra)
             body[k] = extra[k]
         panel.requestAction("theme.editor.edit-motion", body, panel._applyEditorResult,
+            function(message) { panel.authoringNotice = String(message); panel.authoringRevision += 1 })
+    }
+
+    function keyframeText(stateName, key) {
+        var st = ((editorDeclared.sceneMotion || {}).states || {})[stateName] || {}
+        var d = {opacity: 1, scale: 1, translateX: 0, translateY: 0}
+        return String(st[key] !== undefined ? st[key] : d[key])
+    }
+
+    function repeatText(timelineName) {
+        var tl = (((editorDeclared.sceneMotion || {}).timelines || {})[timelineName] || {})
+        return String(tl.repeat || 0)
+    }
+
+    function editBinding(binding, fallback) {
+        if (panel.editorReadOnly || !panel.editorSessionId || panel.bindingLayoutName === ""
+                || panel.bindingPropName === "")
+            return
+        var body = {
+            sessionId: panel.editorSessionId,
+            layoutId: panel.bindingLayoutName,
+            prop: panel.bindingPropName,
+            fallback: fallback
+        }
+        if (binding !== null)
+            body.binding = binding
+        panel.requestAction("theme.editor.edit-binding", body, panel._applyEditorResult,
             function(message) { panel.authoringNotice = String(message); panel.authoringRevision += 1 })
     }
 
@@ -2152,11 +2181,11 @@ Rectangle {
                     Rectangle {
                         objectName: "mediaRecipeInspector"
                         visible: panel.editorSessionId !== "" && !panel.editorReadOnly
-                        color: panel._previewBridge.surface
-                        radius: panel._previewBridge.radiusMedium
+                        color: panel.surfaceColor
+                        radius: 8
                         Layout.fillWidth: true
                         implicitHeight: visible ? mediaColumn.implicitHeight + 24 : 0
-                        border.color: panel._previewBridge.border
+                        border.color: panel.borderColor
                         border.width: 1
 
                         ColumnLayout {
@@ -2170,38 +2199,38 @@ Rectangle {
                             spacing: 10
                             Label {
                                 text: qsTr("Enquadramento de mídia")
-                                color: panel._previewBridge.textMuted
+                                color: panel.mutedColor
                                 font.pixelSize: Math.round(11 * panel.visualScale)
                             }
-                            ComboBox {
+                            AuthCombo {
                                 objectName: "mediaRecipeRole"
                                 implicitHeight: 40
                                 Accessible.name: qsTr("Slot de mídia")
                                 model: ["focusedCover", "peripheralCover", "contextualBackdrop"]
                                 onActivated: panel.mediaRecipeRole = currentText
                             }
-                            ComboBox {
+                            AuthCombo {
                                 objectName: "mediaRecipeFit"
                                 implicitHeight: 40
                                 Accessible.name: qsTr("Ajuste")
                                 model: ["crop", "cover", "contain", "fill"]
                                 onActivated: panel.setMediaRecipe("fit", currentText)
                             }
-                            ComboBox {
+                            AuthCombo {
                                 objectName: "mediaRecipeOrientation"
                                 implicitHeight: 40
                                 Accessible.name: qsTr("Orientação")
                                 model: ["none", "auto", "portrait", "landscape"]
                                 onActivated: panel.setMediaRecipe("orientation", currentText)
                             }
-                            ComboBox {
+                            AuthCombo {
                                 objectName: "mediaRecipeAlignH"
                                 implicitHeight: 40
                                 Accessible.name: qsTr("Alinhamento horizontal")
                                 model: ["left", "center", "right"]
                                 onActivated: panel.setMediaRecipe("alignH", currentText)
                             }
-                            ComboBox {
+                            AuthCombo {
                                 objectName: "mediaRecipeAlignV"
                                 implicitHeight: 40
                                 Accessible.name: qsTr("Alinhamento vertical")
@@ -2215,11 +2244,11 @@ Rectangle {
                     Rectangle {
                         objectName: "effectStackInspector"
                         visible: panel.editorSessionId !== "" && !panel.editorReadOnly
-                        color: panel._previewBridge.surface
-                        radius: panel._previewBridge.radiusMedium
+                        color: panel.surfaceColor
+                        radius: 8
                         Layout.fillWidth: true
                         implicitHeight: visible ? effectColumn.implicitHeight + 24 : 0
-                        border.color: panel._previewBridge.border
+                        border.color: panel.borderColor
                         border.width: 1
 
                         ColumnLayout {
@@ -2233,24 +2262,24 @@ Rectangle {
                                 spacing: 10
                                 Label {
                                     text: qsTr("Efeitos")
-                                    color: panel._previewBridge.textMuted
+                                    color: panel.mutedColor
                                     font.pixelSize: Math.round(11 * panel.visualScale)
                                 }
-                                ComboBox {
+                                AuthCombo {
                                     objectName: "effectStackName"
                                     implicitHeight: 40
                                     Accessible.name: qsTr("Pilha de efeitos")
                                     model: ["focusedCover", "peripheralCover", "contextualBackdrop"]
                                     onActivated: panel.effectStackName = currentText
                                 }
-                                ComboBox {
+                                AuthCombo {
                                     id: effectTypeCombo
                                     objectName: "effectTypeToAdd"
                                     implicitHeight: 40
                                     Accessible.name: qsTr("Tipo de efeito")
                                     model: ["blur", "saturation", "brightness", "contrast", "colorize", "opacity", "shadow", "glow", "reflection", "gradientMask", "vignette"]
                                 }
-                                Button {
+                                AuthButton {
                                     objectName: "effectAdd"
                                     implicitHeight: 40
                                     text: qsTr("Adicionar efeito")
@@ -2262,97 +2291,98 @@ Rectangle {
                                 objectName: "effectEmpty"
                                 visible: effectRepeater.count === 0
                                 text: qsTr("Pilha vazia. Escolha um tipo e use Adicionar efeito.")
-                                color: panel._previewBridge.textMuted
+                                color: panel.mutedColor
                                 font.pixelSize: Math.round(11 * panel.visualScale)
                             }
                             Repeater {
                                 id: effectRepeater
                                 objectName: "effectRepeater"
-                                model: panel.authoringRevision < 0 ? [] : ((panel.editorDeclared.effects || {})[panel.effectStackName] || [])
-                                delegate: Flow {
+                                model: panel.authoringRevision < 0 ? [] : ((panel.editorDeclared.effects || {})[panel.effectStackName] || []).slice()
+                                delegate: Rectangle {
                                     id: effectRow
                                     required property var modelData
                                     required property int index
                                     Layout.fillWidth: true
-                                    Layout.preferredHeight: childrenRect.height
-                                    spacing: 8
+                                    implicitHeight: effectCard.implicitHeight + 16
+                                    color: panel.raisedColor
+                                    radius: 8
+                                    border.color: panel.borderColor
+                                    border.width: 1
                                     readonly property bool omittedInPreview: {
                                         var shown = ((panel.editorPreviewObject || {}).effects || {})[panel.effectStackName] || []
                                         return shown.length < ((panel.editorDeclared.effects || {})[panel.effectStackName] || []).length
                                     }
-                                    Label {
-                                        objectName: "effectType"
-                                        text: effectRow.modelData.type
-                                        color: panel._previewBridge.text
-                                        font.pixelSize: Math.round(12 * panel.visualScale)
-                                    }
-                                    Label {
-                                        visible: effectRow.omittedInPreview
-                                        text: qsTr("(pode ser omitido neste preview)")
-                                        color: panel._previewBridge.textMuted
-                                        font.pixelSize: Math.round(11 * panel.visualScale)
-                                    }
-                                    Repeater {
-                                        model: Object.keys(effectRow.modelData).filter(function(k) { return k !== "type" && k !== "fallback" })
-                                        delegate: Row {
-                                            id: paramRow
-                                            required property string modelData
-                                            spacing: 4
+                                    ColumnLayout {
+                                        id: effectCard
+                                        anchors.fill: parent
+                                        anchors.margins: 8
+                                        spacing: 6
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 6
                                             Label {
-                                                anchors.verticalCenter: parent.verticalCenter
-                                                text: paramRow.modelData
-                                                color: panel._previewBridge.textMuted
-                                                font.pixelSize: Math.round(11 * panel.visualScale)
+                                                objectName: "effectType"
+                                                Layout.fillWidth: true
+                                                text: effectRow.modelData.type + (effectRow.omittedInPreview ? "  ·  " + qsTr("pode ser omitido neste preview") : "")
+                                                color: panel.textColor
+                                                font.pixelSize: Math.round(13 * panel.visualScale)
+                                                font.bold: true
+                                                elide: Text.ElideRight
                                             }
-                                            TextField {
-                                                objectName: "effectParam_" + effectRow.index + "_" + paramRow.modelData
-                                                Accessible.name: effectRow.modelData.type + " " + paramRow.modelData
-                                                implicitWidth: 76
-                                                implicitHeight: 40
-                                                text: String(effectRow.modelData[paramRow.modelData])
-                                                // editingFinished dispara no Enter e de novo ao perder
-                                                // o foco: sem este baseline a mesma edição entraria duas
-                                                // vezes no histórico (ou duas vezes no erro).
-                                                property string committed: ""
-                                                Component.onCompleted: committed = text
-                                                onEditingFinished: {
-                                                    if (text === committed)
-                                                        return
-                                                    committed = text
-                                                    var isColor = text.charAt(0) === "#"
-                                                    panel.editEffect("set", {
-                                                        index: effectRow.index,
-                                                        param: paramRow.modelData,
-                                                        value: isColor ? text : parseFloat(text)
-                                                    })
+                                            AuthButton {
+                                                objectName: "effectUp_" + effectRow.index
+                                                text: "↑"
+                                                implicitWidth: 40
+                                                enabled: effectRow.index > 0
+                                                Accessible.name: qsTr("Mover efeito para cima") + " " + effectRow.modelData.type
+                                                onClicked: panel.editEffect("move", {index: effectRow.index, value: effectRow.index - 1})
+                                            }
+                                            AuthButton {
+                                                objectName: "effectDown_" + effectRow.index
+                                                text: "↓"
+                                                implicitWidth: 40
+                                                enabled: effectRow.index < effectRepeater.count - 1
+                                                Accessible.name: qsTr("Mover efeito para baixo") + " " + effectRow.modelData.type
+                                                onClicked: panel.editEffect("move", {index: effectRow.index, value: effectRow.index + 1})
+                                            }
+                                            AuthButton {
+                                                objectName: "effectRemove_" + effectRow.index
+                                                text: qsTr("Remover")
+                                                Accessible.name: qsTr("Remover efeito") + " " + effectRow.modelData.type
+                                                onClicked: panel.editEffect("remove", {index: effectRow.index})
+                                            }
+                                        }
+                                        Flow {
+                                            Layout.fillWidth: true
+                                            Layout.preferredHeight: childrenRect.height
+                                            spacing: 8
+                                            Repeater {
+                                                model: Object.keys(effectRow.modelData).filter(function(k) { return k !== "type" && k !== "fallback" })
+                                                delegate: ColumnLayout {
+                                                    id: paramRow
+                                                    required property string modelData
+                                                    spacing: 2
+                                                    Label {
+                                                        text: paramRow.modelData
+                                                        color: panel.mutedColor
+                                                        font.pixelSize: Math.round(11 * panel.visualScale)
+                                                    }
+                                                    AuthField {
+                                                        objectName: "effectParam_" + effectRow.index + "_" + paramRow.modelData
+                                                        Accessible.name: effectRow.modelData.type + " " + paramRow.modelData
+                                                        implicitWidth: 84
+                                                        declaredText: String(effectRow.modelData[paramRow.modelData])
+                                                        onEditingFinished: submit(function(t) {
+                                                            panel.editEffect("set", {
+                                                                index: effectRow.index,
+                                                                param: paramRow.modelData,
+                                                                value: t.charAt(0) === "#" ? t : parseFloat(t)
+                                                            })
+                                                        })
+                                                    }
                                                 }
                                             }
                                         }
-                                    }
-                                    Button {
-                                        objectName: "effectUp_" + effectRow.index
-                                        text: "↑"
-                                        implicitWidth: 40
-                                        implicitHeight: 40
-                                        enabled: effectRow.index > 0
-                                        Accessible.name: qsTr("Mover efeito para cima") + " " + effectRow.modelData.type
-                                        onClicked: panel.editEffect("move", {index: effectRow.index, value: effectRow.index - 1})
-                                    }
-                                    Button {
-                                        objectName: "effectDown_" + effectRow.index
-                                        text: "↓"
-                                        implicitWidth: 40
-                                        implicitHeight: 40
-                                        enabled: effectRow.index < effectRepeater.count - 1
-                                        Accessible.name: qsTr("Mover efeito para baixo") + " " + effectRow.modelData.type
-                                        onClicked: panel.editEffect("move", {index: effectRow.index, value: effectRow.index + 1})
-                                    }
-                                    Button {
-                                        objectName: "effectRemove_" + effectRow.index
-                                        text: qsTr("Remover")
-                                        implicitHeight: 40
-                                        Accessible.name: qsTr("Remover efeito") + " " + effectRow.modelData.type
-                                        onClicked: panel.editEffect("remove", {index: effectRow.index})
                                     }
                                 }
                             }
@@ -2371,11 +2401,11 @@ Rectangle {
                     Rectangle {
                         objectName: "motionInspector"
                         visible: panel.editorSessionId !== "" && !panel.editorReadOnly
-                        color: panel._previewBridge.surface
-                        radius: panel._previewBridge.radiusMedium
+                        color: panel.surfaceColor
+                        radius: 8
                         Layout.fillWidth: true
                         implicitHeight: visible ? motionColumn.implicitHeight + 24 : 0
-                        border.color: panel._previewBridge.border
+                        border.color: panel.borderColor
                         border.width: 1
 
                         ColumnLayout {
@@ -2385,14 +2415,14 @@ Rectangle {
                             spacing: 8
                             Label {
                                 text: qsTr("Movimento — keyframes de estado e timelines")
-                                color: panel._previewBridge.textMuted
+                                color: panel.mutedColor
                                 font.pixelSize: Math.round(11 * panel.visualScale)
                             }
                             Flow {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: childrenRect.height
                                 spacing: 8
-                                ComboBox {
+                                AuthCombo {
                                     id: motionStateCombo
                                     objectName: "motionStateName"
                                     implicitHeight: 40
@@ -2410,28 +2440,17 @@ Rectangle {
                                         Label {
                                             anchors.verticalCenter: parent.verticalCenter
                                             text: keyframeRow.modelData
-                                            color: panel._previewBridge.textMuted
+                                            color: panel.mutedColor
                                             font.pixelSize: Math.round(11 * panel.visualScale)
                                         }
-                                        TextField {
+                                        AuthField {
                                             objectName: "keyframe_" + keyframeRow.modelData
                                             Accessible.name: qsTr("Keyframe") + " " + panel.motionStateName + " " + keyframeRow.modelData
-                                            implicitWidth: 76
-                                            implicitHeight: 40
-                                            text: {
-                                                var st = ((panel.editorDeclared.sceneMotion || {}).states || {})[panel.motionStateName] || {}
-                                                var d = {opacity: 1, scale: 1, translateX: 0, translateY: 0}
-                                                return String(st[keyframeRow.modelData] !== undefined ? st[keyframeRow.modelData] : d[keyframeRow.modelData])
-                                            }
-                                            property string committed: ""
-                                            Component.onCompleted: committed = text
-                                            onTextChanged: if (!activeFocus) committed = text
-                                            onEditingFinished: {
-                                                if (text === committed)
-                                                    return
-                                                committed = text
-                                                panel.editMotion("set_state", panel.motionStateName, {field: keyframeRow.modelData, value: parseFloat(text)})
-                                            }
+                                            implicitWidth: 84
+                                            declaredText: panel.keyframeText(panel.motionStateName, keyframeRow.modelData)
+                                            onEditingFinished: submit(function(t) {
+                                                panel.editMotion("set_state", panel.motionStateName, {field: keyframeRow.modelData, value: parseFloat(t)})
+                                            })
                                         }
                                     }
                                 }
@@ -2444,7 +2463,7 @@ Rectangle {
                                     id: timelineRepeater
                                     objectName: "motionTimelineList"
                                     model: Object.keys((panel.editorDeclared.sceneMotion || {}).timelines || {})
-                                    delegate: Button {
+                                    delegate: AuthButton {
                                         id: timelineButton
                                         required property string modelData
                                         objectName: "motionTimeline_" + modelData
@@ -2456,7 +2475,7 @@ Rectangle {
                                         onClicked: panel.motionTimelineName = modelData
                                     }
                                 }
-                                TextField {
+                                AuthField {
                                     id: timelineNameField
                                     objectName: "motionTimelineName"
                                     Accessible.name: qsTr("Nome da nova timeline")
@@ -2464,14 +2483,14 @@ Rectangle {
                                     implicitWidth: 140
                                     implicitHeight: 40
                                 }
-                                ComboBox {
+                                AuthCombo {
                                     id: timelineKindCombo
                                     objectName: "motionTimelineKind"
                                     implicitHeight: 40
                                     Accessible.name: qsTr("Tipo de timeline")
                                     model: ["sequence", "parallel"]
                                 }
-                                Button {
+                                AuthButton {
                                     objectName: "motionTimelineAdd"
                                     text: qsTr("Criar timeline")
                                     implicitHeight: 40
@@ -2480,29 +2499,22 @@ Rectangle {
                                         panel.editMotion("add_timeline", timelineNameField.text, {value: timelineKindCombo.currentText})
                                     }
                                 }
-                                Button {
+                                AuthButton {
                                     objectName: "motionClipAdd"
                                     text: qsTr("Adicionar clip")
                                     implicitHeight: 40
                                     onClicked: panel.editMotion("add_clip", panel.motionTimelineName, {value: {state: panel.motionStateName, duration: 240}})
                                 }
-                                TextField {
+                                AuthField {
                                     objectName: "motionTimelineRepeat"
                                     Accessible.name: qsTr("Repetições da timeline")
                                     implicitWidth: 64
-                                    implicitHeight: 40
-                                    text: String((((panel.editorDeclared.sceneMotion || {}).timelines || {})[panel.motionTimelineName] || {}).repeat || 0)
-                                    property string committed: ""
-                                    Component.onCompleted: committed = text
-                                    onTextChanged: if (!activeFocus) committed = text
-                                    onEditingFinished: {
-                                        if (text === committed)
-                                            return
-                                        committed = text
-                                        panel.editMotion("set_timeline", panel.motionTimelineName, {field: "repeat", value: parseInt(text)})
-                                    }
+                                    declaredText: panel.repeatText(panel.motionTimelineName)
+                                    onEditingFinished: submit(function(t) {
+                                        panel.editMotion("set_timeline", panel.motionTimelineName, {field: "repeat", value: parseInt(t)})
+                                    })
                                 }
-                                Button {
+                                AuthButton {
                                     objectName: "motionTimelineRemove"
                                     text: qsTr("Remover timeline")
                                     implicitHeight: 40
@@ -2515,13 +2527,13 @@ Rectangle {
                                 text: qsTr("Sem clips nesta timeline. Escreva um nome, escolha Criar timeline e depois Adicionar clip.")
                                 Layout.fillWidth: true
                                 wrapMode: Text.WordWrap
-                                color: panel._previewBridge.textMuted
+                                color: panel.mutedColor
                                 font.pixelSize: Math.round(11 * panel.visualScale)
                             }
                             Repeater {
                                 id: motionClipRepeater
                                 objectName: "motionClipRepeater"
-                                model: panel.authoringRevision < 0 ? [] : ((((panel.editorDeclared.sceneMotion || {}).timelines || {})[panel.motionTimelineName] || {}).clips || [])
+                                model: panel.authoringRevision < 0 ? [] : ((((panel.editorDeclared.sceneMotion || {}).timelines || {})[panel.motionTimelineName] || {}).clips || []).slice()
                                 delegate: Flow {
                                     id: clipRow
                                     required property var modelData
@@ -2531,32 +2543,136 @@ Rectangle {
                                     spacing: 8
                                     Label {
                                         text: clipRow.modelData.state || clipRow.modelData.transition
-                                        color: panel._previewBridge.text
+                                        color: panel.textColor
                                         font.pixelSize: Math.round(12 * panel.visualScale)
                                     }
-                                    TextField {
+                                    AuthField {
                                         objectName: "motionClipDuration_" + clipRow.index
                                         visible: clipRow.modelData.state !== undefined
                                         Accessible.name: qsTr("Duração do clip") + " " + (clipRow.index + 1)
                                         implicitWidth: 72
-                                        implicitHeight: 40
-                                        text: String(clipRow.modelData.duration)
-                                        property string committed: ""
-                                        Component.onCompleted: committed = text
-                                        onEditingFinished: {
-                                            if (text === committed)
-                                                return
-                                            committed = text
-                                            panel.editMotion("set_clip", panel.motionTimelineName, {index: clipRow.index, field: "duration", value: parseInt(text)})
-                                        }
+                                        declaredText: String(clipRow.modelData.duration)
+                                        onEditingFinished: submit(function(t) {
+                                            panel.editMotion("set_clip", panel.motionTimelineName, {index: clipRow.index, field: "duration", value: parseInt(t)})
+                                        })
                                     }
-                                    Button {
+                                    AuthButton {
                                         objectName: "motionClipRemove_" + clipRow.index
                                         text: qsTr("Remover")
                                         implicitHeight: 40
                                         Accessible.name: qsTr("Remover clip") + " " + (clipRow.index + 1)
                                         onClicked: panel.editMotion("remove_clip", panel.motionTimelineName, {index: clipRow.index})
                                     }
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        objectName: "bindingInspector"
+                        visible: panel.editorSessionId !== "" && !panel.editorReadOnly
+                        color: panel.surfaceColor
+                        radius: 8
+                        Layout.fillWidth: true
+                        implicitHeight: visible ? bindingColumn.implicitHeight + 24 : 0
+                        border.color: panel.borderColor
+                        border.width: 1
+
+                        ColumnLayout {
+                            id: bindingColumn
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 8
+                            readonly property var layouts: ((panel.editorDeclared.sceneLayouts || {}).layouts) || ({})
+                            readonly property var layoutNames: Object.keys(layouts)
+                            readonly property var template: (layouts[panel.bindingLayoutName] || {}).template || ({})
+                            readonly property var boundProps: {
+                                var props = template.properties || {}
+                                return Object.keys(props).filter(function(k) {
+                                    return typeof props[k] === "object" && props[k] !== null && props[k].binding !== undefined
+                                })
+                            }
+                            onLayoutNamesChanged: {
+                                if (layoutNames.length > 0 && layoutNames.indexOf(panel.bindingLayoutName) < 0)
+                                    panel.bindingLayoutName = layoutNames[0]
+                            }
+                            Label {
+                                text: qsTr("Bindings de layout — metadados públicos")
+                                color: panel.mutedColor
+                                font.pixelSize: Math.round(11 * panel.visualScale)
+                            }
+                            Label {
+                                objectName: "bindingEmpty"
+                                visible: bindingColumn.layoutNames.length === 0
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                                text: qsTr("Este tema não declara layouts. Crie o tema a partir de um que tenha layouts (por exemplo, a demonstração de receitas) para ligar propriedades a metadados.")
+                                color: panel.mutedColor
+                                font.pixelSize: Math.round(11 * panel.visualScale)
+                            }
+                            Flow {
+                                visible: bindingColumn.layoutNames.length > 0
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: childrenRect.height
+                                spacing: 8
+                                AuthCombo {
+                                    objectName: "bindingLayout"
+                                    implicitHeight: 40
+                                    Accessible.name: qsTr("Layout")
+                                    model: bindingColumn.layoutNames
+                                    currentIndex: bindingColumn.layoutNames.indexOf(panel.bindingLayoutName)
+                                    onActivated: panel.bindingLayoutName = currentText
+                                }
+                                AuthCombo {
+                                    id: bindingPropCombo
+                                    objectName: "bindingProp"
+                                    implicitHeight: 40
+                                    Accessible.name: qsTr("Propriedade")
+                                    model: bindingColumn.boundProps
+                                    onModelChanged: if (count > 0 && panel.bindingPropName === "") panel.bindingPropName = textAt(0)
+                                    onActivated: panel.bindingPropName = currentText
+                                    onCountChanged: if (count > 0 && bindingColumn.boundProps.indexOf(panel.bindingPropName) < 0) panel.bindingPropName = textAt(0)
+                                }
+                                AuthCombo {
+                                    id: bindingFieldCombo
+                                    objectName: "bindingField"
+                                    implicitHeight: 40
+                                    Accessible.name: qsTr("Metadado")
+                                    model: ["title", "year", "developer", "publisher", "genre", "description", "rating", "players", "region", "language", "series"]
+                                }
+                                AuthField {
+                                    id: bindingFallbackField
+                                    objectName: "bindingFallback"
+                                    implicitHeight: 40
+                                    implicitWidth: 140
+                                    placeholderText: qsTr("valor se ausente")
+                                    Accessible.name: qsTr("Valor alternativo")
+                                }
+                                AuthButton {
+                                    objectName: "bindingApply"
+                                    implicitHeight: 40
+                                    text: qsTr("Ligar")
+                                    Accessible.name: qsTr("Ligar propriedade ao metadado")
+                                    onClicked: panel.editBinding("item." + bindingFieldCombo.currentText, bindingFallbackField.text)
+                                }
+                                AuthButton {
+                                    objectName: "bindingClear"
+                                    implicitHeight: 40
+                                    text: qsTr("Remover binding")
+                                    Accessible.name: qsTr("Remover binding e usar valor fixo")
+                                    onClicked: panel.editBinding(null, bindingFallbackField.text)
+                                }
+                            }
+                            Repeater {
+                                model: panel.authoringRevision < 0 ? [] : bindingColumn.boundProps
+                                delegate: Label {
+                                    required property string modelData
+                                    objectName: "bindingCurrent_" + modelData
+                                    Layout.fillWidth: true
+                                    wrapMode: Text.WordWrap
+                                    text: modelData + " ← " + bindingColumn.template.properties[modelData].binding
+                                    color: panel.textColor
+                                    font.pixelSize: Math.round(12 * panel.visualScale)
                                 }
                             }
                         }
@@ -3651,6 +3767,74 @@ Rectangle {
             color: catSection.mutedColor
             font.pixelSize: Math.round(11 * panel.visualScale)
         }
+    }
+
+    // Controles do editor (chrome do Studio): usam as cores do PAINEL, nunca as do tema
+    // em edição — senão a interface do editor mudaria de aparência com o tema editado.
+    component AuthField: TextField {
+        // `declaredText` é o valor aceito pelo documento. Enter e perda de foco disparam
+        // editingFinished; `committed` evita enviar a mesma edição duas vezes, e uma edição
+        // recusada (authoringRevision) devolve o campo ao valor declarado.
+        property string declaredText: ""
+        property string committed: declaredText
+        text: declaredText
+        onDeclaredTextChanged: { text = declaredText; committed = declaredText }
+        Connections {
+            target: panel
+            function onAuthoringRevisionChanged() { text = declaredText; committed = declaredText }
+        }
+        function submit(send) {
+            if (text === committed)
+                return
+            committed = text
+            send(text)
+        }
+        implicitHeight: 40
+        color: panel.textColor
+        placeholderTextColor: panel.mutedColor
+        selectedTextColor: "#071019"
+        selectionColor: panel.cyanColor
+        leftPadding: 10
+        rightPadding: 10
+        background: Rectangle {
+            color: panel.surfaceColor
+            radius: 8
+            border.color: parent.activeFocus ? panel.cyanColor : panel.borderColor
+            border.width: parent.activeFocus ? 2 : 1
+        }
+    }
+
+    component AuthButton: Button {
+        id: authButton
+        implicitHeight: 40
+        leftPadding: 12
+        rightPadding: 12
+        Accessible.name: text
+        background: Rectangle {
+            color: !authButton.enabled ? panel.surfaceColor
+                : (authButton.checked ? panel.cyanDarkColor : panel.raisedColor)
+            radius: 8
+            border.color: authButton.activeFocus ? panel.textColor
+                : (authButton.checked ? panel.cyanColor : panel.borderColor)
+            border.width: authButton.activeFocus ? 2 : 1
+        }
+        contentItem: Label {
+            text: authButton.text
+            color: authButton.enabled ? panel.textColor : panel.mutedColor
+            font.pixelSize: Math.round(13 * panel.visualScale)
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+    }
+
+    component AuthCombo: SteamComboBox {
+        implicitHeight: 40
+        surfaceColor: panel.surfaceColor
+        raisedColor: panel.raisedColor
+        borderColor: panel.borderColor
+        textColor: panel.textColor
+        mutedColor: panel.mutedColor
+        accentColor: panel.cyanColor
     }
 
     component TypoFamilyEditorComp: TextField {

@@ -2214,6 +2214,11 @@ class DesktopDashboard:
     def editor_edit_motion(self, session_id: str, op: str, **kwargs: Any) -> dict[str, object]:
         return self._theme_editor.edit_motion(session_id, op, **kwargs)
 
+    def editor_edit_binding(
+        self, session_id: str, layout_id: str, prop: str, **kwargs: Any
+    ) -> dict[str, object]:
+        return self._theme_editor.edit_layout_binding(session_id, layout_id, prop, **kwargs)
+
     def editor_undo(self, session_id: str) -> dict[str, object]:
         return self._theme_editor.undo(session_id)
 
