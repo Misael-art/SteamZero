@@ -14545,3 +14545,12 @@ Validação desta revisão: 13 testes de status aprovados em 5.13s, guard de est
 - Desempenho (`tools/theme_perf_probe.py`, checkout, ensaio): p95 14,499 ms, VRAM 58 MB, startup 174 ms; não é release nem FPS apresentado (`docs/09-operations/evidence/2026-10-01-v4-perf`).
 - Gates: suíte integral 6548 passed/47 skipped; a única falha era governança (evidência sem item dono), corrigida. Também corrigido o harness da matriz de locale (LANGUAGE do host).
 - Pendente: input real dos inspetores, variantes de logo por asset único, bindings/states, perfil por tier/resolução, medição na release; efeitos avançados da spec.
+
+## 2026-10-01 — Continuidade do PR #249: inspetores sincronizados, runtime de cenas e bindings
+
+- Mesma branch/PR #249. Antes: integral anterior `1 failed, 6548 passed` (falha de governança, corrigida); CI do SHA `0a2d3133` com 9 jobs success e Sourcery skipped.
+- Corrigido: modelo desatualizado dos inspetores (`manifest`+`declared` em todo resultado); herança de `sceneMotion`/`sceneLayouts`/efeitos na primeira edição; inspetores dependiam do tema demo e ficavam num painel cortado/oculto no compacto; coluna esquerda sem largura; Enter+foco duplicavam edição; RetroFE importado sem normalização de coordenadas; fixtures PNG falsos.
+- Novo: mover efeito, keyframes por estado, bindings por allowlist (`edit_layout_binding`), chrome do editor com cores do painel. Provas por eventos Qt na bridge real: `tests/integration/test_theme_authoring_e2e.py`, `test_theme_scene_runtime_e2e.py`; domínio: `test_theme_effect_authoring.py`.
+- Desempenho (ensaio de checkout, 3 corridas): p95 ~14,4 ms, VRAM ≤ 74 MB; não é release nem FPS apresentado.
+- Gates no SHA `3e3c809e`: integral 6557 passed/47 skipped; ruff, format, mypy, independence, boundaries, status-check, matriz verdes.
+- Pendente: input físico/teclado/gamepad, Launcher/AURA Cinema (não consomem cenas importadas), logo por asset único, tier/resolução, medição na release, merge/release (sem autorização).
