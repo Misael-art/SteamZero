@@ -71,3 +71,21 @@ def test_vram_is_absent_rather_than_zero_when_the_driver_says_nothing() -> None:
     assert probe.vram_kb_from_fdinfo(["pos:\t0\nflags:\t02\n"]) is None
     # Bloco DRM sem a chave de VRAM também não vira zero.
     assert probe.vram_kb_from_fdinfo(["drm-client-id:\t95\ndrm-memory-gtt:\t8220 KiB\n"]) is None
+
+
+def test_effect_layers_exigem_imagem_de_capa_existente(tmp_path: Path) -> None:
+    import pytest
+    from tools import theme_perf_probe as probe
+
+    with pytest.raises(SystemExit, match="--cover-image"):
+        probe.measure(
+            qml_dir=tmp_path,
+            preview={},
+            duration=1,
+            warmup=0,
+            width=100,
+            height=100,
+            workdir=tmp_path,
+            cover_image=None,
+            effect_layers=2,
+        )

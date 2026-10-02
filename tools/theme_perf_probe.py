@@ -126,6 +126,31 @@ Window {
 
     Rectangle { anchors.fill: parent; color: "#071019" }
 
+    // Camada de efeitos: as capas do tema renderizadas com a pilha declarada, para que o
+    // custo de efeitos editados apareça na medição (0 camadas = comportamento anterior).
+    readonly property int effectLayerCount: __LAYERS__
+    Row {
+        visible: win.effectLayerCount > 0
+        anchors.top: parent.top
+        anchors.topMargin: 8
+        anchors.horizontalCenter: parent.horizontalCenter
+        spacing: 12
+        Repeater {
+            model: win.effectLayerCount
+            delegate: MediaEffectLayer {
+                width: 150
+                height: 210
+                source: "file://__COVER__"
+                effects: win.preview.effects ? (win.preview.effects["__STACK__"] || []) : []
+                decodeSize: Qt.size(300, 420)
+                NumberAnimation on y {
+                    from: 0; to: 16; duration: 900
+                    loops: Animation.Infinite; easing.type: Easing.InOutQuad
+                }
+            }
+        }
+    }
+
     Column {
         anchors.centerIn: parent
         spacing: 8
@@ -288,15 +313,27 @@ def measure(
     width: int,
     height: int,
     workdir: Path,
+    cover_image: Path | None = None,
+    effect_stack: str = "focusedCover",
+    effect_layers: int = 0,
 ) -> dict[str, Any]:
     import base64
 
+    if effect_layers and (cover_image is None or not cover_image.is_file()):
+        raise SystemExit("--effect-layers exige --cover-image existente")
+    cover = str(cover_image.resolve()) if cover_image is not None else ""
+    for value in (cover, effect_stack):
+        if any(char in value for char in ('"', "'", "\\", "\n")):
+            raise SystemExit("caminho/pilha com caractere que escaparia do literal QML")
     port = _free_port()
     payload = base64.b64encode(json.dumps(preview).encode("utf-8")).decode("ascii")
     harness = (
         _HARNESS.replace("__QMLDIR__", str(_safe_qml_dir(qml_dir)))
         .replace("__PAYLOAD__", payload)
         .replace("__PORT__", str(port))
+        .replace("__LAYERS__", str(max(0, effect_layers)))
+        .replace("__COVER__", cover)
+        .replace("__STACK__", effect_stack)
         .replace("__WIDTH__", str(width))
         .replace("__HEIGHT__", str(height))
         .replace("__WARMUP_MS__", str(int(warmup * 1000)))
@@ -320,6 +357,9 @@ def measure(
         # temporário próprio. Não há shell, não há concatenação de string e
         # ``--qml-dir`` já foi recusado se contiver caractere de escape.
         argv = [str(_qml_runner()), str(harness_path.resolve())]
+        if effect_layers:
+            # Mesma capacidade que o launcher publica depois de conferir o runtime.
+            argv.append("--steamzero-qtquick-effects")
         process = subprocess.Popen(  # nosemgrep: dangerous-subprocess-use-audit
             argv,
             stdout=subprocess.DEVNULL,
@@ -347,6 +387,13 @@ def measure(
         "schemaVersion": 1,
         "qmlDir": str(qml_dir),
         "scenes": server.payload.get("scenes"),
+        "effectLayers": max(0, effect_layers),
+        "effectStack": effect_stack if effect_layers else None,
+        "effectTypes": (
+            [str(e.get("type")) for e in (preview.get("effects") or {}).get(effect_stack, [])]
+            if effect_layers
+            else []
+        ),
         "surface": f"{width}x{height}",
         "frameTime": summary.to_dict(),
         "startupMs": round(float(server.payload.get("startupMs", 0.0)), 3),
@@ -390,6 +437,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--width", type=int, default=1280)
     parser.add_argument("--height", type=int, default=800)
     parser.add_argument("--out", type=Path, default=None)
+    parser.add_argument("--cover-image", type=Path, default=None)
+    parser.add_argument("--effect-stack", default="focusedCover")
+    parser.add_argument("--effect-layers", type=int, default=0)
     args = parser.parse_args(argv)
 
     preview = _load_preview(args.preview_json, args.theme)
@@ -407,6 +457,9 @@ def main(argv: list[str] | None = None) -> int:
             width=args.width,
             height=args.height,
             workdir=Path(tmp),
+            cover_image=args.cover_image,
+            effect_stack=args.effect_stack,
+            effect_layers=args.effect_layers,
         )
     rendered = json.dumps(report, ensure_ascii=False, indent=2)
     if args.out is not None:
