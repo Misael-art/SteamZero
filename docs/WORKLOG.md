@@ -14537,3 +14537,11 @@ Validação desta revisão: 13 testes de status aprovados em 5.13s, guard de est
 - V1 `c36edbc3`; V3 `1e3a17ef` (undo/redo, receita de mídia, importar como cópia, resolver único Python/QML); V2 `ee9431e2` e seguinte (preview sintético isolado; aplicar nomeia consumidor).
 - Gates locais: suíte integral 6541 passed/47 skipped; as 2 falhas eram governança (matriz e 15 scopeDigest, renovados sem alterar critérios); ruff, mypy, independence, boundaries, capability-matrix e status-check ok.
 - Fora de escopo/pendente: UI real e física, fixtures ES-DE/RetroFE, AURA Cinema, Launcher, V4. Sem push, build, instalação ou merge.
+
+## 2026-10-01 — V4 recortes 1–2: efeitos, keyframes/timelines e baseline de desempenho
+
+- `SZ-ROADMAP-CONTINUATION` / `WS-2026-10-V1-V3-THEME-JOURNEY`, mesma branch, push do PR #249 autorizado pelo operador ("prossiga"); sem merge, release ou instalação.
+- Recorte 1 (efeitos): `edit_effect_stack` + ação `theme.editor.edit-effect` + inspetor QML; add/set/move/remove com undo/redo, round-trip e resolver. Recorte 2 (movimento): `edit_motion` + ação `theme.editor.edit-motion` + inspetor QML sobre `sceneMotion`. Prova: `tests/unit/test_theme_effect_authoring.py` (4 testes).
+- Desempenho (`tools/theme_perf_probe.py`, checkout, ensaio): p95 14,499 ms, VRAM 58 MB, startup 174 ms; não é release nem FPS apresentado (`docs/09-operations/evidence/2026-10-01-v4-perf`).
+- Gates: suíte integral 6548 passed/47 skipped; a única falha era governança (evidência sem item dono), corrigida. Também corrigido o harness da matriz de locale (LANGUAGE do host).
+- Pendente: input real dos inspetores, variantes de logo por asset único, bindings/states, perfil por tier/resolução, medição na release; efeitos avançados da spec.

@@ -30,6 +30,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Gates integrais locais ok na arvore final e88280f6+matriz de locale (6545 passed; 2 falhas de LANGUAGE do host corrigidas no harness). Pendente: passe de UI real por B_VISUAL (docs/09-operations/evidence/2026-10-01-v1-v3-theme-journey), fixtures ES-DE/RetroFE, Launcher; publicação depende de autorização.",
+  "nextAction": "V1-V3 e V4 recortes 1-2 no PR #249 (gates locais ok). Pendente: CI, merge/release autorizados, passe de UI real por B_VISUAL, medicao na release; V4 restante: bindings/states, logo por asset unico, perfil por tier.",
   "updatedAt": "2026-10-01"
 }
