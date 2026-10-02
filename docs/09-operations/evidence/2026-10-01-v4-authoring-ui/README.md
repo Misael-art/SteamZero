@@ -56,6 +56,36 @@ Os arquivos e hashes estão em `SHA256SUMS`.
 | `08-studio-seletor-cor.png` | Diálogo AURA de seleção de cor, aberto pelo controle de sombra. |
 | `09-studio-vinheta-editada.png` | Receita final de vinheta visível no inspetor: fallback `minimal`, cor e força `0.9`. |
 
+## Correção do alvo interativo
+
+Na medição anterior à correção, o harness QML observou `effectAdd` em
+**120,125 × 40 px** e `bindingApply` em **55,766 × 40 px**, na escala 1,0. O
+helper antigo aceitava alvos de 40 × 36 px, embora a §16 da especificação exija
+48 × 48 px.
+
+O helper agora mede e exige 48 × 48 px para botões, seletores, campos e controles
+numéricos; mede também os alvos de incremento e decremento do `AuthRangeSpinBox`
+e exercita ambos por eventos Qt. A execução atual verificou **44 alvos**, com
+menor dimensão de **48 × 48 px**, nas escalas 1,0 e 1,5. O passe compacto usa
+640 × 560 px, rolagem até o controle e revelação/foco após ampliar os alvos. A
+integração QML passou (1 teste, 14,43 s) e o guard do estado real permaneceu
+idêntico antes/depois (`files=12818`, `directories=2068`,
+`bytes=1372818509`, `max_mtime_ns=1790888510663329431`).
+
+Esta é uma medição de layout e automação Qt no harness `offscreen`; não é input
+físico. Os arquivos de captura foram renovados para esta correção e continuam
+identificados como evidência de harness.
+
+Os mesmos mínimos também alteram controles dos diálogos de importação ES-DE e
+RetroFE. A rodada compacta combinada passou **13 testes em 6,39 s**, incluindo
+alcance por evento Qt, geometria dentro dos viewports e capturas de ambos os
+diálogos. A primeira captura RetroFE divergiu dos goldens antigos (71.999 a
+137.547 pixels, conforme viewport); as quatro baselines RetroFE foram atualizadas
+somente depois de inspecionar as capturas de 949×593 e 1280×800. A repetição
+terminou com pixel diff zero nos quatro viewports e **13/13 testes passaram**. A
+mudança visual corresponde aos alvos efetivos maiores; o corpo e as ações
+continuaram alcançáveis. O gate continua sendo harness Qt, sem input físico.
+
 ## Comandos e resultados focados
 
 ```bash
@@ -124,3 +154,40 @@ runtime como pendente em vez de alterar a biblioteca pessoal.
 entre um pacote editado e uma cena importada ainda exige uma fatia própria.
 Launcher/AURA Cinema não consomem cenas importadas neste recorte. O host atual
 permanece na release anterior até existir autorização e instalação governada.
+
+## Jornada de experiência: fundação local do sidecar v1
+
+O manifesto `theme-manifest-v1` continua estrito. O sidecar
+`experience-journey-v1` agora valida menus com IDs estáveis, organização separada
+do grafo, conexões semânticas, filtros tipados por read model público e aparências
+por menu/etapa. O domínio preserva contexto de menu, filtros, seleção, rolagem e
+foco; ciclos por input são válidos, ciclos automáticos e referências ausentes
+recebem diagnóstico. A consulta pública diferencia fonte indisponível, zero
+resultados, campo ausente e valor desconhecido. A cobertura diferencia herança
+por omissão, AURA escolhida explicitamente, referência de tema ausente, recurso
+visual incompatível e capability operacional ausente.
+
+`JourneyStore` grava atomicamente e exporta/importa uma cópia do documento. Esse
+bundle contém somente o sidecar: referências a temas continuam declaradas como
+dependências e não incluem os pacotes de tema. Os tetos publicados são 4 MiB por
+documento, 4.096 menus, 16.384 conexões, 8.192 posições de organização, 64
+filtros por menu e 512 retornos empilhados. O teste unitário mede validação e
+comportamento funcional; não mede memória/latência no Engine/Launcher.
+
+Comando e resultado local:
+
+```bash
+rtk env SZ_CAPTURE_DIR='' .venv/bin/python tools/run_tests_isolated.py tests/unit/test_experience_journey.py -q
+```
+
+Resultado: **11 passed em 0,46 s**, guard real idêntico antes/depois
+(`files=12818`, `directories=2068`, `bytes=1372818509`,
+`max_mtime_ns=1790888510663329431`); `ruff check` e `ruff format --check` dos
+arquivos Python novos também passaram. A prova é a árvore de trabalho local
+baseada no HEAD `cff16895a0ecdab68e81ac09cfb52d206b5bee2b`; ainda não existe um
+commit que contenha este delta.
+
+Este é apenas documento, persistência local e lógica de domínio. Não existe ainda
+fluxo de autoria dessa jornada na UI; o sidecar não alimenta Theme Preview,
+Theme Engine ou Launcher/Cinema. A cobertura AURA e o contexto são contratos
+testados em Python, não uma sessão operacional, prova de tela nem input físico.

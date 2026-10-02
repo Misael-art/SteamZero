@@ -13,9 +13,11 @@
     "src/steamzero/adapters/desktop_dashboard.py",
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
     "tests/unit/test_theme_import_esde.py",
-    "tests/qml/check_theme_editor_import.qml"
+    "tests/qml/check_theme_editor_import.qml",
+    "tests/integration/test_esde_import_dialog_compact.py",
+    "tests/qml/golden/import-dialogs/esde"
   ],
-  "scopeDigest": "58800f9d2b236cb15c6caa7938d7bb95275885a503c81b796b4d208e59ea9e46",
+  "scopeDigest": "d0f8cd6c3c9b3b231d42071bdc46095d4d459447a31fa158904ce36075c3ca0a",
   "dependsOn": [
     "SZ-THEME-STUDIO"
   ],
@@ -113,10 +115,16 @@
       "reference": "docs/09-operations/evidence/2026-10-01-v4-authoring-ui/README.md",
       "command": "2026-10-02: scopeDigest renovado por controles de efeitos/movimento no ThemeEditorPanel compartilhado. O fluxo de importação ES-DE não mudou e não foi retestado; nenhum eixo foi promovido.",
       "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_esde_import_dialog_compact.py",
+      "command": "2026-10-02, rodada conjunta ES-DE/RetroFE depois dos alvos efetivos 48 px: 13 passed em 6,39 s; diálogos alcançáveis por Qt e geometria dentro da banda. Goldens ES-DE continuaram exatos. Não é input físico nem release.",
+      "result": "passed"
     }
   ],
   "nextAction": "Validar na release 2.0.0rc1-504d10b14485 com fontes ES-DE e pacote SteamZero reais; manter ausência explícita enquanto ES-DE/SRM não estiverem instalados e RetroFE não tiver pacote lançável.",
   "activeWorkstreams": [],
   "updatedAt": "2026-09-22",
-  "notes": "O backend já implementa inspect/apply como tema editável. Esta frente fecha a descoberta e a jornada da superfície Temas sem duplicar o importador. 2026-09-03: scopeDigest renovado por mudanca da frente WS-2026-09-CENA-ESDE (rota theme.scene.render e o botao de previa). A evidencia NAO foi carimbada: foi reexecutada e passou (117 testes de contrato, dashboard e import). 2026-10-02: renovacao de escopo por alteracao restrita aos inspetores de autoria do Theme Studio. Importacao ES-DE/RetroFE, dialogs do shell e eixos deste item nao foram alterados nem promovidos."
+  "notes": "O backend já implementa inspect/apply como tema editável. Esta frente fecha a descoberta e a jornada da superfície Temas sem duplicar o importador. 2026-09-03: scopeDigest renovado por mudanca da frente WS-2026-09-CENA-ESDE (rota theme.scene.render e o botao de previa). A evidencia NAO foi carimbada: foi reexecutada e passou (117 testes de contrato, dashboard e import). 2026-10-02: renovacao de escopo por alteracao restrita aos inspetores de autoria do Theme Studio. Importacao ES-DE/RetroFE, dialogs do shell e eixos deste item nao foram alterados nem promovidos. Em 2026-10-02, a rodada visual combinada revalidou o diálogo ES-DE com controles 48 px: sem diferença nos goldens ES-DE e 13/13 testes totais passaram. Nenhum eixo de operação física ou release foi promovido."
 }

@@ -17,9 +17,15 @@
     "docs/09-operations/evidence/2026-10-01-v1-v3-theme-journey",
     "docs/09-operations/evidence/2026-10-01-v4-perf",
     "docs/09-operations/evidence/2026-10-01-v4-authoring-ui",
-    "docs/status/workstreams/v1-v3-theme-journey-2026-10-01.json"
+    "docs/status/workstreams/v1-v3-theme-journey-2026-10-01.json",
+    "src/steamzero/domain/experience_journey.py",
+    "src/steamzero/schemas/experience-journey-v1.schema.json",
+    "tests/unit/test_experience_journey.py",
+    "README.md",
+    "docs/01-product/AURA-SURFACES.md",
+    "docs/01-product/FEATURE-CATALOG.md"
   ],
-  "scopeDigest": "c1151e88149d5edde821f127d8fc9b24eaffc3b422de88790f22eac1a4736419",
+  "scopeDigest": "51aafea9d8e845f78988517e786043bdc568b9ab9418e7e589db16b702622ef2",
   "dependsOn": [
     "SZ-PROJECT-DESIGN-AUDIT"
   ],
@@ -97,12 +103,30 @@
       "reference": "docs/09-operations/evidence/2026-10-01-v4-authoring-ui/README.md",
       "command": "2026-10-02, gates integrais na árvore congelada: suíte completa 6560 passed, 47 skipped em 2302.24s; guard do estado real idêntico antes/depois (files=12818, directories=2068, bytes=1372818509, max_mtime_ns=1790888510663329431). Ruff check/format, mypy, independence, boundaries, status-check e diff --check passaram. Push e CI do SHA final ainda pendentes.",
       "result": "passed"
+    },
+    {
+      "kind": "design",
+      "reference": "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
+      "command": "2026-10-02: adicionada especificação de sidecar experience-journey-v1 e critérios de menus/filtros/contexto/herança; implementação local parcial e consumidores/UI continuam pendentes.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "README.md",
+      "command": "2026-10-02, o merge local de origin/main incorporou uma alteração exclusivamente documental no README upstream. O conteúdo foi preservado; não é parte da funcionalidade Theme Studio/Engine e nenhuma capacidade foi reatestada ou promovida.",
+      "result": "recorded"
+    },
+    {
+      "kind": "design",
+      "reference": "docs/01-product/AURA-SURFACES.md",
+      "command": "2026-10-02: o inventário das superfícies agora explicita Theme Studio/Jornada e a obrigação do AURA Launcher de consumir navegação/metadata e retorno contextual. Estado dos produtos preservado; não é prova de implementação.",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Separar commits funcionais/documentais, fazer push autorizado da branch existente e atualizar o PR #249; consultar CI no SHA final. Permanecem B_VISUAL em sessão/release autorizada, cena editada consumida pela Engine, autoria assetRecipes/tier/resolução e consumidores Launcher/Cinema.",
+  "nextAction": "Fechar autoria da jornada pela UI e consumo em Preview/Engine/Launcher, após integração serial dos caminhos compartilhados; repetir o roteiro de sessão conforme capabilities. Depois executar gates locais finais e revisar CI terminal no SHA que tiver autorização para publicar. B_VISUAL e release permanecem sujeitos às autorizações vigentes.",
   "activeWorkstreams": [
     "WS-2026-10-V1-V3-THEME-JOURNEY"
   ],
   "updatedAt": "2026-10-02",
-  "notes": "Planejamento e continuidade no PR #249 permanecem locais à feature branch; nenhum merge, release, instalação ou certificação física foi promovido. Um checkout confirmado. Roadmap, marcos, handoff e prompt preservam os limites de autorização. RC-00 executado em 2026-09-26: base/release/worktree conferidos; 21 claims obsoletos encerrados com evidência de integração e 5 mantidos abertos; a suíte integral da auditoria permanece registrada como não verde (1 falha documental histórica). 2026-10-01: revisão das rodadas B_VISUAL 133/134. 2026-10-02: continuação da autoria Theme Studio; o overflow horizontal dos inspetores foi reproduzido no Qt pinado, corrigido com controles de largura e coberto por verificação geométrica antes de cada evento Qt. A jornada passou no container e no host, e 140 testes focados passaram. A continuação atual acrescenta controle tipado, estado loading/keyframe, edição e reordenação de timeline/clips e prova pixelizada no consumidor da AURA UI em biblioteca sintética isolada. Focados 10+68+1+2 passaram; a integral atual terminou 6560/47 em 2302.24s e todos os gates locais passaram. B_VISUAL continua necessário para input físico e a release instalada continua anterior a esta branch. Launcher/AURA Cinema não consomem cenas importadas. A Engine tem demo de asset de fonte única, mas editar assetRecipes no documento e configurar tier/resolução ainda exige uma fatia própria de editor e runtime; cena editada ainda não foi consumida por SceneEsdeView."
+  "notes": "Planejamento e continuidade no PR #249 permanecem locais à feature branch; nenhum merge, release, instalação ou certificação física foi promovido. Um checkout confirmado. Roadmap, marcos, handoff e prompt preservam os limites de autorização. RC-00 executado em 2026-09-26: base/release/worktree conferidos; 21 claims obsoletos encerrados com evidência de integração e 5 mantidos abertos; a suíte integral da auditoria permanece registrada como não verde (1 falha documental histórica). 2026-10-01: revisão das rodadas B_VISUAL 133/134. 2026-10-02: continuação da autoria Theme Studio; o overflow horizontal dos inspetores foi reproduzido no Qt pinado, corrigido com controles de largura e coberto por verificação geométrica antes de cada evento Qt. A jornada passou no container e no host, e 140 testes focados passaram. A continuação atual acrescenta controle tipado, estado loading/keyframe, edição e reordenação de timeline/clips e prova pixelizada no consumidor da AURA UI em biblioteca sintética isolada. Focados 10+68+1+2 passaram; a integral atual terminou 6560/47 em 2302.24s e todos os gates locais passaram. B_VISUAL continua necessário para input físico e a release instalada continua anterior a esta branch. Launcher/AURA Cinema não consomem cenas importadas. A Engine tem demo de asset de fonte única, mas editar assetRecipes no documento e configurar tier/resolução ainda exige uma fatia própria de editor e runtime; cena editada ainda não foi consumida por SceneEsdeView. A revisão de 2026-10-02 incorporou o sidecar journey v1 ao contrato de Theme Engine/Studio e ao V4. Os testes atuais cobrem domínio/persistência local, não autoria UI, render Engine, Launcher/Cinema ou sessão física. O diff de README.md pertence ao commit documental upstream de main que foi reconciliado no início desta continuidade; ele foi registrado como escopo sem associar ou promover capacidade de produto."
 }

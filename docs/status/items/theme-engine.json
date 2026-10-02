@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "7ef384176107a3ca504304e7e0d6ed2623583fa93fb6487926301bc3bee225e7",
+  "scopeDigest": "64938d8f4a1709ae911b453acd680abc079b30bd2a25e67367931dbd3fb995d1",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -113,11 +113,16 @@
     "tests/qml/check_theme_editor_aura.qml",
     "docs/09-operations/evidence/2026-08-19-theme-engine-a47",
     "tools/theme_perf_probe.py",
-    "tests/unit/test_theme_perf_probe.py"
+    "tests/unit/test_theme_perf_probe.py",
+    "src/steamzero/domain/experience_journey.py",
+    "src/steamzero/schemas/experience-journey-v1.schema.json",
+    "tests/unit/test_experience_journey.py",
+    "docs/09-operations/evidence/2026-10-01-v4-authoring-ui"
   ],
   "dependsOn": [],
   "knownGaps": [
-    "GAP-PS4-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
+    "GAP-PS4-SCOPE-PHYSICAL-EVIDENCE-PRECEDES",
+    "GAP-EXPERIENCE-JOURNEY-ENGINE-CONSUMPTION"
   ],
   "acceptanceCriteria": [
     "Um asset-fonte produz variantes de cor, silhueta e contorno em runtime sem derivados no pacote.",
@@ -475,10 +480,16 @@
       "reference": "tests/integration/test_theme_scene_runtime_e2e.py",
       "command": "2026-10-02, a integral desta árvore congelada terminou 6560 passed, 47 skipped em 2302.24s; Ruff, format, mypy, independence, boundaries e status-check passaram. As provas de cena Engine/importação continuam separadas e não consomem o tema editado nesta jornada; nenhum eixo Engine foi promovido.",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-10-01-v4-authoring-ui/README.md",
+      "command": "2026-10-02: o sidecar journey v1 tem contrato, persistência local e lógica de domínio testados; não foi conectado nem consumido pelo Theme Engine. A cena editada pela jornada também ainda não foi executada por SceneEsdeView.",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Reconciliar a cena ativa com o catálogo: o tema AURA ES-DE Physical resolve tokens fixos, efeitos e mediaRecipes, mas dynamicPalette/glass/sceneMotion/sceneSurfaces/sceneContainers permanecem nulos no tema ativo. Repetir bridge→catálogo→render na release atual e separar fixture asset-recipes de capacidade promovida.",
+  "nextAction": "Reconciliar a cena ativa com o catálogo: o tema AURA ES-DE Physical resolve tokens fixos, efeitos e mediaRecipes, mas dynamicPalette/glass/sceneMotion/sceneSurfaces/sceneContainers permanecem nulos no tema ativo. Repetir bridge→catálogo→render na release atual e separar fixture asset-recipes de capacidade promovida. A jornada experience-journey-v1 permanece sem consumo na Engine; implementar integração e provar pixels/tempo com documento salvo/reaberto, tema e assets identificados antes de qualquer promoção.",
   "activeWorkstreams": [],
   "updatedAt": "2026-10-02",
-  "notes": "Estado permanece parcial, com três capacidades agora provadas fisicamente em releases anteriores; isso não cobre esta branch nem altera distribuição atual. GAP-THEME-ASSET-INVERT-HUE e GAP-THEME-FALLBACK-SIGNAL fechados: invert e hue rotate são aplicados pelo node builtin AssetColorTransform, com variantes pixel-distintas e alpha preservado. DEBT-HOST-INSTALL-DAEMON-RESTART FECHADO em release histórica. GAP-THEME-PERF-BUDGET-UNMEASURED teve sonda e medição de release registradas; FPS apresentado continua fora do critério sem instrumento de compositor. LOD de capas usa teto de decode declarado e evita textura intermediária sem consumidor. Em 2026-10-02, ThemeEditorPanel.qml foi alterado para limitar os Flow ao viewport e os domínios theme_effects/scene_motion ganharam schemas de controles tipados e reordenação de clips para a UI de autoria. Os focados passaram; isso verifica o contrato do Studio. O resolver de cenas, o renderer Engine, a cena ativa instalada e a medição em release não mudaram nem foram promovidos neste lote. O resultado integral de 6557 testes/47 skips pertence ao checkpoint anterior e será reexecutado para esta árvore. Nenhum eixo de Theme Engine foi promovido."
+  "notes": "Estado permanece parcial, com três capacidades agora provadas fisicamente em releases anteriores; isso não cobre esta branch nem altera distribuição atual. GAP-THEME-ASSET-INVERT-HUE e GAP-THEME-FALLBACK-SIGNAL fechados: invert e hue rotate são aplicados pelo node builtin AssetColorTransform, com variantes pixel-distintas e alpha preservado. DEBT-HOST-INSTALL-DAEMON-RESTART FECHADO em release histórica. GAP-THEME-PERF-BUDGET-UNMEASURED teve sonda e medição de release registradas; FPS apresentado continua fora do critério sem instrumento de compositor. LOD de capas usa teto de decode declarado e evita textura intermediária sem consumidor. Em 2026-10-02, ThemeEditorPanel.qml foi alterado para limitar os Flow ao viewport e os domínios theme_effects/scene_motion ganharam schemas de controles tipados e reordenação de clips para a UI de autoria. Os focados passaram; isso verifica o contrato do Studio. O resolver de cenas, o renderer Engine, a cena ativa instalada e a medição em release não mudaram nem foram promovidos neste lote. O resultado integral de 6557 testes/47 skips pertence ao checkpoint anterior e será reexecutado para esta árvore. Nenhum eixo de Theme Engine foi promovido. O sidecar experience-journey-v1 possui apenas schema e domínio local; ThemeScenePreview, Theme Engine e SceneEsdeView não o consomem. O teste de 11 casos é contrato, não execução do renderizador nem evidência de capability."
 }

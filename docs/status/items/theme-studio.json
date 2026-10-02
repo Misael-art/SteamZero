@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "b0bc1a126a8a825f79437ea2463acd6d1603297566cb8ffe54d988c715dd66ef",
+  "scopeDigest": "529a9a5d0d8e362a61bb68b65c0c40f8b45a004fb64e03d2d579c352ea628c50",
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun",
     "docs/09-operations/evidence/2026-09-07-theme-studio-contrast",
@@ -31,7 +31,14 @@
     "tests/unit/test_theme_editor_extends.py",
     "tests/unit/test_theme_effect_authoring.py",
     "tests/unit/test_theme_import_package.py",
-    "tests/unit/test_theme_marketplace.py"
+    "tests/unit/test_theme_marketplace.py",
+    "src/steamzero/domain/experience_journey.py",
+    "src/steamzero/schemas/experience-journey-v1.schema.json",
+    "tests/unit/test_experience_journey.py",
+    "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
+    "docs/12-roadmap/IMPLEMENTATION-ROADMAP.md",
+    "docs/01-product/AURA-SURFACES.md",
+    "docs/01-product/FEATURE-CATALOG.md"
   ],
   "dependsOn": [
     "SZ-THEME-ENGINE"
@@ -39,7 +46,8 @@
   "knownGaps": [
     "GAP-THEME-STUDIO-PHYSICAL-CANVAS",
     "GAP-G53",
-    "GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
+    "GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES",
+    "GAP-EXPERIENCE-JOURNEY-UI-ROUNDTRIP"
   ],
   "acceptanceCriteria": [
     "Edicao de tokens, metadados e catalogo possui contratos e testes unitarios.",
@@ -255,10 +263,22 @@
       "reference": "tests/integration/test_theme_authoring_e2e.py",
       "command": "2026-10-02, gates integrais na árvore congelada: .venv/bin/python tools/run_tests_isolated.py tests -q — 6560 passed, 47 skipped em 2302.24s; estado real idêntico (files=12818, directories=2068, bytes=1372818509, max_mtime_ns=1790888510663329431). Ruff check, format (689 arquivos), mypy (299), independence, boundaries e status-check passaram. Execução/pixels cobertos na AURA UI central do checkout offscreen; sem promoção para Engine, release ou input físico.",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_theme_authoring_e2e.py",
+      "command": "2026-10-02, `rtk env SZ_CAPTURE_DIR='' .venv/bin/python tools/run_tests_isolated.py tests/integration/test_theme_authoring_e2e.py -q -s`: 1 passed em 14,43 s; 44 alvos medidos, mínimo 48×48 px nas escalas 1,0 e 1,5, incluindo modo compacto 640×560. Qt offscreen; não é input físico.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_experience_journey.py",
+      "command": "2026-10-02, `.venv/bin/python tools/run_tests_isolated.py tests/unit/test_experience_journey.py -q`: 11 passed em 0,46 s; round-trip local e diagnósticos de grafo, filtros tipados, contexto e cobertura AURA. Não exercita a UI do Studio.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Gates locais integrais aprovados nesta árvore. Separar commits funcionais e documental, fazer push autorizado do PR #249 e consultar CI no SHA final. Em release governada autorizada, B_VISUAL valida input físico. Permanecem edição assetRecipes, tiers/resolução, round-trip do tema editado na cena Engine, Launcher/Cinema e medição na release.",
+  "nextAction": "Implementar a autoria visual do sidecar pela UI depois de serializar Main.qml e desktop_contracts.py com a frente de biblioteca. Ligar Preview/Engine/Launcher ao documento persistido; B_VISUAL com input físico e gates integrais do checkpoint final continuam pendentes. Implementação e integração deste item permanecem parciais.",
   "activeWorkstreams": [],
   "updatedAt": "2026-10-02",
-  "notes": "PR #249 já tem jornadas de autoria QML para efeitos, movimento, bindings e layout contra o servidor real, com histórico, dirty, salvar/reabrir e cópia de pacote em testes separados. Em 2026-10-02, os controles ganharam schemas tipados e limites de domínio; a jornada envia eventos Qt para adicionar/parametrizar/reordenar/remover efeitos, editar estados/timelines/clips, tratar erros e aplicar o tema à EditorialLibrary/MediaEffectLayer. O pixel da mídia sintética muda conforme a vinheta salva. O teste SceneEsdeView é separado e não consome o tema editado. Essas são provas do checkout offscreen, não de sessão física ou release. A integral atual desta árvore passou com 6560 passed/47 skipped em 2302.24s; os gates estáticos passaram e estão registrados na evidência da rodada. Pendem B_VISUAL com input físico, round-trip do tema editado na cena Engine, edição de assetRecipes/tier/resolução, Launcher/Cinema e medição de release. Nenhum eixo do item foi promovido."
+  "notes": "PR #249 já tem jornadas de autoria QML para efeitos, movimento, bindings e layout contra o servidor real, com histórico, dirty, salvar/reabrir e cópia de pacote em testes separados. Em 2026-10-02, os controles ganharam schemas tipados e limites de domínio; a jornada envia eventos Qt para adicionar/parametrizar/reordenar/remover efeitos, editar estados/timelines/clips, tratar erros e aplicar o tema à EditorialLibrary/MediaEffectLayer. O pixel da mídia sintética muda conforme a vinheta salva. O teste SceneEsdeView é separado e não consome o tema editado. Essas são provas do checkout offscreen, não de sessão física ou release. A integral atual desta árvore passou com 6560 passed/47 skipped em 2302.24s; os gates estáticos passaram e estão registrados na evidência da rodada. Pendem B_VISUAL com input físico, round-trip do tema editado na cena Engine, edição de assetRecipes/tier/resolução, Launcher/Cinema e medição de release. Nenhum eixo do item foi promovido. 2026-10-02: acessibilidade fechada no harness local: 44 alvos com mínimo 48×48 em 1,0/1,5 e viewport compacto; não houve input físico. Adicionado sidecar experience-journey-v1 com schema, store atômico local, export/import de documento e lógica de filtros/contexto/cobertura testada. Isso não é autoria pela UI nem consumo no Preview, Engine ou Launcher; nenhum eixo do item foi promovido."
 }

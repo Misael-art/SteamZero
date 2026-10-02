@@ -384,3 +384,72 @@ Theme Studio só vira `complete` quando:
 
 Conclusão da Theme Engine ou do Studio não promove automaticamente AURA UI nem
 AURA Launcher. Os quatro itens mantêm estados e provas independentes.
+
+## 21. Jornadas de experiência, menus e etapas
+
+A navegação completa da experiência é um documento sidecar versionado
+`experience-journey-v1`; ela não é uma extensão informal do manifesto
+`theme-manifest-v1`, que continua rejeitando propriedades desconhecidas. O
+contrato está em `src/steamzero/schemas/experience-journey-v1.schema.json`.
+
+- O documento separa a organização visual da árvore do grafo de conexões. Links
+  apontam para IDs estáveis de menus/etapas, e várias origens podem apontar para
+  o mesmo menu sem copiar sua cena ou seus assets.
+- A implementação inicial publica limites de proteção de **4 MiB por documento
+  serializado**, **4.096 menus**, **16.384 conexões**, **8.192 posições de
+  organização**, **64 filtros por menu** e **512 contextos de voltar**. São
+  limites de recursos do contrato, não um limite de profundidade. Ao se aproximar
+  deles, a UI/runtime deve avisar e oferecer diagnóstico; listas grandes usam
+  virtualização. Complexidade de validação e roteamento é O(V+E) em menus e
+  conexões. Estes tetos não substituem medição de memória/tempo do Engine e do
+  Launcher em hardware/release identificados.
+- Ciclos iniciados por input explícito são válidos. Ciclos só automáticos são
+  diagnosticados para impedir execução sem saída. Referências ausentes não são
+  corrigidas silenciosamente.
+- Fontes, campos, tipos e valores vêm de read models públicos versionados. Filtros
+  combinam como AND, são tipados e allowlisted; ordenação usa os mesmos campos.
+  SQL, eval, script, QML, shell e acesso a tabelas internas não fazem parte do
+  contrato. Dados desconhecidos, zero resultados e fonte indisponível têm
+  estados e recuperação distintos.
+- O contexto de navegação preserva menu de origem, seleção, filtros, rolagem e
+  foco. Respostas de ações antigas são descartadas depois de uma rota mais nova.
+  Ao voltar da sessão, o destino é o contexto capturado, não uma Home presumida.
+- Cada menu e etapa visual pode declarar tema próprio. A omissão herda AURA com
+  motivo `not-customized`; escolha explícita de AURA tem motivo separado. Tema
+  inexistente e recurso visual incompatível têm diagnósticos próprios e fallback
+  por trecho. Cobertura é calculada apenas para etapas usadas. Origem visual e
+  capability operacional são resultados independentes.
+- Launch, pausa, retomada, save/load e exit são ações semânticas governadas pelo
+  domínio/adapters. Uma animação de fade não confirma uma operação. A etapa
+  seguinte observa sucesso/falha/timeout publicados pela sessão; herança visual
+  nunca habilita uma operação indisponível.
+- O mesmo documento salvo/reaberto deve alimentar Studio Preview, Theme Engine e
+  Launcher/AURA Cinema. O caminho de aceitação inclui três ou mais menus,
+  facetas diferentes que compartilham destinos, temas por etapa, aviso de
+  herança, round-trip/export/import, retorno contextual e erros recuperáveis.
+
+### Matriz de superfície e operação
+
+| Etapa/superfície | Fonte e navegação | Dono operacional | Prova necessária |
+|---|---|---|---|
+| Plataformas, gêneros, anos, fabricante, hardware, emulador e outras facetas | Campos/tipos/valores de read model público; filtros combinados seguem no contexto | Read model + runtime do Launcher | Campos novos aparecem sem tela codificada por campo; vazio, unknown e fonte indisponível têm contagem/recuperação |
+| Menu de jogos compartilhado | Várias origens usam o mesmo ID; conexão e filtros não copiam cena | Navegação do Launcher | Entrar por plataforma e outra faceta; Voltar restaura filtros, jogo, rolagem e foco de cada origem |
+| Fade de entrada | Aparência própria ou AURA; limitado e interrompível | Resultado de launch do adapter/sessão | Mostrar sucesso, falha, retry e timeout; fade nunca é o oráculo de que o jogo abriu |
+| Jogo e bezel | Composição da etapa mais dados publicados da sessão | Adapter de launch/sessão e capability de bezel | Jogo ativo, bezel suportado/ausente, erro e saída observados separadamente |
+| Pausa e retomada | Menu compartilhável com aparência própria ou AURA | Capabilities pause/resume do adapter | Só entrar após confirmação; retomar ou falhar sem perder a origem |
+| Saves | Fonte publicada do domínio de saves; save comum e save-state não se confundem | Domínio/adapters de saves | Listar, carregar, cancelar, falhar e voltar; preservar o estado real publicado pelo adapter |
+| Fade de saída e retorno | Aparência por etapa; destino é o contexto de jogo salvo | Resultado de exit do adapter/sessão | Saída confirmada ou falha governada; voltar ao mesmo jogo/filtros/foco e depois à faceta anterior |
+| OSD, loading, vazio, erro e offline | Estado/mensagem/ações de recuperação publicados | Domínio responsável pela operação | Mensagem e ação reais, timeout/retry e foco utilizável; sem tela morta |
+
+Antes de aplicar, a matriz de cobertura mostra origem e versão de cada etapa
+usada. A etiqueta de herança conta apenas omissões ou escolhas explícitas de
+AURA; referências ausentes e incompatibilidades aparecem em linhas próprias,
+mesmo quando seu fallback visual também usa AURA. A lista de capabilities do
+adapter não deriva da aparência escolhida.
+
+O estado atual é **fundação parcial de contrato/domínio**: schema e resolução
+isolada de documento, filtros, contexto e cobertura têm testes unitários. Isso
+não certifica autoria pela UI, persistência/export pela interface, consumo no
+Preview/Engine/Launcher, operação de sessão nem input físico. Os itens Theme
+Studio, Theme Engine, Launcher/Cinema e sessão continuam com critérios e provas
+independentes.

@@ -43,11 +43,17 @@
       "reference": "docs/12-roadmap/AURA-FULLSCREEN-PLATFORM-EXECUTION-PLAN.md",
       "command": "Documento de parecer, direção AURA Cinema, decomposição AURA-01..AURA-18 e prompts A0..A14",
       "result": "recorded"
+    },
+    {
+      "kind": "design",
+      "reference": "docs/01-product/AURA-SURFACES.md",
+      "command": "2026-10-02: O inventário de superfícies foi alinhado ao sidecar de jornadas; esta alteração documental não muda o plano nem certifica capabilities de plataforma. Nenhum eixo/capability foi promovido.",
+      "result": "recorded"
     }
   ],
   "nextAction": "A0 fechado (contratos game-record-v1/enhancement-entry-v1, ADR 0028, fixtures e matriz em SZ-AURA-CONTRACTS); abrir as frentes A1 (metadados canônicos) e A2 (pipeline de imagem) com workstreams próprios; nenhum agente edita o shell compartilhado sem workstream registrado.",
   "activeWorkstreams": [],
   "updatedAt": "2026-09-08",
-  "notes": "Plano de governança e execução derivado da auditoria do repositório, da especificação anexada e da direção visual Aura/RetroFE/BigBox. O plano não prova implementação, release, instalação ou performance física.",
-  "scopeDigest": "e5b6195458e8df42b2c47d20b7d329f5857a4405396b9f660fd750a9dffbfc3e"
+  "notes": "Plano de governança e execução derivado da auditoria do repositório, da especificação anexada e da direção visual Aura/RetroFE/BigBox. O plano não prova implementação, release, instalação ou performance física. O inventário de superfícies foi alinhado ao sidecar de jornadas; esta alteração documental não muda o plano nem certifica capabilities de plataforma.",
+  "scopeDigest": "204d6196732e0f3fd100769cddacd20f0f56aedb60b74bb19eb0e49f70ccbe03"
 }

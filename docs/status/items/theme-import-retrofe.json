@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "ready",
   "distribution": "installed",
-  "scopeDigest": "845e115025858cb9ed9c3e1b92dd51360f766e1589644ab4313e4065ab032e2a",
+  "scopeDigest": "78b65d453704707c96f65b87b9572ba3759727d63a195edb6641b4c5a7ac51c4",
   "scopePaths": [
     "src/steamzero/adapters/desktop_contracts.py",
     "src/steamzero/adapters/desktop_dashboard.py",
@@ -19,7 +19,9 @@
     "tests/unit/test_theme_import_retrofe.py",
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
     "tests/qml/check_theme_editor_import.qml",
-    "docs/09-operations/evidence/2026-09-08-theme-retrofe-ui"
+    "docs/09-operations/evidence/2026-09-08-theme-retrofe-ui",
+    "tests/integration/test_retrofe_import_dialog_compact.py",
+    "tests/qml/golden/import-dialogs/retrofe"
   ],
   "dependsOn": [
     "SZ-THEME-ENGINE"
@@ -136,10 +138,22 @@
       "reference": "docs/09-operations/evidence/2026-10-01-v4-authoring-ui/README.md",
       "command": "2026-10-02: scopeDigest renovado por controles de efeitos/movimento no ThemeEditorPanel compartilhado. Blocos de importação RetroFE não mudaram e não foram retestados; nenhum eixo foi promovido.",
       "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_retrofe_import_dialog_compact.py",
+      "command": "2026-10-02, primeira rodada conjunta ES-DE/RetroFE: 12 passed, 1 falhou no golden RetroFE compacto depois do aumento intencional do alvo efetivo para 48 px. Captura antiga preservada no histórico do runner; sem promoção de prova física.",
+      "result": "failed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_retrofe_import_dialog_compact.py",
+      "command": "2026-10-02, após atualizar quatro goldens com capturas Qt 6.11.2 inspecionadas: rtk env SZ_CAPTURE_DIR= .venv/bin/python tools/run_tests_isolated.py tests/integration/test_esde_import_dialog_compact.py tests/integration/test_retrofe_import_dialog_compact.py -q; 13 passed em 6,39 s, geometria dentro dos viewports e pixel diff zero. Offscreen; sem input físico.",
+      "result": "passed"
     }
   ],
   "nextAction": "Manter a entrada RetroFE instalada e documentar explicitamente que inspeção/importação não promove ativação automática da cena.",
   "activeWorkstreams": [],
   "updatedAt": "2026-09-29",
-  "notes": "A rota QML RetroFE oferece origem por pasta/XML, inspeção de layouts, relatório de cobertura/degradação, créditos/licença e confirmação explícita. A aplicação valida a licença, recusa assets ausentes ou symlinkados, grava blobs por conteúdo e publica sidecar de custódia junto ao IR; a cena continua sem ativação automática. A release 2.0.0rc1-435f9108eeb7 foi instalada e convergida no host, com rollback 2.0.0rc1-b09908a58261. 2026-10-02: renovacao de escopo por alteracao restrita aos inspetores de autoria do Theme Studio. Importacao ES-DE/RetroFE, dialogs do shell e eixos deste item nao foram alterados nem promovidos."
+  "notes": "A rota QML RetroFE oferece origem por pasta/XML, inspeção de layouts, relatório de cobertura/degradação, créditos/licença e confirmação explícita. A aplicação valida a licença, recusa assets ausentes ou symlinkados, grava blobs por conteúdo e publica sidecar de custódia junto ao IR; a cena continua sem ativação automática. A release 2.0.0rc1-435f9108eeb7 foi instalada e convergida no host, com rollback 2.0.0rc1-b09908a58261. 2026-10-02: renovacao de escopo por alteracao restrita aos inspetores de autoria do Theme Studio. Importacao ES-DE/RetroFE, dialogs do shell e eixos deste item nao foram alterados nem promovidos. Em 2026-10-02, os controles compartilhados ganharam alvo mínimo efetivo de 48 px. O diálogo RetroFE mudou visualmente nos quatro viewports; os goldens foram atualizados após inspeção e a rodada combinada ES-DE/RetroFE passou 13/13. A rodada vermelha contra as baselines antigas permanece registrada; isso não certifica input físico ou release."
 }
