@@ -9,6 +9,7 @@ owned by the session domain and its adapters; menu links cannot start processes.
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 from collections import deque
@@ -22,7 +23,9 @@ from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile
 from steamzero.api import contracts
 from steamzero.core import fs
 
-SCHEMA = "experience-journey-v1.schema.json"
+SCHEMA_V1 = "experience-journey-v1.schema.json"
+SCHEMA_V2 = "experience-journey-v2.schema.json"
+SCHEMA = SCHEMA_V2
 MAX_DOCUMENT_BYTES = 4 * 1024 * 1024
 MAX_MENUS = 4096
 MAX_CONNECTIONS = 16384
@@ -46,6 +49,26 @@ SESSION_STAGES = frozenset(
 )
 _INPUT_ONLY = "user-input"
 JsonScalar: TypeAlias = str | int | float | bool | None
+_UNSET = object()
+
+
+def migrate_journey_v1_to_v2(raw: Mapping[str, Any]) -> dict[str, Any]:
+    """Upgrade v1 additively for public grouping and selection bindings."""
+    upgraded = json.loads(json.dumps(raw, ensure_ascii=False))
+    if not isinstance(upgraded, dict):
+        raise ValueError("documento de jornada exige objeto raiz")
+    if (
+        upgraded.get("schemaVersion") != 1
+        or upgraded.get("kind") != "steamzero-experience-journey-v1"
+    ):
+        raise ValueError("a migração exige uma jornada v1")
+    upgraded["schemaVersion"] = 2
+    upgraded["kind"] = "steamzero-experience-journey-v2"
+    for menu in upgraded.get("menus", []):
+        menu.setdefault("groupBy", [])
+    for connection in upgraded.get("connections", []):
+        connection.setdefault("bindings", [])
+    return upgraded
 
 
 @dataclass(frozen=True)
@@ -76,6 +99,14 @@ class JourneyRouteError(ValueError):
     """A requested menu transition does not target a declared menu."""
 
 
+class JourneyValidationError(ValueError):
+    """A journey with blocking diagnostics cannot be persisted or activated."""
+
+    def __init__(self, diagnostics: Sequence[JourneyDiagnostic]) -> None:
+        self.diagnostics = tuple(diagnostics)
+        super().__init__("; ".join(item.message for item in self.diagnostics))
+
+
 class PublicFieldUnavailable(ValueError):
     """A filter names a field absent from the selected public read model."""
 
@@ -86,7 +117,13 @@ class JourneyFilterTypeError(ValueError):
 
 def _encoded_size(value: object) -> int:
     return len(
-        json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        json.dumps(
+            value,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
     )
 
 
@@ -104,10 +141,12 @@ class JourneyStore:
     def save(self, document: JourneyDocument, *, overwrite: bool = False) -> Path:
         if self.root.is_symlink():
             raise ValueError("diretório das jornadas não pode ser link simbólico")
-        target = self._path(document.id)
+        validated = JourneyDocument.parse(document.serialize())
+        validated.ensure_activatable()
+        target = self._path(validated.id)
         if target.is_symlink():
             raise ValueError("destino da jornada não pode ser link simbólico")
-        fs.write_atomic(target, document.serialize(), must_not_exist=not overwrite)
+        fs.write_atomic(target, validated.serialize(), must_not_exist=not overwrite)
         return target
 
     def load(self, journey_id: str) -> JourneyDocument:
@@ -167,11 +206,22 @@ class JourneyStore:
         return JourneyDocument.parse(raw)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class JourneyDocument:
-    """A schema-validated, round-trippable journey document."""
+    """A schema-validated document backed by an immutable canonical snapshot.
 
-    data: Mapping[str, Any]
+    ``data`` intentionally returns a fresh decoded mapping. Callers can inspect
+    and edit that snapshot, but cannot mutate the bytes this validated value
+    will persist or activate.
+    """
+
+    _serialized: bytes
+
+    @classmethod
+    def _from_serialized(cls, serialized: bytes) -> JourneyDocument:
+        document = object.__new__(cls)
+        object.__setattr__(document, "_serialized", serialized)
+        return document
 
     @classmethod
     def parse(cls, payload: Mapping[str, Any] | str | bytes) -> JourneyDocument:
@@ -198,16 +248,36 @@ class JourneyDocument:
                 raise ValueError("documento de jornada não é JSON válido") from exc
         else:
             raw = dict(payload)
-            if _encoded_size(raw) > MAX_DOCUMENT_BYTES:
+            try:
+                input_size = _encoded_size(raw)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("documento de jornada contém valores não JSON") from exc
+            if input_size > MAX_DOCUMENT_BYTES:
                 raise JourneyBudgetError(
                     "JOURNEY-BUDGET-DOCUMENT",
                     f"documento excede {MAX_DOCUMENT_BYTES} bytes UTF-8",
                 )
         if not isinstance(raw, dict):
             raise ValueError("documento de jornada exige objeto raiz")
-        contracts.validate(raw, SCHEMA)
-        document = cls(data=json.loads(json.dumps(raw, ensure_ascii=False)))
-        document.serialize()
+        try:
+            snapshot = json.loads(json.dumps(raw, ensure_ascii=False, allow_nan=False))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("documento de jornada contém valores não JSON") from exc
+        if not isinstance(snapshot, dict):
+            raise ValueError("documento de jornada exige objeto raiz")
+        if snapshot.get("schemaVersion") == 1:
+            contracts.validate(snapshot, SCHEMA_V1)
+            snapshot = migrate_journey_v1_to_v2(snapshot)
+        contracts.validate(snapshot, SCHEMA)
+        serialized = json.dumps(
+            snapshot, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False
+        ).encode("utf-8")
+        if len(serialized) > MAX_DOCUMENT_BYTES:
+            raise JourneyBudgetError(
+                "JOURNEY-BUDGET-DOCUMENT",
+                f"documento serializado excede {MAX_DOCUMENT_BYTES} bytes UTF-8",
+            )
+        document = cls._from_serialized(serialized)
         budget_errors = [
             issue
             for issue in document.diagnostics()
@@ -216,6 +286,13 @@ class JourneyDocument:
         if budget_errors:
             raise JourneyBudgetError(budget_errors[0].code, budget_errors[0].message)
         return document
+
+    @property
+    def data(self) -> Mapping[str, Any]:
+        value = json.loads(self._serialized.decode("utf-8"))
+        if not isinstance(value, dict):  # Defensive; the schema requires an object.
+            raise ValueError("documento de jornada exige objeto raiz")
+        return value
 
     @property
     def id(self) -> str:
@@ -234,19 +311,36 @@ class JourneyDocument:
         return frozenset(str(menu["id"]) for menu in self.menus)
 
     def serialize(self) -> bytes:
-        raw = json.dumps(self.data, ensure_ascii=False, sort_keys=True, indent=2).encode("utf-8")
-        if len(raw) > MAX_DOCUMENT_BYTES:
-            raise JourneyBudgetError(
-                "JOURNEY-BUDGET-DOCUMENT",
-                f"documento serializado excede {MAX_DOCUMENT_BYTES} bytes UTF-8",
-            )
-        return raw
+        return self._serialized
 
     def diagnostics(
         self,
-        published_read_models: Mapping[str, Iterable[str]] | None = None,
+        published_read_models: Mapping[str, Iterable[str] | Mapping[str, str]] | None = None,
+        *,
+        strict_published_fields: bool = False,
     ) -> tuple[JourneyDiagnostic, ...]:
-        return validate_journey(self.data, published_read_models=published_read_models)
+        return validate_journey(
+            self.data,
+            published_read_models=published_read_models,
+            strict_published_fields=strict_published_fields,
+        )
+
+    def ensure_activatable(
+        self,
+        published_read_models: Mapping[str, Iterable[str] | Mapping[str, str]] | None = None,
+        *,
+        strict_published_fields: bool = True,
+    ) -> None:
+        blocking = tuple(
+            issue
+            for issue in self.diagnostics(
+                published_read_models,
+                strict_published_fields=strict_published_fields,
+            )
+            if issue.severity == "error"
+        )
+        if blocking:
+            raise JourneyValidationError(blocking)
 
 
 def _unique_ids(
@@ -323,6 +417,80 @@ def _organization_cycle(nodes: Sequence[Mapping[str, Any]]) -> bool:
     return False
 
 
+_STAGE_SCENE_SLOTS: dict[str, tuple[str, str]] = {
+    "gameplay": ("gameDetail", "gameDetail"),
+    "pause": ("quickMenu", "osd"),
+    "saves": ("saveStates", "saveGallery"),
+    "osd": ("osd", "osd"),
+    "loading": ("loading", "loadingState"),
+    "empty": ("empty", "emptyState"),
+    "error": ("error", "errorBanner"),
+    "offline": ("offline", "offlineState"),
+}
+
+
+def _missing_scene_elements(stage_id: str, theme: Mapping[str, Any]) -> list[str]:
+    surfaces = theme.get("sceneSurfaces")
+    slots = surfaces.get("slots", {}) if isinstance(surfaces, Mapping) else {}
+    components = surfaces.get("components", {}) if isinstance(surfaces, Mapping) else {}
+    missing: list[str] = []
+    if stage_id.startswith("menu:"):
+        required_slots = [("library", {"gameGrid", "recentlyPlayed"})]
+    elif stage_id in _STAGE_SCENE_SLOTS:
+        slot_id, component_kind = _STAGE_SCENE_SLOTS[stage_id]
+        required_slots = [(slot_id, {component_kind})]
+    elif stage_id == "bezel":
+        # The current scene-surfaces contract has no bezel element kind or slot.
+        return ["sceneSurfaces.slot:bezel"]
+    else:
+        required_slots = []
+
+    for slot_id, allowed_kinds in required_slots:
+        slot = slots.get(slot_id) if isinstance(slots, Mapping) else None
+        if not isinstance(slot, Mapping):
+            missing.append(f"sceneSurfaces.slot:{slot_id}")
+            continue
+        component_id = str(slot.get("component", ""))
+        component = components.get(component_id) if isinstance(components, Mapping) else None
+        if not isinstance(component, Mapping):
+            missing.append(f"sceneSurfaces.component:{component_id}")
+            continue
+        kind = str(component.get("kind", ""))
+        if kind not in allowed_kinds:
+            missing.append(f"sceneSurfaces.component:{component_id}.kind={kind}")
+        if stage_id == "pause" and "pause" not in component.get("items", []):
+            missing.append(f"sceneSurfaces.component:{component_id}.items.pause")
+
+    if stage_id in {"entryFade", "exitFade"}:
+        motion = theme.get("sceneMotion")
+        transitions = motion.get("transitions", []) if isinstance(motion, Mapping) else []
+        if not any(
+            isinstance(item, Mapping) and item.get("id") == stage_id for item in transitions
+        ):
+            missing.append(f"sceneMotion.transition:{stage_id}")
+    return missing
+
+
+def _provided_scene_elements(theme: Mapping[str, Any]) -> list[str]:
+    surfaces = theme.get("sceneSurfaces")
+    if not isinstance(surfaces, Mapping):
+        return []
+    slots = surfaces.get("slots", {})
+    components = surfaces.get("components", {})
+    if not isinstance(slots, Mapping) or not isinstance(components, Mapping):
+        return []
+    provided: list[str] = []
+    for slot_id, slot in sorted(slots.items(), key=lambda item: str(item[0])):
+        if not isinstance(slot, Mapping):
+            continue
+        component_id = str(slot.get("component", ""))
+        component = components.get(component_id)
+        if isinstance(component, Mapping):
+            kind = str(component.get("kind", "unknown"))
+            provided.append(f"{slot_id}:{component_id}:{kind}")
+    return provided
+
+
 def _field_definitions(fields: Iterable[str] | Mapping[str, str]) -> dict[str, str]:
     if isinstance(fields, Mapping):
         return {str(field_id): str(field_type) for field_id, field_type in fields.items()}
@@ -337,7 +505,11 @@ def _value_matches_type(value: object, field_type: str) -> bool:
     if field_type == "integer":
         return isinstance(value, int) and not isinstance(value, bool)
     if field_type == "number":
-        return isinstance(value, int | float) and not isinstance(value, bool)
+        return (
+            isinstance(value, int | float)
+            and not isinstance(value, bool)
+            and (not isinstance(value, float) or math.isfinite(value))
+        )
     if field_type == "boolean":
         return isinstance(value, bool)
     if field_type == "string[]":
@@ -350,12 +522,14 @@ def _filter_type_error(item_filter: Mapping[str, Any], field_type: str) -> str:
     value = item_filter.get("value")
     if operator in {"isKnown", "isUnknown"}:
         return ""
-    if operator in {"greaterThanOrEqual", "lessThanOrEqual"} and field_type not in {
-        "integer",
-        "number",
-        "any",
-    }:
-        return f"operador {operator} exige campo numérico, mas {field_type} foi publicado"
+    if operator in {"greaterThanOrEqual", "lessThanOrEqual"}:
+        if value is None:
+            return (
+                f"operador {operator} exige valor numérico conhecido; null não é permitido. "
+                "Use isKnown ou isUnknown para tratar valores desconhecidos"
+            )
+        if field_type not in {"integer", "number", "any"}:
+            return f"operador {operator} exige campo numérico, mas {field_type} foi publicado"
     if operator == "contains":
         if field_type not in {"string", "string[]", "any"}:
             return f"operador contains não é compatível com o tipo {field_type}"
@@ -376,6 +550,7 @@ def validate_journey(
     raw: Mapping[str, Any],
     *,
     published_read_models: Mapping[str, Iterable[str] | Mapping[str, str]] | None = None,
+    strict_published_fields: bool = False,
 ) -> tuple[JourneyDiagnostic, ...]:
     """Report graph, source and resource problems without executing document code."""
     menus = raw.get("menus", [])
@@ -413,6 +588,19 @@ def validate_journey(
     issues.extend(_unique_ids(connections, "id", "CONNECTION"))
     issues.extend(_unique_ids(organization, "id", "ORGANIZATION"))
     issues.extend(_unique_ids(session_stages, "stageId", "STAGE"))
+    expected_actions = {
+        "select": "navigate",
+        "back": "back",
+        "play": "launch",
+        "pause": "pause",
+        "resume": "resume",
+        "open-saves": "open-saves",
+        "save": "save",
+        "load": "load",
+        "exit": "exit",
+        "retry": "retry",
+    }
+    route_keys: set[tuple[str, str, str]] = set()
     for menu in menus:
         if len(menu.get("filters", [])) > MAX_FILTERS_PER_MENU:
             issues.append(
@@ -435,6 +623,44 @@ def validate_journey(
 
     for connection in connections:
         connection_id = str(connection.get("id", ""))
+        source_endpoint = connection.get("from", {})
+        event = str(connection.get("event", ""))
+        when = str(connection.get("when", ""))
+        route_key = (
+            json.dumps(source_endpoint, ensure_ascii=False, sort_keys=True),
+            event,
+            when,
+        )
+        if route_key in route_keys:
+            issues.append(
+                JourneyDiagnostic(
+                    "JOURNEY-CONNECTION-AMBIGUOUS",
+                    "mais de uma conexão atende ao mesmo evento; remova ou altere uma delas",
+                    connection_id,
+                )
+            )
+        route_keys.add(route_key)
+        if expected_actions.get(event) != connection.get("action"):
+            issues.append(
+                JourneyDiagnostic(
+                    "JOURNEY-EVENT-ACTION-MISMATCH",
+                    f"evento {event} exige a ação semântica {expected_actions.get(event)}",
+                    connection_id,
+                )
+            )
+        bindings = connection.get("bindings", [])
+        if bindings and (
+            source_endpoint.get("kind") != "menu"
+            or connection.get("to", {}).get("kind") != "menu"
+            or connection.get("action") != "navigate"
+        ):
+            issues.append(
+                JourneyDiagnostic(
+                    "JOURNEY-BINDING-ENDPOINT",
+                    "vínculos de seleção só podem ligar dois menus em uma ação navigate",
+                    connection_id,
+                )
+            )
         for side in ("from", "to"):
             endpoint = connection.get(side)
             if not isinstance(endpoint, Mapping):
@@ -488,6 +714,7 @@ def validate_journey(
         )
 
     if published_read_models is not None:
+        published_field_severity = "error" if strict_published_fields else "warning"
         for menu in menus:
             menu_id = str(menu.get("id", ""))
             source = menu.get("source", {})
@@ -499,7 +726,7 @@ def validate_journey(
                         "JOURNEY-READ-MODEL-UNAVAILABLE",
                         f"fonte pública {read_model_id} indisponível; escolha uma fonte publicada",
                         menu_id,
-                        "warning",
+                        published_field_severity,
                     )
                 )
                 continue
@@ -513,7 +740,7 @@ def validate_journey(
                             f"campo publicado {field_id} não existe nessa fonte; "
                             "remova ou substitua o filtro",
                             menu_id,
-                            "warning",
+                            published_field_severity,
                         )
                     )
                 else:
@@ -524,7 +751,7 @@ def validate_journey(
                                 "JOURNEY-FILTER-TYPE",
                                 f"{field_id}: {reason}; ajuste o filtro",
                                 menu_id,
-                                "warning",
+                                published_field_severity,
                             )
                         )
             for sort in menu.get("sort", []):
@@ -536,7 +763,53 @@ def validate_journey(
                             f"campo publicado {field_id} não existe nessa fonte; "
                             "escolha outro campo",
                             menu_id,
-                            "warning",
+                            published_field_severity,
+                        )
+                    )
+            for field_id in menu.get("groupBy", []):
+                if str(field_id) not in fields:
+                    issues.append(
+                        JourneyDiagnostic(
+                            "JOURNEY-GROUP-FIELD-UNAVAILABLE",
+                            f"campo publicado {field_id} não existe nessa fonte; "
+                            "escolha outro campo de agrupamento",
+                            menu_id,
+                            published_field_severity,
+                        )
+                    )
+        menu_lookup = {str(menu.get("id", "")): menu for menu in menus}
+        for connection in connections:
+            bindings = connection.get("bindings", [])
+            source_endpoint = connection.get("from", {})
+            target_endpoint = connection.get("to", {})
+            if (
+                not bindings
+                or source_endpoint.get("kind") != "menu"
+                or target_endpoint.get("kind") != "menu"
+            ):
+                continue
+            source_menu = menu_lookup.get(str(source_endpoint.get("id", "")))
+            target_menu = menu_lookup.get(str(target_endpoint.get("id", "")))
+            if source_menu is None or target_menu is None:
+                continue
+            source_model = published_read_models.get(
+                str(source_menu.get("source", {}).get("readModelId", ""))
+            )
+            target_model = published_read_models.get(
+                str(target_menu.get("source", {}).get("readModelId", ""))
+            )
+            source_fields = _field_definitions(source_model or {})
+            target_fields = _field_definitions(target_model or {})
+            for binding in bindings:
+                source_field = str(binding.get("sourceFieldId", ""))
+                target_field = str(binding.get("targetFieldId", ""))
+                if source_field not in source_fields or target_field not in target_fields:
+                    issues.append(
+                        JourneyDiagnostic(
+                            "JOURNEY-BINDING-FIELD-UNAVAILABLE",
+                            f"vínculo {source_field} → {target_field} usa campo não publicado",
+                            str(connection.get("id", "")),
+                            published_field_severity,
                         )
                     )
     return tuple(issues)
@@ -628,6 +901,65 @@ class PublicQueryResult:
     recovery_action: str
     diagnostic_code: str = ""
     diagnostic_message: str = ""
+    groups: tuple[Mapping[str, Any], ...] = ()
+
+
+def _sortable_value(value: object) -> tuple[object, ...]:
+    if isinstance(value, bool):
+        return (0, int(value))
+    if isinstance(value, int | float):
+        return (1, float(value))
+    if isinstance(value, str):
+        return (2, value.casefold(), value)
+    if isinstance(value, list | tuple):
+        return (3, tuple(str(item).casefold() for item in value))
+    return (4, json.dumps(value, ensure_ascii=False, sort_keys=True, default=str))
+
+
+def _sort_public_records(
+    rows: Sequence[Mapping[str, Any]],
+    sort: Sequence[Mapping[str, Any]],
+    fields: Mapping[str, str],
+) -> list[Mapping[str, Any]]:
+    missing = sorted({str(item.get("fieldId", "")) for item in sort} - set(fields))
+    if missing:
+        raise PublicFieldUnavailable(
+            "campo(s) de ordenação não publicado(s): " + ", ".join(missing)
+        )
+    ordered = list(rows)
+    for item in reversed(sort):
+        field_id = str(item["fieldId"])
+        known = [row for row in ordered if row.get(field_id) is not None]
+        unknown = [row for row in ordered if row.get(field_id) is None]
+        known.sort(
+            key=lambda row: _sortable_value(row.get(field_id)),
+            reverse=str(item.get("direction", "ascending")) == "descending",
+        )
+        ordered = known + unknown
+    return ordered
+
+
+def _group_public_records(
+    rows: Sequence[Mapping[str, Any]],
+    group_by: Sequence[str],
+    fields: Mapping[str, str],
+) -> tuple[Mapping[str, Any], ...]:
+    missing = sorted(set(group_by) - set(fields))
+    if missing:
+        raise PublicFieldUnavailable(
+            "campo(s) de agrupamento não publicado(s): " + ", ".join(missing)
+        )
+    buckets: dict[bytes, tuple[dict[str, Any], list[Mapping[str, Any]]]] = {}
+    for row in rows:
+        key = {field_id: row.get(field_id) for field_id in group_by}
+        token = json.dumps(key, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
+        if token not in buckets:
+            buckets[token] = (key, [])
+        buckets[token][1].append(row)
+    return tuple(
+        {"values": values, "count": len(group_rows), "rows": tuple(group_rows)}
+        for values, group_rows in buckets.values()
+    )
 
 
 def query_public_records(
@@ -635,8 +967,14 @@ def query_public_records(
     filters: Sequence[Mapping[str, Any]],
     *,
     published_fields: Iterable[str] | Mapping[str, str],
+    sort: Sequence[Mapping[str, Any]] = (),
+    group_by: Sequence[str] = (),
 ) -> PublicQueryResult:
-    """Return explicit empty/source/error states for a public menu query."""
+    """Filter, order and group only fields in a published read model.
+
+    Menu filters run before context bindings; callers pass both as AND clauses,
+    so a selected value can narrow a menu but cannot relax its authored filter.
+    """
     if rows is None:
         return PublicQueryResult(
             source_state="unavailable",
@@ -662,7 +1000,12 @@ def query_public_records(
             filters,
             published_field_ids=field_types,
         )
+        result_rows = _sort_public_records(result_rows, sort, field_types)
+        groups = _group_public_records(result_rows, group_by, field_types)
     except PublicFieldUnavailable as exc:
+        message = str(exc)
+        is_grouping = "agrupamento" in message
+        is_sort = "ordenação" in message
         return PublicQueryResult(
             source_state="available",
             result_state="invalid-filter",
@@ -670,9 +1013,21 @@ def query_public_records(
             total_count=len(records),
             result_count=0,
             unknown_value_counts=unknown_counts,
-            recovery_action="replace-filter",
-            diagnostic_code="JOURNEY-FIELD-UNAVAILABLE",
-            diagnostic_message=str(exc),
+            recovery_action=(
+                "replace-grouping"
+                if is_grouping
+                else "replace-sort"
+                if is_sort
+                else "replace-filter"
+            ),
+            diagnostic_code=(
+                "JOURNEY-GROUP-FIELD-UNAVAILABLE"
+                if is_grouping
+                else "JOURNEY-SORT-FIELD-UNAVAILABLE"
+                if is_sort
+                else "JOURNEY-FIELD-UNAVAILABLE"
+            ),
+            diagnostic_message=message,
         )
     except JourneyFilterTypeError as exc:
         return PublicQueryResult(
@@ -694,6 +1049,7 @@ def query_public_records(
         result_count=len(result_rows),
         unknown_value_counts=unknown_counts,
         recovery_action="" if result_rows else "clear-filters",
+        groups=groups,
     )
 
 
@@ -715,7 +1071,13 @@ class JourneyReturnContext:
 class JourneyNavigator:
     """Menu context stack; visual navigation does not run session operations."""
 
-    def __init__(self, document: JourneyDocument) -> None:
+    def __init__(
+        self,
+        document: JourneyDocument,
+        *,
+        published_read_models: Mapping[str, Iterable[str] | Mapping[str, str]] | None = None,
+    ) -> None:
+        document.ensure_activatable(published_read_models)
         if document.entry_menu_id not in document.menu_ids:
             raise JourneyRouteError("menu de entrada não existe")
         self._document = document
@@ -735,19 +1097,64 @@ class JourneyNavigator:
     def update_context(
         self,
         *,
-        selected_item_id: str | None = None,
-        filters: Mapping[str, JsonScalar] | None = None,
-        scroll_position: float = 0.0,
-        focus_id: str | None = None,
+        selected_item_id: str | None | object = _UNSET,
+        filters: Mapping[str, JsonScalar] | None | object = _UNSET,
+        scroll_position: float | object = _UNSET,
+        focus_id: str | None | object = _UNSET,
     ) -> JourneyNavigationContext:
-        if scroll_position < 0:
+        previous = self.context
+        if scroll_position is _UNSET:
+            next_scroll_position = previous.scroll_position
+        elif (
+            isinstance(scroll_position, bool)
+            or not isinstance(scroll_position, int | float)
+            or not math.isfinite(scroll_position)
+            or scroll_position < 0
+        ):
             raise ValueError("scroll_position não pode ser negativa")
+        else:
+            next_scroll_position = float(scroll_position)
+
+        if selected_item_id is _UNSET:
+            next_selected_item_id = previous.selected_item_id
+        elif selected_item_id is None or isinstance(selected_item_id, str):
+            next_selected_item_id = selected_item_id
+        else:
+            raise ValueError("selected_item_id deve ser string ou None")
+
+        if focus_id is _UNSET:
+            next_focus_id = previous.focus_id
+        elif focus_id is None or isinstance(focus_id, str):
+            next_focus_id = focus_id
+        else:
+            raise ValueError("focus_id deve ser string ou None")
+
+        if filters is _UNSET:
+            next_filters = previous.filters
+        elif filters is None:
+            next_filters = ()
+        elif isinstance(filters, Mapping):
+            if any(
+                not isinstance(field_id, str)
+                or not field_id
+                or not (
+                    value is None
+                    or isinstance(value, str | int | bool)
+                    or (isinstance(value, float) and math.isfinite(value))
+                )
+                for field_id, value in filters.items()
+            ):
+                raise ValueError("filters devem conter campos públicos com valores escalares")
+            next_filters = tuple(sorted(filters.items()))
+        else:
+            raise ValueError("filters deve ser um mapa de campos públicos")
+
         current = JourneyNavigationContext(
             menu_id=self.context.menu_id,
-            selected_item_id=selected_item_id,
-            filters=tuple(sorted((filters or {}).items())),
-            scroll_position=scroll_position,
-            focus_id=focus_id,
+            selected_item_id=next_selected_item_id,
+            filters=next_filters,
+            scroll_position=next_scroll_position,
+            focus_id=next_focus_id,
         )
         if current != self.context:
             self._contexts[-1] = current
@@ -802,6 +1209,257 @@ class JourneyNavigator:
         return generation == self._generation
 
 
+@dataclass(frozen=True)
+class JourneyExecutionResult:
+    """A resolved route or a semantic operation request for a real adapter."""
+
+    state: str
+    connection_id: str = ""
+    action: str = ""
+    target: Mapping[str, str] | None = None
+    context: JourneyNavigationContext | None = None
+    query: PublicQueryResult | None = None
+    return_context: JourneyReturnContext | None = None
+    diagnostic_code: str = ""
+    diagnostic_message: str = ""
+    recovery_action: str = ""
+
+
+class JourneyExecutor:
+    """Execute declared menu routes and return allowlisted session intent.
+
+    This class never launches or controls a process. Session actions are
+    returned to the owning adapter; menu filtering receives only caller-provided
+    public read models and published field definitions.
+    """
+
+    def __init__(
+        self,
+        document: JourneyDocument,
+        navigator: JourneyNavigator | None = None,
+        *,
+        published_read_models: Mapping[str, Iterable[str] | Mapping[str, str]] | None = None,
+    ) -> None:
+        document.ensure_activatable(published_read_models)
+        self.document = document
+        self.navigator = navigator or JourneyNavigator(
+            document,
+            published_read_models=published_read_models,
+        )
+        self._menus = {str(menu["id"]): menu for menu in document.menus}
+
+    def execute(
+        self,
+        event: str,
+        *,
+        when: str = _INPUT_ONLY,
+        source_endpoint: Mapping[str, str] | None = None,
+        selected_record: Mapping[str, Any] | None = None,
+        selected_item_id: str | None | object = _UNSET,
+        filters: Mapping[str, JsonScalar] | None | object = _UNSET,
+        scroll_position: float | object = _UNSET,
+        focus_id: str | None | object = _UNSET,
+        read_models: Mapping[str, Sequence[Mapping[str, Any]] | None] | None = None,
+        published_read_models: Mapping[str, Iterable[str] | Mapping[str, str]] | None = None,
+        pending_return: JourneyReturnContext | None = None,
+    ) -> JourneyExecutionResult:
+        source = dict(source_endpoint or {"kind": "menu", "id": self.navigator.context.menu_id})
+        candidates = [
+            item
+            for item in self.document.data["connections"]
+            if item["from"] == source and item["event"] == event and item["when"] == when
+        ]
+        if not candidates:
+            return JourneyExecutionResult(
+                "unmatched",
+                diagnostic_code="JOURNEY-CONNECTION-NOT-FOUND",
+                diagnostic_message="Nenhuma conexão atende a este evento e resultado.",
+                recovery_action="stay-current",
+            )
+        if len(candidates) != 1:
+            return JourneyExecutionResult(
+                "invalid",
+                diagnostic_code="JOURNEY-CONNECTION-AMBIGUOUS",
+                diagnostic_message="Mais de uma conexão atende ao mesmo evento; ajuste o mapa.",
+                recovery_action="edit-connections",
+            )
+        connection = candidates[0]
+        action = str(connection["action"])
+        target = connection["to"]
+        restored_pending_return = False
+
+        if source.get("kind") == "stage" and pending_return is not None:
+            if not self.navigator.restore_return_context(pending_return):
+                return JourneyExecutionResult(
+                    "stale-response",
+                    connection_id=str(connection["id"]),
+                    action=action,
+                    diagnostic_code="JOURNEY-RESPONSE-STALE",
+                    diagnostic_message="A resposta chegou após uma navegação mais recente.",
+                    recovery_action="keep-current-route",
+                )
+            restored_pending_return = True
+
+        has_context_update = (
+            selected_item_id is not _UNSET
+            or filters is not _UNSET
+            or scroll_position is not _UNSET
+            or focus_id is not _UNSET
+        )
+        if (
+            has_context_update
+            and source.get("kind") == "menu"
+            and str(source.get("id")) == self.navigator.context.menu_id
+        ):
+            context_update: dict[str, Any] = {}
+            if selected_item_id is not _UNSET:
+                context_update["selected_item_id"] = selected_item_id
+            if filters is not _UNSET:
+                context_update["filters"] = filters
+            if scroll_position is not _UNSET:
+                context_update["scroll_position"] = scroll_position
+            if focus_id is not _UNSET:
+                context_update["focus_id"] = focus_id
+            self.navigator.update_context(**context_update)
+
+        if action in {"launch", "pause", "resume", "open-saves", "save", "load", "exit", "retry"}:
+            return JourneyExecutionResult(
+                "operation-request",
+                connection_id=str(connection["id"]),
+                action=action,
+                target=target,
+                context=self.navigator.context,
+                return_context=self.navigator.capture_return_context(),
+            )
+
+        if action == "back" and target.get("kind") == "history":
+            restored = self.navigator.context if restored_pending_return else self.navigator.back()
+            if restored is None and pending_return is not None:
+                if not self.navigator.restore_return_context(pending_return):
+                    return JourneyExecutionResult(
+                        "stale-response",
+                        connection_id=str(connection["id"]),
+                        action=action,
+                        diagnostic_code="JOURNEY-RESPONSE-STALE",
+                        diagnostic_message="A resposta chegou após uma navegação mais recente.",
+                        recovery_action="keep-current-route",
+                    )
+                restored = self.navigator.context
+            if restored is None:
+                return JourneyExecutionResult(
+                    "recovery-required",
+                    connection_id=str(connection["id"]),
+                    action=action,
+                    diagnostic_code="JOURNEY-HISTORY-EMPTY",
+                    diagnostic_message="Não há menu de origem para restaurar.",
+                    recovery_action="open-entry-menu",
+                )
+            return JourneyExecutionResult(
+                "navigated",
+                connection_id=str(connection["id"]),
+                action=action,
+                target=target,
+                context=restored,
+            )
+
+        if target.get("kind") != "menu":
+            return JourneyExecutionResult(
+                "stage-resolved",
+                connection_id=str(connection["id"]),
+                action=action,
+                target=target,
+                context=self.navigator.context,
+            )
+
+        target_menu_id = str(target["id"])
+        target_menu = self._menus[target_menu_id]
+        context_filters: dict[str, JsonScalar] = {}
+        binding_filters: list[dict[str, Any]] = []
+        source_menu = self._menus.get(str(source.get("id", "")))
+        source_fields = {}
+        target_read_model_id = str(target_menu["source"]["readModelId"])
+        target_fields = None
+        if published_read_models is not None:
+            if source_menu is not None:
+                source_fields = _field_definitions(
+                    published_read_models.get(str(source_menu["source"]["readModelId"]), {})
+                )
+            target_fields = published_read_models.get(target_read_model_id)
+
+        for binding in connection.get("bindings", []):
+            source_field = str(binding["sourceFieldId"])
+            target_field = str(binding["targetFieldId"])
+            if (
+                selected_record is None
+                or source_field not in source_fields
+                or target_fields is None
+                or target_field not in _field_definitions(target_fields)
+            ):
+                return JourneyExecutionResult(
+                    "invalid-binding",
+                    connection_id=str(connection["id"]),
+                    action=action,
+                    diagnostic_code="JOURNEY-BINDING-FIELD-UNAVAILABLE",
+                    diagnostic_message=(
+                        f"O vínculo {source_field} → {target_field} precisa de campos "
+                        "publicados e de um item selecionado."
+                    ),
+                    recovery_action="choose-public-fields",
+                )
+            value = selected_record.get(source_field)
+            target_type = _field_definitions(target_fields)[target_field]
+            if value is None:
+                return JourneyExecutionResult(
+                    "invalid-binding",
+                    connection_id=str(connection["id"]),
+                    action=action,
+                    diagnostic_code="JOURNEY-BINDING-SOURCE-UNKNOWN",
+                    diagnostic_message=(
+                        f"O campo selecionado {source_field} é desconhecido; "
+                        "escolha um valor conhecido ou filtre desconhecidos explicitamente."
+                    ),
+                    recovery_action="select-known-value",
+                )
+            if (
+                not isinstance(value, str | int | float | bool)
+                or (isinstance(value, float) and not math.isfinite(value))
+                or not _value_matches_type(value, source_fields[source_field])
+                or not _value_matches_type(value, target_type)
+            ):
+                return JourneyExecutionResult(
+                    "invalid-binding",
+                    connection_id=str(connection["id"]),
+                    action=action,
+                    diagnostic_code="JOURNEY-BINDING-TYPE",
+                    diagnostic_message=(
+                        f"O vínculo {source_field} → {target_field} não é compatível "
+                        "com os tipos publicados."
+                    ),
+                    recovery_action="choose-compatible-fields",
+                )
+            context_filters[target_field] = value
+            binding_filters.append({"fieldId": target_field, "operator": "equals", "value": value})
+
+        read_model_rows = (read_models or {}).get(target_read_model_id)
+        field_definitions = _field_definitions(target_fields) if target_fields is not None else {}
+        query = query_public_records(
+            read_model_rows,
+            [*target_menu["filters"], *binding_filters],
+            published_fields=field_definitions,
+            sort=target_menu["sort"],
+            group_by=target_menu.get("groupBy", []),
+        )
+        context = self.navigator.navigate(target_menu_id, filters=context_filters)
+        return JourneyExecutionResult(
+            "navigated",
+            connection_id=str(connection["id"]),
+            action=action,
+            target=target,
+            context=context,
+            query=query,
+        )
+
+
 def resolve_theme_coverage(
     document: JourneyDocument,
     *,
@@ -843,6 +1501,8 @@ def resolve_theme_coverage(
                     "declaredThemeVersion": None,
                     "reason": "stage-reference-missing",
                     "missingThemeCapabilities": [],
+                    "missingSceneElements": [],
+                    "providedSceneElements": [],
                 }
             )
             continue
@@ -854,6 +1514,8 @@ def resolve_theme_coverage(
         declared_theme_id: str | None = None
         declared_theme_version: str | None = None
         missing_theme_caps: list[str] = []
+        missing_scene_elements: list[str] = []
+        provided_scene_elements: list[str] = []
         if isinstance(assignment, Mapping) and assignment.get("mode") == "inherit-aura":
             reason = "explicit-choice"
         elif isinstance(assignment, Mapping) and assignment.get("mode") == "custom":
@@ -866,12 +1528,18 @@ def resolve_theme_coverage(
             else:
                 declared_theme_version = str(theme.get("version", "unknown"))
                 theme_caps = frozenset(theme.get("capabilities", ()))
+                provided_scene_elements = _provided_scene_elements(theme)
                 missing_theme_caps = sorted(
                     set(required_theme_capabilities.get(stage_id, ())) - theme_caps
                 )
-                if missing_theme_caps:
+                missing_scene_elements = _missing_scene_elements(stage_id, theme)
+                if missing_theme_caps or missing_scene_elements:
                     appearance_state = "incompatible"
-                    reason = "theme-capability-unavailable"
+                    reason = (
+                        "theme-capability-unavailable"
+                        if missing_theme_caps
+                        else "scene-element-unavailable"
+                    )
                 else:
                     appearance_state = "custom"
                     source_id = theme_id
@@ -898,6 +1566,8 @@ def resolve_theme_coverage(
                 "declaredThemeVersion": declared_theme_version,
                 "reason": reason,
                 "missingThemeCapabilities": missing_theme_caps,
+                "missingSceneElements": missing_scene_elements,
+                "providedSceneElements": provided_scene_elements,
                 "operationCapability": operation_state,
                 "missingOperationCapabilities": missing_operations,
             }
@@ -907,13 +1577,20 @@ def resolve_theme_coverage(
 
 def summarize_theme_coverage(coverage: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     """Build the pre-apply summary without hiding degraded or missing stages."""
-    aura_stages = [
+    aura_effective_stages = [
         str(item.get("stageId", ""))
         for item in coverage
         if item.get("sourceThemeId") == "org.steamzero.default"
     ]
     inherited = [
-        str(item.get("stageId", "")) for item in coverage if item.get("appearance") == "inherited"
+        str(item.get("stageId", ""))
+        for item in coverage
+        if item.get("appearance") == "inherited" and item.get("reason") == "not-customized"
+    ]
+    explicit_aura = [
+        str(item.get("stageId", ""))
+        for item in coverage
+        if item.get("appearance") == "inherited" and item.get("reason") == "explicit-choice"
     ]
     missing = [
         str(item.get("stageId", ""))
@@ -925,6 +1602,10 @@ def summarize_theme_coverage(coverage: Sequence[Mapping[str, Any]]) -> dict[str,
         for item in coverage
         if item.get("appearance") == "incompatible"
     ]
+    fallback = list(dict.fromkeys([*missing, *incompatible]))
+    missing_scene_elements = [
+        str(item.get("stageId", "")) for item in coverage if item.get("missingSceneElements")
+    ]
     unavailable_operations = [
         str(item.get("stageId", ""))
         for item in coverage
@@ -933,18 +1614,23 @@ def summarize_theme_coverage(coverage: Sequence[Mapping[str, Any]]) -> dict[str,
     return {
         "auraDefaultCount": len(inherited),
         "auraDefaultStages": inherited,
-        "auraFallbackCount": len(aura_stages),
-        "auraFallbackStages": aura_stages,
+        "auraExplicitCount": len(explicit_aura),
+        "auraExplicitStages": explicit_aura,
+        "auraFallbackCount": len(fallback),
+        "auraFallbackStages": fallback,
+        "auraEffectiveCount": len(aura_effective_stages),
+        "auraEffectiveStages": aura_effective_stages,
         "inheritedStages": inherited,
         "missingReferenceStages": missing,
         "incompatibleStages": incompatible,
+        "missingSceneElementStages": missing_scene_elements,
         "unavailableOperationStages": unavailable_operations,
-        "requiresPreApplyConfirmation": bool(aura_stages),
+        "requiresPreApplyConfirmation": bool(aura_effective_stages),
         "label": (
-            f"Tema misto · {len(inherited)} etapas usam AURA padrão"
-            if inherited
-            else f"Tema com avisos · fallback AURA em {len(aura_stages)} etapas"
-            if aura_stages
+            f"Tema misto · AURA efetivo em {len(aura_effective_stages)} etapas "
+            f"({len(inherited)} herdadas, {len(explicit_aura)} escolhidas, "
+            f"{len(fallback)} em fallback)"
+            if aura_effective_stages
             else "Tema personalizado em todas as etapas usadas"
         ),
     }

@@ -19,6 +19,7 @@ Item {
     property var errors: []
     property var runtimeTheme: null
     property bool runtimeVisible: false
+    property bool runtimeThemeRefreshed: false
     property bool runtimeCaptureComplete: false
     property bool runtimeCaptureSucceeded: false
     readonly property url runtimeFixture: Qt.resolvedUrl(
@@ -62,6 +63,7 @@ Item {
     }
 
     function refreshRuntimeTheme(callback) {
+        harness.runtimeThemeRefreshed = false
         request("GET", "/status", {}, function(status) {
             const dashboard = status && status.dashboard ? status.dashboard : ({})
             const theme = dashboard.theme || null
@@ -70,6 +72,7 @@ Item {
                 panel.activeThemeId = String(theme.activeId || "")
                 panel.activeThemeName = String(theme.activeName || "")
             }
+            harness.runtimeThemeRefreshed = true
             if (callback)
                 callback(theme)
         }, function(message) {
@@ -387,8 +390,12 @@ Item {
             verify(spin !== null, "controle numérico ausente: " + name)
             const button = increase ? spin.up.indicator : spin.down.indicator
             assertTarget(button, name + (increase ? " incrementar" : " decrementar"))
+            reveal(button)
+            verify(fullyInsideViewport(button), name + " incrementador fora da viewport: "
+                   + inputGeometry(button))
             const before = spin.value
-            mouseClick(button, button.width / 2, button.height / 2)
+            const x = increase ? spin.width - button.width / 2 : button.width / 2
+            mouseClick(spin, x, button.height / 2)
             tryVerify(function() {
                 return spin.value === before + (increase ? spin.stepSize : -spin.stepSize)
             }, 3000, name + " não respondeu ao incremento/decremento")
@@ -428,9 +435,19 @@ Item {
             cfg = readConfig()
             harness.cfg = cfg
             harness.refreshRuntimeTheme()
+            // O primeiro snapshot real agrega o catálogo do dashboard e pode
+            // levar mais de cinco segundos no cold path do backend de teste.
+            tryVerify(function() { return harness.runtimeThemeRefreshed }, 10000,
+                      "o refresh inicial do dashboard não respondeu: "
+                      + JSON.stringify(harness.errors))
             tryVerify(function() {
                 return runtimeBridge.active && runtimeBridge.themeId === "org.steamzero.default"
-            }, 5000, "a AURA UI não publicou o tema runtime atual")
+            }, 5000, "a AURA UI não publicou o tema runtime atual: bridge="
+                + runtimeBridge.themeId + " active=" + runtimeBridge.active
+                + " activeId=" + harness.runtimeTheme.activeId
+                + " resolved=" + (harness.runtimeTheme.resolved
+                    ? harness.runtimeTheme.resolved.themeId : "<missing>")
+                + " errors=" + JSON.stringify(harness.errors))
             harness.runtimeVisible = true
             tryVerify(function() {
                 const media = harness.findRuntimeMedia(runtimeLibrary)
@@ -651,9 +668,13 @@ Item {
             tryVerify(function() { return panel.applyPlan === null }, 5000,
                       "a aplicação do tema não concluiu")
             harness.refreshRuntimeTheme()
+            tryVerify(function() { return harness.runtimeThemeRefreshed }, 10000,
+                      "o refresh do dashboard não respondeu: " + JSON.stringify(harness.errors))
             tryVerify(function() {
                 return runtimeBridge.active && runtimeBridge.themeId === themeId
-            }, 5000, "o dashboard runtime não publicou o tema aplicado")
+            }, 5000, "o dashboard runtime não publicou o tema aplicado: bridge="
+                + runtimeBridge.themeId + " theme=" + JSON.stringify(harness.runtimeTheme)
+                + " errors=" + JSON.stringify(harness.errors))
             verify(panel.isActiveTheme(themeId), "o catálogo não marcou o tema em uso")
             harness.runtimeVisible = true
             tryVerify(function() {
@@ -752,6 +773,40 @@ Item {
                 const layouts = (panel.editorDeclared.sceneLayouts || {}).layouts || {}
                 return layouts[layout].template.properties[prop].binding === "item.title"
             }, 3000, "desfazer não restaurou o binding herdado")
+        }
+
+        function test_04_abre_jornadas_pelo_studio_e_retorna_com_bridge_ausente() {
+            harness.runtimeVisible = false
+            harness.width = 1100
+            harness.height = 900
+            panel._closeEditor()
+            panel.journeyMode = false
+            panel.compactLayout = false
+            panel.visualScale = 1.0
+            panel.requestAction = function(actionId, payload, callback, errorCallback) {
+                if (String(actionId).indexOf("journey.studio.") === 0)
+                    return false
+                return harness.requestAction(actionId, payload, callback, errorCallback)
+            }
+
+            const openButton = find(panel, "openExperienceJourneys")
+            verify(openButton !== null && openButton.visible)
+            verify(openButton.height >= 48, "a entrada de Jornadas precisa ter alvo de 48 px")
+            mouseClick(openButton)
+
+            const journeyPanel = panel.journeyPanelControl
+            tryVerify(function() { return panel.journeyMode && journeyPanel.visible }, 3000)
+            tryVerify(function() {
+                return journeyPanel.notice.indexOf("ações de Jornada não estão disponíveis") >= 0
+            }, 3000, "a ausência da bridge precisa explicar por que a edição está desativada")
+            const createButton = find(journeyPanel, "journeyCreate")
+            verify(createButton !== null && !createButton.enabled)
+
+            const closeButton = find(journeyPanel, "journeyClose")
+            verify(closeButton !== null && closeButton.height >= 48)
+            mouseClick(closeButton)
+            tryVerify(function() { return !panel.journeyMode && !journeyPanel.visible }, 3000)
+            verify(openButton.visible, "voltar às Jornadas deve conservar a rota do Studio")
         }
 
         function cleanupTestCase() {

@@ -4,15 +4,19 @@
 
 from __future__ import annotations
 
+import contextlib
 import importlib.resources
 import json
+import math
 import os
 import re
 import secrets
 import shutil
 import subprocess
 import threading
+from collections.abc import Mapping
 from dataclasses import replace
+from functools import lru_cache
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -29,8 +33,14 @@ from steamzero.adapters.desktop_kde import (
     logout_desktop_session,
     toggle_virtual_keyboard,
 )
+from steamzero.adapters.journey_studio import (
+    MAX_PREVIEW_ROWS,
+    MAX_PUBLIC_RECORDS,
+    JourneyStudioService,
+)
 from steamzero.adapters.steam_session import readiness as session_readiness
 from steamzero.adapters.steam_session import request_target
+from steamzero.core import paths, transaction
 from steamzero.core.errors import SteamZeroError, build_error
 from steamzero.core.state import StateStore
 from steamzero.domain.desktop import (
@@ -58,6 +68,353 @@ _STATUS_BY_CODE = {
     "E-API-SCHEMA": HTTPStatus.BAD_REQUEST,
     "E-API-UNKNOWN-ACTION": HTTPStatus.NOT_FOUND,
 }
+
+_PUBLIC_GAME_RECORD_FIELDS = frozenset(
+    {
+        "sortTitle",
+        "aliases",
+        "systemId",
+        "family",
+        "region",
+        "language",
+        "container",
+        "size",
+        "developer",
+        "publisher",
+        "releaseDate",
+        "genres",
+        "series",
+        "franchise",
+        "description",
+        "rating",
+        "ageRating",
+        "players",
+        "features",
+        "runtime",
+        "core",
+        "emulatorId",
+        "availability",
+    }
+)
+_JOURNEY_FIELD_LABELS = {
+    "id": "Identificador",
+    "gameId": "ID do jogo",
+    "title": "Título",
+    "name": "Nome",
+    "source": "Origem",
+    "platformId": "Plataforma",
+    "platformName": "Nome da plataforma",
+    "shortName": "Nome curto",
+    "gameCount": "Quantidade de jogos",
+    "state": "Estado publicado",
+    "year": "Ano de lançamento",
+    "genre": "Gênero principal",
+    "sortTitle": "Título para ordenação",
+    "aliases": "Outros nomes",
+    "systemId": "Sistema",
+    "family": "Família de sistemas",
+    "region": "Região",
+    "language": "Idioma",
+    "container": "Formato do arquivo",
+    "size": "Tamanho",
+    "developer": "Desenvolvedora",
+    "publisher": "Publicadora",
+    "releaseDate": "Data de lançamento",
+    "genres": "Gêneros publicados",
+    "series": "Série",
+    "franchise": "Franquia",
+    "description": "Descrição",
+    "rating": "Classificação",
+    "ageRating": "Classificação etária",
+    "players": "Jogadores",
+    "features": "Recursos publicados",
+    "runtime": "Runtime publicado",
+    "core": "Core de emulação",
+    "availability": "Disponibilidade",
+    "emulatorId": "Emulador",
+}
+_JOURNEY_OPERATION_FIELDS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
+    "rename-journey": (frozenset({"name"}), frozenset()),
+    "add-menu": (frozenset({"menu"}), frozenset({"organizationId", "parentId"})),
+    "duplicate-menu": (
+        frozenset({"menuId", "newId", "name"}),
+        frozenset({"organizationId", "parentId"}),
+    ),
+    "rename-menu": (frozenset({"menuId", "name"}), frozenset()),
+    "remove-menu": (frozenset({"menuId"}), frozenset({"replacementMenuId"})),
+    "reorder-menus": (frozenset({"menuIds"}), frozenset()),
+    "set-entry-menu": (frozenset({"menuId"}), frozenset()),
+    "set-source": (frozenset({"menuId", "readModelId"}), frozenset()),
+    "add-connection": (frozenset({"connection"}), frozenset()),
+    "remove-connection": (frozenset({"connectionId"}), frozenset()),
+    "set-filters": (frozenset({"menuId", "values"}), frozenset()),
+    "set-sort": (frozenset({"menuId", "values"}), frozenset()),
+    "set-group-by": (frozenset({"menuId", "values"}), frozenset()),
+    "set-menu-appearance": (frozenset({"menuId", "appearance"}), frozenset()),
+    "set-stage-appearance": (frozenset({"stageId", "appearance"}), frozenset()),
+}
+
+
+def _effective_theme_coverage_manifest(loaded: Mapping[str, Any]) -> dict[str, Any]:
+    """Combine manifest metadata with scene declarations resolved through ``extends``."""
+    manifest = loaded.get("manifest")
+    if not isinstance(manifest, Mapping):
+        return {}
+    effective = dict(manifest)
+    declared = loaded.get("declared")
+    if isinstance(declared, Mapping):
+        for field in ("sceneMotion", "sceneLayouts", "sceneSurfaces"):
+            value = declared.get(field)
+            if isinstance(value, Mapping):
+                effective[field] = dict(value)
+    return effective
+
+
+@lru_cache(maxsize=1)
+def _game_record_public_field_types() -> dict[str, str]:
+    """Use tipos do schema canônico, publicando só campos sem paths/segredos."""
+    schema_path = Path(__file__).resolve().parents[1] / "schemas" / "game-record-v1.schema.json"
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    properties = schema.get("properties") if isinstance(schema, dict) else None
+    if not isinstance(properties, dict):
+        raise RuntimeError("schema GameRecord sem propriedades públicas")
+    types: dict[str, str] = {}
+    for field_id in sorted(_PUBLIC_GAME_RECORD_FIELDS):
+        definition = properties.get(field_id)
+        if not isinstance(definition, dict):
+            continue
+        field_type = definition.get("type")
+        if field_type in {"string", "integer", "number", "boolean"}:
+            types[field_id] = str(field_type)
+        elif (
+            field_type == "array"
+            and isinstance(definition.get("items"), dict)
+            and definition["items"].get("type") == "string"
+        ):
+            types[field_id] = "string[]"
+    return types
+
+
+def _journey_field_descriptors(field_types: Mapping[str, str]) -> list[dict[str, str]]:
+    combined = {
+        "id": "string",
+        "gameId": "string",
+        "title": "string",
+        "name": "string",
+        "source": "string",
+        "platformId": "string",
+        "platformName": "string",
+        "shortName": "string",
+        "gameCount": "integer",
+        "year": "integer",
+        "genre": "string",
+        **field_types,
+    }
+    descriptors = []
+    for field_id, field_type in combined.items():
+        label = _JOURNEY_FIELD_LABELS.get(
+            field_id, field_id.replace("Id", " ID").replace("Date", " data").capitalize()
+        )
+        descriptors.append({"id": field_id, "name": label, "label": label, "type": field_type})
+    return descriptors
+
+
+def _safe_public_value(value: object, field_type: str) -> object:
+    if field_type == "string" and isinstance(value, str):
+        return value[:4096]
+    if field_type == "integer" and isinstance(value, int) and not isinstance(value, bool):
+        return value
+    if field_type == "number" and isinstance(value, int | float) and not isinstance(value, bool):
+        return value if not isinstance(value, float) or math.isfinite(value) else None
+    if field_type == "boolean" and isinstance(value, bool):
+        return value
+    if field_type == "string[]" and isinstance(value, list):
+        return [item[:512] for item in value[:64] if isinstance(item, str)]
+    return None
+
+
+def _project_journey_game(
+    record: Mapping[str, Any],
+    *,
+    source: str,
+    platform_name_by_id: Mapping[str, str],
+    field_types: Mapping[str, str],
+    default_platform_id: str | None = None,
+) -> dict[str, Any] | None:
+    record_id = record.get("id")
+    title = record.get("title", record.get("name"))
+    if not isinstance(record_id, str) or not record_id or not isinstance(title, str) or not title:
+        return None
+    row: dict[str, Any] = {
+        "id": f"{source}:{record_id}"[:256],
+        "gameId": record_id[:128],
+        "source": source,
+        "title": title[:512],
+        "name": title[:512],
+    }
+    for field_id, field_type in field_types.items():
+        value = record.get(field_id)
+        if field_id == "platformId" and value is None:
+            value = record.get("platform", default_platform_id)
+        public_value = _safe_public_value(value, field_type)
+        if public_value is not None:
+            row[field_id] = public_value
+    platform_id = row.get("platformId")
+    if isinstance(platform_id, str) and platform_id in platform_name_by_id:
+        row["platformName"] = platform_name_by_id[platform_id]
+    release_date = row.get("releaseDate")
+    if isinstance(release_date, str) and len(release_date) >= 4:
+        year = release_date[:4]
+        if year.isdecimal() and len(year) == 4:
+            row["year"] = int(year)
+    genres = row.get("genres")
+    if isinstance(genres, list) and genres and isinstance(genres[0], str):
+        row["genre"] = genres[0]
+    elif isinstance(record.get("genre"), str):
+        row["genre"] = str(record["genre"])[:256]
+    return row
+
+
+def _project_journey_read_models(
+    dashboard: Mapping[str, Any] | None,
+) -> dict[str, dict[str, Any]]:
+    field_types = _game_record_public_field_types()
+    platform_fields = {
+        "id": "string",
+        "name": "string",
+        "shortName": "string",
+        "state": "string",
+        "gameCount": "integer",
+    }
+    if not isinstance(dashboard, Mapping):
+        return {
+            "library.games": {
+                "rows": None,
+                "fields": {
+                    **field_types,
+                    "id": "string",
+                    "gameId": "string",
+                    "title": "string",
+                    "name": "string",
+                    "source": "string",
+                    "platformId": "string",
+                    "platformName": "string",
+                    "year": "integer",
+                    "genre": "string",
+                },
+                "state": "unavailable",
+            },
+            "library.platforms": {"rows": None, "fields": platform_fields, "state": "unavailable"},
+        }
+
+    emulation = dashboard.get("emulation")
+    editorial_platforms = (
+        emulation.get("editorialPlatforms") if isinstance(emulation, Mapping) else None
+    )
+    emulation_available = isinstance(editorial_platforms, list)
+    platforms = editorial_platforms if isinstance(editorial_platforms, list) else []
+    platform_name_by_id: dict[str, str] = {}
+    platform_rows: list[dict[str, Any]] = []
+    raw_games: list[tuple[Mapping[str, Any], str | None]] = []
+    raw_game_count = 0
+    for platform in platforms:
+        if not isinstance(platform, Mapping):
+            continue
+        platform_id, platform_name = platform.get("id"), platform.get("name")
+        if not isinstance(platform_id, str) or not isinstance(platform_name, str):
+            continue
+        platform_name_by_id[platform_id] = platform_name[:256]
+        games = platform.get("games")
+        platform_games = (
+            [game for game in games if isinstance(game, Mapping)] if isinstance(games, list) else []
+        )
+        platform_rows.append(
+            {
+                "id": platform_id[:128],
+                "name": platform_name[:256],
+                "shortName": str(platform.get("shortName") or platform_name)[:128],
+                "state": str(platform.get("state") or "unknown")[:64],
+                "gameCount": len(platform_games),
+            }
+        )
+        raw_game_count += len(platform_games)
+        remaining = MAX_PUBLIC_RECORDS - len(raw_games)
+        raw_games.extend((game, platform_id) for game in platform_games[:remaining])
+
+    rows: list[dict[str, Any]] = []
+    for game, platform_id in raw_games:
+        projected = _project_journey_game(
+            game,
+            source="emulation",
+            platform_name_by_id=platform_name_by_id,
+            field_types=field_types,
+            default_platform_id=platform_id,
+        )
+        if projected is not None:
+            rows.append(projected)
+
+    steam_gameplay = dashboard.get("steamGameplay")
+    steam_games_value = steam_gameplay.get("games") if isinstance(steam_gameplay, Mapping) else None
+    steam_available = isinstance(steam_games_value, list)
+    steam_games = steam_games_value if isinstance(steam_games_value, list) else []
+    if steam_available:
+        raw_game_count += len(steam_games)
+        remaining = max(0, MAX_PUBLIC_RECORDS - len(raw_games))
+        for game in steam_games[:remaining]:
+            if not isinstance(game, Mapping):
+                continue
+            projected = _project_journey_game(
+                game,
+                source="steam",
+                platform_name_by_id=platform_name_by_id,
+                field_types=field_types,
+            )
+            if projected is not None:
+                rows.append(projected)
+
+    game_fields = {
+        **field_types,
+        "id": "string",
+        "gameId": "string",
+        "title": "string",
+        "name": "string",
+        "source": "string",
+        "platformId": "string",
+        "platformName": "string",
+        "year": "integer",
+        "genre": "string",
+    }
+    return {
+        "library.games": {
+            "rows": (
+                None
+                if raw_game_count > MAX_PUBLIC_RECORDS
+                else rows
+                if emulation_available or steam_available
+                else None
+            ),
+            "fields": game_fields,
+            "state": (
+                "budget-exceeded"
+                if raw_game_count > MAX_PUBLIC_RECORDS
+                else "ready"
+                if rows
+                else "empty"
+                if emulation_available or steam_available
+                else "unavailable"
+            ),
+            "totalRecordCount": raw_game_count,
+        },
+        "library.platforms": {
+            "rows": platform_rows if emulation_available else None,
+            "fields": platform_fields,
+            "state": "ready"
+            if platform_rows
+            else "empty"
+            if emulation_available
+            else "unavailable",
+        },
+    }
 
 
 def _qml_supports_quick_effects(executable: str) -> bool:
@@ -88,17 +445,23 @@ class DesktopControlServer(ThreadingHTTPServer):
     session_plans: dict[str, tuple[str, str]]
     bios_source_handles: dict[str, str]
     bios_source_lock: threading.Lock
+    journey_studio: JourneyStudioService
 
     def __init__(
         self,
         coordinator: ExperienceCoordinator,
         token: str,
         dashboard: DesktopDashboard | None = None,
+        journey_studio: JourneyStudioService | None = None,
     ) -> None:
         self._coordinator_template = coordinator
         self._request_context = threading.local()
         self.token = token
         self.dashboard = dashboard
+        self.journey_studio = journey_studio or JourneyStudioService(paths.data_home() / "journeys")
+        self._journey_read_models: dict[str, dict[str, Any]] | None = None
+        self._journey_read_models_lock = threading.RLock()
+        self._journey_theme_lock = threading.RLock()
         self.session_plans = {}
         # Handles de origem pertencem a esta instância efêmera da bridge. Eles
         # não são paths, não sobrevivem a uma nova lista e não são reutilizáveis
@@ -106,6 +469,15 @@ class DesktopControlServer(ThreadingHTTPServer):
         self.bios_source_handles = {}
         self.bios_source_lock = threading.Lock()
         super().__init__(("127.0.0.1", 0), DesktopControlHandler)
+
+    def publish_journey_read_models(self, dashboard_snapshot: Mapping[str, Any]) -> None:
+        projected = _project_journey_read_models(dashboard_snapshot)
+        with self._journey_read_models_lock:
+            self._journey_read_models = projected
+
+    def journey_read_models(self) -> dict[str, dict[str, Any]] | None:
+        with self._journey_read_models_lock:
+            return self._journey_read_models
 
     @property
     def coordinator(self) -> ExperienceCoordinator:
@@ -144,7 +516,9 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 status = self._control_server.coordinator.status()
                 dashboard = self._control_server.dashboard
                 if dashboard is not None:
-                    status["dashboard"] = dashboard.snapshot(status)
+                    dashboard_snapshot = dashboard.snapshot(status)
+                    status["dashboard"] = dashboard_snapshot
+                    self._control_server.publish_journey_read_models(dashboard_snapshot)
             except SteamZeroError as exc:
                 self._send(HTTPStatus.CONFLICT, {"error": exc.to_error_object()})
                 return
@@ -223,6 +597,22 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 self._send(HTTPStatus.NOT_FOUND, {"error": exc.to_error_object()})
                 return
             self._send(HTTPStatus.OK, result)
+        elif path == "/journey/studio/list":
+            self._send(
+                HTTPStatus.OK,
+                {"journeys": self._control_server.journey_studio.list()},
+            )
+        elif path == "/journey/studio/catalog":
+            try:
+                models = self._refresh_journey_read_models()
+                self._send(HTTPStatus.OK, self._journey_catalog(models))
+            except SteamZeroError as exc:
+                self._send(HTTPStatus.CONFLICT, {"error": exc.to_error_object()})
+            except Exception as exc:
+                self._send(
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                    {"error": build_error("E-INTERNAL-UNEXPECTED", detail=str(exc))},
+                )
         else:
             self._send(HTTPStatus.NOT_FOUND, {"error": "not-found"})
 
@@ -825,6 +1215,386 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             return self._dashboard().editor_cancel(
                 self._required_string(payload, "sessionId"),
             )
+        if path == "/journey/studio/create":
+            self._require_exact_keys(payload, {"name"})
+            name = self._required_string(payload, "name")
+            if len(name) > 128:
+                raise SteamZeroError("E-API-SCHEMA", detail="nome da jornada excede 128 caracteres")
+            return self._control_server.journey_studio.create(name=name)
+        if path == "/journey/studio/load":
+            self._require_exact_keys(payload, {"journeyId"})
+            return self._control_server.journey_studio.load(
+                self._required_string(payload, "journeyId")
+            )
+        if path == "/journey/studio/transact":
+            self._require_exact_keys(payload, {"operation", "payload"})
+            operation = self._required_string(payload, "operation")
+            edit_payload = self._required_dict(payload, "payload")
+            self._require_exact_keys(
+                edit_payload,
+                {"sessionId", "expectedGeneration"},
+                optional=_JOURNEY_OPERATION_FIELDS.get(operation, (frozenset(), frozenset()))[0]
+                | _JOURNEY_OPERATION_FIELDS.get(operation, (frozenset(), frozenset()))[1],
+            )
+            generation = edit_payload.get("expectedGeneration")
+            if not isinstance(generation, int) or isinstance(generation, bool) or generation < 0:
+                raise SteamZeroError("E-API-SCHEMA", detail="expectedGeneration inválida")
+            session_id = self._required_string(edit_payload, "sessionId")
+            operation_fields = _JOURNEY_OPERATION_FIELDS.get(operation)
+            if operation_fields is None:
+                raise SteamZeroError("E-API-SCHEMA", detail="operação de Jornada não allowlisted")
+            operation_payload = {
+                key: value
+                for key, value in edit_payload.items()
+                if key not in {"sessionId", "expectedGeneration"}
+            }
+            self._validate_journey_operation(operation, operation_payload)
+            return self._control_server.journey_studio.transact(
+                session_id,
+                operation,
+                operation_payload,
+                expected_generation=generation,
+            )
+        if path == "/journey/studio/save":
+            self._require_exact_keys(payload, {"sessionId", "overwrite"})
+            overwrite = payload.get("overwrite")
+            if not isinstance(overwrite, bool):
+                raise SteamZeroError("E-API-SCHEMA", detail="overwrite precisa ser booleano")
+            return self._control_server.journey_studio.save(
+                self._required_string(payload, "sessionId"), overwrite=overwrite
+            )
+        if path == "/journey/studio/preview":
+            self._require_exact_keys(
+                payload,
+                {"sessionId", "menuId"},
+                optional={"contextFilters"},
+            )
+            session_id = self._required_string(payload, "sessionId")
+            menu_id = self._required_string(payload, "menuId")
+            context_filters = payload.get("contextFilters", {})
+            if not isinstance(context_filters, dict) or any(
+                not isinstance(key, str)
+                or not key
+                or not (
+                    value is None
+                    or isinstance(value, str | int | bool)
+                    or (isinstance(value, float) and math.isfinite(value))
+                )
+                for key, value in context_filters.items()
+            ):
+                raise SteamZeroError(
+                    "E-API-SCHEMA", detail="contextFilters deve conter campos e valores escalares"
+                )
+            result, _session, _menu, _model = self._journey_preview_query(
+                session_id, menu_id, context_filters=context_filters
+            )
+            return result
+        if path == "/journey/studio/engine-preview":
+            self._require_exact_keys(payload, {"sessionId", "menuId", "expectedGeneration"})
+            session_id = self._required_string(payload, "sessionId")
+            menu_id = self._required_string(payload, "menuId")
+            expected_generation = payload.get("expectedGeneration")
+            if (
+                not isinstance(expected_generation, int)
+                or isinstance(expected_generation, bool)
+                or expected_generation < 0
+            ):
+                raise SteamZeroError("E-API-SCHEMA", detail="expectedGeneration inválida")
+            journey = self._control_server.journey_studio.snapshot(session_id)
+            if journey["generation"] != expected_generation:
+                raise SteamZeroError(
+                    "E-API-SCHEMA", detail="a jornada mudou; atualize antes de pré-visualizar"
+                )
+            query, _session, menu, model = self._journey_preview_query(session_id, menu_id)
+            if self._control_server.journey_studio.snapshot(session_id)["generation"] != (
+                expected_generation
+            ):
+                raise SteamZeroError(
+                    "E-API-SCHEMA", detail="a jornada mudou durante a pré-visualização"
+                )
+            public_fields = model.get("fields")
+            rows = query.get("rows")
+            if not isinstance(public_fields, Mapping) or not isinstance(rows, list):
+                raise SteamZeroError(
+                    "E-COMPONENT-DEGRADED", detail="a projeção pública da Jornada está inválida"
+                )
+            engine_rows = [
+                {key: value for key, value in row.items() if key in public_fields}
+                for row in rows
+                if isinstance(row, Mapping)
+            ]
+            theme_read_model = {"preview": {"items": engine_rows}}
+            appearance = menu.get("appearance")
+            declared_theme_id = (
+                str(appearance.get("themeId"))
+                if isinstance(appearance, Mapping)
+                and appearance.get("mode") == "custom"
+                and isinstance(appearance.get("themeId"), str)
+                else ""
+            )
+            dashboard = self._dashboard()
+            theme_session_ids: list[str] = []
+            try:
+                with self._control_server._journey_theme_lock:
+                    loaded_by_theme: dict[str, Mapping[str, Any]] = {}
+                    manifests: dict[str, dict[str, Any]] = {}
+                    aura_id = "org.steamzero.default"
+                    loaded_aura = dashboard.editor_load(aura_id)
+                    if not isinstance(loaded_aura, Mapping):
+                        raise SteamZeroError(
+                            "E-COMPONENT-DEGRADED", detail="Theme Engine não abriu o tema AURA"
+                        )
+                    aura_session_id = str(loaded_aura.get("sessionId") or "")
+                    if aura_session_id:
+                        theme_session_ids.append(aura_session_id)
+                    aura_manifest = loaded_aura.get("manifest")
+                    if not isinstance(aura_manifest, Mapping):
+                        raise SteamZeroError(
+                            "E-COMPONENT-DEGRADED",
+                            detail="Theme Engine devolveu o manifesto AURA inválido",
+                        )
+                    loaded_by_theme[aura_id] = loaded_aura
+                    manifests[aura_id] = _effective_theme_coverage_manifest(loaded_aura)
+
+                    if declared_theme_id and declared_theme_id != aura_id:
+                        try:
+                            loaded_custom = dashboard.editor_load(declared_theme_id)
+                        except SteamZeroError as exc:
+                            if exc.code != "E-THEME-NOT-FOUND":
+                                raise
+                        else:
+                            if not isinstance(loaded_custom, Mapping):
+                                raise SteamZeroError(
+                                    "E-COMPONENT-DEGRADED",
+                                    detail="Theme Engine não abriu o tema selecionado",
+                                )
+                            custom_session_id = str(loaded_custom.get("sessionId") or "")
+                            if custom_session_id:
+                                theme_session_ids.append(custom_session_id)
+                            custom_manifest = loaded_custom.get("manifest")
+                            if isinstance(custom_manifest, Mapping):
+                                loaded_by_theme[declared_theme_id] = loaded_custom
+                                manifests[declared_theme_id] = _effective_theme_coverage_manifest(
+                                    loaded_custom
+                                )
+
+                    coverage = self._control_server.journey_studio.coverage(
+                        session_id,
+                        used_stages=[f"menu:{menu_id}"],
+                        themes=manifests,
+                        aura_version=str(aura_manifest.get("version") or "unknown"),
+                    )
+                    coverage_stage = coverage["stages"][0]
+                    theme_id = str(coverage_stage.get("sourceThemeId") or aura_id)
+                    resolution_state = str(coverage_stage.get("appearance") or "unknown")
+                    resolution_diagnostic = ""
+                    if resolution_state == "missing-reference":
+                        resolution_diagnostic = (
+                            f"O tema {declared_theme_id} não está disponível; "
+                            "a prévia usa AURA para esta etapa."
+                        )
+                    elif resolution_state == "incompatible":
+                        missing = coverage_stage.get("missingSceneElements", [])
+                        detail = ", ".join(str(value) for value in missing)
+                        resolution_diagnostic = (
+                            f"O tema {declared_theme_id} não cobre esta etapa; "
+                            f"a prévia usa AURA{(': ' + detail) if detail else ''}."
+                        )
+                    loaded_theme = loaded_by_theme.get(theme_id)
+                    if loaded_theme is None:
+                        raise SteamZeroError(
+                            "E-COMPONENT-DEGRADED",
+                            detail=f"Theme Engine não abriu o tema resolvido: {theme_id}",
+                        )
+                    theme_session_id = str(loaded_theme.get("sessionId") or "")
+                    if not theme_session_id:
+                        raise SteamZeroError(
+                            "E-COMPONENT-DEGRADED",
+                            detail="Theme Engine não abriu uma sessão de leitura",
+                        )
+                    theme_preview = dashboard.editor_preview(
+                        theme_session_id,
+                        scene_layout_read_model=theme_read_model,
+                    )
+                    manifest = loaded_theme.get("manifest")
+                    declared = loaded_theme.get("declared")
+                    preview = theme_preview.get("preview")
+                    if not isinstance(manifest, Mapping) or not isinstance(declared, Mapping):
+                        raise SteamZeroError(
+                            "E-COMPONENT-DEGRADED",
+                            detail="Theme Engine devolveu uma declaração inválida",
+                        )
+                    if not isinstance(preview, Mapping):
+                        raise SteamZeroError(
+                            "E-COMPONENT-DEGRADED",
+                            detail="Theme Engine não materializou a pré-visualização",
+                        )
+                    return {
+                        "journeyGeneration": expected_generation,
+                        "query": query,
+                        "themeId": theme_id,
+                        "declaredThemeId": declared_theme_id or None,
+                        "themeResolutionState": resolution_state,
+                        "themeResolutionDiagnostic": resolution_diagnostic,
+                        "coverage": coverage,
+                        "manifest": dict(manifest),
+                        "declared": dict(declared),
+                        "preview": dict(preview),
+                    }
+            finally:
+                for theme_session_id in theme_session_ids:
+                    with contextlib.suppress(SteamZeroError, OSError, ValueError):
+                        dashboard.editor_cancel(theme_session_id)
+        if path == "/journey/studio/coverage":
+            self._require_exact_keys(payload, {"sessionId", "usedStages"})
+            session_id = self._required_string(payload, "sessionId")
+            used_stages = payload.get("usedStages")
+            if not isinstance(used_stages, list) or not all(
+                isinstance(value, str) and value for value in used_stages
+            ):
+                raise SteamZeroError("E-API-SCHEMA", detail="usedStages deve ser lista de IDs")
+            session = self._control_server.journey_studio.snapshot(session_id)
+            document = session["document"]
+            theme_ids = {"org.steamzero.default"}
+            for menu in document.get("menus", []):
+                appearance = menu.get("appearance", {})
+                if appearance.get("mode") == "custom" and isinstance(
+                    appearance.get("themeId"), str
+                ):
+                    theme_ids.add(appearance["themeId"])
+            for stage in document.get("sessionStages", []):
+                appearance = stage.get("appearance", {})
+                if appearance.get("mode") == "custom" and isinstance(
+                    appearance.get("themeId"), str
+                ):
+                    theme_ids.add(appearance["themeId"])
+            themes: dict[str, dict[str, Any]] = {}
+            versions: dict[str, str] = {}
+            dashboard = self._dashboard()
+            with self._control_server._journey_theme_lock:
+                for entry in dashboard.theme_list():
+                    if isinstance(entry, Mapping) and isinstance(entry.get("id"), str):
+                        versions[str(entry["id"])] = str(entry.get("version") or "unknown")
+                for theme_id in sorted(theme_ids):
+                    session_id_for_theme = ""
+                    try:
+                        loaded = dashboard.editor_load(theme_id)
+                        session_id_for_theme = str(loaded.get("sessionId") or "")
+                        candidate = loaded.get("manifest")
+                        if isinstance(candidate, Mapping):
+                            themes[theme_id] = _effective_theme_coverage_manifest(loaded)
+                    except (SteamZeroError, OSError, ValueError):
+                        pass
+                    finally:
+                        if session_id_for_theme:
+                            with contextlib.suppress(SteamZeroError, OSError, ValueError):
+                                dashboard.editor_cancel(session_id_for_theme)
+            aura_version = str(
+                themes.get("org.steamzero.default", {}).get(
+                    "version", versions.get("org.steamzero.default", "unknown")
+                )
+            )
+            result = self._control_server.journey_studio.coverage(
+                session_id,
+                used_stages=used_stages,
+                themes=themes,
+                aura_version=aura_version,
+                operation_requirements={
+                    "gameplay": ["launch"],
+                    "entryFade": ["launch"],
+                    "pause": ["pause", "resume"],
+                    "saves": ["saveState", "loadState"],
+                    "bezel": ["bezel"],
+                    "exitFade": ["exit"],
+                },
+            )
+            result["operationalSource"] = {
+                "state": "unknown",
+                "detail": (
+                    "A bridge desta sessão ainda não recebe as capabilities do adapter de jogo; "
+                    "a aparência resolvida não habilita launch, pausa, saves, bezel ou saída."
+                ),
+            }
+            return result
+        if path == "/journey/studio/import":
+            self._require_exact_keys(payload, {"source", "copyName"})
+            source = Path(self._required_string(payload, "source"))
+            if not source.is_absolute():
+                raise SteamZeroError(
+                    "E-CONTENT-UNSAFE-PATH", detail="origem do pacote precisa ser absoluta"
+                )
+            copy_name = self._required_string(payload, "copyName")
+            if len(copy_name) > 128:
+                raise SteamZeroError("E-API-SCHEMA", detail="nome da cópia excede 128 caracteres")
+            imported = self._control_server.journey_studio.import_file(source, copy_name=copy_name)
+            themes = {
+                str(theme.get("id")): theme
+                for theme in self._dashboard().theme_list()
+                if isinstance(theme, Mapping) and isinstance(theme.get("id"), str)
+            }
+            dependencies = imported.get("dependencies", [])
+            for dependency in dependencies:
+                if not isinstance(dependency, dict):
+                    continue
+                theme = themes.get(str(dependency.get("themeId", "")))
+                if theme is None:
+                    dependency.update({"state": "missing", "installedVersion": None})
+                else:
+                    dependency.update(
+                        {
+                            "state": "available-unpinned",
+                            "installedVersion": theme.get("version"),
+                        }
+                    )
+            return imported
+        if path == "/journey/studio/export/prepare":
+            self._require_exact_keys(payload, {"sessionId", "destination"})
+            destination = Path(self._required_string(payload, "destination"))
+            if not destination.is_absolute():
+                raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="destino precisa ser absoluto")
+            if destination.suffix.casefold() != ".zip":
+                raise SteamZeroError("E-API-SCHEMA", detail="destino precisa terminar em .zip")
+            if not destination.parent.is_dir() or destination.is_symlink():
+                raise SteamZeroError(
+                    "E-CONTENT-UNSAFE-PATH", detail="destino de exportação inválido"
+                )
+            if destination.exists() and not destination.is_file():
+                raise SteamZeroError(
+                    "E-CONTENT-UNSAFE-PATH", detail="destino não é arquivo regular"
+                )
+            bundle = self._control_server.journey_studio.export_copy(
+                self._required_string(payload, "sessionId")
+            )
+            plan = transaction.plan_write_files(
+                {destination: bundle}, root=destination.parent, kind="journey.studio.export"
+            )
+            return {
+                **plan.to_dict(),
+                "filename": destination.name,
+                "size": len(bundle),
+                "packageContents": ["experience.json"],
+                "dependenciesIncluded": False,
+            }
+        if path == "/journey/studio/export/apply":
+            self._require_exact_keys(payload, {"planId", "confirmToken"})
+            plan_id = self._required_string(payload, "planId")
+            plan = transaction.load_plan(plan_id)
+            if plan.kind != "journey.studio.export":
+                raise SteamZeroError("E-TX-STALE-PLAN", detail="plano não exporta uma jornada")
+            apply_result = transaction.apply(
+                plan_id, self._required_string(payload, "confirmToken")
+            )
+            return {"status": apply_result.status, "operationId": apply_result.operation_id}
+        if path == "/journey/studio/undo":
+            self._require_exact_keys(payload, {"sessionId"})
+            return self._control_server.journey_studio.undo(
+                self._required_string(payload, "sessionId")
+            )
+        if path == "/journey/studio/redo":
+            self._require_exact_keys(payload, {"sessionId"})
+            return self._control_server.journey_studio.redo(
+                self._required_string(payload, "sessionId")
+            )
         if path == "/theme/apply":
             return self._dashboard().plan_theme_apply(self._required_string(payload, "themeId"))
         if path == "/theme/apply/confirm":
@@ -909,6 +1679,205 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
         if dashboard is None:
             raise SteamZeroError("E-COMPONENT-DEGRADED", detail="dashboard Desktop indisponível")
         return dashboard
+
+    def _refresh_journey_read_models(self) -> dict[str, dict[str, Any]]:
+        dashboard_snapshot = self._dashboard().snapshot(self._control_server.coordinator.status())
+        if not isinstance(dashboard_snapshot, Mapping):
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED", detail="read model público da central indisponível"
+            )
+        self._control_server.publish_journey_read_models(dashboard_snapshot)
+        models = self._control_server.journey_read_models()
+        if models is None:
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED", detail="read model público da Jornada indisponível"
+            )
+        return models
+
+    def _journey_sources(self) -> dict[str, dict[str, Any]]:
+        models = self._control_server.journey_read_models()
+        return models if models is not None else self._refresh_journey_read_models()
+
+    def _journey_preview_query(
+        self,
+        session_id: str,
+        menu_id: str,
+        *,
+        context_filters: dict[str, Any] | None = None,
+    ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+        models = self._journey_sources()
+        session = self._control_server.journey_studio.snapshot(session_id)
+        menu = next(
+            (item for item in session["document"].get("menus", []) if item.get("id") == menu_id),
+            None,
+        )
+        if menu is None:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"menu não existe: {menu_id}")
+        source = menu.get("source")
+        read_model_id = str(source.get("readModelId", "")) if isinstance(source, Mapping) else ""
+        model = models.get(read_model_id)
+        if model is None:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail=f"read model não publicado: {read_model_id}"
+            )
+        if model.get("state") == "budget-exceeded":
+            total = int(model.get("totalRecordCount", 0))
+            result = {
+                "menuId": menu_id,
+                "readModelId": read_model_id,
+                "sourceState": "budget-exceeded",
+                "resultState": "budget-exceeded",
+                "rows": [],
+                "totalCount": total,
+                "resultCount": 0,
+                "returnedCount": 0,
+                "previewLimit": MAX_PREVIEW_ROWS,
+                "truncated": False,
+                "groups": [],
+                "groupsTruncated": False,
+                "unknownValueCounts": {},
+                "recoveryAction": "choose-smaller-source",
+                "diagnosticCode": "JOURNEY-BUDGET-RECORDS",
+                "diagnosticMessage": (
+                    f"A fonte publicou {total} registros; o limite atual é "
+                    f"{MAX_PUBLIC_RECORDS}. Escolha uma fonte menor."
+                ),
+            }
+            return result, session, menu, model
+        fields = model.get("fields")
+        if not isinstance(fields, Mapping):
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED", detail="campos da fonte pública estão indisponíveis"
+            )
+        result = self._control_server.journey_studio.preview_menu(
+            session_id,
+            menu_id,
+            rows=cast(list[dict[str, Any]] | None, model.get("rows")),
+            published_fields=cast(dict[str, str], fields),
+            published_read_models={
+                key: value["fields"]
+                for key, value in models.items()
+                if isinstance(value.get("fields"), Mapping)
+            },
+            context_filters=context_filters,
+        )
+        result["sourceState"] = str(model.get("state") or "unavailable")
+        return result, session, menu, model
+
+    def _journey_catalog(self, models: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
+        read_models: list[dict[str, Any]] = []
+        labels = {
+            "library.games": "Jogos publicados",
+            "library.platforms": "Plataformas publicadas",
+        }
+        for model_id in ("library.games", "library.platforms"):
+            model = models.get(model_id, {})
+            rows = model.get("rows")
+            fields = model.get("fields", {})
+            if not isinstance(fields, Mapping):
+                fields = {}
+            read_models.append(
+                {
+                    "id": model_id,
+                    "name": labels[model_id],
+                    "state": str(model.get("state") or "unavailable"),
+                    "recordCount": (
+                        len(rows)
+                        if isinstance(rows, list)
+                        else int(model.get("totalRecordCount", 0))
+                    ),
+                    "fields": _journey_field_descriptors(fields),
+                }
+            )
+        themes: list[dict[str, Any]] = []
+        for theme in self._dashboard().theme_list():
+            theme_id = theme.get("id")
+            if not isinstance(theme_id, str) or not theme_id:
+                continue
+            themes.append(
+                {
+                    "id": theme_id,
+                    "name": str(theme.get("name") or theme_id),
+                    "version": str(theme.get("version") or "unknown"),
+                    "state": str(theme.get("state") or "unknown"),
+                    "compatible": theme.get("compatible") is True,
+                    "origin": str(theme.get("origin") or "unknown"),
+                }
+            )
+        return {
+            "schemaVersion": 1,
+            "readModels": read_models,
+            "themes": themes,
+            "limits": {
+                "maxRecords": MAX_PUBLIC_RECORDS,
+                "previewRows": MAX_PREVIEW_ROWS,
+                "maxStringCharacters": 4096,
+                "maxArrayValues": 64,
+            },
+        }
+
+    @staticmethod
+    def _require_exact_keys(
+        payload: Mapping[str, Any],
+        required: set[str],
+        *,
+        optional: set[str] | frozenset[str] = frozenset(),
+    ) -> None:
+        keys = set(payload)
+        allowed = required | set(optional)
+        if not required <= keys or not keys <= allowed:
+            missing = sorted(required - keys)
+            extra = sorted(keys - allowed)
+            detail = []
+            if missing:
+                detail.append("ausentes: " + ", ".join(missing))
+            if extra:
+                detail.append("não allowlisted: " + ", ".join(extra))
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail="propriedades inválidas (" + "; ".join(detail) + ")"
+            )
+
+    def _validate_journey_operation(self, operation: str, payload: dict[str, Any]) -> None:
+        fields = _JOURNEY_OPERATION_FIELDS.get(operation)
+        if fields is None:
+            raise SteamZeroError("E-API-SCHEMA", detail="operação de Jornada não allowlisted")
+        required, optional = fields
+        self._require_exact_keys(payload, set(required), optional=optional)
+        string_fields = {
+            "name",
+            "menuId",
+            "newId",
+            "organizationId",
+            "parentId",
+            "replacementMenuId",
+            "readModelId",
+            "connectionId",
+            "stageId",
+        }
+        for field_id in string_fields.intersection(payload):
+            value = payload[field_id]
+            if value is None and field_id in {"parentId", "replacementMenuId"}:
+                continue
+            if not isinstance(value, str) or not value:
+                raise SteamZeroError("E-API-SCHEMA", detail=f"{field_id} precisa ser texto")
+        if operation == "reorder-menus":
+            values = payload.get("menuIds")
+            if not isinstance(values, list) or not all(
+                isinstance(value, str) and value for value in values
+            ):
+                raise SteamZeroError("E-API-SCHEMA", detail="menuIds deve ser lista de IDs")
+        if operation in {"set-filters", "set-sort", "set-group-by"} and not isinstance(
+            payload.get("values"), list
+        ):
+            raise SteamZeroError("E-API-SCHEMA", detail="values precisa ser uma lista")
+        if operation in {"add-menu", "add-connection"} and not isinstance(
+            payload.get("menu" if operation == "add-menu" else "connection"), Mapping
+        ):
+            raise SteamZeroError("E-API-SCHEMA", detail="objeto de edição inválido")
+        if operation in {"set-menu-appearance", "set-stage-appearance"}:
+            appearance = payload.get("appearance")
+            if appearance is not None and not isinstance(appearance, Mapping):
+                raise SteamZeroError("E-API-SCHEMA", detail="appearance precisa ser objeto ou null")
 
     def _issue_bios_source_handles(self) -> dict[str, list[dict[str, str]]]:
         """Publica capabilities efêmeras sem expor a identidade interna da origem."""

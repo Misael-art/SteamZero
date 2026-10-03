@@ -1,14 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "experience-journey-v1.schema.json",
-  "title": "SteamZero Experience Journey v1",
-  "description": "Menus, declared routes, public read-model filters and per-stage appearance. Session actions remain semantic adapter contracts.",
+  "$id": "experience-journey-v2.schema.json",
+  "title": "SteamZero Experience Journey v2",
+  "description": "Journey v1 plus public-field grouping and allowlisted context bindings between menus. Session actions remain semantic adapter contracts.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "kind", "id", "name", "entryMenuId", "organization", "menus", "connections", "sessionStages"],
   "properties": {
-    "schemaVersion": {"const": 1},
-    "kind": {"const": "steamzero-experience-journey-v1"},
+    "schemaVersion": {"const": 2},
+    "kind": {"const": "steamzero-experience-journey-v2"},
     "id": {"type": "string", "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)+$", "maxLength": 128},
     "name": {"type": "string", "minLength": 1, "maxLength": 80},
     "entryMenuId": {"$ref": "#/$defs/id"},
@@ -86,6 +86,15 @@
         "direction": {"enum": ["ascending", "descending"]}
       }
     },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceFieldId", "targetFieldId"],
+      "properties": {
+        "sourceFieldId": {"$ref": "#/$defs/publicFieldId"},
+        "targetFieldId": {"$ref": "#/$defs/publicFieldId"}
+      }
+    },
     "menu": {
       "type": "object",
       "additionalProperties": false,
@@ -101,6 +110,7 @@
         },
         "filters": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/filter"}},
         "sort": {"type": "array", "items": {"$ref": "#/$defs/sort"}},
+        "groupBy": {"type": "array", "uniqueItems": true, "maxItems": 8, "items": {"$ref": "#/$defs/publicFieldId"}},
         "appearance": {"$ref": "#/$defs/appearance"}
       }
     },
@@ -137,7 +147,8 @@
         "when": {"enum": ["user-input", "operation-success", "operation-failure", "timeout"]},
         "action": {"enum": ["navigate", "back", "launch", "pause", "resume", "open-saves", "save", "load", "exit", "retry"]},
         "to": {"$ref": "#/$defs/endpoint"},
-        "label": {"type": "string", "minLength": 1, "maxLength": 80}
+        "label": {"type": "string", "minLength": 1, "maxLength": 80},
+        "bindings": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/binding"}}
       }
     },
     "organizationNode": {

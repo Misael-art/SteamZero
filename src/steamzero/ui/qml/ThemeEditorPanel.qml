@@ -33,6 +33,7 @@ Rectangle {
     }
 
     property bool compactLayout: false
+    property bool journeyMode: false
     // Tema ativo no host (dashboard.theme.activeId). Main.qml deve vincular.
     property string activeThemeId: ""
     // Nome de apresentacao do tema em vigor. Vazio significa "o tema
@@ -56,6 +57,7 @@ Rectangle {
     property alias esdeImportDialogControl: esdeImportDialog
     property alias esdeImportApplyControl: esdeImportApplyButton
     property alias applyConfirmControl: applyConfirmButton
+    property alias journeyPanelControl: journeyPanel
     property var effectColorDialogControl: null
 
     signal applied()
@@ -871,7 +873,7 @@ Rectangle {
     // =====================================================================
     ColumnLayout {
         id: listColumn
-        visible: panel.editorSessionId === ""
+        visible: panel.editorSessionId === "" && !panel.journeyMode
         anchors.fill: parent
         spacing: 0
 
@@ -919,6 +921,32 @@ Rectangle {
             Layout.rightMargin: 20
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
+        }
+
+        Button {
+            objectName: "openExperienceJourneys"
+            text: qsTr("Abrir Jornadas")
+            Accessible.name: qsTr("Abrir autoria de Jornadas")
+            Accessible.description: qsTr("Crie menus conectados, filtros públicos e aparências por etapa")
+            Layout.leftMargin: 20
+            Layout.rightMargin: 20
+            Layout.fillWidth: true
+            Layout.minimumHeight: panel.minimumInteractiveTarget
+            enabled: panel.editorSessionId === ""
+            onClicked: panel.journeyMode = true
+            background: Rectangle {
+                color: parent.hovered ? panel.cyanDarkColor : panel.surfaceColor
+                radius: 8
+                border.color: parent.activeFocus ? panel.textColor : panel.cyanColor
+                border.width: parent.activeFocus ? 2 : 1
+            }
+            contentItem: Label {
+                text: parent.text
+                color: panel.textColor
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                font.weight: Font.Medium
+            }
         }
 
         Item { Layout.minimumHeight: 20 }
@@ -1266,6 +1294,26 @@ Rectangle {
                 Item { Layout.minimumHeight: 24 }
             }
         }
+    }
+
+    ExperienceJourneyPanel {
+        id: journeyPanel
+        objectName: "experienceJourneyPanel"
+        anchors.fill: parent
+        visible: panel.editorSessionId === "" && panel.journeyMode
+        requestAction: panel.requestAction
+        backgroundColor: panel.backgroundColor
+        surfaceColor: panel.surfaceColor
+        raisedColor: panel.raisedColor
+        borderColor: panel.borderColor
+        textColor: panel.textColor
+        mutedColor: panel.mutedColor
+        accentColor: panel.cyanColor
+        amberColor: panel.amberColor
+        errorColor: panel.redColor
+        visualScale: panel.visualScale
+        compactLayout: panel.compactLayout
+        onCloseRequested: panel.journeyMode = false
     }
 
     ThemedDialog {

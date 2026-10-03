@@ -18,7 +18,7 @@ import subprocess
 import tempfile
 import urllib.parse
 import zipfile
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from contextlib import suppress
 from pathlib import Path
 from typing import Any, cast
@@ -2226,10 +2226,24 @@ class DesktopDashboard:
         return self._theme_editor.redo(session_id)
 
     def editor_preview(
-        self, session_id: str, *, high_contrast: bool = False, reduced_motion: bool = False
+        self,
+        session_id: str,
+        *,
+        high_contrast: bool | None = None,
+        reduced_motion: bool | None = None,
+        scene_layout_read_model: Mapping[str, Any] | None = None,
     ) -> dict[str, object]:
+        if high_contrast is None:
+            with contextlib.suppress(Exception):
+                high_contrast = self._high_contrast_probe()
+        if reduced_motion is None:
+            with contextlib.suppress(Exception):
+                reduced_motion = self._reduced_motion_probe()
         return self._theme_editor.preview(
-            session_id, high_contrast=high_contrast, reduced_motion=reduced_motion
+            session_id,
+            high_contrast=bool(high_contrast),
+            reduced_motion=bool(reduced_motion),
+            scene_layout_read_model=scene_layout_read_model,
         )
 
     def editor_save(self, session_id: str, *, overwrite: bool = False) -> dict[str, str]:

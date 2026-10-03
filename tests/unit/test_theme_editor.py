@@ -198,6 +198,45 @@ class TestEditorSetLayout:
         preview = mgr.preview(sid)["preview"]
         assert preview["sceneLayoutPreview"]["layouts"]["main"]["columns"] == 2
 
+    def test_preview_consumes_the_callers_public_scene_layout_read_model(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        manifest = dict(_VALID_MANIFEST)
+        manifest["sceneLayouts"] = {
+            "schemaVersion": 1,
+            "layouts": {
+                "previewTitles": {
+                    "source": "preview.items",
+                    "kind": "grid",
+                    "item": {"width": 120, "height": 64},
+                    "template": {
+                        "kind": "text",
+                        "id": "title",
+                        "properties": {"text": {"binding": "item.title", "fallback": "Sem título"}},
+                    },
+                    "gap": 8,
+                    "maxItems": 16,
+                    "columns": 2,
+                }
+            },
+        }
+        _write_theme(tmp_path / "steamzero" / "themes", manifest)
+        manager = ThemeEditorManager()
+        session_id = manager.load("org.test.editme")["sessionId"]
+
+        result = manager.preview(
+            session_id,
+            high_contrast=True,
+            reduced_motion=True,
+            scene_layout_read_model={"preview": {"items": [{"title": "Jogo filtrado da Jornada"}]}},
+        )
+        entries = result["preview"]["sceneLayoutPreview"]["layouts"]["previewTitles"]["entries"]
+        assert [entry["text"] for entry in entries] == ["Jogo filtrado da Jornada"]
+        assert "Axiom Verge" not in [entry["text"] for entry in entries]
+        assert result["preview"]["highContrast"] is True
+        assert result["preview"]["reducedMotion"] is True
+
     def test_layout_edit_requires_allowlisted_field(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

@@ -1584,6 +1584,193 @@ def handheld_ui_contracts() -> dict[str, Any]:
             control="theme-editor-cancel",
             schema=_schema("sessionId", sessionId="string"),
         ),
+        # --- Studio de Jornadas ------------------------------------------
+        _action(
+            "journey.studio.list",
+            "Listar jornadas salvas",
+            "/journey/studio/list",
+            service="journey",
+            screen="system",
+            control="journey-studio-list",
+            method="GET",
+        ),
+        _action(
+            "journey.studio.catalog",
+            "Consultar fontes e temas publicados",
+            "/journey/studio/catalog",
+            service="journey",
+            screen="system",
+            control="journey-studio-catalog",
+            method="GET",
+        ),
+        _action(
+            "journey.studio.create",
+            "Criar jornada",
+            "/journey/studio/create",
+            service="journey",
+            screen="system",
+            control="journey-studio-create",
+            schema=_closed_schema(
+                ("name",), {"name": {"type": "string", "minLength": 1, "maxLength": 128}}
+            ),
+        ),
+        _action(
+            "journey.studio.load",
+            "Abrir jornada salva",
+            "/journey/studio/load",
+            service="journey",
+            screen="system",
+            control="journey-studio-load",
+            schema=_closed_schema(
+                ("journeyId",), {"journeyId": {"type": "string", "minLength": 1}}
+            ),
+        ),
+        _action(
+            "journey.studio.transact",
+            "Editar jornada",
+            "/journey/studio/transact",
+            service="journey",
+            screen="system",
+            control="journey-studio-edit",
+            schema=_closed_schema(
+                ("operation", "payload"),
+                {
+                    "operation": {"type": "string"},
+                    # O servidor valida as propriedades internas pela operação.
+                    "payload": {"type": "object"},
+                },
+            ),
+        ),
+        _action(
+            "journey.studio.save",
+            "Salvar jornada",
+            "/journey/studio/save",
+            service="journey",
+            screen="system",
+            control="journey-studio-save",
+            schema=_closed_schema(
+                ("sessionId", "overwrite"),
+                {
+                    "sessionId": {"type": "string", "minLength": 1},
+                    "overwrite": {"type": "boolean"},
+                },
+            ),
+        ),
+        _action(
+            "journey.studio.preview",
+            "Pré-visualizar menu da jornada",
+            "/journey/studio/preview",
+            service="journey",
+            screen="system",
+            control="journey-studio-preview",
+            schema=_closed_schema(
+                ("sessionId", "menuId"),
+                {
+                    "sessionId": {"type": "string", "minLength": 1},
+                    "menuId": {"type": "string", "minLength": 1},
+                    "contextFilters": {"type": "object"},
+                },
+            ),
+        ),
+        _action(
+            "journey.studio.engine-preview",
+            "Renderizar tema com os resultados da jornada",
+            "/journey/studio/engine-preview",
+            service="journey",
+            screen="system",
+            control="journey-studio-preview",
+            schema=_closed_schema(
+                ("sessionId", "menuId", "expectedGeneration"),
+                {
+                    "sessionId": {"type": "string", "minLength": 1},
+                    "menuId": {"type": "string", "minLength": 1},
+                    "expectedGeneration": {"type": "integer", "minimum": 0},
+                },
+            ),
+        ),
+        _action(
+            "journey.studio.coverage",
+            "Verificar cobertura visual e operacional",
+            "/journey/studio/coverage",
+            service="journey",
+            screen="system",
+            control="journey-studio-coverage",
+            schema=_closed_schema(
+                ("sessionId", "usedStages"),
+                {
+                    "sessionId": {"type": "string", "minLength": 1},
+                    "usedStages": {"type": "array", "items": {"type": "string"}},
+                },
+            ),
+        ),
+        _action(
+            "journey.studio.import",
+            "Importar jornada como cópia",
+            "/journey/studio/import",
+            service="journey",
+            screen="system",
+            control="journey-studio-import",
+            schema=_closed_schema(
+                ("source", "copyName"),
+                {
+                    "source": {"type": "string", "minLength": 1},
+                    "copyName": {"type": "string", "minLength": 1, "maxLength": 128},
+                },
+            ),
+        ),
+        _action(
+            "journey.studio.export.prepare",
+            "Preparar exportação da jornada",
+            "/journey/studio/export/prepare",
+            service="journey",
+            screen="system",
+            control="journey-studio-export",
+            schema=_closed_schema(
+                ("sessionId", "destination"),
+                {
+                    "sessionId": {"type": "string", "minLength": 1},
+                    "destination": {"type": "string", "minLength": 1},
+                },
+            ),
+        ),
+        _action(
+            "journey.studio.export.apply",
+            "Confirmar exportação da jornada",
+            "/journey/studio/export/apply",
+            service="journey",
+            screen="system",
+            control="journey-studio-export",
+            schema=_closed_schema(
+                ("planId", "confirmToken"),
+                {
+                    "planId": {"type": "string", "minLength": 1},
+                    "confirmToken": {"type": "string", "minLength": 1},
+                },
+            ),
+            confirmation="token",
+        ),
+        _action(
+            "journey.studio.undo",
+            "Desfazer edição da jornada",
+            "/journey/studio/undo",
+            service="journey",
+            screen="system",
+            control="journey-studio-undo",
+            schema=_closed_schema(
+                ("sessionId",), {"sessionId": {"type": "string", "minLength": 1}}
+            ),
+        ),
+        _action(
+            "journey.studio.redo",
+            "Refazer edição da jornada",
+            "/journey/studio/redo",
+            service="journey",
+            screen="system",
+            control="journey-studio-redo",
+            schema=_closed_schema(
+                ("sessionId",), {"sessionId": {"type": "string", "minLength": 1}}
+            ),
+        ),
     ]
     return {
         "schemaVersion": 1,

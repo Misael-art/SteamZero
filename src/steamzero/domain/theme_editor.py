@@ -8,7 +8,7 @@ import io
 import json
 import re
 import zipfile
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -314,12 +314,17 @@ def _editor_chain_diagnostic(exc: BaseException) -> dict[str, str] | None:
 
 
 def _declared(manifest: dict[str, object]) -> dict[str, object]:
-    """Declaração efetiva (cadeia ``extends`` + rascunho) de efeitos e movimento.
+    """Declaração visual efetiva da cadeia ``extends`` e do rascunho.
 
     Diferente do preview, nada aqui é negociado por capability, tier ou
     acessibilidade: é o que o tema *declara*, base de edição dos inspetores.
     """
-    out: dict[str, object] = {"effects": {}, "sceneMotion": None, "sceneLayouts": None}
+    out: dict[str, object] = {
+        "effects": {},
+        "sceneMotion": None,
+        "sceneLayouts": None,
+        "sceneSurfaces": None,
+    }
     try:
         draft = ThemeManifest.from_dict(dict(manifest))
         available = _load_manifests_for_resolution()
@@ -335,6 +340,8 @@ def _declared(manifest: dict[str, object]) -> dict[str, object]:
             out["sceneMotion"] = item.scene_motion.to_dict()
         if item.scene_layouts is not None:
             out["sceneLayouts"] = item.scene_layouts.to_dict()
+        if item.scene_surfaces is not None:
+            out["sceneSurfaces"] = item.scene_surfaces.to_dict()
     out["effects"] = stacks
     return out
 
@@ -356,6 +363,7 @@ def _resolved_preview(
     *,
     high_contrast: bool = False,
     reduced_motion: bool = False,
+    scene_layout_read_model: Mapping[str, Any] | None = None,
 ) -> dict[str, object]:
     resolved, diagnostics = _make_resolved(
         manifest,
@@ -364,13 +372,18 @@ def _resolved_preview(
         high_contrast=high_contrast,
         reduced_motion=reduced_motion,
     )
-    return _to_preview_object(resolved, diagnostics=diagnostics)
+    return _to_preview_object(
+        resolved,
+        diagnostics=diagnostics,
+        scene_layout_read_model=scene_layout_read_model,
+    )
 
 
 def _to_preview_object(
     resolved: ResolvedTheme,
     *,
     diagnostics: tuple[dict[str, str], ...] = (),
+    scene_layout_read_model: Mapping[str, Any] | None = None,
 ) -> dict[str, object]:
     """Entrega ao editor um preview já materializado, nunca bindings vivos."""
     preview = resolved.to_theme_qml_object()
@@ -378,7 +391,11 @@ def _to_preview_object(
     if resolved.scene_layouts is not None:
         preview["sceneLayoutPreview"] = resolve_scene_layouts(
             resolved.scene_layouts,
-            _LAYOUT_PREVIEW_READ_MODEL,
+            (
+                scene_layout_read_model
+                if scene_layout_read_model is not None
+                else _LAYOUT_PREVIEW_READ_MODEL
+            ),
             bounds=_LAYOUT_PREVIEW_BOUNDS,
         ).to_qml_object()
     extracted = None
@@ -953,9 +970,17 @@ class ThemeEditorManager:
         *,
         high_contrast: bool = False,
         reduced_motion: bool = False,
+        scene_layout_read_model: Mapping[str, Any] | None = None,
     ) -> dict[str, object]:
         session = self._get_session(session_id)
-        return {"preview": self._preview(session, high_contrast, reduced_motion)}
+        return {
+            "preview": self._preview(
+                session,
+                high_contrast,
+                reduced_motion,
+                scene_layout_read_model=scene_layout_read_model,
+            )
+        }
 
     def save(self, session_id: str, *, overwrite: bool = False) -> dict[str, str]:
         session = self._get_session(session_id)
@@ -1086,6 +1111,8 @@ class ThemeEditorManager:
         session: EditorSession,
         high_contrast: bool = False,
         reduced_motion: bool = False,
+        *,
+        scene_layout_read_model: Mapping[str, Any] | None = None,
     ) -> dict[str, object]:
         return _resolved_preview(
             session.manifest,
@@ -1093,6 +1120,7 @@ class ThemeEditorManager:
             session.assets,
             high_contrast=high_contrast,
             reduced_motion=reduced_motion,
+            scene_layout_read_model=scene_layout_read_model,
         )
 
 
