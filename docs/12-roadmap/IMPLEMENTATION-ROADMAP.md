@@ -40,7 +40,7 @@ Leia `README.md`, `ACHADOS.md`, `TAREFAS-A-CODIGO.md`, `RC01.md` e `MATRIZ.md` d
 | **V1 — Central e Studio com apresentação consistente** | Ações e estados legíveis; modais pertencem ao tema; erro informa causa e recuperação sem esconder a tela | RC-01; tokens/controles/paleta de Popup, navegação Temas/Studio, erros, locale e a11y | Resolver AC-134-01–09 como conjunto coerente: contraste essencial ≥7:1 salvo política equivalente formalmente aprovada; alvos/foco coerentes; duplicata aponta ID existente e conserva hash; erros locais com detalhe no modal; memória formatada conforme unidade real; ícones/abas nomeados e ativáveis; erros críticos preservados sem dominar todas as rotas |
 | **V2 — Tema importado que efetivamente executa** | Escolher uma cena, visualizar com dados válidos, aplicar explicitamente e voltar ao estado anterior | RC-05 + runtime RC-06; catálogo, resolver, read model, render e Launcher/Cinema | Builtin AURA Cinema e um fixture licenciado de ES-DE e RetroFE percorrem importar→resolver→preview→uso no consumidor correto→restaurar. Mídia/textos resolvidos, sem corpo vazio ou fallback silencioso; degradações informadas. Isolamento sintético explícito impede mistura com biblioteca pessoal; pacote inválido recupera superfície segura sem perder foco |
 | **V3 — Theme Studio útil de ponta a ponta** | Criar uma composição, alterar arte/layout/receita, desfazer/refazer e usar o pacote produzido | RC-06; sessão/documento, canvas/árvore/inspector, layout/receitas, persistência/export | Pela UI: criar→selecionar elemento→editar propriedades→preview→undo/redo→salvar→fechar/reabrir→exportar/importar→executar no runtime de V2. Conteúdo preservado semanticamente; não depende de editar JSON ou imagem fora do Studio; origem protegida, namespace de cópia e confirmação de sobrescrita |
-| **V4 — Autoria avançada e jornadas executáveis** | Criar menus conectados, navegar por metadados, personalizar cada etapa e preservar o retorno; avançar autoria de efeitos/movimento | RC-06; sidecar `experience-journey-v1`, grafo/contexto, read models públicos, herança AURA, Theme Engine, Launcher/Cinema, sessão por capability; effect graph/timeline, tiers e receitas | Pela UI: criar pelo menos 3 menus, conectar/reordenar, compartilhar destinos, filtrar por campos publicados e completar round-trip. Antes de aplicar, listar cada etapa AURA herdada. O mesmo documento salvo/reaberto precisa alterar Preview, Engine e Launcher; launch/pause/save/load/exit seguem resultado de adapter e restauram filtros, seleção, rolagem e foco. Ciclo manual válido; referência inválida, ciclo automático, campo desconhecido, erro e capability ausente recuperáveis. Efeitos, movimento, reducedMotion e fallback passam testes próprios. p95 ≤16,7 ms e VRAM ≤512 MB somente com cena, hardware e release identificados; FPS apresentado apenas com instrumento adequado |
+| **V4 — Autoria avançada e jornadas executáveis** | Criar menus conectados, navegar por metadados, personalizar cada etapa e preservar o retorno; avançar autoria de efeitos/movimento | RC-06; sidecar `experience-journey-v2` com migração v1, grafo/contexto, read models públicos, herança AURA, Theme Engine, Launcher/Cinema, sessão por capability; effect graph/timeline, tiers e receitas | Pela UI: criar pelo menos 3 menus, conectar/reordenar, compartilhar destinos, filtrar por campos publicados e completar round-trip. Antes de aplicar, listar cada etapa AURA herdada. O mesmo documento salvo/reaberto precisa alterar Preview, Engine e Launcher; launch/pause/save/load/exit seguem resultado de adapter e restauram filtros, seleção, rolagem e foco. Ciclo manual válido; referência inválida, ciclo automático, campo desconhecido, erro e capability ausente recuperáveis. Efeitos, movimento, reducedMotion e fallback passam testes próprios. p95 ≤16,7 ms e VRAM ≤512 MB somente com cena, hardware e release identificados; FPS apresentado apenas com instrumento adequado |
 
 V1 não é uma troca indiscriminada de aparência. Preservar a linguagem AURA, tornar hierarquia/estado/ação legíveis e corrigir causas compartilhadas. Medir o par efetivo após composição/opacity; controles desabilitados devem explicar indisponibilidade sem apagar informação essencial. Registrar dimensões lógicas e físicas/escala, sem tratar extents AT-SPI como unidades conhecidas por suposição.
 
@@ -48,13 +48,19 @@ V2 diferencia **tema da central**, **pacote/cena da Engine** e **cena do Launche
 
 V3 começa pelo documento e pelas operações que já existem. Concluir sessão→ação autenticada→validação→persistência→render; não criar editor paralelo. A fatia básica inclui orientação `none/auto/portrait/landscape`, enquadramento/alinhamento/ponto focal e receitas por slot conforme a spec, implementando o recorte necessário completo. Não basta mostrar effect/timeline como texto ou desenhar canvas sem salvar. A declaração de Studio completo aguarda também V4 e o DoD integral.
 
-V4 usa o sidecar versionado `experience-journey-v1`; `theme-manifest-v1`
-continua estrito e não recebe campos de jornada ad hoc. Schema, limites defensivos,
-filtros tipados e lógica de contexto isolada são fundação, não aceite de produto.
-O aceite continua pendente até autoria pela UI e consumo do mesmo documento no
-Preview, Engine e Launcher/Cinema, com herança por etapa e operações da sessão
-confirmadas pelo adapter. Sessões sintéticas e animações não provam launch,
-pausa, save/load ou exit reais.
+V4 usa o sidecar `experience-journey-v2`, com leitura migrável de v1;
+`theme-manifest-v1` continua estrito e não recebe campos de jornada ad hoc.
+Nesta branch, a bridge allowlisted consulta o catálogo público e o painel de
+Jornadas faz operações transacionais de criação/edição/histórico/arquivo pelo
+servidor real de loopback. O round-trip da UI é exercitado com três menus e um
+destino compartilhado. `journey.studio.engine-preview` entrega os resultados
+públicos filtrados ao resolver native e confirma a composição do documento
+salvo/reaberto no Theme Engine em fixture sintética. Isso fecha a dependência
+local entre bridge, read model e `sceneLayouts`; não demonstra pixels/tempo em
+release, nem consumo pelo Launcher/Cinema. O aceite V4 permanece pendente até o
+Launcher consumir a jornada, a sessão publicar e executar capabilities reais,
+e o roteiro B_VISUAL ocorrer em candidata instalada. Sessões sintéticas e
+animações não provam launch, pausa, save/load ou exit reais.
 
 ### Relação com os achados e trabalho restante
 

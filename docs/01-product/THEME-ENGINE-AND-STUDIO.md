@@ -388,9 +388,11 @@ AURA Launcher. Os quatro itens mantêm estados e provas independentes.
 ## 21. Jornadas de experiência, menus e etapas
 
 A navegação completa da experiência é um documento sidecar versionado
-`experience-journey-v1`; ela não é uma extensão informal do manifesto
-`theme-manifest-v1`, que continua rejeitando propriedades desconhecidas. O
-contrato está em `src/steamzero/schemas/experience-journey-v1.schema.json`.
+`experience-journey-v2`; leitores também migram documentos v1 para v2. Ela não é
+uma extensão informal do manifesto `theme-manifest-v1`, que continua rejeitando
+propriedades desconhecidas. Os contratos estão em
+`src/steamzero/schemas/experience-journey-v1.schema.json` e
+`src/steamzero/schemas/experience-journey-v2.schema.json`.
 
 - O documento separa a organização visual da árvore do grafo de conexões. Links
   apontam para IDs estáveis de menus/etapas, e várias origens podem apontar para
@@ -408,6 +410,8 @@ contrato está em `src/steamzero/schemas/experience-journey-v1.schema.json`.
   corrigidas silenciosamente.
 - Fontes, campos, tipos e valores vêm de read models públicos versionados. Filtros
   combinam como AND, são tipados e allowlisted; ordenação usa os mesmos campos.
+  A v2 acrescenta agrupamento por campo publicado e bindings declarativos entre
+  menus, que só acrescentam filtros AND no destino.
   SQL, eval, script, QML, shell e acesso a tabelas internas não fazem parte do
   contrato. Dados desconhecidos, zero resultados e fonte indisponível têm
   estados e recuperação distintos.
@@ -447,9 +451,37 @@ AURA; referências ausentes e incompatibilidades aparecem em linhas próprias,
 mesmo quando seu fallback visual também usa AURA. A lista de capabilities do
 adapter não deriva da aparência escolhida.
 
-O estado atual é **fundação parcial de contrato/domínio**: schema e resolução
-isolada de documento, filtros, contexto e cobertura têm testes unitários. Isso
-não certifica autoria pela UI, persistência/export pela interface, consumo no
-Preview/Engine/Launcher, operação de sessão nem input físico. Os itens Theme
-Studio, Theme Engine, Launcher/Cinema e sessão continuam com critérios e provas
-independentes.
+O estado atual é **parcial**. A branch de continuidade contém o schema v2, o
+serviço transacional e o painel de Jornadas anexado ao Theme Studio, com árvore,
+conexões, filtros, bindings, agrupamento, temas por menu/etapa, aviso de
+herança, histórico e operações de arquivo. A bridge autenticada de loopback
+publica `journey.studio.*` sobre `JourneyStudioService` e os read models
+públicos do Desktop. O teste QML da bridge cria e edita menus pela interface,
+salva/reabre a mesma jornada e usa a composição da etapa selecionada.
+
+`journey.studio.engine-preview` consulta os resultados filtrados no servidor,
+limita bindings ao catálogo de campos públicos, resolve a cobertura da etapa e
+passa `preview.items` ao `DesktopDashboard.editor_preview`/`ThemeEditorManager`.
+O resolver native materializa os `sceneLayouts` declarados, e o QML reutiliza
+`ThemeStudioCanvas`. Um teste de bridge confirma que o documento reaberto com o
+tema `org.steamzero.asset-recipes-demo` produz somente o título filtrado da
+Jornada, sem a amostra estática Axiom Verge. Referência de tema ausente ou slot
+incompatível cai explicitamente em AURA e devolve a causa; high contrast e
+reduced motion usam os probes do dashboard na execução normal. A cena XML
+continua usando o renderer ES-DE já existente e recebe a projeção filtrada do
+componente, mas não foi exercitada nesse round-trip da bridge.
+
+Outro teste edita `maxItems` no tema filho de `asset-recipes-demo`, salva e
+reabre o pacote, e confirma que o Theme Engine mantém a edição na prévia da
+Jornada: dos três registros filtrados, só os dois primeiros chegam à cena. A
+cobertura também usa `sceneSurfaces` herdado da cadeia `extends`, sem declarar
+incompatibilidade falsa. Isso verifica o consumo nativo do documento salvo no
+Theme Engine neste checkout, com fixtures e registros sintéticos isolados.
+
+O resultado não prova a janela Main instalada, pixels/tempo de uma release, nem
+consumo pelo AURA Launcher/Cinema. A cena XML ainda não foi exercitada nesse
+round-trip. Capabilities de launch, pause/resume, saves, bezel e exit continuam
+`unknown` quando o adapter da sessão não as publica; a aparência resolvida
+nunca as habilita. Não houve integração de sessão ou input físico nesta etapa.
+Theme Studio, Theme Engine, AURA UI, AURA Launcher e os adapters de sessão
+continuam com critérios e provas independentes.

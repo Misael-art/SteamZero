@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "ready",
   "distribution": "installed",
-  "scopeDigest": "78b65d453704707c96f65b87b9572ba3759727d63a195edb6641b4c5a7ac51c4",
+  "scopeDigest": "149d20788bacc3343f77ff47c75b9e7c54885986e488482ab8216573c4d11bed",
   "scopePaths": [
     "src/steamzero/adapters/desktop_contracts.py",
     "src/steamzero/adapters/desktop_dashboard.py",
@@ -150,10 +150,28 @@
       "reference": "tests/integration/test_retrofe_import_dialog_compact.py",
       "command": "2026-10-02, após atualizar quatro goldens com capturas Qt 6.11.2 inspecionadas: rtk env SZ_CAPTURE_DIR= .venv/bin/python tools/run_tests_isolated.py tests/integration/test_esde_import_dialog_compact.py tests/integration/test_retrofe_import_dialog_compact.py -q; 13 passed em 6,39 s, geometria dentro dos viewports e pixel diff zero. Offscreen; sem input físico.",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_retrofe_import_dialog_compact.py",
+      "command": "2026-10-02, regressão do screenshot depois da entrada Abrir Jornadas no fundo do ThemeEditorPanel; após inspeção/atualização das baselines, a execução conjunta ES-DE/RetroFE passou 13/13 em 10,26s. RetroFE: geometria e conteúdo do modal preservados; somente a tela subjacente inclui a nova entrada. Harness Qt offscreen, sem input físico ou release.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-10-03-journey-engine-preview/README.md",
+      "command": "2026-10-03 shared-scope renewal: SHA/digest re-evaluated after the Journey bridge/Engine preview and product/status documentation changed shared paths. No acceptance criterion or capability of this item was promoted by that change; this record is scope reconciliation, not new product evidence.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-10-03-journey-engine-preview/README.md",
+      "command": "2026-10-03, renovação do scopeDigest por caminhos compartilhados da bridge (desktop_contracts.py, desktop_dashboard.py, desktop_ui.py) e alterações de ThemeEditorPanel/goldens pertencentes ao lote atual. Registro de escopo apenas; o teste específico do diálogo RetroFE não foi reexecutado neste checkpoint e nenhum eixo do item foi promovido.",
+      "result": "recorded"
     }
   ],
   "nextAction": "Manter a entrada RetroFE instalada e documentar explicitamente que inspeção/importação não promove ativação automática da cena.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-29",
-  "notes": "A rota QML RetroFE oferece origem por pasta/XML, inspeção de layouts, relatório de cobertura/degradação, créditos/licença e confirmação explícita. A aplicação valida a licença, recusa assets ausentes ou symlinkados, grava blobs por conteúdo e publica sidecar de custódia junto ao IR; a cena continua sem ativação automática. A release 2.0.0rc1-435f9108eeb7 foi instalada e convergida no host, com rollback 2.0.0rc1-b09908a58261. 2026-10-02: renovacao de escopo por alteracao restrita aos inspetores de autoria do Theme Studio. Importacao ES-DE/RetroFE, dialogs do shell e eixos deste item nao foram alterados nem promovidos. Em 2026-10-02, os controles compartilhados ganharam alvo mínimo efetivo de 48 px. O diálogo RetroFE mudou visualmente nos quatro viewports; os goldens foram atualizados após inspeção e a rodada combinada ES-DE/RetroFE passou 13/13. A rodada vermelha contra as baselines antigas permanece registrada; isso não certifica input físico ou release."
+  "updatedAt": "2026-10-03",
+  "notes": "A rota QML RetroFE oferece origem por pasta/XML, inspeção de layouts, relatório de cobertura/degradação, créditos/licença e confirmação explícita. A aplicação valida a licença, recusa assets ausentes ou symlinkados, grava blobs por conteúdo e publica sidecar de custódia junto ao IR; a cena continua sem ativação automática. A release 2.0.0rc1-435f9108eeb7 foi instalada e convergida no host, com rollback 2.0.0rc1-b09908a58261. 2026-10-02: renovacao de escopo por alteracao restrita aos inspetores de autoria do Theme Studio. Importacao ES-DE/RetroFE, dialogs do shell e eixos deste item nao foram alterados nem promovidos. Em 2026-10-02, os controles compartilhados ganharam alvo mínimo efetivo de 48 px. O diálogo RetroFE mudou visualmente nos quatro viewports; os goldens foram atualizados após inspeção e a rodada combinada ES-DE/RetroFE passou 13/13. A rodada vermelha contra as baselines antigas permanece registrada; isso não certifica input físico ou release. Em 2026-10-02, as baselines de RetroFE foram atualizadas após inspeção da captura causada pela nova entrada Abrir Jornadas no fundo do ThemeEditorPanel. O modal manteve geometria/conteúdo; o teste combinado passou 13/13 em Qt offscreen. Esta renovação não promove instalação física nem release."
 }

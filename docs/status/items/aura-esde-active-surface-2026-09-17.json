@@ -9,7 +9,7 @@
   "verification": "dev",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopeDigest": "0a69c7f025e19b4a9b10c486f50bbe4b614f1020416e72376ce6eeb790c8471e",
+  "scopeDigest": "20925c943191aa6a6f908cc44b060886f16a47aecdc15aaea6efbb27dfe8bb15",
   "scopePaths": [
     "src/steamzero/adapters/desktop_dashboard.py",
     "src/steamzero/domain/theme_import_esde.py",
@@ -72,12 +72,18 @@
       "reference": "docs/09-operations/evidence/2026-09-27-shell-esde-dialog/00-preflight.log",
       "command": "2026-09-27 RC-01 (4a fatia, dialogo ES-DE do shell): scopeDigest renovado por mudanca ALHEIA a este item. O escopo deste cartao declara src/steamzero/ui/qml/Main.qml, que a frente RC-01 editou para dar ao dialogo de importacao ES-DE do shell teto de altura, corpo rolavel, rodape fixo de 48 px e navegacao por tecla real (objeto theme-import-esde-dialog). A renovacao e revalidacao de escopo, NAO carimbo: nenhuma evidencia deste item foi reexecutada e nada do que esta pendente aqui mudou de estado. O gate da frente (tests/integration/test_ui_shell_esde_import_dialog.py, 20 passed na arvore da entrega) cobre o dialogo alterado, nao as assercoes deste cartao. A conciliacao do claim de Main.qml, medida e nao presumida, esta no log referenciado. Nada da superficie ativa de ESDE/Aura foi tocado.",
       "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-10-03-journey-engine-preview/README.md",
+      "command": "2026-10-03 shared-scope renewal: SHA/digest re-evaluated after the Journey bridge/Engine preview and product/status documentation changed shared paths. No acceptance criterion or capability of this item was promoted by that change; this record is scope reconciliation, not new product evidence.",
+      "result": "recorded"
     }
   ],
   "nextAction": "Publicar a branch, acompanhar gates e executar a prova governada na release instalada com captura do background ativo.",
   "activeWorkstreams": [
     "WS-2026-09-ESDE-ACTIVE-SURFACE"
   ],
-  "updatedAt": "2026-09-26",
+  "updatedAt": "2026-10-03",
   "notes": "A ponte técnica agora preserva background estático, permite aplicar o tema pela rota transacional existente e renderiza a camada ativa com fallback. A prova física requer release instalada; decoder de vídeo e read model de jogo ainda não foram promovidos."
 }

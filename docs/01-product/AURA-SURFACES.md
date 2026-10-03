@@ -30,6 +30,33 @@ release ou evidência. Toda afirmação precisa nomear uma destas capacidades:
 - Integrações Steam/SRM/ES-DE/RetroFE são frontends/adapters independentes; sua
   existência também não implementa o AURA Launcher.
 
+## Inventário de superfícies do Studio nesta branch
+
+O `ThemeEditorPanel` oferece a entrada **Abrir Jornadas** e alterna para o
+`ExperienceJourneyPanel`. A tela apresenta árvore organizacional, conexões,
+fontes e filtros públicos, bindings, agrupamento, aparências por menu/etapa,
+cobertura AURA, preview dos dados/filtros, histórico e operações de arquivo. Em
+compacto, árvore e inspetor têm alternância explícita.
+
+Na branch de continuidade, a bridge autenticada de loopback publica as ações
+allowlisted `journey.studio.*`, inclusive criação, catálogo público, transações,
+histórico, preview, cobertura e arquivo. Um teste QML dirige o componente contra
+o servidor `DesktopControlServer` real: cria menus e facetas conectadas, usa um
+destino compartilhado, salva/reabre e exporta/importa uma cópia. A ação
+`journey.studio.engine-preview` consulta a geração atual, resolve cobertura e
+alimenta o resolver native de `sceneLayouts` com linhas públicas filtradas. A
+prova de bridge verifica a cena de um documento reaberto no checkout e na
+biblioteca sintética. Outro caso edita `maxItems` em um tema filho de
+`asset-recipes-demo`, salva/reabre o pacote e confirma a lista limitada na cena;
+a cobertura inclui `sceneSurfaces` herdado. Essas provas não substituem release
+instalada ou pixels/tempo no hardware. Sem bridge disponível, a UI continua
+preservando o rascunho e desabilitando gravação.
+
+O mesmo documento ainda não é consumido pelo AURA Launcher/Cinema nem ligado a
+capabilities reais da sessão. AURA UI instalada, Theme Engine e Theme Studio
+continuam capacidades independentes; os resultados desta branch não promovem
+nenhuma delas a `installed` ou `certified`.
+
 ## Linguagem permitida em reportes
 
 - “AURA UI instalada; validação visual pendente.”

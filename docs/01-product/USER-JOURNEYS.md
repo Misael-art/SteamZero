@@ -41,3 +41,23 @@ Formato: passos → estados do sistema → pontos de falha tratados.
 ## J9. Migração de instalação EmuDeck/RetroDECK existente (P2)
 
 Ver 10-migrations/EMUDECK-IMPORT.md e RETRODECK-IMPORT.md: scan read-only do ecossistema existente → relatório de compatibilidade → plano de adoção (links, não movimentação destrutiva) → originais preservados até commit explícito.
+
+## J10. Criar e executar uma Jornada (V4)
+
+1. Abrir Jornadas no Theme Studio e criar pelo menos três menus → 2. Separar a
+   árvore organizacional do mapa de conexões; renomear/reordenar e ligar dois
+   caminhos ao mesmo destino → 3. Escolher fontes e campos publicados, aplicar
+   filtros tipados/agrupamento e configurar o retorno → 4. atribuir tema por
+   menu/etapa ou ver a herança AURA e seus motivos → 5. pré-visualizar com dados
+   públicos e cobertura visual/operacional → 6. salvar, fechar, reabrir,
+   exportar e importar como cópia → 7. executar o mesmo documento na Theme
+   Engine e no AURA Launcher/Cinema, retornando à seleção, filtros, rolagem e
+   foco de origem.
+- Falhas: fonte/campo/tema indisponível permanece diagnosticado; referência de
+  menu não some ao excluir; zero resultados oferece limpar filtros; ação de
+  sessão indisponível não é mascarada por fallback visual; respostas antigas
+  não restauram foco; erro/timeout retorna ao contexto capturado.
+- Estado do checkout desta continuidade: schema v2, serviço local e painel QML
+  existem, mas `journey.studio.*` ainda não está publicado pela aplicação. A
+  tela desabilita autoria sem bridge e nenhuma execução de Engine/Launcher é
+  atestada por esta jornada documental.

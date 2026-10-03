@@ -105,6 +105,7 @@ Colunas: origem conceitual (de qual projeto vem a melhor referência), fase do r
 O Launcher pode consumir tokens da AURA UI, mas exige shell, navegação da jornada,
 modelo de biblioteca, ciclo de lançamento e certificação física próprios. A
 Theme Studio precisa editar e persistir o grafo da experiência; o
-`experience-journey-v1` é um sidecar e não altera `theme-manifest-v1`.
+`experience-journey-v2` (com migração de leitura v1) é um sidecar e não altera
+`theme-manifest-v1`.
 Theme Engine e Theme Studio também mantêm status independentes: runtime parcial
 não prova ferramenta visual, e editor de tokens não prova autoria livre de cenas.

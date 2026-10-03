@@ -19,10 +19,14 @@
     "src/steamzero/domain/theme_effects.py",
     "src/steamzero/domain/media_recipes.py",
     "src/steamzero/domain/experience_journey.py",
+    "src/steamzero/adapters/journey_studio.py",
     "src/steamzero/schemas/experience-journey-v1.schema.json",
+    "src/steamzero/schemas/experience-journey-v2.schema.json",
+    "src/steamzero/ui/qml/ExperienceJourneyPanel.qml",
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "docs/01-product/AURA-SURFACES.md",
     "docs/01-product/FEATURE-CATALOG.md",
+    "docs/01-product/USER-JOURNEYS.md",
     "docs/12-roadmap/IMPLEMENTATION-ROADMAP.md",
     "tests/integration/test_theme_authoring_e2e.py",
     "tests/integration/test_theme_scene_runtime_e2e.py",
@@ -31,13 +35,23 @@
     "tests/unit/test_theme_authoring_journey.py",
     "tests/unit/test_theme_effect_authoring.py",
     "tests/unit/test_experience_journey.py",
+    "tests/unit/test_journey_studio.py",
+    "tests/integration/test_experience_journey_e2e.py",
+    "tests/qml/check_experience_journey.qml",
     "tests/qml/check_theme_authoring_e2e.qml",
     "tests/qml/golden/import-dialogs/retrofe",
+    "tests/qml/golden/import-dialogs/esde",
     "tests/integration/test_media_fit_parity.py",
     "docs/status/workstreams/v1-v3-theme-journey-2026-10-01.json",
     "docs/status/items/theme-studio.json",
     "docs/status/items/theme-engine.json",
-    "docs/09-operations/evidence/2026-10-01-v4-authoring-ui"
+    "docs/09-operations/evidence/2026-10-01-v4-authoring-ui",
+    "src/steamzero/ui/qml/ThemeScenePreview.qml",
+    "tests/qml/check_theme_scene_preview.qml",
+    "tests/integration/test_scene_esde_view.py",
+    "docs/09-operations/evidence/2026-10-03-journey-engine-preview",
+    "tests/integration/test_experience_journey_bridge_e2e.py",
+    "tests/unit/test_theme_editor.py"
   ],
   "sharedPaths": [
     "README.md",
@@ -56,8 +70,10 @@
     "docs/status/items/aura-platform-execution-plan.json",
     "docs/STATUS.md",
     "docs/ACTIVE-WORK.md",
-    "docs/WORKLOG.md"
+    "docs/WORKLOG.md",
+    "docs/status/items/aura-esde-runtime-bridge-2026-09-20.json",
+    "docs/status/items/theme-esde-scene-render.json"
   ],
-  "nextAction": "Checkpoint local verde: suite integral final 6571 passed/47 skipped em 2325,64 s; ruff, format, mypy, independence, boundaries e status-check aprovados. Alvos do Studio medidos em 48x48 (44 controles, escalas 1,0/1,5); sidecar experience-journey-v1, persistência local, filtros, contexto e cobertura têm 11 testes focados. Próximo passo de produto é autoria pela UI e consumo do mesmo documento em Preview/Engine/Launcher com sessão por capability. Main.qml e desktop_contracts.py estão reservados pela frente ativa de biblioteca; Launcher tem workstream ativo. Não editar esses caminhos em paralelo. Sem push, merge, release ou instalação nesta etapa.",
-  "updatedAt": "2026-10-02"
+  "nextAction": "Commit funcional local 461499d: bridge journey.studio.*, edição/round-trip da Jornada e preview native de Theme Engine; gate final 6594 passed/47 skipped/0 failed. A próxima integração é serial: codex-aura-launcher-exit conecta Launcher/Cinema; o owner de sessão liga capabilities launch/pause/resume/save/load/exit. B_VISUAL permanece sem execução até identificar release autorizada/instalada e janela SteamZero disponível; não fazer push ou instalação nesta etapa.",
+  "updatedAt": "2026-10-03"
 }

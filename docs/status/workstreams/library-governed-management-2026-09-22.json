@@ -11,8 +11,6 @@
     "src/steamzero/domain/library_management.py",
     "src/steamzero/adapters/emulation.py",
     "src/steamzero/adapters/discovery/vita_packaging.py",
-    "src/steamzero/ui/qml/Main.qml",
-    "src/steamzero/adapters/desktop_contracts.py",
     "tests/unit/test_library_management.py",
     "tests/unit/test_library_cache_directory_native.py",
     "tests/unit/test_vita_packaging.py",
@@ -29,6 +27,6 @@
     "docs/WORKLOG.md",
     "docs/status/COVERAGE.md"
   ],
-  "nextAction": "G56 fechada no host (workspace Vita 6/6) e G57 implementada com preview de espaço comprovado na release governada; testar no host a recusa real por espaço insuficiente. Próximo P1 G58: relacionar derivados gerenciados aos jogos-base na Gestão de arquivos para todas as plataformas, com consentimento/quarentena/rollback e preservação das origens. G59: tornar scan um job assíncrono com progresso/cancelamento. Continuar certificação real de audit/rename/quarentena/rollback universal em cópias seguras; não declarar Vita3K launch sem runtime/adapter. RC-00 (2026-09-26): sobreposição de claim em Main.qml e desktop_contracts.py conciliada com evidência — o diff desses dois caminhos entre origin/main (3495c49d) e o tip cad58bb4 está vazio; os 2 commits pendentes (73919843, cad58bb4) não os tocam. O lote RC-01 da continuidade editará esses arquivos compartilhados em commit próprio e serial; conteúdo da frente permanece preservado na branch remota.",
-  "updatedAt": "2026-09-26"
+  "nextAction": "G56 fechada no host (workspace Vita 6/6) e G57 implementada com preview de espaço comprovado na release governada; testar no host a recusa real por espaço insuficiente. Próximo P1 G58: relacionar derivados gerenciados aos jogos-base na Gestão de arquivos para todas as plataformas, com consentimento/quarentena/rollback e preservação das origens. G59: tornar scan um job assíncrono com progresso/cancelamento. Continuar certificação real de audit/rename/quarentena/rollback universal em cópias seguras; não declarar Vita3K launch sem runtime/adapter. RC-00 (2026-09-26): sobreposição de claim em Main.qml e desktop_contracts.py conciliada com evidência — o diff desses dois caminhos entre origin/main (3495c49d) e o tip cad58bb4 está vazio; os 2 commits pendentes (73919843, cad58bb4) não os tocam. Handoff serial autorizado pelo operador em 2026-10-03: Main.qml e desktop_contracts.py saem deste claim para a integração da Jornada nesta branch; o restante da frente Biblioteca e seu estado ativo permanecem intactos. A retomada desses caminhos pela continuidade exige novo registro serial após esta integração.",
+  "updatedAt": "2026-10-03"
 }

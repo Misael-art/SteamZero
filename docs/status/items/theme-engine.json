@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "64938d8f4a1709ae911b453acd680abc079b30bd2a25e67367931dbd3fb995d1",
+  "scopeDigest": "40534709d89b2443fc7268210d8441311a92acc13b1425502bfafc02669e785f",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -116,13 +116,27 @@
     "tests/unit/test_theme_perf_probe.py",
     "src/steamzero/domain/experience_journey.py",
     "src/steamzero/schemas/experience-journey-v1.schema.json",
+    "src/steamzero/schemas/experience-journey-v2.schema.json",
     "tests/unit/test_experience_journey.py",
-    "docs/09-operations/evidence/2026-10-01-v4-authoring-ui"
+    "docs/09-operations/evidence/2026-10-01-v4-authoring-ui",
+    "src/steamzero/ui/qml/ThemeScenePreview.qml",
+    "tests/qml/check_theme_scene_preview.qml",
+    "tests/integration/test_scene_esde_view.py",
+    "tests/integration/test_experience_journey_e2e.py",
+    "tests/integration/test_theme_authoring_e2e.py",
+    "docs/09-operations/evidence/2026-10-03-journey-engine-preview",
+    "src/steamzero/domain/theme_editor.py",
+    "src/steamzero/adapters/desktop_contracts.py",
+    "src/steamzero/adapters/desktop_dashboard.py",
+    "src/steamzero/adapters/desktop_ui.py",
+    "src/steamzero/ui/qml/ExperienceJourneyPanel.qml",
+    "tests/integration/test_experience_journey_bridge_e2e.py",
+    "tests/qml/check_experience_journey_bridge_e2e.qml",
+    "tests/unit/test_theme_editor.py"
   ],
   "dependsOn": [],
   "knownGaps": [
-    "GAP-PS4-SCOPE-PHYSICAL-EVIDENCE-PRECEDES",
-    "GAP-EXPERIENCE-JOURNEY-ENGINE-CONSUMPTION"
+    "GAP-PS4-SCOPE-PHYSICAL-EVIDENCE-PRECEDES"
   ],
   "acceptanceCriteria": [
     "Um asset-fonte produz variantes de cor, silhueta e contorno em runtime sem derivados no pacote.",
@@ -486,10 +500,58 @@
       "reference": "docs/09-operations/evidence/2026-10-01-v4-authoring-ui/README.md",
       "command": "2026-10-02: o sidecar journey v1 tem contrato, persistência local e lógica de domínio testados; não foi conectado nem consumido pelo Theme Engine. A cena editada pela jornada também ainda não foi executada por SceneEsdeView.",
       "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-10-01-v4-authoring-ui/README.md",
+      "command": "2026-10-02, a árvore agora contém experience-journey-v2 e JourneyStudioService/painel local; nenhum renderer Theme Engine ou SceneEsdeView consome a Jornada salva/reaberta. O teste de consulta do serviço não mede pintura/tempo de cena; o eixo permanece parcial.",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_experience_journey_e2e.py",
+      "command": "2026-10-03: rtk .venv/bin/python tools/run_tests_isolated.py tests/integration/test_experience_journey_e2e.py tests/integration/test_scene_esde_view.py tests/integration/test_theme_authoring_e2e.py -q --tb=short; 8 passed em 16,53 s; guard real idêntico (files=12818, directories=2068, bytes=1372818509, max_mtime_ns=1790888510663329431).",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_scene_esde_view.py",
+      "command": "2026-10-03: rtk .venv/bin/python tools/run_tests_isolated.py tests/integration/test_experience_journey_e2e.py tests/integration/test_scene_esde_view.py tests/integration/test_theme_authoring_e2e.py -q --tb=short; 8 passed em 16,53 s; guard real idêntico (files=12818, directories=2068, bytes=1372818509, max_mtime_ns=1790888510663329431).",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_theme_authoring_e2e.py",
+      "command": "2026-10-03: rtk .venv/bin/python tools/run_tests_isolated.py tests/integration/test_experience_journey_e2e.py tests/integration/test_scene_esde_view.py tests/integration/test_theme_authoring_e2e.py -q --tb=short; 8 passed em 16,53 s; guard real idêntico (files=12818, directories=2068, bytes=1372818509, max_mtime_ns=1790888510663329431).",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_experience_journey_bridge_e2e.py",
+      "command": "2026-10-03, focused bridge+Engine: rtk .venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_editor.py tests/integration/test_experience_journey_bridge_e2e.py tests/integration/test_experience_journey_e2e.py tests/integration/test_desktop_ui_bridge.py tests/integration/test_ui_action_inventory.py tests/unit/test_desktop_contracts.py tests/unit/test_journey_studio.py tests/unit/test_experience_journey.py tests/integration/test_theme_authoring_e2e.py tests/integration/test_theme_scene_runtime_e2e.py -q --tb=short; 131 passed em 40,98 s; guard real idêntico (files=12818, directories=2068, bytes=1372818509, max_mtime_ns=1790888510663329431).",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_experience_journey_bridge_e2e.py",
+      "command": "2026-10-03, bridge+Engine focal set: rtk .venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_editor.py tests/integration/test_experience_journey_bridge_e2e.py tests/integration/test_experience_journey_e2e.py tests/integration/test_desktop_ui_bridge.py tests/integration/test_ui_action_inventory.py tests/unit/test_desktop_contracts.py tests/unit/test_journey_studio.py tests/unit/test_experience_journey.py tests/integration/test_theme_authoring_e2e.py tests/integration/test_theme_scene_runtime_e2e.py -q --tb=short; 132 passed em 60.67 s; guard real idêntico (files=12818, directories=2068, bytes=1372818509, max_mtime_ns=1790888510663329431).",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_experience_journey_bridge_e2e.py",
+      "command": "2026-10-03, bridge+Engine focal set após corrigir os tipos e ampliar a espera de cold GET /status no harness QML: rtk .venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_editor.py tests/integration/test_experience_journey_bridge_e2e.py tests/integration/test_experience_journey_e2e.py tests/integration/test_desktop_ui_bridge.py tests/integration/test_ui_action_inventory.py tests/unit/test_desktop_contracts.py tests/unit/test_journey_studio.py tests/unit/test_experience_journey.py tests/integration/test_theme_authoring_e2e.py tests/integration/test_theme_scene_runtime_e2e.py -q --tb=short; 132 passed em 56.14 s; guard real idêntico (files=12818, directories=2068, bytes=1372834271, max_mtime_ns=1791029212908907544).",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "2026-10-03, integral final após regenerar CAPABILITY-MATRIX.md: rtk .venv/bin/python tools/run_tests_isolated.py tests -q; 6594 passed, 47 skipped, 0 failed em 2420.39 s (40:20), exit code 0. Guard real idêntico antes/depois (files=12818, directories=2068, bytes=1372834633, max_mtime_ns=1791031942518989555). Log bruto em docs/09-operations/evidence/2026-10-03-journey-engine-preview/full-tests-2026-10-03.log.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Reconciliar a cena ativa com o catálogo: o tema AURA ES-DE Physical resolve tokens fixos, efeitos e mediaRecipes, mas dynamicPalette/glass/sceneMotion/sceneSurfaces/sceneContainers permanecem nulos no tema ativo. Repetir bridge→catálogo→render na release atual e separar fixture asset-recipes de capacidade promovida. A jornada experience-journey-v1 permanece sem consumo na Engine; implementar integração e provar pixels/tempo com documento salvo/reaberto, tema e assets identificados antes de qualquer promoção.",
+  "nextAction": "Nesta branch, journey.studio.engine-preview combina a consulta pública filtrada com o resolver native de sceneLayouts e o teste de loopback confirma o documento salvo/reaberto. Continuar com a ligação ao Launcher/Cinema e às capabilities reais de sessão em handoffs seriais; a resolução no checkout não fecha pixel/tempo na release. Preservar o estado parcial e preparar B_VISUAL somente após integração e candidata instalada.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-10-02",
-  "notes": "Estado permanece parcial, com três capacidades agora provadas fisicamente em releases anteriores; isso não cobre esta branch nem altera distribuição atual. GAP-THEME-ASSET-INVERT-HUE e GAP-THEME-FALLBACK-SIGNAL fechados: invert e hue rotate são aplicados pelo node builtin AssetColorTransform, com variantes pixel-distintas e alpha preservado. DEBT-HOST-INSTALL-DAEMON-RESTART FECHADO em release histórica. GAP-THEME-PERF-BUDGET-UNMEASURED teve sonda e medição de release registradas; FPS apresentado continua fora do critério sem instrumento de compositor. LOD de capas usa teto de decode declarado e evita textura intermediária sem consumidor. Em 2026-10-02, ThemeEditorPanel.qml foi alterado para limitar os Flow ao viewport e os domínios theme_effects/scene_motion ganharam schemas de controles tipados e reordenação de clips para a UI de autoria. Os focados passaram; isso verifica o contrato do Studio. O resolver de cenas, o renderer Engine, a cena ativa instalada e a medição em release não mudaram nem foram promovidos neste lote. O resultado integral de 6557 testes/47 skips pertence ao checkpoint anterior e será reexecutado para esta árvore. Nenhum eixo de Theme Engine foi promovido. O sidecar experience-journey-v1 possui apenas schema e domínio local; ThemeScenePreview, Theme Engine e SceneEsdeView não o consomem. O teste de 11 casos é contrato, não execução do renderizador nem evidência de capability."
+  "updatedAt": "2026-10-03",
+  "notes": "Estado permanece parcial, com três capacidades agora provadas fisicamente em releases anteriores; isso não cobre esta branch nem altera distribuição atual. GAP-THEME-ASSET-INVERT-HUE e GAP-THEME-FALLBACK-SIGNAL fechados: invert e hue rotate são aplicados pelo node builtin AssetColorTransform, com variantes pixel-distintas e alpha preservado. DEBT-HOST-INSTALL-DAEMON-RESTART FECHADO em release histórica. GAP-THEME-PERF-BUDGET-UNMEASURED teve sonda e medição de release registradas; FPS apresentado continua fora do critério sem instrumento de compositor. LOD de capas usa teto de decode declarado e evita textura intermediária sem consumidor. Em 2026-10-02, ThemeEditorPanel.qml foi alterado para limitar os Flow ao viewport e os domínios theme_effects/scene_motion ganharam schemas de controles tipados e reordenação de clips para a UI de autoria. Os focados passaram; isso verifica o contrato do Studio. O resolver de cenas, o renderer Engine, a cena ativa instalada e a medição em release não mudaram nem foram promovidos neste lote. O resultado integral de 6557 testes/47 skips pertence ao checkpoint anterior e será reexecutado para esta árvore. Nenhum eixo de Theme Engine foi promovido. O sidecar experience-journey-v1 possui apenas schema e domínio local; ThemeScenePreview, Theme Engine e SceneEsdeView não o consomem. O teste de 11 casos é contrato, não execução do renderizador nem evidência de capability. Em 2026-10-02, a branch de continuidade acrescentou schema v2, serviço transacional local e painel QML de Jornada. Nenhum caminho do resolver ou renderer Engine foi alterado: preview de resultados não é preview de cena e a Engine não recebe esse documento. GAP-EXPERIENCE-JOURNEY-ENGINE-CONSUMPTION segue aberto, sem promoção de capability. Em 2026-10-03, ExperienceJourneyPanel passou a resolver a origem visual da cobertura, carregar/cancelar uma sessão somente leitura pelo Theme Studio e escolher o renderer native ou ES-DE existente; o renderer ES-DE recebe as linhas públicas filtradas. O native sceneLayouts ainda usa o read model sintético do preview do Studio. O harness QML verifica seleção por cobertura, cancelamento e resposta tardia, mas não é bridge de produção. A Jornada salva/reaberta ainda não é consumida pelo runtime da Theme Engine; capability permanece parcial. 2026-10-03: a bridge de Jornada chama Dashboard.editor_preview com preview.items construídos no servidor; o ThemeEditorManager materializa sceneLayouts sobre a mesma consulta do documento reaberto. Tema ausente/incompatível mostra fallback AURA e diagnóstico. Prova loopback sintética, sem pixels/tempo de release, Launcher/Cinema ou sessão real. 2026-10-03: teste da jornada edita maxItems em tema filho de asset-recipes-demo, salva/reabre o tema e confirma a lista limitada no preview native. A cobertura usa sceneSurfaces herdado por extends; 132 testes focados passaram. Prova do checkout, sem promoção física, Launcher/Cinema ou sessão real. 2026-10-03 fechamento local de GAP-EXPERIENCE-JOURNEY-ENGINE-CONSUMPTION: uma Jornada salva/reaberta agora fornece linhas filtradas ao resolver native, e um tema filho editado/salvo/reaberto é executado pelo Theme Engine. Isso não fecha validação física da release nem integração Launcher/sessão."
 }

@@ -23,9 +23,20 @@
     "tests/unit/test_experience_journey.py",
     "README.md",
     "docs/01-product/AURA-SURFACES.md",
-    "docs/01-product/FEATURE-CATALOG.md"
+    "docs/01-product/FEATURE-CATALOG.md",
+    "docs/09-operations/evidence/2026-10-03-journey-engine-preview",
+    "src/steamzero/adapters/desktop_contracts.py",
+    "src/steamzero/adapters/desktop_dashboard.py",
+    "src/steamzero/adapters/desktop_ui.py",
+    "src/steamzero/domain/theme_editor.py",
+    "src/steamzero/adapters/journey_studio.py",
+    "src/steamzero/schemas/experience-journey-v2.schema.json",
+    "src/steamzero/ui/qml/ExperienceJourneyPanel.qml",
+    "tests/integration/test_experience_journey_bridge_e2e.py",
+    "tests/qml/check_experience_journey_bridge_e2e.qml",
+    "tests/unit/test_theme_editor.py"
   ],
-  "scopeDigest": "51aafea9d8e845f78988517e786043bdc568b9ab9418e7e589db16b702622ef2",
+  "scopeDigest": "ca58e3705fa3232c169ba45cd8d7b9c1f7c72b0fb9868135e0794877e4fe7b47",
   "dependsOn": [
     "SZ-PROJECT-DESIGN-AUDIT"
   ],
@@ -121,12 +132,48 @@
       "reference": "docs/01-product/AURA-SURFACES.md",
       "command": "2026-10-02: o inventário das superfícies agora explicita Theme Studio/Jornada e a obrigação do AURA Launcher de consumir navegação/metadata e retorno contextual. Estado dos produtos preservado; não é prova de implementação.",
       "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_experience_journey_bridge_e2e.py",
+      "command": "2026-10-03, focused bridge+Engine: rtk .venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_editor.py tests/integration/test_experience_journey_bridge_e2e.py tests/integration/test_experience_journey_e2e.py tests/integration/test_desktop_ui_bridge.py tests/integration/test_ui_action_inventory.py tests/unit/test_desktop_contracts.py tests/unit/test_journey_studio.py tests/unit/test_experience_journey.py tests/integration/test_theme_authoring_e2e.py tests/integration/test_theme_scene_runtime_e2e.py -q --tb=short; 131 passed em 40,98 s; guard real idêntico (files=12818, directories=2068, bytes=1372818509, max_mtime_ns=1790888510663329431).",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_experience_journey_bridge_e2e.py",
+      "command": "2026-10-03, bridge+Engine focal set: rtk .venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_editor.py tests/integration/test_experience_journey_bridge_e2e.py tests/integration/test_experience_journey_e2e.py tests/integration/test_desktop_ui_bridge.py tests/integration/test_ui_action_inventory.py tests/unit/test_desktop_contracts.py tests/unit/test_journey_studio.py tests/unit/test_experience_journey.py tests/integration/test_theme_authoring_e2e.py tests/integration/test_theme_scene_runtime_e2e.py -q --tb=short; 132 passed em 60.67 s; guard real idêntico (files=12818, directories=2068, bytes=1372818509, max_mtime_ns=1790888510663329431).",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_experience_journey_bridge_e2e.py",
+      "command": "2026-10-03, bridge+Engine focal set após corrigir os tipos e ampliar a espera de cold GET /status no harness QML: rtk .venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_editor.py tests/integration/test_experience_journey_bridge_e2e.py tests/integration/test_experience_journey_e2e.py tests/integration/test_desktop_ui_bridge.py tests/integration/test_ui_action_inventory.py tests/unit/test_desktop_contracts.py tests/unit/test_journey_studio.py tests/unit/test_experience_journey.py tests/integration/test_theme_authoring_e2e.py tests/integration/test_theme_scene_runtime_e2e.py -q --tb=short; 132 passed em 56.14 s; guard real idêntico (files=12818, directories=2068, bytes=1372834271, max_mtime_ns=1791029212908907544).",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "2026-10-03, primeira integral pós-bridge: 6593 passed, 47 skipped, 1 failed em 3367.80 s. Falha única em test_committed_matrix_matches_the_code: CAPABILITY-MATRIX.md desatualizada (137 linhas geradas versus 151 ações no código). Guard identificou escritas externas do daemon da release em logs/core.jsonl e state.db; o runner não as atribuiu aos testes. Log bruto em docs/09-operations/evidence/2026-10-03-journey-engine-preview/full-tests-2026-10-03-matrix-drift-failed.log.",
+      "result": "failed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_capability_matrix.py",
+      "command": "2026-10-03, após make update-capability-matrix e revisão do diff de 14 ações journey.studio.*: rtk .venv/bin/python tools/run_tests_isolated.py tests/unit/test_capability_matrix.py -q --tb=short; 7 passed em 0.65 s; guard real idêntico antes/depois (files=12818, directories=2068, bytes=1372834633, max_mtime_ns=1791031942518989555). make capability-matrix: OK.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "2026-10-03, integral final após regenerar CAPABILITY-MATRIX.md: rtk .venv/bin/python tools/run_tests_isolated.py tests -q; 6594 passed, 47 skipped, 0 failed em 2420.39 s (40:20), exit code 0. Guard real idêntico antes/depois (files=12818, directories=2068, bytes=1372834633, max_mtime_ns=1791031942518989555). Log bruto em docs/09-operations/evidence/2026-10-03-journey-engine-preview/full-tests-2026-10-03.log.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Fechar autoria da jornada pela UI e consumo em Preview/Engine/Launcher, após integração serial dos caminhos compartilhados; repetir o roteiro de sessão conforme capabilities. Depois executar gates locais finais e revisar CI terminal no SHA que tiver autorização para publicar. B_VISUAL e release permanecem sujeitos às autorizações vigentes.",
+  "nextAction": "A bridge journey.studio.* e o preview native de Engine foram commitados localmente (461499d) e verificados por loopback; os gates focados e a integral final passaram após regenerar CAPABILITY-MATRIX.md. O workstream continua parcial: próximos handoffs seriais integram Launcher/Cinema e capabilities reais de sessão. Manter B_VISUAL, pixels/tempo em release e instalação condicionados à identificação da candidata autorizada e janela SteamZero disponível.",
   "activeWorkstreams": [
     "WS-2026-10-V1-V3-THEME-JOURNEY"
   ],
-  "updatedAt": "2026-10-02",
-  "notes": "Planejamento e continuidade no PR #249 permanecem locais à feature branch; nenhum merge, release, instalação ou certificação física foi promovido. Um checkout confirmado. Roadmap, marcos, handoff e prompt preservam os limites de autorização. RC-00 executado em 2026-09-26: base/release/worktree conferidos; 21 claims obsoletos encerrados com evidência de integração e 5 mantidos abertos; a suíte integral da auditoria permanece registrada como não verde (1 falha documental histórica). 2026-10-01: revisão das rodadas B_VISUAL 133/134. 2026-10-02: continuação da autoria Theme Studio; o overflow horizontal dos inspetores foi reproduzido no Qt pinado, corrigido com controles de largura e coberto por verificação geométrica antes de cada evento Qt. A jornada passou no container e no host, e 140 testes focados passaram. A continuação atual acrescenta controle tipado, estado loading/keyframe, edição e reordenação de timeline/clips e prova pixelizada no consumidor da AURA UI em biblioteca sintética isolada. Focados 10+68+1+2 passaram; a integral atual terminou 6560/47 em 2302.24s e todos os gates locais passaram. B_VISUAL continua necessário para input físico e a release instalada continua anterior a esta branch. Launcher/AURA Cinema não consomem cenas importadas. A Engine tem demo de asset de fonte única, mas editar assetRecipes no documento e configurar tier/resolução ainda exige uma fatia própria de editor e runtime; cena editada ainda não foi consumida por SceneEsdeView. A revisão de 2026-10-02 incorporou o sidecar journey v1 ao contrato de Theme Engine/Studio e ao V4. Os testes atuais cobrem domínio/persistência local, não autoria UI, render Engine, Launcher/Cinema ou sessão física. O diff de README.md pertence ao commit documental upstream de main que foi reconciliado no início desta continuidade; ele foi registrado como escopo sem associar ou promover capacidade de produto."
+  "updatedAt": "2026-10-03",
+  "notes": "Planejamento e continuidade no PR #249 permanecem locais à feature branch; nenhum merge, release, instalação ou certificação física foi promovido. Um checkout confirmado. Roadmap, marcos, handoff e prompt preservam os limites de autorização. RC-00 executado em 2026-09-26: base/release/worktree conferidos; 21 claims obsoletos encerrados com evidência de integração e 5 mantidos abertos; a suíte integral da auditoria permanece registrada como não verde (1 falha documental histórica). 2026-10-01: revisão das rodadas B_VISUAL 133/134. 2026-10-02: continuação da autoria Theme Studio; o overflow horizontal dos inspetores foi reproduzido no Qt pinado, corrigido com controles de largura e coberto por verificação geométrica antes de cada evento Qt. A jornada passou no container e no host, e 140 testes focados passaram. A continuação atual acrescenta controle tipado, estado loading/keyframe, edição e reordenação de timeline/clips e prova pixelizada no consumidor da AURA UI em biblioteca sintética isolada. Focados 10+68+1+2 passaram; a integral atual terminou 6560/47 em 2302.24s e todos os gates locais passaram. B_VISUAL continua necessário para input físico e a release instalada continua anterior a esta branch. Launcher/AURA Cinema não consomem cenas importadas. A Engine tem demo de asset de fonte única, mas editar assetRecipes no documento e configurar tier/resolução ainda exige uma fatia própria de editor e runtime; cena editada ainda não foi consumida por SceneEsdeView. A revisão de 2026-10-02 incorporou o sidecar journey v1 ao contrato de Theme Engine/Studio e ao V4. Os testes atuais cobrem domínio/persistência local, não autoria UI, render Engine, Launcher/Cinema ou sessão física. O diff de README.md pertence ao commit documental upstream de main que foi reconciliado no início desta continuidade; ele foi registrado como escopo sem associar ou promover capacidade de produto. 2026-10-03: novo registro de preview da Jornada demonstra o uso local dos renderizadores e mantém sem promoção a integração de runtime. 2026-10-03: bridge de loopback e preview native da Journey foram conectados; o teste de UI cria menus/facetas compartilhadas, round-trips o documento e comprova binding no resolver. O gate integral final da árvore será registrado no fechamento; Launcher, adapters de sessão, Main instalada e B_VISUAL continuam pendentes. 2026-10-03: teste da jornada edita maxItems em tema filho de asset-recipes-demo, salva/reabre o tema e confirma a lista limitada no preview native. A cobertura usa sceneSurfaces herdado por extends; 132 testes focados passaram. Prova do checkout, sem promoção física, Launcher/Cinema ou sessão real."
 }
