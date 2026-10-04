@@ -30,7 +30,7 @@
     "docs/09-operations/evidence/2026-09-20-ps5-dump-identity",
     "docs/09-operations/evidence/2026-09-20-ps5-sharpemu-physical"
   ],
-  "scopeDigest": "96627027694f725222a58e574006140427513f85d4e97605033fe88104983b90",
+  "scopeDigest": "6671bbf18a7d1b11c72b93241800eef30e2f55eb13c7b4ee58e65b7b140bbc49",
   "dependsOn": [
     "SZ-AGG-PLATFORM-MANIFESTS",
     "SZ-COMPONENT-LIFECYCLE",
@@ -163,12 +163,30 @@
       "reference": "docs/09-operations/evidence/2026-09-20-ps5-sharpemu-physical/PHYSICAL-VALIDATION.json",
       "command": "Release instalada lançou o dump PPSA02929: loader abriu eboot.bin e leu param.json, mas o guest terminou com Access Violation após import HLE não encontrado; nenhum PNG de sucesso foi alegado.",
       "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/12-roadmap/IMPLEMENTATION-ROADMAP.md",
+      "command": "2026-10-01: renovação de escopo compartilhado por revisão somente documental V1-V4; provas históricas do produto permanecem limitadas às suas releases.",
+      "result": "recorded"
+    },
+    {
+      "kind": "design",
+      "reference": "docs/12-roadmap/IMPLEMENTATION-ROADMAP.md",
+      "command": "2026-10-02: O roadmap V4 foi atualizado para incluir a jornada de experiência, sem alteração de código, runtime ou evidência do catálogo PS5. Mantidos os estágios existentes; nenhuma capability deste item foi promovida.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-10-03-journey-engine-preview/README.md",
+      "command": "2026-10-03 shared-scope renewal: SHA/digest re-evaluated after the Journey bridge/Engine preview and product/status documentation changed shared paths. No acceptance criterion or capability of this item was promoted by that change; this record is scope reconciliation, not new product evidence.",
+      "result": "recorded"
     }
   ],
   "nextAction": "Manter GAP-SHARPEMU-PHYSICAL-VALIDATION aberto; repetir a prova com SharpEmu compatível ou outro dump e capturar PNG somente quando uma cena real for renderizada.",
   "activeWorkstreams": [
     "WS-2026-09-PS5-SHARPEMU"
   ],
-  "updatedAt": "2026-09-20",
-  "notes": "Implementação integrada na main: SharpEmu possui manifesto, lockfile, plataforma, perfil DualSense, catálogo canônico, extração segura tar.gz, parser PS5 param.sfo/param.json + Title ID endurecido contra tabelas sobrepostas, comprimentos inválidos, tipos não-string e JSON arbitrário, e classificação ps5dir que não expõe módulos PRX, binários auxiliares ou PKG como jogo. ELF genérico sem identidade PS5 permanece explicitamente ps5-elf-unresolved e não é promovido por extensão. Containers de dump zip/7z/tar.gz permanecem explicitamente em needs-extraction. A identidade param.json foi provada nos dumps reais PPSA02801 (imagem exFAT somente leitura) e PPSA02929 (RAR extraído em temporário), sem mutação da origem. O catálogo resolve o snapshot oficial pinned de 46 relatórios por Title ID, build e OS, promovendo o estado somente em correspondência exata e explicando qualquer divergência como unknown; o inventário diferencia content-incomplete de source-missing, preserva a causa no card, associa updates/DLC à base sem duplicar jogos e publica sourceIdentity com namespace opaco, caminho relativo, tamanho e SHA-256 do entrypoint, sem usar o caminho absoluto como id; quando o namespace não é observável, usa unknown-namespace sem derivar o caminho. Os cards PS5 mostram o tipo de origem e o caminho relativo sem renderizar o caminho absoluto. SharpEmu foi instalado e verificado pelo ciclo de componentes na release 2.0.0rc1-3acc2104dd5a; o lançamento real do PPSA02929 alcançou o loader e a leitura de param.json, mas terminou em Access Violation por import HLE não encontrado. GAP-SHARPEMU-PHYSICAL-VALIDATION permanece aberto e não há promoção verified-hw.\n\n2026-09-26: scopeDigest renovado porque IMPLEMENTATION-ROADMAP.md passou a apontar para o plano versionado de cobertura de conteúdo real em docs/01-product. Nenhum estado de implementação ou evidência física deste item foi promovido. 2026-09-26: digest renovado somente pela revisão documental compartilhada do roadmap/handoff/WORKLOG; sem alteração de código, nova prova física ou promoção de estágio."
+  "updatedAt": "2026-10-03",
+  "notes": "Implementação integrada na main: SharpEmu possui manifesto, lockfile, plataforma, perfil DualSense, catálogo canônico, extração segura tar.gz, parser PS5 param.sfo/param.json + Title ID endurecido contra tabelas sobrepostas, comprimentos inválidos, tipos não-string e JSON arbitrário, e classificação ps5dir que não expõe módulos PRX, binários auxiliares ou PKG como jogo. ELF genérico sem identidade PS5 permanece explicitamente ps5-elf-unresolved e não é promovido por extensão. Containers de dump zip/7z/tar.gz permanecem explicitamente em needs-extraction. A identidade param.json foi provada nos dumps reais PPSA02801 (imagem exFAT somente leitura) e PPSA02929 (RAR extraído em temporário), sem mutação da origem. O catálogo resolve o snapshot oficial pinned de 46 relatórios por Title ID, build e OS, promovendo o estado somente em correspondência exata e explicando qualquer divergência como unknown; o inventário diferencia content-incomplete de source-missing, preserva a causa no card, associa updates/DLC à base sem duplicar jogos e publica sourceIdentity com namespace opaco, caminho relativo, tamanho e SHA-256 do entrypoint, sem usar o caminho absoluto como id; quando o namespace não é observável, usa unknown-namespace sem derivar o caminho. Os cards PS5 mostram o tipo de origem e o caminho relativo sem renderizar o caminho absoluto. SharpEmu foi instalado e verificado pelo ciclo de componentes na release 2.0.0rc1-3acc2104dd5a; o lançamento real do PPSA02929 alcançou o loader e a leitura de param.json, mas terminou em Access Violation por import HLE não encontrado. GAP-SHARPEMU-PHYSICAL-VALIDATION permanece aberto e não há promoção verified-hw.\n\n2026-09-26: scopeDigest renovado porque IMPLEMENTATION-ROADMAP.md passou a apontar para o plano versionado de cobertura de conteúdo real em docs/01-product. Nenhum estado de implementação ou evidência física deste item foi promovido. 2026-09-26: digest renovado somente pela revisão documental compartilhada do roadmap/handoff/WORKLOG; sem alteração de código, nova prova física ou promoção de estágio. 2026-10-01: digest renovado exclusivamente por revisão documental compartilhada do roadmap/marcos/handoff após B_VISUAL 133/134. Nenhum código deste item alterado, nenhuma nova prova física nem promoção de estágio. O roadmap V4 foi atualizado para incluir a jornada de experiência, sem alteração de código, runtime ou evidência do catálogo PS5."
 }

@@ -239,6 +239,36 @@ class EffectDiagnostic:
         }
 
 
+def effect_defaults(effect_type: EffectType) -> dict[str, Any]:
+    """Parâmetros padrão do nó, para que a autoria exiba todos os controles."""
+    return dict(_RULES[effect_type].defaults)
+
+
+def effect_editor_schema() -> dict[str, dict[str, Any]]:
+    """Describe typed editor controls from the same rules used to validate effects."""
+    result: dict[str, dict[str, Any]] = {}
+    for effect_type, rule in _RULES.items():
+        parameters: dict[str, dict[str, Any]] = {}
+        for name, default in rule.defaults.items():
+            if name in rule.colors:
+                parameters[name] = {"kind": "color", "default": default}
+                continue
+            minimum, maximum = rule.bounds[name]
+            parameters[name] = {
+                "kind": "number",
+                "default": default,
+                "minimum": minimum,
+                "maximum": maximum,
+                "step": 0.05 if name in {"amount", "strength", "opacity", "start", "end"} else 1.0,
+                "decimals": 2,
+            }
+        result[effect_type.value] = {
+            "parameters": parameters,
+            "fallbacks": [fallback.value for fallback in EffectFallback],
+        }
+    return result
+
+
 def parse_effect_stacks(payload: Mapping[str, Any] | None) -> dict[str, tuple[EffectSpec, ...]]:
     """Lê o namespace ``effects`` do manifesto, preservando a versão do stack."""
     if not payload:

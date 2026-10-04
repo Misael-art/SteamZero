@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-10-VISUAL-DIAGNOSTIC-ROADMAP",
+  "item": "SZ-ROADMAP-CONTINUATION",
+  "branch": "codex/visual-diagnostic-roadmap-2026-10-01",
+  "baseRef": "5715d7962691efedef0f1b63e71adff1ad5ba801",
+  "owner": "codex-roadmap-review",
+  "state": "closed",
+  "exclusivePaths": [
+    "IMPLEMENTATION-PROMPT.md",
+    "docs/status/items/roadmap-continuation-2026-09-26.json",
+    "docs/status/workstreams/visual-diagnostic-roadmap-2026-10-01.json"
+  ],
+  "sharedPaths": [
+    "docs/12-roadmap/IMPLEMENTATION-ROADMAP.md",
+    "docs/12-roadmap/MILESTONES.md",
+    "docs/09-operations/AGENT-HANDOFF.md",
+    "docs/status/items/aura-launcher.json",
+    "docs/status/items/platform-ps5-catalog.json",
+    "docs/status/items/governance-status.json",
+    "docs/status/items/main-reconciliation-2026-09-26.json",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/status/COVERAGE.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Integrar a revisão documental conforme autorização; executar V1 e avançar V2/V3 até um tema editado, salvo/reaberto e renderizado, com revisão de B_VISUAL por entrega.",
+  "updatedAt": "2026-10-01"
+}

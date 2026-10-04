@@ -4,12 +4,26 @@
 // Renderer confiável para uma source de mídia e a pilha allowlisted resolvida
 // em Python. O tema entrega apenas `effects`; não executa QML, JS ou shader.
 import QtQuick
+import "mediaFit.js" as MediaFit
 
 Item {
     id: root
 
     required property url source
     property int fillMode: Image.PreserveAspectCrop
+    // Receita declarativa do slot (fit/orientation/alignH/alignV/focal). Vazia
+    // preserva o comportamento anterior; preenchida, o enquadramento efetivo
+    // sai do mesmo contrato que o Studio explica no inspector.
+    property var recipe: ({})
+    // Dimensão natural lida uma vez, quando a imagem fica pronta: depender de
+    // `implicitWidth` em binding fecha laço, pois o fillMode resolvido muda o
+    // tamanho implícito.
+    property real naturalWidth: 0
+    property real naturalHeight: 0
+    readonly property var resolvedFit: root.recipe && root.recipe.fit
+        ? MediaFit.resolve(root.recipe, root.naturalWidth, root.naturalHeight,
+                           root.width, root.height)
+        : null
     property var effects: []
     // Teto de decodificação da mídia, em pixels de dispositivo. Uma capa de
     // 600x900 desenhada numa célula de 190x274 custa o mesmo decode e a mesma
@@ -57,13 +71,30 @@ Item {
         id: mediaSource
         anchors.fill: parent
         source: root.source
-        fillMode: root.fillMode
+        fillMode: root.resolvedFit
+            ? (root.resolvedFit.fit === "contain" ? Image.PreserveAspectFit
+                : root.resolvedFit.fit === "fill" ? Image.Stretch : Image.PreserveAspectCrop)
+            : root.fillMode
+        horizontalAlignment: root.resolvedFit
+            ? (root.resolvedFit.alignH === "left" ? Image.AlignLeft
+                : root.resolvedFit.alignH === "right" ? Image.AlignRight : Image.AlignHCenter)
+            : Image.AlignHCenter
+        verticalAlignment: root.resolvedFit
+            ? (root.resolvedFit.alignV === "top" ? Image.AlignTop
+                : root.resolvedFit.alignV === "bottom" ? Image.AlignBottom : Image.AlignVCenter)
+            : Image.AlignVCenter
         // Teto, não tamanho alvo: uma arte menor que o teto continua sendo
         // decodificada no tamanho natural (medido — arte 320x180 com teto de
         // 4096 mantém implicitWidth 320). Por isso declarar um teto generoso
         // numa tela 4K não infla o consumo de uma capa pequena. Em SVG o teto
         // vira mesmo o tamanho de rasterização, que é o comportamento desejado.
         sourceSize: root.decodeSize
+        onStatusChanged: {
+            if (status === Image.Ready) {
+                root.naturalWidth = implicitWidth
+                root.naturalHeight = implicitHeight
+            }
+        }
         // Decodificar fora da thread de render é o que impede que uma capa
         // grande apareça como engasgo na rolagem. O custo é um quadro sem a
         // imagem; o placeholder abaixo já cobre esse intervalo.

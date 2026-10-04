@@ -22,6 +22,7 @@ Três coisas acontecem aqui, e nenhuma delas pertence às camadas vizinhas:
 from __future__ import annotations
 
 import contextlib
+import copy
 import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -229,4 +230,84 @@ def render_scene(
             "unresolved": sorted(includes.unresolved),
             "refused": sorted(includes.refused),
         },
+    }
+
+
+#: Tela de referência quando o layout RetroFE não declara `width`/`height`.
+_RETROFE_DEFAULT_CANVAS = {"width": 1920.0, "height": 1080.0}
+_RETROFE_X_KEYS = ("x", "width", "maxWidth", "xOffset")
+_RETROFE_Y_KEYS = ("y", "height", "maxHeight", "yOffset")
+
+
+def _normalize_retrofe_scene(scene: dict[str, Any]) -> dict[str, Any]:
+    """Converte pixels/percentuais do IR RetroFE nas frações que o renderizador de cena lê.
+
+    O SceneEsdeView interpreta ``x/y/width/height`` como fração da tela; o IR do
+    RetroFE guarda pixels do canvas do layout (ou ``"50%"``). Sem esta conversão o
+    mesmo tema importado desenhava um logo de 200 px com 160 000 px de largura.
+    A cena armazenada permanece intacta; só a saída de render é normalizada.
+    """
+    out = copy.deepcopy(scene)
+    for view in out.get("views", []):
+        canvas = view.get("canvas") or _RETROFE_DEFAULT_CANVAS
+        for element in view.get("elements", []):
+            layout = element.get("layout")
+            if not isinstance(layout, dict):
+                continue
+            for keys, extent in (
+                (_RETROFE_X_KEYS, canvas["width"]),
+                (_RETROFE_Y_KEYS, canvas["height"]),
+            ):
+                for key in keys:
+                    value = layout.get(key)
+                    if isinstance(value, bool):
+                        continue
+                    if isinstance(value, int | float):
+                        layout[key] = float(value) / extent
+                    elif isinstance(value, str) and value.endswith("%"):
+                        layout[key] = float(value[:-1]) / 100.0
+        view["coordinateSpace"] = "normalized"
+    return out
+
+
+def render_imported_scene(
+    scene_id: str,
+    *,
+    scenes_root: Path | None = None,
+    store: theme_assets.ThemeAssetStore | None = None,
+) -> dict[str, Any]:
+    """Cena importada (RetroFE) resolvida como a de um tema instalado.
+
+    Mesmo contrato de saída de :func:`render_scene` e a mesma resolução de
+    assets: importar sem poder renderizar deixava o pacote sem consumidor.
+    """
+    from steamzero.domain import scene_retrofe
+
+    root = scenes_root if scenes_root is not None else paths.scenes_dir()
+    assets = store if store is not None else theme_assets.ThemeAssetStore(paths.theme_assets_dir())
+    scene_path = root / f"{scene_id}.json"
+    manifest_path = root / f"{scene_id}.assets.json"
+    if not scene_path.is_file() or scene_path.is_symlink():
+        raise SteamZeroError("E-THEME-NOT-FOUND", detail=f"cena '{scene_id}' não está importada")
+    try:
+        scene = json.loads(scene_path.read_text(encoding="utf-8"))
+        manifest = (
+            json.loads(manifest_path.read_text(encoding="utf-8"))
+            if manifest_path.is_file() and not manifest_path.is_symlink()
+            else {}
+        )
+    except (OSError, ValueError) as exc:
+        raise SteamZeroError(
+            "E-THEME-MANIFEST", detail=f"cena '{scene_id}' ilegível: {exc}"
+        ) from exc
+    if not isinstance(scene, dict) or not isinstance(manifest.get("assets", {}), dict):
+        raise SteamZeroError("E-THEME-MANIFEST", detail=f"cena '{scene_id}' inválida")
+    report = _resolve_assets(scene, {"assets": manifest.get("assets", {})}, assets, system_id=None)
+    return {
+        "themeId": scene_id,
+        "origin": "retrofe",
+        "systemId": None,
+        "scene": _normalize_retrofe_scene(scene),
+        "fidelity": scene_retrofe.fidelity_report(scene),
+        "assets": report,
     }

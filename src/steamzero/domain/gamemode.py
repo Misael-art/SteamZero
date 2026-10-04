@@ -159,6 +159,14 @@ _STEPS: dict[str, tuple[str, ...]] = {
     "probe-failed": ("Tente verificar novamente a prontidão em instantes.",),
 }
 
+
+def _join_steps(steps: tuple[str, ...] | list[str]) -> str:
+    """Une frases de orientação sem duplicar pontuação (``.;``)."""
+    return " ".join(
+        step if step.rstrip().endswith((".", "!", "?")) else step + "." for step in steps
+    )
+
+
 _ROW_STATES = frozenset({"ready", "degraded", "missing", "unknown"})
 
 
@@ -224,7 +232,7 @@ class GameModeTruth:
             effects={key: "unknown" for key in EFFECTS},
             condition="probe-failed",
             cause=_CONDITIONS["probe-failed"][2],
-            remediation="; ".join(_STEPS["probe-failed"]),
+            remediation=_join_steps(_STEPS["probe-failed"]),
             requires_operator=False,
         )
 
@@ -305,7 +313,7 @@ def build_truth(
         effects=effects,
         condition=condition,
         cause=cause,
-        remediation="; ".join(_STEPS[condition]),
+        remediation=_join_steps(_STEPS[condition]),
         requires_operator=requires_operator,
     )
 
@@ -333,7 +341,7 @@ def render_admin_plan(
         "rollbackGuarantee": "Nenhuma alteração no host é executada por este plano.",
         "createdAt": created_at.isoformat(),
         "expiresAt": expires_at.isoformat(),
-        "preview": "; ".join(steps),
+        "preview": _join_steps(steps),
     }
 
 

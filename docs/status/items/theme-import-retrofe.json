@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "ready",
   "distribution": "installed",
-  "scopeDigest": "8eff89d18e86a15f07023b3f620e995d17b66d3323e51f75d64b362da346f825",
+  "scopeDigest": "e71a7f46a6888754fb1261a8bb3e41314941d6e297bf73d2e460172a5e2fa8bc",
   "scopePaths": [
     "src/steamzero/adapters/desktop_contracts.py",
     "src/steamzero/adapters/desktop_dashboard.py",
@@ -19,7 +19,9 @@
     "tests/unit/test_theme_import_retrofe.py",
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
     "tests/qml/check_theme_editor_import.qml",
-    "docs/09-operations/evidence/2026-09-08-theme-retrofe-ui"
+    "docs/09-operations/evidence/2026-09-08-theme-retrofe-ui",
+    "tests/integration/test_retrofe_import_dialog_compact.py",
+    "tests/qml/golden/import-dialogs/retrofe"
   ],
   "dependsOn": [
     "SZ-THEME-ENGINE"
@@ -118,10 +120,64 @@
       "result": "passed",
       "reference": "docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/25-checkpoint-integral-e-gates.md",
       "command": "Checkpoint único na árvore congelada (24-gates-integrais.sh, log bruto 24-comandos-e-saidas.log e .rc na mesma pasta). Sete passos, rc=0 em todos: ruff format --check (679 files already formatted), ruff check (All checks passed!), mypy src (Success: no issues found in 298 source files), make independence boundaries, make status-check (STATUS-CHECK: OK), `.venv/bin/python tools/run_tests_isolated.py tests -q` (6507 passed, 47 skipped = 6554 coletados, reconciliado com o lote anterior 6545 + 9 funções deste corte) e `.venv/bin/python tools/run_tests_isolated.py -m visual --tb=short -q` (362 passed, 6192 deselected = os 360 do lote anterior mais as 2 funções novas marcadas visual). Identidade da árvore lida antes e depois de cada passo: 14 leituras, branch, HEAD af6a5c6e, sha256 src+tests+tools=f185438a112bc0b8, produto bddd117ac33fcbcf, harness bc9d76d646685e20, gate 0cb7744eff344587, todas idênticas. Guarda de estado real do isolador com before/after campo a campo iguais (files=12816 directories=2068 bytes=1372712391 source=HOME-default), exit 0 e não 86."
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+      "command": "2026-10-02 renovacao de escopo por delta restrito a largura dos cartoes e Flow nos inspetores do Theme Studio, fora das secões de importacao e shell. A suite integral terminou com 6557 passed, 47 skipped e guard de estado real igual antes/depois. O importador nao mudou; nenhum eixo deste item foi promovido.",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_theme_import_retrofe.py",
+      "command": "2026-10-02, regressão em suíte integral após ajuste isolado da largura dos inspetores do Studio. .venv/bin/python tools/run_tests_isolated.py tests -q: 6557 passed, 47 skipped in 2599.72s; estado real antes/depois idêntico (files=12818, directories=2068, bytes=1372818509). Gates estáticos locais: ruff check, ruff format --check (689 files), mypy (299 files), make independence boundaries e make status-check aprovados. O importador/ativação não foi alterado nem promovido por esse resultado.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-10-01-v4-authoring-ui/README.md",
+      "command": "2026-10-02: scopeDigest renovado por controles de efeitos/movimento no ThemeEditorPanel compartilhado. Blocos de importação RetroFE não mudaram e não foram retestados; nenhum eixo foi promovido.",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_retrofe_import_dialog_compact.py",
+      "command": "2026-10-02, primeira rodada conjunta ES-DE/RetroFE: 12 passed, 1 falhou no golden RetroFE compacto depois do aumento intencional do alvo efetivo para 48 px. Captura antiga preservada no histórico do runner; sem promoção de prova física.",
+      "result": "failed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_retrofe_import_dialog_compact.py",
+      "command": "2026-10-02, após atualizar quatro goldens com capturas Qt 6.11.2 inspecionadas: rtk env SZ_CAPTURE_DIR= .venv/bin/python tools/run_tests_isolated.py tests/integration/test_esde_import_dialog_compact.py tests/integration/test_retrofe_import_dialog_compact.py -q; 13 passed em 6,39 s, geometria dentro dos viewports e pixel diff zero. Offscreen; sem input físico.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_retrofe_import_dialog_compact.py",
+      "command": "2026-10-02, regressão do screenshot depois da entrada Abrir Jornadas no fundo do ThemeEditorPanel; após inspeção/atualização das baselines, a execução conjunta ES-DE/RetroFE passou 13/13 em 10,26s. RetroFE: geometria e conteúdo do modal preservados; somente a tela subjacente inclui a nova entrada. Harness Qt offscreen, sem input físico ou release.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-10-03-journey-engine-preview/README.md",
+      "command": "2026-10-03 shared-scope renewal: SHA/digest re-evaluated after the Journey bridge/Engine preview and product/status documentation changed shared paths. No acceptance criterion or capability of this item was promoted by that change; this record is scope reconciliation, not new product evidence.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-10-03-journey-engine-preview/README.md",
+      "command": "2026-10-03, renovação do scopeDigest por caminhos compartilhados da bridge (desktop_contracts.py, desktop_dashboard.py, desktop_ui.py) e alterações de ThemeEditorPanel/goldens pertencentes ao lote atual. Registro de escopo apenas; o teste específico do diálogo RetroFE não foi reexecutado neste checkpoint e nenhum eixo do item foi promovido.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/status/workstreams/v1-v3-theme-journey-2026-10-01.json",
+      "command": "2026-10-03, digest recalculado com tools/project_status.py após a integração de paths compartilhados da jornada; registro de escopo, sem reexecução dos critérios deste item nem promoção de estado.",
+      "result": "recorded"
     }
   ],
   "nextAction": "Manter a entrada RetroFE instalada e documentar explicitamente que inspeção/importação não promove ativação automática da cena.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-29",
-  "notes": "A rota QML RetroFE oferece origem por pasta/XML, inspeção de layouts, relatório de cobertura/degradação, créditos/licença e confirmação explícita. A aplicação valida a licença, recusa assets ausentes ou symlinkados, grava blobs por conteúdo e publica sidecar de custódia junto ao IR; a cena continua sem ativação automática. A release 2.0.0rc1-435f9108eeb7 foi instalada e convergida no host, com rollback 2.0.0rc1-b09908a58261."
+  "updatedAt": "2026-10-03",
+  "notes": "A rota QML RetroFE oferece origem por pasta/XML, inspeção de layouts, relatório de cobertura/degradação, créditos/licença e confirmação explícita. A aplicação valida a licença, recusa assets ausentes ou symlinkados, grava blobs por conteúdo e publica sidecar de custódia junto ao IR; a cena continua sem ativação automática. A release 2.0.0rc1-435f9108eeb7 foi instalada e convergida no host, com rollback 2.0.0rc1-b09908a58261. 2026-10-02: renovacao de escopo por alteracao restrita aos inspetores de autoria do Theme Studio. Importacao ES-DE/RetroFE, dialogs do shell e eixos deste item nao foram alterados nem promovidos. Em 2026-10-02, os controles compartilhados ganharam alvo mínimo efetivo de 48 px. O diálogo RetroFE mudou visualmente nos quatro viewports; os goldens foram atualizados após inspeção e a rodada combinada ES-DE/RetroFE passou 13/13. A rodada vermelha contra as baselines antigas permanece registrada; isso não certifica input físico ou release. Em 2026-10-02, as baselines de RetroFE foram atualizadas após inspeção da captura causada pela nova entrada Abrir Jornadas no fundo do ThemeEditorPanel. O modal manteve geometria/conteúdo; o teste combinado passou 13/13 em Qt offscreen. Esta renovação não promove instalação física nem release."
 }

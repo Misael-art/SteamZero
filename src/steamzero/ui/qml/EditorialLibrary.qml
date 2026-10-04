@@ -603,6 +603,7 @@ Item {
         // honesto é o tamanho de desenho.
         decodeSize: root.coverDecodeSize(width, height)
         fillMode: root.recipeFillMode("contextualBackdrop")
+        recipe: root.mediaRecipe("contextualBackdrop")
         effects: root.recipeEffects("contextualBackdrop", "contextualBackdrop")
         opacity: root.highContrast ? 0 : 0.34
     }
@@ -1200,6 +1201,7 @@ Item {
                                 border.width: parent.activeFocus || index === root.selectedIndex ? 3 : 1
                                 clip: true
                                 MediaEffectLayer {
+                                    objectName: "editorialFocusedCoverMedia"
                                     anchors.fill: parent
                                     source: modelData.coverUrl
                                     visible: modelData.coverUrl !== ""
@@ -1209,6 +1211,8 @@ Item {
                                     decodeSize: root.coverDecodeSize(root.coverWidth(),
                                         root.coverHeight())
                                     fillMode: root.recipeFillMode(index === root.selectedIndex
+                                        ? "focusedCover" : "peripheralCover")
+                                    recipe: root.mediaRecipe(index === root.selectedIndex
                                         ? "focusedCover" : "peripheralCover")
                                     effects: index === root.selectedIndex
                                         ? root.recipeEffects("focusedCover", "focusedCover")
@@ -1312,6 +1316,7 @@ Item {
                                     decodeSize: root.coverDecodeSize(gameGrid.cellWidth,
                                         gameGrid.cellHeight)
                                     fillMode: root.recipeFillMode("peripheralCover")
+                                    recipe: root.mediaRecipe("peripheralCover")
                                     effects: root.recipeEffects("peripheralCover", "peripheralCover")
                                 }
                                 Rectangle {

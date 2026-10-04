@@ -963,6 +963,8 @@ class SteamGameplayController:
         return None
 
     def _memory_gb(self) -> float | None:
+        # /proc/meminfo está em kiB; o valor devolvido é GiB (base 1024), a mesma
+        # unidade que sizes.js declara. Ausente continua None, nunca zero.
         try:
             for line in self._meminfo.read_text(encoding="utf-8").splitlines():
                 if line.startswith("MemAvailable:"):

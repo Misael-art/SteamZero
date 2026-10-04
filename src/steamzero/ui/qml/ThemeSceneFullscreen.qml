@@ -16,7 +16,7 @@ Window {
     objectName: "themeSceneFullscreen"
     visible: false
     color: backgroundColor
-    title: qsTr("Cena do tema — %1").arg(themeName)
+    title: qsTr("Cena do tema — %1").arg(themeName || themeId)
 
     property string themeId: ""
     property string themeName: ""

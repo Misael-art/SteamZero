@@ -8,20 +8,42 @@ import io
 import json
 import re
 import zipfile
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from steamzero.core import fs, ids, paths
 from steamzero.core.errors import SteamZeroError
+from steamzero.domain.asset_recipes import (
+    ASSET_RECIPE_SCHEMA_VERSION,
+    AssetRecipeBook,
+    AssetRecipeNode,
+    asset_recipe_editor_schema,
+)
 from steamzero.domain.dynamic_palette import extract_dynamic_palette
 from steamzero.domain.glass_panels import resolve_glass_panels
+from steamzero.domain.media_recipes import (
+    MEDIA_RECIPE_SCHEMA_VERSION,
+    MediaRole,
+    media_recipes_to_dict,
+    parse_media_recipes,
+)
 from steamzero.domain.scene_containers import ContainerBounds, resolve_scene_containers
 from steamzero.domain.scene_layout import LayoutBounds, LayoutRecipeBook, resolve_scene_layouts
-from steamzero.domain.scene_motion import resolve_scene_motion
+from steamzero.domain.scene_motion import MotionBook, motion_editor_schema, resolve_scene_motion
 from steamzero.domain.scene_surfaces import resolve_scene_surfaces
 from steamzero.domain.studio_graph import build_studio_graph
+from steamzero.domain.theme_effects import (
+    EFFECT_STACK_SCHEMA_VERSION,
+    EffectType,
+    effect_defaults,
+    effect_editor_schema,
+    effect_stacks_to_dict,
+    parse_effect_stacks,
+)
 from steamzero.domain.themes import (
     ASSET_SLOTS_ALLOWED,
     THEME_DEFAULT_ID,
@@ -100,6 +122,10 @@ class EditorSession:
     # Bytes recebidos por ``set_asset`` que ainda não foram gravados em disco.
     # slot -> (nome de arquivo derivado do slot, conteúdo)
     pending_assets: dict[str, tuple[str, bytes]] = field(default_factory=dict)
+    # Histórico de autoria (V3): snapshots completos, não deltas, porque o
+    # documento é pequeno e um snapshot não pode divergir do preview derivado.
+    undo_stack: list[dict[str, Any]] = field(default_factory=list)
+    redo_stack: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _default_session_id() -> str:
@@ -293,6 +319,53 @@ def _editor_chain_diagnostic(exc: BaseException) -> dict[str, str] | None:
     return None
 
 
+def _declared(manifest: dict[str, object]) -> dict[str, object]:
+    """Declaração visual efetiva da cadeia ``extends`` e do rascunho.
+
+    Diferente do preview, nada aqui é negociado por capability, tier ou
+    acessibilidade: é o que o tema *declara*, base de edição dos inspetores.
+    """
+    out: dict[str, object] = {
+        "effects": {},
+        "assetRecipes": None,
+        "sceneMotion": None,
+        "sceneLayouts": None,
+        "sceneSurfaces": None,
+    }
+    try:
+        draft = ThemeManifest.from_dict(dict(manifest))
+        available = _load_manifests_for_resolution()
+        available[draft.id] = draft
+        chain = ThemeResolver(available)._build_chain(draft.id)
+    except (ValueError, TypeError, KeyError, AttributeError):
+        return out
+    stacks: dict[str, list[dict[str, Any]]] = {}
+    for item in chain:
+        for name, entries in item.effects.items():
+            stacks[name] = [{**effect_defaults(entry.type), **entry.to_dict()} for entry in entries]
+        if item.asset_recipes is not None:
+            out["assetRecipes"] = item.asset_recipes.to_dict()
+        if item.scene_motion is not None:
+            out["sceneMotion"] = item.scene_motion.to_dict()
+        if item.scene_layouts is not None:
+            out["sceneLayouts"] = item.scene_layouts.to_dict()
+        if item.scene_surfaces is not None:
+            out["sceneSurfaces"] = item.scene_surfaces.to_dict()
+    out["effects"] = stacks
+    return out
+
+
+def _document(session: EditorSession) -> dict[str, object]:
+    """Documento + declaração que todo resultado de edição devolve à interface."""
+    return {
+        "manifest": dict(session.manifest),
+        "declared": _declared(session.manifest),
+        "assetRecipeSchema": asset_recipe_editor_schema(),
+        "effectSchema": effect_editor_schema(),
+        "motionSchema": motion_editor_schema(),
+    }
+
+
 def _resolved_preview(
     manifest: dict[str, object],
     tokens: dict[str, dict[str, object]],
@@ -300,6 +373,7 @@ def _resolved_preview(
     *,
     high_contrast: bool = False,
     reduced_motion: bool = False,
+    scene_layout_read_model: Mapping[str, Any] | None = None,
 ) -> dict[str, object]:
     resolved, diagnostics = _make_resolved(
         manifest,
@@ -308,13 +382,18 @@ def _resolved_preview(
         high_contrast=high_contrast,
         reduced_motion=reduced_motion,
     )
-    return _to_preview_object(resolved, diagnostics=diagnostics)
+    return _to_preview_object(
+        resolved,
+        diagnostics=diagnostics,
+        scene_layout_read_model=scene_layout_read_model,
+    )
 
 
 def _to_preview_object(
     resolved: ResolvedTheme,
     *,
     diagnostics: tuple[dict[str, str], ...] = (),
+    scene_layout_read_model: Mapping[str, Any] | None = None,
 ) -> dict[str, object]:
     """Entrega ao editor um preview já materializado, nunca bindings vivos."""
     preview = resolved.to_theme_qml_object()
@@ -322,7 +401,11 @@ def _to_preview_object(
     if resolved.scene_layouts is not None:
         preview["sceneLayoutPreview"] = resolve_scene_layouts(
             resolved.scene_layouts,
-            _LAYOUT_PREVIEW_READ_MODEL,
+            (
+                scene_layout_read_model
+                if scene_layout_read_model is not None
+                else _LAYOUT_PREVIEW_READ_MODEL
+            ),
             bounds=_LAYOUT_PREVIEW_BOUNDS,
         ).to_qml_object()
     extracted = None
@@ -357,6 +440,67 @@ def _to_preview_object(
         ).to_qml_object()
     preview["studioGraph"] = build_studio_graph(preview).to_qml_object()
     return preview
+
+
+_HISTORY_LIMIT = 100
+#: Metadados públicos que um binding de layout pode ler (spec §13); nada fora disto
+#: chega a uma propriedade de template, mesmo que a regex genérica do domínio aceite.
+BINDING_FIELDS = (
+    "title",
+    "year",
+    "developer",
+    "publisher",
+    "genre",
+    "description",
+    "rating",
+    "players",
+    "region",
+    "language",
+    "series",
+)
+_MEDIA_RECIPE_FIELDS = {"fit", "orientation", "alignH", "alignV", "focalX", "focalY"}
+
+
+def _capture(session: EditorSession) -> dict[str, Any]:
+    return {
+        "manifest": deepcopy(session.manifest),
+        "tokens": deepcopy(session.tokens),
+        "assets": dict(session.assets),
+        "pending_assets": dict(session.pending_assets),
+        "dirty": session.dirty,
+    }
+
+
+def _restore(session: EditorSession, snapshot: dict[str, Any]) -> None:
+    session.manifest = deepcopy(snapshot["manifest"])
+    session.tokens = deepcopy(snapshot["tokens"])
+    session.assets = dict(snapshot["assets"])
+    session.pending_assets = dict(snapshot["pending_assets"])
+    session.dirty = bool(snapshot["dirty"])
+
+
+def _history_state(session: EditorSession) -> dict[str, object]:
+    return {
+        "canUndo": bool(session.undo_stack),
+        "canRedo": bool(session.redo_stack),
+        "undoDepth": len(session.undo_stack),
+        "redoDepth": len(session.redo_stack),
+        "dirty": session.dirty,
+    }
+
+
+@contextmanager
+def _mutation(session: EditorSession) -> Iterator[None]:
+    """Uma edição = um passo de undo. Falha restaura o documento exatamente."""
+    before = _capture(session)
+    try:
+        yield
+    except BaseException:
+        _restore(session, before)
+        raise
+    session.undo_stack.append(before)
+    del session.undo_stack[:-_HISTORY_LIMIT]
+    session.redo_stack.clear()
 
 
 class ThemeEditorManager:
@@ -407,7 +551,11 @@ class ThemeEditorManager:
             "sessionId": sid,
             "readOnly": read_only,
             "manifest": manifest.to_dict(),
-            "preview": _resolved_preview(manifest.to_dict(), tokens, assets),
+            "declared": _declared(manifest.to_dict()),
+            "preview": self._preview(self._sessions[sid]),
+            "assetRecipeSchema": asset_recipe_editor_schema(),
+            "effectSchema": effect_editor_schema(),
+            "motionSchema": motion_editor_schema(),
         }
 
     def create(
@@ -425,7 +573,7 @@ class ThemeEditorManager:
             license="MIT",
             extends=extends,
         )
-        self._sessions[sid] = EditorSession(
+        session = EditorSession(
             session_id=sid,
             theme_dir=None,
             manifest=manifest.to_dict(),
@@ -433,10 +581,15 @@ class ThemeEditorManager:
             assets={},
             dirty=True,
         )
+        self._sessions[sid] = session
         return {
             "sessionId": sid,
             "manifest": manifest.to_dict(),
-            "preview": _resolved_preview(manifest.to_dict(), {}, {}),
+            "declared": _declared(manifest.to_dict()),
+            "preview": self._preview(session),
+            "assetRecipeSchema": asset_recipe_editor_schema(),
+            "effectSchema": effect_editor_schema(),
+            "motionSchema": motion_editor_schema(),
         }
 
     def set_tokens(
@@ -448,9 +601,10 @@ class ThemeEditorManager:
         session = self._get_session(session_id)
         if category not in _TOKEN_CATEGORIES:
             raise SteamZeroError("E-API-SCHEMA", detail=f"categoria inválida: {category}")
-        session.tokens[category] = dict(values)
-        session.dirty = True
-        return {"preview": self._preview(session)}
+        with _mutation(session):
+            session.tokens[category] = dict(values)
+            session.dirty = True
+        return {"preview": self._preview(session), "history": _history_state(session)}
 
     def set_metadata(self, session_id: str, meta_field: str, value: object) -> dict[str, object]:
         session = self._get_session(session_id)
@@ -459,9 +613,10 @@ class ThemeEditorManager:
             raise SteamZeroError("E-API-SCHEMA", detail=f"campo inválido: {meta_field}")
         if value is not None and not isinstance(value, str):
             raise SteamZeroError("E-API-SCHEMA", detail=f"valor de {meta_field} precisa ser string")
-        session.manifest[meta_field] = value
-        session.dirty = True
-        return {"manifest": dict(session.manifest)}
+        with _mutation(session):
+            session.manifest[meta_field] = value
+            session.dirty = True
+        return {"manifest": dict(session.manifest), "history": _history_state(session)}
 
     def set_layout(
         self, session_id: str, layout_id: str, field: str, value: object
@@ -474,6 +629,8 @@ class ThemeEditorManager:
         """
         session = self._get_session(session_id)
         raw_book = session.manifest.get("sceneLayouts")
+        if not isinstance(raw_book, dict):
+            raw_book = _declared(session.manifest)["sceneLayouts"]  # herdado, materializado
         if not isinstance(raw_book, dict):
             raise SteamZeroError("E-API-SCHEMA", detail="tema não possui sceneLayouts editável")
         raw_layouts = raw_book.get("layouts")
@@ -498,9 +655,67 @@ class ThemeEditorManager:
             parsed = LayoutRecipeBook.from_dict(candidate)
         except (TypeError, ValueError) as exc:
             raise SteamZeroError("E-API-SCHEMA", detail=str(exc)) from exc
-        session.manifest["sceneLayouts"] = parsed.to_dict()
-        session.dirty = True
-        return {"preview": self._preview(session), "layout": parsed.layouts[layout_id].to_dict()}
+        with _mutation(session):
+            session.manifest["sceneLayouts"] = parsed.to_dict()
+            session.dirty = True
+        return {
+            **_document(session),
+            "preview": self._preview(session),
+            "layout": parsed.layouts[layout_id].to_dict(),
+            "history": _history_state(session),
+        }
+
+    def edit_layout_binding(
+        self,
+        session_id: str,
+        layout_id: str,
+        prop: str,
+        *,
+        binding: str | None,
+        fallback: object = None,
+    ) -> dict[str, object]:
+        """Liga (ou desliga) uma propriedade do template de layout a um metadado público.
+
+        ``binding=None`` troca o binding pelo valor de ``fallback`` (escalar). O livro
+        inteiro é revalidado por ``LayoutRecipeBook`` e a fonte do binding precisa
+        estar na allowlist de metadados públicos; nada executável entra no documento.
+        """
+        session = self._get_session(session_id)
+        raw_book = session.manifest.get("sceneLayouts")
+        if not isinstance(raw_book, dict):
+            raw_book = _declared(session.manifest)["sceneLayouts"]
+        if not isinstance(raw_book, dict):
+            raise SteamZeroError("E-API-SCHEMA", detail="tema não possui sceneLayouts editável")
+        candidate = deepcopy(raw_book)
+        layout = candidate.get("layouts", {}).get(layout_id)
+        if not isinstance(layout, dict) or not isinstance(layout.get("template"), dict):
+            raise SteamZeroError("E-API-SCHEMA", detail=f"layout sem template: {layout_id}")
+        properties = layout["template"].setdefault("properties", {})
+        if binding is None:
+            properties[prop] = fallback
+        else:
+            if not binding.startswith("item.") or binding[5:] not in BINDING_FIELDS:
+                raise SteamZeroError(
+                    "E-API-SCHEMA",
+                    detail=f"binding fora da allowlist de metadados públicos: {binding}",
+                )
+            entry: dict[str, object] = {"binding": binding}
+            if fallback is not None:
+                entry["fallback"] = fallback
+            properties[prop] = entry
+        try:
+            parsed = LayoutRecipeBook.from_dict(candidate)
+        except (TypeError, ValueError) as exc:
+            raise SteamZeroError("E-API-SCHEMA", detail=str(exc)) from exc
+        with _mutation(session):
+            session.manifest["sceneLayouts"] = parsed.to_dict()
+            session.dirty = True
+        return {
+            **_document(session),
+            "preview": self._preview(session),
+            "layout": parsed.layouts[layout_id].to_dict(),
+            "history": _history_state(session),
+        }
 
     def set_asset(
         self, session_id: str, slot: str, data: bytes, filename: str
@@ -518,10 +733,380 @@ class ThemeEditorManager:
         # O nome gravado é derivado do slot, nunca do nome enviado: o filename
         # externo só contribui com a extensão, já validada acima.
         stored_name = f"{slot}{ext}"
-        session.pending_assets[slot] = (stored_name, data)
-        session.assets[slot] = f"assets/{stored_name}"
-        session.dirty = True
-        return {"asset": {"slot": slot, "filename": stored_name, "size": len(data)}}
+        with _mutation(session):
+            session.pending_assets[slot] = (stored_name, data)
+            session.assets[slot] = f"assets/{stored_name}"
+            session.dirty = True
+        return {
+            "asset": {"slot": slot, "filename": stored_name, "size": len(data)},
+            "history": _history_state(session),
+        }
+
+    def set_media_recipe(
+        self, session_id: str, role: str, recipe_field: str, value: object
+    ) -> dict[str, object]:
+        """Edita enquadramento de um slot de mídia (fit/orientação/alinhamento/foco).
+
+        A receita herdada é materializada no manifesto na primeira edição e a
+        receita inteira é revalidada antes de tocar a sessão. Não há cópia
+        pré-transformada da arte: o pacote guarda só esta declaração.
+        """
+        session = self._get_session(session_id)
+        if recipe_field not in _MEDIA_RECIPE_FIELDS:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail=f"campo de receita não editável: {recipe_field}"
+            )
+        try:
+            MediaRole(role)
+        except ValueError:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"slot de mídia inválido: {role}") from None
+        current = _resolved_preview(session.manifest, session.tokens, session.assets)
+        inherited = current.get("mediaRecipes")
+        book: dict[str, dict[str, object]] = {}
+        raw_own = session.manifest.get("mediaRecipes")
+        if isinstance(raw_own, dict) and isinstance(raw_own.get("recipes"), dict):
+            book = deepcopy(raw_own["recipes"])
+        if role not in book:
+            base = inherited.get(role) if isinstance(inherited, dict) else None
+            if not isinstance(base, dict):
+                raise SteamZeroError("E-API-SCHEMA", detail=f"slot sem receita para editar: {role}")
+            book[role] = deepcopy(base)
+        book[role][recipe_field] = value
+        candidate = {"schemaVersion": MEDIA_RECIPE_SCHEMA_VERSION, "recipes": book}
+        try:
+            parsed = parse_media_recipes(candidate)
+        except (TypeError, ValueError) as exc:
+            raise SteamZeroError("E-API-SCHEMA", detail=str(exc)) from exc
+        with _mutation(session):
+            session.manifest["mediaRecipes"] = media_recipes_to_dict(parsed)
+            session.dirty = True
+        return {
+            **_document(session),
+            "preview": self._preview(session),
+            "recipe": parsed[role].to_dict(),
+            "history": _history_state(session),
+        }
+
+    def edit_asset_recipe(
+        self,
+        session_id: str,
+        op: str,
+        *,
+        recipe: str = "",
+        source_slot: str = "",
+        name: str = "",
+        node_type: str = "",
+        index: int | None = None,
+        to_index: int | None = None,
+        field_name: str = "",
+        value: object = None,
+    ) -> dict[str, object]:
+        """Edita o livro allowlisted de receitas de um único asset-fonte.
+
+        O livro herdado é materializado na primeira edição. Toda mutação passa
+        pelo parser canônico e pelo resolver do tema antes de abrir a
+        transação, portanto um node inválido deixa documento e histórico
+        intactos.
+        """
+        session = self._get_session(session_id)
+        inherited = _declared(session.manifest).get("assetRecipes")
+        raw_book = session.manifest.get("assetRecipes")
+        if not isinstance(raw_book, dict):
+            raw_book = deepcopy(inherited) if isinstance(inherited, dict) else None
+
+        if op == "initialize":
+            if raw_book is not None:
+                raise SteamZeroError("E-API-SCHEMA", detail="receitas de asset já existem")
+            if not source_slot:
+                raise SteamZeroError("E-API-SCHEMA", detail="sourceSlot é obrigatório")
+            candidate: dict[str, object] = {
+                "schemaVersion": ASSET_RECIPE_SCHEMA_VERSION,
+                "sourceSlot": source_slot,
+                "recipes": {"original": {"source": source_slot, "nodes": []}},
+            }
+        else:
+            if raw_book is None:
+                raise SteamZeroError(
+                    "E-API-SCHEMA", detail="tema sem assetRecipes; inicialize um asset-fonte"
+                )
+            candidate = deepcopy(raw_book)
+
+        try:
+            if op == "initialize":
+                pass
+            elif op == "create-recipe":
+                recipes = candidate.get("recipes")
+                source = candidate.get("sourceSlot")
+                if not isinstance(recipes, dict) or not isinstance(source, str):
+                    raise ValueError("assetRecipes inválido")
+                if name in recipes:
+                    raise ValueError(f"receita já existe: {name}")
+                recipes[name] = {"source": source, "nodes": []}
+            elif op == "remove-recipe":
+                recipes = candidate.get("recipes")
+                if not isinstance(recipes, dict) or recipe not in recipes:
+                    raise ValueError(f"receita não encontrada: {recipe}")
+                if len(recipes) <= 1:
+                    raise ValueError("o livro precisa manter ao menos uma receita")
+                del recipes[recipe]
+            else:
+                recipes = candidate.get("recipes")
+                if not isinstance(recipes, dict) or recipe not in recipes:
+                    raise ValueError(f"receita não encontrada: {recipe}")
+                raw_recipe = recipes[recipe]
+                if not isinstance(raw_recipe, dict) or not isinstance(
+                    raw_recipe.get("nodes"), list
+                ):
+                    raise ValueError(f"receita inválida: {recipe}")
+                nodes = raw_recipe["nodes"]
+                if op == "add":
+                    allowed_types = asset_recipe_editor_schema()["nodeTypes"]
+                    if node_type not in allowed_types:
+                        raise ValueError(f"node não permitido: {node_type}")
+                    if any(
+                        isinstance(node, dict) and node.get("type") == node_type for node in nodes
+                    ):
+                        raise ValueError(f"receita já contém {node_type}")
+                    insert_at = len(nodes) if index is None else index
+                    if not 0 <= insert_at <= len(nodes):
+                        raise ValueError("posição do node fora da receita")
+                    nodes.insert(
+                        insert_at, AssetRecipeNode.from_dict({"type": node_type}).to_dict()
+                    )
+                elif op in {"set", "remove", "move"}:
+                    if index is None or not 0 <= index < len(nodes):
+                        raise ValueError("índice do node fora da receita")
+                    if op == "set":
+                        node = nodes[index]
+                        if not isinstance(node, dict):
+                            raise ValueError("node inválido")
+                        node_schema = asset_recipe_editor_schema()["nodes"].get(node.get("type"))
+                        fields = (
+                            node_schema.get("fields", {}) if isinstance(node_schema, dict) else {}
+                        )
+                        if field_name not in fields:
+                            raise ValueError(f"campo não editável: {field_name}")
+                        node[field_name] = value
+                    elif op == "remove":
+                        del nodes[index]
+                    else:
+                        if to_index is None or not 0 <= to_index < len(nodes):
+                            raise ValueError("destino do node fora da receita")
+                        moved = nodes.pop(index)
+                        nodes.insert(to_index, moved)
+                else:
+                    raise ValueError(f"operação de receita desconhecida: {op}")
+
+            parsed = AssetRecipeBook.from_dict(candidate)
+            draft_data = deepcopy(session.manifest)
+            draft_data["assetRecipes"] = parsed.to_dict()
+            draft = ThemeManifest.from_dict(draft_data)
+            available = _load_manifests_for_resolution()
+            available[draft.id] = draft
+            ThemeResolver(available).resolve(draft.id)
+        except (TypeError, ValueError, KeyError, AttributeError) as exc:
+            raise SteamZeroError("E-API-SCHEMA", detail=str(exc)) from exc
+
+        with _mutation(session):
+            session.manifest["assetRecipes"] = parsed.to_dict()
+            session.dirty = True
+        recipe_result = parsed.recipes.get(recipe)
+        return {
+            **_document(session),
+            "preview": self._preview(session),
+            "recipe": recipe_result.to_dict() if recipe_result is not None else None,
+            "history": _history_state(session),
+        }
+
+    def edit_effect_stack(
+        self,
+        session_id: str,
+        stack: str,
+        op: str,
+        *,
+        index: int | None = None,
+        effect_type: str | None = None,
+        param: str | None = None,
+        value: object = None,
+    ) -> dict[str, object]:
+        """Edita uma pilha de efeitos declarativos (add/set/remove/move).
+
+        A pilha herdada é materializada no manifesto na primeira edição e a pilha
+        inteira é revalidada por ``EffectSpec`` (allowlist, limites, cores) antes
+        de tocar a sessão; falha deixa o documento intacto.
+        """
+        session = self._get_session(session_id)
+        if op not in {"add", "set", "remove", "move"}:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"operação de efeito inválida: {op}")
+        if not stack:
+            raise SteamZeroError("E-API-SCHEMA", detail="stack de efeitos obrigatório")
+        raw_own = session.manifest.get("effects")
+        stacks: dict[str, list[dict[str, Any]]] = {}
+        if isinstance(raw_own, dict) and isinstance(raw_own.get("stacks"), dict):
+            stacks = deepcopy(raw_own["stacks"])
+        if stack not in stacks:
+            declared_stacks = _declared(session.manifest)["effects"]
+            seed = declared_stacks.get(stack) if isinstance(declared_stacks, dict) else None
+            stacks[stack] = deepcopy(seed) if isinstance(seed, list) else []
+        entries = stacks[stack]
+        try:
+            if op == "add":
+                entries.append(
+                    {"type": effect_type, **effect_defaults(EffectType(effect_type or ""))}
+                )
+            else:
+                if index is None or not 0 <= index < len(entries):
+                    raise ValueError("índice de efeito fora da pilha")
+                if op == "remove":
+                    del entries[index]
+                elif op == "move":
+                    target = int(value) if isinstance(value, int | float) else -1
+                    if not 0 <= target < len(entries):
+                        raise ValueError("destino de efeito fora da pilha")
+                    entries.insert(target, entries.pop(index))
+                else:
+                    if not param:
+                        raise ValueError("parâmetro obrigatório")
+                    entries[index][param] = value
+            parsed = parse_effect_stacks(
+                {"schemaVersion": EFFECT_STACK_SCHEMA_VERSION, "stacks": stacks}
+            )
+        except (TypeError, ValueError) as exc:
+            raise SteamZeroError("E-API-SCHEMA", detail=str(exc)) from exc
+        with _mutation(session):
+            session.manifest["effects"] = effect_stacks_to_dict(parsed)
+            session.dirty = True
+        return {
+            **_document(session),
+            "preview": self._preview(session),
+            "stack": [item.to_dict() for item in parsed[stack]],
+            "history": _history_state(session),
+        }
+
+    def edit_motion(
+        self,
+        session_id: str,
+        op: str,
+        *,
+        timeline: str | None = None,
+        index: int | None = None,
+        field: str | None = None,
+        value: object = None,
+    ) -> dict[str, object]:
+        """Edita estados (keyframes) e timelines declarativos de ``sceneMotion``.
+
+        ``set_state`` altera um keyframe (opacity/scale/translate) do estado em
+        ``timeline``; as demais operações criam/alteram/removem timelines e clips.
+        O livro inteiro é revalidado por ``MotionBook`` antes de tocar a sessão.
+        """
+        session = self._get_session(session_id)
+        ops = {
+            "set_state",
+            "add_timeline",
+            "remove_timeline",
+            "set_timeline",
+            "add_clip",
+            "set_clip",
+            "remove_clip",
+            "move_clip",
+        }
+        if op not in ops or not timeline:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"operação de movimento inválida: {op}")
+        raw = session.manifest.get("sceneMotion")
+        if not isinstance(raw, dict):
+            raw = _declared(session.manifest)["sceneMotion"]  # herdado, nunca descartado
+        book: dict[str, Any] = (
+            deepcopy(raw)
+            if isinstance(raw, dict)
+            else {"schemaVersion": 1, "states": {"normal": {}}}
+        )
+        timelines: dict[str, Any] = book.setdefault("timelines", {})
+        try:
+            if op == "set_state":
+                if not field:
+                    raise ValueError("campo de keyframe obrigatório")
+                book["states"].setdefault(timeline, {})[field] = value
+            elif op == "add_timeline":
+                if timeline in timelines:
+                    raise ValueError(f"timeline já existe: {timeline}")
+                timelines[timeline] = {
+                    "kind": str(value or "sequence"),
+                    "clips": [{"state": "normal", "duration": 0}],
+                }
+            else:
+                if timeline not in timelines:
+                    raise ValueError(f"timeline inexistente: {timeline}")
+                entry = timelines[timeline]
+                if op == "remove_timeline":
+                    del timelines[timeline]
+                elif op == "set_timeline":
+                    if field not in {"kind", "repeat"}:
+                        raise ValueError("campo de timeline não editável")
+                    entry[field] = value
+                elif op == "add_clip":
+                    if not isinstance(value, dict):
+                        raise ValueError("clip exige objeto")
+                    entry["clips"].append(dict(value))
+                else:
+                    clips = entry["clips"]
+                    if index is None or not 0 <= index < len(clips):
+                        raise ValueError("índice de clip fora da timeline")
+                    if op == "remove_clip":
+                        del clips[index]
+                    elif op == "move_clip":
+                        if isinstance(value, bool) or not isinstance(value, int):
+                            raise ValueError("destino de clip precisa ser inteiro")
+                        target = value
+                        if not 0 <= target < len(clips):
+                            raise ValueError("destino de clip fora da timeline")
+                        clips.insert(target, clips.pop(index))
+                    else:
+                        if field not in {"state", "duration", "transition"}:
+                            raise ValueError("campo de clip não editável")
+                        clips[index][field] = value
+            parsed = MotionBook.from_dict(book)
+        except (TypeError, ValueError, KeyError) as exc:
+            raise SteamZeroError("E-API-SCHEMA", detail=str(exc)) from exc
+        with _mutation(session):
+            session.manifest["sceneMotion"] = parsed.to_dict()
+            session.dirty = True
+        return {
+            **_document(session),
+            "preview": self._preview(session),
+            "motion": parsed.to_dict(),
+            "history": _history_state(session),
+        }
+
+    def undo(self, session_id: str) -> dict[str, object]:
+        return self._step(session_id, undo=True)
+
+    def redo(self, session_id: str) -> dict[str, object]:
+        return self._step(session_id, undo=False)
+
+    def _step(self, session_id: str, *, undo: bool) -> dict[str, object]:
+        session = self._get_session(session_id)
+        source, target = (
+            (session.undo_stack, session.redo_stack)
+            if undo
+            else (session.redo_stack, session.undo_stack)
+        )
+        if not source:
+            raise SteamZeroError(
+                "E-API-SCHEMA",
+                detail="nada para desfazer" if undo else "nada para refazer",
+            )
+        target.append(_capture(session))
+        _restore(session, source.pop())
+        # Manifesto, assets e preview saem da mesma sessão restaurada: não há
+        # estado de preview guardado que possa divergir do documento.
+        return {
+            **_document(session),
+            "preview": self._preview(session),
+            "history": _history_state(session),
+        }
+
+    def history(self, session_id: str) -> dict[str, object]:
+        return {"history": _history_state(self._get_session(session_id))}
 
     def preview(
         self,
@@ -529,9 +1114,17 @@ class ThemeEditorManager:
         *,
         high_contrast: bool = False,
         reduced_motion: bool = False,
+        scene_layout_read_model: Mapping[str, Any] | None = None,
     ) -> dict[str, object]:
         session = self._get_session(session_id)
-        return {"preview": self._preview(session, high_contrast, reduced_motion)}
+        return {
+            "preview": self._preview(
+                session,
+                high_contrast,
+                reduced_motion,
+                scene_layout_read_model=scene_layout_read_model,
+            )
+        }
 
     def save(self, session_id: str, *, overwrite: bool = False) -> dict[str, str]:
         session = self._get_session(session_id)
@@ -565,7 +1158,7 @@ class ThemeEditorManager:
 
         if target.exists() and not overwrite:
             raise SteamZeroError(
-                "E-THEME-DOWNLOAD-FAILED",
+                "E-THEME-ID-EXISTS",
                 detail=f"tema '{theme_id}' já existe. Use overwrite=true para substituir.",
             )
 
@@ -662,14 +1255,77 @@ class ThemeEditorManager:
         session: EditorSession,
         high_contrast: bool = False,
         reduced_motion: bool = False,
+        *,
+        scene_layout_read_model: Mapping[str, Any] | None = None,
     ) -> dict[str, object]:
-        return _resolved_preview(
+        preview = _resolved_preview(
             session.manifest,
             session.tokens,
             session.assets,
             high_contrast=high_contrast,
             reduced_motion=reduced_motion,
+            scene_layout_read_model=scene_layout_read_model,
         )
+        preview["assetUris"] = self._asset_preview_uris(session)
+        return preview
+
+    @staticmethod
+    def _asset_preview_uris(session: EditorSession) -> dict[str, str]:
+        """Expose only the selected recipe's validated source inside its theme root."""
+        book = _declared(session.manifest).get("assetRecipes")
+        if not isinstance(book, dict) or not isinstance(book.get("sourceSlot"), str):
+            return {}
+        source_slot = book["sourceSlot"]
+        try:
+            draft = ThemeManifest.from_dict(dict(session.manifest))
+            available = _load_manifests_for_resolution()
+            available[draft.id] = draft
+            chain = ThemeResolver(available)._build_chain(draft.id)
+        except (ValueError, TypeError, KeyError, AttributeError):
+            return {}
+
+        owner_id = ""
+        asset_path = ""
+        for item in chain:
+            if item.assets and source_slot in item.assets:
+                owner_id = item.id
+                asset_path = item.assets[source_slot]
+        relative = PurePosixPath(asset_path)
+        if (
+            not owner_id
+            or not asset_path.startswith("assets/")
+            or relative.is_absolute()
+            or ".." in relative.parts
+        ):
+            return {}
+
+        user_root = paths.themes_dir() / owner_id
+        if user_root.is_dir() and not user_root.is_symlink():
+            root = user_root.resolve()
+            candidate = user_root
+            for part in relative.parts:
+                candidate = candidate / part
+                if candidate.is_symlink():
+                    return {}
+            try:
+                resolved = candidate.resolve(strict=True)
+                resolved.relative_to(root)
+            except (OSError, ValueError):
+                return {}
+            if resolved.is_file() and resolved.suffix.lower() in _ASSET_EXTENSIONS:
+                return {source_slot: resolved.as_uri()}
+            return {}
+
+        try:
+            import importlib.resources as resources
+
+            resource = resources.files(_THEME_PACKAGE).joinpath(owner_id, *relative.parts)
+            candidate = Path(str(resource))
+            if candidate.is_file() and candidate.suffix.lower() in _ASSET_EXTENSIONS:
+                return {source_slot: candidate.resolve().as_uri()}
+        except (OSError, FileNotFoundError, ModuleNotFoundError, TypeError, ValueError):
+            return {}
+        return {}
 
 
 def _validate_save(manifest_dict: dict[str, object]) -> str | None:

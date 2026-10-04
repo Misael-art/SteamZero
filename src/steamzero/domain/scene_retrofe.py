@@ -521,6 +521,17 @@ def _element(node: ET.Element, degraded: _Degraded, index: int) -> dict[str, Any
     return element
 
 
+def _canvas(root: ET.Element) -> dict[str, float] | None:
+    """Tamanho declarado do layout (``<layout width= height=>``), base das coordenadas em pixel."""
+    try:
+        width, height = float(root.get("width", "")), float(root.get("height", ""))
+    except ValueError:
+        return None
+    if not (0 < width <= 16384 and 0 < height <= 16384):
+        return None
+    return {"width": width, "height": height}
+
+
 def compile_layout(
     layout_xml: str,
     *,
@@ -558,6 +569,9 @@ def compile_layout(
             break
 
     view: dict[str, Any] = {"id": view_id, "elements": elements}
+    canvas = _canvas(root)
+    if canvas is not None:
+        view["canvas"] = canvas
     if aspect_ratio:
         view["aspectRatio"] = aspect_ratio
 

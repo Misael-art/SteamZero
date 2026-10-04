@@ -18,7 +18,7 @@
     "tests/unit/test_desktop_dashboard.py",
     "docs/09-operations/evidence/2026-09-21-aura-harmonization"
   ],
-  "scopeDigest": "768740a029f2086869c58c66873501a9327b6511488a665a860ca17d062728c0",
+  "scopeDigest": "24e1099cd3ec17c2e3be4f2f4db210e794e8e1bf86875366f6167514575517eb",
   "dependsOn": [
     "SZ-THEME-ENGINE",
     "SZ-AURA-LAUNCHER"
@@ -72,12 +72,24 @@
       "reference": "docs/09-operations/evidence/2026-09-21-aura-harmonization/03-performance-installed-13c933c3.json",
       "command": "launcher_perf_probe.py em Wayland/OpenGL real na release 2.0.0rc1-13c933c30ace; startup 146 ms, 375 frames, p95 16.213 ms, VRAM 15040 KiB",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-10-03-journey-engine-preview/README.md",
+      "command": "2026-10-03 shared-scope renewal: SHA/digest re-evaluated after the Journey bridge/Engine preview and product/status documentation changed shared paths. No acceptance criterion or capability of this item was promoted by that change; this record is scope reconciliation, not new product evidence.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/status/workstreams/v1-v3-theme-journey-2026-10-01.json",
+      "command": "2026-10-03, digest recalculado com tools/project_status.py após a integração de paths compartilhados da jornada; registro de escopo, sem reexecução dos critérios deste item nem promoção de estado.",
+      "result": "recorded"
     }
   ],
   "activeWorkstreams": [
     "WS-2026-09-AURA-ESDE-RUNTIME-BRIDGE"
   ],
   "nextAction": "Ligar os sinais itemFocused/itemActivated ao consumidor real do Launcher e repetir as provas físicas de vídeo, OSD, saves, multidisc e retorno ao foco.",
-  "updatedAt": "2026-09-21",
-  "notes": "A release 2.0.0rc1-13c933c30ace foi promovida pelo fluxo governado, com daemon convergente, schema 22, captura AURA e medição dentro do orçamento. A captura prova a superfície instalada e o bridge visual; não promove OSD, saves, troca de disco ou consumo de ativação pelo Launcher."
+  "updatedAt": "2026-10-03",
+  "notes": "A release 2.0.0rc1-13c933c30ace foi promovida pelo fluxo governado, com daemon convergente, schema 22, captura AURA e medição dentro do orçamento. A captura prova a superfície instalada e o bridge visual; não promove OSD, saves, troca de disco ou consumo de ativação pelo Launcher. Em 2026-10-03, ThemeScenePreview recebeu runtimeModelOverride para permitir que o consumidor Jornada apresente rows públicos já filtrados; teste focal passou. Isto não altera a evidência histórica do item nem certifica consumo da Jornada no runtime ou na release instalada."
 }

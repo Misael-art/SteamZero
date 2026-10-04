@@ -19,7 +19,7 @@
     "tests/unit/test_ps3_firmware.py",
     "tests/unit/test_emulation_controller.py"
   ],
-  "scopeDigest": "8bd3325c50f736b89f44f3a1cdfaef2685611f1a224495bd43bf291633d25ad8",
+  "scopeDigest": "0a6eb2a81a432ee1e886859f937316f4478b04910a6bc3bc05bb08d62b7c342e",
   "dependsOn": [
     "SZ-PLATFORM-REQUIREMENT-SCOPE",
     "SZ-EMULATION-REAL-DUMP-VALIDATION"
@@ -66,6 +66,12 @@
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-09-27-shell-esde-dialog/00-preflight.log",
       "command": "2026-09-27 RC-01 (4a fatia, dialogo ES-DE do shell): scopeDigest renovado por mudanca ALHEIA a este item. O escopo deste cartao declara src/steamzero/ui/qml/Main.qml, que a frente RC-01 editou para dar ao dialogo de importacao ES-DE do shell teto de altura, corpo rolavel, rodape fixo de 48 px e navegacao por tecla real (objeto theme-import-esde-dialog). A renovacao e revalidacao de escopo, NAO carimbo: nenhuma evidencia deste item foi reexecutada e nada do que esta pendente aqui mudou de estado. O gate da frente (tests/integration/test_ui_shell_esde_import_dialog.py, 20 passed na arvore da entrega) cobre o dialogo alterado, nao as assercoes deste cartao. A conciliacao do claim de Main.qml, medida e nao presumida, esta no log referenciado. Nada do download de firmware PS3 foi tocado.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-10-01-v4-authoring-ui/README.md",
+      "command": "2026-10-02: scopeDigest renovado por mudança de locator objectName em EditorialLibrary.qml para o teste QML de temas. Nenhum comportamento PS3/emulação mudou; este item não foi retestado e nenhum eixo foi promovido.",
       "result": "recorded"
     }
   ],

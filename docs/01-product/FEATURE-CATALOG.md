@@ -94,15 +94,18 @@ Colunas: origem conceitual (de qual projeto vem a melhor referência), fase do r
 
 ## UI
 
-| F-UI-01 | AURA Launcher fullscreen (home, biblioteca, jogo, busca, coleções, launch/return) | categoria Big Picture/ES-DE/RetroFE/BigBox; implementação própria | 5 |
+| F-UI-01 | AURA Launcher fullscreen (menus por metadata, biblioteca, jogo, busca, coleções, sessão e retorno contextual) | categoria Big Picture/ES-DE/RetroFE/BigBox; implementação própria | 5 |
 | F-UI-02 | AURA UI da central de gerenciamento (dashboard, BIOS, jobs, saves, configurações, lote, logs e migrações) | SteamZero | 4/5 |
 | F-UI-03 | QAM adapter opcional via Decky | PhaseZero decky-ws-client.py | 5 |
 | F-UI-04 | Acessibilidade (escala, contraste, redução de movimento, remap, glyphs) | novo | 5 |
 | F-UI-05 | Theme Engine declarativa: scene graph, layouts, assets, bindings, effect graph e animações GPU-first | SteamZero | 5 |
-| F-UI-06 | Theme Studio visual: canvas, árvore, inspector, nodes, timeline, preview, validação e pacote reproduzível | SteamZero | 5/6 |
+| F-UI-06 | Theme Studio: autoria visual de cenas e jornadas (≥3 menus, grafo/árvore, filtros de campos públicos, aparência por etapa, herança AURA visível, preview e pacote reproduzível) | SteamZero | 5/6 |
 
 `F-UI-02` estar tematizada, instalada ou visível **não** implementa `F-UI-01`.
-O Launcher pode consumir tokens da AURA UI, mas exige shell, navegação, modelo de
-biblioteca, ciclo de lançamento e certificação física próprios.
+O Launcher pode consumir tokens da AURA UI, mas exige shell, navegação da jornada,
+modelo de biblioteca, ciclo de lançamento e certificação física próprios. A
+Theme Studio precisa editar e persistir o grafo da experiência; o
+`experience-journey-v2` (com migração de leitura v1) é um sidecar e não altera
+`theme-manifest-v1`.
 Theme Engine e Theme Studio também mantêm status independentes: runtime parcial
 não prova ferramenta visual, e editor de tokens não prova autoria livre de cenas.

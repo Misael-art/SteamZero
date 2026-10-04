@@ -215,7 +215,41 @@ Window {
                 ]
             }
         }
-        panel._openEditor("edit-asset-recipes", manifest, preview)
+        const declaredAssetRecipes = {
+            "schemaVersion": 1,
+            "sourceSlot": "logo",
+            "recipes": {
+                "original": {"source": "logo", "nodes": []},
+                "colored": {"source": "logo", "nodes": [
+                    {"type": "recolor", "color": "#22d3ee", "opacity": 1,
+                     "fallback": "source"}
+                ]},
+                "outlineThin": {"source": "logo", "nodes": [
+                    {"type": "outline", "width": 2, "color": "#ffffff", "opacity": 1,
+                     "position": "outer", "mask": "alpha", "fallback": "outer"}
+                ]},
+                "outlineThick": {"source": "logo", "nodes": [
+                    {"type": "outline", "width": 8, "color": "#000000", "opacity": 1,
+                     "position": "outer", "mask": "alpha", "fallback": "outer"}
+                ]}
+            }
+        }
+        const schema = {
+            "nodeTypes": ["recolor", "outline"], "maxNodes": 12,
+            "nodes": {
+                "recolor": {"fields": {
+                    "color": {"kind": "color", "default": "#ffffff"},
+                    "opacity": {"kind": "number", "minimum": 0, "maximum": 1}
+                }},
+                "outline": {"fields": {
+                    "width": {"kind": "number", "minimum": 1, "maximum": 32},
+                    "color": {"kind": "color", "default": "#ffffff"},
+                    "position": {"kind": "choice", "choices": ["inner", "outer"]}
+                }}
+            }
+        }
+        panel._openEditor("edit-asset-recipes", manifest, preview,
+                          {"assetRecipes": declaredAssetRecipes}, {}, {}, schema)
     }
 
     Timer {
@@ -225,6 +259,10 @@ Window {
         onTriggered: {
             check(panel.assetRecipeDemoActive,
                   "preview de receitas precisa ser consumido pelo editor real")
+            check(panel.assetRecipeEditorActive,
+                  "o inspector deve usar as receitas declaradas no documento editável")
+            check(panel.assetRecipeRecipes.outlineThin.nodes[0].width === 2,
+                  "a declaração editável não deve ser substituída pelo preview negociado")
             check(panel.assetRecipePreviewReady,
                   "fixture empacotada precisa chegar a Image.Ready no editor")
             check(panel.assetRecipePreviewDecodeCount === 1,

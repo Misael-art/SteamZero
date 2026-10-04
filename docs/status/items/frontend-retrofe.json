@@ -17,7 +17,7 @@
     "tests/unit/test_scene_retrofe.py",
     "tests/unit/test_theme_migration_audit.py"
   ],
-  "scopeDigest": "fe26399e82c3a0c185a177aa17b739457c5cc0f4147a8cc26650b034edafa5f3",
+  "scopeDigest": "0ae01c5c068bcf47212ee402a2f942491c8cfae00c8cc24de5c1dcadb6d2c7a8",
   "dependsOn": [],
   "knownGaps": ["GAP-G54"],
   "acceptanceCriteria": [

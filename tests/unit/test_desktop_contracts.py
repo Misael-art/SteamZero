@@ -142,6 +142,18 @@ def test_theme_export_contract_requires_destination_and_confirmation() -> None:
     assert confirm["confirmation"] == {"required": True, "mode": "dialog"}
 
 
+def test_asset_recipe_editor_contract_is_closed_and_routes_to_theme_surface() -> None:
+    action = handheld_ui_contracts()["byId"]["theme.editor.edit-asset-recipe"]
+    assert action["endpoint"] == "/theme/editor/edit-asset-recipe"
+    assert action["method"] == "POST"
+    assert action["screen"] == "themes"
+    schema = action["inputSchema"]
+    assert schema["required"] == ["sessionId", "op"]
+    assert schema["additionalProperties"] is False
+    assert schema["properties"]["value"]["type"] == ["string", "number", "boolean"]
+    assert "nodeType" in schema["properties"]
+
+
 def test_async_scan_contract_publishes_polling_and_terminal_states() -> None:
     scan = handheld_ui_contracts()["byId"]["library.scan"]
     assert scan["jobSemantics"] == {

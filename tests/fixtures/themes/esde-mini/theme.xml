@@ -1,0 +1,12 @@
+<!-- SPDX-License-Identifier: CC0-1.0 — fixture autoral do SteamZero, sem arte de terceiros. -->
+<theme>
+  <formatVersion>7</formatVersion>
+  <aspectRatio name="16:10">
+    <view name="gamelist">
+      <image name="fundo"><pos>0 0</pos><size>1 1</size><path>./fundo.png</path></image>
+      <image name="capa"><pos>0.05 0.1</pos><size>0.3 0.7</size><imageType>cover</imageType></image>
+      <text name="titulo"><pos>0.4 0.1</pos><size>0.55 0.1</size><metadata>name</metadata></text>
+      <image name="ausente"><pos>0.4 0.5</pos><size>0.2 0.2</size><path>./nao-existe.png</path></image>
+    </view>
+  </aspectRatio>
+</theme>

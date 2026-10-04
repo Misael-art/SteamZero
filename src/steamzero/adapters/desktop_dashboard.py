@@ -15,9 +15,10 @@ import json
 import logging
 import shutil
 import subprocess
+import tempfile
 import urllib.parse
 import zipfile
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from contextlib import suppress
 from pathlib import Path
 from typing import Any, cast
@@ -39,7 +40,7 @@ from steamzero.adapters.registry import AdapterManifest, AdapterRegistry
 from steamzero.adapters.resource_probe import ResourceProbe
 from steamzero.adapters.steam_gameplay import SteamGameplayController
 from steamzero.adapters.theme_catalog import ThemeCatalog, validate_theme_directory
-from steamzero.core import log, paths, transaction
+from steamzero.core import ids, log, paths, transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.secret import Secret
 from steamzero.core.session_state import SESSION_OWNER
@@ -61,7 +62,8 @@ from steamzero.domain.operation_history import OperationHistory
 from steamzero.domain.playtime import PlaytimeCatalog
 from steamzero.domain.readiness import not_measured
 from steamzero.domain.readiness import readiness as build_readiness
-from steamzero.domain.theme_editor import ThemeEditorManager
+from steamzero.domain.synthetic_library import synthetic_runtime_model
+from steamzero.domain.theme_editor import THEME_ID_RE, ThemeEditorManager
 from steamzero.domain.theme_install import ThemeInstaller
 from steamzero.domain.theme_preferences import ThemePreferenceManager
 from steamzero.ports import CaptureConsent
@@ -161,6 +163,43 @@ def _steam_process_running(proc_root: Path | None = None) -> bool:
 #: manifesto inflado não pode virar consumo de memória antes de qualquer
 #: validação. Os manifestos reais têm poucos KB.
 _THEME_MANIFEST_MAX_BYTES = 1024 * 1024
+
+
+_THEME_COPY_MAX_BYTES = 64 * 1024 * 1024
+
+
+def _rewrite_theme_package_as_copy(source: str, scratch: Path) -> Path:
+    """Regrava o pacote com id/nome de cópia; devolve o novo zip."""
+    manifest = _peek_theme_manifest(source)
+    old_id = str(manifest.get("id", ""))
+    if not THEME_ID_RE.fullmatch(old_id):
+        raise SteamZeroError("E-THEME-MANIFEST", detail="id do pacote inválido para cópia")
+    new_id = f"{old_id}.copy{ids.new_ulid().casefold()[:6]}"
+    if not THEME_ID_RE.fullmatch(new_id):
+        raise SteamZeroError("E-THEME-MANIFEST", detail="id de cópia inválido")
+    target = scratch / "copy.zip"
+    with zipfile.ZipFile(Path(source).expanduser()) as package:
+        total = sum(info.file_size for info in package.infolist())
+        if total > _THEME_COPY_MAX_BYTES:
+            raise SteamZeroError(
+                "E-THEME-LIMIT", detail=f"pacote com {total} bytes excede o teto de cópia"
+            )
+        with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as out:
+            for info in package.infolist():
+                if info.is_dir():
+                    continue
+                name = info.filename
+                parts = name.split("/")
+                if parts[0] == old_id:
+                    parts[0] = new_id
+                data = package.read(info)
+                if parts[-1] == "theme.json" and len(parts) <= 2:
+                    doc = json.loads(data)
+                    doc["id"] = new_id
+                    doc["name"] = f"{doc.get('name', old_id)} (cópia)"
+                    data = json.dumps(doc, indent=2).encode("utf-8")
+                out.writestr("/".join(parts), data)
+    return target
 
 
 def _peek_theme_manifest(source: str) -> dict[str, Any]:
@@ -1813,7 +1852,9 @@ class DesktopDashboard:
             "alreadyInstalled": theme_id in installed,
         }
 
-    def theme_import_zip_apply(self, source: str, *, overwrite: bool = False) -> dict[str, Any]:
+    def theme_import_zip_apply(
+        self, source: str, *, overwrite: bool = False, as_copy: bool = False
+    ) -> dict[str, Any]:
         """Instala um pacote SteamZero vindo do disco.
 
         Reusa o `ThemeInstaller`, que já extrai com limites, valida o manifesto
@@ -1824,10 +1865,22 @@ class DesktopDashboard:
         `_peek_theme_manifest` roda antes para recusar URL e pacote ilegível com
         mensagem própria, em vez de deixar o instalador falhar mais fundo.
         """
+        if overwrite and as_copy:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail="escolha substituir OU importar como cópia, não ambos"
+            )
         _peek_theme_manifest(source)
-        installer = ThemeInstaller(validate=validate_theme_directory)
-        result = installer.install(source, force=overwrite, yes=True)
-        return dict(result)
+        if not as_copy:
+            installer = ThemeInstaller(validate=validate_theme_directory)
+            return dict(installer.install(source, force=overwrite, yes=True))
+        # Cópia explícita: o pacote é reescrito com um id novo (namespace de
+        # cópia) numa pasta temporária própria; o original instalado e o arquivo
+        # de origem permanecem intactos. O instalador continua sendo o único
+        # caminho que extrai e valida.
+        with tempfile.TemporaryDirectory(prefix="sz-theme-copy-") as scratch:
+            copy_path = _rewrite_theme_package_as_copy(source, Path(scratch))
+            installer = ThemeInstaller(validate=validate_theme_directory)
+            return dict(installer.install(str(copy_path), force=False, yes=True))
 
     # -- importação de tema de terceiros -------------------------------
 
@@ -1986,7 +2039,9 @@ class DesktopDashboard:
         live = theme_assets.live_digests(theme_assets.load_installed_manifests(paths.themes_dir()))
         return store.collect_garbage(live, dry_run=not apply)
 
-    def _theme_runtime_model(self, system_id: str | None) -> dict[str, Any]:
+    def _theme_runtime_model(
+        self, system_id: str | None, *, synthetic: bool = False
+    ) -> dict[str, Any]:
         """Project the last canonical emulation snapshot for an ES-DE scene.
 
         Theme QML must not read the library cache or infer paths.  The dashboard
@@ -1994,6 +2049,9 @@ class DesktopDashboard:
         small, stable read model with explicit media fallbacks.  If the snapshot
         is unavailable the result is still valid and renders the empty state.
         """
+        if synthetic:
+            # Isolamento explícito: o snapshot privado nem é lido.
+            return synthetic_runtime_model()
         snapshot = self._last_emulation if isinstance(self._last_emulation, dict) else {}
         platforms = snapshot.get("editorialPlatforms", [])
         rows = platforms if isinstance(platforms, list) else []
@@ -2052,6 +2110,15 @@ class DesktopDashboard:
             "actions": ["Selecionar", "Detalhes", "Jogar"],
         }
 
+    def theme_imported_scene_render(
+        self, scene_id: str, *, synthetic: bool = True
+    ) -> dict[str, Any]:
+        """Renderiza uma cena importada sem ativá-la, com dados sintéticos por padrão."""
+        rendered = theme_scene.render_imported_scene(scene_id)
+        rendered["synthetic"] = synthetic
+        rendered["runtimeModel"] = self._theme_runtime_model(None, synthetic=synthetic)
+        return rendered
+
     def theme_scene_render(
         self,
         theme_id: str,
@@ -2061,6 +2128,7 @@ class DesktopDashboard:
         color_scheme: str = "",
         font_size: str = "",
         aspect_ratio: str = "",
+        synthetic: bool = False,
     ) -> dict[str, Any]:
         """Compila o tema instalado e devolve a cena com os assets resolvidos.
 
@@ -2080,7 +2148,8 @@ class DesktopDashboard:
             ),
         )
         rendered["selections"] = theme_scene.available_selections_for(theme_id)
-        rendered["runtimeModel"] = self._theme_runtime_model(system_id)
+        rendered["runtimeModel"] = self._theme_runtime_model(system_id, synthetic=synthetic)
+        rendered["synthetic"] = synthetic
         return rendered
 
     def theme_import_retrofe_inspect(self, source: str) -> dict[str, Any]:
@@ -2132,11 +2201,76 @@ class DesktopDashboard:
     ) -> dict[str, object]:
         return self._theme_editor.set_layout(session_id, layout_id, field, value)
 
-    def editor_preview(
-        self, session_id: str, *, high_contrast: bool = False, reduced_motion: bool = False
+    def editor_set_media_recipe(
+        self, session_id: str, role: str, recipe_field: str, value: object
     ) -> dict[str, object]:
+        return self._theme_editor.set_media_recipe(session_id, role, recipe_field, value)
+
+    def editor_edit_asset_recipe(
+        self,
+        session_id: str,
+        op: str,
+        *,
+        recipe: str = "",
+        source_slot: str = "",
+        name: str = "",
+        node_type: str = "",
+        index: int | None = None,
+        to_index: int | None = None,
+        field_name: str = "",
+        value: object = None,
+    ) -> dict[str, object]:
+        return self._theme_editor.edit_asset_recipe(
+            session_id,
+            op,
+            recipe=recipe,
+            source_slot=source_slot,
+            name=name,
+            node_type=node_type,
+            index=index,
+            to_index=to_index,
+            field_name=field_name,
+            value=value,
+        )
+
+    def editor_edit_effect(
+        self, session_id: str, stack: str, op: str, **kwargs: Any
+    ) -> dict[str, object]:
+        return self._theme_editor.edit_effect_stack(session_id, stack, op, **kwargs)
+
+    def editor_edit_motion(self, session_id: str, op: str, **kwargs: Any) -> dict[str, object]:
+        return self._theme_editor.edit_motion(session_id, op, **kwargs)
+
+    def editor_edit_binding(
+        self, session_id: str, layout_id: str, prop: str, **kwargs: Any
+    ) -> dict[str, object]:
+        return self._theme_editor.edit_layout_binding(session_id, layout_id, prop, **kwargs)
+
+    def editor_undo(self, session_id: str) -> dict[str, object]:
+        return self._theme_editor.undo(session_id)
+
+    def editor_redo(self, session_id: str) -> dict[str, object]:
+        return self._theme_editor.redo(session_id)
+
+    def editor_preview(
+        self,
+        session_id: str,
+        *,
+        high_contrast: bool | None = None,
+        reduced_motion: bool | None = None,
+        scene_layout_read_model: Mapping[str, Any] | None = None,
+    ) -> dict[str, object]:
+        if high_contrast is None:
+            with contextlib.suppress(Exception):
+                high_contrast = self._high_contrast_probe()
+        if reduced_motion is None:
+            with contextlib.suppress(Exception):
+                reduced_motion = self._reduced_motion_probe()
         return self._theme_editor.preview(
-            session_id, high_contrast=high_contrast, reduced_motion=reduced_motion
+            session_id,
+            high_contrast=bool(high_contrast),
+            reduced_motion=bool(reduced_motion),
+            scene_layout_read_model=scene_layout_read_model,
         )
 
     def editor_save(self, session_id: str, *, overwrite: bool = False) -> dict[str, str]:
@@ -2206,6 +2340,10 @@ class DesktopDashboard:
             }
         return {
             "status": "ready",
+            # Aplicar troca só o tema da central (AURA UI). Cena da Engine e
+            # cena do Launcher são consumidores distintos e não mudam aqui.
+            "consumer": "central",
+            "scope": "Tema da central; não altera a Engine nem o Launcher",
             "planId": plan.plan_id,
             "confirmToken": plan.confirm_token,
             "preview": plan.preview,

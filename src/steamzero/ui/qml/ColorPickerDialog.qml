@@ -16,6 +16,10 @@ QQC.Dialog {
     property color cyanColor: "#13bdf2"
     property color cyanDarkColor: "#0a5f85"
     property real visualScale: 1.0
+    readonly property int minimumInteractiveTarget: 48
+    property alias hexEditorControl: hexField
+    property alias applyButtonControl: applyButton
+    property alias cancelButtonControl: cancelButton
     readonly property int hexLabelPixelSize: hexLabel.font.pixelSize
 
     property var presets: [
@@ -75,11 +79,12 @@ QQC.Dialog {
                 }
                 QQC.TextField {
                     id: hexField
+                    objectName: "themeColorPickerHex"
                     text: String(dialog.initialColor)
                     placeholderText: "#RRGGBB"
                     maximumLength: 7
                     Layout.fillWidth: true
-                    Layout.minimumHeight: 40
+                    Layout.minimumHeight: Math.max(dialog.minimumInteractiveTarget, 40)
                     color: dialog.textColor
                     background: Rectangle {
                         color: dialog.backgroundColor
@@ -108,8 +113,8 @@ QQC.Dialog {
                 model: dialog.presets
                 delegate: Rectangle {
                     required property var modelData
-                    implicitWidth: 36
-                    implicitHeight: 36
+                    implicitWidth: Math.max(dialog.minimumInteractiveTarget, 36)
+                    implicitHeight: Math.max(dialog.minimumInteractiveTarget, 36)
                     radius: 6
                     color: modelData
                     border.color: hexField.text.trim().toUpperCase() === String(modelData).toUpperCase()
@@ -130,8 +135,10 @@ QQC.Dialog {
             spacing: 12
             Item { Layout.fillWidth: true }
             QQC.Button {
+                id: cancelButton
+                objectName: "themeColorPickerCancel"
                 text: qsTr("Cancelar")
-                Layout.minimumHeight: 44
+                Layout.minimumHeight: Math.max(dialog.minimumInteractiveTarget, 44)
                 Layout.preferredWidth: 120
                 onClicked: dialog.close()
                 background: Rectangle {
@@ -148,8 +155,10 @@ QQC.Dialog {
                 }
             }
             QQC.Button {
+                id: applyButton
+                objectName: "themeColorPickerApply"
                 text: qsTr("Aplicar")
-                Layout.minimumHeight: 44
+                Layout.minimumHeight: Math.max(dialog.minimumInteractiveTarget, 44)
                 Layout.preferredWidth: 120
                 onClicked: {
                     var c = hexField.text.trim()

@@ -1,10 +1,94 @@
-# Roadmap de implementação — continuidade após auditoria de 26/09/2026
+# Roadmap de implementação — revisão após diagnóstico físico de 01/10/2026
 
 ## Autoridade, objetivo e ponto de partida
 
 Este é o plano canônico de **ordem de execução**. `docs/status/items/*.json` continua sendo a fonte do **estado** de cada capacidade; `docs/ACTIVE-WORK.md` identifica os responsáveis. A auditoria [AUDIT.md](../09-operations/evidence/2026-09-26-project-design-audit/AUDIT.md) e sua [matriz](../09-operations/evidence/2026-09-26-project-design-audit/capability-matrix.md) preservam o diagnóstico, não certificam automaticamente a versão seguinte. O [prompt raiz](../../IMPLEMENTATION-PROMPT.md) operacionaliza este plano e o [handoff](../09-operations/AGENT-HANDOFF.md) informa o ponto de retomada.
 
 Objetivo: concluir jornadas úteis de ponta a ponta com integridade de dados, foco por controle, recuperação e experiência AURA consistente. Continuar o código existente; não reiniciar as fases históricas nem implementar novamente capacidades já presentes. Aprovações históricas de implantação não são autorização transferível para instalar no host.
+
+## Prioridade vigente — produto visual e autoria de temas
+
+Esta revisão substitui a fila inicial de RC-01 e antecipa os recortes elegíveis de RC-05/06. Os demais lotes e seus contratos continuam abaixo. Não é necessário resolver todo o acervo de ROMs para criar, editar e executar um tema sobre dados sintéticos. Dependências reais de contrato/runtime continuam obrigatórias.
+
+Base conferida no checkout em 01/10: `main` em `5715d7962691efedef0f1b63e71adff1ad5ba801`, um worktree e árvore limpa antes desta revisão documental. A integração de #239–#248 está relatada no fechamento anterior. A instalação da release `2.0.0rc1-5715d7962691` é sustentada pelos logs 131/132 e pelos relatórios visuais; esta revisão não reinstalou nem fez nova medição dos serviços.
+
+Fonte física mais recente: `134-b_visual-rc01-fisico-2`, que amplia `133-b_visual-rc01-fisico`, em:
+
+`/home/misael/steamzero-evidencia-integracao-2026-09-30/integracao-2026-09-30/`
+
+Leia `README.md`, `ACHADOS.md`, `TAREFAS-A-CODIGO.md`, `RC01.md` e `MATRIZ.md` das duas rodadas. São evidências locais: não enviar capturas/acervo privado a um PR sem revisão de privacidade e licença. Não copiar indiscriminadamente o acervo inteiro para o repositório.
+
+### Estado demonstrado e limites
+
+| Área | O que a rodada 134 demonstrou | O que ainda exige trabalho/prova |
+|---|---|---|
+| Central | Loading próprio; prontidão com estados/dimensões; quatro vistas de unidades | Primeira leitura em 7,6–8,3 s no arranque frio com daemon quente; flash de paleta; exceção `memoryGb`; carga/erro/retry completos não certificados |
+| Importação | ES-DE/RetroFE: exame, erro/recuperação, publicação gerenciada, reset e duplicata bloqueada sem sobrescrita | Conflito local chamado de download; modal não herda aparência; alvos; seletor nativo e ordem de respostas inconclusivos |
+| Design | Texto sobre superfícies navy legível; medições de componentes e modais abaixo da política essencial | Corrigir pares texto/fundo e estados no sistema de componentes; informação de erro acessível na própria jornada |
+| Studio | Painel e controles mapeados; código contém canvas/árvore/inspector e contratos de efeitos | Ciclo de autoria/reabertura não comprovado. Parte do grafo é observável, não editável. Falha da ação AT-SPI não prova impossibilidade de edição humana |
+| Temas/Launcher | Pacotes importados sem ativação automática; infraestrutura de cenas existente | Execução, correspondência preview/runtime, AURA Cinema atual e desempenho sem prova física. `--library` não ofereceu isolamento do catálogo privado nesta rodada |
+| Input | Ativações semânticas AT-SPI e rolagem por Value/Increment funcionaram em parte | Teclado sintético recusado/sem efeito; gamepad, escalas e seletor nativo precisam de passe próprio. Não atribuir automaticamente essas limitações ao produto |
+
+`RC01.md` ainda apresenta “seletor não aberto”, enquanto o adendo de `ACHADOS.md` relata abertura e desaparecimento inconclusivo. Reconciliar essa divergência no item/evidência mais recente; nenhum desses relatos certifica o round-trip do seletor.
+
+### Entregas significativas, em ordem
+
+`V1–V4` são recortes executivos do roadmap, não um catálogo concorrente. Um executor reserva os IDs existentes e conclui jornadas revisáveis. Não abrir uma cadeia longa de PRs dependentes: integrar o lote aprovado conforme a autorização e desenvolver a próxima entrega sobre a base consolidada. PRs adicionais só quando houver divisão arquitetural necessária, com dependência explícita.
+
+| Entrega | Resultado útil para o usuário | Escopo principal | Critério de saída |
+|---|---|---|---|
+| **V1 — Central e Studio com apresentação consistente** | Ações e estados legíveis; modais pertencem ao tema; erro informa causa e recuperação sem esconder a tela | RC-01; tokens/controles/paleta de Popup, navegação Temas/Studio, erros, locale e a11y | Resolver AC-134-01–09 como conjunto coerente: contraste essencial ≥7:1 salvo política equivalente formalmente aprovada; alvos/foco coerentes; duplicata aponta ID existente e conserva hash; erros locais com detalhe no modal; memória formatada conforme unidade real; ícones/abas nomeados e ativáveis; erros críticos preservados sem dominar todas as rotas |
+| **V2 — Tema importado que efetivamente executa** | Escolher uma cena, visualizar com dados válidos, aplicar explicitamente e voltar ao estado anterior | RC-05 + runtime RC-06; catálogo, resolver, read model, render e Launcher/Cinema | Builtin AURA Cinema e um fixture licenciado de ES-DE e RetroFE percorrem importar→resolver→preview→uso no consumidor correto→restaurar. Mídia/textos resolvidos, sem corpo vazio ou fallback silencioso; degradações informadas. Isolamento sintético explícito impede mistura com biblioteca pessoal; pacote inválido recupera superfície segura sem perder foco |
+| **V3 — Theme Studio útil de ponta a ponta** | Criar uma composição, alterar arte/layout/receita, desfazer/refazer e usar o pacote produzido | RC-06; sessão/documento, canvas/árvore/inspector, layout/receitas, persistência/export | Pela UI: criar→selecionar elemento→editar propriedades→preview→undo/redo→salvar→fechar/reabrir→exportar/importar→executar no runtime de V2. Conteúdo preservado semanticamente; não depende de editar JSON ou imagem fora do Studio; origem protegida, namespace de cópia e confirmação de sobrescrita |
+| **V4 — Autoria avançada e jornadas executáveis** | Criar menus conectados, navegar por metadados, personalizar cada etapa e preservar o retorno; avançar autoria de efeitos/movimento | RC-06; sidecar `experience-journey-v2` com migração v1, grafo/contexto, read models públicos, herança AURA, Theme Engine, Launcher/Cinema, sessão por capability; effect graph/timeline, tiers e receitas | Pela UI: criar pelo menos 3 menus, conectar/reordenar, compartilhar destinos, filtrar por campos publicados e completar round-trip. Antes de aplicar, listar cada etapa AURA herdada. O mesmo documento salvo/reaberto precisa alterar Preview, Engine e Launcher; launch/pause/save/load/exit seguem resultado de adapter e restauram filtros, seleção, rolagem e foco. Ciclo manual válido; referência inválida, ciclo automático, campo desconhecido, erro e capability ausente recuperáveis. Efeitos, movimento, reducedMotion e fallback passam testes próprios. p95 ≤16,7 ms e VRAM ≤512 MB somente com cena, hardware e release identificados; FPS apresentado apenas com instrumento adequado |
+
+V1 não é uma troca indiscriminada de aparência. Preservar a linguagem AURA, tornar hierarquia/estado/ação legíveis e corrigir causas compartilhadas. Medir o par efetivo após composição/opacity; controles desabilitados devem explicar indisponibilidade sem apagar informação essencial. Registrar dimensões lógicas e físicas/escala, sem tratar extents AT-SPI como unidades conhecidas por suposição.
+
+V2 diferencia **tema da central**, **pacote/cena da Engine** e **cena do Launcher**. Botões de aplicar/preview identificam consumidor, resultado e escopo. Importação bem-sucedida não equivale a cena ativa ou gameplay. Resolver referência e binding faltantes com diagnóstico; não substituir um pacote portado por um demo builtin e alegar fidelidade. A cobertura/loss report acompanha as capacidades realmente consumidas.
+
+V3 começa pelo documento e pelas operações que já existem. Concluir sessão→ação autenticada→validação→persistência→render; não criar editor paralelo. A fatia básica inclui orientação `none/auto/portrait/landscape`, enquadramento/alinhamento/ponto focal e receitas por slot conforme a spec, implementando o recorte necessário completo. Não basta mostrar effect/timeline como texto ou desenhar canvas sem salvar. A declaração de Studio completo aguarda também V4 e o DoD integral.
+
+V4 usa o sidecar `experience-journey-v2`, com leitura migrável de v1;
+`theme-manifest-v1` continua estrito e não recebe campos de jornada ad hoc.
+Nesta branch, a bridge allowlisted consulta o catálogo público e o painel de
+Jornadas faz operações transacionais de criação/edição/histórico/arquivo pelo
+servidor real de loopback. O round-trip da UI é exercitado com três menus e um
+destino compartilhado. `journey.studio.engine-preview` entrega os resultados
+públicos filtrados ao resolver native e confirma a composição do documento
+salvo/reaberto no Theme Engine em fixture sintética. Isso fecha a dependência
+local entre bridge, read model e `sceneLayouts`; não demonstra pixels/tempo em
+release, nem consumo pelo Launcher/Cinema. O aceite V4 permanece pendente até o
+Launcher consumir a jornada, a sessão publicar e executar capabilities reais,
+e o roteiro B_VISUAL ocorrer em candidata instalada. Sessões sintéticas e
+animações não provam launch, pausa, save/load ou exit reais.
+
+### Relação com os achados e trabalho restante
+
+| Origem | Destino | Observação de aceite |
+|---|---|---|
+| AC-134-01, AC-134-03, AC-134-04, AC-134-05, AC-134-07, AC-134-08 | V1 | Erro próprio/contrato existente adequado, componentes/modal, alvos, a11y e mensagens |
+| AC-134-02 | V1 | Confirmar se `memoryGb` significa GB ou GiB antes de converter; valores ausentes não viram zero |
+| AC-134-06 | V1 | Resumo/agrupamento contextual com detalhe acessível; nenhuma falha crítica apagada por timer |
+| AC-134-09 | V1 + desempenho | Paleta inicial segura ou preferência validada; evitar salto visual sem bloquear abertura pela consulta completa |
+| AC-134-10 | B_VISUAL por entrega | Passe real de teclado/gamepad e portal nativo; ferramenta limitada não gera resultado `passed` |
+| AC-134-11 | V2 | Biblioteca de demonstração explicitamente isolada; ações e catálogo de produção não vazam para ela |
+| Autoria parcial e execução precária relatadas pelo usuário | V2–V4 | Referência aceita: tema produzido pelo Studio realmente consumido pelo runtime, com arte e layout verificáveis |
+| Arranque/consulta lenta | Perfil em V1, recorte completo na entrega pertinente | Separar tempo até UI útil, tempo até dados mínimos e consulta total. Não equiparar arranque frio da central com orçamento de home aquecida do Launcher |
+| Conteúdo/sessão/componentes/integrações | RC-02/03/04/07 após esta prioridade ou por bloqueio independente | Preservação, launch/return, save/load, bezel, fade, multidisco e runtimes mantêm DoD próprio; não foram certificados pela rodada visual |
+
+### Trabalho entre A_CODIGO e B_VISUAL
+
+**A_CODIGO** reproduz/implementa/testa em ambiente isolado, prepara commits e PRs conforme autorização e entrega o artefato identificável. **B_VISUAL** recebe uma jornada com dados sintéticos/licenciados e passos exatos, inspeciona a experiência e retorna aceites/defeitos. Input AT-SPI, teclado, mouse e gamepad são provas distintas. Input recusado exige operador ou mecanismo autorizado; não instalar uinput/compositor para encobrir a limitação.
+
+Um agente altera código; o passe visual não troca branches nem edita os mesmos arquivos. Coordenação por item/workstream; nenhuma suíte concorrente durante o guard. O relatório visual existente é o baseline, não motivo para repetir todas as telas a cada correção. Passe focado por entrega e revisão integrada final.
+
+Antes da integral de fechamento, concluir governança aplicável e renderizar views para evitar falha de catálogo previsível. Conservar comandos, exit codes, capturas originais e hashes; comparação por bytes/contagem de mutações é apoio, não avaliação da experiência. Não criar gate por tamanho mínimo de PNG.
+
+**Objetivo da primeira missão de continuidade:** entregar V1 e percorrer V2/V3 até um tema editado e reaberto realmente renderizar, com limites físicos explícitos. V4 segue em recortes completos se a base estiver consolidada. Nenhuma decisão de instalar/publicar/mergear é transferida implicitamente de sessões anteriores; preparar o resultado revisável antes de solicitar a operação necessária e continuar trabalho independente elegível.
+
+## Fotografia histórica de 26/09/2026
+
+A tabela abaixo preserva o diagnóstico inicial; a revisão de 01/10 acima orienta a próxima entrega. Não usar os números de 26/09 como medição atual do acervo.
 
 | Recorte | Feito / evidência existente | Parcial / próximo trabalho |
 |---|---|---|
@@ -54,6 +138,7 @@ Seguir [THEME-ENGINE-AND-STUDIO](../01-product/THEME-ENGINE-AND-STUDIO.md), incl
 2. **Receitas e layouts:** asset único→variantes de logo, graph/repeaters/bindings/breakpoints, cores dinâmicas, efeitos allowlisted/glass por tier; cache com orçamento e fallback. Nenhum asset derivado duplicado no pacote nem shader/código arbitrário de tema.
 3. **Tempo e estados:** editor de effect graph/timeline/keyframes, interrupção/reversão, estados loading/erro/offline/playing, reducedMotion; preview e pacote consumem os mesmos contratos.
 4. **Ferramentas e qualidade:** dados demonstrativos, múltiplas resoluções, profiler/validadores, acessibilidade, licença, schema/migração, pacote inválido/pesado com fallback; completar §§4–20 da spec. Prova física e métricas ligadas à release para cada DoD.
+5. **Jornada de experiência:** autoria de menus e mapa de links compartilhados, filtros por qualquer campo público tipado, herança AURA visível, persistência/export/import e consumo da mesma jornada na Engine e no Launcher. Preservar contexto real e respeitar cada capability de sessão; não promover por contrato/API ou preview isolado.
 
 ### Cobertura do restante e planos especializados
 

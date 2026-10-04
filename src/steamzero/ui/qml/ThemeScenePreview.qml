@@ -28,6 +28,10 @@ Item {
     property bool immersive: false
 
     property var rendered: null
+    // Um consumidor de Jornada pode fornecer o read model já filtrado pela
+    // operação pública da jornada. A cena continua compilada pelo Engine; este
+    // override só escolhe os dados declarativos que o SceneEsdeView desenha.
+    property var runtimeModelOverride: null
     property var selections: ({})
     property string errorText: ""
     property bool loading: false
@@ -48,7 +52,10 @@ Item {
         return views.length ? views[0] : null
     }
     readonly property var runtimeModel: rendered && rendered.runtimeModel
-        ? rendered.runtimeModel : ({})
+        ? (preview.runtimeModelOverride && typeof preview.runtimeModelOverride === "object"
+            ? preview.runtimeModelOverride : rendered.runtimeModel)
+        : (preview.runtimeModelOverride && typeof preview.runtimeModelOverride === "object"
+            ? preview.runtimeModelOverride : ({}))
 
     // Um seletor vazio parece controle quebrado. O rótulo diz qual dimensão é,
     // e a ausência de escolha ganha nome em vez de virar espaço em branco.
@@ -81,6 +88,10 @@ Item {
         return changed
     }
 
+    // Prévia usa dados sintéticos isolados por padrão; só um consumidor de
+    // runtime, com ação explícita, desliga isto.
+    property bool synthetic: true
+
     function render() {
         if (!themeId)
             return
@@ -92,7 +103,9 @@ Item {
             "aspectRatio": aspectBox.currentValue || "",
             "colorScheme": colorBox.currentValue || "",
             "fontSize": fontBox.currentValue || "",
-            "variant": variantBox.currentValue || ""
+            "variant": variantBox.currentValue || "",
+            // Preview nunca lê a biblioteca real: dados sintéticos isolados.
+            "synthetic": preview.synthetic
         }, function(result) {
             preview.loading = false
             preview.rendered = result
@@ -221,8 +234,8 @@ Item {
                 focusColor: preview.focusColor
                 reducedMotion: preview.reducedMotion
                 highContrast: preview.highContrast
-                onItemFocused: preview.gameFocused(itemId)
-                onItemActivated: preview.gameActivated(itemId)
+                onItemFocused: function(itemId) { preview.gameFocused(itemId) }
+                onItemActivated: function(itemId) { preview.gameActivated(itemId) }
                 Accessible.name: qsTr("Cena do tema, use as setas para navegar")
             }
 

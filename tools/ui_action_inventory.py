@@ -409,6 +409,7 @@ _CONTRACT_SCREEN_SURFACES: dict[str, str] = {
     "steam": "steam",
     "steam-gameplay": "steam",
     "media": "credentials",
+    "themes": "themes",
     "tasks": "jobs",
 }
 

@@ -259,6 +259,26 @@ O Studio completo oferece:
 O editor atual de tokens, metadados e preview é fundação parcial, não evidência de
 canvas, effect graph ou timeline.
 
+Uma primeira fatia de autoria de `assetRecipes` já está disponível no Studio:
+temas com receitas próprias ou herdadas podem editar variantes, adicionar,
+parametrizar, reordenar e remover nodes allowlisted; temas com assets sem livro
+de receitas podem escolher a fonte e inicializá-lo. A primeira alteração de um
+tema derivado materializa a declaração herdada no filho. Cada candidato passa
+pelo `AssetRecipeBook` e pelo `ThemeResolver` antes de entrar no histórico; uma
+rejeição mantém documento e histórico intactos. O preview usa o renderer nativo
+`AssetRecipePreview` e a origem resolvida pela cadeia de herança, com paths
+confinados à raiz do tema. A prova atual combina autoria, salvar/reabrir e desenho
+no harness QML com exportar/importar o manifesto de receitas em XDG temporário;
+isso não certifica a execução da Jornada no Launcher/Cinema. Perfis por
+tier/resolução e validação na release instalada continuam pendentes.
+
+As mutações do editor são enviadas em sequência por sessão. A resposta só
+atualiza o documento se a geração e a sessão ainda forem as atuais; respostas de
+uma sessão fechada ou substituída são descartadas. A regressão QML entrega uma
+resposta antiga enquanto a nova sessão tem uma edição válida em espera e confirma
+que a antiga não sobrescreve a atual. Esta prova é do checkout em Qt/offscreen,
+não de input físico nem da release instalada.
+
 ### 14.1. Ergonomia de autoria para artwork heterogêneo
 
 O backlog do Studio deve tornar o ajuste de capas e demais artes declarativo,
@@ -384,3 +404,104 @@ Theme Studio só vira `complete` quando:
 
 Conclusão da Theme Engine ou do Studio não promove automaticamente AURA UI nem
 AURA Launcher. Os quatro itens mantêm estados e provas independentes.
+
+## 21. Jornadas de experiência, menus e etapas
+
+A navegação completa da experiência é um documento sidecar versionado
+`experience-journey-v2`; leitores também migram documentos v1 para v2. Ela não é
+uma extensão informal do manifesto `theme-manifest-v1`, que continua rejeitando
+propriedades desconhecidas. Os contratos estão em
+`src/steamzero/schemas/experience-journey-v1.schema.json` e
+`src/steamzero/schemas/experience-journey-v2.schema.json`.
+
+- O documento separa a organização visual da árvore do grafo de conexões. Links
+  apontam para IDs estáveis de menus/etapas, e várias origens podem apontar para
+  o mesmo menu sem copiar sua cena ou seus assets.
+- A implementação inicial publica limites de proteção de **4 MiB por documento
+  serializado**, **4.096 menus**, **16.384 conexões**, **8.192 posições de
+  organização**, **64 filtros por menu** e **512 contextos de voltar**. São
+  limites de recursos do contrato, não um limite de profundidade. Ao se aproximar
+  deles, a UI/runtime deve avisar e oferecer diagnóstico; listas grandes usam
+  virtualização. Complexidade de validação e roteamento é O(V+E) em menus e
+  conexões. Estes tetos não substituem medição de memória/tempo do Engine e do
+  Launcher em hardware/release identificados.
+- Ciclos iniciados por input explícito são válidos. Ciclos só automáticos são
+  diagnosticados para impedir execução sem saída. Referências ausentes não são
+  corrigidas silenciosamente.
+- Fontes, campos, tipos e valores vêm de read models públicos versionados. Filtros
+  combinam como AND, são tipados e allowlisted; ordenação usa os mesmos campos.
+  A v2 acrescenta agrupamento por campo publicado e bindings declarativos entre
+  menus, que só acrescentam filtros AND no destino.
+  SQL, eval, script, QML, shell e acesso a tabelas internas não fazem parte do
+  contrato. Dados desconhecidos, zero resultados e fonte indisponível têm
+  estados e recuperação distintos.
+- O contexto de navegação preserva menu de origem, seleção, filtros, rolagem e
+  foco. Respostas de ações antigas são descartadas depois de uma rota mais nova.
+  Ao voltar da sessão, o destino é o contexto capturado, não uma Home presumida.
+- Cada menu e etapa visual pode declarar tema próprio. A omissão herda AURA com
+  motivo `not-customized`; escolha explícita de AURA tem motivo separado. Tema
+  inexistente e recurso visual incompatível têm diagnósticos próprios e fallback
+  por trecho. Cobertura é calculada apenas para etapas usadas. Origem visual e
+  capability operacional são resultados independentes.
+- Launch, pausa, retomada, save/load e exit são ações semânticas governadas pelo
+  domínio/adapters. Uma animação de fade não confirma uma operação. A etapa
+  seguinte observa sucesso/falha/timeout publicados pela sessão; herança visual
+  nunca habilita uma operação indisponível.
+- O mesmo documento salvo/reaberto deve alimentar Studio Preview, Theme Engine e
+  Launcher/AURA Cinema. O caminho de aceitação inclui três ou mais menus,
+  facetas diferentes que compartilham destinos, temas por etapa, aviso de
+  herança, round-trip/export/import, retorno contextual e erros recuperáveis.
+
+### Matriz de superfície e operação
+
+| Etapa/superfície | Fonte e navegação | Dono operacional | Prova necessária |
+|---|---|---|---|
+| Plataformas, gêneros, anos, fabricante, hardware, emulador e outras facetas | Campos/tipos/valores de read model público; filtros combinados seguem no contexto | Read model + runtime do Launcher | Campos novos aparecem sem tela codificada por campo; vazio, unknown e fonte indisponível têm contagem/recuperação |
+| Menu de jogos compartilhado | Várias origens usam o mesmo ID; conexão e filtros não copiam cena | Navegação do Launcher | Entrar por plataforma e outra faceta; Voltar restaura filtros, jogo, rolagem e foco de cada origem |
+| Fade de entrada | Aparência própria ou AURA; limitado e interrompível | Resultado de launch do adapter/sessão | Mostrar sucesso, falha, retry e timeout; fade nunca é o oráculo de que o jogo abriu |
+| Jogo e bezel | Composição da etapa mais dados publicados da sessão | Adapter de launch/sessão e capability de bezel | Jogo ativo, bezel suportado/ausente, erro e saída observados separadamente |
+| Pausa e retomada | Menu compartilhável com aparência própria ou AURA | Capabilities pause/resume do adapter | Só entrar após confirmação; retomar ou falhar sem perder a origem |
+| Saves | Fonte publicada do domínio de saves; save comum e save-state não se confundem | Domínio/adapters de saves | Listar, carregar, cancelar, falhar e voltar; preservar o estado real publicado pelo adapter |
+| Fade de saída e retorno | Aparência por etapa; destino é o contexto de jogo salvo | Resultado de exit do adapter/sessão | Saída confirmada ou falha governada; voltar ao mesmo jogo/filtros/foco e depois à faceta anterior |
+| OSD, loading, vazio, erro e offline | Estado/mensagem/ações de recuperação publicados | Domínio responsável pela operação | Mensagem e ação reais, timeout/retry e foco utilizável; sem tela morta |
+
+Antes de aplicar, a matriz de cobertura mostra origem e versão de cada etapa
+usada. A etiqueta de herança conta apenas omissões ou escolhas explícitas de
+AURA; referências ausentes e incompatibilidades aparecem em linhas próprias,
+mesmo quando seu fallback visual também usa AURA. A lista de capabilities do
+adapter não deriva da aparência escolhida.
+
+O estado atual é **parcial**. A branch de continuidade contém o schema v2, o
+serviço transacional e o painel de Jornadas anexado ao Theme Studio, com árvore,
+conexões, filtros, bindings, agrupamento, temas por menu/etapa, aviso de
+herança, histórico e operações de arquivo. A bridge autenticada de loopback
+publica `journey.studio.*` sobre `JourneyStudioService` e os read models
+públicos do Desktop. O teste QML da bridge cria e edita menus pela interface,
+salva/reabre a mesma jornada e usa a composição da etapa selecionada.
+
+`journey.studio.engine-preview` consulta os resultados filtrados no servidor,
+limita bindings ao catálogo de campos públicos, resolve a cobertura da etapa e
+passa `preview.items` ao `DesktopDashboard.editor_preview`/`ThemeEditorManager`.
+O resolver native materializa os `sceneLayouts` declarados, e o QML reutiliza
+`ThemeStudioCanvas`. Um teste de bridge confirma que o documento reaberto com o
+tema `org.steamzero.asset-recipes-demo` produz somente o título filtrado da
+Jornada, sem a amostra estática Axiom Verge. Referência de tema ausente ou slot
+incompatível cai explicitamente em AURA e devolve a causa; high contrast e
+reduced motion usam os probes do dashboard na execução normal. A cena XML
+continua usando o renderer ES-DE já existente e recebe a projeção filtrada do
+componente, mas não foi exercitada nesse round-trip da bridge.
+
+Outro teste edita `maxItems` no tema filho de `asset-recipes-demo`, salva e
+reabre o pacote, e confirma que o Theme Engine mantém a edição na prévia da
+Jornada: dos três registros filtrados, só os dois primeiros chegam à cena. A
+cobertura também usa `sceneSurfaces` herdado da cadeia `extends`, sem declarar
+incompatibilidade falsa. Isso verifica o consumo nativo do documento salvo no
+Theme Engine neste checkout, com fixtures e registros sintéticos isolados.
+
+O resultado não prova a janela Main instalada, pixels/tempo de uma release, nem
+consumo pelo AURA Launcher/Cinema. A cena XML ainda não foi exercitada nesse
+round-trip. Capabilities de launch, pause/resume, saves, bezel e exit continuam
+`unknown` quando o adapter da sessão não as publica; a aparência resolvida
+nunca as habilita. Não houve integração de sessão ou input físico nesta etapa.
+Theme Studio, Theme Engine, AURA UI, AURA Launcher e os adapters de sessão
+continuam com critérios e provas independentes.

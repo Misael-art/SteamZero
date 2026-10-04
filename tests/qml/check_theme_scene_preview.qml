@@ -49,8 +49,8 @@ Item {
                 ]}
             })
         }
-        onGameFocused: lastGameFocused = gameId
-        onGameActivated: lastGameActivated = gameId
+        onGameFocused: function(gameId) { lastGameFocused = gameId }
+        onGameActivated: function(gameId) { lastGameActivated = gameId }
     }
 
     TestCase {
@@ -114,6 +114,34 @@ Item {
             compare(lastGameFocused, "2")
             verify(scene.activateCurrentFocus())
             compare(lastGameActivated, "2")
+        }
+
+        function test_journey_public_read_model_overrides_only_the_scene_content() {
+            const scene = findChild(preview, "sceneView")
+            verify(scene !== null, "cena interativa não encontrada")
+            const compiledSample = preview.rendered.runtimeModel
+            const rows = [
+                {id: "filtered-game-1", title: "Jogo filtrado", genre: "Plataforma"},
+                {id: "filtered-game-2", title: "Outro jogo", genre: "Ação"}
+            ]
+            preview.runtimeModelOverride = {
+                items: rows,
+                selectedIndex: 1,
+                selected: rows[1],
+                system: {id: "journey", name: "Jornada"},
+                status: {label: "results", state: "preview"},
+                actions: ["Selecionar", "Jogar"]
+            }
+            compare(preview.runtimeModel.items.length, 2)
+            tryCompare(scene, "activeItemIndex", 1)
+            compare(scene.selectedItem.id, "filtered-game-2")
+            compare(scene.selectedItem.title, "Outro jogo")
+            compare(preview.rendered.runtimeModel, compiledSample,
+                    "o preview não deve alterar a resposta compilada original")
+            preview.runtimeModelOverride = null
+            tryCompare(scene, "activeItemIndex", 0)
+            compare(preview.runtimeModel.items.length, 2)
+            compare(scene.selectedItem.id, "1")
         }
 
         function test_immersive_mode_chooses_real_layout_dimensions() {

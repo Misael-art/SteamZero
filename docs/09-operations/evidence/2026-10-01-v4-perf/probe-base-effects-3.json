@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "qmlDir": "/home/misael/Projects/Steam Zero/Canonical/2026-09-21/src/steamzero/ui/qml",
+  "scenes": 7,
+  "effectLayers": 6,
+  "effectStack": "focusedCover",
+  "effectTypes": [
+    "shadow",
+    "glow"
+  ],
+  "surface": "1280x800",
+  "frameTime": {
+    "frames": 360,
+    "avgFrameTimeMs": 13.337,
+    "p50Ms": 13.322,
+    "p95Ms": 14.404,
+    "maxMs": 16.322
+  },
+  "startupMs": 195.0,
+  "peakRssKb": 169980,
+  "peakVramKb": 74340,
+  "vramMeasured": true,
+  "vramMethod": "drm fdinfo do processo, agrupado por drm-client-id",
+  "note": "frameTime vem do render loop (FrameAnimation), nao de frames apresentados: nao afirme FPS de tela a partir daqui."
+}

@@ -158,6 +158,8 @@ Todo erro carrega: `code, title (humano), what (o que aconteceu), impact, probab
 - `E-THEME-NOT-FOUND` tema inexistente no catálogo ou removido manualmente.
 - `E-THEME-ACTIVE` tema ativo não pode ser removido sem selecionar outro antes.
 - `E-THEME-DOWNLOAD-FAILED` falha ao baixar ou extrair o pacote do tema.
+- `E-SCENE-ID-EXISTS` conflito local: cena com o mesmo ID já publicada; sem sobrescrita sem confirmação.
+- `E-THEME-ID-EXISTS` conflito local: tema com o mesmo ID já salvo; sem sobrescrita sem confirmação.
 - `E-THEME-CATALOG-FAILED` catálogo remoto inacessível ou inválido.
 - `E-THEME-MARKETPLACE-DISABLED` marketplace remoto desligado de fábrica; exige configuração explícita.
 

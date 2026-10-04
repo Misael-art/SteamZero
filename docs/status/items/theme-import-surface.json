@@ -13,9 +13,11 @@
     "src/steamzero/adapters/desktop_dashboard.py",
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
     "tests/unit/test_theme_import_esde.py",
-    "tests/qml/check_theme_editor_import.qml"
+    "tests/qml/check_theme_editor_import.qml",
+    "tests/integration/test_esde_import_dialog_compact.py",
+    "tests/qml/golden/import-dialogs/esde"
   ],
-  "scopeDigest": "52c6ebe561559ec8e6e7dd46ec76c14a8f3195a576803ffabea6782da941466c",
+  "scopeDigest": "c17f2fd972c396cf96f47b646cd8029167642f5fa5e91049da3724db60c5ac59",
   "dependsOn": [
     "SZ-THEME-STUDIO"
   ],
@@ -101,10 +103,46 @@
       "result": "recorded",
       "reference": "docs/09-operations/evidence/2026-09-29-rc01-retrofe-shell-late/28-fora-de-escopo-esde-geracao.md",
       "command": "Fora de escopo do sétimo elo, medido e com dono: o importador ES-DE continua sem contrato de geração. grep -c esdeImportGeneration src/steamzero/ui/qml/ThemeEditorPanel.qml = 0 contra retrofeImportGeneration = 12; cinco escritas incondicionais de `panel.esdeImportBusy = false` nas linhas 215 (resetEsdeImport), 229 e 239 (callbacks de inspectEsdeImport) e 263 e 271 (callbacks de applyEsdeImport), com as propriedades esdeImport* declaradas em :72-:78. Não foi corrigido aqui por serialização: os gates ES-DE pertencem a WS-2026-09-RC01-SHELL-ESDE-DIALOG e o corte exige vermelho próprio mais a mesma bateria de mutantes (M1-M4 + guarda) que fechou o RetroFE."
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_theme_import_esde.py",
+      "command": "2026-10-02, regressão em suíte integral após ajuste isolado da largura dos inspetores do Studio. .venv/bin/python tools/run_tests_isolated.py tests -q: 6557 passed, 47 skipped in 2599.72s; estado real antes/depois idêntico (files=12818, directories=2068, bytes=1372818509). Gates estáticos locais: ruff check, ruff format --check (689 files), mypy (299 files), make independence boundaries e make status-check aprovados. A superfície de importação não foi alterada nem promovida por esse resultado.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-10-01-v4-authoring-ui/README.md",
+      "command": "2026-10-02: scopeDigest renovado por controles de efeitos/movimento no ThemeEditorPanel compartilhado. O fluxo de importação ES-DE não mudou e não foi retestado; nenhum eixo foi promovido.",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_esde_import_dialog_compact.py",
+      "command": "2026-10-02, rodada conjunta ES-DE/RetroFE depois dos alvos efetivos 48 px: 13 passed em 6,39 s; diálogos alcançáveis por Qt e geometria dentro da banda. Goldens ES-DE continuaram exatos. Não é input físico nem release.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_esde_import_dialog_compact.py",
+      "command": "2026-10-02, regressão do screenshot depois da entrada Abrir Jornadas no fundo do ThemeEditorPanel; após inspeção/atualização das baselines, a execução conjunta ES-DE/RetroFE passou 13/13 em 10,26s. ES-DE: geometria e conteúdo do modal preservados; somente a tela subjacente inclui a nova entrada. Harness Qt offscreen, sem input físico ou release.",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-10-03-journey-engine-preview/README.md",
+      "command": "2026-10-03 shared-scope renewal: SHA/digest re-evaluated after the Journey bridge/Engine preview and product/status documentation changed shared paths. No acceptance criterion or capability of this item was promoted by that change; this record is scope reconciliation, not new product evidence.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/status/workstreams/v1-v3-theme-journey-2026-10-01.json",
+      "command": "2026-10-03, digest recalculado com tools/project_status.py após a integração de paths compartilhados da jornada; registro de escopo, sem reexecução dos critérios deste item nem promoção de estado.",
+      "result": "recorded"
     }
   ],
   "nextAction": "Validar na release 2.0.0rc1-504d10b14485 com fontes ES-DE e pacote SteamZero reais; manter ausência explícita enquanto ES-DE/SRM não estiverem instalados e RetroFE não tiver pacote lançável.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-09-22",
-  "notes": "O backend já implementa inspect/apply como tema editável. Esta frente fecha a descoberta e a jornada da superfície Temas sem duplicar o importador. 2026-09-03: scopeDigest renovado por mudanca da frente WS-2026-09-CENA-ESDE (rota theme.scene.render e o botao de previa). A evidencia NAO foi carimbada: foi reexecutada e passou (117 testes de contrato, dashboard e import)."
+  "updatedAt": "2026-10-03",
+  "notes": "O backend já implementa inspect/apply como tema editável. Esta frente fecha a descoberta e a jornada da superfície Temas sem duplicar o importador. 2026-09-03: scopeDigest renovado por mudanca da frente WS-2026-09-CENA-ESDE (rota theme.scene.render e o botao de previa). A evidencia NAO foi carimbada: foi reexecutada e passou (117 testes de contrato, dashboard e import). 2026-10-02: renovacao de escopo por alteracao restrita aos inspetores de autoria do Theme Studio. Importacao ES-DE/RetroFE, dialogs do shell e eixos deste item nao foram alterados nem promovidos. Em 2026-10-02, a rodada visual combinada revalidou o diálogo ES-DE com controles 48 px: sem diferença nos goldens ES-DE e 13/13 testes totais passaram. Nenhum eixo de operação física ou release foi promovido. Em 2026-10-02, as baselines de ES-DE foram atualizadas após inspeção da captura causada pela nova entrada Abrir Jornadas no fundo do ThemeEditorPanel. O modal manteve geometria/conteúdo; o teste combinado passou 13/13 em Qt offscreen. Esta renovação não promove instalação física nem release."
 }

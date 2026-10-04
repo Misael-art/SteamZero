@@ -57,6 +57,8 @@ pytestmark = pytest.mark.visual
 
 def _ambiente(locale_nome: str) -> dict[str, str]:
     env = os.environ.copy()
+    # LANGUAGE (GNU) sobrepõe LC_ALL no Qt; um host pt_BR vazaria para a matriz.
+    env.pop("LANGUAGE", None)
     env.update(
         {
             "QT_FORCE_STDERR_LOGGING": "1",
