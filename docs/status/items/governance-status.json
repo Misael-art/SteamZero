@@ -33,7 +33,7 @@
     "pyproject.toml",
     "docs/09-operations/HANDOFF-2026-08-27.md"
   ],
-  "scopeDigest": "f8cc30fa1f40afc76667bd1f1d5eb65e73cf6544b310d5bf5f1a07af85646133",
+  "scopeDigest": "cb83dde89074dd59a8714ad59b39187148367ef7c54bf9c982fd7cf0debb253f",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -156,6 +156,12 @@
       "reference": "docs/09-operations/AGENT-HANDOFF.md",
       "command": "2026-10-01: renovação de escopo compartilhado por revisão somente documental V1-V4; provas históricas do produto permanecem limitadas às suas releases.",
       "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "result": "recorded",
+      "reference": "docs/01-product/CAPABILITY-MATRIX.md",
+      "command": "2026-10-03: scope digest renovado após a matriz de capacidades gerada refletir uma ação de UI publicada adicionada pelo editor de assetRecipes; atualização de escopo documental, sem reteste de aceitação nem promoção de estágio (SZ-GOVERNANCE-STATUS)."
     }
   ],
   "nextAction": "Manter status-check e WORKLOG append-only verdes; PR #234 integrado no main em 9176c1aeca792e4bd8ccaca0fbb55e9767ad5625. Repetir apenas as provas físicas restantes com a release 2.0.0rc1-504d10b14485 instalada.",

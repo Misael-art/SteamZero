@@ -9,13 +9,14 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "731b5f295fca3c752528a6979ed6b0807d70d4a174b906e01d967ad6abcb6dc5",
+  "scopeDigest": "7770e7ed0ca7377ff1eb24ba16e8531d80618b3fea55d4a0978e5658aee6c74a",
   "scopePaths": [
     "docs/09-operations/evidence/2026-09-01-ux-release-audit-rerun",
     "docs/09-operations/evidence/2026-09-07-theme-studio-contrast",
     "docs/09-operations/evidence/2026-09-22-media-theme-first-run",
     "docs/09-operations/evidence/2026-10-01-v4-authoring-ui",
     "src/steamzero/domain/theme_editor.py",
+    "src/steamzero/domain/asset_recipes.py",
     "src/steamzero/domain/theme_marketplace.py",
     "src/steamzero/domain/studio_graph.py",
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
@@ -24,6 +25,7 @@
     "src/steamzero/ui/qml/ColorPickerDialog.qml",
     "tests/qml/check_theme_editor_aura.qml",
     "tests/qml/check_theme_authoring_e2e.qml",
+    "tests/qml/check_theme_editor_asset_recipes.qml",
     "tests/qml/check_theme_studio_canvas.qml",
     "tests/integration/test_theme_authoring_e2e.py",
     "tests/unit/test_theme_editor.py",
@@ -56,7 +58,10 @@
     "src/steamzero/adapters/desktop_dashboard.py",
     "src/steamzero/adapters/desktop_ui.py",
     "tests/integration/test_experience_journey_bridge_e2e.py",
-    "tests/qml/check_experience_journey_bridge_e2e.qml"
+    "tests/qml/check_experience_journey_bridge_e2e.qml",
+    "tests/integration/test_desktop_ui_bridge.py",
+    "tests/unit/test_desktop_contracts.py",
+    "tools/ui_action_inventory.py"
   ],
   "dependsOn": [
     "SZ-THEME-ENGINE"
@@ -66,8 +71,7 @@
     "GAP-G53",
     "GAP-HARMONIZE-SCOPE-PHYSICAL-EVIDENCE-PRECEDES",
     "GAP-EXPERIENCE-JOURNEY-LAUNCHER-SESSION-CONSUMPTION",
-    "GAP-EXPERIENCE-JOURNEY-PHYSICAL-RELEASE-VALIDATION",
-    "GAP-EXPERIENCE-JOURNEY-ASSET-RECIPES-EDITOR"
+    "GAP-EXPERIENCE-JOURNEY-PHYSICAL-RELEASE-VALIDATION"
   ],
   "acceptanceCriteria": [
     "Edicao de tokens, metadados e catalogo possui contratos e testes unitarios.",
@@ -78,6 +82,7 @@
     "Preview cobre resolucoes, states, foco, acessibilidade e tiers de performance.",
     "Criar, salvar, exportar, importar e reabrir preserva semanticamente o tema.",
     "Validadores bloqueiam asset, contrato, foco, contraste, licenca ou orcamento invalidos.",
+    "O Studio edita assetRecipes herdadas ou próprias com nodes allowlisted, validação transacional, preview da fonte resolvida e round-trip salvar/reabrir.",
     "A tela de Jornadas permite autorar menus conectados, campos públicos, filtros, bindings e aparência por menu/etapa quando as ações allowlisted estão publicadas.",
     "O mesmo documento persistido alimenta Preview, Engine e Launcher/Cinema e restaura contexto após operações reais de sessão."
   ],
@@ -375,10 +380,82 @@
       "reference": "tests",
       "command": "2026-10-03, integral final após regenerar CAPABILITY-MATRIX.md: rtk .venv/bin/python tools/run_tests_isolated.py tests -q; 6594 passed, 47 skipped, 0 failed em 2420.39 s (40:20), exit code 0. Guard real idêntico antes/depois (files=12818, directories=2068, bytes=1372834633, max_mtime_ns=1791031942518989555). Log bruto em docs/09-operations/evidence/2026-10-03-journey-engine-preview/full-tests-2026-10-03.log.",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_theme_authoring_e2e.py",
+      "command": "2026-10-03, autoria de assetRecipes pela UI QML/bridge HTTP real: rtk .venv/bin/python tools/run_tests_isolated.py tests/integration/test_experience_journey_e2e.py tests/integration/test_theme_authoring_e2e.py tests/integration/test_desktop_ui_bridge.py tests/unit/test_desktop_contracts.py tests/integration/test_ui_action_inventory.py tests/unit/test_theme_editor.py -q --tb=short; 102 passed em 45.45 s; guard real idêntico (files=12818, directories=2068, bytes=1372834633, max_mtime_ns=1791031942518989555). Inclui editar receita herdada, resolver/decodificar fonte, criar node recolor, desfazer/refazer, salvar e reabrir; Qt offscreen, não é prova física.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_theme_editor_asset_recipes.qml",
+      "command": "2026-10-03, QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_theme_editor_asset_recipes.qml; preview nativo recebe livro declarado/resolvido e decodifica a fonte; não certifica release instalada nem Launcher/Cinema.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_theme_import_package.py",
+      "command": "2026-10-03, rtk .venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_import_package.py -q --tb=short; 9 passed em 2.97 s. Teste assetRecipes: editar, salvar/reabrir, conferir manifesto exportado, importar como cópia sobre XDG temporário e resolver a mesma variante; nenhuma imagem derivada é empacotada.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "src/steamzero/domain/theme_editor.py",
+      "command": "2026-10-03, ruff check e ruff format --check nos 10 arquivos Python alterados; ambos passaram após formatar 5 arquivos.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_theme_authoring_e2e.py",
+      "command": "2026-10-03, conjunto focal terminal após round-trip de pacote: rtk .venv/bin/python tools/run_tests_isolated.py tests/integration/test_experience_journey_e2e.py tests/integration/test_theme_authoring_e2e.py tests/integration/test_desktop_ui_bridge.py tests/unit/test_desktop_contracts.py tests/integration/test_ui_action_inventory.py tests/unit/test_theme_editor.py tests/unit/test_theme_import_package.py -q --tb=short; 111 passed em 48.21 s; guard real idêntico (files=12818, directories=2068, bytes=1372834633, max_mtime_ns=1791031942518989555). E2E QML com eventos Qt e bridge loopback; offscreen, não é input físico.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_experience_journey_e2e.py",
+      "command": "2026-10-03: rtk .venv/bin/python -m pytest -q em 7 módulos focados; 104 passed, 1 failed em 37.13 s. O teste localizou o delegate real e demonstrou que ListView substitui x do botão; correção passou a indentar o conteúdo. Falha histórica preservada, sem weakening da asserção.",
+      "result": "failed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_experience_journey_e2e.py",
+      "command": "2026-10-03: rtk .venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_editor.py tests/unit/test_theme_import_package.py tests/unit/test_desktop_contracts.py tests/integration/test_desktop_ui_bridge.py tests/integration/test_experience_journey_bridge_e2e.py tests/integration/test_experience_journey_e2e.py tests/integration/test_theme_authoring_e2e.py -q --tb=short; 105 passed em 37.13 s; guard real idêntico antes/depois (files=12818, directories=2068, bytes=1372836525, max_mtime_ns=1791050512609016577). Qt/offscreen e eventos de teste, sem input físico.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_theme_authoring_e2e.py",
+      "command": "2026-10-03, regressão da fila serializada: rtk .venv/bin/python tools/run_tests_isolated.py -q tests/integration/test_theme_authoring_e2e.py; 1 passed em 21.79 s. Inclui QML: duas mutações são serializadas; resposta da sessão antiga é descartada e a edição válida da sessão atual é preservada. Guarda real idêntica (files=12818, directories=2068, bytes=1372852284, max_mtime_ns=1791068580100630556); Qt/offscreen, não é prova física.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "2026-10-03, integral anterior à fila serializada: rtk .venv/bin/python tools/run_tests_isolated.py tests -q; 1 failed, 6598 passed, 47 skipped em 2341.89 s; rc=86. Falha intermitente em tests/integration/test_theme_authoring_e2e.py::test_autoria_pela_ui_real_persiste_e_resolve, no parâmetro strength da vinheta. Durante a janela, minha consulta release_host.inspect iniciou doctor e steamzero-core; o runner detectou os dois processos novos e mudança do state home real (backups, journal, logs, quarantine, staging e state.db), por isso a guarda também reprovou. Resultado e log preservados em docs/09-operations/evidence/2026-10-03-journey-engine-preview/full-tests-2026-10-03-editor-queue-failed.log (.rc=86). Não reverti nem encerrei estado/processos do host.",
+      "result": "failed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_theme_authoring_e2e.py",
+      "command": "2026-10-03, focal após serialização das mutações: rtk .venv/bin/python tools/run_tests_isolated.py -q tests/integration/test_theme_authoring_e2e.py tests/integration/test_experience_journey_bridge_e2e.py tests/integration/test_qml_handheld_offscreen.py tests/integration/test_desktop_ui_bridge.py tests/unit/test_theme_editor.py tests/unit/test_theme_import_package.py tests/unit/test_desktop_contracts.py tests/unit/test_desktop_dashboard.py; 213 passed em 152.52 s; guarda real idêntica (files=12818, directories=2068, bytes=1372852284, max_mtime_ns=1791068580100630556). Inclui regressão QML de resposta obsoleta/atual; Qt/offscreen e bridge de teste, não input físico.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "2026-10-03, integral terminal da árvore com fila serializada: rtk .venv/bin/python tools/run_tests_isolated.py tests -q; 6599 passed, 47 skipped, 0 failed em 2338.63 s (38:58); guarda real idêntica antes/depois (files=12818, directories=2068, bytes=1372852284, max_mtime_ns=1791068580100630556), saída rc=0. Log bruto: docs/09-operations/evidence/2026-10-03-journey-engine-preview/full-tests-2026-10-03-queue-fix.log; rc em arquivo adjacente.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+      "command": "2026-10-03, gates estáticos no checkpoint: ruff check src tools tests (OK); ruff format --check src tools tests (695 arquivos); mypy src (301 arquivos); make independence boundaries (OK, 0 violações); make status-check (OK).",
+      "result": "passed"
     }
   ],
-  "nextAction": "A bridge e o preview native da Jornada estão implementados e verificados por loopback no checkout, incluindo round-trip salvo/reaberto. O workstream continua parcial: conciliar sharedPaths no checkpoint local; depois, em handoff serial, integrar Launcher/Cinema e capabilities reais da sessão. Completar recortes de autoria assetRecipes/tier e executar B_VISUAL apenas em release autorizada e instalada.",
+  "nextAction": "Integral terminal e gates estáticos passaram para a fila serializada; log bruto e rc estão no acervo desta revisão. Revisar o diff e os artefatos, fechar commits separados funcional, desktop compartilhado e documental, executar status-check final e fazer push autorizado do checkpoint; conferir os jobs remotos em estado terminal no SHA. A missão maior continua parcial: após o checkpoint, prosseguir com execução do pacote editado na Engine, perfis tier/resolução, Launcher/Cinema e contratos reais de sessão. B_VISUAL segue sem execução física por ausência de janela SteamZero/captura e atividade do operador; nenhum resultado offscreen promove essa prova.",
   "activeWorkstreams": [],
   "updatedAt": "2026-10-03",
-  "notes": "PR #249 já tem jornadas de autoria QML para efeitos, movimento, bindings e layout contra o servidor real, com histórico, dirty, salvar/reabrir e cópia de pacote em testes separados. Em 2026-10-02, os controles ganharam schemas tipados e limites de domínio; a jornada envia eventos Qt para adicionar/parametrizar/reordenar/remover efeitos, editar estados/timelines/clips, tratar erros e aplicar o tema à EditorialLibrary/MediaEffectLayer. O pixel da mídia sintética muda conforme a vinheta salva. O teste SceneEsdeView é separado e não consome o tema editado. Essas são provas do checkout offscreen, não de sessão física ou release. O checkpoint anterior (6560 passed/47 skipped em 2302.24s) pertence à árvore anterior; esta revisão tem execução integral própria registrada abaixo. Pendem B_VISUAL com input físico, round-trip do tema editado na cena Engine, edição de assetRecipes/tier/resolução, Launcher/Cinema e medição de release. Nenhum eixo do item foi promovido. 2026-10-02: acessibilidade fechada no harness local: 44 alvos com mínimo 48×48 em 1,0/1,5 e viewport compacto; não houve input físico. No checkpoint base 09033bd, o sidecar v1 tinha somente schema e domínio local, sem UI de autoria ou consumidor. Em 2026-10-02, a árvore desta revisão adiciona schema v2 migrável, JourneyStudioService transacional, ExperienceJourneyPanel ligado à entrada Abrir Jornadas, histórico/arquivo, filtros e preview de read model. O harness nega a bridge; a rota mostra o motivo e mantém escrita desativada. O serviço e o componente não equivalem a bridge de produção. A UI de efeitos/movimento continua exercitando save/reopen e aplicação à AURA UI central sintética; Theme Engine, Launcher/Cinema e sessão real seguem sem consumir a Jornada. A primeira integral desta revisão teve 6586 passed, 47 skipped e 3 falhas (duas baselines do fundo da lista após a nova entrada e um status digest/view desatualizado); as capturas foram inspecionadas, nove baselines atualizadas e os testes afetados reexecutados com sucesso. A integral terminal de 2026-10-03 teve 6588 passed, 47 skipped e uma falha na contagem de GET /status (6 observados, 5 esperados); a repetição focal passou, mas a integral permanece conservadoramente com resultado failed. Em 2026-10-03, o preview de Jornada passou a escolher a origem resolvida pela cobertura e abrir/cancelar o tema pelo action já allowlisted theme.editor.load; renderizadores nativos e ES-DE foram reutilizados, e o ES-DE usa as linhas filtradas fornecidas. Testes offscreen verificam a sequência e proteção contra resposta tardia; não há bridge de produção e o callback do harness não certifica integração. O native layout ainda mostra o modelo sintético do Studio. A autoria segue desativada na sessão atual até journey.studio.* existir. 2026-10-03: DesktopControlServer publica as ações journey.studio.* e engine-preview; a UI cria quatro menus, facetas e destino compartilhado por controles reais QML, salva/reabre/importa/exporta e observa o resultado filtrado no ThemeStudioCanvas. Isto não prova Main instalada, Launcher/Cinema, sessão, pixels/tempo ou input físico. Tema ausente cai em AURA com causa explícita. 2026-10-03: teste da jornada edita maxItems em tema filho de asset-recipes-demo, salva/reabre o tema e confirma a lista limitada no preview native. A cobertura usa sceneSurfaces herdado por extends; 132 testes focados passaram. Prova do checkout, sem promoção física, Launcher/Cinema ou sessão real. GAP-EXPERIENCE-JOURNEY-UI-ROUNDTRIP e GAP-EXPERIENCE-JOURNEY-PRODUCTION-BRIDGE fechados nesta branch pela autoria QML contra a bridge allowlisted e pelos round-trips de Journey e tema. Continuam abertos integração Launcher/sessão, prova física na release e edição de assetRecipes/tier."
+  "notes": "PR #249 já tem jornadas de autoria QML para efeitos, movimento, bindings e layout contra o servidor real, com histórico, dirty, salvar/reabrir e cópia de pacote em testes separados. Em 2026-10-02, os controles ganharam schemas tipados e limites de domínio; a jornada envia eventos Qt para adicionar/parametrizar/reordenar/remover efeitos, editar estados/timelines/clips, tratar erros e aplicar o tema à EditorialLibrary/MediaEffectLayer. O pixel da mídia sintética muda conforme a vinheta salva. O teste SceneEsdeView é separado e não consome o tema editado. Essas são provas do checkout offscreen, não de sessão física ou release. O checkpoint anterior (6560 passed/47 skipped em 2302.24s) pertence à árvore anterior; esta revisão tem execução integral própria registrada abaixo. Pendem B_VISUAL com input físico, round-trip do tema editado na cena Engine, edição de perfis assetRecipes/tier/resolução, Launcher/Cinema e medição de release. Nenhum eixo do item foi promovido. 2026-10-02: acessibilidade fechada no harness local: 44 alvos com mínimo 48×48 em 1,0/1,5 e viewport compacto; não houve input físico. No checkpoint base 09033bd, o sidecar v1 tinha somente schema e domínio local, sem UI de autoria ou consumidor. Em 2026-10-02, a árvore desta revisão adiciona schema v2 migrável, JourneyStudioService transacional, ExperienceJourneyPanel ligado à entrada Abrir Jornadas, histórico/arquivo, filtros e preview de read model. O harness nega a bridge; a rota mostra o motivo e mantém escrita desativada. O serviço e o componente não equivalem a bridge de produção. A UI de efeitos/movimento continua exercitando save/reopen e aplicação à AURA UI central sintética; Theme Engine, Launcher/Cinema e sessão real seguem sem consumir a Jornada. A primeira integral desta revisão teve 6586 passed, 47 skipped e 3 falhas (duas baselines do fundo da lista após a nova entrada e um status digest/view desatualizado); as capturas foram inspecionadas, nove baselines atualizadas e os testes afetados reexecutados com sucesso. A integral terminal de 2026-10-03 teve 6588 passed, 47 skipped e uma falha na contagem de GET /status (6 observados, 5 esperados); a repetição focal passou, mas a integral permanece conservadoramente com resultado failed. Em 2026-10-03, o preview de Jornada passou a escolher a origem resolvida pela cobertura e abrir/cancelar o tema pelo action já allowlisted theme.editor.load; renderizadores nativos e ES-DE foram reutilizados, e o ES-DE usa as linhas filtradas fornecidas. Testes offscreen verificam a sequência e proteção contra resposta tardia; não há bridge de produção e o callback do harness não certifica integração. O native layout ainda mostra o modelo sintético do Studio. A autoria segue desativada na sessão atual até journey.studio.* existir. 2026-10-03: DesktopControlServer publica as ações journey.studio.* e engine-preview; a UI cria quatro menus, facetas e destino compartilhado por controles reais QML, salva/reabre/importa/exporta e observa o resultado filtrado no ThemeStudioCanvas. Isto não prova Main instalada, Launcher/Cinema, sessão, pixels/tempo ou input físico. Tema ausente cai em AURA com causa explícita. 2026-10-03: teste da jornada edita maxItems em tema filho de asset-recipes-demo, salva/reabre o tema e confirma a lista limitada no preview native. A cobertura usa sceneSurfaces herdado por extends; 132 testes focados passaram. Prova do checkout, sem promoção física, Launcher/Cinema ou sessão real. GAP-EXPERIENCE-JOURNEY-UI-ROUNDTRIP e GAP-EXPERIENCE-JOURNEY-PRODUCTION-BRIDGE fechados nesta branch pela autoria QML contra a bridge allowlisted e pelos round-trips de Journey e tema. 2026-10-03: o Theme Studio passou a editar receitas assetRecipes allowlisted pelo bridge fechado, materializar a declaração herdada no primeiro edit, validar livro e tema antes da transação, e renderizar a fonte herdada pelo AssetRecipePreview. O E2E QML exercita edição de parâmetro, criação de variante e node recolor, seletor de cor, histórico, salvar/reabrir. O teste de pacote exporta, compara o manifesto da receita, importa como cópia no XDG temporário e confirma a resolução da variante; 102 testes QML/bridge e 9 de pacote passaram com guard real idêntico. A cobertura é de checkout/offscreen, não release instalada. Perfis tier/resolução, execução da Jornada no Launcher/Cinema, capabilities reais de sessão e B_VISUAL continuam pendentes. 2026-10-03: ao tornar a busca QML capaz de alcançar delegates do ListView, o teste de layout expôs que ListView controla a posição x do delegate e a indentação não aparecia. A prova foi mantida e corrigida para observar o recuo interno leftPadding do menu filho comparado ao pai; 105 testes focados passaram com guard real idêntico. Tentativa inicial de B_VISUAL em leitura encontrou ausência de janela SteamZero e falha nos backends de captura; a mesa tinha uma janela de operador focada. Nenhuma janela foi ativada, nenhum input foi enviado, nenhuma imagem foi capturada e nenhum teste físico foi marcado como passed. 2026-10-03: ao tornar a busca QML capaz de alcançar delegates do ListView, o teste de layout expôs que ListView controla a posição x do delegate e a indentação não aparecia. A prova foi mantida e corrigida para observar o recuo interno leftPadding do menu filho comparado ao pai; 105 testes focados passaram com guard real idêntico. Tentativa inicial de B_VISUAL em leitura encontrou ausência de janela SteamZero e falha nos backends de captura; a mesa tinha atividade do operador. Nenhuma janela foi ativada, nenhum input foi enviado e nenhum teste físico foi marcado como passed. 2026-10-03: a fila QML serializa mutações do Theme Studio e aplica respostas apenas quando a geração e o sessionId continuam atuais. Regressão Qt entrega duas respostas em sequência, descarta callback da sessão substituída e preserva a edição válida atual; o E2E focal e o conjunto de 8 módulos passaram (213) com a guarda real inalterada. A integral anterior à fila teve 1 falha intermitente no parâmetro da vinheta e rc=86: uma consulta release_host.inspect minha iniciou doctor/steamzero-core durante a janela e a guarda detectou esses processos e mudanças; o log redigido está preservado. O processo core continua sob gestão do host; não foi encerrado nem revertido pelo agente. Nenhuma capacidade visual/física ou consumer foi promovida. 2026-10-03: checkpoint após fila serializada: integral 6599 passed/47 skipped/0 failed em 2338.63 s, rc=0; guard real idêntico apesar do daemon preexistente. Ruff, formatação, mypy, independência, fronteiras e status-check passaram; log e rc íntegros preservados. Este estado continua sendo prova do checkout, não da release instalada. "
 }

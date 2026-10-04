@@ -105,7 +105,7 @@
     "tools/ui_dialog_probe.qml",
     "tools/ui_scenario_fixtures.py"
   ],
-  "scopeDigest": "e10d94fd31bbe4c46bb641f268686869d1418944fc2d21b6ddcd90bc86590383",
+  "scopeDigest": "5136b8efe7b91215dc30c30f7cfd14e902107073725cc0c8270140d27aaab379",
   "dependsOn": [],
   "knownGaps": [
     "GAP-UI-LIVE-LAUNCHER-ROUTING",
@@ -1285,6 +1285,12 @@
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-10-03-journey-engine-preview/README.md",
       "command": "2026-10-03 shared-scope renewal: SHA/digest re-evaluated after the Journey bridge/Engine preview and product/status documentation changed shared paths. No acceptance criterion or capability of this item was promoted by that change; this record is scope reconciliation, not new product evidence.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/status/workstreams/v1-v3-theme-journey-2026-10-01.json",
+      "command": "2026-10-03, digest recalculado com tools/project_status.py após a integração de paths compartilhados da jornada; registro de escopo, sem reexecução dos critérios deste item nem promoção de estado.",
       "result": "recorded"
     }
   ],

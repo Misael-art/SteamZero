@@ -259,6 +259,26 @@ O Studio completo oferece:
 O editor atual de tokens, metadados e preview é fundação parcial, não evidência de
 canvas, effect graph ou timeline.
 
+Uma primeira fatia de autoria de `assetRecipes` já está disponível no Studio:
+temas com receitas próprias ou herdadas podem editar variantes, adicionar,
+parametrizar, reordenar e remover nodes allowlisted; temas com assets sem livro
+de receitas podem escolher a fonte e inicializá-lo. A primeira alteração de um
+tema derivado materializa a declaração herdada no filho. Cada candidato passa
+pelo `AssetRecipeBook` e pelo `ThemeResolver` antes de entrar no histórico; uma
+rejeição mantém documento e histórico intactos. O preview usa o renderer nativo
+`AssetRecipePreview` e a origem resolvida pela cadeia de herança, com paths
+confinados à raiz do tema. A prova atual combina autoria, salvar/reabrir e desenho
+no harness QML com exportar/importar o manifesto de receitas em XDG temporário;
+isso não certifica a execução da Jornada no Launcher/Cinema. Perfis por
+tier/resolução e validação na release instalada continuam pendentes.
+
+As mutações do editor são enviadas em sequência por sessão. A resposta só
+atualiza o documento se a geração e a sessão ainda forem as atuais; respostas de
+uma sessão fechada ou substituída são descartadas. A regressão QML entrega uma
+resposta antiga enquanto a nova sessão tem uma edição válida em espera e confirma
+que a antiga não sobrescreve a atual. Esta prova é do checkout em Qt/offscreen,
+não de input físico nem da release instalada.
+
 ### 14.1. Ergonomia de autoria para artwork heterogêneo
 
 O backlog do Studio deve tornar o ajuste de capas e demais artes declarativo,

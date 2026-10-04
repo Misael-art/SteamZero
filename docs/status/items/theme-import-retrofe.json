@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "ready",
   "distribution": "installed",
-  "scopeDigest": "149d20788bacc3343f77ff47c75b9e7c54885986e488482ab8216573c4d11bed",
+  "scopeDigest": "e71a7f46a6888754fb1261a8bb3e41314941d6e297bf73d2e460172a5e2fa8bc",
   "scopePaths": [
     "src/steamzero/adapters/desktop_contracts.py",
     "src/steamzero/adapters/desktop_dashboard.py",
@@ -167,6 +167,12 @@
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-10-03-journey-engine-preview/README.md",
       "command": "2026-10-03, renovação do scopeDigest por caminhos compartilhados da bridge (desktop_contracts.py, desktop_dashboard.py, desktop_ui.py) e alterações de ThemeEditorPanel/goldens pertencentes ao lote atual. Registro de escopo apenas; o teste específico do diálogo RetroFE não foi reexecutado neste checkpoint e nenhum eixo do item foi promovido.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/status/workstreams/v1-v3-theme-journey-2026-10-01.json",
+      "command": "2026-10-03, digest recalculado com tools/project_status.py após a integração de paths compartilhados da jornada; registro de escopo, sem reexecução dos critérios deste item nem promoção de estado.",
       "result": "recorded"
     }
   ],

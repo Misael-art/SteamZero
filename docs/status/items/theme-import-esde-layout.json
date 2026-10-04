@@ -43,7 +43,7 @@
     "tests/unit/test_theme_import_esde_layout.py",
     "tests/unit/test_theme_sources.py"
   ],
-  "scopeDigest": "7045b9cd0a239cf0bdbe3353d4a64f35dce6ddc0172d078a3a9cf2abb5df018d",
+  "scopeDigest": "af78453d4eb1e04a023f459a849e321fb90726cf96a26c9ce706f14124803e52",
   "dependsOn": [],
   "knownGaps": [
     "GAP-THEME-ESDE-SCENE-NOT-RENDERED",
@@ -152,6 +152,12 @@
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-10-03-journey-engine-preview/README.md",
       "command": "2026-10-03, renovação do scopeDigest porque os caminhos compartilhados desktop_contracts.py, desktop_dashboard.py e desktop_ui.py receberam a bridge da Jornada. Registro de escopo apenas; nenhum teste específico do importador ES-DE/layout foi executado neste checkpoint e nenhum eixo do item mudou.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/status/workstreams/v1-v3-theme-journey-2026-10-01.json",
+      "command": "2026-10-03, digest recalculado com tools/project_status.py após a integração de paths compartilhados da jornada; registro de escopo, sem reexecução dos critérios deste item nem promoção de estado.",
       "result": "recorded"
     }
   ],

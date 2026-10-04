@@ -17,7 +17,7 @@
     "tests/integration/test_esde_import_dialog_compact.py",
     "tests/qml/golden/import-dialogs/esde"
   ],
-  "scopeDigest": "c907c74c76756aebba6fd240140dad181197da7fb444ed7492440ecbfa8d62c3",
+  "scopeDigest": "c17f2fd972c396cf96f47b646cd8029167642f5fa5e91049da3724db60c5ac59",
   "dependsOn": [
     "SZ-THEME-STUDIO"
   ],
@@ -132,6 +132,12 @@
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-10-03-journey-engine-preview/README.md",
       "command": "2026-10-03 shared-scope renewal: SHA/digest re-evaluated after the Journey bridge/Engine preview and product/status documentation changed shared paths. No acceptance criterion or capability of this item was promoted by that change; this record is scope reconciliation, not new product evidence.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/status/workstreams/v1-v3-theme-journey-2026-10-01.json",
+      "command": "2026-10-03, digest recalculado com tools/project_status.py após a integração de paths compartilhados da jornada; registro de escopo, sem reexecução dos critérios deste item nem promoção de estado.",
       "result": "recorded"
     }
   ],

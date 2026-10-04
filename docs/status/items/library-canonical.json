@@ -39,7 +39,7 @@
     "tests/integration/test_qml_handheld_offscreen.py",
     "tests/integration/test_qml_visual_capture.py"
   ],
-  "scopeDigest": "9af1fe1d675012feb859d30c767b1aac55ee35ae03275230f36b5fe7e4593f88",
+  "scopeDigest": "d908321cb46f06c263d7ecc4afe5faae303256c6b875a8abe8866a5f90cc3cde",
   "dependsOn": [],
   "activeWorkstreams": [
     "WS-2026-09-LIBRARY-GOVERNED-MANAGEMENT"
@@ -213,6 +213,12 @@
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-10-03-journey-engine-preview/README.md",
       "command": "2026-10-03 shared-scope renewal: SHA/digest re-evaluated after the Journey bridge/Engine preview and product/status documentation changed shared paths. No acceptance criterion or capability of this item was promoted by that change; this record is scope reconciliation, not new product evidence.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/status/workstreams/v1-v3-theme-journey-2026-10-01.json",
+      "command": "2026-10-03, digest recalculado com tools/project_status.py após a integração de paths compartilhados da jornada; registro de escopo, sem reexecução dos critérios deste item nem promoção de estado.",
       "result": "recorded"
     }
   ],

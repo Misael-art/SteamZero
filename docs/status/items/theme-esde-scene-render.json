@@ -37,7 +37,7 @@
     "tests/qml/check_theme_scene_preview.qml",
     "tests/unit/test_theme_scene.py"
   ],
-  "scopeDigest": "2398db30c2cc59ffc9d48e1f81f68b02490b271bdcf138da38d577b1b965c3df",
+  "scopeDigest": "1850163aedb9e6f240cf80291bc50809ac2b7a546545e2cb28c8a860fb486550",
   "dependsOn": [
     "SZ-THEME-IMPORT-ESDE-LAYOUT"
   ],
@@ -137,6 +137,12 @@
       "kind": "diagnostic",
       "reference": "docs/09-operations/evidence/2026-10-03-journey-engine-preview/README.md",
       "command": "2026-10-03, renovação do scopeDigest pela sobreposição de desktop_contracts.py, desktop_dashboard.py e desktop_ui.py com a bridge da Jornada; também permanecem no escopo os arquivos de preview ES-DE tocados na continuidade. Esta anotação registra somente a reconciliação de escopo: nenhum teste específico de cena ES-DE foi executado neste checkpoint e nenhum eixo do item foi promovido.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/status/workstreams/v1-v3-theme-journey-2026-10-01.json",
+      "command": "2026-10-03, digest recalculado com tools/project_status.py após a integração de paths compartilhados da jornada; registro de escopo, sem reexecução dos critérios deste item nem promoção de estado.",
       "result": "recorded"
     }
   ],

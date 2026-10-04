@@ -1,0 +1,227 @@
+........................................................................ [  1%]
+........................................................................ [  2%]
+........................................................................ [  3%]
+........................................................................ [  4%]
+........................................................................ [  5%]
+........................................................................ [  6%]
+........................................................................ [  7%]
+........................................................................ [  8%]
+........................................................................ [  9%]
+........................................................................ [ 10%]
+..........................................ss.s..s.................sssss. [ 11%]
+...s........sssssssssssssssss..................sssssssssssssssss........ [ 13%]
+........................................................................ [ 14%]
+........................................................................ [ 15%]
+........................................................................ [ 16%]
+...................................s.................................... [ 17%]
+........................................................................ [ 18%]
+........................................................................ [ 19%]
+........................................................................ [ 20%]
+........................................................................ [ 21%]
+........................................................................ [ 22%]
+........................................................................ [ 23%]
+........................................................................ [ 24%]
+........................................................................ [ 26%]
+........F............................................................... [ 27%]
+........................................................................ [ 28%]
+........................................................................ [ 29%]
+........................................................................ [ 30%]
+........................................................................ [ 31%]
+........................................................................ [ 32%]
+........................................................................ [ 33%]
+........................................................................ [ 34%]
+........................................................................ [ 35%]
+........................................................................ [ 36%]
+........................................................................ [ 37%]
+........................................................................ [ 39%]
+........................................................................ [ 40%]
+........................................................................ [ 41%]
+........................................................................ [ 42%]
+........................................................................ [ 43%]
+........................................................................ [ 44%]
+........................................................................ [ 45%]
+........................................................................ [ 46%]
+........................................................................ [ 47%]
+........................................................................ [ 48%]
+........................................................................ [ 49%]
+........................................................................ [ 50%]
+........................................................................ [ 52%]
+........................................................................ [ 53%]
+........................................................................ [ 54%]
+........................................................................ [ 55%]
+........................................................................ [ 56%]
+........................................................................ [ 57%]
+........................................................................ [ 58%]
+........................................................................ [ 59%]
+........................................................................ [ 60%]
+..........................................................ss............ [ 61%]
+........................................................................ [ 62%]
+........................................................................ [ 63%]
+........................................................................ [ 65%]
+........................................................................ [ 66%]
+........................................................................ [ 67%]
+........................................................................ [ 68%]
+........................................................................ [ 69%]
+........................................................................ [ 70%]
+........................................................................ [ 71%]
+........................................................................ [ 72%]
+........................................................................ [ 73%]
+........................................................................ [ 74%]
+........................................................................ [ 75%]
+........................................................................ [ 76%]
+........................................................................ [ 78%]
+........................................................................ [ 79%]
+........................................................................ [ 80%]
+........................................................................ [ 81%]
+........................................................................ [ 82%]
+........................................................................ [ 83%]
+........................................................................ [ 84%]
+........................................................................ [ 85%]
+........................................................................ [ 86%]
+........................................................................ [ 87%]
+........................................................................ [ 88%]
+........................................................................ [ 89%]
+........................................................................ [ 91%]
+........................................................................ [ 92%]
+........................................................................ [ 93%]
+........................................................................ [ 94%]
+........................................................................ [ 95%]
+........................................................................ [ 96%]
+........................................................................ [ 97%]
+........................................................................ [ 98%]
+........................................................................ [ 99%]
+......................                                                   [100%]
+=================================== FAILURES ===================================
+_________________ test_autoria_pela_ui_real_persiste_e_resolve _________________
+
+tmp_path = PosixPath('/tmp/steamzero-tests-zdl_apl0/tmp/pytest-of-misael/pytest-0/test_autoria_pela_ui_real_pers0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f3f87277460>
+
+    def test_autoria_pela_ui_real_persiste_e_resolve(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        assert RUNNER is not None, "qmltestrunner Qt 6 é obrigatório para esta prova"
+        data = tmp_path / "data"
+        monkeypatch.setenv("XDG_DATA_HOME", str(data))
+        monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+        monkeypatch.setattr(Path, "home", classmethod(lambda _cls: tmp_path))
+        ready: queue.Queue[DesktopControlServer] = queue.Queue()
+    
+        def run_server() -> None:
+            store = StateStore(tmp_path / "state.db")
+            store.migrate()
+            server = DesktopControlServer(
+                ExperienceCoordinator(Context(), (), store), "[REDACTED-TEST-TOKEN]", DesktopDashboard()
+            )
+            ready.put(server)
+            server.serve_forever()
+            server.server_close()
+            store.close()
+    
+        thread = threading.Thread(target=run_server, daemon=True)
+        thread.start()
+        server = ready.get(timeout=5)
+        CONFIG.parent.mkdir(exist_ok=True)
+        runtime_captures = Path(os.environ.get("SZ_CAPTURE_DIR", str(tmp_path / "runtime-captures")))
+        runtime_captures.mkdir(parents=True, exist_ok=True)
+        CONFIG.write_text(
+            json.dumps(
+                {
+                    "apiUrl": f"http://127.0.0.1:{server.server_port}",
+                    "apiToken": "[REDACTED-TEST-TOKEN]",
+                    # Capturas só quando pedido (evidência visual); o teste normal não grava.
+                    "captureDir": os.environ.get("SZ_CAPTURE_DIR", ""),
+                    "runtimeCaptureDir": str(runtime_captures),
+                }
+            ),
+            encoding="utf-8",
+        )
+        env = os.environ.copy()
+        env.update(
+            {
+                "QT_QPA_PLATFORM": "offscreen",
+                "QT_QUICK_BACKEND": "software",
+                "QT_FORCE_STDERR_LOGGING": "1",
+                "QT_LOGGING_RULES": "",
+                "QML_XHR_ALLOW_FILE_READ": "1",
+            }
+        )
+        try:
+            completed = subprocess.run(
+                [str(RUNNER), "-input", str(HARNESS)],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=180,
+                check=False,
+            )
+        finally:
+            CONFIG.unlink(missing_ok=True)
+            server.shutdown()
+            thread.join(timeout=3)
+        output = (completed.stdout or "") + (completed.stderr or "")
+>       assert completed.returncode == 0, (
+            f"jornada de autoria reprovou:\n{output[:2500]}\n...\n{output[-1200:]}"
+        )
+E       AssertionError: jornada de autoria reprovou:
+E         ********* Start testing of qmltestrunner *********
+E         Config: Using QtTest library 6.11.2, Qt 6.11.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 16.2.1 20260810), biglinux unknown
+E         PASS   : qmltestrunner::ThemeAuthoringE2E::initTestCase()
+E         FAIL!  : qmltestrunner::ThemeAuthoringE2E::test_01_jornada_de_autoria_pelos_controles() 'o parâmetro da vinheta não chegou ao documento' returned FALSE. ()
+E            Loc: [/home/misael/Projects/Steam Zero/Canonical/2026-09-21/tests/qml/check_theme_authoring_e2e.qml(489)]
+E         PASS   : qmltestrunner::ThemeAuthoringE2E::test_02_viewport_compacto_alcanca_os_inspetores()
+E         PASS   : qmltestrunner::ThemeAuthoringE2E::test_03_binding_de_layout_pelos_controles()
+E         PASS   : qmltestrunner::ThemeAuthoringE2E::test_04_abre_jornadas_pelo_studio_e_retorna_com_bridge_ausente()
+E         QDEBUG : qmltestrunner::ThemeAuthoringE2E::cleanupTestCase() qml: TARGET_DIMENSIONS={"effectAdd":{"width":171.953125,"height":48,"visualScale":1.5},"effectParam_2_radius":{"width":212,"height":48,"visualScale":1},"effectParam_2_radius incrementar":{"width":48,"height":48,"visualScale":1},"effectParam_2_radius decrementar":{"width":48,"height":48,"visualScale":1},"effectTypeToAdd":{"width":104.15625,"height":48,"visualScale":1.5},"effectParam_3_strength":{"width":212,"height":48,"visualScale":1},"motionTimelineName":{"width":140,"height":48,"visualScale":1.5},"motionTimelineAdd":{"width":150.953125,"height":48,"visualScale":1.5},"motionClipAdd":{"width":150.28125,"height":48,"visualScale":1.5},"bindingFallback":{"width":140,"height":48,"visualScale":1},"bindingApply":{"width":55.765625,"height":48,"visualScale":1},"themeEditorUndo":{"width":90,"height":48,"visualScale":1},"assetRecipePicker":{"width":196,"height":48,"visualScale":1},"assetRecipeFieldPicker":{"width":357,"height":48,"visualScale":1},"assetRecipeNumberEditor":{"width":120,"height":48,"visualScale":1},"assetRecipeNewNameField":{"width":469,"height":48,"visualScale":1},"assetRecipeCreateRecipeButton":{"width":85,"height":48,"visualScale":1},"assetRecipeNodeTypePicker":{"width":120,"height":48,"visualScale":1},"assetRecipeAddNodeButton":{"width":80,"height":48,"visualScale":1},"assetRecipeColorButton":{"width":112,"height":48,"visualScale":1},"themeColorPickerHex":{"width":366,"height":48,"visualScale":1},"themeColorPickerApply":{"width":120,"height":48,"visualScale":1},"themeEditorSave":{"width":90,"height":48,"visualScale":1},"themeEditorClose":{"width":80,"height":48,"visualScale":1},"themeEditButt
+E         ...
+E         eight":48,"visualScale":1},"bindingApply":{"width":55.765625,"height":48,"visualScale":1},"themeEditorUndo":{"width":90,"height":48,"visualScale":1},"assetRecipePicker":{"width":196,"height":48,"visualScale":1},"assetRecipeFieldPicker":{"width":357,"height":48,"visualScale":1},"assetRecipeNumberEditor":{"width":120,"height":48,"visualScale":1},"assetRecipeNewNameField":{"width":469,"height":48,"visualScale":1},"assetRecipeCreateRecipeButton":{"width":85,"height":48,"visualScale":1},"assetRecipeNodeTypePicker":{"width":120,"height":48,"visualScale":1},"assetRecipeAddNodeButton":{"width":80,"height":48,"visualScale":1},"assetRecipeColorButton":{"width":112,"height":48,"visualScale":1},"themeColorPickerHex":{"width":366,"height":48,"visualScale":1},"themeColorPickerApply":{"width":120,"height":48,"visualScale":1},"themeEditorSave":{"width":90,"height":48,"visualScale":1},"themeEditorClose":{"width":80,"height":48,"visualScale":1},"themeEditButton_org.steamzero.01m420eh":{"width":88,"height":48,"visualScale":1}}
+E         PASS   : qmltestrunner::ThemeAuthoringE2E::cleanupTestCase()
+E         Totals: 5 passed, 1 failed, 0 skipped, 0 blacklisted, 9704ms
+E         ********* Finished testing of qmltestrunner *********
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/usr/lib/qt6/bin/qmltestrunner', '-input', '/home/misael/Projects/Steam Zero/Canonical/2026-09...assed, 1 failed, 0 skipped, 0 blacklisted, 9704ms\n********* Finished testing of qmltestrunner *********\n', stderr='').returncode
+
+tests/integration/test_theme_authoring_e2e.py:102: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  steamzero.adapters.screencast_web:screencast_web.py:347 ipc connect failed: [Errno 2] Arquivo ou diretório inexistente
+INFO     steamzero.adapters.screencast_web:screencast_web.py:163 receiver page on http://127.0.0.1:12577
+=========================== short test summary info ============================
+SKIPPED [10] tests/integration/test_emulator_conformance.py:487: Flatpak fixa commit; o checksum é garantia do executor portátil
+SKIPPED [17] tests/integration/test_emulator_conformance.py:507: core não lança sozinho; quem lança é o RetroArch
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-bluemsx nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-fbneo nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-freeintv nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-fuse nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-genesis-plus-gx nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-ngp nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-pce nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-vb nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mednafen-wswan nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mesen nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mgba nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-mupen64plus-next nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-opera nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-puae nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-snes9x nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-stella nao declara capability `configure`
+SKIPPED [1] tests/integration/test_emulator_conformance.py:521: libretro-vice-x64 nao declara capability `configure`
+SKIPPED [1] ../../../../../../mnt/sdcard/Projects/Port_Steam/tests/integration/test_metadata_to_catalog_pipeline.py:173: reference/ não versionado; checkout sem pesquisa
+SKIPPED [1] ../../../../../../mnt/sdcard/Projects/Port_Steam/tests/unit/test_metadata_import_pegasus.py:187: reference/ não versionado; checkout sem pesquisa
+SKIPPED [1] ../../../../../../mnt/sdcard/Projects/Port_Steam/tests/unit/test_metadata_import_pegasus.py:199: reference/ não versionado; checkout sem pesquisa
+FAILED tests/integration/test_theme_authoring_e2e.py::test_autoria_pela_ui_real_persiste_e_resolve
+1 failed, 6598 passed, 47 skipped in 2341.89s (0:39:01)
+E-TEST-REAL-STATE-MUTATED: pytest alterou o state home original
+state home: /home/misael/.local/state/steamzero
+before: exists=True files=12818 directories=2068 bytes=1372836525 max_mtime_ns=1791050512609016577
+after:  exists=True files=12818 directories=2068 bytes=1372852284 max_mtime_ns=1791068580100630556
+changed: backups, journal, logs, logs/core.jsonl, quarantine, staging, state.db
+processos steamzero NASCIDOS durante a janela — prováveis autores (vazamento da suíte):
+  - pid=849262 (NASCEU durante a janela) cmd=/opt/steamzero/releases/2.0.0rc1-5715d7962691/venv/bin/python3 /usr/local/bin/steamzero doctor --json
+  - pid=849276 (NASCEU durante a janela) cmd=/opt/steamzero/releases/2.0.0rc1-5715d7962691/venv/bin/python3 /opt/steamzero/current/venv/bin/steamzero-core --systemd
+Um teste deixou escapar um comando real, ou vazou um processo destacado que
+sobreviveu ao teste que o criou. Injete o runner falso, ou espere/mate o
+processo antes do teste terminar.
+real-state before: exists=True files=12818 directories=2068 bytes=1372836525 max_mtime_ns=1791050512609016577 source=HOME-default
+real-state after:  exists=True files=12818 directories=2068 bytes=1372852284 max_mtime_ns=1791068580100630556 source=HOME-default

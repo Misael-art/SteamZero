@@ -36,7 +36,7 @@
     "tests/qml/check_experience_journey_bridge_e2e.qml",
     "tests/unit/test_theme_editor.py"
   ],
-  "scopeDigest": "ca58e3705fa3232c169ba45cd8d7b9c1f7c72b0fb9868135e0794877e4fe7b47",
+  "scopeDigest": "5c1837cc6d1ca8357e27d02ea6a9fe0f728cd0303d63bb43a5e6292688c11183",
   "dependsOn": [
     "SZ-PROJECT-DESIGN-AUDIT"
   ],
@@ -168,6 +168,18 @@
       "reference": "tests",
       "command": "2026-10-03, integral final após regenerar CAPABILITY-MATRIX.md: rtk .venv/bin/python tools/run_tests_isolated.py tests -q; 6594 passed, 47 skipped, 0 failed em 2420.39 s (40:20), exit code 0. Guard real idêntico antes/depois (files=12818, directories=2068, bytes=1372834633, max_mtime_ns=1791031942518989555). Log bruto em docs/09-operations/evidence/2026-10-03-journey-engine-preview/full-tests-2026-10-03.log.",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/status/workstreams/v1-v3-theme-journey-2026-10-01.json",
+      "command": "2026-10-03, digest recalculado com tools/project_status.py após a integração de paths compartilhados da jornada; registro de escopo, sem reexecução dos critérios deste item nem promoção de estado.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "result": "recorded",
+      "reference": "docs/status/workstreams/v1-v3-theme-journey-2026-10-01.json",
+      "command": "2026-10-03: scope digest renovado após declarar caminhos compartilhados para a matriz de capacidades e os itens de governança/Vita; reconciliação de ownership documental, sem reteste de aceitação nem promoção de estágio."
     }
   ],
   "nextAction": "A bridge journey.studio.* e o preview native de Engine foram commitados localmente (461499d) e verificados por loopback; os gates focados e a integral final passaram após regenerar CAPABILITY-MATRIX.md. O workstream continua parcial: próximos handoffs seriais integram Launcher/Cinema e capabilities reais de sessão. Manter B_VISUAL, pixels/tempo em release e instalação condicionados à identificação da candidata autorizada e janela SteamZero disponível.",

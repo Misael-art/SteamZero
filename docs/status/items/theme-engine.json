@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "40534709d89b2443fc7268210d8441311a92acc13b1425502bfafc02669e785f",
+  "scopeDigest": "ee68d35f029c65e144b25d081b99e3c5494e35ecb26f3cf930a9f82fab67d1b3",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -548,6 +548,12 @@
       "reference": "tests",
       "command": "2026-10-03, integral final após regenerar CAPABILITY-MATRIX.md: rtk .venv/bin/python tools/run_tests_isolated.py tests -q; 6594 passed, 47 skipped, 0 failed em 2420.39 s (40:20), exit code 0. Guard real idêntico antes/depois (files=12818, directories=2068, bytes=1372834633, max_mtime_ns=1791031942518989555). Log bruto em docs/09-operations/evidence/2026-10-03-journey-engine-preview/full-tests-2026-10-03.log.",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/status/workstreams/v1-v3-theme-journey-2026-10-01.json",
+      "command": "2026-10-03, digest recalculado com tools/project_status.py após a integração de paths compartilhados da jornada; registro de escopo, sem reexecução dos critérios deste item nem promoção de estado.",
+      "result": "recorded"
     }
   ],
   "nextAction": "Nesta branch, journey.studio.engine-preview combina a consulta pública filtrada com o resolver native de sceneLayouts e o teste de loopback confirma o documento salvo/reaberto. Continuar com a ligação ao Launcher/Cinema e às capabilities reais de sessão em handoffs seriais; a resolução no checkout não fecha pixel/tempo na release. Preservar o estado parcial e preparar B_VISUAL somente após integração e candidata instalada.",
