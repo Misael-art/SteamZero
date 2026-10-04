@@ -407,6 +407,7 @@ def test_journey_editor_roundtrips_through_the_allowlisted_production_bridge(
     assert error.value.code == 400
 
 
+@pytest.mark.visual
 def test_journey_authoring_qml_uses_the_real_allowlisted_bridge(
     journey_bridge: tuple[str, str, _JourneyDashboard],
     tmp_path: Path,

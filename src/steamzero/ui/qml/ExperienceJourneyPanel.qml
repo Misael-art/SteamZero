@@ -1120,8 +1120,8 @@ Rectangle {
                             panel.journeyDocument.entryMenuId === modelData.menuId
                                 ? qsTr(", entrada da jornada") : "")
                         highlighted: modelData.menuId === panel.selectedMenuId
-                        x: panel.organizationDepth(modelData) * 14
-                        width: Math.max(48, menuTree.width - x)
+                        leftPadding: 12 + panel.organizationDepth(modelData) * 14
+                        width: Math.max(48, menuTree.width)
                         onClicked: {
                             panel.selectMenu(modelData.menuId)
                         }

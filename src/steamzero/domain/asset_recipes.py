@@ -164,6 +164,49 @@ _TIER_BUDGETS = {
 }
 
 
+def asset_recipe_editor_schema() -> dict[str, Any]:
+    """Public, typed controls for the Studio's allowlisted recipe inspector.
+
+    The validator below remains authoritative. This schema only tells the UI
+    which existing node fields can be edited and how to present them.
+    """
+    nodes: dict[str, Any] = {}
+    for node_type, rule in _NODE_RULES.items():
+        fields: dict[str, Any] = {}
+        for name, default in rule.defaults.items():
+            if name in rule.colors:
+                fields[name] = {"kind": "color", "default": default}
+            elif name in rule.enums:
+                fields[name] = {
+                    "kind": "choice",
+                    "default": default,
+                    "choices": sorted(rule.enums[name]),
+                }
+            else:
+                low, high = rule.bounds[name]
+                fields[name] = {
+                    "kind": "number",
+                    "default": default,
+                    "minimum": low,
+                    "maximum": high,
+                    "step": 0.05 if high - low <= 2 else 1,
+                }
+        fields["fallback"] = {
+            "kind": "choice",
+            "default": "outer" if node_type is AssetRecipeNodeType.OUTLINE else "source",
+            "choices": (
+                ["source", "outer"] if node_type is AssetRecipeNodeType.OUTLINE else ["source"]
+            ),
+        }
+        nodes[node_type.value] = {"fields": fields}
+    return {
+        "nodeTypes": [node_type.value for node_type in AssetRecipeNodeType],
+        "maxRecipes": MAX_ASSET_RECIPES,
+        "maxNodes": MAX_ASSET_NODES,
+        "nodes": nodes,
+    }
+
+
 def _color(value: Any, field: str) -> str:
     if not isinstance(value, str) or not re.fullmatch(r"#[0-9a-fA-F]{6}", value):
         raise ValueError(f"{field} precisa ser cor #RRGGBB")
@@ -723,6 +766,7 @@ __all__ = [
     "PreparedAssetVariant",
     "ResolvedAssetNode",
     "ResolvedAssetRecipe",
+    "asset_recipe_editor_schema",
     "resolve_asset_recipes",
     "validate_asset_source",
 ]

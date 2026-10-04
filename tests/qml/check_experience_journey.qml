@@ -113,14 +113,33 @@ Item {
         name: "ExperienceJourneyPanel"
         when: windowShown
 
-        function find(root, name) {
+        function find(root, name, visited) {
             if (!root)
                 return null
+            const seen = visited || []
+            if (seen.indexOf(root) >= 0)
+                return null
+            seen.push(root)
             if (root.objectName === name)
                 return root
+            // ListView delegates live below its contentItem and are not always
+            // exposed through the ListView's own childItems/children arrays.
+            if (root.contentItem !== undefined && root.contentItem) {
+                const contentHit = find(root.contentItem, name, seen)
+                if (contentHit)
+                    return contentHit
+            }
+            const visual = root.childItems !== undefined ? root.childItems : []
+            for (let i = 0; i < visual.length; ++i) {
+                const hit = find(visual[i], name, seen)
+                if (hit)
+                    return hit
+            }
             const objects = root.children !== undefined ? root.children : []
             for (let i = 0; i < objects.length; ++i) {
-                const hit = find(objects[i], name)
+                if (visual.indexOf(objects[i]) >= 0)
+                    continue
+                const hit = find(objects[i], name, seen)
                 if (hit)
                     return hit
             }
@@ -323,10 +342,18 @@ Item {
 
         function test_compact_toolbar_wraps_and_targets_remain_large() {
             usePublishedFixture()
+            tryVerify(function() {
+                const tree = find(journey, "journeyMenuTree")
+                return tree !== null && tree.count === 2
+                    && tree.itemAtIndex(1) !== null
+            })
+            const parentMenu = find(journey, "journeyMenu_platforms")
             const childMenu = find(journey, "journeyMenu_games")
+            verify(parentMenu !== null)
             verify(childMenu !== null)
             verify(childMenu.height >= 48)
-            verify(childMenu.x > 0, "menu aninhado não exibe sua hierarquia")
+            verify(childMenu.leftPadding > parentMenu.leftPadding,
+                "menu aninhado não exibe sua hierarquia")
             const showInspector = find(journey, "journeyShowInspector")
             verify(showInspector !== null)
             verify(showInspector.height >= 48)

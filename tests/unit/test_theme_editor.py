@@ -247,6 +247,105 @@ class TestEditorSetLayout:
             mgr.set_layout(sid, "main", "qml", "evil")
 
 
+class TestEditorAssetRecipes:
+    def test_inherited_asset_recipe_edits_preview_history_and_round_trips(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        manager = ThemeEditorManager()
+        created = manager.create("Receitas", extends="org.steamzero.asset-recipes-demo")
+        session_id = str(created["sessionId"])
+
+        schema = created["assetRecipeSchema"]
+        assert isinstance(schema, dict)
+        assert "outline" in schema["nodeTypes"]
+        assert schema["nodes"]["outline"]["fields"]["width"]["maximum"] == 32.0
+        assert created["preview"]["assetUris"]["logo"].endswith("assets/source.svg")
+
+        changed = manager.edit_asset_recipe(
+            session_id,
+            "set",
+            recipe="outlineThin",
+            index=0,
+            field_name="width",
+            value=6,
+        )
+        assert (
+            changed["declared"]["assetRecipes"]["recipes"]["outlineThin"]["nodes"][0]["width"]
+            == 6.0
+        )
+        assert (
+            changed["preview"]["assetRecipes"]["outlineThin"]["nodes"][0]["parameters"]["width"]
+            == 6.0
+        )
+        assert changed["history"]["dirty"] is True
+
+        history_before_invalid = manager.history(session_id)["history"]
+        with pytest.raises(SteamZeroError, match=r"E-API-SCHEMA"):
+            manager.edit_asset_recipe(
+                session_id,
+                "set",
+                recipe="outlineThin",
+                index=0,
+                field_name="width",
+                value=40,
+            )
+        assert manager.history(session_id)["history"] == history_before_invalid
+        assert (
+            manager.preview(session_id)["preview"]["assetRecipes"]["outlineThin"]["nodes"][0][
+                "parameters"
+            ]["width"]
+            == 6.0
+        )
+
+        undone = manager.undo(session_id)
+        assert (
+            undone["declared"]["assetRecipes"]["recipes"]["outlineThin"]["nodes"][0]["width"] == 2.0
+        )
+        redone = manager.redo(session_id)
+        assert (
+            redone["declared"]["assetRecipes"]["recipes"]["outlineThin"]["nodes"][0]["width"] == 6.0
+        )
+
+        manager.edit_asset_recipe(session_id, "create-recipe", name="silhouetteWhite")
+        manager.edit_asset_recipe(
+            session_id, "add", recipe="silhouetteWhite", node_type="silhouette"
+        )
+        manager.edit_asset_recipe(
+            session_id,
+            "set",
+            recipe="silhouetteWhite",
+            index=0,
+            field_name="color",
+            value="#ffffff",
+        )
+        saved = manager.save(session_id)
+        reopened = ThemeEditorManager().load(saved["themeId"])
+        manifest = reopened["manifest"]
+        assert isinstance(manifest, dict)
+        assert manifest["assetRecipes"]["recipes"]["silhouetteWhite"]["nodes"][0]["color"] == (
+            "#ffffff"
+        )
+        assert (
+            reopened["preview"]["assetRecipes"]["silhouetteWhite"]["nodes"][0]["parameters"][
+                "color"
+            ]
+            == "#ffffff"
+        )
+
+    def test_asset_recipe_initialize_requires_an_existing_source_slot(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        manager = ThemeEditorManager()
+        session_id = str(manager.create("Sem arte")["sessionId"])
+        before = manager._sessions[session_id].manifest.copy()
+        with pytest.raises(SteamZeroError, match=r"E-API-SCHEMA"):
+            manager.edit_asset_recipe(session_id, "initialize", source_slot="missing")
+        assert manager._sessions[session_id].manifest == before
+        assert manager.history(session_id)["history"]["undoDepth"] == 0
+
+
 class TestEditorSave:
     def test_save_new_theme(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))

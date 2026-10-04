@@ -22,6 +22,8 @@ Item {
     property bool runtimeThemeRefreshed: false
     property bool runtimeCaptureComplete: false
     property bool runtimeCaptureSucceeded: false
+    property bool deferEditorMutations: false
+    property var deferredEditorMutations: []
     readonly property url runtimeFixture: Qt.resolvedUrl(
         "../../tests/fixtures/themes/esde-mini/fundo.png")
 
@@ -46,6 +48,12 @@ Item {
     }
 
     function requestAction(actionId, payload, callback, errorCallback) {
+        if (harness.deferEditorMutations && actionId === "theme.editor.edit-effect") {
+            const pending = harness.deferredEditorMutations.slice()
+            pending.push({payload: payload, callback: callback, errorCallback: errorCallback})
+            harness.deferredEditorMutations = pending
+            return true
+        }
         // O contrato publica `theme.editor.load` como GET com query (themeId).
         const isLoad = actionId === "theme.editor.load"
         const path = "/" + actionId.split(".").join("/")
@@ -60,6 +68,20 @@ Item {
 
     function request(method, path, payload, callback, errorCallback) {
         xhr(method, path, payload, callback, errorCallback || function() {})
+    }
+
+    function editorEffectResponse(sessionId, strength) {
+        return {
+            manifest: {id: sessionId, readOnly: false},
+            declared: {
+                effects: {focusedCover: [{type: "vignette", strength: strength,
+                    fallback: "omit"}]},
+                assetRecipes: {schemaVersion: 2, sourceSlot: "logo",
+                    recipes: {original: {source: "logo", nodes: []}}},
+                sceneMotion: {states: {}, timelines: {}}
+            },
+            history: {canUndo: true, canRedo: false, dirty: true}
+        }
     }
 
     function refreshRuntimeTheme(callback) {
@@ -431,6 +453,16 @@ Item {
             return (panel.editorDeclared.effects || {})[stack] || []
         }
 
+        function editorDeclaredWithStrength(strength) {
+            return {
+                effects: {focusedCover: [{type: "vignette", strength: strength,
+                    fallback: "omit"}]},
+                assetRecipes: {schemaVersion: 2, sourceSlot: "logo",
+                    recipes: {original: {source: "logo", nodes: []}}},
+                sceneMotion: {states: ({}), timelines: ({})}
+            }
+        }
+
         function test_01_jornada_de_autoria_pelos_controles() {
             cfg = readConfig()
             harness.cfg = cfg
@@ -773,6 +805,56 @@ Item {
                 const layouts = (panel.editorDeclared.sceneLayouts || {}).layouts || {}
                 return layouts[layout].template.properties[prop].binding === "item.title"
             }, 3000, "desfazer não restaurou o binding herdado")
+
+            tryVerify(function() { return panel.assetRecipeEditorActive }, 3000,
+                      "as receitas herdadas não chegaram ao inspector")
+            chooseCombo("assetRecipePicker", "outlineThin")
+            chooseCombo("assetRecipeFieldPicker", "width")
+            typeInto("assetRecipeNumberEditor", "6")
+            tryVerify(function() {
+                return panel.editorDeclared.assetRecipes.recipes.outlineThin.nodes[0].width === 6
+            }, 3000, "a alteração de largura não chegou à declaração da receita")
+            tryVerify(function() {
+                return panel.editorPreviewObject.assetUris.logo !== undefined
+                    && panel.assetRecipePreviewReady
+            }, 5000, "o preview da receita não decodificou a fonte resolvida pela herança")
+
+            typeInto("assetRecipeNewNameField", "studioRecolor")
+            click("assetRecipeCreateRecipeButton")
+            tryVerify(function() {
+                return panel.assetRecipeSelection === "studioRecolor"
+                    && panel.assetRecipeCurrent !== null
+            }, 3000, "a nova variante não entrou no documento selecionado")
+            chooseCombo("assetRecipeNodeTypePicker", "recolor")
+            click("assetRecipeAddNodeButton")
+            tryVerify(function() {
+                return panel.assetRecipeNodes.length === 1
+                    && panel.assetRecipeNodes[0].type === "recolor"
+            }, 3000, "adicionar node não atualizou a receita")
+            chooseCombo("assetRecipeFieldPicker", "color")
+            click("assetRecipeColorButton")
+            typeInto("themeColorPickerHex", "#33aaff")
+            click("themeColorPickerApply")
+            tryVerify(function() {
+                const declared = panel.editorDeclared.assetRecipes.recipes.studioRecolor.nodes[0]
+                const resolved = panel._previewBridge.assetRecipes.studioRecolor.nodes[0]
+                return declared.color === "#33aaff"
+                    && resolved.parameters.color === "#33aaff"
+            }, 3000, "a cor editada não chegou à Engine preview")
+            const assetRecipeThemeId = panel.editorManifest.id
+            click("themeEditorSave")
+            tryCompare(panel, "editorDirty", false, 5000)
+            const savedAssetRecipes = JSON.stringify(panel.editorDeclared.assetRecipes)
+            click("themeEditorClose")
+            tryVerify(function() {
+                return find(panel, "themeEditButton_" + assetRecipeThemeId) !== null
+            }, 5000, "o tema com receitas salvas não voltou ao catálogo")
+            click("themeEditButton_" + assetRecipeThemeId)
+            tryVerify(function() { return panel.editorSessionId !== "" }, 5000,
+                      "não foi possível reabrir o tema com as receitas editadas")
+            compare(JSON.stringify(panel.editorDeclared.assetRecipes), savedAssetRecipes,
+                    "as receitas mudaram no save/reopen")
+            click("themeEditorClose")
         }
 
         function test_04_abre_jornadas_pelo_studio_e_retorna_com_bridge_ausente() {
@@ -807,6 +889,60 @@ Item {
             mouseClick(closeButton)
             tryVerify(function() { return !panel.journeyMode && !journeyPanel.visible }, 3000)
             verify(openButton.visible, "voltar às Jornadas deve conservar a rota do Studio")
+        }
+
+        function test_05_fila_preserva_resposta_atual_e_descarta_sessao_obsoleta() {
+            harness.deferEditorMutations = true
+            harness.deferredEditorMutations = []
+            panel._openEditor("queued-session", {id: "queued-session", readOnly: false},
+                {resolved: ({})}, editorDeclaredWithStrength(0.5), ({ }), ({ }),
+                {nodeTypes: [], nodes: ({})}, false)
+
+            panel.editEffect("set", {index: 0, param: "strength", value: 0.8})
+            panel.editEffect("set", {index: 0, param: "strength", value: 0.9})
+            compare(harness.deferredEditorMutations.length, 1,
+                    "a fila deve enviar uma mutação por vez")
+            compare(panel.editorMutationQueue.length, 1,
+                    "a segunda edição deve aguardar a primeira resposta")
+
+            const first = harness.deferredEditorMutations[0]
+            first.callback(harness.editorEffectResponse("queued-session", 0.8))
+            tryVerify(function() { return harness.deferredEditorMutations.length === 2 }, 3000,
+                      "a segunda edição não foi enviada após a primeira resposta")
+            const second = harness.deferredEditorMutations[1]
+            second.callback(harness.editorEffectResponse("queued-session", 0.9))
+            tryVerify(function() {
+                return effects("focusedCover")[0].strength === 0.9
+                    && panel.editorMutationQueue.length === 0
+                    && !panel.editorMutationInFlight
+            }, 3000, "a resposta válida atual foi perdida na fila")
+
+            harness.deferredEditorMutations = []
+            panel.editEffect("set", {index: 0, param: "strength", value: 0.7})
+            compare(harness.deferredEditorMutations.length, 1)
+            const obsolete = harness.deferredEditorMutations[0]
+            panel._openEditor("current-session", {id: "current-session", readOnly: false},
+                {resolved: ({})}, editorDeclaredWithStrength(0.2), ({ }), ({ }),
+                {nodeTypes: [], nodes: ({})}, false)
+            panel.editEffect("set", {index: 0, param: "strength", value: 0.4})
+            compare(panel.editorMutationQueue.length, 1,
+                    "a mutação da nova sessão deve aguardar a solicitação antiga")
+
+            obsolete.callback(harness.editorEffectResponse("queued-session", 0.7))
+            tryVerify(function() { return harness.deferredEditorMutations.length === 2 }, 3000,
+                      "a mutação da sessão atual não foi enviada após descartar a antiga")
+            const current = harness.deferredEditorMutations[1]
+            current.callback(harness.editorEffectResponse("current-session", 0.4))
+            tryVerify(function() {
+                return panel.editorSessionId === "current-session"
+                    && effects("focusedCover")[0].strength === 0.4
+                    && !panel.editorMutationInFlight
+            }, 3000, "a resposta obsoleta sobrescreveu a resposta válida da sessão atual")
+
+            harness.deferEditorMutations = false
+            harness.deferredEditorMutations = []
+            panel.editorDirty = false
+            panel._closeEditor()
         }
 
         function cleanupTestCase() {

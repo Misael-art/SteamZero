@@ -58,6 +58,49 @@ class TestImportingASteamZeroPackage:
         finally:
             dashboard.close_request_context()
 
+    def test_asset_recipes_survive_export_import_round_trip(self, tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        import json
+        import zipfile
+
+        dashboard = self._dashboard(tmp_path, monkeypatch)
+        try:
+            created = dashboard.editor_create(
+                "Receitas exportadas", extends="org.steamzero.asset-recipes-demo"
+            )
+            session_id = str(created["sessionId"])
+            dashboard.editor_edit_asset_recipe(
+                session_id,
+                "set",
+                recipe="outlineThin",
+                index=0,
+                field_name="width",
+                value=6,
+            )
+            saved = dashboard.editor_save(session_id)
+            theme_id = str(saved["themeId"])
+            reopened = dashboard.editor_load(theme_id)
+            manifest = reopened["manifest"]
+            expected = manifest["assetRecipes"]
+            package = tmp_path / "receitas.zip"
+            package.write_bytes(dashboard.editor_export_zip(str(reopened["sessionId"])))
+
+            with zipfile.ZipFile(package) as archive:
+                packaged_manifest = json.loads(archive.read(f"{theme_id}/theme.json"))
+                assert packaged_manifest["assetRecipes"] == expected
+                assert not any("derived" in name for name in archive.namelist())
+
+            dashboard.theme_import_zip_apply(str(package), overwrite=True)
+            imported = dashboard.editor_load(theme_id)
+            assert imported["manifest"]["assetRecipes"] == expected
+            assert (
+                imported["preview"]["assetRecipes"]["outlineThin"]["nodes"][0]["parameters"][
+                    "width"
+                ]
+                == 6
+            )
+        finally:
+            dashboard.close_request_context()
+
     def test_inspect_warns_before_overwriting_an_installed_theme(
         self, tmp_path, monkeypatch
     ) -> None:  # type: ignore[no-untyped-def]

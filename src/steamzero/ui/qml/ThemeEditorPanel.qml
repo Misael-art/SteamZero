@@ -73,6 +73,10 @@ Rectangle {
     property var editorTokens: ({})
     property bool editorReadOnly: false
     property bool editorDirty: false
+    property var editorMutationQueue: []
+    property bool editorMutationInFlight: false
+    property int editorMutationGeneration: 0
+    property int editorLoadGeneration: 0
     // Histórico de autoria devolvido pelo backend (V3). Nunca é calculado aqui:
     // undo/redo e `dirty` vêm do documento, para o preview não divergir dele.
     property var editorHistory: ({canUndo: false, canRedo: false})
@@ -92,6 +96,7 @@ Rectangle {
     property var editorDeclared: ({effects: ({}), sceneMotion: null})
     property var editorEffectSchema: ({})
     property var editorMotionSchema: ({})
+    property var editorAssetRecipeSchema: ({nodeTypes: [], nodes: ({})})
     property string authoringNotice: ""
     // Sobe quando uma edição é recusada: os campos reconstroem e voltam ao valor
     // declarado, em vez de continuar exibindo o texto rejeitado.
@@ -142,14 +147,50 @@ Rectangle {
     // fazia o preview cair no fallback claro e publicar binding warnings.
     property var editorPreviewObject: null
     property string assetRecipeSelection: "original"
+    property int assetRecipeNodeIndex: 0
+    property string assetRecipeFieldSelection: ""
+    property string assetRecipeNewName: ""
+    property string assetRecipeNewSourceSlot: ""
+    property string assetRecipeNewNodeType: "recolor"
     readonly property bool assetRecipeDemoActive:
         editorManifest.id === "org.steamzero.asset-recipes-demo"
         && Object.keys(_previewBridge.assetRecipes).length > 0
-    readonly property url assetRecipeSource: assetRecipeDemoActive
-        ? Qt.resolvedUrl("../../themes/org.steamzero.asset-recipes-demo/assets/source.svg")
-        : ""
+    readonly property var assetRecipeBook: editorDeclared.assetRecipes || ({})
+    readonly property var assetRecipeRecipes: assetRecipeBook.recipes || ({})
+    readonly property bool assetRecipeEditorActive:
+        Object.keys(assetRecipeRecipes).length > 0
+        && Object.keys(_previewBridge.assetRecipes).length > 0
+    readonly property var assetRecipeAvailableSlots:
+        editorPreviewObject && editorPreviewObject.assets
+            ? Object.keys(editorPreviewObject.assets) : []
+    readonly property bool assetRecipeCanInitialize:
+        editorSessionId !== "" && !editorReadOnly && !assetRecipeEditorActive
+        && assetRecipeAvailableSlots.length > 0
+    readonly property var assetRecipeCurrent: assetRecipeRecipes[assetRecipeSelection] || null
+    readonly property var assetRecipeNodes:
+        assetRecipeCurrent && Array.isArray(assetRecipeCurrent.nodes)
+            ? assetRecipeCurrent.nodes : []
+    readonly property var assetRecipeCurrentNode:
+        assetRecipeNodeIndex >= 0 && assetRecipeNodeIndex < assetRecipeNodes.length
+            ? assetRecipeNodes[assetRecipeNodeIndex] : null
+    readonly property var assetRecipeCurrentNodeSchema:
+        assetRecipeCurrentNode
+            ? ((editorAssetRecipeSchema.nodes || ({}))[assetRecipeCurrentNode.type] || ({}))
+            : ({})
+    readonly property var assetRecipeCurrentFields:
+        assetRecipeCurrentNodeSchema.fields || ({})
+    readonly property var assetRecipeFieldSpec:
+        assetRecipeCurrentFields[assetRecipeFieldSelection] || ({})
+    readonly property var assetRecipeSourceUris:
+        editorPreviewObject && editorPreviewObject.assetUris ? editorPreviewObject.assetUris : ({})
+    readonly property url assetRecipeSource:
+        assetRecipeSourceUris[assetRecipeBook.sourceSlot]
+        || (editorManifest.id === "org.steamzero.asset-recipes-demo"
+            ? Qt.resolvedUrl("../../themes/org.steamzero.asset-recipes-demo/assets/source.svg") : "")
+    readonly property bool assetRecipePreviewActive:
+        assetRecipeEditorActive && assetRecipeSource.toString() !== ""
     readonly property bool assetRecipePreviewReady:
-        assetRecipeDemoActive && assetRecipePreview.sourceStatus === Image.Ready
+        assetRecipePreviewActive && assetRecipePreview.sourceStatus === Image.Ready
     readonly property int assetRecipePreviewDecodeCount: assetRecipePreview.sourceDecodeCount
     readonly property var sceneLayoutPreview: _previewBridge.sceneLayoutPreview.layouts
         ? _previewBridge.sceneLayoutPreview.layouts.previewTitles : null
@@ -582,6 +623,23 @@ Rectangle {
         return copy
     }
 
+    function _syncAssetRecipeSelection() {
+        const recipes = (panel.editorDeclared.assetRecipes || ({})).recipes || ({})
+        const recipeNames = Object.keys(recipes)
+        if (recipeNames.indexOf(panel.assetRecipeSelection) < 0)
+            panel.assetRecipeSelection = recipeNames.length ? recipeNames[0] : ""
+        const nodes = recipes[panel.assetRecipeSelection]
+            ? (recipes[panel.assetRecipeSelection].nodes || []) : []
+        panel.assetRecipeNodeIndex = nodes.length
+            ? Math.max(0, Math.min(panel.assetRecipeNodeIndex, nodes.length - 1)) : 0
+        const fields = nodes.length
+            ? (((panel.editorAssetRecipeSchema.nodes || ({}))[nodes[panel.assetRecipeNodeIndex].type]
+                || ({})).fields || ({})) : ({})
+        const fieldNames = Object.keys(fields)
+        if (fieldNames.indexOf(panel.assetRecipeFieldSelection) < 0)
+            panel.assetRecipeFieldSelection = fieldNames.length ? fieldNames[0] : ""
+    }
+
     function _applyEditorResult(r) {
         if (r.preview) {
             panel.editorPreviewObject = r.preview
@@ -595,6 +653,9 @@ Rectangle {
             panel.editorEffectSchema = r.effectSchema
         if (r.motionSchema)
             panel.editorMotionSchema = r.motionSchema
+        if (r.assetRecipeSchema)
+            panel.editorAssetRecipeSchema = r.assetRecipeSchema
+        panel._syncAssetRecipeSelection()
         panel.authoringNotice = ""
         if (r.history) {
             panel.editorHistory = r.history
@@ -602,23 +663,144 @@ Rectangle {
         }
     }
 
+    function requestEditorMutation(actionId, payload, onSuccess, onFailure) {
+        const body = JSON.parse(JSON.stringify(payload || ({})))
+        const queue = panel.editorMutationQueue.slice()
+        queue.push({
+            actionId: actionId,
+            payload: body,
+            sessionId: String(body.sessionId || ""),
+            allowClosedSession: actionId === "theme.editor.cancel",
+            generation: panel.editorMutationGeneration,
+            onSuccess: onSuccess || panel._applyEditorResult,
+            onFailure: onFailure || function(message) {
+                panel.authoringNotice = String(message)
+                panel.authoringRevision += 1
+            }
+        })
+        panel.editorMutationQueue = queue
+        panel._dispatchEditorMutation()
+        return true
+    }
+
+    function _dispatchEditorMutation() {
+        if (panel.editorMutationInFlight || panel.editorMutationQueue.length === 0)
+            return
+        const queue = panel.editorMutationQueue.slice()
+        const entry = queue.shift()
+        panel.editorMutationQueue = queue
+        panel.editorMutationInFlight = true
+        let settled = false
+
+        function settle(ok, result) {
+            if (settled)
+                return
+            settled = true
+            panel.editorMutationInFlight = false
+            const current = entry.generation === panel.editorMutationGeneration
+                && (entry.allowClosedSession || !entry.sessionId
+                    || entry.sessionId === panel.editorSessionId)
+            if (current) {
+                if (ok)
+                    entry.onSuccess(result || ({}))
+                else
+                    entry.onFailure(result)
+            }
+            Qt.callLater(panel._dispatchEditorMutation)
+        }
+
+        const dispatched = panel.requestAction(entry.actionId, entry.payload,
+            function(result) { settle(true, result) },
+            function(message) { settle(false, message) })
+        // Main.qml calls errorCallback synchronously when a contract is unavailable.
+        // A false return without that callback means an identical external request is
+        // already in flight; release this queue entry visibly instead of stranding it.
+        if (dispatched === false && !settled)
+            settle(false, qsTr("A mesma alteração já está em andamento; tente novamente."))
+    }
+
     function editorUndo() {
-        panel.requestAction("theme.editor.undo", {sessionId: panel.editorSessionId},
+        panel.requestEditorMutation("theme.editor.undo", {sessionId: panel.editorSessionId},
             panel._applyEditorResult)
     }
 
     function editorRedo() {
-        panel.requestAction("theme.editor.redo", {sessionId: panel.editorSessionId},
+        panel.requestEditorMutation("theme.editor.redo", {sessionId: panel.editorSessionId},
             panel._applyEditorResult)
     }
 
     function setMediaRecipe(field, value) {
-        panel.requestAction("theme.editor.set-media-recipe", {
+        panel.requestEditorMutation("theme.editor.set-media-recipe", {
             sessionId: panel.editorSessionId,
             role: panel.mediaRecipeRole,
             field: field,
             value: value
         }, panel._applyEditorResult)
+    }
+
+    function editAssetRecipe(op, extra) {
+        if (panel.editorReadOnly || !panel.editorSessionId)
+            return
+        var body = {sessionId: panel.editorSessionId, op: op}
+        for (var k in extra)
+            body[k] = extra[k]
+        panel.requestEditorMutation("theme.editor.edit-asset-recipe", body, function(response) {
+            panel._applyEditorResult(response)
+            if (op === "create-recipe")
+                panel.assetRecipeSelection = extra.name
+            else if (op === "add")
+                panel.assetRecipeNodeIndex = Number(extra.index)
+            panel._syncAssetRecipeSelection()
+            panel.authoringNotice = ""
+        }, function(message) {
+            panel.authoringNotice = String(message)
+            panel.authoringRevision += 1
+        })
+    }
+
+    function editSelectedAssetRecipeField(field, value) {
+        if (!panel.assetRecipeCurrentNode)
+            return
+        panel.editAssetRecipe("set", {
+            recipe: panel.assetRecipeSelection,
+            index: panel.assetRecipeNodeIndex,
+            field: field,
+            value: value
+        })
+    }
+
+    function openAssetRecipeColor(field, value) {
+        const dialog = colorPickerComponent.createObject(panel, {
+            objectName: "assetRecipeColorDialog",
+            initialColor: panel.effectColorHex(value),
+            backgroundColor: panel.backgroundColor,
+            surfaceColor: panel.surfaceColor,
+            raisedColor: panel.raisedColor,
+            borderColor: panel.borderColor,
+            textColor: panel.textColor,
+            mutedColor: panel.mutedColor,
+            cyanColor: panel.cyanColor,
+            cyanDarkColor: panel.cyanDarkColor,
+            visualScale: panel.visualScale
+        })
+        if (!dialog) {
+            panel.authoringNotice = qsTr("Não foi possível abrir o seletor de cor.")
+            panel.authoringRevision += 1
+            return
+        }
+        panel.effectColorDialogControl = dialog
+        dialog.colorPicked.connect(function(color) {
+            panel.editSelectedAssetRecipeField(field, panel.effectColorHex(color))
+        })
+        dialog.closed.connect(function() {
+            if (panel.effectColorDialogControl === dialog)
+                panel.effectColorDialogControl = null
+        })
+        dialog.open()
+    }
+
+    function assetRecipeNodeLabel(node, index) {
+        return qsTr("%1 · node %2").arg(String(node.type)).arg(index + 1)
     }
 
     function editEffect(op, extra) {
@@ -627,7 +809,7 @@ Rectangle {
         var body = {sessionId: panel.editorSessionId, stack: panel.effectStackName, op: op}
         for (var k in extra)
             body[k] = extra[k]
-        panel.requestAction("theme.editor.edit-effect", body, panel._applyEditorResult,
+        panel.requestEditorMutation("theme.editor.edit-effect", body, panel._applyEditorResult,
             function(message) { panel.authoringNotice = String(message); panel.authoringRevision += 1 })
     }
 
@@ -727,7 +909,7 @@ Rectangle {
         var body = {sessionId: panel.editorSessionId, op: op, timeline: timeline}
         for (var k in extra)
             body[k] = extra[k]
-        panel.requestAction("theme.editor.edit-motion", body, panel._applyEditorResult,
+        panel.requestEditorMutation("theme.editor.edit-motion", body, panel._applyEditorResult,
             function(message) { panel.authoringNotice = String(message); panel.authoringRevision += 1 })
     }
 
@@ -754,14 +936,14 @@ Rectangle {
         }
         if (binding !== null)
             body.binding = binding
-        panel.requestAction("theme.editor.edit-binding", body, panel._applyEditorResult,
+        panel.requestEditorMutation("theme.editor.edit-binding", body, panel._applyEditorResult,
             function(message) { panel.authoringNotice = String(message); panel.authoringRevision += 1 })
     }
 
     function setMetadata(field, value) {
         if (panel.editorReadOnly || !panel.editorSessionId)
             return
-        panel.requestAction("theme.editor.set-metadata", {
+        panel.requestEditorMutation("theme.editor.set-metadata", {
             "sessionId": panel.editorSessionId,
             "field": field,
             "value": value
@@ -772,33 +954,63 @@ Rectangle {
         })
     }
 
-    function _openEditor(sessionId, manifest, preview, declared, effectSchema, motionSchema) {
+    function _openEditor(sessionId, manifest, preview, declared, effectSchema, motionSchema,
+                         assetRecipeSchema, readOnly) {
+        panel.editorLoadGeneration += 1
+        panel.editorMutationGeneration += 1
+        panel.editorMutationQueue = []
         panel.editorSessionId = sessionId
         panel.editorDeclared = declared || ({effects: ({}), sceneMotion: null})
         panel.editorEffectSchema = effectSchema || ({})
         panel.editorMotionSchema = motionSchema || ({})
+        panel.editorAssetRecipeSchema = assetRecipeSchema || ({nodeTypes: [], nodes: ({})})
         panel.authoringNotice = ""
         panel.editorHistory = ({canUndo: false, canRedo: false})
         panel.editorManifest = manifest
         panel.editorPreviewObject = preview
         panel.editorTokens = preview && preview.resolved ? preview.resolved : {}
         panel.assetRecipeSelection = "original"
+        panel.assetRecipeNodeIndex = 0
+        panel.assetRecipeFieldSelection = ""
+        panel._syncAssetRecipeSelection()
         panel.editorDirty = false
-        panel.editorReadOnly = manifest.readOnly === true
+        panel.editorReadOnly = readOnly === true || manifest.readOnly === true
     }
 
     function _closeEditor() {
-        if (panel.editorSessionId && panel.editorDirty) {
-            panel.requestAction("theme.editor.cancel", {sessionId: panel.editorSessionId}, function() {})
-        }
+        const closingSessionId = panel.editorSessionId
+        const cancelSession = closingSessionId !== ""
+            && (panel.editorDirty || panel.editorMutationInFlight
+                || panel.editorMutationQueue.length > 0)
+        panel.editorLoadGeneration += 1
+        panel.editorMutationGeneration += 1
+        panel.editorMutationQueue = []
         panel.editorSessionId = ""
         panel.editorManifest = {}
         panel.editorPreviewObject = null
         panel.editorTokens = {}
         panel.editorEffectSchema = ({})
         panel.editorMotionSchema = ({})
+        panel.editorAssetRecipeSchema = ({nodeTypes: [], nodes: ({})})
         panel.editorDirty = false
         panel.editorReadOnly = false
+        if (cancelSession)
+            panel.requestEditorMutation("theme.editor.cancel",
+                {sessionId: closingSessionId}, function() {}, function() {})
+    }
+
+    function loadEditor(themeId) {
+        const generation = ++panel.editorLoadGeneration
+        panel.requestAction("theme.editor.load", {themeId: themeId}, function(r) {
+            if (generation !== panel.editorLoadGeneration)
+                return
+            panel._openEditor(r.sessionId, r.manifest, r.preview, r.declared,
+                              r.effectSchema, r.motionSchema, r.assetRecipeSchema,
+                              r.readOnly)
+        }, function(message) {
+            if (generation === panel.editorLoadGeneration)
+                panel.notice = String(message)
+        })
     }
 
     function beginApply(themeId) {
@@ -844,7 +1056,7 @@ Rectangle {
     function confirmExport() {
         if (!panel.exportPlan)
             return
-        panel.requestAction("theme.editor.export.apply", {
+        panel.requestEditorMutation("theme.editor.export.apply", {
             "planId": panel.exportPlan.planId,
             "confirmToken": panel.exportPlan.confirmToken
         }, function(_r) {
@@ -858,11 +1070,17 @@ Rectangle {
     function duplicateAndEdit(sourceId, sourceName) {
         var base = sourceName || sourceId || qsTr("Tema")
         var name = qsTr("%1 (cópia)").arg(base)
+        const generation = ++panel.editorLoadGeneration
         panel.requestAction("theme.editor.create",
             {name: name, extends: sourceId},
             function(r) {
+                if (generation !== panel.editorLoadGeneration)
+                    return
                 panel._openEditor(r.sessionId, r.manifest, r.preview, r.declared,
-                                  r.effectSchema, r.motionSchema)
+                                  r.effectSchema, r.motionSchema, r.assetRecipeSchema)
+            }, function(message) {
+                if (generation === panel.editorLoadGeneration)
+                    panel.notice = String(message)
             })
     }
 
@@ -1239,14 +1457,7 @@ Rectangle {
                                     implicitHeight: Math.max(panel.minimumInteractiveTarget, 36)
                                     Accessible.name: text + " " + (panel.themeLabel(modelData))
                                     onClicked: {
-                                        // Via envelope de ações: URL/método vêm do
-                                        // contrato do backend, não são montados aqui.
-                                        panel.requestAction("theme.editor.load",
-                                            {themeId: modelData.id}, function(r) {
-                                                panel._openEditor(r.sessionId, r.manifest, r.preview,
-                                                                  r.declared, r.effectSchema,
-                                                                  r.motionSchema)
-                                            })
+                                        panel.loadEditor(modelData.id)
                                     }
                                     background: Rectangle {
                                         color: parent.hovered ? panel.cyanDarkColor : panel.raisedColor
@@ -2085,9 +2296,10 @@ Rectangle {
                     implicitHeight: Math.max(panel.minimumInteractiveTarget, 36)
                     implicitWidth: 90
                     onClicked: {
-                        panel.requestAction("theme.editor.save",
+                        panel.requestEditorMutation("theme.editor.save",
                             {sessionId: panel.editorSessionId, overwrite: true},
                             function(r) {
+                                panel._applyEditorResult(r)
                                 panel.editorDirty = false
                                 panel.refreshThemeList()
                             })
@@ -2252,16 +2464,9 @@ Rectangle {
                         cyanColor: panel.cyanColor
                         onTokenChanged: {
                             panel.editorDirty = true
-                            panel.requestAction("theme.editor.set-tokens",
+                            panel.requestEditorMutation("theme.editor.set-tokens",
                                 {sessionId: panel.editorSessionId, category: "color", values: newValues},
-                                function(r) {
-                                    if (r.history)
-                                        panel.editorHistory = r.history
-                                    if (r.preview && r.preview.resolved) {
-                                        panel.editorPreviewObject = r.preview
-                                        panel.editorTokens = r.preview.resolved
-                                    }
-                                })
+                                panel._applyEditorResult)
                         }
                     }
 
@@ -2278,16 +2483,9 @@ Rectangle {
                         cyanColor: panel.cyanColor
                         onTokenChanged: {
                             panel.editorDirty = true
-                            panel.requestAction("theme.editor.set-tokens",
+                            panel.requestEditorMutation("theme.editor.set-tokens",
                                 {sessionId: panel.editorSessionId, category: "geometry", values: newValues},
-                                function(r) {
-                                    if (r.history)
-                                        panel.editorHistory = r.history
-                                    if (r.preview && r.preview.resolved) {
-                                        panel.editorPreviewObject = r.preview
-                                        panel.editorTokens = r.preview.resolved
-                                    }
-                                })
+                                panel._applyEditorResult)
                         }
                     }
 
@@ -2304,16 +2502,9 @@ Rectangle {
                         cyanColor: panel.cyanColor
                         onTokenChanged: {
                             panel.editorDirty = true
-                            panel.requestAction("theme.editor.set-tokens",
+                            panel.requestEditorMutation("theme.editor.set-tokens",
                                 {sessionId: panel.editorSessionId, category: "typography", values: newValues},
-                                function(r) {
-                                    if (r.history)
-                                        panel.editorHistory = r.history
-                                    if (r.preview && r.preview.resolved) {
-                                        panel.editorPreviewObject = r.preview
-                                        panel.editorTokens = r.preview.resolved
-                                    }
-                                })
+                                panel._applyEditorResult)
                         }
                     }
 
@@ -2330,16 +2521,9 @@ Rectangle {
                         cyanColor: panel.cyanColor
                         onTokenChanged: {
                             panel.editorDirty = true
-                            panel.requestAction("theme.editor.set-tokens",
+                            panel.requestEditorMutation("theme.editor.set-tokens",
                                 {sessionId: panel.editorSessionId, category: "motion", values: newValues},
-                                function(r) {
-                                    if (r.history)
-                                        panel.editorHistory = r.history
-                                    if (r.preview && r.preview.resolved) {
-                                        panel.editorPreviewObject = r.preview
-                                        panel.editorTokens = r.preview.resolved
-                                    }
-                                })
+                                panel._applyEditorResult)
                         }
                     }
 
@@ -3185,11 +3369,11 @@ Rectangle {
                     }
 
                     Rectangle {
-                        visible: panel.assetRecipeDemoActive
+                        visible: panel.assetRecipeEditorActive || panel.assetRecipeCanInitialize
                         color: panel._previewBridge.surface
                         radius: panel._previewBridge.radiusMedium
                         Layout.fillWidth: true
-                        implicitHeight: visible ? 260 : 0
+                        implicitHeight: visible ? 470 : 0
                         border.color: panel._previewBridge.border
                         border.width: 1
 
@@ -3201,7 +3385,7 @@ Rectangle {
                             RowLayout {
                                 Layout.fillWidth: true
                                 Label {
-                                    text: qsTr("Asset único · receita em runtime")
+                                    text: qsTr("Receitas de asset · variantes declarativas")
                                     color: panel._previewBridge.text
                                     font.pixelSize: Math.round(14 * panel.visualScale)
                                     font.weight: Font.Medium
@@ -3209,35 +3393,273 @@ Rectangle {
                                 }
                                 ComboBox {
                                     id: assetRecipePicker
-                                    model: [
-                                        "original", "colored", "grayscale", "black", "white",
-                                        "outlineThin", "outlineThick", "outlineInner",
-                                        "outlinedGlow", "outlinedShadow"
-                                    ]
-                                    implicitWidth: 150
+                                    objectName: "assetRecipePicker"
+                                    visible: panel.assetRecipeEditorActive
+                                    model: Object.keys(panel.assetRecipeRecipes)
+                                    currentIndex: Math.max(0, model.indexOf(panel.assetRecipeSelection))
+                                    Layout.fillWidth: true
                                     Layout.minimumHeight: panel.minimumInteractiveTarget
                                     Accessible.name: qsTr("Variante do asset")
-                                    onActivated: panel.assetRecipeSelection = model[index]
+                                    onActivated: function(index) {
+                                        panel.assetRecipeSelection = model[index]
+                                        panel.assetRecipeNodeIndex = 0
+                                        panel._syncAssetRecipeSelection()
+                                    }
                                 }
+                                Label {
+                                    visible: !panel.assetRecipeEditorActive
+                                    text: qsTr("Inicie o livro usando um asset existente.")
+                                    color: panel._previewBridge.textMuted
+                                    Layout.fillWidth: true
+                                    wrapMode: Text.WordWrap
+                                }
+                            }
+
+                            RowLayout {
+                                visible: panel.assetRecipeCanInitialize
+                                Layout.fillWidth: true
+                                ComboBox {
+                                    objectName: "assetRecipeSourceSlotPicker"
+                                    model: panel.assetRecipeAvailableSlots
+                                    currentIndex: Math.max(0, model.indexOf(panel.assetRecipeNewSourceSlot))
+                                    Layout.fillWidth: true
+                                    Layout.minimumHeight: panel.minimumInteractiveTarget
+                                    Accessible.name: qsTr("Asset-fonte das receitas")
+                                    onActivated: function(index) {
+                                        panel.assetRecipeNewSourceSlot = model[index]
+                                    }
+                                    Component.onCompleted: {
+                                        if (!panel.assetRecipeNewSourceSlot && count > 0)
+                                            panel.assetRecipeNewSourceSlot = model[0]
+                                    }
+                                }
+                                Button {
+                                    objectName: "assetRecipeInitializeButton"
+                                    text: qsTr("Iniciar receitas")
+                                    enabled: !panel.editorReadOnly && panel.assetRecipeNewSourceSlot !== ""
+                                    Layout.minimumHeight: panel.minimumInteractiveTarget
+                                    Accessible.name: text
+                                    onClicked: panel.editAssetRecipe("initialize", {
+                                        sourceSlot: panel.assetRecipeNewSourceSlot
+                                    })
+                                }
+                            }
+
+                            RowLayout {
+                                visible: panel.assetRecipeEditorActive
+                                Layout.fillWidth: true
+                                TextField {
+                                    objectName: "assetRecipeNewNameField"
+                                    text: panel.assetRecipeNewName
+                                    enabled: !panel.editorReadOnly
+                                    placeholderText: qsTr("Nome da nova variante")
+                                    Layout.fillWidth: true
+                                    Layout.minimumHeight: panel.minimumInteractiveTarget
+                                    Accessible.name: qsTr("Nome da nova variante")
+                                    onTextChanged: panel.assetRecipeNewName = text.trim()
+                                }
+                                Button {
+                                    objectName: "assetRecipeCreateRecipeButton"
+                                    text: qsTr("Criar variante")
+                                    enabled: !panel.editorReadOnly && panel.assetRecipeNewName !== ""
+                                    Layout.minimumHeight: panel.minimumInteractiveTarget
+                                    Accessible.name: text
+                                    onClicked: panel.editAssetRecipe("create-recipe", {
+                                        name: panel.assetRecipeNewName
+                                    })
+                                }
+                                Button {
+                                    objectName: "assetRecipeRemoveRecipeButton"
+                                    text: qsTr("Remover")
+                                    enabled: !panel.editorReadOnly
+                                        && Object.keys(panel.assetRecipeRecipes).length > 1
+                                    Layout.minimumHeight: panel.minimumInteractiveTarget
+                                    Accessible.name: qsTr("Remover variante selecionada")
+                                    onClicked: panel.editAssetRecipe("remove-recipe", {
+                                        recipe: panel.assetRecipeSelection
+                                    })
+                                }
+                            }
+
+                            RowLayout {
+                                visible: panel.assetRecipeEditorActive
+                                Layout.fillWidth: true
+                                ComboBox {
+                                    objectName: "assetRecipeNodePicker"
+                                    model: panel.assetRecipeNodes.map(function(node, index) {
+                                        return panel.assetRecipeNodeLabel(node, index)
+                                    })
+                                    currentIndex: Math.max(0, Math.min(
+                                        panel.assetRecipeNodeIndex, count - 1))
+                                    Layout.fillWidth: true
+                                    Layout.minimumHeight: panel.minimumInteractiveTarget
+                                    Accessible.name: qsTr("Node selecionado da receita")
+                                    onActivated: function(index) {
+                                        panel.assetRecipeNodeIndex = index
+                                        panel._syncAssetRecipeSelection()
+                                    }
+                                }
+                                ComboBox {
+                                    objectName: "assetRecipeNodeTypePicker"
+                                    model: panel.editorAssetRecipeSchema.nodeTypes || []
+                                    currentIndex: Math.max(0, model.indexOf(panel.assetRecipeNewNodeType))
+                                    Layout.minimumWidth: 120
+                                    Layout.minimumHeight: panel.minimumInteractiveTarget
+                                    Accessible.name: qsTr("Tipo do novo node")
+                                    onActivated: function(index) {
+                                        panel.assetRecipeNewNodeType = model[index]
+                                    }
+                                }
+                                Button {
+                                    objectName: "assetRecipeAddNodeButton"
+                                    text: qsTr("Adicionar")
+                                    enabled: !panel.editorReadOnly && panel.assetRecipeCurrent !== null
+                                        && panel.assetRecipeNodes.length
+                                            < Number(panel.editorAssetRecipeSchema.maxNodes || 12)
+                                    Layout.minimumHeight: panel.minimumInteractiveTarget
+                                    Accessible.name: qsTr("Adicionar node à receita")
+                                    onClicked: panel.editAssetRecipe("add", {
+                                        recipe: panel.assetRecipeSelection,
+                                        nodeType: panel.assetRecipeNewNodeType,
+                                        index: panel.assetRecipeNodes.length
+                                    })
+                                }
+                                Button {
+                                    objectName: "assetRecipeRemoveNodeButton"
+                                    text: qsTr("Excluir node")
+                                    enabled: !panel.editorReadOnly && panel.assetRecipeCurrentNode !== null
+                                    Layout.minimumHeight: panel.minimumInteractiveTarget
+                                    Accessible.name: qsTr("Excluir node da receita")
+                                    onClicked: panel.editAssetRecipe("remove", {
+                                        recipe: panel.assetRecipeSelection,
+                                        index: panel.assetRecipeNodeIndex
+                                    })
+                                }
+                            }
+
+                            RowLayout {
+                                visible: panel.assetRecipeEditorActive && panel.assetRecipeCurrentNode !== null
+                                Layout.fillWidth: true
+                                Button {
+                                    text: qsTr("Subir")
+                                    enabled: !panel.editorReadOnly && panel.assetRecipeNodeIndex > 0
+                                    Layout.minimumHeight: panel.minimumInteractiveTarget
+                                    Accessible.name: qsTr("Subir node")
+                                    onClicked: panel.editAssetRecipe("move", {
+                                        recipe: panel.assetRecipeSelection,
+                                        index: panel.assetRecipeNodeIndex,
+                                        toIndex: panel.assetRecipeNodeIndex - 1
+                                    })
+                                }
+                                Button {
+                                    text: qsTr("Descer")
+                                    enabled: !panel.editorReadOnly
+                                        && panel.assetRecipeNodeIndex < panel.assetRecipeNodes.length - 1
+                                    Layout.minimumHeight: panel.minimumInteractiveTarget
+                                    Accessible.name: qsTr("Descer node")
+                                    onClicked: panel.editAssetRecipe("move", {
+                                        recipe: panel.assetRecipeSelection,
+                                        index: panel.assetRecipeNodeIndex,
+                                        toIndex: panel.assetRecipeNodeIndex + 1
+                                    })
+                                }
+                                ComboBox {
+                                    objectName: "assetRecipeFieldPicker"
+                                    model: Object.keys(panel.assetRecipeCurrentFields)
+                                    currentIndex: Math.max(0, model.indexOf(panel.assetRecipeFieldSelection))
+                                    Layout.fillWidth: true
+                                    Layout.minimumHeight: panel.minimumInteractiveTarget
+                                    Accessible.name: qsTr("Parâmetro do node")
+                                    onActivated: function(index) {
+                                        panel.assetRecipeFieldSelection = model[index]
+                                    }
+                                }
+                                Button {
+                                    visible: panel.assetRecipeFieldSpec.kind === "color"
+                                    objectName: "assetRecipeColorButton"
+                                    text: panel.assetRecipeCurrentNode
+                                        ? String(panel.assetRecipeCurrentNode[panel.assetRecipeFieldSelection]) : ""
+                                    enabled: !panel.editorReadOnly
+                                    Layout.minimumWidth: 112
+                                    Layout.minimumHeight: panel.minimumInteractiveTarget
+                                    Accessible.name: qsTr("Escolher cor para %1")
+                                        .arg(panel.assetRecipeFieldSelection)
+                                    onClicked: panel.openAssetRecipeColor(
+                                        panel.assetRecipeFieldSelection,
+                                        panel.assetRecipeCurrentNode[panel.assetRecipeFieldSelection])
+                                }
+                                ComboBox {
+                                    visible: panel.assetRecipeFieldSpec.kind === "choice"
+                                    objectName: "assetRecipeChoiceEditor"
+                                    model: panel.assetRecipeFieldSpec.choices || []
+                                    currentIndex: Math.max(0, model.indexOf(String(panel.assetRecipeCurrentNode
+                                        ? panel.assetRecipeCurrentNode[panel.assetRecipeFieldSelection] : "")))
+                                    enabled: !panel.editorReadOnly
+                                    Layout.minimumWidth: 112
+                                    Layout.minimumHeight: panel.minimumInteractiveTarget
+                                    Accessible.name: qsTr("Valor de %1")
+                                        .arg(panel.assetRecipeFieldSelection)
+                                    onActivated: function(index) {
+                                        panel.editSelectedAssetRecipeField(
+                                            panel.assetRecipeFieldSelection, model[index])
+                                    }
+                                }
+                                TextField {
+                                    visible: panel.assetRecipeFieldSpec.kind === "number"
+                                    objectName: "assetRecipeNumberEditor"
+                                    text: panel.assetRecipeCurrentNode
+                                        ? String(panel.assetRecipeCurrentNode[panel.assetRecipeFieldSelection]) : ""
+                                    enabled: !panel.editorReadOnly
+                                    Layout.minimumWidth: 112
+                                    Layout.minimumHeight: panel.minimumInteractiveTarget
+                                    Accessible.name: qsTr("Valor numérico de %1")
+                                        .arg(panel.assetRecipeFieldSelection)
+                                    validator: DoubleValidator {
+                                        bottom: Number(panel.assetRecipeFieldSpec.minimum || 0)
+                                        top: Number(panel.assetRecipeFieldSpec.maximum || 999)
+                                        decimals: 3
+                                        notation: DoubleValidator.StandardNotation
+                                    }
+                                    onEditingFinished: {
+                                        const parsed = Number(text.replace(",", "."))
+                                        if (Number.isFinite(parsed))
+                                            panel.editSelectedAssetRecipeField(
+                                                panel.assetRecipeFieldSelection, parsed)
+                                    }
+                                }
+                            }
+
+                            Label {
+                                visible: panel.authoringNotice !== ""
+                                objectName: "assetRecipeNotice"
+                                text: panel.authoringNotice
+                                color: panel.amberColor
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
                             }
 
                             AssetRecipePreview {
                                 id: assetRecipePreview
                                 objectName: "assetRecipePreview"
+                                visible: panel.assetRecipePreviewActive
                                 Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                Layout.margins: 12
+                                Layout.preferredHeight: visible ? 112 : 0
+                                Layout.margins: 4
                                 source: panel.assetRecipeSource
                                 recipe: panel._previewBridge.assetRecipes[
                                     panel.assetRecipeSelection] || ({
-                                        "source": "logo", "nodes": [], "fallback": "source"
+                                        "source": panel.assetRecipeBook.sourceSlot || "logo",
+                                        "nodes": [], "fallback": "source"
                                     })
                             }
 
                             Label {
-                                text: assetRecipePreview.fallbackActive
-                                    ? qsTr("Efeito indisponível; fonte segura exibida")
-                                    : qsTr("Fonte decodificada uma vez · cache por hash e tier")
+                                visible: panel.assetRecipePreviewActive
+                                text: !panel.assetRecipePreviewReady
+                                    ? qsTr("Fonte indisponível para preview; receita permanece declarada.")
+                                    : assetRecipePreview.fallbackActive
+                                        ? qsTr("Efeito indisponível; fonte segura exibida")
+                                        : qsTr("Fonte real · cache por hash e tier")
                                 color: assetRecipePreview.fallbackActive
                                     ? panel.amberColor : panel._previewBridge.textMuted
                                 font.pixelSize: Math.round(11 * panel.visualScale)
@@ -3440,7 +3862,7 @@ Rectangle {
                             readOnly: panel.editorReadOnly
                             onLayoutEditRequested: function(layoutId, field, value) {
                                 panel.editorDirty = true
-                                panel.requestAction("theme.editor.set-layout", {
+                                panel.requestEditorMutation("theme.editor.set-layout", {
                                     sessionId: panel.editorSessionId,
                                     layoutId: layoutId,
                                     field: field,
@@ -3518,7 +3940,7 @@ Rectangle {
             const destination = panel.localPath(selectedFile)
             if (!destination)
                 return
-            panel.requestAction("theme.editor.export", {
+            panel.requestEditorMutation("theme.editor.export", {
                 "sessionId": panel.editorSessionId,
                 "destination": destination
             }, function(response) {
@@ -3803,13 +4225,20 @@ Rectangle {
                     Layout.minimumHeight: Math.max(panel.minimumInteractiveTarget, 44)
                     Layout.preferredWidth: 120
                     onClicked: {
+                        const generation = ++panel.editorLoadGeneration
                         panel.requestAction("theme.editor.create",
                             {name: createNameField.text.trim()},
                             function(r) {
+                                if (generation !== panel.editorLoadGeneration)
+                                    return
                                 panel._openEditor(r.sessionId, r.manifest, r.preview, r.declared,
-                                                  r.effectSchema, r.motionSchema)
+                                                  r.effectSchema, r.motionSchema,
+                                                  r.assetRecipeSchema)
                                 createDialog.close()
                                 createNameField.text = ""
+                            }, function(message) {
+                                if (generation === panel.editorLoadGeneration)
+                                    panel.notice = String(message)
                             })
                     }
                     background: Rectangle {

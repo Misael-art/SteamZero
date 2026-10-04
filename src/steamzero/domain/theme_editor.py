@@ -12,11 +12,17 @@ from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from steamzero.core import fs, ids, paths
 from steamzero.core.errors import SteamZeroError
+from steamzero.domain.asset_recipes import (
+    ASSET_RECIPE_SCHEMA_VERSION,
+    AssetRecipeBook,
+    AssetRecipeNode,
+    asset_recipe_editor_schema,
+)
 from steamzero.domain.dynamic_palette import extract_dynamic_palette
 from steamzero.domain.glass_panels import resolve_glass_panels
 from steamzero.domain.media_recipes import (
@@ -321,6 +327,7 @@ def _declared(manifest: dict[str, object]) -> dict[str, object]:
     """
     out: dict[str, object] = {
         "effects": {},
+        "assetRecipes": None,
         "sceneMotion": None,
         "sceneLayouts": None,
         "sceneSurfaces": None,
@@ -336,6 +343,8 @@ def _declared(manifest: dict[str, object]) -> dict[str, object]:
     for item in chain:
         for name, entries in item.effects.items():
             stacks[name] = [{**effect_defaults(entry.type), **entry.to_dict()} for entry in entries]
+        if item.asset_recipes is not None:
+            out["assetRecipes"] = item.asset_recipes.to_dict()
         if item.scene_motion is not None:
             out["sceneMotion"] = item.scene_motion.to_dict()
         if item.scene_layouts is not None:
@@ -351,6 +360,7 @@ def _document(session: EditorSession) -> dict[str, object]:
     return {
         "manifest": dict(session.manifest),
         "declared": _declared(session.manifest),
+        "assetRecipeSchema": asset_recipe_editor_schema(),
         "effectSchema": effect_editor_schema(),
         "motionSchema": motion_editor_schema(),
     }
@@ -542,7 +552,8 @@ class ThemeEditorManager:
             "readOnly": read_only,
             "manifest": manifest.to_dict(),
             "declared": _declared(manifest.to_dict()),
-            "preview": _resolved_preview(manifest.to_dict(), tokens, assets),
+            "preview": self._preview(self._sessions[sid]),
+            "assetRecipeSchema": asset_recipe_editor_schema(),
             "effectSchema": effect_editor_schema(),
             "motionSchema": motion_editor_schema(),
         }
@@ -562,7 +573,7 @@ class ThemeEditorManager:
             license="MIT",
             extends=extends,
         )
-        self._sessions[sid] = EditorSession(
+        session = EditorSession(
             session_id=sid,
             theme_dir=None,
             manifest=manifest.to_dict(),
@@ -570,11 +581,13 @@ class ThemeEditorManager:
             assets={},
             dirty=True,
         )
+        self._sessions[sid] = session
         return {
             "sessionId": sid,
             "manifest": manifest.to_dict(),
             "declared": _declared(manifest.to_dict()),
-            "preview": _resolved_preview(manifest.to_dict(), {}, {}),
+            "preview": self._preview(session),
+            "assetRecipeSchema": asset_recipe_editor_schema(),
             "effectSchema": effect_editor_schema(),
             "motionSchema": motion_editor_schema(),
         }
@@ -771,6 +784,137 @@ class ThemeEditorManager:
             **_document(session),
             "preview": self._preview(session),
             "recipe": parsed[role].to_dict(),
+            "history": _history_state(session),
+        }
+
+    def edit_asset_recipe(
+        self,
+        session_id: str,
+        op: str,
+        *,
+        recipe: str = "",
+        source_slot: str = "",
+        name: str = "",
+        node_type: str = "",
+        index: int | None = None,
+        to_index: int | None = None,
+        field_name: str = "",
+        value: object = None,
+    ) -> dict[str, object]:
+        """Edita o livro allowlisted de receitas de um único asset-fonte.
+
+        O livro herdado é materializado na primeira edição. Toda mutação passa
+        pelo parser canônico e pelo resolver do tema antes de abrir a
+        transação, portanto um node inválido deixa documento e histórico
+        intactos.
+        """
+        session = self._get_session(session_id)
+        inherited = _declared(session.manifest).get("assetRecipes")
+        raw_book = session.manifest.get("assetRecipes")
+        if not isinstance(raw_book, dict):
+            raw_book = deepcopy(inherited) if isinstance(inherited, dict) else None
+
+        if op == "initialize":
+            if raw_book is not None:
+                raise SteamZeroError("E-API-SCHEMA", detail="receitas de asset já existem")
+            if not source_slot:
+                raise SteamZeroError("E-API-SCHEMA", detail="sourceSlot é obrigatório")
+            candidate: dict[str, object] = {
+                "schemaVersion": ASSET_RECIPE_SCHEMA_VERSION,
+                "sourceSlot": source_slot,
+                "recipes": {"original": {"source": source_slot, "nodes": []}},
+            }
+        else:
+            if raw_book is None:
+                raise SteamZeroError(
+                    "E-API-SCHEMA", detail="tema sem assetRecipes; inicialize um asset-fonte"
+                )
+            candidate = deepcopy(raw_book)
+
+        try:
+            if op == "initialize":
+                pass
+            elif op == "create-recipe":
+                recipes = candidate.get("recipes")
+                source = candidate.get("sourceSlot")
+                if not isinstance(recipes, dict) or not isinstance(source, str):
+                    raise ValueError("assetRecipes inválido")
+                if name in recipes:
+                    raise ValueError(f"receita já existe: {name}")
+                recipes[name] = {"source": source, "nodes": []}
+            elif op == "remove-recipe":
+                recipes = candidate.get("recipes")
+                if not isinstance(recipes, dict) or recipe not in recipes:
+                    raise ValueError(f"receita não encontrada: {recipe}")
+                if len(recipes) <= 1:
+                    raise ValueError("o livro precisa manter ao menos uma receita")
+                del recipes[recipe]
+            else:
+                recipes = candidate.get("recipes")
+                if not isinstance(recipes, dict) or recipe not in recipes:
+                    raise ValueError(f"receita não encontrada: {recipe}")
+                raw_recipe = recipes[recipe]
+                if not isinstance(raw_recipe, dict) or not isinstance(
+                    raw_recipe.get("nodes"), list
+                ):
+                    raise ValueError(f"receita inválida: {recipe}")
+                nodes = raw_recipe["nodes"]
+                if op == "add":
+                    allowed_types = asset_recipe_editor_schema()["nodeTypes"]
+                    if node_type not in allowed_types:
+                        raise ValueError(f"node não permitido: {node_type}")
+                    if any(
+                        isinstance(node, dict) and node.get("type") == node_type for node in nodes
+                    ):
+                        raise ValueError(f"receita já contém {node_type}")
+                    insert_at = len(nodes) if index is None else index
+                    if not 0 <= insert_at <= len(nodes):
+                        raise ValueError("posição do node fora da receita")
+                    nodes.insert(
+                        insert_at, AssetRecipeNode.from_dict({"type": node_type}).to_dict()
+                    )
+                elif op in {"set", "remove", "move"}:
+                    if index is None or not 0 <= index < len(nodes):
+                        raise ValueError("índice do node fora da receita")
+                    if op == "set":
+                        node = nodes[index]
+                        if not isinstance(node, dict):
+                            raise ValueError("node inválido")
+                        node_schema = asset_recipe_editor_schema()["nodes"].get(node.get("type"))
+                        fields = (
+                            node_schema.get("fields", {}) if isinstance(node_schema, dict) else {}
+                        )
+                        if field_name not in fields:
+                            raise ValueError(f"campo não editável: {field_name}")
+                        node[field_name] = value
+                    elif op == "remove":
+                        del nodes[index]
+                    else:
+                        if to_index is None or not 0 <= to_index < len(nodes):
+                            raise ValueError("destino do node fora da receita")
+                        moved = nodes.pop(index)
+                        nodes.insert(to_index, moved)
+                else:
+                    raise ValueError(f"operação de receita desconhecida: {op}")
+
+            parsed = AssetRecipeBook.from_dict(candidate)
+            draft_data = deepcopy(session.manifest)
+            draft_data["assetRecipes"] = parsed.to_dict()
+            draft = ThemeManifest.from_dict(draft_data)
+            available = _load_manifests_for_resolution()
+            available[draft.id] = draft
+            ThemeResolver(available).resolve(draft.id)
+        except (TypeError, ValueError, KeyError, AttributeError) as exc:
+            raise SteamZeroError("E-API-SCHEMA", detail=str(exc)) from exc
+
+        with _mutation(session):
+            session.manifest["assetRecipes"] = parsed.to_dict()
+            session.dirty = True
+        recipe_result = parsed.recipes.get(recipe)
+        return {
+            **_document(session),
+            "preview": self._preview(session),
+            "recipe": recipe_result.to_dict() if recipe_result is not None else None,
             "history": _history_state(session),
         }
 
@@ -1114,7 +1258,7 @@ class ThemeEditorManager:
         *,
         scene_layout_read_model: Mapping[str, Any] | None = None,
     ) -> dict[str, object]:
-        return _resolved_preview(
+        preview = _resolved_preview(
             session.manifest,
             session.tokens,
             session.assets,
@@ -1122,6 +1266,66 @@ class ThemeEditorManager:
             reduced_motion=reduced_motion,
             scene_layout_read_model=scene_layout_read_model,
         )
+        preview["assetUris"] = self._asset_preview_uris(session)
+        return preview
+
+    @staticmethod
+    def _asset_preview_uris(session: EditorSession) -> dict[str, str]:
+        """Expose only the selected recipe's validated source inside its theme root."""
+        book = _declared(session.manifest).get("assetRecipes")
+        if not isinstance(book, dict) or not isinstance(book.get("sourceSlot"), str):
+            return {}
+        source_slot = book["sourceSlot"]
+        try:
+            draft = ThemeManifest.from_dict(dict(session.manifest))
+            available = _load_manifests_for_resolution()
+            available[draft.id] = draft
+            chain = ThemeResolver(available)._build_chain(draft.id)
+        except (ValueError, TypeError, KeyError, AttributeError):
+            return {}
+
+        owner_id = ""
+        asset_path = ""
+        for item in chain:
+            if item.assets and source_slot in item.assets:
+                owner_id = item.id
+                asset_path = item.assets[source_slot]
+        relative = PurePosixPath(asset_path)
+        if (
+            not owner_id
+            or not asset_path.startswith("assets/")
+            or relative.is_absolute()
+            or ".." in relative.parts
+        ):
+            return {}
+
+        user_root = paths.themes_dir() / owner_id
+        if user_root.is_dir() and not user_root.is_symlink():
+            root = user_root.resolve()
+            candidate = user_root
+            for part in relative.parts:
+                candidate = candidate / part
+                if candidate.is_symlink():
+                    return {}
+            try:
+                resolved = candidate.resolve(strict=True)
+                resolved.relative_to(root)
+            except (OSError, ValueError):
+                return {}
+            if resolved.is_file() and resolved.suffix.lower() in _ASSET_EXTENSIONS:
+                return {source_slot: resolved.as_uri()}
+            return {}
+
+        try:
+            import importlib.resources as resources
+
+            resource = resources.files(_THEME_PACKAGE).joinpath(owner_id, *relative.parts)
+            candidate = Path(str(resource))
+            if candidate.is_file() and candidate.suffix.lower() in _ASSET_EXTENSIONS:
+                return {source_slot: candidate.resolve().as_uri()}
+        except (OSError, FileNotFoundError, ModuleNotFoundError, TypeError, ValueError):
+            return {}
+        return {}
 
 
 def _validate_save(manifest_dict: dict[str, object]) -> str | None:
