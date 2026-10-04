@@ -205,6 +205,22 @@ class FakeDashboard:
         self.calls.append(("launch", component_id))
         return {"status": "started"}
 
+    def editor_edit_asset_recipe(
+        self, session_id: str, op: str, **kwargs: object
+    ) -> dict[str, object]:
+        self.calls.append(
+            (
+                "asset-recipe-edit",
+                session_id,
+                op,
+                str(kwargs.get("recipe", "")),
+                str(kwargs.get("node_type", "")),
+                str(kwargs.get("field_name", "")),
+                str(kwargs.get("value", "")),
+            )
+        )
+        return {"accepted": True, "op": op}
+
     def component_operation_history(self, component_id: str) -> dict[str, object]:
         self.calls.append(("component-history", component_id))
         return {"componentId": component_id, "operations": [], "count": 0}
@@ -1018,6 +1034,36 @@ def test_bridge_bios_import_and_rollback_are_plan_confirmed(
     assert bad_schema.value.code == 400
     assert json.loads(bad_schema.value.read())["error"]["code"] == "E-API-SCHEMA"
     bad_schema.value.close()
+
+
+def test_theme_asset_recipe_action_reaches_dashboard_with_typed_value(
+    dashboard_bridge: tuple[str, str, FakeDashboard],
+) -> None:
+    base, token, dashboard = dashboard_bridge
+    result = request_json(
+        base,
+        token,
+        "/theme/editor/edit-asset-recipe",
+        {
+            "sessionId": "edit-session",
+            "op": "set",
+            "recipe": "outlineThin",
+            "nodeType": "outline",
+            "index": 0,
+            "field": "width",
+            "value": 6.0,
+        },
+    )
+    assert result == {"accepted": True, "op": "set"}
+    assert dashboard.calls[-1] == (
+        "asset-recipe-edit",
+        "edit-session",
+        "set",
+        "outlineThin",
+        "outline",
+        "width",
+        "6.0",
+    )
 
 
 def test_bridge_exposes_dashboard_component_and_steam_actions(

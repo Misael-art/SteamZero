@@ -1154,6 +1154,29 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 self._required_string(payload, "field"),
                 payload.get("value"),
             )
+        if path == "/theme/editor/edit-asset-recipe":
+            raw_index = payload.get("index")
+            raw_to_index = payload.get("toIndex")
+            return self._dashboard().editor_edit_asset_recipe(
+                self._required_string(payload, "sessionId"),
+                self._required_string(payload, "op"),
+                recipe=self._optional_string(payload, "recipe"),
+                source_slot=self._optional_string(payload, "sourceSlot"),
+                name=self._optional_string(payload, "name"),
+                node_type=self._optional_string(payload, "nodeType"),
+                index=(
+                    raw_index
+                    if isinstance(raw_index, int) and not isinstance(raw_index, bool)
+                    else None
+                ),
+                to_index=(
+                    raw_to_index
+                    if isinstance(raw_to_index, int) and not isinstance(raw_to_index, bool)
+                    else None
+                ),
+                field_name=self._optional_string(payload, "field"),
+                value=payload.get("value"),
+            )
         if path == "/theme/editor/edit-effect":
             raw_index = payload.get("index")
             return self._dashboard().editor_edit_effect(
@@ -1928,6 +1951,10 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
         if not isinstance(value, str) or not value:
             raise SteamZeroError("E-API-SCHEMA", detail=f"campo obrigatório: {key}")
         return value
+
+    def _optional_string(self, payload: dict[str, Any], key: str) -> str:
+        value = payload.get(key)
+        return value if isinstance(value, str) else ""
 
     def _required_exact_strings(self, payload: dict[str, Any], *keys: str) -> tuple[str, ...]:
         """Valida o schema fechado das rotas do lifecycle de componentes."""

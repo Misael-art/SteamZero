@@ -2206,6 +2206,33 @@ class DesktopDashboard:
     ) -> dict[str, object]:
         return self._theme_editor.set_media_recipe(session_id, role, recipe_field, value)
 
+    def editor_edit_asset_recipe(
+        self,
+        session_id: str,
+        op: str,
+        *,
+        recipe: str = "",
+        source_slot: str = "",
+        name: str = "",
+        node_type: str = "",
+        index: int | None = None,
+        to_index: int | None = None,
+        field_name: str = "",
+        value: object = None,
+    ) -> dict[str, object]:
+        return self._theme_editor.edit_asset_recipe(
+            session_id,
+            op,
+            recipe=recipe,
+            source_slot=source_slot,
+            name=name,
+            node_type=node_type,
+            index=index,
+            to_index=to_index,
+            field_name=field_name,
+            value=value,
+        )
+
     def editor_edit_effect(
         self, session_id: str, stack: str, op: str, **kwargs: Any
     ) -> dict[str, object]:
